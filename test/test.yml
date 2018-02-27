@@ -1,0 +1,40 @@
+# This is all straight from the parsl docs
+# except that I changed the channel to be local, assuming that
+# you've logged into cori directly.
+launcher:
+  globals: {lazyErrors: true}
+  sites:
+  - auth: {channel: local}
+    execution:
+      block:
+        initBlocks: 1
+        maxBlocks: 1
+        minBlocks: 0
+        nodes: 1
+        options: {overrides: '#SBATCH --constraint=haswell
+            module swap PrgEnv-intel  PrgEnv-gnu
+            module load python/3.6-anaconda-4.4
+            module load cfitsio/3.370-reentrant
+            source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
+            export PYTHONPATH=$PYTHONPATH:/global/cscratch1/sd/zuntz/pipe/pipette', 
+        partition: debug}
+        scriptDir: .
+        taskBlocks: 1
+        walltime: 00:10:00
+      executor: ipp
+      provider: slurm
+    site: Cori.Remote.IPP  # This appears to just be a tag included in output files
+
+
+
+stages:
+    - name: KIDSSelector
+      nprocess: 1
+
+output_dir: ./outputs
+
+inputs:
+    shear_cat: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
+    selector_config: test/selector_config.yml
+
+
