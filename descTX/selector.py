@@ -1,5 +1,5 @@
 from pipette import PipelineStage
-from descTX.types import ShearCatFile, TomoCatFile
+from descTX.dtypes import ShearCatFile, TomoCatFile
 from pipette.types import YamlFile
 
 def select(data, cuts, variant):
@@ -77,18 +77,18 @@ class TXSelector(PipelineStage):
         f.close()
 
 
-    def choose_cuts(self):
+    def read_config(self):
         import yaml
         selector_config = self.get_input('selector_config')
         config = yaml.load(open(selector_config))
         
         cuts = {
-            'T': config['T_cut']
+            'T': config['T_cut'],
             's2n': config['s2n_cut']
         }
 
         info = {
-            'delta_gamma': config['delta_gamma']
+            'delta_gamma': config['delta_gamma'],
             'nrows': config.get('nrows', 0)
         }
         return cuts, info

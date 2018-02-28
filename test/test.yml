@@ -38,13 +38,13 @@ launcher:
 
 
 stages:
-    - name: KIDSSelector
+    - name: TXSelector
       nprocess: 1
 
 output_dir: ./outputs
 
 inputs:
-    shear_cat: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
     selector_config: test/selector_config.yml
 
 
