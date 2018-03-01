@@ -1,5 +1,6 @@
 from pipette import Pipeline
 import descTX.selector
+import descTX.photoz
 import pathlib
 import os
 import yaml
