@@ -25,7 +25,7 @@ localIPP = {
 }
 
 
-def test_pipeline(config_filename="./test/config.yml"):
+def test_pipeline(config_filename="./test/test.yml"):
     parsl.set_file_logger('log.txt')
     config = yaml.load(open(config_filename))
     # Required configuration information
