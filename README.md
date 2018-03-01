@@ -45,3 +45,12 @@ Each pipeline stage is implemented as a python class inheriting from pipette.Pip
 - implement a "run" method doing the actual work of the class.
 
 
+Roadmap
+-------
+
+- Write stages using LSS tools (e.g. from HyperSupremeStructure-HSC-LSS) to implement sysmaps.py and random_cats.py, or reorganize them as one stage perhaps.
+- Use the LSS NAMaster examples to write a fourier-space 2pt stage.
+- Use the WLPipe code from Troxel to write a real-space 2pt stage.
+- Wrapper to generate SACC file from either of the two data sets above.
+- Write Gaussian-only Covariance calculator as placeholder for real thing.
+
