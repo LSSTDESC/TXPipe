@@ -6,10 +6,14 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the pipette repository for the infrastructure.
 
-A few notes:
+Goals
+-----
 
-- Our catalogs will be large. Wherever possible stages should operate on chunks of their input data at once.
-- Pipeline stages shouldn't copy existing columns to new data.
+- Test using parsl for some of our larger more complex analyses.
+- Build and test a prototype pipeline infrastructure.
+- Build and run prototype.
+- Perform and publish a DC2 3x2pt analysis.
+
 
 Installation
 ------------
@@ -43,6 +47,11 @@ Each pipeline stage is implemented as a python class inheriting from pipette.Pip
 - have class attributes "inputs" and "outputs", each of which is a list of tuple pairs with a string tag and a FileType class.
 - (optionally)  define a "config_options" dictionary of options it expects to find in its section of the main config file, with the value as a default for the option or "None" for no default.
 - implement a "run" method doing the actual work of the class.
+
+Some implementation notes:
+
+- Our catalogs will be large. Wherever possible stages should operate on chunks of their input data at once.
+- Pipeline stages shouldn't copy existing columns to new data.
 
 
 Roadmap

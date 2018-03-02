@@ -22,7 +22,20 @@ class TXPhotozPDF(PipelineStage):
 
     # Configuration options.  If the value is not "None" then it specifies a default value
     config_options = {'zmax': None, 'nz': None, 'chunk_rows': 10000}
+
+
     def run(self):
+        """
+        The run method is where all the work of the stage is done.
+        In this case it:
+         - reads the config file
+         - prepares the output HDF5 file
+         - loads in chunks of input data, one at a time
+         - computes mock photo-z PDFs for each chunk
+         - writes each chunk to output
+         - closes the output file
+
+        """
         import numpy as np
         import fitsio
 
@@ -32,7 +45,8 @@ class TXPhotozPDF(PipelineStage):
         # Open the input catalog and check how many objects
         # we will be running on.
         cat = self.get_input('shear_catalog')
-        nobj = fitsio.read_header(cat, ext=1)['NAXIS2']
+        hdu = 1
+        nobj = fitsio.read_header(cat, ext=hdu)['NAXIS2']
 
         # Prepare the output HDF5 file
         output_file = self.prepare_output(nobj, config, z)
@@ -41,13 +55,18 @@ class TXPhotozPDF(PipelineStage):
         # Note that we need all the metacalibrated variants too.
         cols = ['mcal_pars', 'mcal_pars_1m', 'mcal_pars_1p', 'mcal_pars_2m', 'mcal_pars_2p']
 
-        # Loop through chunks of the data. runn
-        # Parallelism is handled in the iterate_input function
-        hdu = 1
+        # Loop through chunks of the data.
+        # Parallelism is handled in the iterate_input function - 
+        # each processor will only be given the sub-set of data it is 
+        # responsible for.  The HDF5 parallel output mode means they can
+        # all write to the file at once too.
         chunk_rows = config['chunk_rows']
         for start, end, data in self.iterate_fits('shear_catalog', hdu, cols, chunk_rows):
             print(f"Process {self.rank} running photo-z for rows {start}-{end}")
+
+            # Compute some mock photo-z PDFs and point estimates
             pdfs, point_estimates = self.calculate_photozs(data, z, config)
+            # Save this chunk of data to the output file
             self.write_output(output_file, start, end, pdfs, point_estimates)
 
         # Synchronize processors
@@ -59,6 +78,8 @@ class TXPhotozPDF(PipelineStage):
 
     def calculate_photozs(self, data, z, config):
         # Mock photo-z code generating random PDFs.
+        # Note that we need metacalibrated versions of
+        # the point estimates.  That's why the 5 is there.
         import numpy as np
         import scipy.stats
         nz = config['nz']
