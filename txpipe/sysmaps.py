@@ -1,6 +1,6 @@
 from pipette import PipelineStage
 from pipette.types import YamlFile
-from txpipe.dtypes import *
+from .dtypes import *
 
 
 class TXDiagnosticMaps(PipelineStage):
