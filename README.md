@@ -60,16 +60,21 @@ Each pipeline stage is implemented as a python class inheriting from pipette.Pip
 
 Some implementation notes:
 
-- Our catalogs will be large. Wherever possible stages should operate on chunks of their input data at once.
+- Our catalogs will be large. Wherever possible stages should operate on chunks of their input data at once. Pipette has some methods for this (see README)
 - Pipeline stages shouldn't copy existing columns to new data.
+- No ASCII output allowed!
+- Python 3.6
+- We will do code review
+- One file per box (?)
 
 
-Roadmap
--------
 
-- Write stages using LSS tools (e.g. from HyperSupremeStructure-HSC-LSS) to implement sysmaps.py and random_cats.py, or reorganize them as one stage perhaps.
-- Use the LSS NAMaster examples to write a fourier-space 2pt stage.
-- Use the WLPipe code from Troxel to write a real-space 2pt stage.
-- Wrapper to generate SACC file from either of the two data sets above.
-- Write Gaussian-only Covariance calculator as placeholder for real thing.
+Volunteers
+----------
 
+- Chihway C & Emily PL - TXTwoPointReal (WLPipe porting & testing)
+- David A - TXSysMapMaker
+- Anze S - SACC
+- Tim E - TXCov
+- Alex M - TXSourceSummarizer
+- Antonino T & David A - TXTwoPointPower
