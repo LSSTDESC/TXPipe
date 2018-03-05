@@ -7,7 +7,7 @@ Hopefully the real pipeline will be more accurate than that.
 """
 from pipette import PipelineStage
 from pipette.types import YamlFile
-from descTX.dtypes import *
+from txpipe.dtypes import *
 
 
 class TXPhotozPDF(PipelineStage):

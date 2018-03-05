@@ -1,5 +1,5 @@
 from pipette import PipelineStage
-from descTX.dtypes import ShearCatFile, TomoCatFile, PhotozPDFFile
+from txpipe.dtypes import ShearCatFile, TomoCatFile, PhotozPDFFile
 from pipette.types import YamlFile
 
 def select(shear_data, pz_data, cuts, variant):

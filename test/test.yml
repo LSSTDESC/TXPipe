@@ -36,6 +36,8 @@ launcher:
     }
       site: Local_Threads
 
+modules: txpipe.selector txpipe.photoz
+
 
 stages:
     - name: TXSelector
@@ -50,4 +52,6 @@ inputs:
     shear_catalog: /Users/jaz/data/hsc/tract008766-shear-cat-0-10000.fits
     config: test/config.yml
 
+log_dir: ./test/logs
+pipeline_log: log.txt
 

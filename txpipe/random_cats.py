@@ -1,6 +1,6 @@
 from pipette import PipelineStage
 from pipette.types import YamlFile
-from descTX.dtypes import *
+from txpipe.dtypes import *
 
 
 class TXRandomCat(PipelineStage):
