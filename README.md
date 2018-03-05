@@ -37,6 +37,16 @@ module load cfitsio/3.370-reentrant
 source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
 ```
 
+Running the pipeline
+--------------------
+
+Make sure that the pipette directory is on your PYTHONPATH and pipette/bin is on your PATH.
+Then you can run:
+
+```bash
+pipette test/test.yml
+```
+to run the implemented stages
 
 Implementation
 --------------
