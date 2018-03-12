@@ -56,7 +56,8 @@ Each pipeline stage is implemented as a python class inheriting from pipette.Pip
 - have a "name" attribute string.
 - have class attributes "inputs" and "outputs", each of which is a list of tuple pairs with a string tag and a FileType class.
 - (optionally)  define a "config_options" dictionary of options it expects to find in its section of the main config file, with the value as a default for the option or "None" for no default.
-- implement a "run" method doing the actual work of the class.
+- implement a "run" method doing the actual work of the class.  Your class should then call the methods described below to interact with the pipeline
+
 
 Some implementation notes:
 
@@ -66,6 +67,45 @@ Some implementation notes:
 - Python 3.6
 - We will do code review
 - One file per box (?)
+
+Pipeline Stage Methods
+----------------------
+
+The pipeline stages can use these methods to interact with the pipeline:
+
+Basic tools to find the file path:
+
+- self.get_input(tag)
+- self.get_output(tag)
+
+Get base class to find and open the file for you
+
+- self.open_input(tag, **kwargs)
+- self.open_output(tag, **kwargs)
+
+
+Look for a section in a yaml input file tagged "config"
+and read it.  If the config_options class variable exists in the class
+then it checks those options are set or uses any supplied defaults:
+
+- self.read_config()
+
+Parallelization tools - MPI attributes:
+
+- self.rank
+- self.size
+- self.comm
+
+(Parallel) IO tools - reading data in chunks, splitting up 
+according to MPI rank:
+
+- self.iterate_fits(tag, hdunum, cols, chunk_rows)
+- self.iterate_hdf(tag, group_name, cols, chunk_rows)
+
+
+
+
+
 
 
 
