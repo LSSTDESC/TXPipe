@@ -1,6 +1,6 @@
 from pipette import PipelineStage
-from .dtypes import ShearCatFile, TomoCatFile, PhotozPDFFile
-from pipette.types import YamlFile
+from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
+
 
 def select(shear_data, pz_data, cuts, variant):
     n = len(shear_data)
@@ -39,12 +39,12 @@ def flatten_list(lst):
 class TXSelector(PipelineStage):
     name='TXSelector'
     inputs = [
-        ('shear_catalog', ShearCatFile),
+        ('shear_catalog', MetacalCatalog),
         ('config', YamlFile),
         ('photoz_pdfs', PhotozPDFFile),
     ]
     outputs = [
-        ('tomography_catalog', TomoCatFile)
+        ('tomography_catalog', TomographyCatalog)
     ]
     config_options = {'T_cut':None, 's2n_cut':None, 'delta_gamma': None, 'max_rows':0, 'chunk_rows':10000}
 

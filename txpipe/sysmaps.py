@@ -1,16 +1,15 @@
 from pipette import PipelineStage
-from pipette.types import YamlFile
-from .dtypes import *
+from descformats.tx import MetacalCatalog, DiagnosticMaps, YamlFile
 
 
 class TXDiagnosticMaps(PipelineStage):
     name='TXDiagnosticMaps'
     inputs = [
-        ('shear_cat', ShearCatFile),
+        ('shear_cat', MetacalCatalog),
         ('config', YamlFile),
     ]
     outputs = [
-        ('diagnostic_maps', DiagnosticMapsFile),
+        ('diagnostic_maps', DiagnosticMaps),
     ]
 
     def run(self):

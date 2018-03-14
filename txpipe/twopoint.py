@@ -1,14 +1,13 @@
 from pipette import PipelineStage
-from pipette.types import YamlFile
-from .dtypes import *
+from descformats.tx import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile
 
 
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('shear_catalog', ShearCatFile),
-        ('tomography_catalog', TomoCatFile),
-        ('random_catalog', TomoCatFile),
+        ('shear_catalog', MetacalCatalog),
+        ('tomography_catalog', TomographyCatalog),
+        ('random_catalog', RandomsCatalog),
         ('config', YamlFile),
     ]
     outputs = [

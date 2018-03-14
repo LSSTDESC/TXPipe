@@ -6,14 +6,12 @@ Hopefully the real pipeline will be more accurate than that.
 
 """
 from pipette import PipelineStage
-from pipette.types import YamlFile
-from .dtypes import *
-
+from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile
 
 class TXPhotozPDF(PipelineStage):
     name='TXPhotozPDF'
     inputs = [
-        ('shear_catalog', ShearCatFile),
+        ('shear_catalog', MetacalCatalog),
         ('config', YamlFile),
     ]
     outputs = [

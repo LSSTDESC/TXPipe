@@ -1,16 +1,15 @@
 from pipette import PipelineStage
-from pipette.types import YamlFile
-from .dtypes import *
+from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog
 
 
 class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
-        ('diagnostic_maps', DiagnosticMapsFile),
+        ('diagnostic_maps', DiagnosticMaps),
         ('config', YamlFile),
     ]
     outputs = [
-        ('random_cats', RandomCatFile),
+        ('random_cats', RandomsCatalog),
     ]
 
     def run(self):
