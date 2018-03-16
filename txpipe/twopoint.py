@@ -6,9 +6,9 @@ class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('galaxy_catalog', MetacalCatalog),
+        #('galaxy_catalog', MetacalCatalog),
         ('tomography_catalog', TomographyCatalog),
-        ('random_catalog', RandomsCatalog),
+        #('random_catalog', RandomsCatalog),
         ('config', YamlFile),
     ]
     outputs = [
@@ -16,8 +16,14 @@ class TXTwoPoint(PipelineStage):
     ]
 
     def run(self):
-        pass
 
+        # read in a shear catalog
+	# read in tomography catalog
+        # read in the different columns (e1, e2, ra, dec, metacal)
+        # select one z bin
+        # call treecorr
+        # calculate shear-shear
+	# store intermediate output 
 
 
 if __name__ == '__main__':
