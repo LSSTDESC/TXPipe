@@ -14,7 +14,7 @@ def test_stats():
     count, mean, var = stats.calculate(iterator())
     simple_count = [len(v) for v in map_values]
     simple_mean = np.mean(map_values,axis=1)
-    simple_var = np.var(map_values,axis=1, ddof=1)
+    simple_var = np.var(map_values,axis=1, ddof=0)
 
     assert np.allclose(count, simple_count)
     assert np.allclose(mean, simple_mean)
@@ -37,7 +37,7 @@ def test_stats_sparse():
     count, mean, var = stats.calculate(iterator())
     simple_count = [len(v) for v in map_values]
     simple_mean = np.mean(map_values, axis=1)
-    simple_var = np.var(map_values, axis=1, ddof=1)
+    simple_var = np.var(map_values, axis=1, ddof=0)
 
     assert np.allclose(count[used_pixels].toarray().flatten(), simple_count)
     assert np.allclose(mean[used_pixels].toarray().flatten(), simple_mean)
@@ -57,7 +57,6 @@ def mpi_test_stats():
     npix = 10
     stats = ParallelStatsCalculator(npix, sparse=False)
 
-    map_values = [np.random.uniform(size=20) for pixel in range(npix)]
 
 
     if rank==0:
@@ -70,11 +69,6 @@ def mpi_test_stats():
 
     def iterator():
         for pixel, values in enumerate(map_values):
-            yield pixel, values
-
-
-    def iterator():
-        for pixel, values in enumerate(map_values):
             # Each rank only works with some pixels
             if pixel % size != rank:
                 continue
@@ -82,10 +76,11 @@ def mpi_test_stats():
 
     count, mean, var = stats.calculate(iterator(), comm)
 
+
     if comm.Get_rank()==0:
         simple_count = [len(v) for v in map_values]
         simple_mean = np.mean(map_values,axis=1)
-        simple_var = np.var(map_values,axis=1, ddof=1)
+        simple_var = np.var(map_values,axis=1)
         assert np.allclose(count, simple_count)
         assert np.allclose(mean, simple_mean)
         assert np.allclose(var, simple_var)
@@ -129,7 +124,7 @@ def mpi_test_stats_sparse():
     if comm.Get_rank()==0:
         simple_count = [len(v) for v in map_values]
         simple_mean = np.mean(map_values,axis=1)
-        simple_var = np.var(map_values,axis=1, ddof=1)
+        simple_var = np.var(map_values,axis=1)
         for i,p in enumerate(used_pixels):
             assert np.isclose(simple_count[i], count[p,0])
             assert np.isclose(simple_mean[i], mean[p,0])

@@ -32,11 +32,11 @@ class ParallelStatsCalculator:
     def finalize(self):
         if self.sparse:
             import scipy.sparse
-            w = self.count.nonzero()
             self.variance = scipy.sparse.dok_matrix((self.size,1))
-            self.variance[w,0] = self.M2[w].toarray()/(self.count[w].toarray() - 1)
+            w = self.count.nonzero()
+            self.variance[w] = self.M2[w].toarray() / self.count[w].toarray()
         else:
-            self.variance = self.M2/(self.count - 1)
+            self.variance = self.M2 / self.count
             bad = self.count<2
             self.variance[bad] = np.nan            
 
@@ -52,17 +52,19 @@ class ParallelStatsCalculator:
         T =  np.zeros((self.size,1))
         S =  np.zeros((self.size,1))
         S2 = np.zeros((self.size,1))
+        mean = np.zeros((self.size,1))
+        variance = np.zeros((self.size,1))
         for count, mean, var in zip(counts, means, variances):
             # Deal with any NaNs
             mean[count==0] = 0
             var[count==0] = 0
-            sums = mean*count
-            sums2 = var*(count-1)
             T += count
-            S += sums
-            S2 += sums2
-        variance = S2 / (T-1)
-        mean = S / T
+            S += mean*count
+            S2 += var*count
+
+        w = T.nonzero()
+        variance[w] = S2[w] / T[w]
+        mean[w] = S[w] / T[w]
         count = T
         variance[count==0] = np.nan
         mean[count==0] = np.nan
@@ -74,18 +76,20 @@ class ParallelStatsCalculator:
         T = scipy.sparse.dok_matrix((self.size,1))
         S = scipy.sparse.dok_matrix((self.size,1))
         S2 = scipy.sparse.dok_matrix((self.size,1))
+        mean = scipy.sparse.dok_matrix((self.size,1))
+        variance = scipy.sparse.dok_matrix((self.size,1))
 
         for count, mean, var in zip(counts, means, variances):
-            # Deal with any NaNs
             w = count.nonzero()
+            # Deal with any NaNs
             T += count
-            S[w] += mean[w].toarray()*count[w].toarray()
-            S2[w] += var[w].toarray() * (count[w].toarray() - 1)
+            S[w] += mean[w].toarray()  * count[w].toarray()
+            S2[w] += var[w].toarray() * count[w].toarray()
 
         w = T.nonzero()
-        variance = scipy.sparse.dok_matrix((self.size,1))
-        variance[w] = S2[w] / (T[w].toarray() - 1)
-        mean = S / T
+
+        variance[w] = S2[w].toarray() / T[w].toarray()
+        mean[w] = S[w] / T[w]
         count = T
         return count, mean, variance
 
@@ -115,12 +119,13 @@ class ParallelStatsCalculator:
 
 
     def calculate(self, values_iterator, comm=None):
-        if comm is None:
-            count, mean, variance = self.calculate_serial(values_iterator)
-            return count[:,0], mean[:,0], variance[:,0]
-        else:
-            count, mean, variance = self.calculate_parallel(values_iterator, comm)
-            return count, mean, variance
+        with np.errstate(divide='ignore',invalid='ignore'):
+            if comm is None:
+                count, mean, variance = self.calculate_serial(values_iterator)
+                return count[:,0], mean[:,0], variance[:,0]
+            else:
+                count, mean, variance = self.calculate_parallel(values_iterator, comm)
+                return count, mean, variance
 
 
 
