@@ -10,3 +10,10 @@ TXSelector:
     delta_gamma: 0.02
     zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
     chunk_rows: 1000
+
+TXDiagnosticMaps:
+    snr_threshold: 5.0
+    chunk_rows: 1000
+    nside: 1024
+    sparse: True
+
