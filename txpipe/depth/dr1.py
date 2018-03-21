@@ -1,9 +1,3 @@
-"""
-The strategy used in this file for determining depth is to take the
-mean and stadard deviation of the 
-
-"""
-
 import numpy as np
 import healpy as hp
 from ..utils.stats import ParallelStatsCalculator
