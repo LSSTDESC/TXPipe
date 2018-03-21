@@ -44,6 +44,8 @@ stages:
       nprocess: 2
     - name: TXPhotozPDF
       nprocess: 2
+    - name: TXDiagnosticMaps
+      nprocess: 2
 
 output_dir: ./outputs
 

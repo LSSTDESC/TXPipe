@@ -12,8 +12,8 @@ TXSelector:
     chunk_rows: 1000
 
 TXDiagnosticMaps:
+    chunk_rows: 1000  # Number of rows to process at once
+    nside: 2048       # 
+    sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 5.0
-    chunk_rows: 1000
-    nside: 1024
-    sparse: True
-
+    snr_delta: 1.0

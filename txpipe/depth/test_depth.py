@@ -39,9 +39,10 @@ def test_stats_sparse():
     simple_mean = np.mean(map_values, axis=1)
     simple_var = np.var(map_values, axis=1, ddof=0)
 
-    assert np.allclose(count[used_pixels].toarray().flatten(), simple_count)
-    assert np.allclose(mean[used_pixels].toarray().flatten(), simple_mean)
-    assert np.allclose(var[used_pixels].toarray().flatten(), simple_var)
+    for i,p in enumerate(used_pixels):
+        assert np.isclose(simple_count[i], count[p])
+        assert np.isclose(simple_mean[i], mean[p])
+        assert np.isclose(simple_var[i], var[p])
 
 
 def mpi_test_stats():
@@ -126,9 +127,9 @@ def mpi_test_stats_sparse():
         simple_mean = np.mean(map_values,axis=1)
         simple_var = np.var(map_values,axis=1)
         for i,p in enumerate(used_pixels):
-            assert np.isclose(simple_count[i], count[p,0])
-            assert np.isclose(simple_mean[i], mean[p,0])
-            assert np.isclose(simple_var[i], var[p,0])
+            assert np.isclose(simple_count[i], count[p])
+            assert np.isclose(simple_mean[i], mean[p])
+            assert np.isclose(simple_var[i], var[p])
     else:
         assert count is None
         assert mean is None
