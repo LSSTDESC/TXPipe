@@ -1,9 +1,8 @@
 import numpy as np
-import healpy as hp
 from ..utils.stats import ParallelStatsCalculator
 
 
-def dr1_values_iterator(data_iterator, nside, snr_threshold, snr_delta=1., mag_index=1):
+def dr1_values_iterator(data_iterator, pixel_scheme, snr_threshold, snr_delta=1., mag_index=1):
     """Loop through any input data in
     data_iterator and computes the quantities needed for depth
     estimation - the magnitudes of any objects that have
@@ -19,8 +18,8 @@ def dr1_values_iterator(data_iterator, nside, snr_threshold, snr_delta=1., mag_i
     data_iterator: iterable
         Iterator yielding chunks of data containing ra, dec, snr and magnitude values
 
-    nside: int
-        Resolution parameter for generated map
+    pixel_scheme: PixelScheme object
+        Converter from angle to pixel
 
     snr_threshold: float
         Value of SNR to use as the depth (e.g. 5.0 for 5 sigma depth)
@@ -48,7 +47,7 @@ def dr1_values_iterator(data_iterator, nside, snr_threshold, snr_delta=1., mag_i
         snr = data['mcal_s2n_r']
         mags = data['mcal_mag'][:,mag_index]
         # Get healpix pixels
-        pix_nums = hp.ang2pix(nside, ra, dec, lonlat=True)
+        pix_nums = pixel_scheme.ang2pix(ra, dec)
 
         # For each found pixel find all values hitting that pixel
         # and yield the index and their magnitudes
@@ -57,15 +56,15 @@ def dr1_values_iterator(data_iterator, nside, snr_threshold, snr_delta=1., mag_i
             yield p, mags[mask]
 
 
-def dr1_depth(data_iterator, nside, snr_threshold, snr_delta=1.0, mag_index=1, sparse=False, comm=None):
+def dr1_depth(data_iterator, pixel_scheme, snr_threshold, snr_delta=1.0, mag_index=1, sparse=False, comm=None):
     """
     Parameters
     ----------
     data_iterator: iterable
         Iterator yielding chunks of data containing ra, dec, snr and magnitude values
 
-    nside: int
-        Resolution parameter for generated map
+    pixel_scheme: PixelScheme object
+        Converter from angle to pixel
 
     snr_threshold: float
         Value of SNR to use as the depth (e.g. 5.0 for 5 sigma depth)
@@ -85,14 +84,23 @@ def dr1_depth(data_iterator, nside, snr_threshold, snr_delta=1.0, mag_index=1, s
     comm: MPI communicator, optional
         An MPI comm for parallel processing.  If None, calculation is serial.
 
-    """
-    npix = hp.nside2npix(nside)
+    Returns
+    -------
+    pixel: array
+        Indices of all pixels with any objects
+    count: array
+        Number of objects in each pixel
+    depth: array
+        Estimated depth of each pixel
+    depth_var: array
+        Estimated variance of depth of each pixel
 
+    """
     # Make the stats calculator object
-    stats = ParallelStatsCalculator(npix, sparse=sparse)
+    stats = ParallelStatsCalculator(pixel_scheme.npix, sparse=sparse)
 
     # Make the iterator that will supply values to the stats calc
-    values_iterator = dr1_values_iterator(data_iterator, nside, snr_threshold, snr_delta)
+    values_iterator = dr1_values_iterator(data_iterator, pixel_scheme, snr_threshold, snr_delta)
 
     # run the stats
     count, depth, depth_var = stats.calculate(values_iterator, comm)

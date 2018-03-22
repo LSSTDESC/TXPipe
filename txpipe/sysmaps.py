@@ -1,7 +1,6 @@
 from pipette import PipelineStage
 from descformats.tx import MetacalCatalog, DiagnosticMaps, YamlFile
 
-
 class TXDiagnosticMaps(PipelineStage):
     """
     For now, this Pipeline Stage computes a depth map using the DR1 method,
@@ -31,7 +30,8 @@ class TXDiagnosticMaps(PipelineStage):
     
     # Configuration information for this stage
     config_options = {
-        'nside':None,   # The Healpix resolution parameter for the generated maps
+        'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
+        'nside':0,   # The Healpix resolution parameter for the generated maps
         'snr_threshold':None,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
@@ -41,10 +41,16 @@ class TXDiagnosticMaps(PipelineStage):
 
     def run(self):
         from .depth import dr1_depth
+        from .utils import choose_pixelization
         import numpy as np
 
         # Read input configuration informatiomn
         config = self.read_config()
+
+
+        # Select a pixelization scheme based in configuration keys.
+        # Looks at "pixelization as the main thing"
+        pixel_scheme = choose_pixelization(**config)
 
         # Set up the iterator to run through the FITS file.
         # Iterators lazily load the data chunk by chunk as we iterate through the file.
@@ -53,9 +59,10 @@ class TXDiagnosticMaps(PipelineStage):
         cat_cols = ['ra', 'dec', 'mcal_s2n_r', 'mcal_mag']
         data_iterator = (data for start,end,data in self.iterate_fits('shear_catalog', 1, cat_cols, config['chunk_rows']))
 
+
         # Calculate the depth map, map of the counts used in computing the depth map, and map of the depth variance
         pixel, count, depth, depth_var = dr1_depth(data_iterator, 
-            config['nside'], config['snr_threshold'], config['snr_delta'], sparse=config['sparse'], 
+            pixel_scheme, config['snr_threshold'], config['snr_delta'], sparse=config['sparse'], 
             comm=self.comm)
 
         # Only the root process saves the output
@@ -75,6 +82,20 @@ class TXDiagnosticMaps(PipelineStage):
         """
         Save an output map to an HDF5 subgroup, including the pixel
         numbering and the metadata.
+
+        Parameters
+        ----------
+
+        group: H5Group
+            The h5py Group object in which to store maps
+        name: str
+            The name of this map, used as the name of a subgroup in the group where the data is stored.
+        pixel: array
+            Array of indices of observed pixels
+        value: array
+            Array of values of observed pixels
+        metadata: mapping
+            Dict or other mapping of metadata to store along with the map
         """
         subgroup = group.create_group(name)
         subgroup.attrs.update(metadata)

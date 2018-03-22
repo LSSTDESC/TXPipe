@@ -7,7 +7,7 @@ import numpy as np
 
 class SparseArray:
     """
-    A sparse array class.
+    A sparse 1D array class.
 
     This is incomplete, and is currently designed only to support the
     use case below in the ParallelStats calculator.
@@ -24,23 +24,38 @@ class SparseArray:
     to_arrays()
         Return index and value arrays
     """
-    def __init__(self, dtype=np.float64):
+    def __init__(self, size=None, dtype=np.float64):
         """Create a sparse array.
         No size is needed, just an optional dtype, which defaults to float64.
 
         Parameters
         ----------
-        dtype : data-type, optional
+        size: int, optional
+            The maximum size of the array.  
+            Used only on conversion to dense array, and when checking inputs.
+            It can be left as None to have no maximum size, in which case dense
+            array output will just use whatever the maximum set index was.
+        dtype: data-type, optional
         
         Returns
         -------
         SparseArray
         """
         self.d={}
+        self.size=size
         self.dtype=dtype
 
+
+
     def __setitem__(self, index, value):
+        if self.size is not None and index>=self.size:
+            raise IndexError("")
         self.d[index] = self.dtype(value)
+
+    def _set_direct(self, index, value):
+        # Like __setitem__ but bypassing the checks
+        # and type conversion for speed.
+        self.d[index] = value
 
     def __getitem__(self, index):
         return self.d.get(index, 0.0)
@@ -50,11 +65,13 @@ class SparseArray:
         for k,v in self.d.items():
             x[k] = v * other[k]
         return x
+
     def __truediv__(self, other):
         x = SparseArray()
         for k,v in self.d.items():
             x[k] = v / other[k]
         return x
+
     def __add__(self, other):
         keys = set()
         keys.update(self.d.keys(), other.d.keys())
@@ -62,6 +79,7 @@ class SparseArray:
         for k in keys:
             x[k] = self[k] + other[k]
         return x
+
     def __iadd__(self, other):
         for k,v in other.d.items():
             self[k] += v
@@ -77,11 +95,43 @@ class SparseArray:
         dense: array
             Dense version of array
         """
-        kmax = max(self.d.keys())
-        dense = np.zeros(kmax+1)
+        if self.size is None:
+            size = max(self.d.keys()) + 1
+        else:
+            size = self.size
+        dense = np.zeros(size)
         for k,v in self.d.items():
             dense[k] = v
         return dense
+
+    @classmethod
+    def from_dense(cls, dense):
+        """
+        Convert a standard (dense) 1D array into a sparse array,
+        elements with value zero will not be set in the new array.
+
+        Parameters
+        ----------
+        dense: array
+            1D numpy array to convert to sparse form
+
+        Returns
+        -------
+        sparse: SparseArray
+            
+            
+        """        
+        dense = np.atleast_1d(dense)
+        if dense.ndim>1:
+            raise ValueError("Only 1D arrays can be made sparse")
+
+        sparse = cls(size=dense.size, dtype=dense.dtype)
+
+        for k,v in enumerate(dense):
+            # bypasses the checks in __setitem__
+            if v!=0:
+                sparse._set_direct(k,v)
+        return sparse
 
     def to_arrays(self):
         """
