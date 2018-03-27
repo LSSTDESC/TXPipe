@@ -4,7 +4,7 @@ DESC 3x2pt Pipeline Stages
 This is a collection of modules for the DESC 3x2pt pipeline.
 We will build up the modules needed for the analysis as shown in the Pipelines repository.
 
-It builds on the pipette repository for the infrastructure.
+It builds on the ceci repository for the infrastructure.
 
 Goals
 -----
@@ -20,7 +20,7 @@ Installation
 
 Requires python3, numpy, scipy, pyyaml, fitsio, h5py (which in turn needs HDF5), and parsl.
 
-Needs the pipette DESC library on the python path (which is not quite stable enough to be worth a setup.py yet).
+Needs the ceci DESC library on the python path (which is not quite stable enough to be worth a setup.py yet).
 
 
 Cori
@@ -40,18 +40,18 @@ source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
 Running the pipeline
 --------------------
 
-Make sure that the pipette directory is on your PYTHONPATH and pipette/bin is on your PATH.
+Make sure that the ceci directory is on your PYTHONPATH and ceci/bin is on your PATH.
 Then you can run:
 
 ```bash
-pipette test/test.yml
+ceci test/test.yml
 ```
 to run the implemented stages
 
 Implementation
 --------------
 
-Each pipeline stage is implemented as a python class inheriting from pipette.Pipeline stage.  These subclasses should:
+Each pipeline stage is implemented as a python class inheriting from ceci.Pipeline stage.  These subclasses should:
 
 - have a "name" attribute string.
 - have class attributes "inputs" and "outputs", each of which is a list of tuple pairs with a string tag and a FileType class.
@@ -61,7 +61,7 @@ Each pipeline stage is implemented as a python class inheriting from pipette.Pip
 
 Some implementation notes:
 
-- Our catalogs will be large. Wherever possible stages should operate on chunks of their input data at once. Pipette has some methods for this (see README)
+- Our catalogs will be large. Wherever possible stages should operate on chunks of their input data at once. ceci has some methods for this (see README)
 - Pipeline stages shouldn't copy existing columns to new data.
 - No ASCII output allowed!
 - Python 3.6

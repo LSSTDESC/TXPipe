@@ -1,4 +1,4 @@
-from pipette import PipelineStage
+from ceci import PipelineStage
 
 class shearMeasurementPipe(PipelineStage):
     name='shearMeasurementPipe'

@@ -1,4 +1,4 @@
-from pipette import PipelineStage
+from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
 
 
@@ -37,6 +37,10 @@ def flatten_list(lst):
 
 
 class TXSelector(PipelineStage):
+    """
+    Selects and constructs metacal calibrations for tomographic bins of objects
+
+    """
     name='TXSelector'
     inputs = [
         ('shear_catalog', MetacalCatalog),

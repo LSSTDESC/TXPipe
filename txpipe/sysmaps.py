@@ -1,4 +1,4 @@
-from pipette import PipelineStage
+from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, DiagnosticMaps, YamlFile
 
 class TXDiagnosticMaps(PipelineStage):
