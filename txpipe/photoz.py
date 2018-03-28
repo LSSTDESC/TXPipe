@@ -1,14 +1,14 @@
-"""
-This is a placeholder for an actual photoz pipeline!
-
-At the moment it just randomly generates a log-normal PDF for each object.
-Hopefully the real pipeline will be more accurate than that.
-
-"""
-from pipette import PipelineStage
+from ceci import PipelineStage
 from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile
 
 class TXPhotozPDF(PipelineStage):
+    """
+    This is a placeholder for an actual photoz pipeline!
+
+    At the moment it just randomly generates a log-normal PDF for each object.
+    Hopefully the real pipeline will be more accurate than that.
+
+    """
     name='TXPhotozPDF'
     inputs = [
         ('shear_catalog', MetacalCatalog),

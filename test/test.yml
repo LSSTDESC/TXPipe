@@ -16,7 +16,7 @@
 #             module load python/3.6-anaconda-4.4
 #             module load cfitsio/3.370-reentrant
 #             source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
-#             export PYTHONPATH=$PYTHONPATH:/global/cscratch1/sd/zuntz/pipe/pipette', 
+#             export PYTHONPATH=$PYTHONPATH:/global/cscratch1/sd/zuntz/pipe/ceci', 
 #         partition: debug}
 #         scriptDir: .
 #         taskBlocks: 1
@@ -43,6 +43,8 @@ stages:
     - name: TXSelector
       nprocess: 2
     - name: TXPhotozPDF
+      nprocess: 2
+    - name: TXDiagnosticMaps
       nprocess: 2
 
 output_dir: ./outputs
