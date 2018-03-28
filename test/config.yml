@@ -13,7 +13,14 @@ TXSelector:
 
 TXDiagnosticMaps:
     chunk_rows: 1000  # Number of rows to process at once
-    nside: 2048       # 
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 5.0
     snr_delta: 1.0
+    # pixelization: healpix
+    # nside: 2048       # 
+    pixelization: tangent
+    ra_min: 36.34
+    ra_max: 36.57
+    dec_min: -4.56
+    dec_max: -4.36
+    pixel_size: 0.02

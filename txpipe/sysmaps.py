@@ -51,6 +51,7 @@ class TXDiagnosticMaps(PipelineStage):
         # Select a pixelization scheme based in configuration keys.
         # Looks at "pixelization as the main thing"
         pixel_scheme = choose_pixelization(**config)
+        config.update(pixel_scheme.metadata)
 
         # Set up the iterator to run through the FITS file.
         # Iterators lazily load the data chunk by chunk as we iterate through the file.
