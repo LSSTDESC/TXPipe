@@ -50,7 +50,7 @@ class TXSelector(PipelineStage):
     outputs = [
         ('tomography_catalog', TomographyCatalog)
     ]
-    config_options = {'T_cut':None, 's2n_cut':None, 'delta_gamma': None, 'max_rows':0, 'chunk_rows':10000}
+    config_options = {'T_cut':float, 's2n_cut':float, 'delta_gamma': float, 'max_rows':0, 'chunk_rows':10000}
 
     def run(self):
         import numpy as np

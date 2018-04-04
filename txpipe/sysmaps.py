@@ -32,10 +32,10 @@ class TXDiagnosticMaps(PipelineStage):
     config_options = {
         'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
         'nside':0,   # The Healpix resolution parameter for the generated maps
-        'snr_threshold':None,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+        'snr_threshold':float,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
-        'sparse':None,   # Whether to generate sparse maps - faster and less memory for small sky areas
+        'sparse':bool,   # Whether to generate sparse maps - faster and less memory for small sky areas
     }
 
 

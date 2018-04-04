@@ -19,7 +19,7 @@ class TXPhotozPDF(PipelineStage):
     ]
 
     # Configuration options.  If the value is not "None" then it specifies a default value
-    config_options = {'zmax': None, 'nz': None, 'chunk_rows': 10000}
+    config_options = {'zmax': float, 'nz': int, 'chunk_rows': 10000}
 
 
     def run(self):
