@@ -7,7 +7,7 @@ def select(shear_data, pz_data, cuts, variant):
 
     s2n_cut = cuts['T_cut']
     T_cut = cuts['s2n_cut']
-    
+
     s2n_col = 'mcal_T' + variant
     T_col = 'mcal_s2n_r' + variant
     z_col = 'mu' + variant
@@ -50,7 +50,8 @@ class TXSelector(PipelineStage):
     outputs = [
         ('tomography_catalog', TomographyCatalog)
     ]
-    config_options = {'T_cut':float, 's2n_cut':float, 'delta_gamma': float, 'max_rows':0, 'chunk_rows':10000}
+    config_options = {'T_cut':float, 's2n_cut':float, 'delta_gamma': float, 'max_rows':0,
+                      'chunk_rows':10000, 'zbin_edges':[float]}
 
     def run(self):
         import numpy as np
@@ -100,7 +101,7 @@ class TXSelector(PipelineStage):
 
 
     def calculate_tomography(self, pz_data, shear_data, info):
-        # for each tomographic bin, select objects in that bin 
+        # for each tomographic bin, select objects in that bin
         # under each metacal choice
         import numpy as np
 
@@ -165,13 +166,13 @@ class TXSelector(PipelineStage):
 
 
         S = 0.0
-        N = 0 
+        N = 0
 
         for S_i, count in selection_biases:
             S += count[:,np.newaxis,np.newaxis]*S_i
             N += count
             # count (4) S_i (4,2,2)
-        # For each bin 
+        # For each bin
         for i,n_i in enumerate(N):
             S[i]/=n_i
 
