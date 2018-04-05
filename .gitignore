@@ -3,3 +3,4 @@ log.txt
 outputs/*.hdf
 outputs/*.sacc
 outputs/*.fits
+.ropeproject

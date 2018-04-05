@@ -21,21 +21,26 @@ class TXDiagnosticMaps(PipelineStage):
         ('shear_catalog', MetacalCatalog),
         ('config', YamlFile),
     ]
-    
+
     # We generate a single HDF file in this stage
     # containing all the maps
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
     ]
-    
+
     # Configuration information for this stage
     config_options = {
         'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
         'nside':0,   # The Healpix resolution parameter for the generated maps
-        'snr_threshold':None,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+        'snr_threshold':float,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
-        'sparse':None,   # Whether to generate sparse maps - faster and less memory for small sky areas
+        'sparse':bool,   # Whether to generate sparse maps - faster and less memory for small sky areas,
+        'ra_min':float,  #
+        'ra_max':float,  # RA range
+        'dec_min':float, #
+        'dec_max':float, # DEC range
+        'pixel_size':float # Pixel size of pixelization scheme
     }
 
 
@@ -55,15 +60,15 @@ class TXDiagnosticMaps(PipelineStage):
 
         # Set up the iterator to run through the FITS file.
         # Iterators lazily load the data chunk by chunk as we iterate through the file.
-        # We don't need to use the start and end points in this case, as 
+        # We don't need to use the start and end points in this case, as
         # we're not making a new catalog.
         cat_cols = ['ra', 'dec', 'mcal_s2n_r', 'mcal_mag']
         data_iterator = (data for start,end,data in self.iterate_fits('shear_catalog', 1, cat_cols, config['chunk_rows']))
 
 
         # Calculate the depth map, map of the counts used in computing the depth map, and map of the depth variance
-        pixel, count, depth, depth_var = dr1_depth(data_iterator, 
-            pixel_scheme, config['snr_threshold'], config['snr_delta'], sparse=config['sparse'], 
+        pixel, count, depth, depth_var = dr1_depth(data_iterator,
+            pixel_scheme, config['snr_threshold'], config['snr_delta'], sparse=config['sparse'],
             comm=self.comm)
 
         # Only the root process saves the output
