@@ -294,6 +294,8 @@ def choose_pixelization(**config):
         ra_max = config['ra_max']
         dec_max = config['dec_max']
         pixel_size = config['pixel_size']
+        if np.isnan([ra_min, ra_max, dec_min, dec_max, pixel_size]).any():
+            raise ValueError("Must set ra_min, ra_max, dec_min, dec_max, pixel_size to use Gnomonic/Tangent pixelization")
         scheme = GnomonicPixelScheme(ra_min, ra_max, dec_min, dec_max, pixel_size)
     else:
         raise ValueError("Pixelization scheme unknown")
