@@ -46,6 +46,8 @@ stages:
       nprocess: 2
     - name: TXDiagnosticMaps
       nprocess: 2
+    - name: TXRandomCat
+      nprocess: 1
 
 output_dir: ./outputs
 
