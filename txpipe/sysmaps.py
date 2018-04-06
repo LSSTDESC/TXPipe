@@ -1,5 +1,6 @@
 from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, DiagnosticMaps, YamlFile
+import numpy as np
 
 class TXDiagnosticMaps(PipelineStage):
     """
@@ -35,12 +36,12 @@ class TXDiagnosticMaps(PipelineStage):
         'snr_threshold':float,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
-        'sparse':bool,   # Whether to generate sparse maps - faster and less memory for small sky areas,
-        'ra_min':float,  #
-        'ra_max':float,  # RA range
-        'dec_min':float, #
-        'dec_max':float, # DEC range
-        'pixel_size':float # Pixel size of pixelization scheme
+        'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
+        'ra_min':np.nan,  #
+        'ra_max':np.nan,  # RA range
+        'dec_min':np.nan, #
+        'dec_max':np.nan, # DEC range
+        'pixel_size':np.nan # Pixel size of pixelization scheme
     }
 
 
