@@ -7,7 +7,6 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
-        ('photoz_pdfs', PhotozPDFFile),
         ('config', YamlFile),
     ]
     outputs = [
@@ -20,7 +19,7 @@ class TXRandomCat(PipelineStage):
         'alpha': -1.25,  # Schecther distribution Mstar parameter
         'sigma_e': 0.27,
     }
-    
+
     def run(self):
         import scipy.special
         import scipy.stats
