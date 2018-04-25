@@ -14,9 +14,8 @@ class TXRandomCat(PipelineStage):
     ]
     config_options = {
         'density': 100.,  # number per square arcmin at median depth depth.  Not sure if this is right.
-        'chunk_rows': 10000,  # number per square arcmin at median depth depth.  Not sure if this is right.
         'Mstar': 23.0,  # Schecther distribution Mstar parameter
-        'alpha': -1.25,  # Schecther distribution Mstar parameter
+        'alpha': -1.25,  # Schecther distribution alpha parameter
         'sigma_e': 0.27,
     }
 
@@ -66,6 +65,7 @@ class TXRandomCat(PipelineStage):
         dec_out = group.create_dataset('dec', (n_total,), dtype=np.float64)
         e1_out = group.create_dataset('e1', (n_total,), dtype=np.float64)
         e2_out = group.create_dataset('e2', (n_total,), dtype=np.float64)
+        z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
 
         index = 0
         # Generate the random points in each pixel
@@ -83,11 +83,17 @@ class TXRandomCat(PipelineStage):
             P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
             # Convert to RA/Dec
             ra, dec = healpy.vec2ang(P, lonlat=True)
+
+            # Random redshift.
+            # Placeholder!
+            z = np.random.uniform(0, 2.0, N)
+            
             # Save output
             ra_out[index:index+N] = ra
             dec_out[index:index+N] = dec
             e1_out[index:index+N] = e1
             e2_out[index:index+N] = e2
+            z_out[index:index+N] = z
             index += N
 
         output_file.close()
