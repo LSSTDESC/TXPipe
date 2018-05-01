@@ -44,7 +44,6 @@ class TXSelector(PipelineStage):
     name='TXSelector'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('config', YamlFile),
         ('photoz_pdfs', PhotozPDFFile),
     ]
     outputs = [
@@ -56,7 +55,7 @@ class TXSelector(PipelineStage):
     def run(self):
         import numpy as np
 
-        info = self.read_config()
+        info = self.config
         output_file = self.setup_output(info)
 
         # Columns we need from the redshift data
@@ -204,8 +203,8 @@ class TXSelector(PipelineStage):
             group['R_S'][:,:,:] = S
 
 
-    def read_config(self):
-        config = super().read_config()
+    def read_config(self, args):
+        config = super().read_config(args)
         zbin_edges = config['zbin_edges']
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
         config['zbins'] = zbins

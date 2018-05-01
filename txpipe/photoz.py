@@ -12,7 +12,6 @@ class TXPhotozPDF(PipelineStage):
     name='TXPhotozPDF'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('config', YamlFile),
     ]
     outputs = [
         ('photoz_pdfs', PhotozPDFFile),
@@ -37,7 +36,7 @@ class TXPhotozPDF(PipelineStage):
         import numpy as np
         import fitsio
 
-        config = self.read_config()
+        config = self.config
         z = np.linspace(0.0, config['zmax'], config['nz'])
         
         # Open the input catalog and check how many objects

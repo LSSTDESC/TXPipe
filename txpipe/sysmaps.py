@@ -20,7 +20,6 @@ class TXDiagnosticMaps(PipelineStage):
     # In the long run this may become DM output
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('config', YamlFile),
     ]
 
     # We generate a single HDF file in this stage
@@ -51,7 +50,7 @@ class TXDiagnosticMaps(PipelineStage):
         import numpy as np
 
         # Read input configuration informatiomn
-        config = self.read_config()
+        config = self.config
 
 
         # Select a pixelization scheme based in configuration keys.
