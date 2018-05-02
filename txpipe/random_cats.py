@@ -6,7 +6,6 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
-        ('config', YamlFile),
     ]
     outputs = [
         ('random_cats', RandomsCatalog),

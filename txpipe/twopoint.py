@@ -8,7 +8,6 @@ class TXTwoPoint(PipelineStage):
         ('shear_catalog', MetacalCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('random_catalog', RandomsCatalog),
-        ('config', YamlFile),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
