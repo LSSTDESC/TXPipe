@@ -52,7 +52,8 @@ stages:
 output_dir: ./outputs
 
 inputs:
-    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits #/global/homes/e/elp25/protoDC2.fits
+    #shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits #/global/homes/e/elp25/protoDC2.fits
+    shear_catalog: /global/homes/e/elp25/fake_mcal_protoDC2.fits #/global/projecta/projectdirs/lsst/groups/WL/projects/wl-massmap/pipeline/shape_catalogDC2.fits
     config: test/config.yml
 resume: False
 log_dir: ./test/logs

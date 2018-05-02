@@ -27,8 +27,10 @@ class TXRandomCat(PipelineStage):
         import healpy
         from . import randoms
 
-        self.load_tomography()
-        self.load_shear_catalog()
+        config = self.read_config()
+
+        self.load_tomography(config)
+        self.load_shear_catalog(config)
         self.randomize()
 
         output_file = self.open_output('random_cats')
@@ -49,13 +51,13 @@ class TXRandomCat(PipelineStage):
 
         output_file.close()
 
-    def load_shear_catalog(self):
+    def load_shear_catalog(self,config):
 
         # Columns we need from the shear catalog
         cat_cols = ['ra','dec','mcal_g','mcal_flags']
         #cat_cols = ['RA','DEC','GAMMA1','GAMMA2']
         #cat_cols = ['ra','dec','shear_1','shear_2']
-        chunk_rows = 1084192 # We are looking at all the data at once for now
+        chunk_rows = config['chunk_rows'] # We are looking at all the data at once for now
         #chunk_rows = 9211556
         iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
 
@@ -74,24 +76,25 @@ class TXRandomCat(PipelineStage):
             flags = data['mcal_flags']
             #weights = data['mcal_weight']
 
-        mask = (flags == 0)
+        #mask = (flags == 0)
 
-        self.mcal_g1 = mcal_g1[mask]
-        self.mcal_g2 = mcal_g2[mask]
-        self.ra = ra[mask]
-        self.dec = dec[mask]
+        self.mcal_g1 = mcal_g1#[mask]
+        self.mcal_g2 = mcal_g2#[mask]
+        self.ra = ra#[mask]
+        self.dec = dec#[mask]
         #self.weights = weights[mask]
-        self.binning = self.binning[mask]
+        self.binning = self.binning#[mask]
 
-        print('shear_length', len(self.mcal_g1))
 
-    def load_tomography(self):
+        print('bins are', self.binning)
+
+    def load_tomography(self,config):
 
         # Columns we need from the tomography catalog
         tom_cols = ['bin']
         bias_cols = ['R_gamma'] #TODO R_S - see Sub.Sec. 4.1 in DES Y1 paper R = Rgamma + Rs
 
-        chunk_rows = 1084192 #9211556
+        chunk_rows = config['chunk_rows']
 
         for start, end, data in self.iterate_hdf('tomography_catalog','tomography',tom_cols, chunk_rows):
             self.binning = data['bin']
