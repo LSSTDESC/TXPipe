@@ -186,6 +186,7 @@ class TXSelector(PipelineStage):
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('bin', (n,), dtype='i')
+        group.attrs['nbin'] = nbin
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='i')
         group.create_dataset('R_S', (nbin,2,2), dtype='i')

@@ -1,7 +1,7 @@
 from ceci import PipelineStage
 from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile
 
-class TXPhotozPDF(PipelineStage):
+class TXRandomPhotozPDF(PipelineStage):
     """
     This is a placeholder for an actual photoz pipeline!
 
@@ -9,7 +9,7 @@ class TXPhotozPDF(PipelineStage):
     Hopefully the real pipeline will be more accurate than that.
 
     """
-    name='TXPhotozPDF'
+    name='TXRandomPhotozPDF'
     inputs = [
         ('shear_catalog', MetacalCatalog),
     ]

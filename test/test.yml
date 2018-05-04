@@ -5,10 +5,12 @@ modules: txpipe
 stages:
     - name: TXSelector
       nprocess: 2
-    - name: TXPhotozPDF
+    - name: TXRandomPhotozPDF
       nprocess: 2
     - name: TXDiagnosticMaps
       nprocess: 2
+    - name: TXPhotozStack
+      nprocess: 1
 
 output_dir: ./outputs
 
