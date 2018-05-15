@@ -1,4 +1,7 @@
 launcher: local
+# To run on cori use:
+# launcher: cori
+
 modules: txpipe
 
 
@@ -17,7 +20,11 @@ output_dir: ./outputs
 config: test/config.yml
 
 inputs:
-    # shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
+  # full data file:
+  # shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
+  # path to partial data file on NERSC:
+  # /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/tract008766-shear-cat-0-10000.fits
+  # Local, assuming you have downloaded as in doc/installation.rst
     shear_catalog: ./tract008766-shear-cat-0-10000.fits
     
 resume: False

@@ -45,7 +45,8 @@ class SparseArray:
         self.size=size
         self.dtype=dtype
 
-
+    def count_nonzero(self):
+        return len(self.d)
 
     def __setitem__(self, index, value):
         if self.size is not None and index>=self.size:
