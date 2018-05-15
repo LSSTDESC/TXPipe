@@ -18,7 +18,7 @@ config: test/config.yml
 
 inputs:
     # shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
-    shear_catalog: /Users/jaz/data/hsc/tract008766-shear-cat-0-10000.fits
+    shear_catalog: ./tract008766-shear-cat-0-10000.fits
     
 resume: False
 log_dir: ./test/logs
