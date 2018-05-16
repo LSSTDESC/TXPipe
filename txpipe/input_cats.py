@@ -16,7 +16,7 @@ class TXDProtoDC2Mock(PipelineStage):
         ('metacal_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
     ]
-    config_options = {'cat_name':'protoDC2_test', 'visits_per_band':165}
+    config_options = {'cat_name':'protoDC2_test', 'visits_per_band':165, 'snr_limit':4.0}
 
     def data_iterator(self, gc):
 
@@ -35,8 +35,11 @@ class TXDProtoDC2Mock(PipelineStage):
             yield data
 
     def get_catalog_size(self, gc):
-        f = h5py.File(gc.get_catalog_info()['filename'])
-        n = ['galaxyProperties/ra'].size
+        import h5py
+        filename = gc.get_catalog_info()['filename']
+        print(f"Reading catalog size directly from {filename}")
+        f = h5py.File(filename)
+        n = f['galaxyProperties/ra'].size
         f.close()
         return n
 
@@ -46,32 +49,35 @@ class TXDProtoDC2Mock(PipelineStage):
         self.bands = ('u','g', 'r', 'i', 'z')
 
         gc = GCRCatalogs.load_catalog(cat_name)
-        N = self.get_size(gc)
+        N = self.get_catalog_size(gc)
 
-        metacal_file = self.open_output('metacal_catalog', parallel=False)
+        metacal_file = self.open_output('metacal_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
 
         # This is the kind of thing that should go into
         # the DESCFormats stuff
-        self.setup_output_structure(metacal_file, photo_file, N)
-        self.current_index = 0
+        self.setup_photometry_output(photo_file, N)
+        self.setup_metacal_output(metacal_file, N)
 
+        self.current_index = 0
         for data in self.data_iterator(gc):
             mock_photometry = self.make_mock_photometry(data)
-            #mock_metacal = self.make_mock_metacal(data, mock_photometry)
-
+            mock_metacal = self.make_mock_metacal(data, mock_photometry)
+            self.remove_undetected(mock_photometry, mock_metacal)
             self.write_photometry(photo_file, mock_photometry)
-            #self.write_metacal(metacal_file, mock_metacal, start, end)
-        
+            self.write_metacal(metacal_file, mock_metacal)
+
+            
         # Tidy up
+        self.truncate_photometry(photo_file)
         photo_file.close()
         metacal_file.close()
 
 
-    def setup_output_structure(self, metacal_file, photo_file, N):
+    def setup_photometry_output(self, photo_file, N):
         # Get a list of all the column names
         cols = ['ra', 'dec']
-        for band in bands:
+        for band in self.bands:
             cols.append(f'mag_true_{band}_lsst')
             cols.append(f'true_snr_{band}')
             cols.append(f'snr_{band}')
@@ -87,14 +93,17 @@ class TXDProtoDC2Mock(PipelineStage):
 
         # The only non-float column for now
         group.create_dataset('galaxy_id', (N,), maxshape=(N,), dtype='i8')
-
+    
+    def setup_metacal_output(self, metacal_file, N):
+        print("Should setup metacal output here")
+        
 
     def write_photometry(self, photo_file, mock_photometry):
         # Work out the range of data to output (since we will be
         # doing this in chunks)
         start = self.current_index
         n = len(mock_photometry['galaxy_id'])
-        end = start + end
+        end = start + n
         
         # Save each column
         for name, col in mock_photometry.items():
@@ -102,6 +111,9 @@ class TXDProtoDC2Mock(PipelineStage):
 
         # Update starting point for next round
         self.current_index += n
+
+    def write_metacal(self, metacal_file, mock_metacal):
+        print("Should save metacal data here")
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
@@ -118,6 +130,8 @@ class TXDProtoDC2Mock(PipelineStage):
         """
 
         # TODO: Write
+        print("Should make metacal mock here too")
+        return None
 
         # These are the numbers from figure F1 of the DES Y1 shear catalog paper
         # (this version is not yet public but is awaiting a second referee response)
@@ -150,7 +164,40 @@ class TXDProtoDC2Mock(PipelineStage):
 
         # TODO: Setup metacal catalog 
 
+    def remove_undetected(self, photo, metacal):
+        import numpy as np
+        snr_limit = self.config['snr_limit']
+        detected = False
 
+        # Check if detected in any band.  Makes a boolean array
+        # Even though we started with just a single False.
+        for band in self.bands:
+            detected_in_band = photo[f'snr_{band}'] > snr_limit
+            not_detected_in_band = ~detected_in_band
+            # Set objects not detected in one band that are detected in another
+            # to inf magnitude in that band, and the SNR to zero.
+            photo[f'snr_{band}'][not_detected_in_band] = 0.0
+            photo[f'mag_{band}_lsst'][not_detected_in_band] = np.inf
+
+            # Record that we have detected this object at all
+            detected |= detected_in_band
+
+
+        # Remove all objects not detected in *any* band
+        # make a copy of the keys with photo.keys so we are not
+        # modifying during the iteration
+        for key in list(photo.keys()): 
+            photo[key] = photo[key][detected]
+
+        # TODO: cut metacal too
+        print("Should cut metacal here too")
+
+    def truncate_photometry(self, photo_file):
+        group = photo_file['photometry']
+        cols = list(group.keys())
+        for col in cols:
+            group[col].resize((self.current_index,))
+            
 
 def make_mock_photometry(n_visit, bands, data):
     """
@@ -209,15 +256,14 @@ def make_mock_photometry(n_visit, bands, data):
         # This can go negative for faint magnitudes, indicating that the object is
         # not going to be detected
         n_obs = np.random.poisson(mu) - background
+        print("SNR calculations still wrong and probably mags too - sqrts wrong")
 
         # signal to noise, true and estimated values
-        true_snr = mu / background**0.5
-        obs_snr = n_obs / background
+        true_snr = c_b / background**0.5
+        obs_snr = n_obs / background**0.5
 
         # observed magnitude from inverting c_b expression above
         mag_obs = 25 - 2.5*np.log10(n_obs/factor/t_b)
-
-        visible = np.isfinite(mag_obs)
 
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
