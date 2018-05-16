@@ -23,6 +23,7 @@ class TXDProtoDC2Mock(PipelineStage):
         cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
                 'mag_true_r_lsst', 'mag_true_i_lsst', 
                 'mag_true_z_lsst',
+                'ra', 'dec',
                 'ellipticity_1_true', 'ellipticity_2_true',
                 'shear_1', 'shear_2',
                 'size_true',
@@ -42,35 +43,82 @@ class TXDProtoDC2Mock(PipelineStage):
     def run(self):
         import GCRCatalogs
         cat_name = self.config['cat_name']
+        self.bands = ('u','g', 'r', 'i', 'z')
+
         gc = GCRCatalogs.load_catalog(cat_name)
         N = self.get_size(gc)
 
         metacal_file = self.open_output('metacal_catalog', parallel=False)
         photo_file = self.open_output('photometry_catalog', parallel=False)
 
+        # This is the kind of thing that should go into
+        # the DESCFormats stuff
+        self.setup_output_structure(metacal_file, photo_file, N)
+        self.current_index = 0
 
-        start = 0
         for data in self.data_iterator(gc):
-            end = start + len(data.values()[0])
-
             mock_photometry = self.make_mock_photometry(data)
-            mock_metacal = self.make_mock_metacal(data, mock_photometry)
+            #mock_metacal = self.make_mock_metacal(data, mock_photometry)
 
-            self.write_photometry(photo_file, mock_photometry, start, end)
-            self.write_metacal(metacal_file, mock_metacal, start, end)
+            self.write_photometry(photo_file, mock_photometry)
+            #self.write_metacal(metacal_file, mock_metacal, start, end)
+        
+        # Tidy up
+        photo_file.close()
+        metacal_file.close()
 
 
+    def setup_output_structure(self, metacal_file, photo_file, N):
+        # Get a list of all the column names
+        cols = ['ra', 'dec']
+        for band in bands:
+            cols.append(f'mag_true_{band}_lsst')
+            cols.append(f'true_snr_{band}')
+            cols.append(f'snr_{band}')
+            cols.append(f'mag_{band}_lsst')
+
+        # Make group for all the photometry
+        group = photo_file.create_group('photometry')
+
+        # Extensible columns becase we don't know the size yet.
+        # We will cut down the size at the end.
+        for col in cols:
+            group.create_dataset(col, (N,), maxshape=(N,), dtype='f8')
+
+        # The only non-float column for now
+        group.create_dataset('galaxy_id', (N,), maxshape=(N,), dtype='i8')
+
+
+    def write_photometry(self, photo_file, mock_photometry):
+        # Work out the range of data to output (since we will be
+        # doing this in chunks)
+        start = self.current_index
+        n = len(mock_photometry['galaxy_id'])
+        end = start + end
+        
+        # Save each column
+        for name, col in mock_photometry.items():
+            photo_file[f'photometry/{name}'][start:end] = col
+
+        # Update starting point for next round
+        self.current_index += n
 
     def make_mock_photometry(self, data):
-        bands = ('u','g', 'r', 'i', 'z')
+        # The visit count affects the overall noise levels
         n_visit = self.config['visits_per_band']
-        photo = make_mock_photometry(n_visit, bands, data)
+        # Do all the work in the function below
+        photo = make_mock_photometry(n_visit, self.bands, data)
         return photo
+
+
 
     def make_mock_metacal(self, data, photo):
         """
         Generate a mock metacal table with noise added
         """
+
+        # TODO: Write
+
         # These are the numbers from figure F1 of the DES Y1 shear catalog paper
         # (this version is not yet public but is awaiting a second referee response)
         import numpy as np
@@ -86,6 +134,9 @@ class TXDProtoDC2Mock(PipelineStage):
         # (the noise on R will do the job of noise on shear)
         # Use R11 = R22 and R12 = R21 = 0
 
+        # Overall SNR for the three bands usually used
+        snr = (photo[f'snr_r']**2 + photo[f'snr_i'] + photo[f'snr_z'])**0.5
+
         # wasteful - we are making this every chunk of data
         spline_snr = np.log10([0.01,  5.7,   7.4,   9.7,  12.6,  16.5,  21.5,  28. ,  36.5,  47.5,
                     61.9,  80.7, 105.2, 137.1, 178.7, 232.9, 303.6, 395.7, 515.7,
@@ -97,6 +148,7 @@ class TXDProtoDC2Mock(PipelineStage):
 
         # Now we need the SNR of the object.
 
+        # TODO: Setup metacal catalog 
 
 
 
@@ -111,6 +163,11 @@ def make_mock_photometry(n_visit, bands, data):
     """
 
     import numpy as np
+
+    output = {}
+    output['ra'] = data['ra']
+    output['dec'] = data['dec']
+    output['galaxy_id'] = data['galaxy_id']
 
 
     # Sky background, seeing, and system throughput, 
