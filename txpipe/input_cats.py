@@ -217,7 +217,7 @@ def make_mock_photometry(n_visit, bands, data):
     output['galaxy_id'] = data['galaxy_id']
 
 
-    # Sky background, seeing, and system throughput, 
+    # Sky background, seeing FWHM, and system throughput, 
     # all from table 2 of Ivezic, Jones, & Lupton
     B_b = np.array([85.07, 467.9, 1085.2, 1800.3, 2775.7])
     fwhm = np.array([0.77, 0.73, 0.70, 0.67, 0.65])
@@ -233,12 +233,13 @@ def make_mock_photometry(n_visit, bands, data):
     # other numbers from Ivezic, Jones, & Lupton
     sigma_inst2 = 10.0**2  #instrumental noise in photons per pixel, just below eq 42
     gain = 1  # ADU units per photon, also just below eq 42
-    D = 8.4 # primary mirror diameter in meters, from LSST key numbers page
+    D = 6.5 # primary mirror diameter in meters, from LSST key numbers page (effective clear diameter)
+    # Not sure what effective clear diameter means but it's closer to the number used in the paper
     time = 30. # seconds per exposure, from LSST key numbers page
     sigma_b2 = 0.0 # error on background, just above eq 42
 
     # combination of these  used below, from various equations
-    factor = 5455./gain * (D/6.5)**2 * (time/30)
+    factor = 5455./gain * (D/6.5)**2 * (time/30.)
 
     for band, b_b, t_b, n_eff in zip(bands, B_b, T_b, N_eff):
         # truth magnitude
@@ -247,8 +248,8 @@ def make_mock_photometry(n_visit, bands, data):
         # expected signal photons, over all visits
         c_b = factor * 10**(0.4*(25-mag)) * t_b * n_visit
 
-        # expectedbackground photons, over all visits
-        background = (b_b + sigma_inst2 + sigma_b2)*n_eff * n_visit
+        # expected background photons, over all visits
+        background = np.sqrt((b_b + sigma_inst2 + sigma_b2) * n_eff * n_visit)
         # total expected photons
         mu = c_b + background
         
@@ -256,11 +257,10 @@ def make_mock_photometry(n_visit, bands, data):
         # This can go negative for faint magnitudes, indicating that the object is
         # not going to be detected
         n_obs = np.random.poisson(mu) - background
-        print("SNR calculations still wrong and probably mags too - sqrts wrong")
 
         # signal to noise, true and estimated values
-        true_snr = c_b / background**0.5
-        obs_snr = n_obs / background**0.5
+        true_snr = c_b / background
+        obs_snr = n_obs / background
 
         # observed magnitude from inverting c_b expression above
         mag_obs = 25 - 2.5*np.log10(n_obs/factor/t_b)
@@ -272,3 +272,20 @@ def make_mock_photometry(n_visit, bands, data):
     return output
 
 
+
+def test():
+    import numpy as np
+    import pylab
+    data = {
+        'ra':None,
+        'dec':None,
+        'galaxy_id':None,
+    }
+    bands = ('u','g','r','i','z')
+    n_visit=165
+    M5 = [24.22, 25.17, 24.74, 24.38, 23.80]
+    for b,m5 in zip(bands, M5):
+        data[f'mag_true_{b}_lsst'] = np.repeat(m5, 10000)
+    results = make_mock_photometry(n_visit, bands, data)
+    pylab.hist(results['snr_r'], bins=50, histtype='step')
+    pylab.savefig('snr_r.png')
