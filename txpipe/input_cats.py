@@ -263,7 +263,7 @@ def make_mock_photometry(n_visit, bands, data):
         obs_snr = n_obs / background
 
         # observed magnitude from inverting c_b expression above
-        mag_obs = 25 - 2.5*np.log10(n_obs/factor/t_b)
+        mag_obs = 25 - 2.5*np.log10(n_obs/factor/t_b/n_visit)
 
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
