@@ -244,6 +244,7 @@ def make_mock_photometry(n_visit, bands, data):
     for band, b_b, t_b, n_eff in zip(bands, B_b, T_b, N_eff):
         # truth magnitude
         mag = data[f'mag_true_{band}_lsst']
+        output[f'mag_true_{band}_lsst'] = mag
 
         # expected signal photons, over all visits
         c_b = factor * 10**(0.4*(25-mag)) * t_b * n_visit
