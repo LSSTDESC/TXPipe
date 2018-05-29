@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import MetacalCatalog, HDFFile
+from descformats.tx import MetacalCatalog, HDFFile, DataFile
 
 # could also just load /global/projecta/projectdirs/lsst/groups/CS/descqa/catalog/ANL_AlphaQ_v3.0.hdf5
 
@@ -11,12 +11,17 @@ class TXDProtoDC2Mock(PipelineStage):
     """
     name='TXDProtoDC2Mock'
     inputs = [
+        ('response_model', HDFFile)
     ]
     outputs = [
         ('metacal_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
     ]
-    config_options = {'cat_name':'protoDC2_test', 'visits_per_band':165, 'snr_limit':4.0}
+    config_options = {
+        'cat_name':'protoDC2_test', 
+        'visits_per_band':165, 
+        'snr_limit':4.0,
+        }
 
     def data_iterator(self, gc):
 
@@ -57,7 +62,6 @@ class TXDProtoDC2Mock(PipelineStage):
         # This is the kind of thing that should go into
         # the DESCFormats stuff
         self.setup_photometry_output(photo_file, N)
-        self.setup_metacal_output(metacal_file, N)
 
         self.current_index = 0
         for data in self.data_iterator(gc):
@@ -94,9 +98,21 @@ class TXDProtoDC2Mock(PipelineStage):
         # The only non-float column for now
         group.create_dataset('galaxy_id', (N,), maxshape=(N,), dtype='i8')
     
-    def setup_metacal_output(self, metacal_file, N):
-        print("Should setup metacal output here")
-        
+
+    def load_metacal_R_model(self, metacal_model):
+        import scipy.interpolate
+
+        model_file = self.open_input("response_model")
+        snr_centers = model_file['R_model/log10_snr'][:]
+        sz_edges = model_file['R_model/size'][:]
+        R_mean = model_file['R_model/R_mean'][:]
+        R_std = model_file['R_model/R_std'][:]
+        model_file.close()
+
+        snr_grid, sz_grid = np.meshgrid(snr_centers, sz_centers)
+        self.R_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_mean.flatten(), w=R_std.flatten())
+        self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
+
 
     def write_photometry(self, photo_file, mock_photometry):
         # Work out the range of data to output (since we will be
@@ -113,7 +129,20 @@ class TXDProtoDC2Mock(PipelineStage):
         self.current_index += n
 
     def write_metacal(self, metacal_file, mock_metacal):
-        print("Should save metacal data here")
+        dtype = [(name,val.dtype) for (name,val) in sorted(metacal_data.items())]
+        noj = metacal_data['R'].size
+        data = np.zeros(nobj, dtype)
+        for key, val in metacal_data.items():
+            data[key] = val
+
+        already_created_ext = len(metacal_file)==2
+
+        if already_created_ext:
+            metacal_file[-1].append(data)
+        else:
+            metacal_file.write(data)
+            
+
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
@@ -130,8 +159,6 @@ class TXDProtoDC2Mock(PipelineStage):
         """
 
         # TODO: Write
-        print("Should make metacal mock here too")
-        return None
 
         # These are the numbers from figure F1 of the DES Y1 shear catalog paper
         # (this version is not yet public but is awaiting a second referee response)
@@ -148,21 +175,83 @@ class TXDProtoDC2Mock(PipelineStage):
         # (the noise on R will do the job of noise on shear)
         # Use R11 = R22 and R12 = R21 = 0
 
-        # Overall SNR for the three bands usually used
-        snr = (photo[f'snr_r']**2 + photo[f'snr_i'] + photo[f'snr_z'])**0.5
+        # Overall SNR for the three bands usually used for shape measurement
+        # We use the true SNR not the estimated one, though these are pretty close
+        snr = (photo['snr_r']**2 + photo['snr_i'] + photo['snr_z'])**0.5
+        snr_1p = (photo['snr_r_1p']**2 + photo['snr_i_1p'] + photo['snr_z_1p'])**0.5
+        snr_1m = (photo['snr_r_1m']**2 + photo['snr_i_1m'] + photo['snr_z_1m'])**0.5
+        snr_2p = (photo['snr_r_2p']**2 + photo['snr_i_2p'] + photo['snr_z_2p'])**0.5
+        snr_2m = (photo['snr_r_2m']**2 + photo['snr_i_2m'] + photo['snr_z_2m'])**0.5
 
-        # wasteful - we are making this every chunk of data
-        spline_snr = np.log10([0.01,  5.7,   7.4,   9.7,  12.6,  16.5,  21.5,  28. ,  36.5,  47.5,
-                    61.9,  80.7, 105.2, 137.1, 178.7, 232.9, 303.6, 395.7, 515.7,
-                    672.1, 875.9])
-        spline_R = array([0.001,  0.07, 0.15, 0.25, 0.35, 0.43, 0.5 , 0.54, 0.56, 0.58, 0.59, 0.59,
-                    0.6 , 0.6 , 0.59, 0.57, 0.55, 0.52, 0.5 , 0.48, 0.46])
+        nobj = snr.size
 
-        spline = scipy.interpolate.interp1d(spline_snr, spline_R, kind='cubic')
+        log10_snr = np.log10(snr)
 
-        # Now we need the SNR of the object.
+        size_hlr = data['size']
+        size_sigma = size_hlr / np.sqrt(2*np.log(2))
+        size_T = 2 * size_sigma**2
 
-        # TODO: Setup metacal catalog 
+        psf_fwhm = 0.75
+        psf_sigma = psf_fwhm/(2*np.sqrt(2*np.log(2)))
+        psf_T = 2 * psf_sigma**2
+
+        R_mean = self.R_spline(log10_snr, size)
+        R_std = self.Rstd_spline(log10_snr, size)
+
+
+        response_mean = np.array([R_mean, R_mean])
+        rho = 0.2  # correlation between size response and shear response.  chosen arbitrarily
+        response_covmat = np.array([[R_std**2,rho*R_std**2],[rho*R_std**2,R_std**2]])
+        R, R_size = R_mean + np.random.multivariate_normal(response_mean, response_covmat, nobj).T
+
+
+        flux_r = 10**0.4*(27 - photo['mag_r_lsst'])
+        flux_i = 10**0.4*(27 - photo['mag_i_lsst'])
+        flux_z = 10**0.4*(27 - photo['mag_z_lsst'])
+
+        delta_gamma = 0.01
+        g1 = data['shear_1']
+        g2 = data['shear_2']
+
+
+        output = {
+            "R":R,
+            "mcal_g": np.array([g1*R, g2*R]),
+            "mcal_g_1p": np.array([(g1+delta_gamma)*R, g2*R]),
+            "mcal_g_1m": np.array([(g1-delta_gamma)*R, g2*R]),
+            "mcal_g_2p": np.array([g1*R, (g2+delta_gamma)*R]),
+            "mcal_g_2m": np.array([g1*R, (g2-delta_gamma)*R]),
+            "mcal_T": size_T,
+            "mcal_T_1p": size_T + R_size*delta_gamma,
+            "mcal_T_1m": size_T - R_size*delta_gamma,
+            "mcal_T_2p": size_T + R_size*delta_gamma,
+            "mcal_T_2m": size_T - R_size*delta_gamma,
+            "mcal_s2n_r": snr,
+            "mcal_s2n_r_1p": snr_1p,
+            "mcal_s2n_r_1m": snr_1m,
+            "mcal_s2n_r_2p": snr_2p,
+            "mcal_s2n_r_2m": snr_2m,
+            'mcal_mag': np.array([photo['mag_r_lsst'], photo['mag_i_lsst'], photo['mag_z_lsst']]),
+            'mcal_flux': np.array([flux_r, flux_i, flux_z]),
+            # not sure if this is right
+            'mcal_flux_s2n': np.array([photo['snr_r'], photo['snr_i'], photo['snr_z']]),
+            # These appear to be all zeros in the tract files.
+            # possibly they should in fact all be ones.
+            'mcal_weight': np.zeros(nobj),
+            'mcal_gpsf': np.zeros(nobj),
+            'mcal_Tpsf': np.repeat(psf_T, nobj),
+            # Everything below here is wrong
+            "mcal_g_cov": np.zeros((nobj,2,2)),
+            "mcal_flux_cov": np.zeros((nobj,2,2)),
+            "mcal_T_err": np.zeros(nobj),
+            "mcal_T_r": size_T,
+            "mcal_log_sb": np.zeros(nobj),
+
+            }
+
+        return output
+
+
 
     def remove_undetected(self, photo, metacal):
         import numpy as np
@@ -197,7 +286,7 @@ class TXDProtoDC2Mock(PipelineStage):
         cols = list(group.keys())
         for col in cols:
             group[col].resize((self.current_index,))
-            
+
 
 def make_mock_photometry(n_visit, bands, data):
     """
@@ -212,6 +301,7 @@ def make_mock_photometry(n_visit, bands, data):
     import numpy as np
 
     output = {}
+    nobj = data['galaxy_id'].size
     output['ra'] = data['ra']
     output['dec'] = data['dec']
     output['galaxy_id'] = data['galaxy_id']
@@ -241,7 +331,19 @@ def make_mock_photometry(n_visit, bands, data):
     # combination of these  used below, from various equations
     factor = 5455./gain * (D/6.5)**2 * (time/30.)
 
-    for band, b_b, t_b, n_eff in zip(bands, B_b, T_b, N_eff):
+    nband = len(bands)
+    mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
+    rho = 0.25  #  approx correlation between response in bands, from HSC tract
+    sigma2 = 1.7**2 # approx variance of response, from HSC tract
+    covmat = np.full((nband,nband), rho*sigma2)
+    np.fill_diagonal(covmat, sigma2)
+    mag_responses = np.random.multivariate_normal(mu, covmat, nobj).T
+    delta_gamma = 0.01  # this is the half-delta gamma, i.e. gamma_+ - gamma_0
+    # that's the right thing to use here because we are doing m+ = m0 + dm/dy*dy
+    # Use the same response for gamma1 and gamma2
+
+
+    for band, b_b, t_b, n_eff, R, mag_resp in zip(bands, B_b, T_b, N_eff, mag_responses):
         # truth magnitude
         mag = data[f'mag_true_{band}_lsst']
         output[f'mag_true_{band}_lsst'] = mag
@@ -269,6 +371,24 @@ def make_mock_photometry(n_visit, bands, data):
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
         output[f'mag_{band}_lsst'] = mag_obs
+
+        output[f'snr_{band}'] = obs_snr * 10.0**(0.4*(mag_obs))
+
+        mag_obs_1p = mag_obs + mag_resp*delta_gamma
+        mag_obs_1m = mag_obs - mag_resp*delta_gamma
+        mag_obs_2p = mag_obs + mag_resp*delta_gamma
+        mag_obs_2m = mag_obs - mag_resp*delta_gamma
+
+        output[f'mag_{band}_lsst_1p'] = mag_obs_1p
+        output[f'mag_{band}_lsst_1m'] = mag_obs_1m
+        output[f'mag_{band}_lsst_2p'] = mag_obs_2p
+        output[f'mag_{band}_lsst_2m'] = mag_obs_2m
+
+        output[f'snr_{band}_1p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1p))
+        output[f'snr_{band}_1m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1m))
+        output[f'snr_{band}_2p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2p))
+        output[f'snr_{band}_2m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2m))
+
 
     return output
 
