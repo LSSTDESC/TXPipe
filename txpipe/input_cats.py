@@ -14,7 +14,7 @@ class TXDProtoDC2Mock(PipelineStage):
         ('response_model', HDFFile)
     ]
     outputs = [
-        ('metacal_catalog', MetacalCatalog),
+        ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
     ]
     config_options = {
@@ -56,13 +56,13 @@ class TXDProtoDC2Mock(PipelineStage):
         gc = GCRCatalogs.load_catalog(cat_name)
         N = self.get_catalog_size(gc)
 
-        metacal_file = self.open_output('metacal_catalog', clobber=True)
+        metacal_file = self.open_output('shear_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
 
         # This is the kind of thing that should go into
         # the DESCFormats stuff
         self.setup_photometry_output(photo_file, N)
-
+        self.load_metacal_R_model()
         self.current_index = 0
         for data in self.data_iterator(gc):
             mock_photometry = self.make_mock_photometry(data)
@@ -84,8 +84,16 @@ class TXDProtoDC2Mock(PipelineStage):
         for band in self.bands:
             cols.append(f'mag_true_{band}_lsst')
             cols.append(f'true_snr_{band}')
-            cols.append(f'snr_{band}')
             cols.append(f'mag_{band}_lsst')
+            cols.append(f'mag_{band}_lsst_1p')
+            cols.append(f'mag_{band}_lsst_1m')
+            cols.append(f'mag_{band}_lsst_2p')
+            cols.append(f'mag_{band}_lsst_2m')
+            cols.append(f'snr_{band}')
+            cols.append(f'snr_{band}_1p')
+            cols.append(f'snr_{band}_1m')
+            cols.append(f'snr_{band}_2p')
+            cols.append(f'snr_{band}_2m')
 
         # Make group for all the photometry
         group = photo_file.create_group('photometry')
@@ -99,12 +107,12 @@ class TXDProtoDC2Mock(PipelineStage):
         group.create_dataset('galaxy_id', (N,), maxshape=(N,), dtype='i8')
     
 
-    def load_metacal_R_model(self, metacal_model):
+    def load_metacal_R_model(self):
         import scipy.interpolate
-
+        import numpy as np
         model_file = self.open_input("response_model")
         snr_centers = model_file['R_model/log10_snr'][:]
-        sz_edges = model_file['R_model/size'][:]
+        sz_centers = model_file['R_model/size'][:]
         R_mean = model_file['R_model/R_mean'][:]
         R_std = model_file['R_model/R_std'][:]
         model_file.close()
@@ -128,9 +136,10 @@ class TXDProtoDC2Mock(PipelineStage):
         # Update starting point for next round
         self.current_index += n
 
-    def write_metacal(self, metacal_file, mock_metacal):
-        dtype = [(name,val.dtype) for (name,val) in sorted(metacal_data.items())]
-        noj = metacal_data['R'].size
+    def write_metacal(self, metacal_file, metacal_data):
+        import numpy as np
+        dtype = [(name,val.dtype,val[0].shape) for (name,val) in sorted(metacal_data.items())]
+        nobj = metacal_data['R'].size
         data = np.zeros(nobj, dtype)
         for key, val in metacal_data.items():
             data[key] = val
@@ -163,7 +172,6 @@ class TXDProtoDC2Mock(PipelineStage):
         # These are the numbers from figure F1 of the DES Y1 shear catalog paper
         # (this version is not yet public but is awaiting a second referee response)
         import numpy as np
-        import scipy.interpolate
 
         # strategy here.
         # we have a S/N per band for each object.
@@ -187,7 +195,7 @@ class TXDProtoDC2Mock(PipelineStage):
 
         log10_snr = np.log10(snr)
 
-        size_hlr = data['size']
+        size_hlr = data['size_true']
         size_sigma = size_hlr / np.sqrt(2*np.log(2))
         size_T = 2 * size_sigma**2
 
@@ -195,32 +203,41 @@ class TXDProtoDC2Mock(PipelineStage):
         psf_sigma = psf_fwhm/(2*np.sqrt(2*np.log(2)))
         psf_T = 2 * psf_sigma**2
 
-        R_mean = self.R_spline(log10_snr, size)
-        R_std = self.Rstd_spline(log10_snr, size)
+        R_mean = self.R_spline(log10_snr, size_T, grid=False)
+        R_std = self.Rstd_spline(log10_snr, size_T, grid=False)
+        
 
-
-        response_mean = np.array([R_mean, R_mean])
+#        response_mean = np.array([R_mean, R_mean])
         rho = 0.2  # correlation between size response and shear response.  chosen arbitrarily
-        response_covmat = np.array([[R_std**2,rho*R_std**2],[rho*R_std**2,R_std**2]])
-        R, R_size = R_mean + np.random.multivariate_normal(response_mean, response_covmat, nobj).T
-
+#        response_covmat = np.array([[R_std**2,rho*R_std**2],[rho*R_std**2,R_std**2]])
+#        R, R_size = R_mean + np.random.multivariate_normal(response_mean, response_covmat, nobj).T
+        f = np.random.multivariate_normal([0.0,0.0], [[1.0,rho],[rho,1.0]], nobj).T
+        R, R_size = f * R_std + R_mean
 
         flux_r = 10**0.4*(27 - photo['mag_r_lsst'])
         flux_i = 10**0.4*(27 - photo['mag_i_lsst'])
         flux_z = 10**0.4*(27 - photo['mag_z_lsst'])
 
         delta_gamma = 0.01
+        
+        shape_noise = 0.26
+        eps  = np.random.normal(0,shape_noise,nobj) + 1.j * np.random.normal(0,shape_noise,nobj)
         g1 = data['shear_1']
         g2 = data['shear_2']
-
+        g = g1 + 1j*g2
+        e = (eps + g) / (1+g.conj()*eps)
+        e1 = e.real
+        e2 = e.imag
+       
 
         output = {
             "R":R,
-            "mcal_g": np.array([g1*R, g2*R]),
-            "mcal_g_1p": np.array([(g1+delta_gamma)*R, g2*R]),
-            "mcal_g_1m": np.array([(g1-delta_gamma)*R, g2*R]),
-            "mcal_g_2p": np.array([g1*R, (g2+delta_gamma)*R]),
-            "mcal_g_2m": np.array([g1*R, (g2-delta_gamma)*R]),
+            "true_g": np.array([g1, g2]).T,
+            "mcal_g": np.array([e1*R, e2*R]).T,
+            "mcal_g_1p": np.array([(e1+delta_gamma)*R, e2*R]).T,
+            "mcal_g_1m": np.array([(e1-delta_gamma)*R, e2*R]).T,
+            "mcal_g_2p": np.array([e1*R, (e2+delta_gamma)*R]).T,
+            "mcal_g_2m": np.array([e1*R, (e2-delta_gamma)*R]).T,
             "mcal_T": size_T,
             "mcal_T_1p": size_T + R_size*delta_gamma,
             "mcal_T_1m": size_T - R_size*delta_gamma,
@@ -231,10 +248,10 @@ class TXDProtoDC2Mock(PipelineStage):
             "mcal_s2n_r_1m": snr_1m,
             "mcal_s2n_r_2p": snr_2p,
             "mcal_s2n_r_2m": snr_2m,
-            'mcal_mag': np.array([photo['mag_r_lsst'], photo['mag_i_lsst'], photo['mag_z_lsst']]),
-            'mcal_flux': np.array([flux_r, flux_i, flux_z]),
+            'mcal_mag': np.array([photo['mag_r_lsst'], photo['mag_i_lsst'], photo['mag_z_lsst']]).T,
+            'mcal_flux': np.array([flux_r, flux_i, flux_z]).T,
             # not sure if this is right
-            'mcal_flux_s2n': np.array([photo['snr_r'], photo['snr_i'], photo['snr_z']]),
+            'mcal_flux_s2n': np.array([photo['snr_r'], photo['snr_i'], photo['snr_z']]).T,
             # These appear to be all zeros in the tract files.
             # possibly they should in fact all be ones.
             'mcal_weight': np.zeros(nobj),
@@ -272,14 +289,28 @@ class TXDProtoDC2Mock(PipelineStage):
             detected |= detected_in_band
 
 
+        # the protoDC2 sims have an edge with zero shear.
+        # Remove it.
+        print(metacal['true_g'].shape)
+        zero_shear_edge = (abs(metacal['true_g'][:,0])==0) & (abs(metacal['true_g'][:,1])==0)
+        print("Removing {} objects with identically zero shear in both terms".format(zero_shear_edge.sum()))
+
+        detected &= (~zero_shear_edge)
+
+        ndet = detected.sum()
+        ntot = detected.size
+        fract = ndet*100./ntot
+
+        print(f"Detected {ndet} out of {ntot} objects ({fract:.1f}%)")
         # Remove all objects not detected in *any* band
         # make a copy of the keys with photo.keys so we are not
         # modifying during the iteration
         for key in list(photo.keys()): 
             photo[key] = photo[key][detected]
 
-        # TODO: cut metacal too
-        print("Should cut metacal here too")
+        for key in list(metacal.keys()):
+            metacal[key] = metacal[key][detected]
+
 
     def truncate_photometry(self, photo_file):
         group = photo_file['photometry']
@@ -343,7 +374,7 @@ def make_mock_photometry(n_visit, bands, data):
     # Use the same response for gamma1 and gamma2
 
 
-    for band, b_b, t_b, n_eff, R, mag_resp in zip(bands, B_b, T_b, N_eff, mag_responses):
+    for band, b_b, t_b, n_eff, mag_resp in zip(bands, B_b, T_b, N_eff, mag_responses):
         # truth magnitude
         mag = data[f'mag_true_{band}_lsst']
         output[f'mag_true_{band}_lsst'] = mag
@@ -371,8 +402,6 @@ def make_mock_photometry(n_visit, bands, data):
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
         output[f'mag_{band}_lsst'] = mag_obs
-
-        output[f'snr_{band}'] = obs_snr * 10.0**(0.4*(mag_obs))
 
         mag_obs_1p = mag_obs + mag_resp*delta_gamma
         mag_obs_1m = mag_obs - mag_resp*delta_gamma

@@ -27,7 +27,7 @@ To run the example you need some input data files.  You can obtain these from
 NERSC if you have access to the LSST space using:
 
 `` 
-    scp USERNAME@cori.nersc.gov:/global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/tract008766-shear-cat-0-10000.fits ./
+    scp USERNAME@cori.nersc.gov:/global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/* ./
 ``
 
 
