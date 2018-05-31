@@ -17,8 +17,8 @@ class TXRandomPhotozPDF(PipelineStage):
         ('photoz_pdfs', PhotozPDFFile),
     ]
 
-    # Configuration options.  If the value is not "None" then it specifies a default value
-    config_options = {'zmax': float, 'nz': int, 'chunk_rows': 10000}
+    # Configuration options.  If the value is not a type then it specifies a default value
+    config_options = {'zmax': float, 'nz': int, 'chunk_rows': 10000, 'bands':'ugriz'}
 
 
     def run(self):
@@ -41,15 +41,15 @@ class TXRandomPhotozPDF(PipelineStage):
         
         # Open the input catalog and check how many objects
         # we will be running on.
-        cat = self.get_input('shear_catalog')
-        hdu = 1
-        nobj = fitsio.read_header(cat, ext=hdu)['NAXIS2']
-
+        cat = self.open_input("photometry_catalog")
+        nobj = cat['photometry/galaxy_id'].size
+        cat.close()
+        
         # Prepare the output HDF5 file
         output_file = self.prepare_output(nobj, config, z)
 
         suffices = ["", "_1p", "_1m", "_2p", "_2m"]
-        bands = config.bands
+        bands = config['bands']
         # The columns we need to calculate the photo-z.
         # Note that we need all the metacalibrated variants too.
         cols = [f'mag_{band}_lsst{suffix}' for band in bands for suffix in suffices]
@@ -82,7 +82,8 @@ class TXRandomPhotozPDF(PipelineStage):
         import numpy as np
         import scipy.stats
         nz = config['nz']
-        nobj = len(data)
+        # painful how ugly this is in python 3 - we just want any random element
+        nobj = len(next(iter(data.values())))
         medians = np.random.uniform(0.2, 1.0, size=nobj)
         sigmas = 0.05 * (1+medians)
         pdfs = np.empty((nobj,nz), dtype='f4')
