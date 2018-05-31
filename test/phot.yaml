@@ -1,0 +1,37 @@
+launcher: local
+# To run on cori use:
+# launcher: cori
+
+modules: txpipe
+
+
+stages:
+    - name: TXDProtoDC2Mock
+      nprocess: 1
+# These don't work yet - stuff missing from metacal sim:
+    - name: TXSelector
+      nprocess: 1
+#    - name: TXRandomPhotozPDF
+#      nprocess: 1
+#    - name: TXDiagnosticMaps
+#      nprocess: 1
+#    - name: TXPhotozStack
+#      nprocess: 1
+
+output_dir: ./outputs2
+
+config: test/config.yml
+
+inputs:
+  # full data file:
+  # shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
+  # path to partial data file on NERSC:
+  # /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/tract008766-shear-cat-0-10000.fits
+  # Local, assuming you have downloaded as in doc/installation.rst
+  #  shear_catalog: ./tract008766-shear-cat-0-10000.fits
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf
+    
+resume: False
+log_dir: ./test/logs
+pipeline_log: log.txt
+
