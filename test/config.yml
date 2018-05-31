@@ -2,6 +2,7 @@ TXRandomPhotozPDF:
     nz: 301
     zmax: 3.0
     chunk_rows: 1000
+    bands: ugriz
 
 TXPhotozStack:
     chunk_rows: 1000

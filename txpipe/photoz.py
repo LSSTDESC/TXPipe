@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile
+from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
 
 class TXRandomPhotozPDF(PipelineStage):
     """
@@ -11,7 +11,7 @@ class TXRandomPhotozPDF(PipelineStage):
     """
     name='TXRandomPhotozPDF'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('photometry_catalog', HDFFile),
     ]
     outputs = [
         ('photoz_pdfs', PhotozPDFFile),
@@ -48,9 +48,11 @@ class TXRandomPhotozPDF(PipelineStage):
         # Prepare the output HDF5 file
         output_file = self.prepare_output(nobj, config, z)
 
+        suffices = ["", "_1p", "_1m", "_2p", "_2m"]
+        bands = config.bands
         # The columns we need to calculate the photo-z.
         # Note that we need all the metacalibrated variants too.
-        cols = ['mcal_pars', 'mcal_pars_1m', 'mcal_pars_1p', 'mcal_pars_2m', 'mcal_pars_2p']
+        cols = [f'mag_{band}_lsst{suffix}' for band in bands for suffix in suffices]
 
         # Loop through chunks of the data.
         # Parallelism is handled in the iterate_input function - 
@@ -58,7 +60,7 @@ class TXRandomPhotozPDF(PipelineStage):
         # responsible for.  The HDF5 parallel output mode means they can
         # all write to the file at once too.
         chunk_rows = config['chunk_rows']
-        for start, end, data in self.iterate_fits('shear_catalog', hdu, cols, chunk_rows):
+        for start, end, data in self.iterate_hdf('photometry_catalog', "photometry", cols, chunk_rows):
             print(f"Process {self.rank} running photo-z for rows {start}-{end}")
 
             # Compute some mock photo-z PDFs and point estimates

@@ -11,8 +11,8 @@ stages:
 # These don't work yet - stuff missing from metacal sim:
     - name: TXSelector
       nprocess: 1
-#    - name: TXRandomPhotozPDF
-#      nprocess: 1
+   - name: TXRandomPhotozPDF
+     nprocess: 1
 #    - name: TXDiagnosticMaps
 #      nprocess: 1
 #    - name: TXPhotozStack
