@@ -21,6 +21,7 @@ class TXDProtoDC2Mock(PipelineStage):
         'cat_name':'protoDC2_test', 
         'visits_per_band':165, 
         'snr_limit':4.0,
+        'max_size': 99999999999999
         }
 
     def data_iterator(self, gc):
@@ -46,6 +47,7 @@ class TXDProtoDC2Mock(PipelineStage):
         f = h5py.File(filename)
         n = f['galaxyProperties/ra'].size
         f.close()
+        n = min(n, self.config['max_size'])
         return n
 
     def run(self):
@@ -55,21 +57,27 @@ class TXDProtoDC2Mock(PipelineStage):
 
         gc = GCRCatalogs.load_catalog(cat_name)
         N = self.get_catalog_size(gc)
-
+        self.cat_size = N
         metacal_file = self.open_output('shear_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
 
         # This is the kind of thing that should go into
         # the DESCFormats stuff
-        self.setup_photometry_output(photo_file, N)
+        self.setup_photometry_output(photo_file)
         self.load_metacal_R_model()
         self.current_index = 0
         for data in self.data_iterator(gc):
+            if len(data['galaxy_id'])+self.current_index > self.cat_size:
+                cut = self.cat_size - self.current_index
+                for name in list(data.keys()):
+                    data[name] = data[name][:cut]
             mock_photometry = self.make_mock_photometry(data)
             mock_metacal = self.make_mock_metacal(data, mock_photometry)
             self.remove_undetected(mock_photometry, mock_metacal)
             self.write_photometry(photo_file, mock_photometry)
             self.write_metacal(metacal_file, mock_metacal)
+            if self.current_index >= self.cat_size:
+                break
 
             
         # Tidy up
@@ -78,7 +86,7 @@ class TXDProtoDC2Mock(PipelineStage):
         metacal_file.close()
 
 
-    def setup_photometry_output(self, photo_file, N):
+    def setup_photometry_output(self, photo_file):
         # Get a list of all the column names
         cols = ['ra', 'dec']
         for band in self.bands:
@@ -101,10 +109,10 @@ class TXDProtoDC2Mock(PipelineStage):
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
         for col in cols:
-            group.create_dataset(col, (N,), maxshape=(N,), dtype='f8')
+            group.create_dataset(col, (self.cat_size,), maxshape=(self.cat_size,), dtype='f8')
 
         # The only non-float column for now
-        group.create_dataset('galaxy_id', (N,), maxshape=(N,), dtype='i8')
+        group.create_dataset('galaxy_id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
     
 
     def load_metacal_R_model(self):
@@ -128,7 +136,7 @@ class TXDProtoDC2Mock(PipelineStage):
         start = self.current_index
         n = len(mock_photometry['galaxy_id'])
         end = start + n
-        
+
         # Save each column
         for name, col in mock_photometry.items():
             photo_file[f'photometry/{name}'][start:end] = col
