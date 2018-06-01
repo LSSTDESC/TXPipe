@@ -1,6 +1,6 @@
-#launcher: local
+launcher: local
 # To run on cori use:
-launcher: cori-interactive
+#launcher: cori-interactive
 
 modules: txpipe
 
@@ -9,9 +9,9 @@ stages:
     - name: TXDProtoDC2Mock
       nprocess: 1
     - name: TXSelector
-      nprocess: 32
+      nprocess: 1
     - name: TXRandomPhotozPDF
-      nprocess: 32
+      nprocess: 1
 # These don't work yet - stuff missing from metacal sim:
 #    - name: TXDiagnosticMaps
 #      nprocess: 1

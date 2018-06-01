@@ -260,11 +260,12 @@ class TXDProtoDC2Mock(PipelineStage):
             'mcal_flux': np.array([flux_r, flux_i, flux_z]).T,
             # not sure if this is right
             'mcal_flux_s2n': np.array([photo['snr_r'], photo['snr_i'], photo['snr_z']]).T,
-            # These appear to be all zeros in the tract files.
+            # mcal_weight appears to be all zeros in the tract files.
             # possibly they should in fact all be ones.
             'mcal_weight': np.zeros(nobj),
             'mcal_gpsf': np.zeros(nobj),
             'mcal_Tpsf': np.repeat(psf_T, nobj),
+            'mcal_flags': np.repeat(0, nobj),
             # Everything below here is wrong
             "mcal_g_cov": np.zeros((nobj,2,2)),
             "mcal_g_cov_1p": np.zeros((nobj,2,2)),
