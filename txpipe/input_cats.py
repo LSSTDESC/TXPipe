@@ -112,7 +112,7 @@ class TXDProtoDC2Mock(PipelineStage):
             group.create_dataset(col, (self.cat_size,), maxshape=(self.cat_size,), dtype='f8')
 
         # The only non-float column for now
-        group.create_dataset('galaxy_id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
+        group.create_dataset('id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
     
 
     def load_metacal_response_model(self):
@@ -134,7 +134,7 @@ class TXDProtoDC2Mock(PipelineStage):
         # Work out the range of data to output (since we will be
         # doing this in chunks)
         start = self.current_index
-        n = len(mock_photometry['galaxy_id'])
+        n = len(mock_photometry['id'])
         end = start + n
 
         # Save each column
@@ -240,6 +240,9 @@ class TXDProtoDC2Mock(PipelineStage):
 
         output = {
             "R":R,
+            'id': photo['id'],
+            'ra': photo['ra'],
+            'dec': photo['dec'],
             "true_g": np.array([g1, g2]).T,
             "mcal_g": np.array([e1*R, e2*R]).T,
             "mcal_g_1p": np.array([(e1+delta_gamma)*R, e2*R]).T,
@@ -366,7 +369,7 @@ def make_mock_photometry(n_visit, bands, data):
     nobj = data['galaxy_id'].size
     output['ra'] = data['ra']
     output['dec'] = data['dec']
-    output['galaxy_id'] = data['galaxy_id']
+    output['id'] = data['galaxy_id']
 
 
     # Sky background, seeing FWHM, and system throughput, 

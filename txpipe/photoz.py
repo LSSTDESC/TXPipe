@@ -42,7 +42,7 @@ class TXRandomPhotozPDF(PipelineStage):
         # Open the input catalog and check how many objects
         # we will be running on.
         cat = self.open_input("photometry_catalog")
-        nobj = cat['photometry/galaxy_id'].size
+        nobj = cat['photometry/id'].size
         cat.close()
         
         # Prepare the output HDF5 file
