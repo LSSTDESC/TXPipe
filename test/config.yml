@@ -1,5 +1,4 @@
-TXDProtoDC2Mock:
-    max_size: 100000
+TXDProtoDC2Mock: {}
 TXRandomPhotozPDF:
     nz: 301
     zmax: 3.0

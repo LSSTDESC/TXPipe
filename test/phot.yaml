@@ -12,11 +12,10 @@ stages:
       nprocess: 1
     - name: TXRandomPhotozPDF
       nprocess: 1
-# These don't work yet - stuff missing from metacal sim:
-#    - name: TXDiagnosticMaps
-#      nprocess: 1
-#    - name: TXPhotozStack
-#      nprocess: 1
+    - name: TXDiagnosticMaps
+      nprocess: 1
+    - name: TXPhotozStack
+      nprocess: 1
 
 output_dir: ./outputs2
 
@@ -31,7 +30,7 @@ inputs:
   #  shear_catalog: ./tract008766-shear-cat-0-10000.fits
     response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf
     
-resume: False
+resume: True
 log_dir: ./test/logs
 pipeline_log: log.txt
 
