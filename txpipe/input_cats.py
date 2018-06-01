@@ -6,26 +6,35 @@ from descformats.tx import MetacalCatalog, HDFFile
 
 class TXDProtoDC2Mock(PipelineStage):
     """
+    This stage simulates metacal data and metacalibrated
+    photometry measurements, starting from a cosmology catalogs
+    of the kind used as an input to DC2 image and obs-catalog simulations.
 
-
+    This is mainly useful for testing infrastructure in advance
+    of the DC2 catalogs being available, but might also be handy
+    for starting from a purer simulation.
     """
     name='TXDProtoDC2Mock'
+
     inputs = [
         ('response_model', HDFFile)
     ]
+
     outputs = [
         ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
     ]
+
     config_options = {
-        'cat_name':'protoDC2_test', 
-        'visits_per_band':165, 
-        'snr_limit':4.0,
-        'max_size': 99999999999999
+        'cat_name':'protoDC2_test',
+        'visits_per_band':165,  # used in the noise simulation
+        'snr_limit':4.0,  # used to decide what objects to cut out
+        'max_size': 99999999999999  #for testing on smaller catalogs
         }
 
     def data_iterator(self, gc):
 
+        # Columns we need from the cosmo simulation
         cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
                 'mag_true_r_lsst', 'mag_true_i_lsst', 
                 'mag_true_z_lsst',
@@ -41,13 +50,28 @@ class TXDProtoDC2Mock(PipelineStage):
             yield data
 
     def get_catalog_size(self, gc):
+        """
+        Get the size of a GCR catalog object.
+        This is not robust - catalogs can be split over
+        multiple files.  As of now there is no API for this.
+
+        Parameters
+        ----------
+
+        gc: GCRCatalogs catalog object
+
+        Returns
+        -------
+        n: integer
+            Number of catalog rows
+        """
         import h5py
         filename = gc.get_catalog_info()['filename']
         print(f"Reading catalog size directly from {filename}")
+        # Take the name of a specific column we expect to exist
         f = h5py.File(filename)
         n = f['galaxyProperties/ra'].size
         f.close()
-        n = min(n, self.config['max_size'])
         return n
 
     def run(self):
@@ -55,27 +79,47 @@ class TXDProtoDC2Mock(PipelineStage):
         cat_name = self.config['cat_name']
         self.bands = ('u','g', 'r', 'i', 'z')
 
+        # Load the input catalog (this is lazy)
         gc = GCRCatalogs.load_catalog(cat_name)
+
+        # Get the size, and optionally cut down to a smaller
+        # size if we want to test
         N = self.get_catalog_size(gc)
-        self.cat_size = N
+        self.cat_size = min(N, self.config['max_size'])
+
+        # Prepare output files
         metacal_file = self.open_output('shear_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
-
-        # This is the kind of thing that should go into
-        # the DESCFormats stuff
         self.setup_photometry_output(photo_file)
+
+        # Load the metacal response file
         self.load_metacal_response_model()
+
+        # Keep track of catalog position
         self.current_index = 0
+
+        # Loop through chunks of 
         for data in self.data_iterator(gc):
+            # Cut down the chunk of data if we exceed our desired
+            # catlog size
             if len(data['galaxy_id'])+self.current_index > self.cat_size:
                 cut = self.cat_size - self.current_index
                 for name in list(data.keys()):
                     data[name] = data[name][:cut]
+
+            # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
             mock_metacal = self.make_mock_metacal(data, mock_photometry)
+
+            # Cut out any objects too faint to be detected and measured
             self.remove_undetected(mock_photometry, mock_metacal)
+
+            # Save all output
             self.write_photometry(photo_file, mock_photometry)
             self.write_metacal(metacal_file, mock_metacal)
+
+            # Break early if we are cutting down the
+            # catalog
             if self.current_index >= self.cat_size:
                 break
 
@@ -116,6 +160,17 @@ class TXDProtoDC2Mock(PipelineStage):
     
 
     def load_metacal_response_model(self):
+        """
+        Load an HDF file containing the response model
+        R(log10(snr), size)
+        R_std(log10(snr), size)
+
+        where R is the mean metacal response in a bin and
+        R_std is its standard deviation.
+
+        So far only one of these files exists!
+
+        """
         import scipy.interpolate
         import numpy as np
         model_file = self.open_input("response_model")
@@ -125,12 +180,25 @@ class TXDProtoDC2Mock(PipelineStage):
         R_std = model_file['R_model/R_std'][:]
         model_file.close()
 
+        # Save a 2D spline
         snr_grid, sz_grid = np.meshgrid(snr_centers, sz_centers)
         self.R_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_mean.flatten(), w=R_std.flatten())
         self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
 
 
     def write_photometry(self, photo_file, mock_photometry):
+        """
+        Save the photometry we have just simulated to disc
+
+        Parameters
+        ----------
+
+        photo_file: HDF File object
+
+        mock_photometry: dict
+            Dictionary of simulated photometry
+
+        """
         # Work out the range of data to output (since we will be
         # doing this in chunks)
         start = self.current_index
@@ -145,15 +213,37 @@ class TXDProtoDC2Mock(PipelineStage):
         self.current_index += n
 
     def write_metacal(self, metacal_file, metacal_data):
+        """
+        Save the metacal data we have just simulated to disc
+
+        Parameters
+        ----------
+
+        metacal_file: fitsio FITS File object
+
+        metacal_data: dict
+            Dictionary of arrays of simulated metacal values
+
+        """
         import numpy as np
+
+        # Get the name and data type for eah column
+        # We sort these so that they are always in the same order,
+        # because we will just be appending the data for
+        # subsequent calls
         dtype = [(name,val.dtype,val[0].shape) for (name,val) in sorted(metacal_data.items())]
         nobj = metacal_data['R'].size
+
+        # Make a numpy structured array for this data
+        # and fill it in with our values
         data = np.zeros(nobj, dtype)
         for key, val in metacal_data.items():
             data[key] = val
 
+        # The first time we call this we will make an extension
+        # to contain the data.  Subsequent times we just append
+        # to that extension.
         already_created_ext = len(metacal_file)==2
-
         if already_created_ext:
             metacal_file[-1].append(data)
         else:
@@ -172,24 +262,23 @@ class TXDProtoDC2Mock(PipelineStage):
 
     def make_mock_metacal(self, data, photo):
         """
-        Generate a mock metacal table with noise added
+        Generate a mock metacal table.
+        This is a long and complicated function unfortunately.
+
+        Throughout we assume a single R = R11 = R22, with R12 = R21 = 0
+        
+        Parameters
+        ----------
+        data: dict
+            Dictionary of arrays read from the input cosmo catalog
+        photo: dict
+            Dictionary of arrays generated to simulate photometry
         """
 
-        # TODO: Write
 
         # These are the numbers from figure F1 of the DES Y1 shear catalog paper
         # (this version is not yet public but is awaiting a second referee response)
         import numpy as np
-
-        # strategy here.
-        # we have a S/N per band for each object.
-        # get the total S/N in r,i,z since most shapes are measured there.
-        # if it's > 5 then make a fake R_mean value based on the signal to noise and size
-        # Then generate R_mean from R with some spread
-        # 
-        # Just use the true shear * R_mean for the estimated shear
-        # (the noise on R will do the job of noise on shear)
-        # Use R11 = R22 and R12 = R21 = 0
 
         # Overall SNR for the three bands usually used for shape measurement
         # We use the true SNR not the estimated one, though these are pretty close
@@ -203,62 +292,89 @@ class TXDProtoDC2Mock(PipelineStage):
 
         log10_snr = np.log10(snr)
 
+        # Convert from the half-light radius which is in the 
+        # input catalogs to a sigma.  Do this by pretending
+        # that it is a Gaussian.  This is clearly wrong, and
+        # if this causes major errors in the size cuts we may
+        # have to modify this
         size_hlr = data['size_true']
         size_sigma = size_hlr / np.sqrt(2*np.log(2))
         size_T = 2 * size_sigma**2
 
+        # Use a fixed PSF across all the objects
         psf_fwhm = 0.75
         psf_sigma = psf_fwhm/(2*np.sqrt(2*np.log(2)))
         psf_T = 2 * psf_sigma**2
 
+        # Use the response model to get a reasonable response
+        # value for this size and SNR
         R_mean = self.R_spline(log10_snr, size_T, grid=False)
         R_std = self.Rstd_spline(log10_snr, size_T, grid=False)
         
-
-#        response_mean = np.array([R_mean, R_mean])
-        rho = 0.2  # correlation between size response and shear response.  chosen arbitrarily
-#        response_covmat = np.array([[R_std**2,rho*R_std**2],[rho*R_std**2,R_std**2]])
-#        R, R_size = R_mean + np.random.multivariate_normal(response_mean, response_covmat, nobj).T
+        # Assume a 0.2 correlation between the size response
+        # and the shear response.
+        rho = 0.2
         f = np.random.multivariate_normal([0.0,0.0], [[1.0,rho],[rho,1.0]], nobj).T
         R, R_size = f * R_std + R_mean
 
+        # Convert magnitudes to fluxes according to the baseline
+        # use in the metacal numbers
         flux_r = 10**0.4*(27 - photo['mag_r_lsst'])
         flux_i = 10**0.4*(27 - photo['mag_i_lsst'])
         flux_z = 10**0.4*(27 - photo['mag_z_lsst'])
 
+        # Note that this is delta_gamma not 2*delta_gamma, because
+        # of how we use it below
         delta_gamma = 0.01
         
+        # Use a fixed shape noise per component to generate 
+        # an overall 
         shape_noise = 0.26
         eps  = np.random.normal(0,shape_noise,nobj) + 1.j * np.random.normal(0,shape_noise,nobj)
+        # True shears without shape noise
         g1 = data['shear_1']
         g2 = data['shear_2']
+        # Do the full combination of (g,epsilon) -> e, not the approx one
         g = g1 + 1j*g2
         e = (eps + g) / (1+g.conj()*eps)
         e1 = e.real
         e2 = e.imag
-       
-
+    
+        # Now collect together everything to go into the metacal
+        # file
         output = {
+            # Basic values
             "R":R,
             'id': photo['id'],
             'ra': photo['ra'],
             'dec': photo['dec'],
+            # Keep the truth value just in case
             "true_g": np.array([g1, g2]).T,
+            # Shears, taken by scaling the overall ellipticity by the response
+            # I think this is the correct thing to use here
             "mcal_g": np.array([e1*R, e2*R]).T,
+            # metacalibrated variants - we add the shear and then 
+            # apply the response
             "mcal_g_1p": np.array([(e1+delta_gamma)*R, e2*R]).T,
             "mcal_g_1m": np.array([(e1-delta_gamma)*R, e2*R]).T,
             "mcal_g_2p": np.array([e1*R, (e2+delta_gamma)*R]).T,
             "mcal_g_2m": np.array([e1*R, (e2-delta_gamma)*R]).T,
+            # Size parameter and metacal variants
             "mcal_T": size_T,
             "mcal_T_1p": size_T + R_size*delta_gamma,
             "mcal_T_1m": size_T - R_size*delta_gamma,
             "mcal_T_2p": size_T + R_size*delta_gamma,
             "mcal_T_2m": size_T - R_size*delta_gamma,
+            # Rounded SNR values, as used in the selection,
+            # together with the metacal variants
             "mcal_s2n_r": snr,
             "mcal_s2n_r_1p": snr_1p,
             "mcal_s2n_r_1m": snr_1m,
             "mcal_s2n_r_2p": snr_2p,
             "mcal_s2n_r_2m": snr_2m,
+            # Magntiudes and fluxes, just copied from the inputs.
+            # Note that we won't use these directly later as we instead
+            # use stuff from the photometry file
             'mcal_mag': np.array([photo['mag_r_lsst'], photo['mag_i_lsst'], photo['mag_z_lsst']]).T,
             'mcal_flux': np.array([flux_r, flux_i, flux_z]).T,
             # not sure if this is right
@@ -266,15 +382,29 @@ class TXDProtoDC2Mock(PipelineStage):
             # mcal_weight appears to be all zeros in the tract files.
             # possibly they should in fact all be ones.
             'mcal_weight': np.zeros(nobj),
-            'mcal_gpsf': np.zeros(nobj),
+            # Fixed PSF parameters - all round with same size
+            'mcal_gpsf': np.zeros(nobj,2),
             'mcal_Tpsf': np.repeat(psf_T, nobj),
-            'mcal_flags': np.repeat(0, nobj),
+            # Everything that gets this far should be used, so flag=0
+            'mcal_flags': np.zeros(nobj, dtype=int),
+            # Pretend these are the same as the standard sizes
+            # actually they are measured on a rounded version
+            "mcal_T_r": size_T,
+            "mcal_T_r_1p": size_T + R_size*delta_gamma,
+            "mcal_T_r_1m": size_T - R_size*delta_gamma,
+            "mcal_T_r_2p": size_T + R_size*delta_gamma,
+            "mcal_T_r_2m": size_T - R_size*delta_gamma,
             # Everything below here is wrong
+            # Some of these are probably important!
+            # For now I'm leaving them all as zero 
+            # because we're not currently using them in the
+            # main pipeline
             "mcal_g_cov": np.zeros((nobj,2,2)),
             "mcal_g_cov_1p": np.zeros((nobj,2,2)),
             "mcal_g_cov_1m": np.zeros((nobj,2,2)),
             "mcal_g_cov_2p": np.zeros((nobj,2,2)),
             "mcal_g_cov_2m": np.zeros((nobj,2,2)),
+            # These are fit parameters and their covariances
             "mcal_pars":np.zeros((nobj,6)),
             "mcal_pars_1p":np.zeros((nobj,6)),
             "mcal_pars_1m":np.zeros((nobj,6)),
@@ -286,16 +416,13 @@ class TXDProtoDC2Mock(PipelineStage):
             "mcal_pars_cov_2p":np.zeros((nobj,6,6)),
             "mcal_pars_cov_2m":np.zeros((nobj,6,6)),
             "mcal_flux_cov": np.zeros((nobj,2,2)),
+            # This is likely to be important
             "mcal_T_err": np.zeros(nobj),
             "mcal_T_err_1p": np.zeros(nobj),
             "mcal_T_err_1m": np.zeros(nobj),
             "mcal_T_err_2p": np.zeros(nobj),
             "mcal_T_err_2m": np.zeros(nobj),
-            "mcal_T_r": size_T,
-            "mcal_T_r_1p": size_T,
-            "mcal_T_r_1m": size_T,
-            "mcal_T_r_2p": size_T,
-            "mcal_T_r_2m": size_T,
+            # Surface brightness
             "mcal_logsb": np.zeros(nobj),
 
             }
@@ -305,8 +432,18 @@ class TXDProtoDC2Mock(PipelineStage):
 
 
     def remove_undetected(self, photo, metacal):
+        """
+        Strip out any undetected objects from the two
+        simulated data sets.
+
+        Use a configuration parameter snr_limit to decide
+        on the detection limit.
+        """
         import numpy as np
         snr_limit = self.config['snr_limit']
+
+        # This will become a boolean array in a minute when
+        # we OR it with an array
         detected = False
 
         # Check if detected in any band.  Makes a boolean array
@@ -331,13 +468,14 @@ class TXDProtoDC2Mock(PipelineStage):
 
         detected &= (~zero_shear_edge)
 
+        # Print out interesting information
         ndet = detected.sum()
         ntot = detected.size
         fract = ndet*100./ntot
-
         print(f"Detected {ndet} out of {ntot} objects ({fract:.1f}%)")
+
         # Remove all objects not detected in *any* band
-        # make a copy of the keys with photo.keys so we are not
+        # make a copy of the keys with list(photo.keys()) so we are not
         # modifying during the iteration
         for key in list(photo.keys()): 
             photo[key] = photo[key][detected]
@@ -347,6 +485,13 @@ class TXDProtoDC2Mock(PipelineStage):
 
 
     def truncate_photometry(self, photo_file):
+        """
+        Cut down the output photometry file to its final 
+        size.
+
+        Not sure why I did this as the size should be
+        the same.  I must have had a reason.
+        """
         group = photo_file['photometry']
         cols = list(group.keys())
         for col in cols:
@@ -447,6 +592,7 @@ def make_mock_photometry(n_visit, bands, data):
         output[f'mag_{band}_lsst_2p'] = mag_obs_2p
         output[f'mag_{band}_lsst_2m'] = mag_obs_2m
 
+        # Scale the SNR values according the to change in magnitude.r
         output[f'snr_{band}_1p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1p))
         output[f'snr_{band}_1m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1m))
         output[f'snr_{band}_2p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2p))
