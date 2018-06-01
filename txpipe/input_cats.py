@@ -64,7 +64,7 @@ class TXDProtoDC2Mock(PipelineStage):
         # This is the kind of thing that should go into
         # the DESCFormats stuff
         self.setup_photometry_output(photo_file)
-        self.load_metacal_R_model()
+        self.load_metacal_response_model()
         self.current_index = 0
         for data in self.data_iterator(gc):
             if len(data['galaxy_id'])+self.current_index > self.cat_size:
@@ -115,7 +115,7 @@ class TXDProtoDC2Mock(PipelineStage):
         group.create_dataset('galaxy_id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
     
 
-    def load_metacal_R_model(self):
+    def load_metacal_response_model(self):
         import scipy.interpolate
         import numpy as np
         model_file = self.open_input("response_model")
@@ -267,10 +267,32 @@ class TXDProtoDC2Mock(PipelineStage):
             'mcal_Tpsf': np.repeat(psf_T, nobj),
             # Everything below here is wrong
             "mcal_g_cov": np.zeros((nobj,2,2)),
+            "mcal_g_cov_1p": np.zeros((nobj,2,2)),
+            "mcal_g_cov_1m": np.zeros((nobj,2,2)),
+            "mcal_g_cov_2p": np.zeros((nobj,2,2)),
+            "mcal_g_cov_2m": np.zeros((nobj,2,2)),
+            "mcal_pars":np.zeros((nobj,6)),
+            "mcal_pars_1p":np.zeros((nobj,6)),
+            "mcal_pars_1m":np.zeros((nobj,6)),
+            "mcal_pars_2p":np.zeros((nobj,6)),
+            "mcal_pars_2m":np.zeros((nobj,6)),
+            "mcal_pars_cov":np.zeros((nobj,6,6)),
+            "mcal_pars_cov_1p":np.zeros((nobj,6,6)),
+            "mcal_pars_cov_1m":np.zeros((nobj,6,6)),
+            "mcal_pars_cov_2p":np.zeros((nobj,6,6)),
+            "mcal_pars_cov_2m":np.zeros((nobj,6,6)),
             "mcal_flux_cov": np.zeros((nobj,2,2)),
             "mcal_T_err": np.zeros(nobj),
+            "mcal_T_err_1p": np.zeros(nobj),
+            "mcal_T_err_1m": np.zeros(nobj),
+            "mcal_T_err_2p": np.zeros(nobj),
+            "mcal_T_err_2m": np.zeros(nobj),
             "mcal_T_r": size_T,
-            "mcal_log_sb": np.zeros(nobj),
+            "mcal_T_r_1p": size_T,
+            "mcal_T_r_1m": size_T,
+            "mcal_T_r_2p": size_T,
+            "mcal_T_r_2m": size_T,
+            "mcal_logsb": np.zeros(nobj),
 
             }
 
