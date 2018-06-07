@@ -570,6 +570,7 @@ def make_mock_photometry(n_visit, bands, data):
         # This can go negative for faint magnitudes, indicating that the object is
         # not going to be detected
         n_obs = np.random.poisson(mu) - background
+        n_obs_err = np.sqrt(mu)
 
         # signal to noise, true and estimated values
         true_snr = c_b / background
@@ -578,9 +579,13 @@ def make_mock_photometry(n_visit, bands, data):
         # observed magnitude from inverting c_b expression above
         mag_obs = 25 - 2.5*np.log10(n_obs/factor/t_b/n_visit)
 
+        # converting error on n_obs to error on mag
+        mag_err = -2.5*np.log10(np.e)*(n_obs_err/n_obs)
+
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
         output[f'mag_{band}_lsst'] = mag_obs
+        output[f'mag_err_{band}_lsst'] = mag_err
 
         mag_obs_1p = mag_obs + mag_resp*delta_gamma
         mag_obs_1m = mag_obs - mag_resp*delta_gamma
