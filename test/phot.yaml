@@ -6,7 +6,7 @@ modules: txpipe
 
 
 stages:
-    - name: TXDProtoDC2Mock
+    - name: TXProtoDC2Mock
       nprocess: 1
     - name: TXSelector
       nprocess: 1

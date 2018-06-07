@@ -4,7 +4,7 @@ from descformats.tx import MetacalCatalog, HDFFile
 # could also just load /global/projecta/projectdirs/lsst/groups/CS/descqa/catalog/ANL_AlphaQ_v3.0.hdf5
 
 
-class TXDProtoDC2Mock(PipelineStage):
+class TXProtoDC2Mock(PipelineStage):
     """
     This stage simulates metacal data and metacalibrated
     photometry measurements, starting from a cosmology catalogs
@@ -14,7 +14,7 @@ class TXDProtoDC2Mock(PipelineStage):
     of the DC2 catalogs being available, but might also be handy
     for starting from a purer simulation.
     """
-    name='TXDProtoDC2Mock'
+    name='TXProtoDC2Mock'
 
     inputs = [
         ('response_model', HDFFile)
