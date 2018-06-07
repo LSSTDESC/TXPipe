@@ -137,6 +137,7 @@ class TXProtoDC2Mock(PipelineStage):
             cols.append(f'mag_true_{band}_lsst')
             cols.append(f'true_snr_{band}')
             cols.append(f'mag_{band}_lsst')
+            cols.append(f'mag_err_{band}_lsst')
             cols.append(f'mag_{band}_lsst_1p')
             cols.append(f'mag_{band}_lsst_1m')
             cols.append(f'mag_{band}_lsst_2p')
@@ -383,7 +384,7 @@ class TXProtoDC2Mock(PipelineStage):
             # possibly they should in fact all be ones.
             'mcal_weight': np.zeros(nobj),
             # Fixed PSF parameters - all round with same size
-            'mcal_gpsf': np.zeros(nobj,2),
+            'mcal_gpsf': np.zeros((nobj,2)),
             'mcal_Tpsf': np.repeat(psf_T, nobj),
             # Everything that gets this far should be used, so flag=0
             'mcal_flags': np.zeros(nobj, dtype=int),
