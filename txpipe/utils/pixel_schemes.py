@@ -103,6 +103,31 @@ class HealpixScheme:
             phi = np.degrees(phi)
         return phi, theta
 
+    @classmethod
+    def read_map(HealpixScheme,fname_map,i_map=0) :
+        """Read a map from a fits file and generate the associated HealpixScheme.
+
+        Parameters
+        ----------
+
+        fname_map: string
+            Path to file
+        i_map: None, int or array-like
+            Maps to read. If None, all maps are read.
+        """
+        import healpy as hp
+        maps,h=hp.read_map(fname_map,field=i_map,h=True,verbose=False)
+        h=dict(h);
+
+        #Determine parameters
+        nest=False ;
+        if h['ORDERING']=='NESTED' :
+            nest=True
+
+        nside=h['NSIDE']
+
+        p=HealpixScheme(nside,nest=nest)
+        return p,maps
 
 class GnomonicPixelScheme:
     """A pixelization scheme using the Gnomonic (aka tangent plane) projection.
@@ -129,6 +154,8 @@ class GnomonicPixelScheme:
         Number of pixels along x direction
     ny: int
         Number of pixels along y direction
+    pad: int
+        Number of additional pixels around the edges set to zero.
 
     Methods
     -------
@@ -140,50 +167,81 @@ class GnomonicPixelScheme:
 
 
     """    
-    def __init__(self, ra_min, ra_max, dec_min, dec_max, pixel_size):
+    def __init__(self, ra_cent, dec_cent, pixel_size, nx, ny, pad=0, pixel_size_y=None):
         """Make a converter object
 
-    Parameters
-    ----------
-    ra_min: float
-        The minimum right ascension value to use in the map, in degrees
-    ra_max: int
-        The maximum right ascension value to use in the map, in degrees
-    dec_min:
-        The minimum declination value to use in the map, in degrees
-    dec_max:
-        The maximum declination value to use in the map, in degrees
-    pixel_size:
-        The size of each pixel along the side, in degrees
-
-
-
+        Parameters
+        ----------
+        ra_cent: float
+            Right ascension at the patch centre
+        dec_cent: float
+            Declination at the patch centre
+        pixel_size: float
+            The size of each pixel along the side, in degrees
+        nx, ny: int
+            Number of pixels in the x and y directions
+        pad:
+            Number of additional empty pixels to leave around the edges
+        pixel_size_y: float
+            Pixel size in the y direction. If None, x and y will use the same pixel size.
+            Otherwise, pixel_size will be interpreted as the size in the x direction.
         """
         from astropy.wcs import WCS
 
+        if pixel_size_y is None :
+            pixel_size_y=pixel_size
         wcs = WCS(naxis=2)
-        wcs.wcs.crpix = [0., 0.]
-        wcs.wcs.cdelt = [pixel_size, pixel_size]
-        wcs.wcs.crval = [ra_min, dec_min]
+        #Note: we're assuming we'll want the tangent point to be at (nx/2,ny/2).
+        #      This is common, but not universal.
+        wcs.wcs.crpix = [nx/2+pad, ny/2+pad]
+        wcs.wcs.cdelt = [pixel_size, pixel_size_y]
+        wcs.wcs.crval = [ra_cent,dec_cent] #Pick middle point
         wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-
+        
         self.wcs = wcs
-        self.ra_min = ra_min
-        self.ra_max = ra_max
-        self.dec_min = dec_min
-        self.dec_max = dec_max
-        self.nx = int(np.ceil((ra_max - ra_min) / pixel_size))
-        self.ny = int(np.ceil((dec_max - dec_min) / pixel_size))
+        self.ra_cent = ra_cent
+        self.dec_cent = dec_cent
+        self.nx = nx
+        self.ny = ny
         self.npix = self.nx*self.ny
+        self.pad = pad
 
         self.metadata = {
-            'ra_min':self.ra_min, 'ra_max':self.ra_max, 
-            'dec_min':self.dec_min, 'dec_max':self.dec_max,
-            'nx': self.nx, 'ny':self.ny,
-            'npix': self.npix
+            'ra_cent':self.ra_cent, 'dec_cent':self.dec_cent,
+            'nx': self.nx, 'ny':self.ny, 'npix': self.npix,'pad': self.pad
             }
 
 
+    def ang2pix_real(self, ra, dec, radians=False, theta=False):
+        """Convert angular sky coordinates to tangent Cartesian coordinates.
+
+        Parameters
+        ----------
+
+        ra: array or float
+            Right ascension coordinates, in degrees unless radians=True
+        dec: array or float
+            Declination coordinates, in degrees unless radians=True
+        radians: bool, optional
+            if True, assume the input values are in radians.  
+        theta: bool, optional
+            If True, assume the input "dec" values are co-latitude theta (90-declination, the "angle from north").
+
+        Returns
+        -------
+        ix,iy: array
+            Flat-sky coordinates in pixel units.
+        """
+        ra = np.atleast_1d(ra)
+        dec = np.atleast_1d(dec)
+        if radians:
+            ra = np.degrees(ra)
+            dec = np.degrees(dec)
+        if theta:
+            dec = 90.0 - dec
+        x, y = self.wcs.wcs_world2pix(ra, dec, 0)
+
+        return x, y
 
     def ang2pix(self, ra, dec, radians=False, theta=False):
         """Convert angular sky coordinates to pixel indices.
@@ -203,19 +261,12 @@ class GnomonicPixelScheme:
         Returns
         -------
         pix: array
-            Healpix indices of all the specified angles.
+            Flat-sky pixel indices of all the specified angles.
         """
-        ra = np.atleast_1d(ra)
-        dec = np.atleast_1d(dec)
-        if radians:
-            ra = np.degrees(ra)
-            dec = np.degrees(dec)
-        if theta:
-            dec = 90.0 - dec
-        x, y = self.wcs.wcs_world2pix(ra, dec, 1)
+        x, y = self.ang2pix_real(ra,dec,radians=radians,theta=theta)
         x = np.floor(x).astype(int)
         y = np.floor(y).astype(int)
-        bad = (ra<=self.ra_min) | (dec<=self.dec_min) | (ra>=self.ra_max) | (dec>=self.dec_max)
+        bad = (x<0) | (x>=self.nx) | (y<0) | (y>=self.ny)
         pix = x + y*self.nx
         pix[bad] = -9999
         return pix
@@ -246,18 +297,55 @@ class GnomonicPixelScheme:
         x = pix % self.nx
         y = pix // self.nx
         ra, dec = self.wcs.wcs_pix2world(x, y, 0.0)
-        bad = (pix<0) | (pix>=self.npix)
 
         if theta:
             dec = 90.0 - dec
         if radians:
             ra = np.radians(ra)
             dec = np.radians(dec)
-        ra[bad] = np.nan
-        dec[bad] = np.nan
         return ra, dec
 
+    @classmethod
+    def read_map(GnominicPixelScheme,fname_map,i_map=0) :
+        """Read a flat-sky map from a fits file and generate the associated
+        GnomonicPixelScheme.
 
+        Parameters
+        ----------
+
+        fname_map: string
+            Path to file
+        i_map: int or array-like
+            Maps to read
+        """
+        from astropy.io import fits
+        from astropy.wcs import WCS
+
+        hdul=fits.open(fname_map)
+        w=WCS(hdul[0].header)
+        p=GnomonicPixelScheme(w.wcs.crval[0],w.wcs.crval[0],w.wcs.cdelt[0],
+                              hdul[0].header['NAXIS1'],hdul[0].header['NAXIS2'],
+                              pad=0,pixel_size_y=w.wcs.cdelt[1])
+
+        scalar_input=False
+        if i_map is None :
+            lst=np.arange(len(hdul))
+        elif isinstance(i_map,(list,tuple,np.ndarray)) :
+            lst=i_map
+        else :
+            scalar_input=True
+            lst=np.array([i_map])
+
+        maps=np.array([hdul[i].data for i in lst])
+        if scalar_input :
+            maps=maps.flatten()
+        else :
+            nm,ny,nx=maps.shape
+            maps=maps.reshape([nm,ny*nx])
+            
+        return p,maps
+
+                                                    
 def choose_pixelization(**config):
     """Construct a pixelization scheme based on configuration choices.
 
@@ -285,18 +373,18 @@ def choose_pixelization(**config):
         import healpy
         nside = config['nside']
         if not healpy.isnsideok(nside):
-            raise ValueError(f"nside pixelization parameter must be set to a power of two (used value {nside})")
+            raise ValueError("nside pixelization parameter must be set to a power of two (used value {nside})")
         nest = config.get('nest', False)
         scheme = HealpixScheme(nside, nest=nest)
     elif pixelization == 'gnomonic' or pixelization == 'tan' or pixelization == 'tangent':
-        ra_min = config['ra_min']
-        dec_min = config['dec_min']
-        ra_max = config['ra_max']
-        dec_max = config['dec_max']
+        ra_cent = config['ra_cent']
+        dec_cent = config['dec_cent']
+        nx = config['npix_x']
+        ny = config['npix_y']
         pixel_size = config['pixel_size']
-        if np.isnan([ra_min, ra_max, dec_min, dec_max, pixel_size]).any():
-            raise ValueError("Must set ra_min, ra_max, dec_min, dec_max, pixel_size to use Gnomonic/Tangent pixelization")
-        scheme = GnomonicPixelScheme(ra_min, ra_max, dec_min, dec_max, pixel_size)
+        if np.isnan([ra_cent, dec_cent, nx, ny, pixel_size]).any():
+            raise ValueError("Must set ra_cent, dec_cent, nx, ny, pixel_size to use Gnomonic/Tangent pixelization")
+        scheme = GnomonicPixelScheme(ra_cent, dec_cent, pixel_size, nx, ny)
     else:
         raise ValueError("Pixelization scheme unknown")
 
