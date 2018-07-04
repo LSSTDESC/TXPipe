@@ -7,15 +7,14 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('config', YamlFile),
+        ('tomography_catalog', TomographyCatalog)
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
     ]
     config_options = {
         'density': 100.,  # number per square arcmin at median depth depth.  Not sure if this is right.
-        'chunk_rows': 10000,  # number per square arcmin at median depth depth.  Not sure if this is right.
+        'chunk_rows': 9211556,  # number per square arcmin at median depth depth.  Not sure if this is right.
         'Mstar': 23.0,  # Schecther distribution Mstar parameter
         'alpha': -1.25,  # Schecther distribution Mstar parameter
         'sigma_e': 0.27,
@@ -27,7 +26,7 @@ class TXRandomCat(PipelineStage):
         import healpy
         from . import randoms
 
-        config = self.read_config()
+        config = self.config
 
         self.load_tomography(config)
         self.load_shear_catalog(config)
@@ -83,7 +82,6 @@ class TXRandomCat(PipelineStage):
         self.ra = ra#[mask]
         self.dec = dec#[mask]
         #self.weights = weights[mask]
-        self.binning = self.binning#[mask]
 
 
         print('bins are', self.binning)
@@ -122,10 +120,17 @@ class TXRandomCat(PipelineStage):
             g1_max =  np.max(self.mcal_g1[mask])
             g2_max = np.max(self.mcal_g2[mask])
             g2_min = np.min(self.mcal_g2[mask])
+            size = len(self.mcal_g2[mask])
+            n = 1
 
-            rand_ra = np.random.uniform(ra_min, ra_max, len(self.ra[mask])).tolist()
-            rand_sindec = np.random.uniform(np.sin(dec_min), np.sin(dec_max), len(self.ra[mask])).tolist()
-            rand_dec = np.arcsin(rand_sindec).tolist()
+            #rand_ra = np.random.uniform(ra_min, ra_max, len(self.ra[mask])).tolist()
+            #rand_sindec = np.random.uniform(np.sin(dec_min), np.sin(dec_max), len(self.ra[mask])).tolist()
+            #rand_dec = np.arcsin(rand_sindec).tolist()
+            
+            rand_ra = np.random.uniform(ra_min, ra_max, size=n*size).tolist()
+            dec = np.random.uniform(np.sin(np.deg2rad(dec_min)), np.sin(np.deg2rad(dec_max)), size=n*size)
+            dec = np.arcsin(dec, out=dec)
+            rand_dec = np.rad2deg(dec, out=dec).tolist()
 
             rand_g1 = np.random.uniform(g1_min, g1_max, len(self.mcal_g1[mask])).tolist()
             rand_g2 = np.random.uniform(g2_min, g2_max, len(self.mcal_g2[mask])).tolist()
@@ -135,7 +140,7 @@ class TXRandomCat(PipelineStage):
             g1_randoms += rand_g1
             g2_randoms += rand_g2
 
-            binnings_randoms += [bin]*len(self.ra[mask])
+            binnings_randoms += [bin]*len(self.ra[mask])*n
 
         self.ra_randoms = ra_randoms
         self.dec_randoms = dec_randoms
