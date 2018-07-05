@@ -105,6 +105,7 @@ class HealpixScheme:
 
     @classmethod
     def read_map(HealpixScheme,fname_map,i_map=0) :
+        #TODO: need to write a write_maps function
         """Read a map from a fits file and generate the associated HealpixScheme.
 
         Parameters
@@ -167,7 +168,8 @@ class GnomonicPixelScheme:
 
 
     """    
-    def __init__(self, ra_cent, dec_cent, pixel_size, nx, ny, pad=0, pixel_size_y=None):
+    def __init__(self, ra_cent, dec_cent, pixel_size, nx, ny, pad=0,
+                 pixel_size_y=None,crpix_x=None,crpix_y=None):
         """Make a converter object
 
         Parameters
@@ -185,20 +187,33 @@ class GnomonicPixelScheme:
         pixel_size_y: float
             Pixel size in the y direction. If None, x and y will use the same pixel size.
             Otherwise, pixel_size will be interpreted as the size in the x direction.
+        crpix_x: float
+            Pixel index in the x direction for the reference point. If None, it will
+            default to nx/2
+        crpix_y: float
+            Pixel index in the y direction for the reference point. If None, it will
+            default to ny/2
         """
         from astropy.wcs import WCS
 
         if pixel_size_y is None :
             pixel_size_y=pixel_size
+        if crpix_x is None :
+            crpix_x=nx/2
+        if crpix_y is None :
+            crpix_y=ny/2
+
         wcs = WCS(naxis=2)
         #Note: we're assuming we'll want the tangent point to be at (nx/2,ny/2).
         #      This is common, but not universal.
-        wcs.wcs.crpix = [nx/2+pad, ny/2+pad]
+        wcs.wcs.crpix = [crpix_x+pad, crpix_y+pad]
         wcs.wcs.cdelt = [pixel_size, pixel_size_y]
         wcs.wcs.crval = [ra_cent,dec_cent] #Pick middle point
         wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         
         self.wcs = wcs
+        self.pixel_size_x=pixel_size
+        self.pixel_size_y=pixel_size_y
         self.ra_cent = ra_cent
         self.dec_cent = dec_cent
         self.nx = nx
@@ -207,7 +222,8 @@ class GnomonicPixelScheme:
         self.pad = pad
 
         self.metadata = {
-            'ra_cent':self.ra_cent, 'dec_cent':self.dec_cent,
+            'ra_cent':self.ra_cent, 'dec_cent':self.dec_cent, 
+            'pixel_size_x':pixel_size, 'pixel_size_y':pixel_size_y,
             'nx': self.nx, 'ny':self.ny, 'npix': self.npix,'pad': self.pad
             }
 
@@ -307,6 +323,7 @@ class GnomonicPixelScheme:
 
     @classmethod
     def read_map(GnominicPixelScheme,fname_map,i_map=0) :
+        #TODO: need to write a write_maps function
         """Read a flat-sky map from a fits file and generate the associated
         GnomonicPixelScheme.
 
@@ -315,8 +332,8 @@ class GnomonicPixelScheme:
 
         fname_map: string
             Path to file
-        i_map: int or array-like
-            Maps to read
+        i_map: None, int or array-like
+            Maps to read. If None, all maps are read.
         """
         from astropy.io import fits
         from astropy.wcs import WCS
@@ -325,7 +342,8 @@ class GnomonicPixelScheme:
         w=WCS(hdul[0].header)
         p=GnomonicPixelScheme(w.wcs.crval[0],w.wcs.crval[0],w.wcs.cdelt[0],
                               hdul[0].header['NAXIS1'],hdul[0].header['NAXIS2'],
-                              pad=0,pixel_size_y=w.wcs.cdelt[1])
+                              pad=0,pixel_size_y=w.wcs.cdelt[1],
+                              crpix_x=w.wcs.crpix[0],crpix_y=w.wcs.crpix[1])
 
         scalar_input=False
         if i_map is None :
