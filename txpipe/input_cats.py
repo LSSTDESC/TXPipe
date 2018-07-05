@@ -542,13 +542,9 @@ def make_mock_photometry(n_visit, bands, data):
     # combination of these  used below, from various equations
     factor = 5455./gain * (D/6.5)**2 * (time/30.)
 
-    nband = len(bands)
-    mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
-    rho = 0.25  #  approx correlation between response in bands, from HSC tract
-    sigma2 = 1.7**2 # approx variance of response, from HSC tract
-    covmat = np.full((nband,nband), rho*sigma2)
-    np.fill_diagonal(covmat, sigma2)
-    mag_responses = np.random.multivariate_normal(mu, covmat, nobj).T
+    # Fake some metacal responses
+    mag_responses = generate_mock_metacal_mag_responses(bands, nobj)
+
     delta_gamma = 0.01  # this is the half-delta gamma, i.e. gamma_+ - gamma_0
     # that's the right thing to use here because we are doing m+ = m0 + dm/dy*dy
     # Use the same response for gamma1 and gamma2
@@ -606,6 +602,182 @@ def make_mock_photometry(n_visit, bands, data):
 
 
     return output
+
+
+
+def generate_mock_metacal_mag_responses(bands, nobj):
+    import numpy as np
+    nband = len(bands)
+    mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
+    rho = 0.25  #  approx correlation between response in bands, from HSC tract
+    sigma2 = 1.7**2 # approx variance of response, from HSC tract
+    covmat = np.full((nband,nband), rho*sigma2)
+    np.fill_diagonal(covmat, sigma2)
+    mag_responses = np.random.multivariate_normal(mu, covmat, nobj).T
+    return mag_responses
+
+class TXDRPMockMetacal(PipelineStage):
+    """
+    Use real photometry from the DRP (output of DM stack) in merged form,
+    but fake metacal responses for the magnitudes.
+
+    TODO: Shapes!
+    """
+    name = "TXDRPMockMetacal"
+
+    inputs = [
+        ('response_model', HDFFile),
+        ('drp_merged_cat', HDFFile)
+    ]
+
+    outputs = [
+        ('shear_catalog', MetacalCatalog),
+        ('photometry_catalog', HDFFile),
+    ]
+
+    config_options = {
+        'cat_name':'protoDC2_test',
+        'visits_per_band':165,  # used in the noise simulation
+        'snr_limit':4.0,  # used to decide what objects to cut out
+        'max_size': 99999999999999  #for testing on smaller catalogs
+        }
+
+    @staticmethod
+    def count_pandas_rows(filename):
+        """
+        Count the number of rows in a Pandas format catalog,
+        as used by the merged DRP catalog.
+
+        Pandas saves things in an odd packed format, and offers
+        no way to check the size of the catalog before reading it in.
+
+        Additionally there are many different sub-catalogs.
+
+        Parameters
+        ----------
+        Filename: str
+            name of the HDF format file
+
+        Returns
+        -------
+
+        count: int
+            Number of rows in all the sub-catalogs
+
+        """
+        import h5py
+        f = h5py.File(filename, "r")
+        extensions = [ext for ext in f.keys() if ext.startswith('coadd_')]
+        count = 0
+        for ext in extensions:
+            ext = f[ext]
+            nb = ext.attrs['nblocks']
+            for i in range(nb):
+                count += len(ext[f'block{i}_values'])
+        f.close()
+        return count
+
+
+
+
+    def run(self):
+        #input_filename="/global/cscratch1/sd/jchiang8/desc/HSC/merged_tract_8524.hdf5"
+        input_drp = self.get_input('drp_merged_cat')
+        output_photo = self.open_output('photometry_catalog')
+
+        n = self.count_pandas_rows(input_drp)
+        print(f"Found {n} objects in catalog {input_drp}")
+
+        # Put everything under the "photometry" section
+        photo = output.create_group('photometry')
+
+        # The merged DRP file is already split into chunks internally - we load those 
+        # chunks one by one
+        for (start,end, data) in self.generate_fake_metacalibrated_photometry(input_drp):
+
+            # For the first chunk we create the output data space, 
+            # because then we know what all the columns are
+            if start==0:
+                for colname,col in data.items():
+                    photo.create_dataset(colname, (n,), dtype=col.dtype)
+                    print(f" Column: {colname}")
+
+            # Output this chunk
+            print(f" Saving rows {start}:{end}")
+            for colname,col in data.items():
+                photo[colname][start:end] = col
+
+        output.close()
+
+
+    def generate_fake_metacalibrated_photometry(self, filename):
+        import h5py
+        import pandas
+        import warnings
+
+        bands =  'grizy'
+
+        # Find all the sub-catalogs
+        f = h5py.File(filename, "r")
+        extensions = [ext for ext in f.keys() if ext.startswith('coadd_')]
+        f.close()
+
+        # this is the half-delta gamma, i.e. gamma_+ - gamma_0
+        delta_gamma = 0.01
+
+        # Location in output file
+        start = 0
+
+        for ext in extensions:
+            output = {}
+            print(f"Reading extension {ext}")
+            cat = pandas.read_hdf(filename, key=ext)
+            n = len(cat)
+
+            # Generate some mock metacal responses for the magnitudes.
+            # This is until we get real ones
+            warnings.warn("Faking metacal responses for magnitudes")
+            mag_responses = generate_mock_metacal_mag_responses(bands, n)
+            end = start + n
+
+            # Right now these are all called HSC, because that's the tract file 
+            # we are looking at.  Should update to use GCR which will abstract
+            # these names away, when this is ready
+            for band, mag_resp in zip(bands, mag_responses):
+                BAND = band.upper()
+
+                # Mags and SNR are in the catalog already
+                warnings.warn("Pretending that HSC filters are the same as LSST")
+                mag_obs = cat[f'HSC-{BAND}_mag']
+                snr     = cat[f'HSC-{BAND}_SNR']
+                mag_err = cat[f'HSC-{BAND}_mag_err']
+
+                output[f'mag_{band}_lsst']     = mag_obs
+                output[f'snr_{band}']          = snr
+                output[f'mag_err_{band}_lsst'] = mag_err
+
+                # Generate the metacalibrated values
+                mag_obs_1p = mag_obs + mag_resp*delta_gamma
+                mag_obs_1m = mag_obs - mag_resp*delta_gamma
+                mag_obs_2p = mag_obs + mag_resp*delta_gamma
+                mag_obs_2m = mag_obs - mag_resp*delta_gamma
+
+                # Save them, but we will also need them to generate
+                # metacalibrated SNRs below
+                output[f'mag_{band}_lsst_1p'] = mag_obs_1p
+                output[f'mag_{band}_lsst_1m'] = mag_obs_1m
+                output[f'mag_{band}_lsst_2p'] = mag_obs_2p
+                output[f'mag_{band}_lsst_2m'] = mag_obs_2m
+
+                # Scale the SNR values according the to change in magnitude.
+                output[f'snr_{band}_1p'] = snr * 10**(0.4*(mag_obs - mag_obs_1p))
+                output[f'snr_{band}_1m'] = snr * 10**(0.4*(mag_obs - mag_obs_1m))
+                output[f'snr_{band}_2p'] = snr * 10**(0.4*(mag_obs - mag_obs_2p))
+                output[f'snr_{band}_2m'] = snr * 10**(0.4*(mag_obs - mag_obs_2m))
+
+            # Yield this chunk of catalog
+            yield start, end, output
+            start = end
 
 
 
