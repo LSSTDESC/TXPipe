@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import MetacalCatalog, DiagnosticMaps, YamlFile
+from descformats.tx import HDFFile, DiagnosticMaps, YamlFile
 import numpy as np
 
 class TXDiagnosticMaps(PipelineStage):
@@ -19,7 +19,7 @@ class TXDiagnosticMaps(PipelineStage):
     # We currently take everything from the shear catalog.
     # In the long run this may become DM output
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('photometry_catalog', HDFFile),
     ]
 
     # We generate a single HDF file in this stage
@@ -40,7 +40,9 @@ class TXDiagnosticMaps(PipelineStage):
         'ra_max':np.nan,  # RA range
         'dec_min':np.nan, #
         'dec_max':np.nan, # DEC range
-        'pixel_size':np.nan # Pixel size of pixelization scheme
+        'pixel_size':np.nan, # Pixel size of pixelization scheme
+        'depth_band' : 'i',
+
     }
 
 
@@ -62,15 +64,23 @@ class TXDiagnosticMaps(PipelineStage):
         # Iterators lazily load the data chunk by chunk as we iterate through the file.
         # We don't need to use the start and end points in this case, as
         # we're not making a new catalog.
-        cat_cols = ['ra', 'dec', 'mcal_s2n_r', 'mcal_mag']
-        data_iterator = (data for start,end,data in self.iterate_fits('shear_catalog', 1, cat_cols, config['chunk_rows']))
+        band = config['depth_band']
+        cat_cols = ['ra', 'dec', f'snr_{band}', f'mag_{band}_lsst']
+        def iterate():
+            for start,end,data in self.iterate_hdf('photometry_catalog', 'photometry', cat_cols, 
+                                                    config['chunk_rows']):
+                data['mag'] = data[f'mag_{band}_lsst']
+                data['snr'] = data[f'snr_{band}']
+                yield data
+
+        data_iterator = iterate()
 
 
         # Calculate the depth map, map of the counts used in computing the depth map, and map of the depth variance
         pixel, count, depth, depth_var = dr1_depth(data_iterator,
             pixel_scheme, config['snr_threshold'], config['snr_delta'], sparse=config['sparse'],
             comm=self.comm)
-
+        
         # Only the root process saves the output
         if self.rank==0:
             # Open the HDF5 output file

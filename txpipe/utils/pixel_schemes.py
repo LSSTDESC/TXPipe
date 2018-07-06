@@ -103,6 +103,28 @@ class HealpixScheme:
             phi = np.degrees(phi)
         return phi, theta
 
+    def pixel_area(self, degrees=False):
+        """
+        Return the area of one pixel in radians (default) or degrees
+
+        Parameters
+        ----------
+
+        degrees: bool, optional
+            If true, return the area in square degrees. Default is False.
+
+        Returns
+
+        area: float
+            area in deg^2 or square radians, depending on degrees parameter
+
+        """
+        return self.healpy.nside2pixarea(self.nside, degrees=degrees)
+
+
+    def vertices(self, pix):
+        return self.healpy.boundaries(self.nside, pix)
+
 
 class GnomonicPixelScheme:
     """A pixelization scheme using the Gnomonic (aka tangent plane) projection.
@@ -175,12 +197,14 @@ class GnomonicPixelScheme:
         self.nx = int(np.ceil((ra_max - ra_min) / pixel_size))
         self.ny = int(np.ceil((dec_max - dec_min) / pixel_size))
         self.npix = self.nx*self.ny
+        self.pixel_size = pixel_size
 
         self.metadata = {
             'ra_min':self.ra_min, 'ra_max':self.ra_max, 
             'dec_min':self.dec_min, 'dec_max':self.dec_max,
             'nx': self.nx, 'ny':self.ny,
-            'npix': self.npix
+            'npix': self.npix,
+            'pixel_size': self.pixel_size,
             }
 
 
@@ -213,9 +237,9 @@ class GnomonicPixelScheme:
         if theta:
             dec = 90.0 - dec
         x, y = self.wcs.wcs_world2pix(ra, dec, 1)
-        x = np.floor(x).astype(int)
-        y = np.floor(y).astype(int)
-        bad = (ra<=self.ra_min) | (dec<=self.dec_min) | (ra>=self.ra_max) | (dec>=self.dec_max)
+        x = round_approx(x)
+        y = round_approx(y)
+        bad = (ra<self.ra_min) | (dec<self.dec_min) | (ra>=self.ra_max) | (dec>=self.dec_max)
         pix = x + y*self.nx
         pix[bad] = -9999
         return pix
@@ -245,7 +269,7 @@ class GnomonicPixelScheme:
         pix = np.atleast_1d(pix)
         x = pix % self.nx
         y = pix // self.nx
-        ra, dec = self.wcs.wcs_pix2world(x, y, 0.0)
+        ra, dec = self.wcs.wcs_pix2world(x, y, 1)
         bad = (pix<0) | (pix>=self.npix)
 
         if theta:
@@ -257,6 +281,73 @@ class GnomonicPixelScheme:
         dec[bad] = np.nan
         return ra, dec
 
+    def pixel_area(self, degrees=False):
+        """
+        Return the area of one pixel in radians (default) or degrees
+
+        Parameters
+        ----------
+
+        degrees: bool, optional
+            If true, return the area in square degrees. Default is False.
+
+        Returns
+
+        area: float
+            area in deg^2 or square radians, depending on degrees parameter
+
+        """
+        import astropy.wcs
+        area = astropy.wcs.utils.proj_plane_pixel_area(self.wcs)
+        if degrees:
+            return area
+        else:
+            return area * np.radians(1.)**2
+
+    def vertices(self, pix):
+        from astropy.coordinates import SkyCoord
+
+        pix = np.atleast_1d(pix)
+        x = pix % self.nx
+        y = pix // self.nx
+        ra, dec = self.wcs.wcs_pix2world(x, y, 1)
+        d = 0.5*self.pixel_size
+        p0 = SkyCoord(ra=ra-d, dec=dec-d, unit='deg')
+        p1 = SkyCoord(ra=ra-d, dec=dec+d, unit='deg')
+        p2 = SkyCoord(ra=ra+d, dec=dec+d, unit='deg')
+        p3 = SkyCoord(ra=ra+d, dec=dec-d, unit='deg')
+        out = np.empty((pix.size, 3, 4))
+        out[:, :, 0] = p0.cartesian.get_xyz().value.T
+        out[:, :, 1] = p1.cartesian.get_xyz().value.T
+        out[:, :, 2] = p2.cartesian.get_xyz().value.T
+        out[:, :, 3] = p3.cartesian.get_xyz().value.T
+        return out
+
+
+
+
+def round_approx(x):
+    """
+    Round down to the floor integer value for x, except where x is very close
+    to floor(x)+1, in which case round to that value.
+
+    Parameters
+    ----------
+
+    x: array or float
+
+    Returns
+
+    out: integer array
+        Rounded value of x
+
+    """
+    x = np.atleast_1d(x)
+    out = np.floor(x).astype(int)
+    x_round = np.rint(x)
+    near_integer = np.isclose(x, x_round, rtol=0.0, atol=1e-10)
+    out[near_integer] = x_round[near_integer]
+    return out
 
 def choose_pixelization(**config):
     """Construct a pixelization scheme based on configuration choices.

@@ -43,7 +43,7 @@ Input test data
 You can get input test data from here:
 ```
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.fits
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.hdf
 ```
 
 Or if running on NERSC see the commented out parts of test/test.yml

@@ -44,8 +44,8 @@ def dr1_values_iterator(data_iterator, pixel_scheme, snr_threshold, snr_delta=1.
     for data in data_iterator:
         ra = data['ra']
         dec = data['dec']
-        snr = data['mcal_s2n_r']
-        mags = data['mcal_mag'][:,mag_index]
+        snr = data['snr']
+        mags = data['mag']
         # Get healpix pixels
         pix_nums = pixel_scheme.ang2pix(ra, dec)
 
