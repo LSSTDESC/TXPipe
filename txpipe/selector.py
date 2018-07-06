@@ -1,4 +1,4 @@
-from pipette import PipelineStage
+from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
 
 
@@ -7,7 +7,7 @@ def select(shear_data, pz_data, cuts, variant):
 
     s2n_cut = cuts['T_cut']
     T_cut = cuts['s2n_cut']
-    
+
     s2n_col = 'mcal_T' + variant
     T_col = 'mcal_s2n_r' + variant
     z_col = 'mu' + variant
@@ -37,21 +37,25 @@ def flatten_list(lst):
 
 
 class TXSelector(PipelineStage):
+    """
+    Selects and constructs metacal calibrations for tomographic bins of objects
+
+    """
     name='TXSelector'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('config', YamlFile),
         ('photoz_pdfs', PhotozPDFFile),
     ]
     outputs = [
         ('tomography_catalog', TomographyCatalog)
     ]
-    config_options = {'T_cut':None, 's2n_cut':None, 'delta_gamma': None, 'max_rows':0, 'chunk_rows':10000}
+    config_options = {'T_cut':float, 's2n_cut':float, 'delta_gamma': float, 'max_rows':0,
+                      'chunk_rows':10000, 'zbin_edges':[float]}
 
     def run(self):
         import numpy as np
 
-        info = self.read_config()
+        info = self.config
         output_file = self.setup_output(info)
 
         # Columns we need from the redshift data
@@ -96,7 +100,7 @@ class TXSelector(PipelineStage):
 
 
     def calculate_tomography(self, pz_data, shear_data, info):
-        # for each tomographic bin, select objects in that bin 
+        # for each tomographic bin, select objects in that bin
         # under each metacal choice
         import numpy as np
 
@@ -161,13 +165,13 @@ class TXSelector(PipelineStage):
 
 
         S = 0.0
-        N = 0 
+        N = 0
 
         for S_i, count in selection_biases:
             S += count[:,np.newaxis,np.newaxis]*S_i
             N += count
             # count (4) S_i (4,2,2)
-        # For each bin 
+        # For each bin
         for i,n_i in enumerate(N):
             S[i]/=n_i
 
@@ -182,6 +186,7 @@ class TXSelector(PipelineStage):
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('bin', (n,), dtype='i')
+        group.attrs['nbin'] = nbin
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='i')
         group.create_dataset('R_S', (nbin,2,2), dtype='i')
@@ -199,8 +204,8 @@ class TXSelector(PipelineStage):
             group['R_S'][:,:,:] = S
 
 
-    def read_config(self):
-        config = super().read_config()
+    def read_config(self, args):
+        config = super().read_config(args)
         zbin_edges = config['zbin_edges']
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
         config['zbins'] = zbins

@@ -1,25 +1,24 @@
-"""
-This is a placeholder for an actual photoz pipeline!
+from ceci import PipelineStage
+from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
 
-At the moment it just randomly generates a log-normal PDF for each object.
-Hopefully the real pipeline will be more accurate than that.
+class TXRandomPhotozPDF(PipelineStage):
+    """
+    This is a placeholder for an actual photoz pipeline!
 
-"""
-from pipette import PipelineStage
-from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile
+    At the moment it just randomly generates a log-normal PDF for each object.
+    Hopefully the real pipeline will be more accurate than that.
 
-class TXPhotozPDF(PipelineStage):
-    name='TXPhotozPDF'
+    """
+    name='TXRandomPhotozPDF'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
-        ('config', YamlFile),
+        ('photometry_catalog', HDFFile),
     ]
     outputs = [
         ('photoz_pdfs', PhotozPDFFile),
     ]
 
-    # Configuration options.  If the value is not "None" then it specifies a default value
-    config_options = {'zmax': None, 'nz': None, 'chunk_rows': 10000}
+    # Configuration options.  If the value is not a type then it specifies a default value
+    config_options = {'zmax': float, 'nz': int, 'chunk_rows': 10000, 'bands':'ugriz'}
 
 
     def run(self):
@@ -37,21 +36,23 @@ class TXPhotozPDF(PipelineStage):
         import numpy as np
         import fitsio
 
-        config = self.read_config()
+        config = self.config
         z = np.linspace(0.0, config['zmax'], config['nz'])
         
         # Open the input catalog and check how many objects
         # we will be running on.
-        cat = self.get_input('shear_catalog')
-        hdu = 1
-        nobj = fitsio.read_header(cat, ext=hdu)['NAXIS2']
-
+        cat = self.open_input("photometry_catalog")
+        nobj = cat['photometry/id'].size
+        cat.close()
+        
         # Prepare the output HDF5 file
         output_file = self.prepare_output(nobj, config, z)
 
+        suffices = ["", "_1p", "_1m", "_2p", "_2m"]
+        bands = config['bands']
         # The columns we need to calculate the photo-z.
         # Note that we need all the metacalibrated variants too.
-        cols = ['mcal_pars', 'mcal_pars_1m', 'mcal_pars_1p', 'mcal_pars_2m', 'mcal_pars_2p']
+        cols = [f'mag_{band}_lsst{suffix}' for band in bands for suffix in suffices]
 
         # Loop through chunks of the data.
         # Parallelism is handled in the iterate_input function - 
@@ -59,7 +60,7 @@ class TXPhotozPDF(PipelineStage):
         # responsible for.  The HDF5 parallel output mode means they can
         # all write to the file at once too.
         chunk_rows = config['chunk_rows']
-        for start, end, data in self.iterate_fits('shear_catalog', hdu, cols, chunk_rows):
+        for start, end, data in self.iterate_hdf('photometry_catalog', "photometry", cols, chunk_rows):
             print(f"Process {self.rank} running photo-z for rows {start}-{end}")
 
             # Compute some mock photo-z PDFs and point estimates
@@ -81,7 +82,8 @@ class TXPhotozPDF(PipelineStage):
         import numpy as np
         import scipy.stats
         nz = config['nz']
-        nobj = len(data)
+        # painful how ugly this is in python 3 - we just want any random element
+        nobj = len(next(iter(data.values())))
         medians = np.random.uniform(0.2, 1.0, size=nobj)
         sigmas = 0.05 * (1+medians)
         pdfs = np.empty((nobj,nz), dtype='f4')

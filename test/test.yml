@@ -1,32 +1,30 @@
 launcher: local
-# To run on cori use:
-# launcher: cori
 
 modules: txpipe
 
 
 stages:
-    - name: TXPhotozPDF
-      nprocess: 2
     - name: TXSelector
+      nprocess: 2
+    - name: TXRandomPhotozPDF
+      nprocess: 2
+    - name: TXDiagnosticMaps
+      nprocess: 2
+    - name: TXPhotozStack
       nprocess: 1
     - name: TXRandomCat
-      nprocess: 2
+      nprocess: 1
     - name: TXTwoPoint
       nprocess: 1
-    - name: TX
 
-output_dir: .test/outputs
+output_dir: ./outputs
 
 config: test/config.yml
 
 inputs:
-  # full data file:
-  # shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
-  # path to partial data file on NERSC:
-  # /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/tract008766-shear-cat-0-10000.fits
-  # Local, assuming you have downloaded as in doc/installation.rst
-    shear_catalog: /global/homes/e/elp25/fake_mcal_protoDC2.fits
+    # See README for paths to download these files
+    shear_catalog: ./mock_shear_catalog.fits
+    photometry_catalog: ./mock_photometry_catalog.hdf
     
 resume: False
 log_dir: ./test/logs

@@ -1,22 +1,21 @@
 from ceci import PipelineStage
-from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog, MetacalCatalog, TomographyCatalog
+from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog
+from .utils import choose_pixelization
 import numpy as np
 
 
 class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog)
+        ('diagnostic_maps', DiagnosticMaps),
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
     ]
     config_options = {
         'density': 100.,  # number per square arcmin at median depth depth.  Not sure if this is right.
-        'chunk_rows': 9211556,  # number per square arcmin at median depth depth.  Not sure if this is right.
         'Mstar': 23.0,  # Schecther distribution Mstar parameter
-        'alpha': -1.25,  # Schecther distribution Mstar parameter
+        'alpha': -1.25,  # Schecther distribution alpha parameter
         'sigma_e': 0.27,
     }
 
@@ -25,128 +24,106 @@ class TXRandomCat(PipelineStage):
         import scipy.stats
         import healpy
         from . import randoms
+        # Load the input depth map
+        maps_file = self.open_input('diagnostic_maps')
+        pixel = maps_file['maps/depth/pixel'][:]
+        depth = maps_file['maps/depth/value'][:]
+        nside = maps_file['maps/depth'].attrs['nside']
+        pixelization = maps_file['maps/depth'].attrs['pixelization']
 
-        config = self.config
 
-        self.load_tomography(config)
-        self.load_shear_catalog(config)
-        self.randomize()
+        if len(pixel)==1:
+            raise ValueError("Only one pixel in depth map!")
+
+
+        # Read configuration values
+        Mstar = self.config['Mstar']
+        alpha15 = 1.5 + self.config['alpha']
+        density_at_median = self.config['density']
+        # NEED TO GET SIGMA_E AS A MAP!
+        # BUT THEN ALSO NEED TO AVOID INCLUDING THE ACTUAL LENSING IN IT.
+        # WORK NEEDED!
+        sigma_e = self.config['sigma_e']
+
+        # Work out the normalization of a Schechter distribution
+        # with the given median depth
+        median_depth = np.median(depth)
+        x_med = 10.**(0.4*(Mstar-median_depth))
+        phi_star = density_at_median / scipy.special.gammaincc(alpha15, x_med)
+
+        # Work out the number density in each pixel based on the 
+        # given Schecter distribution
+        x = 10.**(0.4*(Mstar-depth))
+        density = phi_star * scipy.special.gammaincc(alpha15, x)
+
+        # Pixel geometry - area in arcmin^2
+        scheme = choose_pixelization(**dict(maps_file['maps/depth'].attrs))
+        area = scheme.pixel_area(degrees=True) * 60. * 60.
+        vertices = scheme.vertices(pixel)
+
+        # Poisson distribution about mean
+        numbers = scipy.stats.poisson.rvs(density*area, 1)
+        n_total = numbers.sum()
 
         output_file = self.open_output('random_cats')
         group = output_file.create_group('randoms')
-        group = output_file['randoms']
+        ra_out = group.create_dataset('ra', (n_total,), dtype=np.float64)
+        dec_out = group.create_dataset('dec', (n_total,), dtype=np.float64)
+        e1_out = group.create_dataset('e1', (n_total,), dtype=np.float64)
+        e2_out = group.create_dataset('e2', (n_total,), dtype=np.float64)
+        z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
 
-        print('ra',len(self.ra_randoms))
-        print('dec',len(self.dec_randoms))
-        print('g1',len(self.g1_randoms))
-        print('g2',len(self.g2_randoms))
-        print('bins',len(self.binnings_randoms))
+        index = 0
+        # Generate the random points in each pixel
+        for i,(vertices_i,N) in enumerate(zip(vertices,numbers)):
+            # First generate some random ellipticities.
+            # This theta is not the orientation angle, it is the 
+            # angle in the e1,e2 plane
+            e = np.random.normal(scale=sigma_e, size=N)
+            theta = np.random.uniform(0,2*np.pi,size=N)
+            e1 = e * np.cos(theta)
+            e2 = e * np.sin(theta)
 
-        group['ra'] = self.ra_randoms
-        group['dec'] = self.dec_randoms
-        group['e1'] = self.g1_randoms
-        group['e2'] = self.g2_randoms
-        group['bin'] = self.binnings_randoms
+            # Use the pixel vertices to generate the points
+            p1, p2, p3, p4 = vertices_i.T
+            P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
+            # Convert to RA/Dec
+            # This is not healpy-dependent so we just use it as a convenience function
+            ra, dec = healpy.vec2ang(P, lonlat=True)
+
+            # Random redshift.
+            # Placeholder!
+            z = np.random.uniform(0, 2.0, N)
+            
+            # Save output
+            ra_out[index:index+N] = ra
+            dec_out[index:index+N] = dec
+            e1_out[index:index+N] = e1
+            e2_out[index:index+N] = e2
+            z_out[index:index+N] = z
+            index += N
 
         output_file.close()
 
-    def load_shear_catalog(self,config):
 
-        # Columns we need from the shear catalog
-        cat_cols = ['ra','dec','mcal_g','mcal_flags']
-        #cat_cols = ['RA','DEC','GAMMA1','GAMMA2']
-        #cat_cols = ['ra','dec','shear_1','shear_2']
-        chunk_rows = config['chunk_rows'] # We are looking at all the data at once for now
-        #chunk_rows = 9211556
-        iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
-
-        for start, end, data in self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows):
-
-            #mcal_g1 = data['GAMMA1']
-            #mcal_g2 = data['GAMMA2']
-            #ra = data['RA']
-            #dec = data['DEC']
-            #mcal_g1 = data['shear_1']
-            #mcal_g2 = data['shear_2']
-            mcal_g1 = data['mcal_g'][:,0]
-            mcal_g2 = data['mcal_g'][:,1]
-            ra = data['ra']
-            dec = data['dec']
-            flags = data['mcal_flags']
-            #weights = data['mcal_weight']
-
-        #mask = (flags == 0)
-
-        self.mcal_g1 = mcal_g1#[mask]
-        self.mcal_g2 = mcal_g2#[mask]
-        self.ra = ra#[mask]
-        self.dec = dec#[mask]
-        #self.weights = weights[mask]
+def pixel_boundaries(props, pixel):
+    scheme = choose_pixelization(**dict(props))
+    # area in arcmin^2
+    area = scheme.pixel_area(degrees=True) * 60 * 60
+    boundaries = scheme.pixel_boundaries()
 
 
-        print('bins are', self.binning)
+    if props['pixelization']=='healpix':
+        boundaries = healpy.boundaries(props['nside'], pixel)
+        area = healpy.nside2pixarea(nside, degrees=True) * 60.*60.
+    elif props['pixelization'] in ['tangent', 'tan', 'gnomonic']:
+        boundaries = pixel_boundaries(maps_file['maps/depth'].attrs)
+        pix_size_deg = maps_file['maps/depth'].attrs['pixel_size']
+        area = (pix_size_deg*60.*60.)**2
 
-    def load_tomography(self,config):
+    else:
+        raise ValueError(f"Unknown pixelization scheme: {pixelization}")
 
-        # Columns we need from the tomography catalog
-        tom_cols = ['bin']
-        bias_cols = ['R_gamma'] #TODO R_S - see Sub.Sec. 4.1 in DES Y1 paper R = Rgamma + Rs
-
-        chunk_rows = config['chunk_rows']
-
-        for start, end, data in self.iterate_hdf('tomography_catalog','tomography',tom_cols, chunk_rows):
-            self.binning = data['bin']
-
-        for start, end, data in self.iterate_hdf('tomography_catalog','multiplicative_bias',bias_cols, chunk_rows):
-            self.r_gamma = data['R_gamma']
-
-    def randomize(self):
-        # Create a simple random catalog
-
-        ra_randoms = []
-        dec_randoms = []
-        g1_randoms = []
-        g2_randoms = []
-        binnings_randoms = []
-
-        for bin in [-1,  0,  1,  2,  3]:
-            mask = (self.binning == bin)
-
-            ra_min = np.min(self.ra[mask])
-            ra_max = np.max(self.ra[mask])
-            dec_min = np.min(self.dec[mask])
-            dec_max = np.max(self.dec[mask])
-            g1_min = np.min(self.mcal_g1[mask])
-            g1_max =  np.max(self.mcal_g1[mask])
-            g2_max = np.max(self.mcal_g2[mask])
-            g2_min = np.min(self.mcal_g2[mask])
-            size = len(self.mcal_g2[mask])
-            n = 1
-
-            #rand_ra = np.random.uniform(ra_min, ra_max, len(self.ra[mask])).tolist()
-            #rand_sindec = np.random.uniform(np.sin(dec_min), np.sin(dec_max), len(self.ra[mask])).tolist()
-            #rand_dec = np.arcsin(rand_sindec).tolist()
-            
-            rand_ra = np.random.uniform(ra_min, ra_max, size=n*size).tolist()
-            dec = np.random.uniform(np.sin(np.deg2rad(dec_min)), np.sin(np.deg2rad(dec_max)), size=n*size)
-            dec = np.arcsin(dec, out=dec)
-            rand_dec = np.rad2deg(dec, out=dec).tolist()
-
-            rand_g1 = np.random.uniform(g1_min, g1_max, len(self.mcal_g1[mask])).tolist()
-            rand_g2 = np.random.uniform(g2_min, g2_max, len(self.mcal_g2[mask])).tolist()
-
-            ra_randoms += rand_ra
-            dec_randoms += rand_dec
-            g1_randoms += rand_g1
-            g2_randoms += rand_g2
-
-            binnings_randoms += [bin]*len(self.ra[mask])*n
-
-        self.ra_randoms = ra_randoms
-        self.dec_randoms = dec_randoms
-        self.g1_randoms = g1_randoms
-        self.g2_randoms = g2_randoms
-        self.binnings_randoms = binnings_randoms
 
 
 if __name__ == '__main__':

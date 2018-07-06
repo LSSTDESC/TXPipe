@@ -1,4 +1,4 @@
-launcher: cori
+launcher: cori-interactive
 
 modules: txpipe
 
@@ -6,25 +6,19 @@ modules: txpipe
 stages:
     - name: TXSelector
       nprocess: 8
-      nodes: 1
     - name: TXRandomPhotozPDF
       nprocess: 8
-      nodes: 1
     - name: TXDiagnosticMaps
       nprocess: 8
-      nodes: 1
     - name: TXPhotozStack
-      # Does not run in parallel
       nprocess: 1
-
 
 output_dir: ./outputs
 
 config: test/config.yml
 
 inputs:
-    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/mock_shear_catalog.fits
-    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/mock_photometry_catalog.hdf
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
     
 resume: False
 log_dir: ./test/logs

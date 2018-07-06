@@ -1,5 +1,11 @@
-*/__pycache__
+B1;95;0cB1;95;0c*/__pycache__
 log.txt
 outputs/*.hdf
 outputs/*.sacc
 outputs/*.fits
+.ropeproject
+__pycache__/
+.ipengine_logs/
+runinfo/
+test/logs/
+ipengine.json
