@@ -37,6 +37,17 @@ module load cfitsio/3.370-reentrant
 source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
 ```
 
+Input test data
+---------------
+
+You can get input test data from here:
+```
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.fits
+```
+
+Or if running on NERSC see the commented out parts of test/test.yml
+
 Running the pipeline
 --------------------
 
