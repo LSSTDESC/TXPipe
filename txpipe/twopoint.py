@@ -85,6 +85,7 @@ class TXTwoPoint(PipelineStage):
                         continue
                     else:
                         calcs.append((i,j,k))
+        return calcs
 
     def setup_results(self):
 
