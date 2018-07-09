@@ -43,36 +43,42 @@ class TXTwoPoint(PipelineStage):
 
         """
 
-        import os
+        if self.comm:
+            self.comm.Barrier()
 
-        output_file = self.setup_output()
-
-        # MPI Information
-        rank = self.rank
-        size = self.size
-        comm = self.comm
-
-        if comm:
-            comm.Barrier()
-
-        # Read in the number of bins
-
+        # Get the number of bins from the 
+        # tomography input file
         zbins = self.read_zbins()
         nbins = len(zbins)
 
         print(f'Running with {nbins} tomographic bins')
 
+        # Various setup and input functions.
         self.load_tomography()
-
         self.load_shear_catalog()
-
         self.load_random_catalog()
+        self.setup_results()
 
+        # TODO: Parallelize this loop
+        calcs = self.select_calculations(nbins)
+        for i,j,k in calcs:
+            self.call_treecorr(i, j, k)
+
+        # Prepare the HDF5 output.
+        # When we do this in parallel we can probably
+        # just copy all the results to the root process
+        # to output
+        output_file = self.setup_output()
+        self.write_output(output_file)
+        output_file.close()
+
+
+    def select_calculations(self, nbins):
         calcs = []
+        # type of correlation: 0=shear-shear, 1=shear-pos, 2=pos-pos
         for k in [0,1,2]:
             for i in range(nbins):
                 for j in range(nbins):
-                    # type of correlation: 0=shear-shear, 1=shear-pos, 2=pos-pos
                     # For shear-shear and pos-pos we don't need both
                     # i,j and j,i (by symmetry they are the same)
                     if (j>i) and k in [0,2]:
@@ -80,16 +86,7 @@ class TXTwoPoint(PipelineStage):
                     else:
                         calcs.append((i,j,k))
 
-
-        self.setup_functions()
-
-        for i,j,k in calcs:
-            self.call_treecorr(i, j, k)
-
-        self.write_output(output_file)
-        output_file.close()
-
-    def setup_functions(self):
+    def setup_results(self):
 
         self.theta_gg = []
         self.xip = []
@@ -127,8 +124,6 @@ class TXTwoPoint(PipelineStage):
     def setup_output(self):
         outfile = self.open_output('twopoint_data')
         group = outfile.create_group('twopoint')
-
-
         return outfile
 
     def write_output(self,outfile):
@@ -181,7 +176,7 @@ class TXTwoPoint(PipelineStage):
             self.weight_gg.append(weight_gg)
             self.bin_ij_gg.append((i,j))
 
-        if (k==1): # gammat
+        elif (k==1): # gammat
             theta_ng, gammat, gammaterr, npairs_ng, weight_ng = self.calc_pos_shear(i,j)
             if i==j:
                 npairs_ng/=2
@@ -193,7 +188,7 @@ class TXTwoPoint(PipelineStage):
             self.weight_ng.append(weight_ng)
             self.bin_ij_ng.append((i,j))
 
-        if (k==2): # wtheta
+        elif (k==2): # wtheta
             theta_nn,wtheta,wthetaerr,npairs_nn,weight_nn = self.calc_pos_pos(i,j)
             if i==j:
                 npairs_nn/=2
@@ -229,7 +224,11 @@ class TXTwoPoint(PipelineStage):
 
         m1,m2,mask = self.get_m(j)
 
-        cat_j = treecorr.Catalog(g1 = (self.mcal_g1[mask] - np.mean(self.mcal_g1[mask]))/m1, g2 = (self.mcal_g2[mask] - np.mean(self.mcal_g2[mask]))/m2 ,ra=self.ra[mask], dec=self.dec[mask], ra_units='degree', dec_units='degree')
+        cat_j = treecorr.Catalog(
+            g1 = (self.mcal_g1[mask] - np.mean(self.mcal_g1[mask]))/m1,
+            g2 = (self.mcal_g2[mask] - np.mean(self.mcal_g2[mask]))/m2,
+            ra=self.ra[mask], dec=self.dec[mask],
+            ra_units='degree', dec_units='degree')
 
         gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i,cat_j)
@@ -239,7 +238,6 @@ class TXTwoPoint(PipelineStage):
         xim = gg.xim
         xiperr = ximerr = np.sqrt(gg.varxi)
 
-        #gg.write('test_twopoint')
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
     def calc_pos_shear(self,i,j):
@@ -359,21 +357,16 @@ class TXTwoPoint(PipelineStage):
 
         mcal_g1 = data['mcal_g'][:,0]
         mcal_g2 = data['mcal_g'][:,1]
+
         if self.config['flip_g2']:
-            mcal_g2 = -mcal_g2
-        # mcal_mag = data['mcal_mag']
-        # mcal_s2n = data['mcal_s2n_r']
-        # mcal_T = data['mcal_T']
+            mcal_g2 *= -1
+
         ra = data['ra']
         dec = data['dec']
         flags = data['mcal_flags']
-        #weights = data['mcal_weight']
+        # TODO: WEIGHTS
 
-        cut1  = (flags == 0)
-        #cut2 = (data['mcal_s2n_r'] > 10)
-        #cut3 = (data['mcal_T'] / data['psfrec_T']) > 0.5)
-
-        mask = cut1#&cut2&cut3
+        mask  = (flags == 0)
 
         self.mcal_g1 = mcal_g1[mask]
         self.mcal_g2 = mcal_g2[mask]
@@ -395,7 +388,6 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('random_cats')
         data = f['randoms']
-
         self.random_dec = data['dec'][:]
         self.random_e1 =  data['e1'][:]
         self.random_e2 =  data['e2'][:]
@@ -406,11 +398,7 @@ class TXTwoPoint(PipelineStage):
 
     def select_lens(self):
         # Extremely simple lens selector simply by bin
-
-        #mag_cut = self.mcal_mag < 21
-        bin_cut = self.binning == 0
-
-        mask = bin_cut#&mag_cut
+        mask = self.binning == 0
 
         m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11, taking the mean for the bin
         m2 = np.mean(self.r_gamma[mask][:,1,1]) #R22
