@@ -98,21 +98,21 @@ class TXTwoPoint(PipelineStage):
         self.ximerr = []
         self.npairs_gg = []
         self.weight_gg = []
-        self.calc_gg = []
+        self.bin_ij_gg = []
 
         self.theta_ng = []
         self.gammat = []
         self.gammaterr = []
         self.npairs_ng = []
         self.weight_ng = []
-        self.calc_ng = []
+        self.bin_ij_ng = []
 
         self.theta_nn = []
         self.wtheta = []
         self.wthetaerr = []
         self.npairs_nn = []
         self.weight_nn = []
-        self.calc_nn = []
+        self.bin_ij_nn = []
 
 
 
@@ -141,21 +141,21 @@ class TXTwoPoint(PipelineStage):
         group['ximerr'] = self.ximerr
         group['npairs_gg'] = self.npairs_gg
         group['weight_gg'] = self.weight_gg
-        group['calc_gg'] = self.calc_gg
+        group['bin_ij_gg'] = self.bin_ij_gg
 
         group['theta_ng'] = self.theta_ng
         group['gammat'] = self.gammat
         group['gammaterr'] = self.gammaterr
         group['npairs_ng'] = self.npairs_ng
         group['weight_ng'] = self.weight_ng
-        group['calc_ng'] = self.calc_ng
+        group['bin_ij_ng'] = self.bin_ij_ng
 
         group['theta_nn'] = self.theta_nn
         group['wtheta'] = self.wtheta
         group['wthetaerr'] = self.wthetaerr
         group['npairs_nn'] = self.npairs_nn
         group['weight_nn'] = self.weight_nn
-        group['calc_nn'] = self.calc_nn
+        group['bin_ij_nn'] = self.bin_ij_nn
 
     def call_treecorr(self,i,j,k):
         """
@@ -179,7 +179,7 @@ class TXTwoPoint(PipelineStage):
             self.ximerr.append(ximerr)
             self.npairs_gg.append(npairs_gg)
             self.weight_gg.append(weight_gg)
-            self.calc_gg.append((i,j))
+            self.bin_ij_gg.append((i,j))
 
         if (k==1): # gammat
             theta_ng, gammat, gammaterr, npairs_ng, weight_ng = self.calc_pos_shear(i,j)
@@ -191,7 +191,7 @@ class TXTwoPoint(PipelineStage):
             self.gammaterr.append(gammaterr)
             self.npairs_ng.append(npairs_ng)
             self.weight_ng.append(weight_ng)
-            self.calc_ng.append((i,j))
+            self.bin_ij_ng.append((i,j))
 
         if (k==2): # wtheta
             theta_nn,wtheta,wthetaerr,npairs_nn,weight_nn = self.calc_pos_pos(i,j)
@@ -203,7 +203,7 @@ class TXTwoPoint(PipelineStage):
             self.wthetaerr.append(wthetaerr)
             self.npairs_nn.append(npairs_nn)
             self.weight_nn.append(weight_nn)
-            self.calc_nn.append((i,j))
+            self.bin_ij_nn.append((i,j))
 
 
 
