@@ -27,6 +27,7 @@ class TXTwoPoint(PipelineStage):
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
+        'verbose':1,
         }
 
     def run(self):
@@ -59,14 +60,12 @@ class TXTwoPoint(PipelineStage):
         zbins = self.read_zbins()
         nbins = len(zbins)
 
-        print('number of bins', nbins)
-        #Load the tomography catalog
+        print(f'Running with {nbins} tomographic bins')
+
         self.load_tomography()
 
-        #Load the shear catalog
         self.load_shear_catalog()
 
-        #Load the random catalog
         self.load_random_catalog()
 
         calcs = []
@@ -116,6 +115,7 @@ class TXTwoPoint(PipelineStage):
         self.calc_nn = []
 
 
+
     def read_zbins(self):
         tomo = self.open_input('tomography_catalog')
         d = dict(tomo['tomography'].attrs)
@@ -157,9 +157,6 @@ class TXTwoPoint(PipelineStage):
         group['weight_nn'] = self.weight_nn
         group['calc_nn'] = self.calc_nn
 
-        #print('theta is', self.theta)
-        #print('theta type is', type(self.theta))
-
     def call_treecorr(self,i,j,k):
         """
         This is a wrapper for interaction with treecorr.
@@ -168,12 +165,10 @@ class TXTwoPoint(PipelineStage):
         # k==1: gammat
         # k==2: wtheta
 
-        verbose=0
         # Cori value
-        num_threads=self.config['cores_per_task']
 
         if (k==0): # xi+-
-            theta_gg,xip, xim, xiperr, ximerr, npairs_gg, weight_gg = self.calc_shear_shear(i,j,verbose,num_threads)
+            theta_gg,xip, xim, xiperr, ximerr, npairs_gg, weight_gg = self.calc_shear_shear(i,j)
             if i==j:
                 npairs_gg/=2
                 weight_gg/=2
@@ -187,7 +182,7 @@ class TXTwoPoint(PipelineStage):
             self.calc_gg.append((i,j))
 
         if (k==1): # gammat
-            theta_ng, gammat, gammaterr, npairs_ng, weight_ng = self.calc_pos_shear(i,j,verbose,num_threads)
+            theta_ng, gammat, gammaterr, npairs_ng, weight_ng = self.calc_pos_shear(i,j)
             if i==j:
                 npairs_ng/=2
                 weight_ng/=2
@@ -199,7 +194,7 @@ class TXTwoPoint(PipelineStage):
             self.calc_ng.append((i,j))
 
         if (k==2): # wtheta
-            theta_nn,wtheta,wthetaerr,npairs_nn,weight_nn = self.calc_pos_pos(i,j,verbose,num_threads)
+            theta_nn,wtheta,wthetaerr,npairs_nn,weight_nn = self.calc_pos_pos(i,j)
             if i==j:
                 npairs_nn/=2
                 weight_nn/=2
@@ -222,7 +217,7 @@ class TXTwoPoint(PipelineStage):
 
         return m1, m2, mask
 
-    def calc_shear_shear(self,i,j,verbose,num_threads):
+    def calc_shear_shear(self,i,j):
         print(f"Calculating shear-shear bin pair ({i},{j})")
         m1,m2,mask = self.get_m(i)
 
@@ -236,15 +231,7 @@ class TXTwoPoint(PipelineStage):
 
         cat_j = treecorr.Catalog(g1 = (self.mcal_g1[mask] - np.mean(self.mcal_g1[mask]))/m1, g2 = (self.mcal_g2[mask] - np.mean(self.mcal_g2[mask]))/m2 ,ra=self.ra[mask], dec=self.dec[mask], ra_units='degree', dec_units='degree')
 
-        gg = treecorr.GGCorrelation(
-            nbins=self.config['nbins'],
-            min_sep=self.config['min_sep'],
-            max_sep=self.config['max_sep'],
-            sep_units=self.config['sep_units'],
-            bin_slop=self.config['bin_slop'],
-            verbose=verbose,
-            num_threads=num_threads)
-
+        gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i,cat_j)
 
         theta=np.exp(gg.meanlogr)
@@ -255,20 +242,10 @@ class TXTwoPoint(PipelineStage):
         #gg.write('test_twopoint')
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
-    def calc_pos_shear(self,i,j,verbose,num_threads):
+    def calc_pos_shear(self,i,j):
         print(f"Calculating position-shear bin pair ({i},{j})")
 
         #TODO check if we want to subtract out a mean shear
-
-        # Define the binning.  Binning in TreeCorr uses bins that are equally spaced in log(r).
-        # (i.e. Natural log, not log10.)  There are four parameters of which you may specify any 3.
-        min_sep= 2.5          # The minimum separation that you want included.
-        max_sep= 250        # The maximum separation that you want included.
-        nbins = 20          # The number of bins
-        bin_slop = 0.1     # The width of the bins in log(r).  In this case automatically calculated
-                    # to be bin_size = log(max_sep/min_sep) / nbins ~= 0.06
-        sep_units= 'arcmin'   # The units of min_sep, max_sep TODO Figure out what we actually want from these- add them to the configuration file maybe?
-
         m1, m2, lensmask = self.select_lens()
 
         ranmask_i = self.random_binning==i
@@ -297,10 +274,8 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree', 
             dec_units='degree')
 
-        ng = treecorr.NGCorrelation(nbins=self.config['nbins'],min_sep=self.config['min_sep'],max_sep=self.config['max_sep'],sep_units=self.config['sep_units'],
-                            bin_slop=self.config['bin_slop'],verbose=verbose,num_threads=num_threads)
-        rg = treecorr.NGCorrelation(nbins=self.config['nbins'],min_sep=self.config['min_sep'],max_sep=self.config['max_sep'],sep_units=self.config['sep_units'],
-                            bin_slop=self.config['bin_slop'],verbose=verbose,num_threads=num_threads)
+        ng = treecorr.NGCorrelation(self.config)
+        rg = treecorr.NGCorrelation(self.config)
 
         ng.process(cat_lens,cat_j)
         rg.process(rancat_i,cat_j)
@@ -312,39 +287,41 @@ class TXTwoPoint(PipelineStage):
 
         return theta, gammat, gammaterr, ng.npairs, ng.weight
 
-    def calc_pos_pos(self,i,j,verbose,num_threads):
+    def calc_pos_pos(self,i,j):
         print(f"Calculating position-position bin pair ({i},{j})")
 
         m1, m2, lensmask = self.select_lens()
 
-        #test_mask = [bool(random.getrandbits(1)) for i in range(390935)]
-
-        #cat_lens = treecorr.Catalog(g1 = self.mcal_g1[lensmask]/m1, g2 = self.mcal_g2[lensmask]/m2,ra=self.ra[lensmask], dec=self.dec[lensmask], ra_units='degree', dec_units='degree')
-        cat_lens = treecorr.Catalog(ra=self.ra[lensmask], dec=self.dec[lensmask], ra_units='degree', dec_units='degree')
+        cat_lens = treecorr.Catalog(
+            ra=self.ra[lensmask], dec=self.dec[lensmask],
+            ra_units='degree', dec_units='degree')
 
         m1,m2,mask = self.get_m(j)
 
-        #cat_j = treecorr.Catalog(g1=self.mcal_g1[mask]/m1, g2 = -self.mcal_g2[mask]/m2, ra=self.ra[mask], dec=self.dec[mask], ra_units='degree', dec_units='degree')
-        cat_j = treecorr.Catalog(ra=self.ra[mask], dec=self.dec[mask], ra_units='degree', dec_units='degree')
+        cat_j = treecorr.Catalog(
+            ra=self.ra[mask], dec=self.dec[mask],
+            ra_units='degree', dec_units='degree')
 
         mask = self.random_binning==i
-        rancat_i  = treecorr.Catalog(ra=self.random_ra[mask], dec=self.random_dec[mask], ra_units='degree', dec_units='degree')
+        rancat_i  = treecorr.Catalog(
+            ra=self.random_ra[mask], dec=self.random_dec[mask],
+            ra_units='degree', dec_units='degree')
 
         mask = self.random_binning==j
-        rancat_j  = treecorr.Catalog(ra=self.random_ra[mask], dec=self.random_dec[mask], ra_units='degree', dec_units='degree')
+        rancat_j  = treecorr.Catalog(
+            ra=self.random_ra[mask], dec=self.random_dec[mask],
+            ra_units='degree', dec_units='degree')
 
-        nn = treecorr.NNCorrelation(nbins=self.config['nbins'],min_sep=self.config['min_sep'],max_sep=self.config['max_sep'],sep_units=self.config['sep_units'],
-                            bin_slop=self.config['bin_slop'],verbose=verbose,num_threads=num_threads)
-        rn = treecorr.NNCorrelation(nbins=self.config['nbins'],min_sep=self.config['min_sep'],max_sep=self.config['max_sep'],sep_units=self.config['sep_units'],
-                            bin_slop=self.config['bin_slop'],verbose=verbose,num_threads=num_threads)
-        nr = treecorr.NNCorrelation(nbins=self.config['nbins'],min_sep=self.config['min_sep'],max_sep=self.config['max_sep'],sep_units=self.config['sep_units'],
-                            bin_slop=self.config['bin_slop'],verbose=verbose,num_threads=num_threads)
-        rr = treecorr.NNCorrelation(nbins=self.config['nbins'],min_sep=self.config['min_sep'],max_sep=self.config['max_sep'],sep_units=self.config['sep_units'],
-                            bin_slop=self.config['bin_slop'],verbose=verbose,num_threads=num_threads)
+
+        nn = treecorr.NNCorrelation(self.config)
+        rn = treecorr.NNCorrelation(self.config)
+        nr = treecorr.NNCorrelation(self.config)
+        rr = treecorr.NNCorrelation(self.config)
+
         nn.process(cat_lens)
-        rn.process(rancat_i,cat_lens)
-        nr.process(cat_lens,rancat_j)
-        rr.process(rancat_i,rancat_j)
+        rn.process(rancat_i, cat_lens)
+        nr.process(cat_lens, rancat_j)
+        rr.process(rancat_i, rancat_j)
 
         theta=np.exp(nn.meanlogr)
         wtheta,wthetaerr=nn.calculateXi(rr,dr=nr,rd=rn)

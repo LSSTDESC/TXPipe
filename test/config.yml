@@ -1,4 +1,5 @@
 TXProtoDC2Mock: {}
+
 TXRandomPhotozPDF:
     nz: 301
     zmax: 3.0
@@ -18,11 +19,12 @@ TXSelector:
 
 TXRandomCat:
     chunk_rows: 1084192
+    density: 10 # gals per sq arcmin
 
 TXTwoPoint:
     binslop: 0.1
     delta_gamma: 0.02
-    cores_per_task: 8
+    num_threads: 4  # per process
 
 TXDiagnosticMaps:
     chunk_rows: 10000  # Number of rows to process at once
