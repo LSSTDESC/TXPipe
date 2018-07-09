@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog
+from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog
 from .utils import choose_pixelization
 import numpy as np
 
@@ -8,6 +8,7 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
+        ('tomography_catalog', TomographyCatalog),
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
@@ -65,6 +66,8 @@ class TXRandomCat(PipelineStage):
         numbers = scipy.stats.poisson.rvs(density*area, 1)
         n_total = numbers.sum()
 
+        zbins = self.read_zbins()
+
         output_file = self.open_output('random_cats')
         group = output_file.create_group('randoms')
         ra_out = group.create_dataset('ra', (n_total,), dtype=np.float64)
@@ -72,6 +75,7 @@ class TXRandomCat(PipelineStage):
         e1_out = group.create_dataset('e1', (n_total,), dtype=np.float64)
         e2_out = group.create_dataset('e2', (n_total,), dtype=np.float64)
         z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
+        bin_out = group.create_dataset('bin', (n_total,), dtype=np.float64)
 
         index = 0
         # Generate the random points in each pixel
@@ -94,6 +98,13 @@ class TXRandomCat(PipelineStage):
             # Random redshift.
             # Placeholder!
             z = np.random.uniform(0, 2.0, N)
+
+            bin_index = np.repeat(-1, N)
+            for i, (zlow,zhigh) in enumerate(zbins):
+                in_bin = (z>zlow) & (z<zhigh)
+                bin_index[in_bin] = i
+
+
             
             # Save output
             ra_out[index:index+N] = ra
@@ -101,9 +112,19 @@ class TXRandomCat(PipelineStage):
             e1_out[index:index+N] = e1
             e2_out[index:index+N] = e2
             z_out[index:index+N] = z
+            bin_out[index:index+N] = bin_index
             index += N
 
         output_file.close()
+
+    def read_zbins(self):
+        tomo = self.open_input('tomography_catalog')
+        d = dict(tomo['tomography'].attrs)
+        tomo.close()
+        nbin = d['nbin']
+        zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
+        return zbins
+
 
 
 def pixel_boundaries(props, pixel):
