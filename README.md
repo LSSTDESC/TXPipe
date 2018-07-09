@@ -22,6 +22,7 @@ Requires python3, numpy, scipy, pyyaml, fitsio, h5py (which in turn needs HDF5),
 
 Needs the ceci DESC library on the python path (which is not quite stable enough to be worth a setup.py yet).
 
+On NERSC (Cori) - see the instructions below
 
 Cori
 ----
@@ -57,6 +58,13 @@ Then you can run:
 ```bash
 ceci test/test.yml
 ```
+
+or on Cori:
+```bash
+salloc -N 1 -q interactive -C haswell -t 0:30:00
+ceci test/cori-interactive.yml
+```
+
 to run the implemented stages
 
 Implementation
@@ -66,7 +74,7 @@ Each pipeline stage is implemented as a python class inheriting from ceci.Pipeli
 
 - have a "name" attribute string.
 - have class attributes "inputs" and "outputs", each of which is a list of tuple pairs with a string tag and a FileType class.
-- (optionally)  define a "config_options" dictionary of options it expects to find in its section of the main config file, with the value as a default for the option or "None" for no default.
+- define a "config_options" dictionary of options it expects to find in its section of the main config file, with the value as a default for the option or a type if there is no default.
 - implement a "run" method doing the actual work of the class.  Your class should then call the methods described below to interact with the pipeline
 
 
@@ -99,7 +107,7 @@ Look for a section in a yaml input file tagged "config"
 and read it.  If the config_options class variable exists in the class
 then it checks those options are set or uses any supplied defaults:
 
-- self.read_config()
+- self.config['name_of_option']
 
 Parallelization tools - MPI attributes:
 
