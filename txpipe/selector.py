@@ -182,11 +182,15 @@ class TXSelector(PipelineStage):
 
     def setup_output(self, info):
         n = self.open_input('shear_catalog')[1].get_nrows()
-        nbin = len(info['zbins'])
+        zbins = info['zbins']
+        nbin = len(zbins)
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('bin', (n,), dtype='i')
         group.attrs['nbin'] = nbin
+        for i in range(nbin):
+            group.attrs[f'zmin_{i}'] = zbins[i][0]
+            group.attrs[f'zmax_{i}'] = zbins[i][1]
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='i')
         group.create_dataset('R_S', (nbin,2,2), dtype='i')
