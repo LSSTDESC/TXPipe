@@ -196,7 +196,6 @@ class TXTwoPoint(PipelineStage):
 
         mask = (self.binning == i)
 
-        #[:1066016]
         m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11, taking the mean for the bin, TODO check if that's what we want to do
         m2 = np.mean(self.r_gamma[mask][:,1,1]) #R22
 
