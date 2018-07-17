@@ -4,7 +4,14 @@ import h5py
 import numpy as np
 import treecorr
 import random
+import collections
+import sys
 
+# This creates a little mini-type, like a struct,
+# for holding individual measurements
+Measurement = collections.namedtuple(
+    'Measurement', 
+    ['corr_type', 'theta', 'value', 'error', 'npair', 'weight', 'i', 'j'])
 
 
 class TXTwoPoint(PipelineStage):
@@ -59,18 +66,24 @@ class TXTwoPoint(PipelineStage):
         self.load_random_catalog()
         self.setup_results()
 
-        # TODO: Parallelize this loop
         calcs = self.select_calculations(nbins)
-        for i,j,k in calcs:
+        # This splits the calculations among the parallel bins
+        # It's not necessarily the most optimal way of doing it
+        # as it's not dynamic, just a round-robin assignment,
+        # but for this case I would expect it to be mostly finer
+        for i,j,k in self.split_tasks_by_rank(calcs):
             self.call_treecorr(i, j, k)
+
+        self.collect_results()
 
         # Prepare the HDF5 output.
         # When we do this in parallel we can probably
         # just copy all the results to the root process
         # to output
-        output_file = self.setup_output()
-        self.write_output(output_file)
-        output_file.close()
+        if self.rank==0:
+            output_file = self.setup_output()
+            self.write_output(output_file)
+            output_file.close()
 
 
     def select_calculations(self, nbins):
@@ -87,31 +100,23 @@ class TXTwoPoint(PipelineStage):
                         calcs.append((i,j,k))
         return calcs
 
+    def collect_results(self):
+        if self.comm is None:
+            return
+
+        self.results = self.comm.gather(self.results, root=0)
+
+        if self.rank==0:
+            # Concatenate results
+            self.results = sum(self.results, [])
+
+            # Order by type, then bin i, then bin j
+            order = [b'xip', b'xim', b'gammat', b'wtheta']
+            key = lambda r: (order.index(r.corr_type), r.i, r.j)
+            self.results = sorted(self.results, key=key)
+
     def setup_results(self):
-
-        self.theta_gg = []
-        self.xip = []
-        self.xim = []
-        self.xiperr = []
-        self.ximerr = []
-        self.npairs_gg = []
-        self.weight_gg = []
-        self.bin_ij_gg = []
-
-        self.theta_ng = []
-        self.gammat = []
-        self.gammaterr = []
-        self.npairs_ng = []
-        self.weight_ng = []
-        self.bin_ij_ng = []
-
-        self.theta_nn = []
-        self.wtheta = []
-        self.wthetaerr = []
-        self.npairs_nn = []
-        self.weight_nn = []
-        self.bin_ij_nn = []
-
+        self.results = []
 
 
     def read_zbins(self):
@@ -130,28 +135,24 @@ class TXTwoPoint(PipelineStage):
     def write_output(self,outfile):
         # TODO fix this to account for the case where we only do a certain number of calcs
         group = outfile['twopoint']
-        group['theta_gg'] = self.theta_gg
-        group['xip'] = self.xip
-        group['xim'] = self.xim
-        group['xiperr'] = self.xiperr
-        group['ximerr'] = self.ximerr
-        group['npairs_gg'] = self.npairs_gg
-        group['weight_gg'] = self.weight_gg
-        group['bin_ij_gg'] = self.bin_ij_gg
+        fields = ['corr_type', 'theta', 'value', 'error', 'npair', 'weight', 'i', 'j']
+        output = {f:list() for f in fields}
 
-        group['theta_ng'] = self.theta_ng
-        group['gammat'] = self.gammat
-        group['gammaterr'] = self.gammaterr
-        group['npairs_ng'] = self.npairs_ng
-        group['weight_ng'] = self.weight_ng
-        group['bin_ij_ng'] = self.bin_ij_ng
+        for corr_type in [b'xip', b'xim', b'gammat', b'wtheta']:
+            data = [r for r in self.results if r.corr_type==corr_type]
+            for bin_pair_data in data:
+                n = len(bin_pair_data.theta)
+                for f in fields:
+                    v = getattr(bin_pair_data, f)
+                    if np.isscalar(v):
+                        v = [v for i in range(n)]
+                    else:
+                        v = v.tolist()
+                    output[f] += v
 
-        group['theta_nn'] = self.theta_nn
-        group['wtheta'] = self.wtheta
-        group['wthetaerr'] = self.wthetaerr
-        group['npairs_nn'] = self.npairs_nn
-        group['weight_nn'] = self.weight_nn
-        group['bin_ij_nn'] = self.bin_ij_nn
+        for name, values in output.items():
+            values = np.array(values)
+            group[name] = values
 
     def call_treecorr(self,i,j,k):
         """
@@ -163,43 +164,31 @@ class TXTwoPoint(PipelineStage):
 
         # Cori value
 
+
         if (k==0): # xi+-
-            theta_gg,xip, xim, xiperr, ximerr, npairs_gg, weight_gg = self.calc_shear_shear(i,j)
+            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calc_shear_shear(i,j)
             if i==j:
-                npairs_gg/=2
-                weight_gg/=2
-            self.theta_gg.append(theta_gg)
-            self.xip.append(xip)
-            self.xim.append(xim)
-            self.xiperr.append(xiperr)
-            self.ximerr.append(ximerr)
-            self.npairs_gg.append(npairs_gg)
-            self.weight_gg.append(weight_gg)
-            self.bin_ij_gg.append((i,j))
+                npairs/=2
+                weight/=2
+
+            self.results.append(Measurement(b"xip", theta, xip, xiperr, npairs, weight, i, j))
+            self.results.append(Measurement(b"xip", theta, xim, ximerr, npairs, weight, i, j))
 
         elif (k==1): # gammat
-            theta_ng, gammat, gammaterr, npairs_ng, weight_ng = self.calc_pos_shear(i,j)
+            theta, val, err, npairs, weight = self.calc_pos_shear(i,j)
             if i==j:
-                npairs_ng/=2
-                weight_ng/=2
-            self.theta_ng.append(theta_ng)
-            self.gammat.append(gammat)
-            self.gammaterr.append(gammaterr)
-            self.npairs_ng.append(npairs_ng)
-            self.weight_ng.append(weight_ng)
-            self.bin_ij_ng.append((i,j))
+                npairs/=2
+                weight/=2
+
+            self.results.append(Measurement(b"gammat", theta, val, err, npairs, weight, i, j))
 
         elif (k==2): # wtheta
-            theta_nn,wtheta,wthetaerr,npairs_nn,weight_nn = self.calc_pos_pos(i,j)
+            theta, val, err, npairs, weight = self.calc_pos_pos(i,j)
             if i==j:
-                npairs_nn/=2
-                weight_nn/=2
-            self.theta_nn.append(theta_nn)
-            self.wtheta.append(wtheta)
-            self.wthetaerr.append(wthetaerr)
-            self.npairs_nn.append(npairs_nn)
-            self.weight_nn.append(weight_nn)
-            self.bin_ij_nn.append((i,j))
+                npairs/=2
+                weight/=2
+
+            self.results.append(Measurement(b"wtheta", theta, val, err, npairs, weight, i, j))
 
 
 
