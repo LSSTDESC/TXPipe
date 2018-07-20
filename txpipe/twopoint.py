@@ -67,13 +67,14 @@ class TXTwoPoint(PipelineStage):
         self.setup_results()
 
         calcs = self.select_calculations(nbins)
+        print('calcs',calcs)
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment,
         # but for this case I would expect it to be mostly finer
-        for i,j,k in self.split_tasks_by_rank(calcs):
+        for i,j,k in calcs:#self.split_tasks_by_rank(calcs):
             self.call_treecorr(i, j, k)
-
+        print('i,j,k',i,j,k)
         self.collect_results()
 
         # Prepare the HDF5 output.
@@ -172,7 +173,7 @@ class TXTwoPoint(PipelineStage):
                 weight/=2
 
             self.results.append(Measurement(b"xip", theta, xip, xiperr, npairs, weight, i, j))
-            self.results.append(Measurement(b"xip", theta, xim, ximerr, npairs, weight, i, j))
+            self.results.append(Measurement(b"xim", theta, xim, ximerr, npairs, weight, i, j))
 
         elif (k==1): # gammat
             theta, val, err, npairs, weight = self.calc_pos_shear(i,j)
