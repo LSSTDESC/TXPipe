@@ -172,7 +172,7 @@ class TXTwoPoint(PipelineStage):
                 weight/=2
 
             self.results.append(Measurement(b"xip", theta, xip, xiperr, npairs, weight, i, j))
-            self.results.append(Measurement(b"xip", theta, xim, ximerr, npairs, weight, i, j))
+            self.results.append(Measurement(b"xim", theta, xim, ximerr, npairs, weight, i, j))
 
         elif (k==1): # gammat
             theta, val, err, npairs, weight = self.calc_pos_shear(i,j)
