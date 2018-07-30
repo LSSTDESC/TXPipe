@@ -689,11 +689,11 @@ class TXDRPMockMetacal(PipelineStage):
         print(f"Found {n} objects in catalog {input_drp}")
 
         # Put everything under the "photometry" section
-        photo = output.create_group('photometry')
+        photo = output_photo.create_group('photometry')
 
         # The merged DRP file is already split into chunks internally - we load those 
         # chunks one by one
-        for (start,end, data) in self.generate_fake_metacalibrated_photometry(input_drp):
+        for (start, end, data) in self.generate_fake_metacalibrated_photometry(input_drp):
 
             # For the first chunk we create the output data space, 
             # because then we know what all the columns are
@@ -707,7 +707,7 @@ class TXDRPMockMetacal(PipelineStage):
             for colname,col in data.items():
                 photo[colname][start:end] = col
 
-        output.close()
+        output_photo.close()
 
 
     def generate_fake_metacalibrated_photometry(self, filename):
@@ -778,6 +778,155 @@ class TXDRPMockMetacal(PipelineStage):
             # Yield this chunk of catalog
             yield start, end, output
             start = end
+
+
+class TXGCRMockMetacal(PipelineStage):
+    """
+    Use real photometry from the DRP (output of DM stack) in merged form,
+    but fake metacal responses for the magnitudes.
+
+    TODO: Shapes!
+    """
+    name = "TXGCRMockMetacal"
+
+    inputs = [
+        ('response_model', HDFFile),
+    ]
+
+    outputs = [
+        ('photometry_catalog', HDFFile),
+    ]
+
+    config_options = {
+        'cat_name':'dc2_coadd_run1.1p',
+        'snr_limit':4.0,  # used to decide what objects to cut out
+        'max_size': 99999999999999  #for testing on smaller catalogs
+        }
+
+    def count_rows(self, cat_name):
+        raise NotImplementedError
+
+    def run(self):
+        #input_filename="/global/cscratch1/sd/jchiang8/desc/HSC/merged_tract_8524.hdf5"
+        import GCRCatalogs
+        cat_name = self.config['cat_name']
+        self.bands = ('u','g', 'r', 'i', 'z')
+
+        self.load_metacal_response_model()
+
+        # Load the input catalog (this is lazy)
+        gc = GCRCatalogs.load_catalog(cat_name)
+
+
+        n = self.count_rows(gc)
+        print(f"Found {n} objects in catalog {input_gcr}")
+
+
+        # Put everything under the "photometry" section
+        output_photo = self.open_output('photometry_catalog')
+        photo = output_photo.create_group('photometry')
+
+        # The merged DRP file is already split into chunks internally - we load those 
+        # chunks one by one
+        for (start, end, data) in self.generate_fake_metacalibrated_photometry(gc):
+
+            # For the first chunk we create the output data space, 
+            # because then we know what all the columns are
+            if start==0:
+                for colname,col in data.items():
+                    photo.create_dataset(colname, (n,), dtype=col.dtype)
+                    print(f" Column: {colname}")
+
+            # Output this chunk
+            print(f" Saving rows {start}:{end}")
+            for colname,col in data.items():
+                photo[colname][start:end] = col
+
+        output_photo.close()
+
+
+    def generate_fake_metacalibrated_photometry(self, gc):
+        import h5py
+        import pandas
+        import warnings
+
+
+        mag_names = [f'mag_{b}' for b in self.bands]
+        err_names = [f'magerr_{b}' for b in self.bands]
+        snr_names = [f'snr_{b}_cModel' for b in self.bands]
+        # Columns we need from the cosmo simulation
+        cols = mag_names + err_names + snr_names
+        start = 0
+
+        for data in gc.get_quantities(cols, return_iterator=True):
+            n = len(data[mag_names[0]])
+            end = start + n
+
+            # Fake magnitude responses
+            mag_resp = generate_mock_metacal_mag_responses(self.bands, n)
+
+            output = {}
+            for band, mag_resp in zip(self.bands, mag_responses):
+                # Mags and SNR are in the catalog already
+                mag_obs = data[f'mag_{band}']
+                snr     = data[f'snr_{band}_cModel']
+                mag_err = data[f'magerr_{band}']
+
+                output[f'mag_{band}']        = mag_obs
+                output[f'magerr_{band}']     = mag_err
+                output[f'snr_{band}_cModel'] = snr
+
+                # Generate the metacalibrated values
+                mag_obs_1p = mag_obs + mag_resp*delta_gamma
+                mag_obs_1m = mag_obs - mag_resp*delta_gamma
+                mag_obs_2p = mag_obs + mag_resp*delta_gamma
+                mag_obs_2m = mag_obs - mag_resp*delta_gamma
+
+                # Save them, but we will also need them to generate
+                # metacalibrated SNRs below
+                output[f'mag_{band}_1p'] = mag_obs_1p
+                output[f'mag_{band}_1m'] = mag_obs_1m
+                output[f'mag_{band}_2p'] = mag_obs_2p
+                output[f'mag_{band}_2m'] = mag_obs_2m
+
+                # Scale the SNR values according the to change in magnitude.
+                output[f'snr_{band}_1p'] = snr * 10**(0.4*(mag_obs - mag_obs_1p))
+                output[f'snr_{band}_1m'] = snr * 10**(0.4*(mag_obs - mag_obs_1m))
+                output[f'snr_{band}_2p'] = snr * 10**(0.4*(mag_obs - mag_obs_2p))
+                output[f'snr_{band}_2m'] = snr * 10**(0.4*(mag_obs - mag_obs_2m))
+
+            yield output
+            start += end
+
+
+
+
+
+    def load_metacal_response_model(self):
+        """
+        Load an HDF file containing the response model
+        R(log10(snr), size)
+        R_std(log10(snr), size)
+
+        where R is the mean metacal response in a bin and
+        R_std is its standard deviation.
+
+        So far only one of these files exists!
+
+        """
+        import scipy.interpolate
+        import numpy as np
+        model_file = self.open_input("response_model")
+        snr_centers = model_file['R_model/log10_snr'][:]
+        sz_centers = model_file['R_model/size'][:]
+        R_mean = model_file['R_model/R_mean'][:]
+        R_std = model_file['R_model/R_std'][:]
+        model_file.close()
+
+        # Save a 2D spline
+        snr_grid, sz_grid = np.meshgrid(snr_centers, sz_centers)
+        self.R_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_mean.flatten(), w=R_std.flatten())
+        self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
 
 
 
