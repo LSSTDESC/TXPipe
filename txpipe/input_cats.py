@@ -739,7 +739,7 @@ class TXDRPMockMetacal(PipelineStage):
             warnings.warn("Faking metacal responses for magnitudes")
             mag_responses = generate_mock_metacal_mag_responses(bands, n)
             end = start + n
-
+            
             # Right now these are all called HSC, because that's the tract file 
             # we are looking at.  Should update to use GCR which will abstract
             # these names away, when this is ready
@@ -804,7 +804,13 @@ class TXGCRMockMetacal(PipelineStage):
         }
 
     def count_rows(self, cat_name):
-        raise NotImplementedError
+        counts = {
+            'dc2_coadd_run1.1p':6892380,
+        }
+        n = counts.get(cat_name)
+        if n is None:
+            raise ValueError("Sorry - there is no way to count the number of rows in a GCR catalog yet, so we have to hard-code them.  And your catalog we don't know.")
+        return n
 
     def run(self):
         #input_filename="/global/cscratch1/sd/jchiang8/desc/HSC/merged_tract_8524.hdf5"
@@ -815,11 +821,11 @@ class TXGCRMockMetacal(PipelineStage):
         self.load_metacal_response_model()
 
         # Load the input catalog (this is lazy)
-        gc = GCRCatalogs.load_catalog(cat_name)
+        gc = GCRCatalogs.load_catalog(cat_name, {'md5': None})
 
 
-        n = self.count_rows(gc)
-        print(f"Found {n} objects in catalog {input_gcr}")
+        n = self.count_rows(cat_name)
+        print(f"Found {n} objects in catalog {cat_name}")
 
 
         # Put everything under the "photometry" section
@@ -857,13 +863,14 @@ class TXGCRMockMetacal(PipelineStage):
         # Columns we need from the cosmo simulation
         cols = mag_names + err_names + snr_names
         start = 0
+        delta_gamma = 0.01
 
         for data in gc.get_quantities(cols, return_iterator=True):
             n = len(data[mag_names[0]])
             end = start + n
 
             # Fake magnitude responses
-            mag_resp = generate_mock_metacal_mag_responses(self.bands, n)
+            mag_responses = generate_mock_metacal_mag_responses(self.bands, n)
 
             output = {}
             for band, mag_resp in zip(self.bands, mag_responses):
@@ -895,8 +902,8 @@ class TXGCRMockMetacal(PipelineStage):
                 output[f'snr_{band}_2p'] = snr * 10**(0.4*(mag_obs - mag_obs_2p))
                 output[f'snr_{band}_2m'] = snr * 10**(0.4*(mag_obs - mag_obs_2m))
 
-            yield output
-            start += end
+            yield start, end, output
+            start = end
 
 
 
