@@ -879,9 +879,9 @@ class TXGCRMockMetacal(PipelineStage):
                 snr     = data[f'snr_{band}_cModel']
                 mag_err = data[f'magerr_{band}']
 
-                output[f'mag_{band}']        = mag_obs
-                output[f'magerr_{band}']     = mag_err
-                output[f'snr_{band}_cModel'] = snr
+                output[f'mag_{band}']    = mag_obs
+                output[f'magerr_{band}'] = mag_err
+                output[f'snr_{band}']    = snr
 
                 # Generate the metacalibrated values
                 mag_obs_1p = mag_obs + mag_resp*delta_gamma
