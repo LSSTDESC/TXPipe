@@ -2,38 +2,6 @@ from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
 
 
-def select(shear_data, pz_data, cuts, variant):
-    n = len(shear_data)
-
-    s2n_cut = cuts['T_cut']
-    T_cut = cuts['s2n_cut']
-
-    s2n_col = 'mcal_T' + variant
-    T_col = 'mcal_s2n_r' + variant
-    z_col = 'mu' + variant
-
-    s2n = shear_data[s2n_col]
-    T = shear_data[T_col]
-    z = pz_data[z_col]
-
-    Tpsf = shear_data['mcal_Tpsf']
-    flag = shear_data['mcal_flags']
-
-    zmin = cuts['zmin']
-    zmax = cuts['zmax']
-
-    sel  = flag==0
-    sel &= (T/Tpsf)>T_cut
-    sel &= s2n>s2n_cut
-    sel &= z>=zmin
-    sel &= z<zmax
-
-    return sel
-
-
-def flatten_list(lst):
-    return [item for sublist in lst for item in sublist]
-
 
 
 class TXSelector(PipelineStage):
@@ -214,6 +182,39 @@ class TXSelector(PipelineStage):
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
         config['zbins'] = zbins
         return config
+
+
+def select(shear_data, pz_data, cuts, variant):
+    n = len(shear_data)
+
+    s2n_cut = cuts['T_cut']
+    T_cut = cuts['s2n_cut']
+
+    s2n_col = 'mcal_T' + variant
+    T_col = 'mcal_s2n_r' + variant
+    z_col = 'mu' + variant
+
+    s2n = shear_data[s2n_col]
+    T = shear_data[T_col]
+    z = pz_data[z_col]
+
+    Tpsf = shear_data['mcal_Tpsf']
+    flag = shear_data['mcal_flags']
+
+    zmin = cuts['zmin']
+    zmax = cuts['zmax']
+
+    sel  = flag==0
+    sel &= (T/Tpsf)>T_cut
+    sel &= s2n>s2n_cut
+    sel &= z>=zmin
+    sel &= z<zmax
+
+    return sel
+
+
+def flatten_list(lst):
+    return [item for sublist in lst for item in sublist]
 
 
 if __name__ == '__main__':
