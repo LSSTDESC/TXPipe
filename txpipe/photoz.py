@@ -44,7 +44,6 @@ class TXRandomPhotozPDF(PipelineStage):
         """
         The run method is where all the work of the stage is done.
         In this case it:
-         - reads the config file
          - prepares the output HDF5 file
          - loads in chunks of input data, one at a time
          - computes mock photo-z PDFs for each chunk
