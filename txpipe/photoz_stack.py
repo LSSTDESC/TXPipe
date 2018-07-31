@@ -20,41 +20,16 @@ class TXPhotozStack(PipelineStage):
 
     }
 
-    def get_metadata(self):
-        """
-        Get the z column and the number of bins from the input files
-
-        Returns
-        -------
-        z: array
-            Redshift column for photo-z PDFs
-        nbin:
-            Number of different redshift bins
-            to split into.
-
-        """
-        # It's a bit odd but we will just get this from the file and 
-        # then close it again, because we're going to use the 
-        # built-in iterator method to get the rest of the data
-
-        # open_input is a method defined on the superclass.
-        # it knows about different file formats (pdf, fits, etc)
-        photoz_file = self.open_input('photoz_pdfs')
-
-        # This is the syntax for reading a complete HDF column
-        z = photoz_file['pdf/z'][:]
-        photoz_file.close()
-
-        # Save again but for the number of bins in the tomography
-        # catalog
-        tomo_file = self.open_input('tomography_catalog')
-        nbin = tomo_file['tomography'].attrs['nbin']
-        tomo_file.close()
-
-        return z, nbin
-
 
     def run(self):
+        """
+        Run the analysis for this stage.
+        
+         - Get metadata and allocate space for output
+         - Set up iterators to loop through tomography and PDF input files
+         - Accumulate the PDFs for each object in each bin
+         - Divide by the counts to get the stacked PDF
+        """
         import numpy as np
 
 
@@ -121,10 +96,57 @@ class TXPhotozStack(PipelineStage):
         # And finally save the outputs
         self.save_result(nbin, z, stacked_pdfs)
 
+    def get_metadata(self):
+        """
+        Load the z column and the number of bins
+
+        Returns
+        -------
+        z: array
+            Redshift column for photo-z PDFs
+        nbin:
+            Number of different redshift bins
+            to split into.
+
+        """
+        # It's a bit odd but we will just get this from the file and 
+        # then close it again, because we're going to use the 
+        # built-in iterator method to get the rest of the data
+
+        # open_input is a method defined on the superclass.
+        # it knows about different file formats (pdf, fits, etc)
+        photoz_file = self.open_input('photoz_pdfs')
+
+        # This is the syntax for reading a complete HDF column
+        z = photoz_file['pdf/z'][:]
+        photoz_file.close()
+
+        # Save again but for the number of bins in the tomography
+        # catalog
+        tomo_file = self.open_input('tomography_catalog')
+        nbin = tomo_file['tomography'].attrs['nbin']
+        tomo_file.close()
+
+        return z, nbin
+
+
+
     def save_result(self, nbin, z, stacked_pdfs):
         """
         Save the computed stacked photo-z bin n(z)
-        values into the output stack file.
+        
+        Parameters
+        ----------
+
+        nbin: int
+            Number of bins
+
+        z: array of shape (nz,)
+            redshift axis 
+
+        stacked_pdfs: array of shape (nbin,nz)
+            n(z) per bin
+
         """
         # This is another parent method.  It will open the result
         # as an HDF file which we then deal with.

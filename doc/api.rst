@@ -1,28 +1,22 @@
-TXPipe API
-==========
-
 Pipeline Stages
----------------
+===============
 
- .. autoclass:: txpipe.sysmaps.TXDiagnosticMaps
- 
- .. autoclass:: txpipe.photoz.TXRandomPhotozPDF
-
-.. autoclass:: txpipe.selector.TXSelector
-
-.. autoclass:: txpipe.photoz_stack.TXPhotozStack
 
 .. autoclass:: txpipe.sysmaps.TXDiagnosticMaps
+    :members: run
+
+.. autoclass:: txpipe.photoz.TXRandomPhotozPDF
+    :members: run
+    :member-order: bysource
+
+.. autoclass:: txpipe.selector.TXSelector
+    :members: run
+
+.. autoclass:: txpipe.photoz_stack.TXPhotozStack
+    :members: run
+
+.. autoclass:: txpipe.sysmaps.TXDiagnosticMaps
+    :members: run
 
 
 
-
-Utilities
----------------
-
-
- .. automodule:: txpipe.utils.stats
-    :members:
-
- .. automodule:: txpipe.utils.pixel_schemes
-    :members:

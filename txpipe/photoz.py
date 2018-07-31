@@ -12,7 +12,7 @@ class TXRandomPhotozPDF(PipelineStage):
     It must generate the point estimates for the five different 
     metacal variants (which each have different shears applied). 
 
-    It can do this in paralell if needed.
+    It can do this in parallel if needed.
 
     We might want to move some of the functionality here (e.g. the I/O)
     into a general parent class.
@@ -42,8 +42,8 @@ class TXRandomPhotozPDF(PipelineStage):
 
     def run(self):
         """
-        The run method is where all the work of the stage is done.
-        In this case it:
+        Run the analysis for this stage.
+
          - prepares the output HDF5 file
          - loads in chunks of input data, one at a time
          - computes mock photo-z PDFs for each chunk
@@ -96,7 +96,9 @@ class TXRandomPhotozPDF(PipelineStage):
 
     def calculate_photozs(self, data, z):
         """
-        This is a mock-photo-z function that instead of actually
+        Generate random photo-zs.
+
+        This is a mock method that instead of actually
         running any photo-z analysis just spits out some random PDFs.
 
         This method is run on chunks of data, not the whole thing at
@@ -158,7 +160,7 @@ class TXRandomPhotozPDF(PipelineStage):
 
     def write_output(self, output_file, start, end, pdfs, point_estimates):
         """
-        Write a chunk of the computed PZ data to the output file.
+        Write out a chunk of the computed PZ data.
 
         Parameters
         ----------
@@ -194,6 +196,7 @@ class TXRandomPhotozPDF(PipelineStage):
     def prepare_output(self, nobj, z):
         """
         Prepare the output HDF5 file for writing.
+
         Note that this is done by all the processes if running in parallel;
         that is part of the design of HDF5.
     

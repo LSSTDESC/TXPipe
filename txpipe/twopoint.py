@@ -39,8 +39,8 @@ class TXTwoPoint(PipelineStage):
 
     def run(self):
         """
-        The run method is where all the work of the stage is done.
-        In this case it:
+        Run the analysis for this stage.
+
          - reads the config file
          - prepares the output HDF5 file
          - loads in the data

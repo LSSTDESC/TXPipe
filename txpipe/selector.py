@@ -44,6 +44,18 @@ class TXSelector(PipelineStage):
     }
 
     def run(self):
+        """
+        Run the analysis for this stage.
+        
+         - Collect the list of columns to read
+         - Create iterators to read chunks of those columns
+         - Loop through chunks:
+            - select objects for each bin
+            - write them out
+            - accumulate selection bias values
+         - Average the selection biases
+         - Write out biases and close the output
+        """
         import numpy as np
 
         output_file = self.setup_output()
@@ -96,8 +108,7 @@ class TXSelector(PipelineStage):
 
     def calculate_tomography(self, pz_data, shear_data):
         """
-        Select objects to go in each tomographic bin,
-        and calculate the shear response functions for each bin.
+        Select objects to go in each tomographic bin and their calibration.
 
         Parameters
         ----------
@@ -173,6 +184,8 @@ class TXSelector(PipelineStage):
 
     def average_selection_bias(self, selection_biases):
         """
+        Compute the average selection bias.
+
         Average the selection biases, which are matrices
         of shape [nbin, 2, 2].  Each matrix comes from 
         a different chunk of data and we do a weighted
@@ -219,7 +232,10 @@ class TXSelector(PipelineStage):
 
     def setup_output(self):
         """
+        Set up the output data file.
 
+        Creates the data sets and groups to put module output
+        in the tomography_catalog output file.
         """
         n = self.open_input('shear_catalog')[1].get_nrows()
         zbins = self.config['zbins']
@@ -227,28 +243,74 @@ class TXSelector(PipelineStage):
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('bin', (n,), dtype='i')
-        group.attrs['nbin'] = nbin
-        for i in range(nbin):
-            group.attrs[f'zmin_{i}'] = zbins[i][0]
-            group.attrs[f'zmax_{i}'] = zbins[i][1]
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='i')
         group.create_dataset('R_S', (nbin,2,2), dtype='i')
+
+        if self.rank==0:
+            group.attrs['nbin'] = nbin
+            for i in range(nbin):
+                group.attrs[f'zmin_{i}'] = zbins[i][0]
+                group.attrs[f'zmax_{i}'] = zbins[i][1]
+
+
         return outfile
 
     def write_tomography(self, outfile, start, end, tomo_bin, R):
+        """
+        Write out a chunk of tomography and response.
+
+        Parameters
+        ----------
+
+
+        outfile: h5py.File
+
+        start: int
+            The index into the output this chunk starts at
+
+        end: int
+            The index into the output this chunk ends at
+
+        tomo_bin: array of shape (nrow,)
+            The bin index for each output object
+
+        R: array of shape (nrow,2,2)
+            Multiplicative bias calibration factor for each object
+
+
+        """
         group = outfile['tomography']
         group['bin'][start:end] = tomo_bin
         group = outfile['multiplicative_bias']
         group['R_gamma'][start:end,:,:] = R
 
     def write_selection_bias(self, outfile, S):
+        """
+        Write out overall selection biases
+
+        Parameters
+        ----------
+
+        outfile: h5py.File
+
+        S: array of shape (nbin,2,2)
+            Selection bias matrices
+        """
+
+
         if self.rank==0:
             group = outfile['multiplicative_bias']
             group['R_S'][:,:,:] = S
 
 
     def read_config(self, args):
+        """
+        Extend the parent config reader to get z bin pairs
+
+        Turns the list of redshift bin edges into a list
+        of pairs.
+        """
         config = super().read_config(args)
         zbin_edges = config['zbin_edges']
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
