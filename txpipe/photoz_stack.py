@@ -21,7 +21,18 @@ class TXPhotozStack(PipelineStage):
     }
 
     def get_metadata(self):
-        # Get the z column and the number of bins from the inputs files
+        """
+        Get the z column and the number of bins from the input files
+
+        Returns
+        -------
+        z: array
+            Redshift column for photo-z PDFs
+        nbin:
+            Number of different redshift bins
+            to split into.
+
+        """
         # It's a bit odd but we will just get this from the file and 
         # then close it again, because we're going to use the 
         # built-in iterator method to get the rest of the data
@@ -111,6 +122,10 @@ class TXPhotozStack(PipelineStage):
         self.save_result(nbin, z, stacked_pdfs)
 
     def save_result(self, nbin, z, stacked_pdfs):
+        """
+        Save the computed stacked photo-z bin n(z)
+        values into the output stack file.
+        """
         # This is another parent method.  It will open the result
         # as an HDF file which we then deal with.
         f = self.open_output("photoz_stack")
