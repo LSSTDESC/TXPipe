@@ -6,49 +6,77 @@ from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCa
 
 class TXSelector(PipelineStage):
     """
-    Selects and constructs metacal calibrations for tomographic bins of objects
+    This pipeline stage selects objects to be used
+    as the source sample for the shear-shear and
+    shear-position calibrations.  It applies some
+    general cuts based on the flags that metacal
+    gives for the objects, and size and S/N cuts
+    based on the configuration file.
 
+    It also splits those objects into tomographic
+    bins according to the choice the user makes
+    in the input file, from the information in the
+    photo-z PDF file.
+
+    Once these selections are made it constructs
+    the quantities needed to calibrate each bin -
+    this consists of two shear response quantities.
     """
+
     name='TXSelector'
+
     inputs = [
         ('shear_catalog', MetacalCatalog),
         ('photoz_pdfs', PhotozPDFFile),
     ]
+
     outputs = [
         ('tomography_catalog', TomographyCatalog)
     ]
-    config_options = {'T_cut':float, 's2n_cut':float, 'delta_gamma': float, 'max_rows':0,
-                      'chunk_rows':10000, 'zbin_edges':[float]}
+
+    config_options = {
+        'T_cut':float,
+        's2n_cut':float,
+        'delta_gamma': float,
+        'max_rows':0,
+        'chunk_rows':10000,
+        'zbin_edges':[float]
+    }
 
     def run(self):
         import numpy as np
 
-        info = self.config
-        output_file = self.setup_output(info)
+        output_file = self.setup_output()
 
         # Columns we need from the redshift data
         pz_cols = ['mu', 'mu_1p', 'mu_1m', 'mu_2p', 'mu_2m']
 
         # Columns we need from the shear catalog
         cat_cols = ['mcal_flags', 'mcal_Tpsf']
+
         # Including all the metacalibration variants of these columns
         for c in ['mcal_T', 'mcal_s2n_r', 'mcal_g']:
             cat_cols += [c, c+"_1p", c+"_1m", c+"_2p", c+"_2m", ]
 
 
         # Input data.  These are iterators - they lazily load chunks
-        # of the data one by one later when we do the for loop
-        chunk_rows = info['chunk_rows']
-        iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', pz_cols, chunk_rows)
+        # of the data one by one later when we do the for loop.
+        # This code can be run in parallel, and different processes will
+        # each get different chunks of the data 
+        chunk_rows = self.config['chunk_rows']
+        iter_pz    = self.iterate_hdf('photoz_pdfs', 'pdf', pz_cols, chunk_rows)
         iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
 
+        # We will collect the selection biases for each bin
+        # as a matrix.  We will collect together the different
+        # matrices for each chunk and do a weighted average at the end.
         selection_biases = []
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, pz_data), (_, _, shear_data) in zip(iter_pz, iter_shear):
 
             print(f"Process {self.rank} running selection for rows {start}-{end}")
-            tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data, info)
+            tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
 
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, R)
@@ -61,40 +89,58 @@ class TXSelector(PipelineStage):
         S = self.average_selection_bias(selection_biases)
         self.write_selection_bias(output_file, S)
 
-
-
+        # Save and complete
         output_file.close()
 
 
 
-    def calculate_tomography(self, pz_data, shear_data, info):
-        # for each tomographic bin, select objects in that bin
-        # under each metacal choice
+    def calculate_tomography(self, pz_data, shear_data):
+        """
+        Select objects to go in each tomographic bin,
+        and calculate the shear response functions for each bin.
+
+        Parameters
+        ----------
+
+        pz_data: table or dict of arrays
+            A chunk of input photo-z data containing mean values for each object
+        shear_data: table or dict of arrays
+            A chunk of input shear data with metacalibration variants.
+        """
         import numpy as np
 
         g = shear_data['mcal_g']
-        delta_gamma = info['delta_gamma']
-        nbin = len(info['zbins'])
+        delta_gamma = self.config['delta_gamma']
+        nbin = len(self.config['zbins'])
 
         n = len(shear_data)
+
+        # The main output data - the tomographic
+        # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
+
+        # The two biases - the response to shear R and the
+        # selection bias S.
         R = np.zeros((n,2,2))
         S = np.zeros((nbin,2,2))
+
+        # We also keep count of total count of objects in each bin
         counts = np.zeros(nbin, dtype=int)
 
 
-        for i,(zmin, zmax) in enumerate(info['zbins']):
-            info['zmin'] = zmin
-            info['zmax'] = zmax
+        for i,(zmin, zmax) in enumerate(self.config['zbins']):
 
-            # The main selection.
-            sel_00 = select(shear_data, pz_data, info, '')
+            # The main selection.  The select function below returns a
+            # boolean array where True means "selected and in this bin"
+            # and False means "cut or not in this bin".
+            sel_00 = select(shear_data, pz_data, self.config, '', zmin, zmax)
+
             # The metacalibration selections, used to work out selection
             # biases
-            sel_1p = select(shear_data, pz_data, info, '_1p')
-            sel_2p = select(shear_data, pz_data, info, '_2p')
-            sel_1m = select(shear_data, pz_data, info, '_1m')
-            sel_2m = select(shear_data, pz_data, info, '_2m')
+            sel_1p = select(shear_data, pz_data, self.config, '_1p', zmin, zmax)
+            sel_2p = select(shear_data, pz_data, self.config, '_2p', zmin, zmax)
+            sel_1m = select(shear_data, pz_data, self.config, '_1m', zmin, zmax)
+            sel_2m = select(shear_data, pz_data, self.config, '_2m', zmin, zmax)
 
             # Assign these objects to this bin
             tomo_bin[sel_00] = i
@@ -105,24 +151,44 @@ class TXSelector(PipelineStage):
             R_2 = (shear_data['mcal_g_2p'][sel_00] - shear_data['mcal_g_2m'][sel_00]) / delta_gamma
 
             # Selection bias for this chunk - we must average over these later.
-            # For now there is one value per bin
+            # For now there is one value per bin.
             S_1 = (g[sel_1p].mean(0) - g[sel_1m].mean(0)) / delta_gamma
             S_2 = (g[sel_2p].mean(0) - g[sel_2m].mean(0)) / delta_gamma
 
-            # Save in a more useful ordering for the output
+            # Save in a more useful ordering for the output - 
+            # as a matrix
             R[sel_00,0,0] = R_1[:,0]
             R[sel_00,0,1] = R_1[:,1]
             R[sel_00,1,0] = R_2[:,0]
             R[sel_00,1,1] = R_2[:,1]
 
+            # Also save the selection biases as a matrix.
             S[i,0,0] = S_1[0]
             S[i,0,1] = S_1[1]
             S[i,1,0] = S_2[0]
             S[i,1,1] = S_2[1]
             counts[i] = sel_00.sum()
+
         return tomo_bin, R, S, counts
 
     def average_selection_bias(self, selection_biases):
+        """
+        Average the selection biases, which are matrices
+        of shape [nbin, 2, 2].  Each matrix comes from 
+        a different chunk of data and we do a weighted
+        average over them all.
+
+        Parameters
+        ----------
+
+        selection_biases: list of pairs (bias, count)
+            The selection biases
+
+        Returns
+        -------
+        S: array (nbin,2,2)
+            Average selection bias
+        """
         import numpy as np
 
         if self.is_mpi():
@@ -135,11 +201,14 @@ class TXSelector(PipelineStage):
         S = 0.0
         N = 0
 
+        # Accumulate the total and the counts
+        # for each bin
         for S_i, count in selection_biases:
             S += count[:,np.newaxis,np.newaxis]*S_i
             N += count
-            # count (4) S_i (4,2,2)
-        # For each bin
+
+        # And finally divide by the total count
+        # to get the average
         for i,n_i in enumerate(N):
             S[i]/=n_i
 
@@ -148,9 +217,12 @@ class TXSelector(PipelineStage):
 
 
 
-    def setup_output(self, info):
+    def setup_output(self):
+        """
+
+        """
         n = self.open_input('shear_catalog')[1].get_nrows()
-        zbins = info['zbins']
+        zbins = self.config['zbins']
         nbin = len(zbins)
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
@@ -184,7 +256,7 @@ class TXSelector(PipelineStage):
         return config
 
 
-def select(shear_data, pz_data, cuts, variant):
+def select(shear_data, pz_data, cuts, variant, zmin, zmax):
     n = len(shear_data)
 
     s2n_cut = cuts['T_cut']
@@ -200,9 +272,6 @@ def select(shear_data, pz_data, cuts, variant):
 
     Tpsf = shear_data['mcal_Tpsf']
     flag = shear_data['mcal_flags']
-
-    zmin = cuts['zmin']
-    zmax = cuts['zmax']
 
     sel  = flag==0
     sel &= (T/Tpsf)>T_cut
