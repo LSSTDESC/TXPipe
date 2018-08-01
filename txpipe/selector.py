@@ -2,11 +2,11 @@ from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
 
 
-def select(shear_data, pz_data, cuts, variant):
+def select(shear_data, pz_data, phot_data, cuts, variant):
     n = len(shear_data)
 
-    s2n_cut = cuts['T_cut']
-    T_cut = cuts['s2n_cut']
+    s2n_cut = cuts['s2n_cut']
+    T_cut = cuts['T_cut']
 
     s2n_col = 'mcal_T' + variant
     T_col = 'mcal_s2n_r' + variant
@@ -22,11 +22,45 @@ def select(shear_data, pz_data, cuts, variant):
     zmin = cuts['zmin']
     zmax = cuts['zmax']
 
+    # Photometry cuts based on the BOSS Galaxy Target Selection
+    # See: http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
+
+    # Read in the necessary data from mock_photometry_catalog.hdf:
+    # Although, not sure if the photometry catalog will ultimately
+    # end up in descformats.tx along with the other catalogs...
+    mag_i = phot_data['mag_i_lsst'].value
+    mag_r = phot_data['mag_r_lsst'].value
+    mag_g = phot_data['mag_g_lsst'].value
+    true_i = phot_data['mag_true_i_lsst'].value
+    true_r = phot_data['mag_true_r_lsst'].value
+    cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
+    cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
+    dperp = (mag_r - mag_i) - ((mag_g - mag_r) / 8.0)
+
+    # LOWZ
+    cperp_cut = np.abs(cperp) < 0.2
+    r_cpar_cut = mag_r < 13.5 + cpar / 0.3
+    r_lo_cut = mag_r > 16.0
+    r_hi_cut = mag_r < 19.6
+
+    lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lower_cut) & (r_upper_cut)
+
+    # CMASS
+    i_lo_cut = mag_i > 17.5
+    i_hi_cut = mag_i < 19.9
+    r_i_cut = (mag_r - mag_i) < 2.0
+    #dperp_cut = dperp > 0.55 # this cut did not return any sources...
+
+    cmass_cut = (i_lower_cut) & (i_upper_cut) & (r_i_cut)
+
+    lens_cut = lowz_cut | cmass_cut
+
     sel  = flag==0
     sel &= (T/Tpsf)>T_cut
     sel &= s2n>s2n_cut
     sel &= z>=zmin
     sel &= z<zmax
+    sel &= lens_cut
 
     return sel
 
