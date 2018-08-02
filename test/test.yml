@@ -23,8 +23,8 @@ config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: /global/homes/e/elp25/TXPipe/outputs/mock_shear_catalog.fits
-    photometry_catalog: /global/homes/e/elp25/TXPipe/outputs/mock_photometry_catalog.hdf
+    shear_catalog: ./mock_shear_catalog.fits
+    photometry_catalog: ./mock_photometry_catalog.hdf
     
 resume: False
 log_dir: ./test/logs

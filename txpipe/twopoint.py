@@ -327,6 +327,7 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('tomography_catalog')
         self.binning = f['tomography/bin'][:]
+        self.lens_gals = f['tomography/lens'][:]
         f.close()
 
         f = self.open_input('tomography_catalog')
@@ -389,7 +390,7 @@ class TXTwoPoint(PipelineStage):
 
     def select_lens(self):
         # Extremely simple lens selector simply by bin
-        mask = self.binning == 0
+        mask = self.lens_gals == 0
 
         m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11, taking the mean for the bin
         m2 = np.mean(self.r_gamma[mask][:,1,1]) #R22

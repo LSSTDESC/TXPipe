@@ -40,17 +40,13 @@ class TXSelector(PipelineStage):
         for c in ['mcal_T', 'mcal_s2n_r', 'mcal_g']:
             cat_cols += [c, c+"_1p", c+"_1m", c+"_2p", c+"_2m", ]
 
-        # Columns we need from the photometry catalog
-        bands = self.config['bands']
-        cols = [f'mag_{band}_lsst{suffix}' for band in bands]
-
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop
         chunk_rows = info['chunk_rows']
         iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', pz_cols, chunk_rows)
         iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
-        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', cols, chunk_rows)
+        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
 
         selection_biases = []
 
@@ -133,9 +129,6 @@ class TXSelector(PipelineStage):
             counts[i] = sel_00.sum()
         return tomo_bin, R, S, counts
 
-    def select_lens(self, phot_data):
-        pass
-        return
         
     def average_selection_bias(self, selection_biases):
         import numpy as np
@@ -202,14 +195,19 @@ class TXSelector(PipelineStage):
 
 
 def select_lens(phot_data):
-
     """Photometry cuts based on the BOSS Galaxy Target Selection:
     http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
     """
+    import numpy as np
 
-    mag_i = phot_data['mag_i_lsst'].value
-    mag_r = phot_data['mag_r_lsst'].value
-    mag_g = phot_data['mag_g_lsst'].value
+    mag_i = phot_data['mag_true_i_lsst']
+    mag_r = phot_data['mag_true_r_lsst']
+    mag_g = phot_data['mag_true_g_lsst']
+
+    n = len(mag_i)
+    # HDF does not support bools, so we will prepare a binary array
+    # where 0 is a lens and 1 is not
+    lens_gals = np.repeat(1,n)
 
     cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
     cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
@@ -221,7 +219,7 @@ def select_lens(phot_data):
     r_lo_cut = mag_r > 16.0
     r_hi_cut = mag_r < 19.6
 
-    lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lower_cut) & (r_upper_cut)
+    lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lo_cut) & (r_hi_cut)
 
     # CMASS
     i_lo_cut = mag_i > 17.5
@@ -229,12 +227,14 @@ def select_lens(phot_data):
     r_i_cut = (mag_r - mag_i) < 2.0
     #dperp_cut = dperp > 0.55 # this cut did not return any sources...
 
-    cmass_cut = (i_lower_cut) & (i_upper_cut) & (r_i_cut)
+    cmass_cut = (i_lo_cut) & (i_hi_cut) & (r_i_cut)
 
-    return lowz_cut | cmass_cut
+    # If a galaxy is a lens under either LOWZ or CMASS give it a zero
+    lens_mask =  lowz_cut | cmass_cut
+    lens_gals[lens_mask] = 0
+    return lens_gals
 
-
-def select(shear_data, pz_data, phot_data, cuts, variant):
+def select(shear_data, pz_data, cuts, variant):
     n = len(shear_data)
 
     s2n_cut = cuts['s2n_cut']
