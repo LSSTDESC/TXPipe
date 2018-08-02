@@ -2,73 +2,6 @@ from ceci import PipelineStage
 from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
 
 
-def select(shear_data, pz_data, phot_data, cuts, variant):
-    n = len(shear_data)
-
-    s2n_cut = cuts['s2n_cut']
-    T_cut = cuts['T_cut']
-
-    s2n_col = 'mcal_T' + variant
-    T_col = 'mcal_s2n_r' + variant
-    z_col = 'mu' + variant
-
-    s2n = shear_data[s2n_col]
-    T = shear_data[T_col]
-    z = pz_data[z_col]
-
-    Tpsf = shear_data['mcal_Tpsf']
-    flag = shear_data['mcal_flags']
-
-    zmin = cuts['zmin']
-    zmax = cuts['zmax']
-
-    # Photometry cuts based on the BOSS Galaxy Target Selection
-    # See: http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
-
-    # Read in the necessary data from mock_photometry_catalog.hdf:
-    # Although, not sure if the photometry catalog will ultimately
-    # end up in descformats.tx along with the other catalogs...
-    mag_i = phot_data['mag_i_lsst'].value
-    mag_r = phot_data['mag_r_lsst'].value
-    mag_g = phot_data['mag_g_lsst'].value
-    true_i = phot_data['mag_true_i_lsst'].value
-    true_r = phot_data['mag_true_r_lsst'].value
-    cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
-    cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
-    dperp = (mag_r - mag_i) - ((mag_g - mag_r) / 8.0)
-
-    # LOWZ
-    cperp_cut = np.abs(cperp) < 0.2
-    r_cpar_cut = mag_r < 13.5 + cpar / 0.3
-    r_lo_cut = mag_r > 16.0
-    r_hi_cut = mag_r < 19.6
-
-    lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lower_cut) & (r_upper_cut)
-
-    # CMASS
-    i_lo_cut = mag_i > 17.5
-    i_hi_cut = mag_i < 19.9
-    r_i_cut = (mag_r - mag_i) < 2.0
-    #dperp_cut = dperp > 0.55 # this cut did not return any sources...
-
-    cmass_cut = (i_lower_cut) & (i_upper_cut) & (r_i_cut)
-
-    lens_cut = lowz_cut | cmass_cut
-
-    sel  = flag==0
-    sel &= (T/Tpsf)>T_cut
-    sel &= s2n>s2n_cut
-    sel &= z>=zmin
-    sel &= z<zmax
-    sel &= lens_cut
-
-    return sel
-
-
-def flatten_list(lst):
-    return [item for sublist in lst for item in sublist]
-
-
 
 class TXSelector(PipelineStage):
     """
@@ -79,6 +12,7 @@ class TXSelector(PipelineStage):
     inputs = [
         ('shear_catalog', MetacalCatalog),
         ('photoz_pdfs', PhotozPDFFile),
+        ('photometry_catalog', HDFFile)
     ]
     outputs = [
         ('tomography_catalog', TomographyCatalog)
@@ -101,17 +35,22 @@ class TXSelector(PipelineStage):
         for c in ['mcal_T', 'mcal_s2n_r', 'mcal_g']:
             cat_cols += [c, c+"_1p", c+"_1m", c+"_2p", c+"_2m", ]
 
+        # Columns we need from the photometry catalog
+        bands = self.config['bands']
+        cols = [f'mag_{band}_lsst{suffix}' for band in bands]
+
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop
         chunk_rows = info['chunk_rows']
         iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', pz_cols, chunk_rows)
         iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
+        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', cols, chunk_rows)
 
         selection_biases = []
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, pz_data), (_, _, shear_data) in zip(iter_pz, iter_shear):
+        for (start, end, pz_data), (_, _, shear_data), (_,_, phot_data) in zip(iter_pz, iter_shear, iter_phot):
 
             print(f"Process {self.rank} running selection for rows {start}-{end}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data, info)
@@ -248,6 +187,74 @@ class TXSelector(PipelineStage):
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
         config['zbins'] = zbins
         return config
+
+
+def select_lens(phot_data):
+
+    """Photometry cuts based on the BOSS Galaxy Target Selection:
+    http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
+    """
+
+    mag_i = phot_data['mag_i_lsst'].value
+    mag_r = phot_data['mag_r_lsst'].value
+    mag_g = phot_data['mag_g_lsst'].value
+
+    cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
+    cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
+    dperp = (mag_r - mag_i) - ((mag_g - mag_r) / 8.0)
+
+    # LOWZ
+    cperp_cut = np.abs(cperp) < 0.2
+    r_cpar_cut = mag_r < 13.5 + cpar / 0.3
+    r_lo_cut = mag_r > 16.0
+    r_hi_cut = mag_r < 19.6
+
+    lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lower_cut) & (r_upper_cut)
+
+    # CMASS
+    i_lo_cut = mag_i > 17.5
+    i_hi_cut = mag_i < 19.9
+    r_i_cut = (mag_r - mag_i) < 2.0
+    #dperp_cut = dperp > 0.55 # this cut did not return any sources...
+
+    cmass_cut = (i_lower_cut) & (i_upper_cut) & (r_i_cut)
+
+    return lowz_cut | cmass_cut
+
+
+def select(shear_data, pz_data, phot_data, cuts, variant):
+    n = len(shear_data)
+
+    s2n_cut = cuts['s2n_cut']
+    T_cut = cuts['T_cut']
+
+    s2n_col = 'mcal_T' + variant
+    T_col = 'mcal_s2n_r' + variant
+    z_col = 'mu' + variant
+
+    s2n = shear_data[s2n_col]
+    T = shear_data[T_col]
+    z = pz_data[z_col]
+
+    Tpsf = shear_data['mcal_Tpsf']
+    flag = shear_data['mcal_flags']
+
+    zmin = cuts['zmin']
+    zmax = cuts['zmax']
+
+    
+    sel  = flag==0
+    sel &= (T/Tpsf)>T_cut
+    sel &= s2n>s2n_cut
+    sel &= z>=zmin
+    sel &= z<zmax
+
+    return sel
+
+
+def flatten_list(lst):
+    return [item for sublist in lst for item in sublist]
+
 
 
 if __name__ == '__main__':
