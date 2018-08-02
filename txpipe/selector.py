@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog
+from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile
 
 
 def select(shear_data, pz_data, cuts, variant):
@@ -45,6 +45,7 @@ class TXSelector(PipelineStage):
     inputs = [
         ('shear_catalog', MetacalCatalog),
         ('photoz_pdfs', PhotozPDFFile),
+        ('photometry_catalog', HDFFile),
     ]
     outputs = [
         ('tomography_catalog', TomographyCatalog)
@@ -61,6 +62,11 @@ class TXSelector(PipelineStage):
         # Columns we need from the redshift data
         pz_cols = ['mu', 'mu_1p', 'mu_1m', 'mu_2p', 'mu_2m']
 
+        # Colums we need from the photometry data
+        phot_cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
+                'mag_true_r_lsst', 'mag_true_i_lsst', 
+                'mag_true_z_lsst']
+
         # Columns we need from the shear catalog
         cat_cols = ['mcal_flags', 'mcal_Tpsf']
         # Including all the metacalibration variants of these columns
@@ -73,17 +79,18 @@ class TXSelector(PipelineStage):
         chunk_rows = info['chunk_rows']
         iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', pz_cols, chunk_rows)
         iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
-
+        iter_phot = self.iterate_hdf('photometry_catalog','photometry', phot_cols, chunk_rows)
         selection_biases = []
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, pz_data), (_, _, shear_data) in zip(iter_pz, iter_shear):
+        for (start, end, pz_data), (_, _, shear_data), (_, _, phot_data) in zip(iter_pz, iter_shear, iter_phot):
 
             print(f"Process {self.rank} running selection for rows {start}-{end}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data, info)
 
+            lens_gals = select_lens(phot_data)
             # Save the tomography for this chunk
-            self.write_tomography(output_file, start, end, tomo_bin, R)
+            self.write_tomography(output_file, start, end, tomo_bin, R, lens_gals)
 
             # The selection biases are the mean over all the data, so we
             # build them up as we go along and average them at the end.
@@ -97,7 +104,7 @@ class TXSelector(PipelineStage):
 
         output_file.close()
 
-
+        
 
     def calculate_tomography(self, pz_data, shear_data, info):
         # for each tomographic bin, select objects in that bin
@@ -154,6 +161,10 @@ class TXSelector(PipelineStage):
             counts[i] = sel_00.sum()
         return tomo_bin, R, S, counts
 
+    def select_lens(self, phot_data):
+        pass
+        return
+        
     def average_selection_bias(self, selection_biases):
         import numpy as np
 
@@ -187,6 +198,7 @@ class TXSelector(PipelineStage):
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('bin', (n,), dtype='i')
+        group.create_dataset('lens', (n,), dtype='i')
         group.attrs['nbin'] = nbin
         for i in range(nbin):
             group.attrs[f'zmin_{i}'] = zbins[i][0]
@@ -196,9 +208,10 @@ class TXSelector(PipelineStage):
         group.create_dataset('R_S', (nbin,2,2), dtype='i')
         return outfile
 
-    def write_tomography(self, outfile, start, end, tomo_bin, R):
+    def write_tomography(self, outfile, start, end, tomo_bin, R, lens_gals):
         group = outfile['tomography']
         group['bin'][start:end] = tomo_bin
+        group['lens'][start:end] = lens_gals
         group = outfile['multiplicative_bias']
         group['R_gamma'][start:end,:,:] = R
 
