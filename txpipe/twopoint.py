@@ -25,7 +25,7 @@ class TXTwoPoint(PipelineStage):
         ('random_cats', RandomsCatalog)
     ]
     outputs = [
-        ('twopoint_data', HDFFile), #TODO possibly change to a SACC file, change to TwoPoint once class added to DESCFormats
+        ('twopoint_data', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -85,9 +85,7 @@ class TXTwoPoint(PipelineStage):
         # just copy all the results to the root process
         # to output
         if self.rank==0:
-            output_file = self.setup_output()
-            self.write_output(output_file)
-            output_file.close()
+            self.write_output()
 
 
     def select_calculations(self, nbins):
@@ -131,12 +129,7 @@ class TXTwoPoint(PipelineStage):
         zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
         return zbins
 
-    def setup_output(self):
-        outfile = self.open_output('twopoint_data')
-        group = outfile.create_group('twopoint')
-        return outfile
-
-    def write_output(self,outfile):
+    def write_output(self):
         # TODO fix this to account for the case where we only do a certain number of calcs
         f = self.open_input('photoz_stack')
 
@@ -151,7 +144,6 @@ class TXTwoPoint(PipelineStage):
             tracers.append(T)
         f.close()
 
-        group = outfile['twopoint']
         fields = ['corr_type', 'theta', 'value', 'error', 'npair', 'weight', 'i', 'j']
         output = {f:list() for f in fields}
 
@@ -163,15 +155,19 @@ class TXTwoPoint(PipelineStage):
             for bin_pair_data in data:
                 n = len(bin_pair_data.theta)
                 type+=['Corr' for i in range(n)]
-                if corr_type=='gammat':
+                print(corr_type)
+                if corr_type==b'gammat':
                     q1 += ['P' for i in range(n)]
                     q2 += ['S' for i in range(n)]
-                if corr_type=='wtheta':
+                elif corr_type==b'wtheta':
                     q1 += ['P' for i in range(n)]
                     q2 += ['P' for i in range(n)]
-                else:
-                    q1 += ['S' for i in range(n)]
-                    q2 += ['S' for i in range(n)]
+                elif corr_type==b'xip':
+                    q1 += ['+' for i in range(n)]
+                    q2 += ['+' for i in range(n)]
+                elif corr_type==b'xim':
+                    q1 += ['-' for i in range(n)]
+                    q2 += ['-' for i in range(n)]
                 for f in fields:
                     v = getattr(bin_pair_data, f)
                     if np.isscalar(v):
@@ -185,7 +181,8 @@ class TXTwoPoint(PipelineStage):
         meta = self.calc_metadata()
         s=sacc.SACC(tracers,binning,mean,meta=meta)
         s.printInfo()
-        s.saveToHDF ("./outputs/twopoint.sacc")
+        output_filename = self.get_output("twopoint_data")
+        s.saveToHDF(output_filename)
 
     def call_treecorr(self,i,j,k):
         """
