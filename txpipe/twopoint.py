@@ -42,8 +42,8 @@ class TXTwoPoint(PipelineStage):
 
     def run(self):
         """
-        The run method is where all the work of the stage is done.
-        In this case it:
+        Run the analysis for this stage.
+
          - reads the config file
          - prepares the output HDF5 file
          - loads in the data
@@ -225,7 +225,8 @@ class TXTwoPoint(PipelineStage):
     def get_m(self,i):
 
         mask = (self.binning == i)
-        m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11,
+
+        m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11, taking the mean for the bin, TODO check if that's what we want to do
         m2 = np.mean(self.r_gamma[mask][:,1,1]) #R22
 
         return m1, m2, mask
