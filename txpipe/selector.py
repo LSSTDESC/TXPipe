@@ -172,6 +172,7 @@ class TXSelector(PipelineStage):
             R[sel_00,1,0] = R_2[:,0]
             R[sel_00,1,1] = R_2[:,1]
 
+
             # Also save the selection biases as a matrix.
             S[i,0,0] = S_1[0]
             S[i,0,1] = S_1[1]
@@ -250,8 +251,8 @@ class TXSelector(PipelineStage):
             group.attrs[f'zmax_{i}'] = zbins[i][1]
 
         group = outfile.create_group('multiplicative_bias')
-        group.create_dataset('R_gamma', (n,2,2), dtype='i')
-        group.create_dataset('R_S', (nbin,2,2), dtype='i')
+        group.create_dataset('R_gamma', (n,2,2), dtype='f')
+        group.create_dataset('R_S', (nbin,2,2), dtype='f')
 
         return outfile
 
