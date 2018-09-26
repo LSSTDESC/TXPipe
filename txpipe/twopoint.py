@@ -443,14 +443,15 @@ class TXTwoPoint(PipelineStage):
         return sigma_e_list, mean_e1_list, mean_e2_list
 
     def calc_neff(self,area):
-
+        neff = []
         for i in range(len(self.read_zbins())):
             m1, m2, mask = self.get_m(i)
             w    = np.ones(len(self.ra[mask]))
             a    = np.sum(w)**2
             b    = np.sum(w**2)
             c    = area
-        return  a/b/c
+            neff.append(a/b/c)
+        return neff
 
     def calc_area(self):
 
