@@ -38,7 +38,6 @@ class TXSelector(PipelineStage):
         'T_cut':float,
         's2n_cut':float,
         'delta_gamma': float,
-        'max_rows':0,
         'chunk_rows':10000,
         'zbin_edges':[float]
     }
@@ -98,8 +97,8 @@ class TXSelector(PipelineStage):
             selection_biases.append((S,counts))
 
         # Do the selection bias averaging and output that too.
-        S = self.average_selection_bias(selection_biases)
-        self.write_selection_bias(output_file, S)
+        S, N = self.average_selection_bias(selection_biases)
+        self.write_selection_bias(output_file, S, N)
 
         # Save and complete
         output_file.close()
@@ -225,7 +224,7 @@ class TXSelector(PipelineStage):
         for i,n_i in enumerate(N):
             S[i]/=n_i
 
-        return S
+        return S, N
 
 
 
@@ -243,6 +242,7 @@ class TXSelector(PipelineStage):
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('bin', (n,), dtype='i')
+        group.create_dataset('N', (nbin,), dtype='i')
 
         group.attrs['nbin'] = nbin
         for i in range(nbin):
@@ -284,7 +284,7 @@ class TXSelector(PipelineStage):
         group = outfile['multiplicative_bias']
         group['R_gamma'][start:end,:,:] = R
 
-    def write_selection_bias(self, outfile, S):
+    def write_selection_bias(self, outfile, S, N):
         """
         Write out overall selection biases
 
@@ -301,6 +301,8 @@ class TXSelector(PipelineStage):
         if self.rank==0:
             group = outfile['multiplicative_bias']
             group['R_S'][:,:,:] = S
+            group = outfile['tomography']
+            group['N'][:] = N
 
 
     def read_config(self, args):
@@ -320,11 +322,11 @@ class TXSelector(PipelineStage):
 def select(shear_data, pz_data, cuts, variant, zmin, zmax):
     n = len(shear_data)
 
-    s2n_cut = cuts['T_cut']
-    T_cut = cuts['s2n_cut']
+    s2n_cut = cuts['s2n_cut']
+    T_cut = cuts['T_cut']
 
-    s2n_col = 'mcal_T' + variant
-    T_col = 'mcal_s2n_r' + variant
+    T_col = 'mcal_T' + variant
+    s2n_col = 'mcal_s2n_r' + variant
     z_col = 'mu' + variant
 
     s2n = shear_data[s2n_col]
