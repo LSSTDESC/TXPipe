@@ -68,6 +68,7 @@ class TXTwoPoint(PipelineStage):
         self.load_shear_catalog()
         self.load_random_catalog()
         self.setup_results()
+        meta = self.calc_metadata()
 
         calcs = self.select_calculations(nbins)
         print('calcs',calcs)
@@ -85,7 +86,7 @@ class TXTwoPoint(PipelineStage):
         # just copy all the results to the root process
         # to output
         if self.rank==0:
-            self.write_output()
+            self.write_output(meta)
 
 
     def select_calculations(self, nbins):
@@ -129,7 +130,7 @@ class TXTwoPoint(PipelineStage):
         zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
         return zbins
 
-    def write_output(self):
+    def write_output(self, meta):
         # TODO fix this to account for the case where we only do a certain number of calcs
         f = self.open_input('photoz_stack')
 
@@ -178,7 +179,6 @@ class TXTwoPoint(PipelineStage):
 
         binning=sacc.Binning(type,output['theta'],output['i'],q1,output['j'],q2)
         mean=sacc.MeanVec(output['value'])
-        meta = self.calc_metadata()
         s=sacc.SACC(tracers,binning,mean,meta=meta)
         s.printInfo()
         output_filename = self.get_output("twopoint_data")
@@ -380,21 +380,15 @@ class TXTwoPoint(PipelineStage):
 
         ra = data['ra']
         dec = data['dec']
-        flags = data['mcal_flags']
 
-        mask  = (flags == 0)
 
-        self.mcal_g1 = mcal_g1[mask]
-        self.mcal_g2 = mcal_g2[mask]
+        self.mcal_g1 = mcal_g1
+        self.mcal_g2 = mcal_g2
+        self.ra = ra
+        self.dec = dec
         # self.mcal_mag = mcal_mag[mask]
         # self.mcal_s2n = mcal_s2n[mask]
         # self.mcal_T = mcal_T[mask]
-        self.ra = ra[mask]
-        self.dec = dec[mask]
-        print('len binning', len(self.binning))
-        print('len mask', len(mask))
-        print('len mcal g1 ', len(mcal_g1))
-        self.binning = self.binning[mask]
 
     def load_random_catalog(self):
 
@@ -480,8 +474,7 @@ class TXTwoPoint(PipelineStage):
             "mean_e1": mean_e1,
             "mean_e2": mean_e2,
         }
-        #with open('./outputs/metadata.yml', 'w') as outfile:
-        #    yaml.dump(data, outfile, default_flow_style=False)
+
         return data
 
 if __name__ == '__main__':
