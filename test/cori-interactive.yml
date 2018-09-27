@@ -4,21 +4,39 @@ modules: txpipe
 
 
 stages:
-    - name: TXSelector
-      nprocess: 8
-    - name: TXRandomPhotozPDF
-      nprocess: 8
-    - name: TXDiagnosticMaps
-      nprocess: 8
-    - name: TXPhotozStack
+    - name: TXProtoDC2Mock
       nprocess: 1
+      nodes: 1
+    - name: TXSelector
+      nprocess: 16
+      nodes: 1
+    - name: TXRandomPhotozPDF
+      nprocess: 16
+      nodes: 1
+    - name: TXDiagnosticMaps
+      nprocess: 16
+      nodes: 1
+    - name: TXPhotozStack
+      # Does not run in parallel
+      nprocess: 1
+      nodes: 1
+    - name: TXRandomCat
+      # Fast - not worth running in parallel
+      nprocess: 1
+      nodes: 1
+    - name: TXTwoPoint
+      # Runs in parallel but at OpenMP level right now 
+      nprocess: 1
+
 
 output_dir: ./outputs
 
 config: test/config.yml
 
 inputs:
-    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/esheldon/ngmixer-outputs/test-medsdm-dbcoadd-mcal-001/combined/tract008766-test-medsdm-dbcoadd-mcal-001.fits
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf
+    # shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/mock_shear_catalog.fits
+    # photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/mock_photometry_catalog.hdf
     
 resume: False
 log_dir: ./test/logs

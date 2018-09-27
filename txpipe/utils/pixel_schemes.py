@@ -103,6 +103,22 @@ class HealpixScheme:
             phi = np.degrees(phi)
         return phi, theta
 
+    def pixel_area(self, degrees=False):
+        """
+        Return the area of one pixel in radians (default) or degrees
+
+        degrees: bool, optional
+            If true, return the area in square degrees. Default is False.
+
+        Returns
+
+        area: float
+            area in deg^2 or square radians, depending on degrees parameter
+
+        """
+        return self.healpy.nside2pixarea(self.nside, degrees=degrees)
+
+
     @classmethod
     def read_map(HealpixScheme,fname_map,i_map=0) :
         #TODO: need to write a write_maps function
@@ -110,7 +126,6 @@ class HealpixScheme:
 
         Parameters
         ----------
-
         fname_map: string
             Path to file
         i_map: None, int or array-like
@@ -130,6 +145,11 @@ class HealpixScheme:
         p=HealpixScheme(nside,nest=nest)
         return p,maps
 
+
+    def vertices(self, pix):
+        return self.healpy.boundaries(self.nside, pix)
+
+
 class GnomonicPixelScheme:
     """A pixelization scheme using the Gnomonic (aka tangent plane) projection.
 
@@ -137,14 +157,6 @@ class GnomonicPixelScheme:
 
     Attributes
     ----------
-    ra_min: float
-        The minimum right ascension value to use in the map, in degrees
-    ra_max: float
-        The maximum right ascension value to use in the map, in degrees
-    dec_min: float
-        The minimum declination value to use in the map, in degrees
-    dec_max: float
-        The maximum declination value to use in the map, in degrees
     pixel_size: float
         The size of each pixel along the side, in degrees
     metadata: dict
@@ -199,33 +211,45 @@ class GnomonicPixelScheme:
         if pixel_size_y is None :
             pixel_size_y=pixel_size
         if crpix_x is None :
-            crpix_x=nx/2
+            crpix_x=nx/2.0
         if crpix_y is None :
-            crpix_y=ny/2
+            crpix_y=ny/2.0
 
         wcs = WCS(naxis=2)
         #Note: we're assuming we'll want the tangent point to be at (nx/2,ny/2).
         #      This is common, but not universal.
-        wcs.wcs.crpix = [crpix_x+pad, crpix_y+pad]
+        wcs.wcs.crpix = [(crpix_x+pad), crpix_y+pad]
         wcs.wcs.cdelt = [pixel_size, pixel_size_y]
         wcs.wcs.crval = [ra_cent,dec_cent] #Pick middle point
         wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         
         self.wcs = wcs
         self.pixel_size_x=pixel_size
-        self.pixel_size_y=pixel_size_y
+        self.pixel_size_y=pixel_size
         self.ra_cent = ra_cent
         self.dec_cent = dec_cent
         self.nx = nx
         self.ny = ny
         self.npix = self.nx*self.ny
+        self.pixel_size = pixel_size
         self.pad = pad
+
+        LL, _, UR, _ = self.wcs.calc_footprint(axes=(self.nx,self.ny), center=False)
+        self.ra_min, self.dec_min = LL
+        self.ra_max, self.dec_max = UR
+
 
         self.metadata = {
             'ra_cent':self.ra_cent, 'dec_cent':self.dec_cent, 
             'pixel_size_x':pixel_size, 'pixel_size_y':pixel_size_y,
-            'nx': self.nx, 'ny':self.ny, 'npix': self.npix,'pad': self.pad
+            'nx': self.nx, 'ny':self.ny, 'npix': self.npix,'pad': self.pad,
+            'pixel_size': self.pixel_size,
+            'ra_min': self.ra_min,
+            'ra_max': self.ra_max,
+            'dec_min': self.dec_min,
+            'dec_max': self.dec_max,
             }
+
 
 
     def ang2pix_real(self, ra, dec, radians=False, theta=False):
@@ -280,8 +304,8 @@ class GnomonicPixelScheme:
             Flat-sky pixel indices of all the specified angles.
         """
         x, y = self.ang2pix_real(ra,dec,radians=radians,theta=theta)
-        x = np.floor(x).astype(int)
-        y = np.floor(y).astype(int)
+        x = round_approx(x)
+        y = round_approx(y)
         bad = (x<0) | (x>=self.nx) | (y<0) | (y>=self.ny)
         pix = x + y*self.nx
         pix[bad] = -9999
@@ -313,22 +337,44 @@ class GnomonicPixelScheme:
         x = pix % self.nx
         y = pix // self.nx
         ra, dec = self.wcs.wcs_pix2world(x, y, 0.0)
+        bad = (pix<0) | (pix>=self.npix)
 
         if theta:
             dec = 90.0 - dec
         if radians:
             ra = np.radians(ra)
             dec = np.radians(dec)
+        ra[bad] = np.nan
+        dec[bad] = np.nan
         return ra, dec
+
+    def pixel_area(self, degrees=False):
+        """
+        Return the area of one pixel in radians (default) or degrees
+
+        Parameters
+        ----------
+        degrees: bool, optional
+            If true, return the area in square degrees. Default is False.
+        Returns
+
+        area: float
+            area in deg^2 or square radians, depending on degrees parameter
+
+        """
+        import astropy.wcs
+        area = astropy.wcs.utils.proj_plane_pixel_area(self.wcs)
+        if degrees:
+            return area
+        else:
+            return area * np.radians(1.)**2
+
 
     @classmethod
     def read_map(GnominicPixelScheme,fname_map,i_map=0) :
         #TODO: need to write a write_maps function
         """Read a flat-sky map from a fits file and generate the associated
         GnomonicPixelScheme.
-
-        Parameters
-        ----------
 
         fname_map: string
             Path to file
@@ -362,6 +408,52 @@ class GnomonicPixelScheme:
             maps=maps.reshape([nm,ny*nx])
             
         return p,maps
+
+
+    def vertices(self, pix):
+        from astropy.coordinates import SkyCoord
+
+        pix = np.atleast_1d(pix)
+        x = pix % self.nx
+        y = pix // self.nx
+        ra, dec = self.wcs.wcs_pix2world(x, y, 1)
+        d = 0.5*self.pixel_size
+        p0 = SkyCoord(ra=ra-d, dec=dec-d, unit='deg')
+        p1 = SkyCoord(ra=ra-d, dec=dec+d, unit='deg')
+        p2 = SkyCoord(ra=ra+d, dec=dec+d, unit='deg')
+        p3 = SkyCoord(ra=ra+d, dec=dec-d, unit='deg')
+        out = np.empty((pix.size, 3, 4))
+        out[:, :, 0] = p0.cartesian.get_xyz().value.T
+        out[:, :, 1] = p1.cartesian.get_xyz().value.T
+        out[:, :, 2] = p2.cartesian.get_xyz().value.T
+        out[:, :, 3] = p3.cartesian.get_xyz().value.T
+        return out
+
+
+
+
+def round_approx(x):
+    """
+    Round down to the floor integer value for x, except where x is very close
+    to floor(x)+1, in which case round to that value.
+
+    Parameters
+    ----------
+
+    x: array or float
+
+    Returns
+
+    out: integer array
+        Rounded value of x
+
+    """
+    x = np.atleast_1d(x)
+    out = np.floor(x).astype(int)
+    x_round = np.rint(x)
+    near_integer = np.isclose(x, x_round, rtol=0.0, atol=1e-10)
+    out[near_integer] = x_round[near_integer]
+    return out
 
                                                     
 def choose_pixelization(**config):
@@ -400,7 +492,7 @@ def choose_pixelization(**config):
         nx = config['npix_x']
         ny = config['npix_y']
         pixel_size = config['pixel_size']
-        if np.isnan([ra_cent, dec_cent, nx, ny, pixel_size]).any():
+        if np.isnan([ra_cent, dec_cent, pixel_size]).any() or nx==-1 or ny==-1:
             raise ValueError("Must set ra_cent, dec_cent, nx, ny, pixel_size to use Gnomonic/Tangent pixelization")
         scheme = GnomonicPixelScheme(ra_cent, dec_cent, pixel_size, nx, ny)
     else:
