@@ -121,8 +121,8 @@ class TXRandomCat(PipelineStage):
         tomo = self.open_input('tomography_catalog')
         d = dict(tomo['tomography'].attrs)
         tomo.close()
-        nbin = d['nbin']
-        zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
+        nbin = d['nbin_source']
+        zbins = [(d[f'source_zmin_{i}'], d[f'source_zmax_{i}']) for i in range(nbin)]
         return zbins
 
 

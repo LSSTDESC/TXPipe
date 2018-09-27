@@ -24,7 +24,6 @@ TXRandomCat:
 TXTwoPoint:
     binslop: 0.1
     delta_gamma: 0.02
-    num_threads: 32  # per process
 
 TXDiagnosticMaps:
     chunk_rows: 10000  # Number of rows to process at once
