@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
+from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
 import h5py
 import numpy as np
 import treecorr
