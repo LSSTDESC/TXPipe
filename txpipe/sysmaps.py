@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import HDFFile, DiagnosticMaps, YamlFile
+from .data_types import HDFFile, DiagnosticMaps, YamlFile
 import numpy as np
 
 class TXDiagnosticMaps(PipelineStage):

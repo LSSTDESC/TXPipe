@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
+from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
 
 class TXRandomPhotozPDF(PipelineStage):
     """

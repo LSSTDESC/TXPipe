@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import PhotozPDFFile, TomographyCatalog, HDFFile 
+from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile 
 
 class TXPhotozStack(PipelineStage):
     """

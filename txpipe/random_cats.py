@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog
+from .data_types import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog
 from .utils import choose_pixelization
 import numpy as np
 
