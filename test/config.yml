@@ -40,3 +40,6 @@ TXDiagnosticMaps:
     # dec_cent: 0.0
     # npix_x: 20
     # npix_y: 20
+
+TXTwoPointFourier:
+    chunk_rows: 10000

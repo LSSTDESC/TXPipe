@@ -35,15 +35,18 @@ class MetacalCatalog(FitsFile):
 class TomographyCatalog(HDFFile):
     required_datasets = []
 
-    def read_zbins(self):
+    def read_zbins(self, bin_type):
         """
         Read saved redshift bin edges from attributes
         """
         d = dict(self.file['tomography'].attrs)
-        tomo.close()
-        nbin = d['nbin']
-        zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
+        nbin = d[f'nbin_{bin_type}']
+        zbins = [(d[f'{bin_type}_zmin_{i}'], d[f'{bin_type}_zmax_{i}']) for i in range(nbin)]
         return zbins
+
+    def read_nbin(self, bin_type):
+        d = dict(self.file['tomography'].attrs)
+        return d[f'nbin_{bin_type}']
 
 
 
@@ -74,6 +77,23 @@ class DiagnosticMaps(HDFFile):
             return m, pix, nside
         else:
             return m
+
+    def read_map_info(self, map_name):
+        group = self.file[f'maps/{map_name}']
+        info = dict(group.attrs)
+        return info
+
+    def read_map(self, map_name):
+        info = self.read_map_info(map_name)
+        pixelization = info['pixelization']
+        if pixelization == 'tangent':
+            m = self.read_tangential(map_name)
+        elif pixelization == 'healpix':
+            m = self.read_healpix(map_name)
+        else:
+            raise ValueError(f"Unknown map pixelization type {pixelization}")
+        return m
+
 
     def display_healpix(self, map_name, **kwargs):
         import healpy

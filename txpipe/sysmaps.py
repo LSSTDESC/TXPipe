@@ -98,6 +98,7 @@ class TXDiagnosticMaps(PipelineStage):
             config['snr_delta'],
             sparse=config['sparse'],
             comm=self.comm)
+
         
         # Only the root process saves the output
         if self.rank==0:
@@ -109,6 +110,17 @@ class TXDiagnosticMaps(PipelineStage):
             self.save_map(group, "depth", pixel, depth, config)
             self.save_map(group, "depth_count", pixel, count, config)
             self.save_map(group, "depth_var", pixel, depth_var, config)
+
+            # I'm expecting this will one day call off to a 10,000 line
+            # library or something.
+            mask = self.compute_mask(count)
+            self.save_map(group, "mask", pixel, mask, config)
+
+
+    def compute_mask(self, depth_count):
+        mask = np.zeros_like(depth_count)
+        mask[depth_count>0] = 1.0
+        return mask
 
 
 
