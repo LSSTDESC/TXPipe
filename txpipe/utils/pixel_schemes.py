@@ -1,6 +1,7 @@
 import numpy as np
 
 class HealpixScheme:
+    name = 'healpix'
     """A pixelization scheme using Healpix pixels.
 
     Attributes
@@ -43,6 +44,7 @@ class HealpixScheme:
         self.npix = self.healpy.nside2npix(self.nside)
 
         self.metadata = {'nside':self.nside, 'npix':self.npix, 'nest':self.nest}
+        self.shape = (self.npix)
 
     def ang2pix(self, ra, dec, radians=False, theta=False):
         """Convert angular sky coordinates to pixel indices.
@@ -151,6 +153,7 @@ class HealpixScheme:
 
 
 class GnomonicPixelScheme:
+    name = 'gnomonic'
     """A pixelization scheme using the Gnomonic (aka tangent plane) projection.
 
     The pixel index is of the form p = x + y*nx
@@ -234,6 +237,9 @@ class GnomonicPixelScheme:
         self.pixel_size = pixel_size
         self.pad = pad
 
+        self.size_x = self.pixel_size_x * self.nx
+        self.size_y = self.pixel_size_y * self.ny
+
         LL, _, UR, _ = self.wcs.calc_footprint(axes=(self.nx,self.ny), center=False)
         self.ra_min, self.dec_min = LL
         self.ra_max, self.dec_max = UR
@@ -249,6 +255,8 @@ class GnomonicPixelScheme:
             'dec_min': self.dec_min,
             'dec_max': self.dec_max,
             }
+
+        self.shape = (self.ny, self.nx)
 
 
 
@@ -486,7 +494,7 @@ def choose_pixelization(**config):
             raise ValueError("nside pixelization parameter must be set to a power of two (used value {nside})")
         nest = config.get('nest', False)
         scheme = HealpixScheme(nside, nest=nest)
-    elif pixelization == 'gnomonic' or pixelization == 'tan' or pixelization == 'tangent':
+    elif pixelization == 'gnomonic':
         ra_cent = config['ra_cent']
         dec_cent = config['dec_cent']
         nx = config['npix_x']
@@ -496,6 +504,6 @@ def choose_pixelization(**config):
             raise ValueError("Must set ra_cent, dec_cent, nx, ny, pixel_size to use Gnomonic/Tangent pixelization")
         scheme = GnomonicPixelScheme(ra_cent, dec_cent, pixel_size, nx, ny)
     else:
-        raise ValueError("Pixelization scheme unknown")
+        raise ValueError(f"Pixelization scheme {pixelization} unknown")
 
     return scheme

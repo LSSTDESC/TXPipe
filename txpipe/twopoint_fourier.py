@@ -120,14 +120,16 @@ def source_mapper(shear_it,bin_it,ms_it,pixel_scheme,bins,comm=None):
     #Calculate map
     count,w_mean,w_std=stats.calculate(weights_iterator,comm)
 
-    #Reshape 1d histograms into maps
-    count=count.reshape([nbins,ntasks,npix])
-    w_mean=w_mean.reshape([nbins,ntasks,npix])
-    w_std=w_std.reshape([nbins,ntasks,npix])
+    # Reshape 1D histograms into maps.  Support both 1D healpix maps
+    # and 2D flat maps
+    shape = (nbins,ntasks,) + pixel_scheme.shape
+    count=count.reshape(shape)
+    w_mean=w_mean.reshape(shape)
+    w_std=w_std.reshape(shape)
 
     return count,w_mean
 
-def maps2fields(count,mean,mask,syst_nc,syst_wl,field_class,mask_thr=0.) :
+def maps2fields(count,mean,mask,syst_nc,syst_wl,pixel_scheme,mask_thr=0.) :
     """Generates NaMaster's NmtField objects based on input maps.
     
     Parameters
@@ -173,7 +175,8 @@ def maps2fields(count,mean,mask,syst_nc,syst_wl,field_class,mask_thr=0.) :
     #TODO: this whole function could be parallelized
 
     #Determine number of bins
-    nbins,ntasks,npix=mean.shape
+    nbins = mean.shape[0]
+    ntasks = mean.shape[1]
 
     if ntasks!=3 :
         #TODO: right now we need both lensing and clustering. This should be more flexible"
@@ -184,15 +187,31 @@ def maps2fields(count,mean,mask,syst_nc,syst_wl,field_class,mask_thr=0.) :
     #Neglect pixels below mask threshold
     mask[mask<=mask_thr]=0
 
-    #Maps for number counts
+
+    #Maps for number counts, one per tomography bin
     nmap=count[:,0,:]*mean[:,0,:]
     nmean=np.sum(nmap*mask[None,:])/np.sum(mask)
-    dmap=np.zeros_like(nmap);
-    dmap[ipix_mask_good]=nmap[ipix_mask_good]/(nmean*mask[ipix_mask_good])-1 #delta_g
-    dfields=[field_class(mask,[d],syst_nc) for d in dmap]
+    dmap=np.zeros_like(nmap)
+    for b in range(nbins):
+        dmap[b, ipix_mask_good]=nmap[b,ipix_mask_good]/(nmean*mask[ipix_mask_good])-1 #delta_g
 
-    #Maps for weak lensing
-    wfields=[field_class(mask,[m[1],m[2]],syst_wl) for m in mean]
+    if pixel_scheme.name == 'gnomonic':
+        lx = np.radians(pixel_scheme.size_x)
+        ly = np.radians(pixel_scheme.size_y)
+        print(f"lx = {lx}")
+        # Density
+        dfields=[nmt.NmtFieldFlat(lx,ly,mask,[d],templates=syst_nc) for d in dmap]
+        # Lensing
+        wfields=[nmt.NmtFieldFlat(lx, ly, mask,[m[1],m[2]],templates=syst_wl) for m in mean]
+
+    elif pixel_scheme.name == 'healpix':
+        # Density
+        dfields=[nmt.NmtField(mask,[d],syst_nc) for d in dmap]
+        # Lensing
+        wfields=[nmt.NmtField(mask,[m[1],m[2]],syst_wl) for m in mean]
+    else:
+        raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+
     
     return dfields,wfields
         
@@ -227,7 +246,7 @@ class TXTwoPointFourier(PipelineStage):
     ]
 
     config_options = {
-
+        "chunk_rows": 10000
     }
     
     def run(self) :
@@ -240,15 +259,7 @@ class TXTwoPointFourier(PipelineStage):
 
         #Choose pixelization and read mask and systematics maps
         pixelization=mask_info['pixelization'].lower()
-        if pixelization=='healpix':
-            pixtype=0
-            field_class=nmt.NmtField
-        elif pixelization=='gnomonic' or pixelization=='tan' or pixelization=='tangent':
-            pixtype=1
-            field_class=nmt.NmtFieldFlat
-        else :
-            raise ValueError("Pixelization scheme unknown")
-     
+
         mask = diagnostic_map_file.read_map('mask')
 
         syst_nc = None
@@ -302,15 +313,31 @@ class TXTwoPointFourier(PipelineStage):
         m_count,m_mean=source_mapper(shear_iterator,bin_iterator,ms_iterator,pix_schm,source_bins,self.comm)
         print("Made source maps")
         #Generate namaster fields
-        f_d,f_w=maps2fields(m_count,m_mean,mask,syst_nc,syst_wl,field_class)
+        f_d,f_w=maps2fields(m_count,m_mean,mask,syst_nc,syst_wl, pix_schm)
         print("Converted maps to NaMaster fields")
+
+        ell_bins = self.choose_ell_bins(pix_schm)
+        print("Chosen pix scheme")
+
+        w00, w02, w22 = self.setup_workspaces(pix_schm, f_d, f_w, ell_bins)
+        print("Computed workspaces")
+
+        c_ll, c_dl, c_dd = self.compute_power_spectra(pix_schm, nbin_source, nbin_lens, f_w, f_d, w00, w02, w22, ell_bins)
+        print("Computed all power spectra")
+
+        #Save power spectra
+        #TODO: SACC interface here
+        self.save_power_spectra(c_ll, c_dl, c_dd)
+        print("Saved power spectra")
 
         #Binning scheme
         #TODO: set ell binning from config
-        if pixtype==0 :
+
+    def choose_ell_bins(self, pix_schm):
+        if pix_schm.name == 'healpix':
             nlb=min(1,int(1./np.mean(mask)))
             ell_bins=nmt.NmtBin(pix_schm.nside,nlb=nlb)
-        elif pixtype==1 :
+        elif pix_schm.name == 'gnomonic':
             lx=np.radians(pix_schm.nx*pix_schm.pixel_size_x)
             ly=np.radians(pix_schm.ny*pix_schm.pixel_size_y)
             ell_min=max(2*np.pi/lx,2*np.pi/ly)
@@ -321,44 +348,80 @@ class TXTwoPointFourier(PipelineStage):
             l_bpw[0,:]=ell_min+np.arange(n_ell)*d_ell
             l_bpw[1,:]=l_bpw[0,:]+d_ell
             ell_bins=nmt.NmtBinFlat(l_bpw[0,:],l_bpw[1,:])
+            # for k,v in locals().items():
+            #     print(f"{k}: {v}")
+        return ell_bins
 
+
+    def setup_workspaces(self, pix_schm, f_d, f_w, ell_bins):
+        # choose scheme class
+        if pix_schm.name == 'healpix':
+            workspace_class = nmt.NmtWorkspace
+        elif pix_schm.name == 'gnomonic':
+            workspace_class = nmt.NmtWorkspaceFlat
+        else:
+            raise ValueError(f"No NaMaster workspace for pixel scheme {pix_schm.name}")
 
         #Compute mode-coupling matrix
         #TODO: mode-coupling could be pre-computed and provided in config.
-        if len(f_d)>0 :
-            w00=nmt.NmtWorkspace(); w00.compute_coupling_matrix(f_d[0],f_d[0],ell_bins);
-            if len(f_w)>0 :
-                w02=nmt.NmtWorkspace(); w02.compute_coupling_matrix(f_d[0],f_w[0],ell_bins);
-        if len(f_w)>0 :
-            w22=nmt.NmtWorkspace(); w22.compute_coupling_matrix(f_w[0],f_w[0],b);
+        w00=workspace_class()
+        w00.compute_coupling_matrix(f_d[0],f_d[0],ell_bins);
 
-        print("Computed mode-coupling matrix")
+        w02=workspace_class()
+        w02.compute_coupling_matrix(f_d[0],f_w[0],ell_bins);
 
+        w22=workspace_class()
+        w22.compute_coupling_matrix(f_w[0],f_w[0],ell_bins);
+
+        return w00, w02, w22
+
+    def compute_power_spectra(self, pix_schm, nbin_source, nbin_lens, f_w, f_d, w00, w02, w22, ell_bins):
         #Compute power spectra
         #TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
-        c_dd=[]; c_dl=[]; c_ll=[]; t_bins=[];
-        for ib1,b1 in enumerate(bins) :
-            for ib2,b2 in enumerate(bins) :
-                if b2>=b1 : 
-                    #This implies we don't care about lenses behind sources
-                    #We also only care about the lower-triangular part of the matrix for the
-                    #galaxy-galaxy and shear-shear components.
-                    continue
-                print(f"Computing power spectrum pair {ib1} {ib2}")
-                t_bins.append((b1,b2))
-                if len(f_d)>0 :
-                    c00=w00.decouple_cell(nmt.compute_coupled_cell(f_d[ib1],f_d[ib2]))
-                    c_dd.append(c00[0])
-                    if len(f_w)>0 :
-                        c02=w02.decouple_cell(nmt.compute_coupled_cell(f_w[ib1],f_d[ib2]))
-                        c_dl.append([c02[0],c02[1]])
-                if len(f_w)>0 :
-                    c22=w22.decouple_cell(nmt.compute_coupled_cell(f_w[ib1],f_w[ib2]))
-                    c_ll.append([c22[0],c22[3]]) #We neglect the EB and BE cross-correlations
+        c_dd={}
+        c_dl={}
+        c_ll={}
 
-        #Save power spectra
-        #TODO: SACC interface here
+        # TODO: parallelize this bit
+        for i in range(nbin_source):
+            for j in range(i+1):
+                print(f"Calculating shear-shear bin pair ({i},{j})")
+                c = self.compute_one_spectrum(pix_schm, w22, f_w[i], f_w[j], ell_bins)
+                #We neglect the EB and BE cross-correlations
+                c_ll[(i,j)] = c[0],c[3] 
+                
+        for i in range(nbin_lens):
+            for j in range(i+1):
+                print(f"Calculating position-position bin pair ({i},{j})")
+                c = self.compute_one_spectrum(pix_schm, w00, f_d[i], f_d[j], ell_bins)
+                c_dd[(i,j)] = c[0]
+
+        for i in range(nbin_source):
+            for j in range(nbin_lens):
+                print(f"Calculating position-shear bin pair ({i},{j})")
+                c = self.compute_one_spectrum(pix_schm, w02, f_w[i], f_d[j], ell_bins)                
+                c_dl[(i,j)] = c[0],c[1]
+
+        return c_ll, c_dl, c_dd
+
+    def compute_one_spectrum(self, pix_scheme, w, f1, f2, ell_bins):
+        if pix_scheme.name == 'healpix':
+            coupled_c_ell = nmt.compute_coupled_cell(f1, f2)
+        elif pix_scheme.name == 'gnomonic':
+            coupled_c_ell = nmt.compute_coupled_cell_flat(f1, f2, ell_bins)
+
+        c_ell = w.decouple_cell(coupled_c_ell)
+        return c_ell
+
+
+    def save_power_spectra(self, c_ll, c_dl, c_dd):
+        print("TODO: Save spectra")
+        print(c_ll)
+        print(c_dl)
+        print(c_dd)
+
+
 
 if __name__ == '__main__':
     PipelineStage.main()

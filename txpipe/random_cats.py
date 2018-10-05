@@ -137,7 +137,7 @@ def pixel_boundaries(props, pixel):
     if props['pixelization']=='healpix':
         boundaries = healpy.boundaries(props['nside'], pixel)
         area = healpy.nside2pixarea(nside, degrees=True) * 60.*60.
-    elif props['pixelization'] in ['tangent', 'tan', 'gnomonic']:
+    elif props['pixelization'] == 'gnomonic':
         boundaries = pixel_boundaries(maps_file['maps/depth'].attrs)
         pix_size_deg = maps_file['maps/depth'].attrs['pixel_size']
         area = (pix_size_deg*60.*60.)**2
