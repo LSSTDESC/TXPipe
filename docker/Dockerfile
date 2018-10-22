@@ -100,5 +100,6 @@ RUN cd /opt/namaster/NaMaster && python setup.py install
 RUN pip install treecorr 
 
 RUN cd /opt && git clone https://github.com/LSSTDESC/sacc/ && cd sacc && python setup.py install
-
+RUN pip install --upgrade descformats
+WORKDIR /opt/txpipe
 CMD ["/bin/bash", "-l"]
