@@ -24,6 +24,23 @@ Needs the ceci DESC library on the python path (which is not quite stable enough
 
 On NERSC (Cori) - see the instructions below
 
+Docker
+------
+
+In Docker, from the main directory:
+
+```bash
+docker pull joezuntz/txpipe
+docker run --rm -it -v$PWD:/opt/txpipe joezuntz/txpipe
+```
+
+Then you will be inside the container, where you can do:
+
+```bash
+cd /opt/txpipe
+ceci test/test-fourier.yaml
+```
+
 Cori
 ----
 
