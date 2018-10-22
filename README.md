@@ -35,6 +35,7 @@ module unload darshan
 module load hdf5-parallel/1.10.1
 module load python/3.6-anaconda-4.4
 module load cfitsio/3.370-reentrant
+module load gsl/2.1
 source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
 ```
 
