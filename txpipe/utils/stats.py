@@ -297,7 +297,7 @@ class ParallelStatsCalculator:
         return self._count, self._mean, self._variance        
 
 
-    def collect(self, comm):
+    def collect(self, comm, mode='gather'):
         """Designed for manual use - in general prefer the calculate method.
         
         Combine together statistics from different processors into one.
@@ -305,6 +305,9 @@ class ParallelStatsCalculator:
         Parameters
         ----------
         comm: MPI Communicator or None
+
+        mode: string
+            'gather', or 'allgather'
 
         Returns
         -------
@@ -321,11 +324,21 @@ class ParallelStatsCalculator:
         if comm is None:
             return self._count, self._mean, self._variance
 
-        counts = comm.gather(self._count)
-        means = comm.gather(self._mean)
-        variances = comm.gather(self._variance)
+        if mode not in ['gather', 'allgather']:
+            raise ValueError("mode for ParallelStatsCalculator.collect must be"
+                             "'gather' or 'allgather'")
 
-        if comm.Get_rank()!=0:
+        if mode == 'gather':
+            counts = comm.gather(self._count)
+            means = comm.gather(self._mean)
+            variances = comm.gather(self._variance)
+        else:
+            counts = comm.allgather(self._count)
+            means = comm.allgather(self._mean)
+            variances = comm.allgather(self._variance)
+
+
+        if comm.Get_rank()!=0 and mode=='gather':
             count, mean, variance = None, None, None
         elif self.sparse:
             count, mean, variance = self._collect_sparse(counts, means, variances)
