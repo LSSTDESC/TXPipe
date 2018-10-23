@@ -83,7 +83,7 @@ def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins):
                     yield index, w[mask_pix & mask_bins]
 
 
-def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm=None):
+def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm):
     """Produces number counts and shear maps from shear and tomography catalogs.
 
     Parameters
