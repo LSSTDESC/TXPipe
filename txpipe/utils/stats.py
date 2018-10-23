@@ -219,7 +219,7 @@ class ParallelStatsCalculator:
             self._M2 = np.zeros(size)
 
 
-    def calculate(self, values_iterator, comm=None):
+    def calculate(self, values_iterator, comm=None, mode='gather'):
         """ Calculate statistics of an input data set.
 
         Operates on an iterator, which is expected to repeatedly yield
@@ -232,6 +232,8 @@ class ParallelStatsCalculator:
         comm: MPI Communicator, optional
             If set, assume each MPI process in the comm is getting different data and combine them at the end.
             Only the master process will return the full results - the others will get None
+        mode: string
+            'gather', or 'allgather', only used if MPI is used
 
         Returns
         -------
@@ -252,7 +254,7 @@ class ParallelStatsCalculator:
                 count, mean, variance = self._calculate_serial(values_iterator)
                 return count, mean, variance
             else:
-                count, mean, variance = self._calculate_parallel(values_iterator, comm)
+                count, mean, variance = self._calculate_parallel(values_iterator, comm, mode)
                 return count, mean, variance
 
 
@@ -396,9 +398,7 @@ class ParallelStatsCalculator:
         return count, mean, variance
 
 
-    def _calculate_parallel(self, parallel_values_iterator, comm):
+    def _calculate_parallel(self, parallel_values_iterator, comm, mode):
         # Each processor calculates the values for its bits of data
         self._calculate_serial(parallel_values_iterator)
-        return self.collect(comm)        
-
-
+        return self.collect(comm, mode=mode)
