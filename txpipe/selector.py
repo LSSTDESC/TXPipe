@@ -1,6 +1,6 @@
 from ceci import PipelineStage
 from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile
-
+from .utils import NumberDensityStats
 
 class TXSelector(PipelineStage):
     """
@@ -96,8 +96,11 @@ class TXSelector(PipelineStage):
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
+        nbin_source = len(self.config['zbins'])
+        nbin_lens = 1
+
         selection_biases = []
-        lens_counts = np.zeros(1)
+        number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, pz_data), (_, _, shear_data), (_, _, phot_data) in zip(iter_pz, iter_shear, iter_phot):
@@ -105,9 +108,13 @@ class TXSelector(PipelineStage):
             print(f"Process {self.rank} running selection for rows {start}-{end}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
 
-            lens_gals = self.select_lens(phot_data, lens_counts)
+
+            lens_gals = self.select_lens(phot_data)
+
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, lens_gals, R, lens_gals)
+
+            number_density_stats.add_data(shear_data, tomo_bin, R, lens_gals)
 
             # The selection biases are the mean over all the data, so we
             # build them up as we go along and average them at the end.
@@ -115,7 +122,7 @@ class TXSelector(PipelineStage):
 
         # Do the selection bias averaging and output that too.
         S, source_counts = self.average_selection_bias(selection_biases)
-        self.write_global_values(output_file, S, source_counts, lens_counts)
+        self.write_global_values(output_file, S, source_counts, number_density_stats)
 
         # Save and complete
         output_file.close()
@@ -266,6 +273,8 @@ class TXSelector(PipelineStage):
         group.create_dataset('lens_bin', (n,), dtype='i')
         group.create_dataset('source_counts', (nbin_source,), dtype='i')
         group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
+        group.create_dataset('sigma_e', (nbin_source,), dtype='f')
+        group.create_dataset('N_eff', (nbin_source,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
         group.attrs['nbin_lens'] = nbin_lens
@@ -309,7 +318,7 @@ class TXSelector(PipelineStage):
         group = outfile['multiplicative_bias']
         group['R_gamma'][start:end,:,:] = R
 
-    def write_global_values(self, outfile, S, source_counts, lens_counts):
+    def write_global_values(self, outfile, S, source_counts, number_density_stats):
         """
         Write out overall selection biases
 
@@ -321,8 +330,7 @@ class TXSelector(PipelineStage):
         S: array of shape (nbin,2,2)
             Selection bias matrices
         """
-        if self.comm is not None:
-            lens_counts = self.comm.reduce(lens_counts)
+        sigma_e, N_eff, lens_counts = number_density_stats.collect()
 
         if self.rank==0:
             group = outfile['multiplicative_bias']
@@ -330,6 +338,8 @@ class TXSelector(PipelineStage):
             group = outfile['tomography']
             group['source_counts'][:] = source_counts
             group['lens_counts'][:] = lens_counts
+            group['sigma_e'][:] = sigma_e
+            group['N_eff'][:] = N_eff
 
 
     def read_config(self, args):
@@ -346,8 +356,13 @@ class TXSelector(PipelineStage):
         return config
 
     
+<<<<<<< HEAD
     def select_lens(self, phot_data, counts):
         """Default photometry cuts based on the BOSS Galaxy Target Selection:
+=======
+    def select_lens(self, phot_data):
+        """Photometry cuts based on the BOSS Galaxy Target Selection:
+>>>>>>> d5057ea9b5b50f51d523e951a9fa3c35df21e87d
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
         import numpy as np
@@ -395,7 +410,6 @@ class TXSelector(PipelineStage):
         lens_mask =  lowz_cut | cmass_cut
         lens_gals[lens_mask] = 0
         n_lens = lens_mask.sum()
-        counts[0] += n_lens
 
         return lens_gals
 
