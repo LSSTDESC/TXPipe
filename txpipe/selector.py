@@ -356,13 +356,9 @@ class TXSelector(PipelineStage):
         return config
 
     
-<<<<<<< HEAD
-    def select_lens(self, phot_data, counts):
-        """Default photometry cuts based on the BOSS Galaxy Target Selection:
-=======
+
     def select_lens(self, phot_data):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
->>>>>>> d5057ea9b5b50f51d523e951a9fa3c35df21e87d
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
         import numpy as np
