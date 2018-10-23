@@ -40,13 +40,15 @@ class TXSelector(PipelineStage):
         'chunk_rows':10000,
         'zbin_edges':[float],
         # Mag cuts
-        'cperp_cut':float,
-        'r_cpar_cut':float,
-        'r_lo_cut':float,
-        'r_hi_cut':float,
-        'i_lo_cut':float,
-        'i_hi_cut':float,
-        'r_i_cut':float
+        # Default photometry cuts based on the BOSS Galaxy Target Selection:                                                     
+        # http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php                                           
+        'cperp_cut':0.2,
+        'r_cpar_cut':13.5,
+        'r_lo_cut':16.0,
+        'r_hi_cut':19.6,
+        'i_lo_cut':17.5,
+        'i_hi_cut':19.9,
+        'r_i_cut':2.0
     }
 
     def run(self):
@@ -345,7 +347,7 @@ class TXSelector(PipelineStage):
 
     
     def select_lens(self, phot_data, counts):
-        """Photometry cuts based on the BOSS Galaxy Target Selection:
+        """Default photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
         import numpy as np
@@ -362,7 +364,8 @@ class TXSelector(PipelineStage):
         i_lo_cut_val = self.config['i_lo_cut']
         i_hi_cut_val = self.config['i_hi_cut']
         r_i_cut_val = self.config['r_i_cut']
-        
+        print(r_lo_cut_val, r_hi_cut_val)
+
         n = len(mag_i)
         # HDF does not support bools, so we will prepare a binary array
         # where 0 is a lens and 1 is not
