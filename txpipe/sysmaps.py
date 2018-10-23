@@ -113,14 +113,20 @@ class TXDiagnosticMaps(PipelineStage):
 
             # I'm expecting this will one day call off to a 10,000 line
             # library or something.
-            mask = self.compute_mask(count)
+            mask, npix = self.compute_mask(count)
             self.save_map(group, "mask", pixel, mask, config)
+
+            area = pixel_scheme.pixel_area(degrees=True) * npix
+            group.attrs['area'] = area
+            group.attrs['area_unit'] = 'sq deg'
 
 
     def compute_mask(self, depth_count):
         mask = np.zeros_like(depth_count)
-        mask[depth_count>0] = 1.0
-        return mask
+        hit = depth_count > 0
+        mask[hit] = 1.0
+        count = hit.sum()
+        return mask, hit
 
 
 
