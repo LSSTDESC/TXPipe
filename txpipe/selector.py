@@ -38,7 +38,15 @@ class TXSelector(PipelineStage):
         's2n_cut':float,
         'delta_gamma': float,
         'chunk_rows':10000,
-        'zbin_edges':[float]
+        'zbin_edges':[float],
+        # Mag cuts
+        'cperp_cut':float,
+        'r_cpar_cut':float,
+        'r_lo_cut':float,
+        'r_hi_cut':float,
+        'i_lo_cut':float,
+        'i_hi_cut':float,
+        'r_i_cut':float
     }
 
     def run(self):
@@ -95,7 +103,7 @@ class TXSelector(PipelineStage):
             print(f"Process {self.rank} running selection for rows {start}-{end}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
 
-            lens_gals = select_lens(phot_data, lens_counts)
+            lens_gals = self.select_lens(phot_data, lens_counts)
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, lens_gals, R, lens_gals)
 
@@ -150,14 +158,14 @@ class TXSelector(PipelineStage):
             # The main selection.  The select function below returns a
             # boolean array where True means "selected and in this bin"
             # and False means "cut or not in this bin".
-            sel_00 = select(shear_data, pz_data, self.config, '', zmin, zmax)
+            sel_00 = self.select(shear_data, pz_data, '', zmin, zmax)
 
             # The metacalibration selections, used to work out selection
             # biases
-            sel_1p = select(shear_data, pz_data, self.config, '_1p', zmin, zmax)
-            sel_2p = select(shear_data, pz_data, self.config, '_2p', zmin, zmax)
-            sel_1m = select(shear_data, pz_data, self.config, '_1m', zmin, zmax)
-            sel_2m = select(shear_data, pz_data, self.config, '_2m', zmin, zmax)
+            sel_1p = self.select(shear_data, pz_data, '_1p', zmin, zmax)
+            sel_2p = self.select(shear_data, pz_data, '_2p', zmin, zmax)
+            sel_1m = self.select(shear_data, pz_data, '_1m', zmin, zmax)
+            sel_2m = self.select(shear_data, pz_data, '_2m', zmin, zmax)
 
             # Assign these objects to this bin
             tomo_bin[sel_00] = i
@@ -335,74 +343,84 @@ class TXSelector(PipelineStage):
         config['zbins'] = zbins
         return config
 
-def select_lens(phot_data, counts):
-    """Photometry cuts based on the BOSS Galaxy Target Selection:
-    http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
-    """
-    import numpy as np
+    
+    def select_lens(self, phot_data, counts):
+        """Photometry cuts based on the BOSS Galaxy Target Selection:
+        http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
+        """
+        import numpy as np
 
-    mag_i = phot_data['mag_true_i_lsst']
-    mag_r = phot_data['mag_true_r_lsst']
-    mag_g = phot_data['mag_true_g_lsst']
+        mag_i = phot_data['mag_true_i_lsst']
+        mag_r = phot_data['mag_true_r_lsst']
+        mag_g = phot_data['mag_true_g_lsst']
 
-    n = len(mag_i)
-    # HDF does not support bools, so we will prepare a binary array
-    # where 0 is a lens and 1 is not
-    lens_gals = np.repeat(1,n)
+        # Mag cuts 
+        cperp_cut_val = self.config['cperp_cut']
+        r_cpar_cut_val = self.config['r_cpar_cut']
+        r_lo_cut_val = self.config['r_lo_cut']
+        r_hi_cut_val = self.config['r_hi_cut']
+        i_lo_cut_val = self.config['i_lo_cut']
+        i_hi_cut_val = self.config['i_hi_cut']
+        r_i_cut_val = self.config['r_i_cut']
+        
+        n = len(mag_i)
+        # HDF does not support bools, so we will prepare a binary array
+        # where 0 is a lens and 1 is not
+        lens_gals = np.repeat(1,n)
 
-    cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
-    cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
-    dperp = (mag_r - mag_i) - ((mag_g - mag_r) / 8.0)
+        cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
+        cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
+        dperp = (mag_r - mag_i) - ((mag_g - mag_r) / 8.0)
 
-    # LOWZ
-    cperp_cut = np.abs(cperp) < 0.2
-    r_cpar_cut = mag_r < 13.5 + cpar / 0.3
-    r_lo_cut = mag_r > 16.0
-    r_hi_cut = mag_r < 19.6
+        # LOWZ
+        cperp_cut = np.abs(cperp) < cperp_cut_val #0.2
+        r_cpar_cut = mag_r < r_cpar_cut_val + cpar / 0.3
+        r_lo_cut = mag_r > r_lo_cut_val #16.0
+        r_hi_cut = mag_r < r_hi_cut_val #19.6
 
-    lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lo_cut) & (r_hi_cut)
+        lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lo_cut) & (r_hi_cut)
 
-    # CMASS
-    i_lo_cut = mag_i > 17.5
-    i_hi_cut = mag_i < 19.9
-    r_i_cut = (mag_r - mag_i) < 2.0
-    #dperp_cut = dperp > 0.55 # this cut did not return any sources...
+        # CMASS
+        i_lo_cut = mag_i > i_lo_cut_val #17.5
+        i_hi_cut = mag_i < i_hi_cut_val #19.9
+        r_i_cut = (mag_r - mag_i) < r_i_cut_val #2.0
+        #dperp_cut = dperp > 0.55 # this cut did not return any sources...
 
-    cmass_cut = (i_lo_cut) & (i_hi_cut) & (r_i_cut)
+        cmass_cut = (i_lo_cut) & (i_hi_cut) & (r_i_cut)
 
-    # If a galaxy is a lens under either LOWZ or CMASS give it a zero
-    lens_mask =  lowz_cut | cmass_cut
-    lens_gals[lens_mask] = 0
-    n_lens = lens_mask.sum()
-    counts[0] += n_lens
+        # If a galaxy is a lens under either LOWZ or CMASS give it a zero
+        lens_mask =  lowz_cut | cmass_cut
+        lens_gals[lens_mask] = 0
+        n_lens = lens_mask.sum()
+        counts[0] += n_lens
 
-    return lens_gals
+        return lens_gals
 
-def select(shear_data, pz_data, cuts, variant, zmin, zmax):
-    n = len(shear_data)
+    def select(self, shear_data, pz_data, variant, zmin, zmax):
+        n = len(shear_data)
 
-    s2n_cut = cuts['s2n_cut']
-    T_cut = cuts['T_cut']
+        s2n_cut = self.config['s2n_cut']
+        T_cut = self.config['T_cut']
 
-    T_col = 'mcal_T' + variant
-    s2n_col = 'mcal_s2n_r' + variant
+        T_col = 'mcal_T' + variant
+        s2n_col = 'mcal_s2n_r' + variant
 
-    z_col = 'mu' + variant
+        z_col = 'mu' + variant
 
-    s2n = shear_data[s2n_col]
-    T = shear_data[T_col]
-    z = pz_data[z_col]
+        s2n = shear_data[s2n_col]
+        T = shear_data[T_col]
+        z = pz_data[z_col]
 
-    Tpsf = shear_data['mcal_Tpsf']
-    flag = shear_data['mcal_flags']
+        Tpsf = shear_data['mcal_Tpsf']
+        flag = shear_data['mcal_flags']
 
-    sel  = flag==0
-    sel &= (T/Tpsf)>T_cut
-    sel &= s2n>s2n_cut
-    sel &= z>=zmin
-    sel &= z<zmax
+        sel  = flag==0
+        sel &= (T/Tpsf)>T_cut
+        sel &= s2n>s2n_cut
+        sel &= z>=zmin
+        sel &= z<zmax
 
-    return sel
+        return sel
 
 
 def flatten_list(lst):
