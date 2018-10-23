@@ -12,3 +12,4 @@ from .random_cats import TXRandomCat
 from .sysmaps import TXDiagnosticMaps
 from .twopoint import TXTwoPoint
 from .input_cats import TXProtoDC2Mock
+from .photoz_mlz import PZPDFMLZ
