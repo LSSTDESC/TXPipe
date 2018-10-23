@@ -101,5 +101,18 @@ RUN pip install treecorr
 
 RUN cd /opt && git clone https://github.com/LSSTDESC/sacc/ && cd sacc && python setup.py install
 RUN pip install --upgrade descformats
+RUN apt-get install -y cmake swig
+RUN cd /opt \
+    && git clone https://github.com/LSSTDESC/CCL.git \
+    && cd CCL \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make \
+    && make install \
+    && cd .. \
+    && python setup.py install \
+    && rm -rf /opt/CCL
+
 WORKDIR /opt/txpipe
 CMD ["/bin/bash", "-l"]
