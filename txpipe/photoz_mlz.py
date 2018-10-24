@@ -120,10 +120,12 @@ class PZPDFMLZ(PipelineStage):
         nbin = len(z) - 1
         nrow = len(data['mag_i_lsst'])
 
-        expected_features = [
-            'mag_u_lsst', 'mag_g_lsst', 'mag_r_lsst', 'mag_i_lsst', 'mag_z_lsst',
-            'mag_u_lsst-mag_g_lsst', 'mag_g_lsst-mag_r_lsst'
-        ]
+        expected_features = ['mag_u_lsst', 'mag_g_lsst', 'mag_r_lsst', 
+            'mag_i_lsst', 'mag_z_lsst', 'mag_y_lsst', 
+            'mag_u_lsst-mag_g_lsst', 'mag_g_lsst-mag_r_lsst', 
+            'mag_r_lsst-mag_i_lsst', 'mag_i_lsst-mag_z_lsst', 
+            'mag_z_lsst-mag_y_lsst']
+
 
         if not expected_features == features:
             raise ValueError("Need to re-code for the features you used")
@@ -134,7 +136,7 @@ class PZPDFMLZ(PipelineStage):
             x_v =  [data[f'mag_{b}_lsst'+v] for b in 'ugriz']
             ug = data['mag_u_lsst'+v] - data['mag_g_lsst'+v]
             gr = data['mag_g_lsst'+v] - data['mag_r_lsst'+v]
-            x_v += [ug, gr]
+            x_v += [ug, gr, ri, iz, zy]
             x_v = np.vstack(x_v).T
 
             X_v.append(x_v)

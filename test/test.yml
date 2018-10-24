@@ -6,8 +6,8 @@ modules: txpipe
 stages:
     - name: TXSelector
       nprocess: 1
-    - name: TXRandomPhotozPDF
-      nprocess: 1
+    # - name: TXRandomPhotozPDF
+    #   nprocess: 1
     - name: TXDiagnosticMaps
       nprocess: 1
     - name: TXPhotozStack
@@ -16,9 +16,9 @@ stages:
       nprocess: 1
     - name: TXTwoPoint
       nprocess: 1
-    # Need training data up to higher redshifts before using:
-    # - name: PZPDFMLZ
-    #   nprocess: 1
+    Need training data up to higher redshifts before using:
+    - name: PZPDFMLZ
+      nprocess: 1
 
 output_dir: ./outputs
 
