@@ -37,10 +37,10 @@ class TXDiagnosticMaps(PipelineStage):
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
         'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
-        'ra_min':np.nan,  # These parameters are only required if pixelization==tan
-        'ra_max':np.nan,  # RA range
-        'dec_min':np.nan, #
-        'dec_max':np.nan, # DEC range
+        'ra_cent':np.nan,  # These parameters are only required if pixelization==tan
+        'dec_cent':np.nan,  
+        'npix_x':-1, 
+        'npix_y':-1, 
         'pixel_size':np.nan, # Pixel size of pixelization scheme
         'depth_band' : 'i',
     }
@@ -98,6 +98,7 @@ class TXDiagnosticMaps(PipelineStage):
             config['snr_delta'],
             sparse=config['sparse'],
             comm=self.comm)
+
         
         # Only the root process saves the output
         if self.rank==0:
@@ -109,6 +110,23 @@ class TXDiagnosticMaps(PipelineStage):
             self.save_map(group, "depth", pixel, depth, config)
             self.save_map(group, "depth_count", pixel, count, config)
             self.save_map(group, "depth_var", pixel, depth_var, config)
+
+            # I'm expecting this will one day call off to a 10,000 line
+            # library or something.
+            mask, npix = self.compute_mask(count)
+            self.save_map(group, "mask", pixel, mask, config)
+
+            area = pixel_scheme.pixel_area(degrees=True) * npix
+            group.attrs['area'] = area
+            group.attrs['area_unit'] = 'sq deg'
+
+
+    def compute_mask(self, depth_count):
+        mask = np.zeros_like(depth_count)
+        hit = depth_count > 0
+        mask[hit] = 1.0
+        count = hit.sum()
+        return mask, hit
 
 
 

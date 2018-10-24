@@ -10,6 +10,7 @@ from .photoz import TXRandomPhotozPDF
 from .photoz_stack import TXPhotozStack
 from .random_cats import TXRandomCat
 from .sysmaps import TXDiagnosticMaps
+from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .input_cats import TXProtoDC2Mock
 from .photoz_mlz import PZPDFMLZ

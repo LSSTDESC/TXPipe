@@ -1,0 +1,31 @@
+launcher: local
+
+modules: txpipe
+
+
+stages:
+    - name: TXSelector
+      nprocess: 1
+    - name: TXRandomPhotozPDF
+      nprocess: 1
+    - name: TXDiagnosticMaps
+      nprocess: 1
+    - name: TXTwoPointFourier
+      nprocess: 1
+    - name: TXPhotozStack
+      nprocess: 1
+      
+
+output_dir: ./outputs
+
+config: test/config.yml
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog: ./mock_shear_catalog.fits
+    photometry_catalog: ./mock_photometry_catalog.hdf
+    
+resume: False
+log_dir: ./test/logs
+pipeline_log: log.txt
+

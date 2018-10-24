@@ -20,6 +20,15 @@ TXSelector:
     delta_gamma: 0.02
     zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
     chunk_rows: 1000
+    # Mag cuts
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 19.6
+    i_lo_cut: 17.5
+    i_hi_cut: 19.9
+    r_i_cut: 2.0
+    # may also need one for r_cpar_cut
 
 TXRandomCat:
     chunk_rows: 1084192
@@ -35,11 +44,15 @@ TXDiagnosticMaps:
     snr_threshold: 10.0
     snr_delta: 1.0
     # pixelization: healpix
-    # nside: 2048       #
-    pixelization: tangent
-    # 
-    ra_min: -3.0
-    ra_max: 3.0
-    dec_min: -3.0
-    dec_max: 3.0
+    # nside: 2048
+    pixelization: gnomonic
+    # # 
     pixel_size: 0.2
+
+    ra_cent: 0.0
+    dec_cent: 0.0
+    npix_x: 20
+    npix_y: 20
+
+TXTwoPointFourier:
+    chunk_rows: 10000
