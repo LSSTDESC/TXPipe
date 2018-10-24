@@ -219,7 +219,7 @@ class ParallelStatsCalculator:
             self._M2 = np.zeros(size)
 
 
-    def calculate(self, values_iterator, comm=None):
+    def calculate(self, values_iterator, comm=None, mode='gather'):
         """ Calculate statistics of an input data set.
 
         Operates on an iterator, which is expected to repeatedly yield
@@ -232,6 +232,8 @@ class ParallelStatsCalculator:
         comm: MPI Communicator, optional
             If set, assume each MPI process in the comm is getting different data and combine them at the end.
             Only the master process will return the full results - the others will get None
+        mode: string
+            'gather', or 'allgather', only used if MPI is used
 
         Returns
         -------
@@ -252,7 +254,7 @@ class ParallelStatsCalculator:
                 count, mean, variance = self._calculate_serial(values_iterator)
                 return count, mean, variance
             else:
-                count, mean, variance = self._calculate_parallel(values_iterator, comm)
+                count, mean, variance = self._calculate_parallel(values_iterator, comm, mode)
                 return count, mean, variance
 
 
@@ -297,7 +299,7 @@ class ParallelStatsCalculator:
         return self._count, self._mean, self._variance        
 
 
-    def collect(self, comm):
+    def collect(self, comm, mode='gather'):
         """Designed for manual use - in general prefer the calculate method.
         
         Combine together statistics from different processors into one.
@@ -305,6 +307,9 @@ class ParallelStatsCalculator:
         Parameters
         ----------
         comm: MPI Communicator or None
+
+        mode: string
+            'gather', or 'allgather'
 
         Returns
         -------
@@ -321,9 +326,14 @@ class ParallelStatsCalculator:
         if comm is None:
             return self._count, self._mean, self._variance
 
+        if mode not in ['gather', 'allgather']:
+            raise ValueError("mode for ParallelStatsCalculator.collect must be"
+                             "'gather' or 'allgather'")
+
         counts = comm.gather(self._count)
         means = comm.gather(self._mean)
-        variances = comm.gather(self._variance)
+        variances = comm.gather(self._M2)
+
 
         if comm.Get_rank()!=0:
             count, mean, variance = None, None, None
@@ -331,6 +341,12 @@ class ParallelStatsCalculator:
             count, mean, variance = self._collect_sparse(counts, means, variances)
         else:
             count, mean, variance = self._collect_dense(counts, means, variances)
+
+        if comm.rank == 0:
+            print("WARNING: VARIANCE IS CURRENTLY WRONG")
+
+        if mode == 'allgather':
+            count, mean, variance = comm.bcast([count, mean, variance])
 
         return count, mean, variance
 
@@ -346,7 +362,7 @@ class ParallelStatsCalculator:
         S =  np.zeros(self.size)
         S2 = np.zeros(self.size)
         mean = np.zeros(self.size)
-        variance = np.zeros(self.size)
+
         for count, mean, var in zip(counts, means, variances):
             # Deal with any NaNs
             mean[count<1] = 0
@@ -354,7 +370,6 @@ class ParallelStatsCalculator:
             T += count
             S += mean*count
             S2 += var*count
-
         w = T.nonzero()
         variance = S2 / T
         mean[w] = S[w] / T[w]
@@ -383,9 +398,8 @@ class ParallelStatsCalculator:
         return count, mean, variance
 
 
-    def _calculate_parallel(self, parallel_values_iterator, comm):
+    def _calculate_parallel(self, parallel_values_iterator, comm, mode):
         # Each processor calculates the values for its bits of data
         self._calculate_serial(parallel_values_iterator)
-        return self.collect(comm)        
-
+        return self.collect(comm, mode=mode)
 

@@ -3,7 +3,17 @@ from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlF
 import numpy as np
 import pymaster as nmt
 import sacc
+import collections
 from .utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
+
+# Using the same convention as in twopoint.py
+SHEAR_SHEAR = 0
+SHEAR_POS = 1
+POS_POS = 2
+
+Measurement = collections.namedtuple(
+    'Measurement',
+    ['corr_type', 'l', 'value', 'win', 'd_ell', 'i', 'j'])
 
 
 def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins):
@@ -73,7 +83,7 @@ def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins):
                     yield index, w[mask_pix & mask_bins]
 
 
-def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm=None):
+def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm):
     """Produces number counts and shear maps from shear and tomography catalogs.
 
     Parameters
@@ -123,7 +133,7 @@ def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm=None):
         shear_it, bin_it, ms_it, pixel_scheme, bins)
 
     # Calculate map
-    count, w_mean, w_std = stats.calculate(weights_iterator, comm)
+    count, w_mean, w_std = stats.calculate(weights_iterator, comm, mode='allgather')
 
     # Reshape 1D histograms into maps.  Support both 1D healpix maps
     # and 2D flat maps
@@ -263,6 +273,11 @@ class TXTwoPointFourier(PipelineStage):
     def run(self):
         config = self.config
 
+        if self.comm:
+            self.comm.Barrier()
+
+        self.setup_results()
+
         diagnostic_map_file = self.open_input('diagnostic_maps', wrapper=True)
 
         mask_info = diagnostic_map_file.read_map_info('mask')
@@ -303,6 +318,9 @@ class TXTwoPointFourier(PipelineStage):
         tomo_file = self.open_input('tomography_catalog', wrapper=True)
         nbin_source = tomo_file.read_nbin('source')
         nbin_lens = tomo_file.read_nbin('lens')
+
+        calcs = self.select_calculations(nbin_source, nbin_lens)
+
         source_bins = list(range(nbin_source))
         lens_bins = list(range(nbin_lens))
         # tomo_file.close()
@@ -335,17 +353,46 @@ class TXTwoPointFourier(PipelineStage):
         w00, w02, w22 = self.setup_workspaces(pix_schm, f_d, f_w, ell_bins)
         print("Computed workspaces")
 
-        c_ll, c_dl, c_dd, ell_bins = self.compute_power_spectra(
-            pix_schm, nbin_source, nbin_lens, f_w, f_d, w00, w02, w22, ell_bins)
-        print("Computed all power spectra")
+        # Run the compute power spectra portion in parallel
 
-        # Save power spectra
-        # TODO: SACC interface here
-        self.save_power_spectra(c_ll, c_dl, c_dd, ell_bins, d_ell)
-        print("Saved power spectra")
+        # This splits the calculations among the parallel bins
+        # It's not necessarily the most optimal way of doing it
+        # as it's not dynamic, just a round-robin assignment,
+        # but for this case I would expect it to be mostly finer
+        for i, j, k in self.split_tasks_by_rank(calcs):
+            self.compute_power_spectra(
+                pix_schm, i, j, k, f_w, f_d, w00, w02, w22, ell_bins, d_ell)
+        self.collect_results()
+
+        # Prepare the HDF5 output.
+        # When we do this in parallel we can probably
+        # just copy all the results to the root process
+        # to output
+
+        if self.rank == 0:
+            print("Saved power spectra")
+            self.save_power_spectra(nbin_source, nbin_lens)
 
         # Binning scheme
         # TODO: set ell binning from config
+
+    def collect_results(self):
+        if self.comm is None:
+            return
+
+        self.results = self.comm.gather(self.results, root=0)
+
+        if self.rank == 0:
+            # Concatenate results
+            self.results = sum(self.results, [])
+
+            # Order by type, then bin i, then bin j
+            order = [b'Cll', b'Cdd', b'Cdl']
+            key = lambda r: (order.index(r.corr_type), r.i, r.j)
+            self.results = sorted(self.results, key=key)
+
+    def setup_results(self):
+        self.results = []
 
     def choose_ell_bins(self, pix_schm):
         if pix_schm.name == 'healpix':
@@ -389,43 +436,71 @@ class TXTwoPointFourier(PipelineStage):
 
         return w00, w02, w22
 
-    def compute_power_spectra(self, pix_schm, nbin_source, nbin_lens, f_w, f_d, w00, w02, w22, ell_bins):
+    def select_calculations(self, nbins_source, nbins_lens):
+        calcs = []
+
+        # For shear-shear we omit pairs with j<i
+        k = SHEAR_SHEAR
+        for i in range(nbins_source):
+            for j in range(i + 1):
+                calcs.append((i, j, k))
+
+        # For shear-position we use all pairs
+        k = SHEAR_POS
+        for i in range(nbins_source):
+            for j in range(nbins_lens):
+                calcs.append((i, j, k))
+
+        # For position-position we omit pairs with j<i
+        k = POS_POS
+        for i in range(nbins_lens):
+            for j in range(i + 1):
+                calcs.append((i, j, k))
+
+        return calcs
+
+    def compute_power_spectra(self, pix_schm, i, j, k, f_w, f_d, w00, w02, w22, ell_bins, d_ell):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
-        c_dd = {}
-        c_dl = {}
-        c_ll = {}
 
-        # TODO: parallelize this bit
-        for i in range(nbin_source):
-            for j in range(i + 1):
-                print(f"Calculating shear-shear bin pair ({i},{j})")
-                # print(pix_schm)
-                # print(w22)
-                # print(f_w[i].get_maps())
-                # print(f_w[j].get_maps())
-                print(ell_bins.get_effective_ells())
-                c = self.compute_one_spectrum(
-                    pix_schm, w22, f_w[i], f_w[j], ell_bins)
-                # We neglect the EB and BE cross-correlations
-                c_ll[(i, j)] = c[0]
+        # k refers to the type of measurement we are making
 
-        for i in range(nbin_lens):
-            for j in range(i + 1):
-                print(f"Calculating position-position bin pair ({i},{j})")
-                c = self.compute_one_spectrum(
-                    pix_schm, w00, f_d[i], f_d[j], ell_bins)
-                c_dd[(i, j)] = c[0]
+        if k == SHEAR_SHEAR:
+            print(i, j, k)
+            ls = ell_bins.get_effective_ells()
+            # Top-hat window functions
+            win = [[np.arange(l - d_ell, l + d_ell),
+                    np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
+            c = self.compute_one_spectrum(
+                pix_schm, w22, f_w[i], f_w[j], ell_bins)
+            c_ll = c[0]
+            self.results.append(Measurement(
+                b'Cll', ls, c_ll, win, d_ell, i, j))
 
-        for i in range(nbin_source):
-            for j in range(nbin_lens):
-                print(f"Calculating position-shear bin pair ({i},{j})")
-                c = self.compute_one_spectrum(
-                    pix_schm, w02, f_w[i], f_d[j], ell_bins)
-                c_dl[(i, j)] = c[0]
+        if k == POS_POS:
+            print(i, j, k)
+            ls = ell_bins.get_effective_ells()
+            win = [[np.arange(l - d_ell, l + d_ell),
+                    np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
+            c = self.compute_one_spectrum(
+                pix_schm, w00, f_d[i], f_d[j], ell_bins)
+            c_dd = c[0]
+            self.results.append(Measurement(
+                b'Cdd', ls, c_dd, win, d_ell, i, j))
 
-        return c_ll, c_dl, c_dd, ell_bins
+        if k == SHEAR_POS:
+            print(i, j, k)
+            ls = ell_bins.get_effective_ells()
+            win = [[np.arange(l - d_ell, l + d_ell),
+                    np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
+            c = self.compute_one_spectrum(
+                pix_schm, w02, f_w[i], f_d[j], ell_bins)
+            c_dl = c[0]
+            self.results.append(Measurement(
+                b'Cdl', ls, c_dl, win, d_ell, i, j))
+
+        return
 
     def compute_one_spectrum(self, pix_scheme, w, f1, f2, ell_bins):
         if pix_scheme.name == 'healpix':
@@ -438,7 +513,8 @@ class TXTwoPointFourier(PipelineStage):
         c_ell = w.decouple_cell(coupled_c_ell)
         return c_ell
 
-    def save_power_spectra(self, c_ll, c_dl, c_dd, ell_bins, d_ell):
+    def save_power_spectra(self, nbin_source, nbin_lens):
+        # c_ll, c_Dl, c_dd, ell_bins, d_ell
         f = self.open_input('photoz_stack')
 
         tracers = []
@@ -459,70 +535,39 @@ class TXTwoPointFourier(PipelineStage):
             T = sacc.Tracer(f"LSST lens_{i}", "spin0", z, Nz, exp_sample="LSST-lens")
             tracers.append(T)
 
-        lvals = ell_bins.get_effective_ells()
-        type, ell, t1, q1, t2, q2, val, wins = [], [], [], [], [], [], [], []
-        iis = []
-        jjs = []
-        for i in range(nbin_source):
-            for j in range(i + 1):
-                for l in lvals:
-                    iis.append(i)
-                    jjs.append(j)
-                    type.append('FF')
-                    # at this nominal ell
-                    ell.append(l)
-                    # but in detail  the measurement
-                    # is a Gaussian window around central ell +/- 50
-                    wins.append(sacc.Window(np.arange(l - d_ell, l + d_ell),
-                                            np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)))
+        fields = ['corr_type', 'l', 'value', 'i', 'j', 'win']
+        output = {f: list() for f in fields}
 
-                    # Here we have density cross-correlations so "P" as point
-                    # except for CMB where
-                    q1.append('S')
-                    q2.append('S')
-                    # values and errors
-                    val.append(c_ll[(i, j)])
+        q1 = []
+        q2 = []
+        type = []
+        for corr_type in [b'Cll', b'Cdd', b'Cdl']:
+            data = [r for r in self.results if r.corr_type == corr_type]
+            for bin_pair_data in data:
+                n = len(bin_pair_data.l)
+                type += ['Corr' for i in range(n)]
+                if corr_type == b'Cll':
+                    q1 += ['S' for i in range(n)]
+                    q2 += ['S' for i in range(n)]
+                elif corr_type == b'Cdd':
+                    q1 += ['P' for i in range(n)]
+                    q2 += ['P' for i in range(n)]
+                elif corr_type == b'Cdl':
+                    q1 += ['P' for i in range(n)]
+                    q2 += ['S' for i in range(n)]
+                for f in fields:
+                    v = getattr(bin_pair_data, f)
+                    if np.isscalar(v):
+                        v = [v for i in range(n)]
+                    elif f == 'win':
+                        v = [sacc.Window(v[0], v[1])]
+                    else:
+                        v = v.tolist()
+                    output[f] += v
 
-        for i in range(nbin_lens):
-            for j in range(i + 1):
-                for l in lvals:
-                    iis.append(i)
-                    jjs.append(j)
-                    type.append('FF')
-                    # at this nominal ell
-                    ell.append(l)
-                    # but in detail  the measurement
-                    # is a Gaussian window around central ell +/- 50
-                    wins.append(sacc.Window(np.arange(l - d_ell, l + d_ell),
-                                            np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)))
-                    # Here we have density cross-correlations so "P" as point
-                    # except for CMB where
-                    q1.append('P')
-                    q2.append('P')
-                    # values and errors
-                    val.append(c_dd[(i, j)])
-
-        for i in range(nbin_lens):
-            for j in range(nbin_lens):
-                for l in lvals:
-                    iis.append(i)
-                    jjs.append(j)
-                    type.append('FF')
-                    # at this nominal ell
-                    ell.append(l)
-                    # but in detail  the measurement
-                    # is a Gaussian window around central ell +/- 50
-                    wins.append(sacc.Window(np.arange(l - d_ell, l + d_ell),
-                                            np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)))
-                    # Here we have density cross-correlations so "P" as point
-                    # except for CMB where
-                    q1.append('P')
-                    q2.append('S')
-                    # values and errors
-                    val.append(c_dl[(i, j)])
-
-        binning = sacc.Binning(type, ell, iis, q1, jjs, q2, windows=wins)
-        mean = sacc.MeanVec(np.array(val))
+        binning = sacc.Binning(type, output['l'], output[
+                               'i'], q1, output['j'], q2)
+        mean = sacc.MeanVec(output['value'])
         s = sacc.SACC(tracers, binning, mean)
         s.printInfo()
         output_filename = self.get_output("twopoint_data")
