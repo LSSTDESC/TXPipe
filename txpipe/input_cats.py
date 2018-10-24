@@ -62,6 +62,8 @@ class TXProtoDC2Mock(PipelineStage):
         N = len(gc)
         self.cat_size = min(N, self.config['max_size'])
 
+        select_fraction = (1.0 * self.cat_size)/N
+
         # Prepare output files
         metacal_file = self.open_output('shear_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
@@ -75,12 +77,14 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Loop through chunks of 
         for data in self.data_iterator(gc):
-            # Cut down the chunk of data if we exceed our desired
-            # catlog size
-            if len(data['galaxy_id'])+self.current_index > self.cat_size:
-                cut = self.cat_size - self.current_index
+            # Select a random fraction of the catalog
+            if self.cat_size != N:
+                some_col = list(data.keys())[0]
+                chunk_size = len(data[some_col])
+
+                select = np.random.binomial(chunk_size, select_fraction)
                 for name in list(data.keys()):
-                    data[name] = data[name][:cut]
+                    data[name] = data[name][select]
 
             # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
