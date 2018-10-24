@@ -526,13 +526,13 @@ class TXTwoPointFourier(PipelineStage):
         nbin_lens = tomo_file.read_nbin('lens')
 
         for i in range(nbin_source):
-            z = f['n_of_z/source/z'].value
+            z = f['n_of_z/source/z'].value[:-1]
             Nz = f[f'n_of_z/source/bin_{i}'].value
             T = sacc.Tracer(f"LSST source_{i}", "spin0", z, Nz, exp_sample="LSST-source")
             tracers.append(T)
 
         for i in range(nbin_lens):
-            z = f['n_of_z/lens/z'].value
+            z = f['n_of_z/lens/z'].value[:-1]
             Nz = f[f'n_of_z/lens/bin_{i}'].value
             T = sacc.Tracer(f"LSST lens_{i}", "spin0", z, Nz, exp_sample="LSST-lens")
             tracers.append(T)
