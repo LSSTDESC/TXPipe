@@ -20,7 +20,7 @@ class PZPDFMLZ(PipelineStage):
         'zmax': float,
         'nz': int,
         'chunk_rows': 10000,
-        'bands':'ugriz'
+        'bands':'ugrizy'
     }
 
 
@@ -120,7 +120,8 @@ class PZPDFMLZ(PipelineStage):
         nbin = len(z) - 1
         nrow = len(data['mag_i_lsst'])
 
-        expected_features = ['mag_u_lsst', 'mag_g_lsst', 'mag_r_lsst', 
+        expected_features = [
+            'mag_u_lsst', 'mag_g_lsst', 'mag_r_lsst', 
             'mag_i_lsst', 'mag_z_lsst', 'mag_y_lsst', 
             'mag_u_lsst-mag_g_lsst', 'mag_g_lsst-mag_r_lsst', 
             'mag_r_lsst-mag_i_lsst', 'mag_i_lsst-mag_z_lsst', 
@@ -133,9 +134,12 @@ class PZPDFMLZ(PipelineStage):
         X_v = []
         variants = ['', '_1p', '_1m', '_2p', '_2m']
         for v in variants:
-            x_v =  [data[f'mag_{b}_lsst'+v] for b in 'ugriz']
+            x_v =  [data[f'mag_{b}_lsst'+v] for b in 'ugrizy']
             ug = data['mag_u_lsst'+v] - data['mag_g_lsst'+v]
             gr = data['mag_g_lsst'+v] - data['mag_r_lsst'+v]
+            ri = data['mag_r_lsst'+v] - data['mag_i_lsst'+v]
+            iz = data['mag_i_lsst'+v] - data['mag_z_lsst'+v]
+            zy = data['mag_z_lsst'+v] - data['mag_y_lsst'+v]
             x_v += [ug, gr, ri, iz, zy]
             x_v = np.vstack(x_v).T
 
