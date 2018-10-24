@@ -374,8 +374,8 @@ class ParallelStatsCalculator:
         variance = S2 / T
         mean[w] = S[w] / T[w]
         count = T
-        variance[count<2] = np.nan
-        mean[count<1] = np.nan
+        variance[count<2] = 0
+        mean[count<1] = 0
         return count, mean, variance
 
 
