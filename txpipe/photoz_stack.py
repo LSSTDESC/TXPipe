@@ -36,7 +36,7 @@ class TXPhotozStack(PipelineStage):
         # Set up the array we will stack the PDFs into
         # first get the sizes from metadata
         z, nbin_source, nbin_lens = self.get_metadata()
-        nz = len(z)
+        nz = len(z) - 1
         source_pdfs = np.zeros((nbin_source, nz))
         lens_pdfs = np.zeros((nbin_lens, nz))
         source_counts = np.zeros(nbin_source)
@@ -171,7 +171,9 @@ class TXPhotozStack(PipelineStage):
 
         # HDF has "attributes" which are for small metadata like this
         group.attrs["nbin"] = nbin
-        group.attrs["nz"] = len(z)
+        group.attrs["nz"] = len(z) - 1
+
+        z_midpoints = 0.5*(z[1:] + z[:-1])
 
         # Save the redshift sampling
         group.create_dataset("z", data=z)
