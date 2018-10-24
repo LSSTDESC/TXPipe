@@ -134,7 +134,9 @@ def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm):
 
     # Calculate map
     count, w_mean, w_std = stats.calculate(weights_iterator, comm, mode='allgather')
-
+    count[np.isnan(count)] = 0
+    w_mean[np.isnan(w_mean)] = 0
+    w_std[np.isnan(w_std)] = 0
     # Reshape 1D histograms into maps.  Support both 1D healpix maps
     # and 2D flat maps
     shape = (nbins, ntasks,) + pixel_scheme.shape
@@ -576,4 +578,5 @@ class TXTwoPointFourier(PipelineStage):
 
 if __name__ == '__main__':
     PipelineStage.main()
+
 
