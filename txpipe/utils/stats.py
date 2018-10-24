@@ -330,22 +330,23 @@ class ParallelStatsCalculator:
             raise ValueError("mode for ParallelStatsCalculator.collect must be"
                              "'gather' or 'allgather'")
 
-        if mode == 'gather':
-            counts = comm.gather(self._count)
-            means = comm.gather(self._mean)
-            variances = comm.gather(self._variance)
-        else:
-            counts = comm.allgather(self._count)
-            means = comm.allgather(self._mean)
-            variances = comm.allgather(self._variance)
+        counts = comm.gather(self._count)
+        means = comm.gather(self._mean)
+        variances = comm.gather(self._M2)
 
 
-        if comm.Get_rank()!=0 and mode=='gather':
+        if comm.Get_rank()!=0:
             count, mean, variance = None, None, None
         elif self.sparse:
             count, mean, variance = self._collect_sparse(counts, means, variances)
         else:
             count, mean, variance = self._collect_dense(counts, means, variances)
+
+        if comm.rank == 0:
+            print("WARNING: VARIANCE IS CURRENTLY WRONG")
+
+        if mode == 'allgather':
+            count, mean, variance = comm.bcast([count, mean, variance])
 
         return count, mean, variance
 
@@ -361,7 +362,7 @@ class ParallelStatsCalculator:
         S =  np.zeros(self.size)
         S2 = np.zeros(self.size)
         mean = np.zeros(self.size)
-        variance = np.zeros(self.size)
+
         for count, mean, var in zip(counts, means, variances):
             # Deal with any NaNs
             mean[count<1] = 0
@@ -369,7 +370,6 @@ class ParallelStatsCalculator:
             T += count
             S += mean*count
             S2 += var*count
-
         w = T.nonzero()
         variance = S2 / T
         mean[w] = S[w] / T[w]
@@ -402,3 +402,4 @@ class ParallelStatsCalculator:
         # Each processor calculates the values for its bits of data
         self._calculate_serial(parallel_values_iterator)
         return self.collect(comm, mode=mode)
+
