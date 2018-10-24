@@ -49,31 +49,6 @@ class TXProtoDC2Mock(PipelineStage):
         for data in it:
             yield data
 
-    def get_catalog_size(self, gc):
-        """
-        Get the size of a GCR catalog object.
-        This is not robust - catalogs can be split over
-        multiple files.  As of now there is no API for this.
-
-        Parameters
-        ----------
-
-        gc: GCRCatalogs catalog object
-
-        Returns
-        -------
-        n: integer
-            Number of catalog rows
-        """
-        import h5py
-        filename = gc.get_catalog_info()['filename']
-        print(f"Reading catalog size directly from {filename}")
-        # Take the name of a specific column we expect to exist
-        f = h5py.File(filename)
-        n = f['galaxyProperties/ra'].size
-        f.close()
-        return n
-
     def run(self):
         import GCRCatalogs
         cat_name = self.config['cat_name']
@@ -84,7 +59,7 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Get the size, and optionally cut down to a smaller
         # size if we want to test
-        N = self.get_catalog_size(gc)
+        N = len(gc)
         self.cat_size = min(N, self.config['max_size'])
 
         # Prepare output files
