@@ -4,10 +4,12 @@ modules: txpipe
 
 
 stages:
+    - name: PZPDFMLZ
+      nprocess: 1
     - name: TXSelector
       nprocess: 1
-    # - name: TXRandomPhotozPDF
-    #   nprocess: 1
+    - name: TXRandomPhotozPDF
+      nprocess: 1
     - name: TXDiagnosticMaps
       nprocess: 1
     - name: TXPhotozStack
@@ -15,9 +17,6 @@ stages:
     - name: TXRandomCat
       nprocess: 1
     - name: TXTwoPoint
-      nprocess: 1
-    Need training data up to higher redshifts before using:
-    - name: PZPDFMLZ
       nprocess: 1
 
 output_dir: ./outputs
@@ -28,8 +27,7 @@ inputs:
     # See README for paths to download these files
     shear_catalog: ./mock_shear_catalog.fits
     photometry_catalog: ./mock_photometry_catalog.hdf
-    # uncomment when using PZPDFMLZ:
-    #photoz_trained_model: ./photoz_trained_model.npy
+    photoz_trained_model: ./photoz_trained_model.npy
     
 resume: False
 log_dir: ./test/logs
