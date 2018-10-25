@@ -126,7 +126,7 @@ class TXDiagnosticMaps(PipelineStage):
         hit = depth_count > 0
         mask[hit] = 1.0
         count = hit.sum()
-        return mask, hit
+        return mask, count
 
 
 
