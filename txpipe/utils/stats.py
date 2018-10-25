@@ -86,6 +86,21 @@ class SparseArray:
             self[k] += v
         return self
 
+    def __sub__(self, other):
+        keys = set()
+        keys.update(self.d.keys(), other.d.keys())
+        x = SparseArray()
+        for k in keys:
+            x[k] = self[k] - other[k]
+        return x
+
+    def __pow__(self, y):
+        x = SparseArray()
+        for k in self.d.keys():
+            x[k] = self[k]**y
+        return x
+
+
     def to_dense(self):
         """
         Make a dense version of the array, just as a plain numpy array.
@@ -359,7 +374,7 @@ class ParallelStatsCalculator:
             for count, mean, var in zip(counts, means, variances):
                 mean[count<1] = 0
                 var[count<2] = 0
-        count, mean, variance = combine_variances(counts, means, variances)
+        count, mean, variance = combine_variances(counts, means, variances, self.sparse)
 
         if not self.sparse:
             w = count.nonzero()
@@ -375,7 +390,7 @@ class ParallelStatsCalculator:
         return self.collect(comm, mode=mode)
 
 
-def combine_variances(counts, means, variances):
+def combine_variances(counts, means, variances, sparse=False):
 # eq 3.1b of Chan, Golub, & LeVeque 1979
     S = variances[0] * counts[0]
     T = means[0] * counts[0]
@@ -390,12 +405,16 @@ def combine_variances(counts, means, variances):
         C = Cold + counts[i]
         T = Told + Tnext
 
-        w = np.where(counts[i]>0)
-        S[w] = S[w] + variances[i][w]*counts[i][w] \
-        + Cold[w] / (Cold[w]*C[w]) * (Told[w]*counts[i][w]/Cold[w] - Tnext[w])**2
+        if sparse:
+            S = S + variances[i]*counts[i] \
+            + Cold / (Cold*C) * (Told*counts[i]/Cold - Tnext)**2
+        else:
+            w = np.where(counts[i]>0)
+            S[w] = S[w] + variances[i][w]*counts[i][w] \
+            + Cold[w] / (Cold[w]*C[w]) * (Told[w]*counts[i][w]/Cold[w] - Tnext[w])**2
 
-        w = np.where(Cold==0)
-        S[w] = variances[i][w]*counts[i][w]
+            w = np.where(Cold==0)
+            S[w] = variances[i][w]*counts[i][w]
 
 
     mu = T / C
