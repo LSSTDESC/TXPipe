@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import MetacalCatalog, HDFFile
+from .data_types import MetacalCatalog, HDFFile
 
 # could also just load /global/projecta/projectdirs/lsst/groups/CS/descqa/catalog/ANL_AlphaQ_v3.0.hdf5
 

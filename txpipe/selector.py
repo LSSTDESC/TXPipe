@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile
+from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile
 
 
 class TXSelector(PipelineStage):
