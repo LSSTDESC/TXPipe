@@ -236,11 +236,12 @@ class PZPDFMLZ(PipelineStage):
         # if we are running under MPI and the output type is parallel
         f = self.open_output('photoz_pdfs', parallel=True)
             
+        z_mid = 0.5*(z[1:] + z[:-1])
         # Create the space for output data
-        nz = len(z)
+        nz = len(z_mid)
         group = f.create_group('pdf')
         group.create_dataset("z", (nz,), dtype='f4')
-        group.create_dataset("pdf", (nobj,nz-1), dtype='f4')
+        group.create_dataset("pdf", (nobj,nz), dtype='f4')
         group.create_dataset("mu", (nobj,), dtype='f4')
         group.create_dataset("mu_1p", (nobj,), dtype='f4')
         group.create_dataset("mu_1m", (nobj,), dtype='f4')
@@ -249,7 +250,7 @@ class PZPDFMLZ(PipelineStage):
 
         # One processor writes the redshift axis to output.
         if self.rank==0:
-            group['z'][:] = z
+            group['z'][:] = z_mid
 
         return f
 
