@@ -135,42 +135,33 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         for key in binning['Cll']:
             if key[0]==key[1]:
-                noise_c_ell[str(key[0]) + str(key[1])] = (sigma_e[key[0]]**2/n_eff[key[0]]) 
+                noise_c_ell[str(key[0]) + str(key[1])] = np.ones(3)*(sigma_e[key[0]]**2/n_eff[key[0]]) 
             else:
-                noise_c_ell[str(key[0]) + str(key[1])] = 0.0
+                noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(3)
         
         print('NOISE_Cl:')
         print(noise_c_ell)
         return noise_c_ell
 
 
-
-    def switch_keys(self, bin_1, bin_2, theory_c_ell):
-        if str(bin_1) + str(bin_2) in theory_c_ell.keys():
-            obs_c_ell = theory_c_ell.get(str(bin_1) + str(bin_2))
-            return obs_c_ell                
-        else:
-            obs_c_ell = theory_c_ell.get(str(bin_2) + str(bin_1))
-            return obs_c_ell
-
     def compute_covariance(self, binning, theory_c_ell, noise_c_ell, fsky):
         ell=binning['Cll'][0,0]
         delta_ell=ell[1]-ell[0] #not in general equal, this needs to be improved 
 
+        obs_c_ell = {}
+        for key in binning['Cll']:
+            obs_c_ell[str(key[0]) + str(key[1])] = theory_c_ell[str(key[0]) + str(key[1])] + noise_c_ell[str(key[0]) + str(key[1])]
 
 
-        def switch_keys(bin_1, bin_2, theory_c_ell):
+        def switch_keys(bin_1, bin_2, obs_c_ell):
             if str(bin_1) + str(bin_2) in theory_c_ell.keys():
-                obs_c_ell = theory_c_ell.get(str(bin_1) + str(bin_2))
-                return obs_c_ell                
+                obs_c_ell_xy = obs_c_ell.get(str(bin_1) + str(bin_2))
+                return obs_c_ell_xy                
             else:
-                obs_c_ell = theory_c_ell.get(str(bin_2) + str(bin_1))
-                return obs_c_ell
+                obs_c_ell_yx = obs_c_ell.get(str(bin_2) + str(bin_1))
+                return obs_c_ell_yx
 
-
-
-        cov_dict = {}
-
+        cov_dict = {} 
 
         for key_row in binning['Cll']:
             for key_col in binning['Cll']:
@@ -178,19 +169,35 @@ class TXFourierGaussianCovariance(PipelineStage):
                 j = key_row[1]
                 m = key_col[0]
                 n = key_col[1]
-                
-                #print('im:', str(i)+str(m))
 
-                obs_c_ell_im = switch_keys(str(i), str(m), theory_c_ell)
-                obs_c_ell_jn = switch_keys(str(j), str(n), theory_c_ell)
-                obs_c_ell_in = switch_keys(str(i), str(n), theory_c_ell)
-                obs_c_ell_jm = switch_keys(str(j), str(m), theory_c_ell)
+                obs_c_ell_im = switch_keys(str(i), str(m), obs_c_ell)
+                obs_c_ell_jn = switch_keys(str(j), str(n), obs_c_ell)
+                obs_c_ell_in = switch_keys(str(i), str(n), obs_c_ell)
+                obs_c_ell_jm = switch_keys(str(j), str(m), obs_c_ell)
              
+                #print("ell: ",ell)
                 prefactor = 1./((2*ell+1)*delta_ell*fsky)
-                cov_dict['(' + str(i) + str(j) + ',' + str(m) + str(n) + ')'] = prefactor*(obs_c_ell_im*obs_c_ell_jn+obs_c_ell_in*obs_c_ell_jm)
+                #print(prefactor)
 
-        for key in cov_dict:
-            print(key)
+                #print(obs_c_ell_im[:,None],  obs_c_ell_jn)
+                
+                mini_cov = np.zeros((len(ell),len(ell)))
+                for a in range(len(ell)):
+                    for b in range(len(ell)):
+                        if a==b:
+                            mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]                           
+                
+                #print('(' + str(i) + str(j) + ',' + str(m) + str(n) + ')')
+                cov_dict['(' + str(i) + str(j) + ',' + str(m) + str(n) + ')'] = prefactor*mini_cov
+                
+        #print(cov_dict)
+        cov_list = []
+        
+        for key, value in cov_dict.items():
+            cov_list.append(value)
 
-        #cov = np.zeros(len(binning['Cll']))
+        cov=np.asarray(cov_list).reshape(len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell))
+
+        print(cov)
+        return(cov)
         pass
