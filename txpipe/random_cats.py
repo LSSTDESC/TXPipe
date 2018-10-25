@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog
+from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile
 from .utils import choose_pixelization
 import numpy as np
 
@@ -9,6 +9,7 @@ class TXRandomCat(PipelineStage):
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
         ('tomography_catalog', TomographyCatalog),
+        ('photoz_stack', HDFFile),
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
@@ -31,11 +32,16 @@ class TXRandomCat(PipelineStage):
         depth = maps_file['maps/depth/value'][:]
         nside = maps_file['maps/depth'].attrs['nside']
         pixelization = maps_file['maps/depth'].attrs['pixelization']
+        pz_stack = self.open_input('photoz_stack')
 
 
         if len(pixel)==1:
             raise ValueError("Only one pixel in depth map!")
 
+
+        ### This will likely need to be changed with the density Schechter function and density
+        ### being calculated individually for each redshift bin.  When it comes time to update the code
+        ### to do that, move the lines below (down to the multi hash line) into the Ntomo loop
 
         # Read configuration values
         Mstar = self.config['Mstar']
@@ -62,11 +68,26 @@ class TXRandomCat(PipelineStage):
         area = scheme.pixel_area(degrees=True) * 60. * 60.
         vertices = scheme.vertices(pixel)
 
-        # Poisson distribution about mean
-        numbers = scipy.stats.poisson.rvs(density*area, 1)
-        n_total = numbers.sum()
+        ##################################################################################
 
-        zbins = self.read_zbins()
+        ### I think this is redundant if your pz_stack file has separated lens bins
+        # zbins = self.read_zbins()
+
+        ### The current file in 'pz_stack' only has 1 lens bin, but zbins loads 4 bins!!
+        Ntomo = len(pz_stack['n_of_z']['lens'].keys())-1
+        z_photo_arr = pz_stack['n_of_z']['lens']['z'].value
+        
+        ### Loop over the tomographic bins to find number of galaxies in each pixel/zbin
+        ### When the density changes per redshift bin, this can go into the main Ntomo loop
+        numbers = {}
+        for j in range(Ntomo):
+            # Poisson distribution about mean
+            numbers[j] = scipy.stats.poisson.rvs(density*area, 1)
+
+        ### Get total number of randoms in all zbins
+        ### Once the density gets updated per redshift bin, the output file will need to 
+        ### combine all the tomographic bins in a bit more clever/convenient way than currently
+        n_total = np.hstack(numbers.values()).sum()
 
         output_file = self.open_output('random_cats')
         group = output_file.create_group('randoms')
@@ -77,43 +98,53 @@ class TXRandomCat(PipelineStage):
         z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
         bin_out = group.create_dataset('bin', (n_total,), dtype=np.float64)
 
+        ### Counter for total number of randoms
         index = 0
-        # Generate the random points in each pixel
-        for i,(vertices_i,N) in enumerate(zip(vertices,numbers)):
-            # First generate some random ellipticities.
-            # This theta is not the orientation angle, it is the 
-            # angle in the e1,e2 plane
-            e = np.random.normal(scale=sigma_e, size=N)
-            theta = np.random.uniform(0,2*np.pi,size=N)
-            e1 = e * np.cos(theta)
-            e2 = e * np.sin(theta)
+        for j in range(Ntomo):
+            ### Load pdf of ith lens redshift bin pz
+            n_hist = pz_stack['n_of_z']['lens']['bin_%i'%j].value
 
-            # Use the pixel vertices to generate the points
-            p1, p2, p3, p4 = vertices_i.T
-            P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
-            # Convert to RA/Dec
-            # This is not healpy-dependent so we just use it as a convenience function
-            ra, dec = healpy.vec2ang(P, lonlat=True)
+            ### Make cdf and normalise
+            z_cdf = np.cumsum(n_hist)
+            z_cdf_norm = z_cdf / np.float(max(z_cdf))
 
-            # Random redshift.
-            # Placeholder!
-            z = np.random.uniform(0, 2.0, N)
+            # Generate the random points in each pixel
+            for i,(vertices_i,N) in enumerate(zip(vertices,numbers[j])):
+                # First generate some random ellipticities.
+                # This theta is not the orientation angle, it is the 
+                # angle in the e1,e2 plane
+                e = np.random.normal(scale=sigma_e, size=N)
+                theta = np.random.uniform(0,2*np.pi,size=N)
+                e1 = e * np.cos(theta)
+                e2 = e * np.sin(theta)
 
-            bin_index = np.repeat(-1, N)
-            for i, (zlow,zhigh) in enumerate(zbins):
-                in_bin = (z>zlow) & (z<zhigh)
-                bin_index[in_bin] = i
+                # Use the pixel vertices to generate the points
+                ### This likely wont work for curved sky maps since healpy pixels aren't 
+                ### fully quadrilateral... not sure how big of a difference (if any) this
+                ### will make
+                p1, p2, p3, p4 = vertices_i.T
+                P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
+                # Convert to RA/Dec
+                # This is not healpy-dependent so we just use it as a convenience function
+                ra, dec = healpy.vec2ang(P, lonlat=True)
 
+                bin_index = np.repeat(j, N)
 
-            
-            # Save output
-            ra_out[index:index+N] = ra
-            dec_out[index:index+N] = dec
-            e1_out[index:index+N] = e1
-            e2_out[index:index+N] = e2
-            z_out[index:index+N] = z
-            bin_out[index:index+N] = bin_index
-            index += N
+                ### Create random values [0,1] equal to the number of galaxies per pixel
+                cdf_rand_val = np.random.uniform(0,1.0,N)
+                ### Interpolate those random values to a redshift value given by the cdf
+                # z_photo_rand = np.interp(cdf_rand_val,z_cdf_norm,z_photo_arr)
+                z_interp_func = scipy.interpolate.interp1d(z_cdf_norm,z_photo_arr)
+                z_photo_rand = z_interp_func(cdf_rand_val)
+                
+                # Save output
+                ra_out[index:index+N] = ra
+                dec_out[index:index+N] = dec
+                e1_out[index:index+N] = e1
+                e2_out[index:index+N] = e2
+                z_out[index:index+N] = z_photo_rand
+                bin_out[index:index+N] = bin_index
+                index += N
 
         output_file.close()
 
