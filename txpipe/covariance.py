@@ -38,7 +38,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         noise_c_ell = self.compute_noise_c_ell(n_eff, sigma_e, binning_info)
 
         # compute covariance
-        C = self.compute_covariance(binning_info, theory_c_ell, noise_c_ell)
+        C = self.compute_covariance(binning_info, theory_c_ell, noise_c_ell, fsky)
 
     def read_cosmology(self):
         import pyccl as ccl
@@ -66,7 +66,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 angle = sacc_data.binning.get_angle(code1, code2, b1, b2)
                 binning[quant][(b1,b2)] = angle
         print("BINNING:")
-        print(binning['Cgl'])
+        print(binning['Cll'])
 
         #print(len(binning['Cll'][0,0]))
         return binning 
@@ -135,22 +135,32 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         for key in binning['Cll']:
             if key[0]==key[1]:
-                noise_c_ell[str(key[0]) + str(key[1])] = (sigma_e[key[0]]**2/n_eff[key[0]])
+                noise_c_ell[str(key[0]) + str(key[1])] = (sigma_e[key[0]]**2/n_eff[key[0]]) 
+            else:
+                noise_c_ell[str(key[0]) + str(key[1])] = 0.0
         
         print('NOISE_Cl:')
         print(noise_c_ell)
         return noise_c_ell
     
 
-    def compute_covariance(self, binning, theory_c_ell, noise_c_ell, fsky, i, j, m, n):
-        ell=binning['Cll'][i,j]
-        deltaell=ell[1]-ell[0]
+    def compute_covariance(self, binning, theory_c_ell, noise_c_ell, fsky):
+        ell=binning['Cll'][0,0]
+        delta_ell=ell[1]-ell[0] #not in general equal 
 
-        obs_c_ell_im = theory_c_ell.get(str(i)+str(m))
-        obs_c_ell_jn = theory_c_ell.get(str(j)+str(n))
-        obs_c_ell_in = theory_c_ell.get(str(i)+str(n))
-        obs_c_ell_jm = theory_c_ell.get(str(j)+str(m))
+        cov = 
+       
+        for key_row in binning['Cll']:
+            for key_col in binning['Cll']:
+                i = key_row[0]
+                j = key_row[1]
+                m = key_col[0]
+                n = key_col[1]
+                obs_c_ell_im = theory_c_ell.get(str(i)+str(m))+
+                obs_c_ell_jn = theory_c_ell.get(str(j)+str(n))
+                obs_c_ell_in = theory_c_ell.get(str(i)+str(n))
+                obs_c_ell_jm = theory_c_ell.get(str(j)+str(m))
 
-        prefactor = 1./((2*ell+1)*deltaell*fsky)
-        cov_element = prefactor*(obs_c_ell_im*obs_c_ell_jn+obs_c_ell_in*obs_c_ell_jm)
+                prefactor = 1./((2*ell+1)*delta_ell*fsky)
+        #cov_element = prefactor*(obs_c_ell_im*obs_c_ell_jn+obs_c_ell_in*obs_c_ell_jm)
         pass
