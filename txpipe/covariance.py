@@ -142,25 +142,55 @@ class TXFourierGaussianCovariance(PipelineStage):
         print('NOISE_Cl:')
         print(noise_c_ell)
         return noise_c_ell
-    
+
+
+
+    def switch_keys(self, bin_1, bin_2, theory_c_ell):
+        if str(bin_1) + str(bin_2) in theory_c_ell.keys():
+            obs_c_ell = theory_c_ell.get(str(bin_1) + str(bin_2))
+            return obs_c_ell                
+        else:
+            obs_c_ell = theory_c_ell.get(str(bin_2) + str(bin_1))
+            return obs_c_ell
 
     def compute_covariance(self, binning, theory_c_ell, noise_c_ell, fsky):
         ell=binning['Cll'][0,0]
-        delta_ell=ell[1]-ell[0] #not in general equal 
+        delta_ell=ell[1]-ell[0] #not in general equal, this needs to be improved 
 
-        cov = 
-       
+
+
+        def switch_keys(bin_1, bin_2, theory_c_ell):
+            if str(bin_1) + str(bin_2) in theory_c_ell.keys():
+                obs_c_ell = theory_c_ell.get(str(bin_1) + str(bin_2))
+                return obs_c_ell                
+            else:
+                obs_c_ell = theory_c_ell.get(str(bin_2) + str(bin_1))
+                return obs_c_ell
+
+
+
+        cov_dict = {}
+
+
         for key_row in binning['Cll']:
             for key_col in binning['Cll']:
                 i = key_row[0]
                 j = key_row[1]
                 m = key_col[0]
                 n = key_col[1]
-                obs_c_ell_im = theory_c_ell.get(str(i)+str(m))+
-                obs_c_ell_jn = theory_c_ell.get(str(j)+str(n))
-                obs_c_ell_in = theory_c_ell.get(str(i)+str(n))
-                obs_c_ell_jm = theory_c_ell.get(str(j)+str(m))
+                
+                #print('im:', str(i)+str(m))
 
+                obs_c_ell_im = switch_keys(str(i), str(m), theory_c_ell)
+                obs_c_ell_jn = switch_keys(str(j), str(n), theory_c_ell)
+                obs_c_ell_in = switch_keys(str(i), str(n), theory_c_ell)
+                obs_c_ell_jm = switch_keys(str(j), str(m), theory_c_ell)
+             
                 prefactor = 1./((2*ell+1)*delta_ell*fsky)
-        #cov_element = prefactor*(obs_c_ell_im*obs_c_ell_jn+obs_c_ell_in*obs_c_ell_jm)
+                cov_dict['(' + str(i) + str(j) + ',' + str(m) + str(n) + ')'] = prefactor*(obs_c_ell_im*obs_c_ell_jn+obs_c_ell_in*obs_c_ell_jm)
+
+        for key in cov_dict:
+            print(key)
+
+        #cov = np.zeros(len(binning['Cll']))
         pass
