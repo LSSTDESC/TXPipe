@@ -1,7 +1,7 @@
+from txpipe.depth.dr1 import *
+import numpy as np
 
 def test_stats():
-    from .dr1 import ParallelStatsCalculator
-    import numpy as np
     
     npix = 10
     stats = ParallelStatsCalculator(10)
@@ -22,8 +22,6 @@ def test_stats():
 
 
 def test_stats_sparse():
-    from .dr1 import ParallelStatsCalculator
-    import numpy as np
     
     npix = 10000
     stats = ParallelStatsCalculator(10000, sparse=True)
@@ -46,40 +44,39 @@ def test_stats_sparse():
 
 
 def mpi_test_stats():
-    from .dr1 import ParallelStatsCalculator
-    import numpy as np
     import mpi4py.MPI
+    np.random.seed(10)
 
     comm = mpi4py.MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     
-    npix = 10
+    npix = 100
+    nsamp_per_pix = 100
     stats = ParallelStatsCalculator(npix, sparse=False)
 
 
 
     if rank==0:
-        map_values = [np.random.uniform(size=80) for pixel in range(npix)]
+        map_values = [np.random.uniform(size=nsamp_per_pix) 
+                      for pixel in range(npix)]
     else:
         map_values = None
 
     map_values = comm.bcast(map_values)
 
-
     def iterator():
-        for pixel, values in enumerate(map_values):
+        for i in range(npix):
             # Each rank only works with some pixels
-            if pixel % size != rank:
+            if i % size != rank:
                 continue
-            yield pixel, values
+            yield i, map_values[i]
 
     count, mean, var = stats.calculate(iterator(), comm)
 
-
     if comm.Get_rank()==0:
-        simple_count = [len(v) for v in map_values]
+        simple_count = [nsamp_per_pix for i in range(npix)]
         simple_mean = np.mean(map_values,axis=1)
         simple_var = np.var(map_values,axis=1)
         assert np.allclose(count, simple_count)
@@ -92,8 +89,6 @@ def mpi_test_stats():
 
 
 def mpi_test_stats_gather():
-    from .dr1 import ParallelStatsCalculator
-    import numpy as np
     import mpi4py.MPI
 
     comm = mpi4py.MPI.COMM_WORLD
@@ -136,14 +131,6 @@ def mpi_test_stats_gather():
     simple_count = [len(v) for v in map_values]
     simple_mean = np.mean(map_values[:-1],axis=1)
     simple_var = np.var(map_values[:-1],axis=1)
-    print('v', simple_var[:5])
-    if rank==0: 
-    #     print(rank, count - simple_count)
-    #     print(rank, simple_mean - mean[:-1])
-        print('d', simple_var[:5] - var[:5])
-        print('xxx', np.var(map_values[0]))
-        print('yyy', np.var(map_values[0][:40]))
-        print('zzz', np.var(map_values[0][40:]))
     assert np.allclose(count, simple_count)
     assert np.allclose(mean[:-1], simple_mean)
     assert np.allclose(var[:-1], simple_var)
@@ -154,7 +141,6 @@ def mpi_test_stats_gather():
 
 
 def mpi_test_stats_sparse():
-    from .dr1 import ParallelStatsCalculator
     import numpy as np
     import mpi4py.MPI
 
@@ -201,4 +187,5 @@ if __name__ == '__main__':
     test_stats()    
     test_stats_sparse()
     mpi_test_stats()
+    mpi_test_stats_gather()
     mpi_test_stats_sparse() 
