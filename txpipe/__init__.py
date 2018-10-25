@@ -1,3 +1,4 @@
+
 """
 Pipeline modules for the 3x2pt (TX) project.
 
@@ -13,3 +14,4 @@ from .sysmaps import TXDiagnosticMaps
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .input_cats import TXProtoDC2Mock
+from .covariance import TXFourierGaussianCovariance
