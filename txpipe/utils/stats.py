@@ -86,6 +86,21 @@ class SparseArray:
             self[k] += v
         return self
 
+    def __sub__(self, other):
+        keys = set()
+        keys.update(self.d.keys(), other.d.keys())
+        x = SparseArray()
+        for k in keys:
+            x[k] = self[k] - other[k]
+        return x
+
+    def __pow__(self, y):
+        x = SparseArray()
+        for k in self.d.keys():
+            x[k] = self[k]**y
+        return x
+
+
     def to_dense(self):
         """
         Make a dense version of the array, just as a plain numpy array.
@@ -332,18 +347,13 @@ class ParallelStatsCalculator:
 
         counts = comm.gather(self._count)
         means = comm.gather(self._mean)
-        variances = comm.gather(self._M2)
+        variances = comm.gather(self._variance)
 
 
         if comm.Get_rank()!=0:
             count, mean, variance = None, None, None
-        elif self.sparse:
-            count, mean, variance = self._collect_sparse(counts, means, variances)
         else:
-            count, mean, variance = self._collect_dense(counts, means, variances)
-
-        if comm.rank == 0:
-            print("WARNING: VARIANCE IS CURRENTLY WRONG")
+            count, mean, variance = self._collect(counts, means, variances)
 
         if mode == 'allgather':
             count, mean, variance = comm.bcast([count, mean, variance])
@@ -357,44 +367,20 @@ class ParallelStatsCalculator:
 
         return self._finalize()
 
-    def _collect_dense(self, counts, means, variances):
-        T =  np.zeros(self.size)
-        S =  np.zeros(self.size)
-        S2 = np.zeros(self.size)
-        mean = np.zeros(self.size)
+    def _collect(self, counts, means, variances):
 
-        for count, mean, var in zip(counts, means, variances):
-            # Deal with any NaNs
-            mean[count<1] = 0
-            var[count<2] = 0
-            T += count
-            S += mean*count
-            S2 += var*count
-        w = T.nonzero()
-        variance = S2 / T
-        mean[w] = S[w] / T[w]
-        count = T
-        variance[count<2] = np.nan
-        mean[count<1] = np.nan
-        return count, mean, variance
+        # Deal with any NaNs
+        if not self.sparse:
+            for count, mean, var in zip(counts, means, variances):
+                mean[count<1] = 0
+                var[count<2] = 0
+        count, mean, variance = combine_variances(counts, means, variances, self.sparse)
 
-
-    def _collect_sparse(self, counts, means, variances):
-        T = SparseArray()
-        S = SparseArray()
-        S2 = SparseArray()
-        mean = SparseArray()
-        variance = SparseArray()
-
-        for count, mean, var in zip(counts, means, variances):
-            # Deal with any NaNs
-            T += count
-            S += mean * count
-            S2 += var * count
-
-        variance = S2 / T
-        mean = S / T
-        count = T
+        if not self.sparse:
+            w = count.nonzero()
+            variance[count<2] = np.nan
+            mean[count<1] = np.nan
+        
         return count, mean, variance
 
 
@@ -402,4 +388,37 @@ class ParallelStatsCalculator:
         # Each processor calculates the values for its bits of data
         self._calculate_serial(parallel_values_iterator)
         return self.collect(comm, mode=mode)
+
+
+def combine_variances(counts, means, variances, sparse=False):
+# eq 3.1b of Chan, Golub, & LeVeque 1979
+    S = variances[0] * counts[0]
+    T = means[0] * counts[0]
+    C = counts[0]
+    N = len(counts)
+    
+    for i in range(1,N):
+        Told = T
+
+        Tnext = means[i]*counts[i]
+        Cold = C
+        C = Cold + counts[i]
+        T = Told + Tnext
+
+        if sparse:
+            S = S + variances[i]*counts[i] \
+            + Cold / (Cold*C) * (Told*counts[i]/Cold - Tnext)**2
+        else:
+            w = np.where(counts[i]>0)
+            S[w] = S[w] + variances[i][w]*counts[i][w] \
+            + Cold[w] / (Cold[w]*C[w]) * (Told[w]*counts[i][w]/Cold[w] - Tnext[w])**2
+
+            w = np.where(Cold==0)
+            S[w] = variances[i][w]*counts[i][w]
+
+
+    mu = T / C
+    sigma2 = S / C
+
+    return C, mu, sigma2
 

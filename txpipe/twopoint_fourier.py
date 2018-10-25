@@ -139,7 +139,11 @@ def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm):
     w_std[np.isnan(w_std)] = 0
     # Reshape 1D histograms into maps.  Support both 1D healpix maps
     # and 2D flat maps
-    shape = (nbins, ntasks,) + pixel_scheme.shape
+    # shape = (nbins, ntasks,) + pixel_scheme.shape
+    if type(pixel_scheme.shape) != tuple:
+        shape = (nbins, ntasks,) + (pixel_scheme.shape, ) # need to add a singleton
+    else:
+        shape = (nbins, ntasks,) + pixel_scheme.shape # need to add a singleton
     count = count.reshape(shape)
     w_mean = w_mean.reshape(shape)
     w_std = w_std.reshape(shape)
@@ -407,6 +411,10 @@ class TXTwoPointFourier(PipelineStage):
             ell_max = min(pix_schm.nx * np.pi / lx, pix_schm.ny * np.pi / ly)
             d_ell = 2 * ell_min
             n_ell = int((ell_max - ell_min) / d_ell) - 1
+            print('n_ell', n_ell)
+            print('ell_max',ell_max)
+            print('ell_min',ell_min)
+            print('d_ell',d_ell)
             l_bpw = np.zeros([2, n_ell])
             l_bpw[0, :] = ell_min + np.arange(n_ell) * d_ell
             l_bpw[1, :] = l_bpw[0, :] + d_ell
