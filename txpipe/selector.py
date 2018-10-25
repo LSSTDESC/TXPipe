@@ -232,7 +232,7 @@ class TXSelector(PipelineStage):
         if self.is_mpi():
             s = self.comm.gather(selection_biases)
             if self.rank!=0:
-                return
+                return None,None
             selection_biases = flatten_list(s)
 
 
