@@ -184,7 +184,8 @@ def mpi_test_stats_sparse():
 
 
 if __name__ == '__main__':
-    # test_stats()    
-    # test_stats_sparse()
+    test_stats()    
+    test_stats_sparse()
+    mpi_test_stats()
     mpi_test_stats_gather()
-    # mpi_test_stats_sparse() 
+    mpi_test_stats_sparse() 
