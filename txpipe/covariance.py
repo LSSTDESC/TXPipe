@@ -34,7 +34,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         binning_info = self.read_binning()
 
         # read the n(z) and f_sky from the source summary stats
-        nz, sigma_e, n_eff, fsky, N_tomo_bins = self.read_number_statistics()
+        nz, n_eff, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
 
         # calculate the overall total C_ell values, including noise
         theory_c_ell = self.compute_theory_c_ell(cosmo, nz, binning_info)
