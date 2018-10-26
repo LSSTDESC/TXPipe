@@ -34,7 +34,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         binning_info = self.read_binning()
 
         # read the n(z) and f_sky from the source summary stats
-        nz, sigma_e, n_eff, fsky, N_tomo_bins = self.read_number_statistics()
+        nz, n_eff, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
 
         # calculate the overall total C_ell values, including noise
         theory_c_ell = self.compute_theory_c_ell(cosmo, nz, binning_info)
@@ -135,12 +135,13 @@ class TXFourierGaussianCovariance(PipelineStage):
     def compute_noise_c_ell(self, n_eff, sigma_e, binning):
         #avg number of galaxies in a zbin
         noise_c_ell = {}
+        ell=binning['Cll'][0,0]
 
         for key in binning['Cll']:
             if key[0]==key[1]:
-                noise_c_ell[str(key[0]) + str(key[1])] = np.ones(3)*(sigma_e[key[0]]**2/n_eff[key[0]]) 
+                noise_c_ell[str(key[0]) + str(key[1])] = np.ones(len(ell))*(sigma_e[key[0]]**2/n_eff[key[0]]) 
             else:
-                noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(3)
+                noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(len(ell))
         
         print('NOISE_Cl:')
         print(noise_c_ell)
@@ -189,7 +190,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                         if a==b:
                             mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]                           
                 
-                cov[indexrow*3:indexrow*3+3,indexcol*3:indexcol*3+3] = prefactor*mini_cov
+                cov[indexrow*len(ell):indexrow*len(ell)+len(ell),indexcol*len(ell):indexcol*len(ell)+len(ell)] = prefactor*mini_cov
                 print(prefactor)
                 print(mini_cov)
 
