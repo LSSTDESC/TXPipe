@@ -3,6 +3,9 @@ from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyC
 from .data_types import DiagnosticMaps
 import numpy as np
 
+#Needed changes: 1) area is hard coded to 4sq.deg. as file is buggy. 2) code fixed to equal-spaced ell values in real space. 3)
+
+
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
 
@@ -87,21 +90,25 @@ class TXFourierGaussianCovariance(PipelineStage):
             nz['bin_'+ str(i)] = input_data[f'n_of_z/source/bin_{i}'].value 
 
         N_eff = tomo_file['tomography/N_eff'].value
-        #area = maps_file['maps'].attrs['area']
-        area = 4.0 #read this in when not array of 0.04
+        area = maps_file['maps'].attrs['area']
+        print(area)
+        area = 4.0/((180./np.pi)**2) #read this in when not array of 0.04 (CONVERTED TO SR)
+        print("area: ",area)
+        print("NEFF : ", N_eff)
         n_eff=N_eff/area
-
+        print((180./np.pi)**2)
+        print("nEFF : ", n_eff)
         sigma_e = tomo_file['tomography/sigma_e'].value
 
-        fullsky=4*np.pi*(180./np.pi)**2
+        fullsky=4*np.pi #*(180./np.pi)**2 #(FULL SKY IN STERADIANS)
         fsky=area/fullsky
     
         input_data.close()
         tomo_file.close()
         maps_file.close()
         
-        print('nz, n_eff, sigma_e, fsky: ')
-        print(nz, n_eff, sigma_e, fsky) 
+        print('n_eff, sigma_e, fsky: ')
+        print( n_eff, sigma_e, fsky) 
         return nz, n_eff, sigma_e, fsky, N_tomo_bins
 
     def compute_theory_c_ell(self, cosmo, nz, binning):
@@ -148,7 +155,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         for key in binning['Cll']:
             obs_c_ell[str(key[0]) + str(key[1])] = theory_c_ell[str(key[0]) + str(key[1])] + noise_c_ell[str(key[0]) + str(key[1])]
 
-
         def switch_keys(bin_1, bin_2, obs_c_ell):
             if str(bin_1) + str(bin_2) in theory_c_ell.keys():
                 obs_c_ell_xy = obs_c_ell.get(str(bin_1) + str(bin_2))
@@ -183,13 +189,15 @@ class TXFourierGaussianCovariance(PipelineStage):
                         if a==b:
                             mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]                           
                 
-                cov[indexrow*3:indexrow*3+3,indexcol*3:indexcol*3+3] = mini_cov
-                
+                cov[indexrow*3:indexrow*3+3,indexcol*3:indexcol*3+3] = prefactor*mini_cov
+                print(prefactor)
+                print(mini_cov)
+
                 indexcol += 1
                 if indexcol == 10:
                     indexrow += 1
                     indexcol = 0
 
-        np.savetxt('cov_test.txt',cov)
+        np.save('cov_test.npy',cov)
         return(cov)
         pass
