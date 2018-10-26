@@ -139,7 +139,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         for key in binning['Cll']:
             if key[0]==key[1]:
-                noise_c_ell[str(key[0]) + str(key[1])] = np.ones(3)*(sigma_e[key[0]]**2/n_eff[key[0]]) 
+                noise_c_ell[str(key[0]) + str(key[1])] = np.ones(len(ell))*(sigma_e[key[0]]**2/n_eff[key[0]]) 
             else:
                 noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(len(ell))
         
