@@ -16,7 +16,7 @@ Measurement = collections.namedtuple(
     ['corr_type', 'l', 'value', 'win', 'd_ell', 'i', 'j'])
 
 
-def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins, flip_g2):
+def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins):
     """Joint loop through shear and tomography catalogs and bin
     them into tomographic bin, map type and map pixel
 
@@ -77,17 +77,13 @@ def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins, flip_g2)
                     # Shear
                     # TODO: account for all shape-measurement weights.
                     w = sh['mcal_g'][:, i_t - 1]
-
-                    if i_t==2 and flip_g2:
-                        w=-w
-                    
                 for ib, b in enumerate(bins):  # Loop through tomographic bins
                     mask_bins = (bn['source_bin'] == b)
                     index = p + npix * (i_t + ntasks * ib)
                     yield index, w[mask_pix & mask_bins]
 
 
-def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm, flip_g2):
+def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm):
     """Produces number counts and shear maps from shear and tomography catalogs.
 
     Parameters
@@ -133,7 +129,8 @@ def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm, flip_g2):
     stats = ParallelStatsCalculator(npix_all, sparse=False)
 
     # Initialize mapping iterator
-    weights_iterator = source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins, flip_g2)
+    weights_iterator = source_mapper_iterator(
+        shear_it, bin_it, ms_it, pixel_scheme, bins)
 
     # Calculate map
     count, w_mean, w_std = stats.calculate(weights_iterator, comm, mode='allgather')
@@ -276,7 +273,7 @@ class TXTwoPointFourier(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 10000,"flip_g2":True
+        "chunk_rows": 10000
     }
 
     def run(self):
@@ -349,7 +346,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Generate maps
         m_count, m_mean = source_mapper(
-            shear_iterator, bin_iterator, ms_iterator, pix_schm, source_bins, self.comm, self.config['flip_g2'])
+            shear_iterator, bin_iterator, ms_iterator, pix_schm, source_bins, self.comm)
         print("Made source maps")
         # Generate namaster fields
         f_d, f_w = maps2fields(m_count, m_mean, mask,
@@ -369,7 +366,8 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment,
         # but for this case I would expect it to be mostly finer
         for i, j, k in self.split_tasks_by_rank(calcs):
-            self.compute_power_spectra(pix_schm, i, j, k, f_w, f_d, w00, w02, w22, ell_bins, d_ell)
+            self.compute_power_spectra(
+                pix_schm, i, j, k, f_w, f_d, w00, w02, w22, ell_bins, d_ell)
         self.collect_results()
 
         # Prepare the HDF5 output.
@@ -486,9 +484,9 @@ class TXTwoPointFourier(PipelineStage):
                     np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
             c = self.compute_one_spectrum(
                 pix_schm, w22, f_w[i], f_w[j], ell_bins)
-            c_ll_EE, c_ll_BB = c[0], c[3]
+            c_ll = c[0]
             self.results.append(Measurement(
-                b'Cll', ls, np.array([c_ll_EE, c_ll_BB]), win, d_ell, i, j))
+                b'Cll', ls, c_ll, win, d_ell, i, j))
 
         if k == POS_POS:
             print(i, j, k)
@@ -497,9 +495,9 @@ class TXTwoPointFourier(PipelineStage):
                     np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
             c = self.compute_one_spectrum(
                 pix_schm, w00, f_d[i], f_d[j], ell_bins)
-            c_dd_EE, c_dd_BB = c[0], c[0]
+            c_dd = c[0]
             self.results.append(Measurement(
-                b'Cdd', ls, np.array([c_dd_EE, c_dd_BB]), win, d_ell, i, j))
+                b'Cdd', ls, c_dd, win, d_ell, i, j))
 
         if k == SHEAR_POS:
             print(i, j, k)
@@ -508,9 +506,9 @@ class TXTwoPointFourier(PipelineStage):
                     np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
             c = self.compute_one_spectrum(
                 pix_schm, w02, f_w[i], f_d[j], ell_bins)
-            c_dl_EE, c_dl_BB = c[0], c[1]
+            c_dl = c[0]
             self.results.append(Measurement(
-                b'Cdl', ls, np.array([c_dl_EE, c_dl_BB]), win, d_ell, i, j))
+                b'Cdl', ls, c_dl, win, d_ell, i, j))
 
         return
 
@@ -547,7 +545,7 @@ class TXTwoPointFourier(PipelineStage):
             T = sacc.Tracer(f"LSST lens_{i}".encode('ascii'), b"spin0", z, Nz, exp_sample=b"LSST-lens")
             tracers.append(T)
 
-        fields = ['corr_type', 'l', 'value','i', 'j', 'win']
+        fields = ['corr_type', 'l', 'value', 'i', 'j', 'win']
         output = {f: list() for f in fields}
 
         q1 = []
@@ -577,7 +575,8 @@ class TXTwoPointFourier(PipelineStage):
                         v = v.tolist()
                     output[f] += v
 
-        binning = sacc.Binning(type, output['l'], output['i'], q1, output['j'], q2)
+        binning = sacc.Binning(type, output['l'], output[
+                               'i'], q1, output['j'], q2)
         mean = sacc.MeanVec(output['value'])
         s = sacc.SACC(tracers, binning, mean)
         s.printInfo()
@@ -587,6 +586,5 @@ class TXTwoPointFourier(PipelineStage):
 
 if __name__ == '__main__':
     PipelineStage.main()
-
 
 
