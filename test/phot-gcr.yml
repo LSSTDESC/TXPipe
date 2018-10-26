@@ -1,21 +1,22 @@
 launcher: local
 # To run on cori use:
 #launcher: cori-interactive
+
 modules: txpipe
 
 
 stages:
-    - name: TXProtoDC2Mock
+    - name: TXGCRMockMetacal
       nprocess: 1
 
-output_dir: ./outputs
+output_dir: ./outputs-gcr
 
-config: test/config.yml
+config: test/gcr-config.yml
 
 inputs:
     response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf
     
-resume: True
+resume: False
 log_dir: ./test/logs
 pipeline_log: log.txt
 

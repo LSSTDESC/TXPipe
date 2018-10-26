@@ -1,4 +1,6 @@
-TXProtoDC2Mock: {}
+TXProtoDC2Mock:
+    cat_name: protoDC2_test
+    max_size: 1000000
 
 TXRandomPhotozPDF:
     nz: 301
