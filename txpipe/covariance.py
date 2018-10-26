@@ -135,12 +135,13 @@ class TXFourierGaussianCovariance(PipelineStage):
     def compute_noise_c_ell(self, n_eff, sigma_e, binning):
         #avg number of galaxies in a zbin
         noise_c_ell = {}
+        ell=binning['Cll'][0,0]
 
         for key in binning['Cll']:
             if key[0]==key[1]:
                 noise_c_ell[str(key[0]) + str(key[1])] = np.ones(3)*(sigma_e[key[0]]**2/n_eff[key[0]]) 
             else:
-                noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(3)
+                noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(len(ell))
         
         print('NOISE_Cl:')
         print(noise_c_ell)
