@@ -190,7 +190,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                         if a==b:
                             mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]                           
                 
-                cov[indexrow*3:indexrow*3+3,indexcol*3:indexcol*3+3] = prefactor*mini_cov
+                cov[indexrow*len(ell):indexrow*len(ell)+len(ell),indexcol*len(ell):indexcol*len(ell)+len(ell)] = prefactor*mini_cov
                 print(prefactor)
                 print(mini_cov)
 
