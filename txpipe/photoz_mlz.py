@@ -74,7 +74,10 @@ class PZPDFMLZ(PipelineStage):
 
     def load_training(self):
         import numpy as np
+        import mlz_desc
         import mlz_desc.ml_codes
+        import sys
+        sys.modules['mlz'] = sys.modules['mlz_desc']
         filename = self.get_input('photoz_trained_model')
         features, trees = np.load(filename)
         return features, trees
