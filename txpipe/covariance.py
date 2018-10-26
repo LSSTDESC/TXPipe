@@ -157,10 +157,14 @@ class TXFourierGaussianCovariance(PipelineStage):
                 obs_c_ell_yx = obs_c_ell.get(str(bin_2) + str(bin_1))
                 return obs_c_ell_yx
 
-        cov_dict = {} 
-
+         
+        indexrow = 0 
+        indexcol = 0
+        cov=np.zeros((len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell)))
+        
         for key_row in binning['Cll']:
             for key_col in binning['Cll']:
+                
                 i = key_row[0]
                 j = key_row[1]
                 m = key_col[0]
@@ -179,16 +183,13 @@ class TXFourierGaussianCovariance(PipelineStage):
                         if a==b:
                             mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]                           
                 
-                cov_dict['(' + str(i) + str(j) + ',' + str(m) + str(n) + ')'] = prefactor*mini_cov
+                cov[indexrow*3:indexrow*3+3,indexcol*3:indexcol*3+3] = mini_cov
                 
-        cov_list = []
-        
-        for key, value in cov_dict.items():
-            cov_list.append(value)
+                indexcol += 1
+                if indexcol == 10:
+                    indexrow += 1
+                    indexcol = 0
 
-        cov=np.asarray(cov_list).reshape(len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell))
-
-        print('COV: ')
-        print(cov)
+        np.savetxt('cov_test.txt',cov)
         return(cov)
         pass
