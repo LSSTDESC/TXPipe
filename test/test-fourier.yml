@@ -8,16 +8,15 @@ stages:
       nprocess: 1
     - name: TXSelector
       nprocess: 1
-    - name: TXRandomPhotozPDF
-      nprocess: 1
     - name: TXDiagnosticMaps
+      nprocess: 1
+    - name: TXTwoPointFourier
       nprocess: 1
     - name: TXPhotozStack
       nprocess: 1
     - name: TXRandomCat
       nprocess: 1
-    - name: TXTwoPoint
-      nprocess: 1
+
 
 output_dir: ./outputs
 
@@ -28,7 +27,7 @@ inputs:
     shear_catalog: ./mock_shear_catalog.fits
     photometry_catalog: ./mock_photometry_catalog.hdf
     photoz_trained_model: ./photoz_trained_model.npy
-    
+
 resume: False
 log_dir: ./test/logs
 pipeline_log: log.txt

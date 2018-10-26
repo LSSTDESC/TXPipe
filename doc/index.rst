@@ -12,6 +12,7 @@ TXPipe documentation
 
    installation
    api
+   utils
 
 
 

@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from descformats.tx import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog
+from .data_types import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog
 from .utils import choose_pixelization
 import numpy as np
 
@@ -121,8 +121,8 @@ class TXRandomCat(PipelineStage):
         tomo = self.open_input('tomography_catalog')
         d = dict(tomo['tomography'].attrs)
         tomo.close()
-        nbin = d['nbin']
-        zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
+        nbin = d['nbin_source']
+        zbins = [(d[f'source_zmin_{i}'], d[f'source_zmax_{i}']) for i in range(nbin)]
         return zbins
 
 
@@ -137,7 +137,7 @@ def pixel_boundaries(props, pixel):
     if props['pixelization']=='healpix':
         boundaries = healpy.boundaries(props['nside'], pixel)
         area = healpy.nside2pixarea(nside, degrees=True) * 60.*60.
-    elif props['pixelization'] in ['tangent', 'tan', 'gnomonic']:
+    elif props['pixelization'] == 'gnomonic':
         boundaries = pixel_boundaries(maps_file['maps/depth'].attrs)
         pix_size_deg = maps_file['maps/depth'].attrs['pixel_size']
         area = (pix_size_deg*60.*60.)**2
