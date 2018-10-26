@@ -44,7 +44,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         import pyccl as ccl
         filename = self.get_input('fiducial_cosmology')
         cosmo = ccl.Cosmology.read_yaml(filename)
-        print("COSMOLOGY OBJECT")
+
+        print("COSMOLOGY OBJECT:")
         print(cosmo)
         return cosmo
 
@@ -52,12 +53,13 @@ class TXFourierGaussianCovariance(PipelineStage):
         import sacc
         f = self.get_input('twopoint_data')
         sacc_data = sacc.SACC.loadFromHDF(f)
-        ###
+
         codes = {
             'Cll' : ('S','S'),
             #'Cdd' : ('P','P'),
             #'Cdl' : ('P','S'),
-         }
+            }
+
         binning = {quant: {} for quant in codes}
 
         for quant, (code1,code2) in codes.items():
@@ -65,10 +67,9 @@ class TXFourierGaussianCovariance(PipelineStage):
             for (b1, b2) in bin_pairs:
                 angle = sacc_data.binning.get_angle(code1, code2, b1, b2)
                 binning[quant][(b1,b2)] = angle
+
         print("BINNING:")
         print(binning['Cll'])
-
-        #print(len(binning['Cll'][0,0]))
         return binning 
 
     
@@ -76,25 +77,19 @@ class TXFourierGaussianCovariance(PipelineStage):
         input_data = self.open_input('photoz_stack')
         tomo_file = self.open_input('tomography_catalog')
         maps_file = self.open_input('diagnostic_maps')
-
-        #nbin_source=tomo_file.read_nbin('source', wrapper=True)
-        
+     
         N_tomo_bins=len(tomo_file['tomography/sigma_e'].value)
         print("NBINS: ", N_tomo_bins)
+        
         nz = {}
-        n_eff = {}
         nz['z'] = input_data[f'n_of_z/source/z'].value
         for i in range(N_tomo_bins):
             nz['bin_'+ str(i)] = input_data[f'n_of_z/source/bin_{i}'].value 
 
         N_eff = tomo_file['tomography/N_eff'].value
-        #print(N_eff)
         #area = maps_file['maps'].attrs['area']
-        #print('AREA')
-        #print(area)
         area = 4.0 #read this in when not array of 0.04
         n_eff=N_eff/area
-        #print(n_eff)
 
         sigma_e = tomo_file['tomography/sigma_e'].value
 
@@ -104,8 +99,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         input_data.close()
         tomo_file.close()
         maps_file.close()
-    
-        #print(nz, n_eff, sigma_e, fsky) 
+        
+        print('nz, n_eff, sigma_e, fsky: ')
+        print(nz, n_eff, sigma_e, fsky) 
         return nz, n_eff, sigma_e, fsky, N_tomo_bins
 
     def compute_theory_c_ell(self, cosmo, nz, binning):
@@ -114,7 +110,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         import pyccl as ccl
 
         theory_c_ell = {}
-        ell=binning['Cll'][0,0]  #change this
+        ell=binning['Cll'][0,0]
         z = nz.get('z')
         
         for key in binning['Cll']:
@@ -174,12 +170,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                 obs_c_ell_jn = switch_keys(str(j), str(n), obs_c_ell)
                 obs_c_ell_in = switch_keys(str(i), str(n), obs_c_ell)
                 obs_c_ell_jm = switch_keys(str(j), str(m), obs_c_ell)
-             
-                #print("ell: ",ell)
+            
                 prefactor = 1./((2*ell+1)*delta_ell*fsky)
-                #print(prefactor)
-
-                #print(obs_c_ell_im[:,None],  obs_c_ell_jn)
                 
                 mini_cov = np.zeros((len(ell),len(ell)))
                 for a in range(len(ell)):
@@ -187,10 +179,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                         if a==b:
                             mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]                           
                 
-                #print('(' + str(i) + str(j) + ',' + str(m) + str(n) + ')')
                 cov_dict['(' + str(i) + str(j) + ',' + str(m) + str(n) + ')'] = prefactor*mini_cov
                 
-        #print(cov_dict)
         cov_list = []
         
         for key, value in cov_dict.items():
@@ -198,6 +188,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         cov=np.asarray(cov_list).reshape(len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell))
 
+        print('COV: ')
         print(cov)
         return(cov)
         pass
