@@ -24,27 +24,48 @@ Needs the ceci DESC library on the python path (which is not quite stable enough
 
 On NERSC (Cori) - see the instructions below
 
+Docker
+------
+
+In Docker, from the main directory, this will get you the newest C_ell variants of the code:
+
+```bash
+git checkout twoppoint_fourier
+docker pull joezuntz/txpipe
+docker run --rm -it -v$PWD:/opt/txpipe joezuntz/txpipe
+```
+
+Then you will be inside the container, where you can do:
+
+```bash
+cd /opt/txpipe
+ceci test/test-fourier.yaml
+```
+
 Cori
 ----
 
 These dependencies are all already prepared on cori - use this environment:
 
 ```bash
-module swap PrgEnv-intel  PrgEnv-gnu
-module unload darshan
-module load hdf5-parallel/1.10.1
-module load python/3.6-anaconda-4.4
-module load cfitsio/3.370-reentrant
-source activate /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/env
+
+# On the login nodes:
+source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori-nompi
+
+# When submitting jobs:
+source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
+
 ```
 
 Input test data
 ---------------
 
 You can get input test data from here:
-```
+
+```bash
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.hdf
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photoz_trained_model.npy
 ```
 
 Or if running on NERSC see the commented out parts of test/test.yml

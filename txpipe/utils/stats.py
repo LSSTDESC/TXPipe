@@ -86,6 +86,21 @@ class SparseArray:
             self[k] += v
         return self
 
+    def __sub__(self, other):
+        keys = set()
+        keys.update(self.d.keys(), other.d.keys())
+        x = SparseArray()
+        for k in keys:
+            x[k] = self[k] - other[k]
+        return x
+
+    def __pow__(self, y):
+        x = SparseArray()
+        for k in self.d.keys():
+            x[k] = self[k]**y
+        return x
+
+
     def to_dense(self):
         """
         Make a dense version of the array, just as a plain numpy array.
@@ -219,7 +234,7 @@ class ParallelStatsCalculator:
             self._M2 = np.zeros(size)
 
 
-    def calculate(self, values_iterator, comm=None):
+    def calculate(self, values_iterator, comm=None, mode='gather'):
         """ Calculate statistics of an input data set.
 
         Operates on an iterator, which is expected to repeatedly yield
@@ -232,6 +247,8 @@ class ParallelStatsCalculator:
         comm: MPI Communicator, optional
             If set, assume each MPI process in the comm is getting different data and combine them at the end.
             Only the master process will return the full results - the others will get None
+        mode: string
+            'gather', or 'allgather', only used if MPI is used
 
         Returns
         -------
@@ -252,7 +269,7 @@ class ParallelStatsCalculator:
                 count, mean, variance = self._calculate_serial(values_iterator)
                 return count, mean, variance
             else:
-                count, mean, variance = self._calculate_parallel(values_iterator, comm)
+                count, mean, variance = self._calculate_parallel(values_iterator, comm, mode)
                 return count, mean, variance
 
 
@@ -275,7 +292,7 @@ class ParallelStatsCalculator:
             delta2 = value - self._mean[pixel]
             self._M2[pixel] += delta * delta2
 
-    def finalize(self):
+    def _finalize(self):
         """Designed for manual use - in general prefer the calculate method.
 
         Add a set of values assinged to a given bin or pixel.
@@ -297,89 +314,111 @@ class ParallelStatsCalculator:
         return self._count, self._mean, self._variance        
 
 
-    def collect(self, counts, means, variances):
+    def collect(self, comm, mode='gather'):
         """Designed for manual use - in general prefer the calculate method.
         
         Combine together statistics from different processors into one.
 
         Parameters
         ----------
-        counts: list of arrays or SparseArrays
-            List of the numbers of values in each bin
-        means: list of arrays or SparseArrays
-            List of arrays of the computed means for each bin
-        variance: list of arrays or SparseArrays
-            List of arrays of the computed variance for each bin
+        comm: MPI Communicator or None
+
+        mode: string
+            'gather', or 'allgather'
+
+        Returns
+        -------
+        count: array or SparseArray
+            The number of values in each bin
+        mean: array or SparseArray
+            An array of the computed mean for each bin
+        variance: array or SparseArray
+            An array of the computed variance for each bin
+
         """
-        if self.sparse:
-            return self._collect_sparse(counts, means, variances)
+        self._finalize()
+
+        if comm is None:
+            return self._count, self._mean, self._variance
+
+        if mode not in ['gather', 'allgather']:
+            raise ValueError("mode for ParallelStatsCalculator.collect must be"
+                             "'gather' or 'allgather'")
+
+        counts = comm.gather(self._count)
+        means = comm.gather(self._mean)
+        variances = comm.gather(self._variance)
+
+
+        if comm.Get_rank()!=0:
+            count, mean, variance = None, None, None
         else:
-            return self._collect_dense(counts, means, variances)
+            count, mean, variance = self._collect(counts, means, variances)
+
+        if mode == 'allgather':
+            count, mean, variance = comm.bcast([count, mean, variance])
+
+        return count, mean, variance
 
 
     def _calculate_serial(self, values_iterator):
         for pixel, values in values_iterator:
             self.add_data(pixel, values)
 
-        return self.finalize()
+        return self._finalize()
 
-    def _collect_dense(self, counts, means, variances):
-        T =  np.zeros(self.size)
-        S =  np.zeros(self.size)
-        S2 = np.zeros(self.size)
-        mean = np.zeros(self.size)
-        variance = np.zeros(self.size)
-        for count, mean, var in zip(counts, means, variances):
-            # Deal with any NaNs
-            mean[count<1] = 0
-            var[count<2] = 0
-            T += count
-            S += mean*count
-            S2 += var*count
+    def _collect(self, counts, means, variances):
 
-        w = T.nonzero()
-        variance = S2 / T
-        mean[w] = S[w] / T[w]
-        count = T
-        variance[count<2] = np.nan
-        mean[count<1] = np.nan
-        return count, mean, variance
+        # Deal with any NaNs
+        if not self.sparse:
+            for count, mean, var in zip(counts, means, variances):
+                mean[count<1] = 0
+                var[count<2] = 0
+        count, mean, variance = combine_variances(counts, means, variances, self.sparse)
 
-
-    def _collect_sparse(self, counts, means, variances):
-        T = SparseArray()
-        S = SparseArray()
-        S2 = SparseArray()
-        mean = SparseArray()
-        variance = SparseArray()
-
-        for count, mean, var in zip(counts, means, variances):
-            # Deal with any NaNs
-            T += count
-            S += mean * count
-            S2 += var * count
-
-        variance = S2 / T
-        mean = S / T
-        count = T
-        return count, mean, variance
-
-
-    def _calculate_parallel(self, parallel_values_iterator, comm):
-        # Each processor calculates the values for its bits of data
-        self._calculate_serial(parallel_values_iterator)
-        counts = comm.gather(self._count)
-        means = comm.gather(self._mean)
-        variances = comm.gather(self._variance)
-
-
-        if comm.Get_rank()==0:
-            count, mean, variance = self.collect(counts, means, variances)
-        else:
-            variance = None
-            mean = None
-            count = None
+        if not self.sparse:
+            w = count.nonzero()
+            variance[count<2] = np.nan
+            mean[count<1] = np.nan
         
         return count, mean, variance
 
+
+    def _calculate_parallel(self, parallel_values_iterator, comm, mode):
+        # Each processor calculates the values for its bits of data
+        self._calculate_serial(parallel_values_iterator)
+        return self.collect(comm, mode=mode)
+
+
+def combine_variances(counts, means, variances, sparse=False):
+# eq 3.1b of Chan, Golub, & LeVeque 1979
+    S = variances[0] * counts[0]
+    T = means[0] * counts[0]
+    C = counts[0]
+    N = len(counts)
+    
+    for i in range(1,N):
+        Told = T
+
+        Tnext = means[i]*counts[i]
+        Cold = C
+        C = Cold + counts[i]
+        T = Told + Tnext
+
+        if sparse:
+            S = S + variances[i]*counts[i] \
+            + Cold / (Cold*C) * (Told*counts[i]/Cold - Tnext)**2
+        else:
+            w = np.where(counts[i]>0)
+            S[w] = S[w] + variances[i][w]*counts[i][w] \
+            + Cold[w] / (Cold[w]*C[w]) * (Told[w]*counts[i][w]/Cold[w] - Tnext[w])**2
+
+            w = np.where(Cold==0)
+            S[w] = variances[i][w]*counts[i][w]
+
+
+    mu = T / C
+    sigma2 = S / C
+
+    return C, mu, sigma2
 

@@ -35,15 +35,18 @@ class MetacalCatalog(FitsFile):
 class TomographyCatalog(HDFFile):
     required_datasets = []
 
-    def read_zbins(self):
+    def read_zbins(self, bin_type):
         """
         Read saved redshift bin edges from attributes
         """
         d = dict(self.file['tomography'].attrs)
-        tomo.close()
-        nbin = d['nbin']
-        zbins = [(d[f'zmin_{i}'], d[f'zmax_{i}']) for i in range(nbin)]
+        nbin = d[f'nbin_{bin_type}']
+        zbins = [(d[f'{bin_type}_zmin_{i}'], d[f'{bin_type}_zmax_{i}']) for i in range(nbin)]
         return zbins
+
+    def read_nbin(self, bin_type):
+        d = dict(self.file['tomography'].attrs)
+        return d[f'nbin_{bin_type}']
 
 
 
@@ -75,6 +78,23 @@ class DiagnosticMaps(HDFFile):
         else:
             return m
 
+    def read_map_info(self, map_name):
+        group = self.file[f'maps/{map_name}']
+        info = dict(group.attrs)
+        return info
+
+    def read_map(self, map_name):
+        info = self.read_map_info(map_name)
+        pixelization = info['pixelization']
+        if pixelization == 'gnomonic':
+            m = self.read_gnomonic(map_name)
+        elif pixelization == 'healpix':
+            m = self.read_healpix(map_name)
+        else:
+            raise ValueError(f"Unknown map pixelization type {pixelization}")
+        return m
+
+
     def display_healpix(self, map_name, **kwargs):
         import healpy
         import numpy as np
@@ -86,13 +106,12 @@ class DiagnosticMaps(HDFFile):
         title = kwargs.pop('title', map_name)
         healpy.cartview(m,lonra=lon_range, latra=lat_range, title=title, **kwargs)
 
-    def read_tangential(self, map_name):
+    def read_gnomonic(self, map_name):
         import numpy as np
         group = self.file[f'maps/{map_name}']
         info = dict(group.attrs)
         nx = info['nx']
         ny = info['ny']
-        print(ny,nx)
         m = np.zeros((ny,nx))
         m[:,:] = np.nan
 
@@ -104,18 +123,20 @@ class DiagnosticMaps(HDFFile):
         x = pix % nx
         y = pix // nx
         m[y,x] = val
+        return m
+
+
+    def display_gnomonic(self, map_name, **kwargs):
+        import pylab
+        import numpy as np
+        info = self.read_map_info(map_name)
         ra_min, ra_max = info['ra_min'], info['ra_max']
-        print(ra_min, ra_max)
         if ra_min > 180 and ra_max<180:
             ra_min -= 360
         ra_range = (ra_min, ra_max)
         dec_range = (info['dec_min'],info['dec_max'])
-        return m, ra_range, dec_range
 
-    def display_tangential(self, map_name, **kwargs):
-        import pylab
-        import numpy as np
-        m, ra_range, dec_range = self.read_tangential(map_name)
+        m = self.read_gnomonic(map_name)
         extent = list(ra_range) + list(dec_range)
         title = kwargs.pop('title', map_name)
         pylab.imshow(m, aspect='equal', extent=extent, **kwargs)
