@@ -55,7 +55,7 @@ class TXDiagnosticMaps(PipelineStage):
          - build up the map gradually
          - the master process saves the map
         """
-        from .depth import dr1_depth
+        from .mapping import dr1_depth
         from .utils import choose_pixelization
         import numpy as np
 
