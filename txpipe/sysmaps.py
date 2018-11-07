@@ -1,5 +1,5 @@
 from ceci import PipelineStage
-from .data_types import HDFFile, DiagnosticMaps, YamlFile
+from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile
 import numpy as np
 
 class TXDiagnosticMaps(PipelineStage):
@@ -21,6 +21,8 @@ class TXDiagnosticMaps(PipelineStage):
     # In the long run this may become DM output
     inputs = [
         ('photometry_catalog', HDFFile),
+        ('shear_catalog', MetacalCatalog),
+        ('tomography_catalog', TomographyCatalog),
     ]
 
     # We generate a single HDF file in this stage
@@ -55,7 +57,7 @@ class TXDiagnosticMaps(PipelineStage):
          - build up the map gradually
          - the master process saves the map
         """
-        from .mapping import dr1_depth
+        from .mapping import DepthMapperDR1
         from .utils import choose_pixelization
         import numpy as np
 
@@ -68,36 +70,73 @@ class TXDiagnosticMaps(PipelineStage):
         pixel_scheme = choose_pixelization(**config)
         config.update(pixel_scheme.metadata)
 
+        chunk_rows = config['chunk_rows']
         band = config['depth_band']
-        cat_cols = ['ra', 'dec', f'snr_{band}', f'mag_{band}_lsst']
+
+        # These are the columns we're going to need from the various files
+        phot_cols = ['ra', 'dec', f'snr_{band}', f'mag_{band}_lsst']
+        shear_cols = ['mcal_g']
+        bin_cols = ['source_bin', 'lens_bin']
+        m_cols = ['R_gamma']
 
 
-        # This bit may be confusing!  To avoid loading all the data
-        # at once we use an iterator, which loads the data chunk by chunk.
-        # We will pass this iterator to the depth code, but we also need to rename
-        # two columns in it so that we know which band to use for the depth.
-        # In this case piggyback on an existing code that iterates through the file (iterate_hdf)
-        # but also add additional columns, called mag and snr.
-        # This is all probably typical Joe overkill.
-        def iterate():
-            for _,_,data in self.iterate_hdf('photometry_catalog', 'photometry', cat_cols, 
-                                              config['chunk_rows']):
-                data['mag'] = data[f'mag_{band}_lsst']
-                data['snr'] = data[f'snr_{band}']
-                yield data
-
-        # Now make an instance of this iterator
-        data_iterator = iterate()
+        source_bins = list(range(nbin_source))
+        lens_bins = list(range(nbin_lens))
 
 
-        # Calculate the depth map, map of the counts used in computing the depth map
-        # and map of the depth variance.
-        pixel, count, depth, depth_var = dr1_depth(data_iterator,
-            pixel_scheme,
-            config['snr_threshold'],
-            config['snr_delta'],
-            sparse=config['sparse'],
-            comm=self.comm)
+        # Make two mapper classes, one for the signal itself
+        # (shear and galaxy count) and the other for the depth
+        # calculation
+        mapper = Mapper(pixel_scheme, lens_bins, source_bins)
+        depth_mapper = DepthMapperDR1(pixel_scheme,
+                                      config['snr_threshold'],
+                                      config['snr_delta'],
+                                      sparse = config['sparse'],
+                                      comm = self.comm)
+
+
+        # Build some "iterators".  Iterators are things you can loop through,
+        # but the good thing here is that they don't get created all at once
+        # (which here would mean loading in a great number of data columns)
+        # but instead are "lazy" - at this point all that happens is that
+        # we prepare to read these columns from these different files.
+        # These methods by default yield trios of (start, end, data),
+        # but in this case because we are agregating we don't need the "start" and
+        # "end" numbers.  So we re-define to ignore them
+        shear_it = self.iterate_fits('shear_catalog', 1, shear_cols, chunk_rows)
+        shear_it = (d[2] for d in shear_it)
+
+        phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
+        phot_it = (d[2] for d in phot_it)
+
+        bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
+        bin_it = (d[2] for d in bin_it)
+                
+        m_it = self.iterate_hdf('tomography_catalog','multiplicative_bias', m_cols, chunk_rows)
+        m_it = (d[2] for d in m_it)
+
+        # Now, we actually start loading the data in.
+        # This thing below just loops through all the files at once
+        iterator = zip(shear_it, phot_it, bin_it, m_it)
+        for shear_data, phot_data, bin_data, m_data in iterator:
+
+            # Pick out a few relevant columns from the different
+            # files to give to the depth mapper.
+            depth_data = {
+                'mag': phot_data[f'mag_{band}_lsst'],
+                'snr': phot_data[f'snr_{band}'],
+                'bins': bin_data['lens_bin'],
+            }
+
+            # And add these data chunks to our maps
+            depth_mapper.add_data(depth_data)
+            mapper.add_data(shear_data, bin_data, m_data)
+
+        # Collect together the results across all the processors
+        # and combine them to get the final results
+        depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
+        pixel, ngals, g1, g2 = mapper.finalize(self.comm)
+
 
         
         # Only the root process saves the output
@@ -107,18 +146,28 @@ class TXDiagnosticMaps(PipelineStage):
             # Use one global section for all the maps
             group = outfile.create_group("maps")
             # Save each of the maps in a separate subsection
-            self.save_map(group, "depth", pixel, depth, config)
-            self.save_map(group, "depth_count", pixel, count, config)
-            self.save_map(group, "depth_var", pixel, depth_var, config)
+            self.save_map(group, "depth", depth_pix, depth, config)
+            self.save_map(group, "depth_count", depth_pix, depth_count, config)
+            self.save_map(group, "depth_var", depth_pix, depth_var, config)
 
             # I'm expecting this will one day call off to a 10,000 line
             # library or something.
             mask, npix = self.compute_mask(count)
-            self.save_map(group, "mask", pixel, mask, config)
+            self.save_map(group, "mask", depth_pix, mask, config)
 
+            # Save some other handy map info that will be useful later
             area = pixel_scheme.pixel_area(degrees=True) * npix
             group.attrs['area'] = area
             group.attrs['area_unit'] = 'sq deg'
+
+            # Now save all the lens bin galaxy counts, under the
+            # name ngal
+            for b in lens_bins:
+                self.save_map(group, f"ngal_{b}", map_pix, ngals[b])
+
+            for b in source_bins:
+                self.save_map(group, f"g1_{b}", map_pix, g1[b])
+                self.save_map(group, f"g2_{b}", map_pix, g2[b])
 
 
     def compute_mask(self, depth_count):
