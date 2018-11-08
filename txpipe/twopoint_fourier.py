@@ -16,230 +16,6 @@ Measurement = collections.namedtuple(
     ['corr_type', 'l', 'value', 'win', 'd_ell', 'i', 'j'])
 
 
-def source_mapper_iterator(shear_it, bin_it, ms_it, pixel_scheme, bins):
-    """Joint loop through shear and tomography catalogs and bin
-    them into tomographic bin, map type and map pixel
-
-    This is later on passed to the stats calculator.
-
-    Parameters
-    ----------
-    shear_it: iterable
-        Iterator providing chunks of the shear catalog
-
-    bin_it: iterable
-        Iterator providing chunks of the tomographic bin column
-
-    ms_it: iterable
-        Iterator providing chunks of the multiplicative bias column
-
-    pixel_scheme: HealpixScheme or GnomonicPixelScheme object
-        Pixelization scheme of the output maps
-
-    bins: array_like
-        List of allowed tomographic bin indices
-
-    Yields
-    ------
-    index: int
-        Integer that places each objects in a given pixel of a
-        given tomographic bin of a particular map type
-        (e.g. number counts or shear).
-    weights: array_like
-        Quantity to be histogrammed by the stats calculator.
-    """
-
-    # Organize tasks, bins and pixels
-    tasks = [0, 1, 2]  # 0-> density, 1-> gamma_1, 2-> gamma_2
-    npix = pixel_scheme.npix
-    nbins = len(bins)
-    ntasks = len(tasks)
-    # We will generate nbins*ntasks maps with npix pixels each
-
-    # Loop through data
-    for sh, bn, ms in zip(shear_it, bin_it, ms_it):
-        # Get pixel indices
-        pix_nums = pixel_scheme.ang2pix(sh['ra'], sh['dec'])
-
-        for p in np.unique(pix_nums):  # Loop through pixels
-            if p < 0 or p >= npix:
-                continue
-            mask_pix = (pix_nums == p)
-            # Loop through tasks (number counts, gamma_x)
-            for i_t, task in enumerate(tasks):
-                if i_t == 0:
-                    # Number counts.
-                    # TODO: update this to take any weights into account if needed.
-                    # TODO: ParallelStatsCalculator may need to be updated with
-                    # a weights array.
-                    w = np.ones_like(sh['ra'])
-                else:
-                    # Shear
-                    # TODO: account for all shape-measurement weights.
-                    w = sh['mcal_g'][:, i_t - 1]
-                for ib, b in enumerate(bins):  # Loop through tomographic bins
-                    mask_bins = (bn['source_bin'] == b)
-                    index = p + npix * (i_t + ntasks * ib)
-                    yield index, w[mask_pix & mask_bins]
-
-
-def source_mapper(shear_it, bin_it, ms_it, pixel_scheme, bins, comm):
-    """Produces number counts and shear maps from shear and tomography catalogs.
-
-    Parameters
-    ----------
-    shear_it: iterable
-        Iterator providing chunks of the shear catalog
-
-    bin_it: iterable
-        Iterator providing chunks of the tomographic bin column
-
-    ms_it: iterable
-        Iterator providing chunks of the multiplicative bias column
-
-    pixel_scheme: HealpixScheme or GnomonicPixelScheme object
-        Pixelization scheme of the output maps
-
-    bins: array_like
-        List of allowed tomographic bin indices
-
-    comm: MPI communicator, optional
-        An MPI comm for parallel processing.  If None, calculation is serial.
-
-    Returns
-    ------
-    count: array_like
-        3D array with dimensions [nbins,ntasks,npix], where npix is the total
-        number of pixels in the map, ntasks=3 (number counts, gamma_1, gamma_2)
-        and nbins is the number of tomographic bins considered.
-        This array contains the number of objects used to estimate the map
-        at each pixel.
-    w_mean: array_like
-        Array with the same dimensions as count. It contains the mean value of
-        the quantity appropriate for each task, i.e. mean galaxy weight for
-        number counts, mean shear_1 and shear_2 for gamma_1 and gamma_2.
-    """
-    # Organize maps structure
-    ntasks = 3  # Number counts, gamma_1 and gamma_2
-    nbins = len(bins)
-    npix = pixel_scheme.npix
-    npix_all = npix * nbins * ntasks  # Total number of pixels.
-
-    # Initialize stats calculator
-    stats = ParallelStatsCalculator(npix_all, sparse=False)
-
-    # Initialize mapping iterator
-    weights_iterator = source_mapper_iterator(
-        shear_it, bin_it, ms_it, pixel_scheme, bins)
-
-    # Calculate map
-    count, w_mean, w_std = stats.calculate(weights_iterator, comm, mode='allgather')
-    count[np.isnan(count)] = 0
-    w_mean[np.isnan(w_mean)] = 0
-    w_std[np.isnan(w_std)] = 0
-    # Reshape 1D histograms into maps.  Support both 1D healpix maps
-    # and 2D flat maps
-    # shape = (nbins, ntasks,) + pixel_scheme.shape
-    if type(pixel_scheme.shape) != tuple:
-        shape = (nbins, ntasks,) + (pixel_scheme.shape, ) # need to add a singleton
-    else:
-        shape = (nbins, ntasks,) + pixel_scheme.shape # need to add a singleton
-    count = count.reshape(shape)
-    w_mean = w_mean.reshape(shape)
-    w_std = w_std.reshape(shape)
-
-    return count, w_mean
-
-
-def maps2fields(count, mean, mask, syst_nc, syst_wl, pixel_scheme, mask_thr=0.):
-    """Generates NaMaster's NmtField objects based on input maps.
-
-    Parameters
-    ----------
-    count: array_like
-        3D array with dimensions [nbins,ntasks,npix], where npix is the total
-        number of pixels in the map, ntasks=3 (number counts, gamma_1, gamma_2)
-        and nbins is the number of tomographic bins considered.
-        This array contains the number of objects used to estimate the map
-        at each pixel.
-
-    mean: array_like
-        Array with the same dimensions as count. It contains the mean value of
-        the quantity appropriate for each task, i.e. mean galaxy weight for
-        number counts, mean shear_1 and shear_2 for gamma_1 and gamma_2.
-
-    mask: array_like
-        Sky mask. For number counts, it is interpreted as a masked fraction
-        (and corrected for).
-
-    syst_nc, syst_wl: array_like
-        List of systematics maps for number counts and weak lensing.
-        The dimensions of these should be [n_syst,n_maps,n_pix], where
-        n_syst is the number of systematics to account for, n_maps=1
-        for number counts and n_maps=2 for lensing (different spins)
-        and n_pix is the size of each map.
-
-    field_class: NmtField or NmtFieldClass
-        Type of NmtField class to use.
-
-    mask_thr: float, optional
-        Throw away any pixels where mask <= mask_thr
-
-    Returns
-    -------
-    dfields: array_like
-        Array of spin-0 NmtField objects for number counts. One per
-        tomographic bin.
-    wfields: array_like
-        Array of spin-2 NmtField objects for weak lensing. One per
-        tomographic bin.
-    """
-    # TODO: this whole function could be parallelized
-
-    # Determine number of bins
-    nbins = mean.shape[0]
-    ntasks = mean.shape[1]
-
-    if ntasks != 3:
-        # TODO: right now we need both lensing and clustering. This should be
-        # more flexible"
-        raise ValueError("We need maps for both lensing and clustering")
-
-    # Find unmasked pixels
-    ipix_mask_good = np.where(mask > mask_thr)[0]
-    # Neglect pixels below mask threshold
-    mask[mask <= mask_thr] = 0
-
-    # Maps for number counts, one per tomography bin
-    nmap = count[:, 0, :] * mean[:, 0, :]
-    nmean = np.sum(nmap * mask[None, :]) / np.sum(mask)
-    dmap = np.zeros_like(nmap)
-    for b in range(nbins):
-        dmap[b, ipix_mask_good] = nmap[b, ipix_mask_good] / \
-            (nmean * mask[ipix_mask_good]) - 1  # delta_g
-
-    if pixel_scheme.name == 'gnomonic':
-        lx = np.radians(pixel_scheme.size_x)
-        ly = np.radians(pixel_scheme.size_y)
-        print(f"lx = {lx}")
-        # Density
-        dfields = [nmt.NmtFieldFlat(
-            lx, ly, mask, [d], templates=syst_nc) for d in dmap]
-        # Lensing
-        wfields = [nmt.NmtFieldFlat(
-            lx, ly, mask, [m[1], m[2]], templates=syst_wl) for m in mean]
-
-    elif pixel_scheme.name == 'healpix':
-        # Density
-        dfields = [nmt.NmtField(mask, [d], syst_nc) for d in dmap]
-        # Lensing
-        wfields = [nmt.NmtField(mask, [m[1], m[2]], syst_wl) for m in mean]
-    else:
-        raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
-
-    return dfields, wfields
-
-
 class TXTwoPointFourier(PipelineStage):
     """This Pipeline Stage computes all auto- and cross-correlations
     for a list of tomographic bins, including all galaxy-galaxy,
@@ -250,14 +26,10 @@ class TXTwoPointFourier(PipelineStage):
     systematic-dominated modes, represented as input maps.
 
     In the future we will want to include the following generalizations:
-     - TODO: specify different bins for shear and clustering.
-     - TODO: different source and lens catalogs.
      - TODO: specify which cross-correlations in particular to include
              (e.g. which bin pairs and which source/lens combinations).
      - TODO: include flags for rejected objects. Is this included in
              the tomography_catalog?
-     - TODO: final interface with SACC is still missing.
-     - TODO: make sure NaMaster works in python-3.6
      - TODO: ell-binning is currently static.
     """
     name = 'TXTwoPointFourier'
@@ -265,7 +37,6 @@ class TXTwoPointFourier(PipelineStage):
         ('shear_catalog', MetacalCatalog),  # Shear catalog
         ('tomography_catalog', TomographyCatalog),  # Tomography catalog
         ('photoz_stack', HDFFile),  # Photoz stack
-        # Mask (generated by TXSysMapMaker)
         ('diagnostic_maps', DiagnosticMaps),
     ]
     outputs = [
@@ -273,7 +44,8 @@ class TXTwoPointFourier(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 10000
+        "chunk_rows": 10000,
+        "mask_threshold": 0.0,
     }
 
     def run(self):
@@ -284,103 +56,133 @@ class TXTwoPointFourier(PipelineStage):
 
         self.setup_results()
 
-        diagnostic_map_file = self.open_input('diagnostic_maps', wrapper=True)
-
-        mask_info = diagnostic_map_file.read_map_info('mask')
-        pix_schm = choose_pixelization(**mask_info)
-
-        # Choose pixelization and read mask and systematics maps
-        pixelization = mask_info['pixelization'].lower()
-
-        mask = diagnostic_map_file.read_map('mask')
-
-        syst_nc = None
-        syst_wl = None
-        # Read mask and systematic maps
-        # if config['syst_nc']!='none' :
-        #     #Should we check for this or for whether it exists?
-        #     #Is this actually in config?
-        #     dum,syst_nc=mapreading(config['syst_nc'],i_map=None)
-        #     nmaps=len(syst_nc)
-        #     syst_nc=syst_nc.reshape([nmaps,1,pix_schm.npix])
-        # else :
-        #     syst_nc=None
-        # if config['syst_wl']!='none' :
-        #     #Should we check for this or for whether it exists?
-        #     #Is this actually in config?
-        #     dum,syst_wl=mapreading(config['syst_wl'],i_map=None)
-        #     if len(syst_wl)%2!=0 :
-        #         raise ValueError("There must be an even number of systematics maps for weak lensing")
-        #     nmaps=len(syst_nc)/2
-        #     syst_wl=syst_nc.reshape([nmaps,2,pix_schm.npix])
-        # else :
-        #     syst_wl=None
+        # Get some metadata from the tomography file
+        tomo_file = self.open_input('tomography_catalog', wrapper=True)
+        nbin_source = tomo_file.read_nbin('source')
+        nbin_lens = tomo_file.read_nbin('lens')
+        tomo_file.close()
 
         # Generate iterators for shear and tomography catalogs
         cols_shear = ['ra', 'dec', 'mcal_g', 'mcal_flags', 'mcal_mag',
                       'mcal_s2n_r', 'mcal_T']
 
-        # Get some metadat from the tomography file
-        tomo_file = self.open_input('tomography_catalog', wrapper=True)
-        nbin_source = tomo_file.read_nbin('source')
-        nbin_lens = tomo_file.read_nbin('lens')
-
+        # Get the complete list of calculations to be done,
+        # for all the three spectra and all the bin pairs.
+        # This will be used for parallelization.
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
-        source_bins = list(range(nbin_source))
-        lens_bins = list(range(nbin_lens))
-        # tomo_file.close()
-
-        shear_iterator = (data for start, end, data in self.iterate_fits('shear_catalog',
-                                                                         1,
-                                                                         cols_shear,
-                                                                         config['chunk_rows']))
-        bin_iterator = (data for start, end, data in self.iterate_hdf('tomography_catalog',
-                                                                      'tomography',
-                                                                      ['source_bin'],
-                                                                      config['chunk_rows']))
-        ms_iterator = (data for start, end, data in self.iterate_hdf('tomography_catalog',
-                                                                     'multiplicative_bias',
-                                                                     ['R_gamma'],
-                                                                     config['chunk_rows']))
-
-        # Generate maps
-        m_count, m_mean = source_mapper(
-            shear_iterator, bin_iterator, ms_iterator, pix_schm, source_bins, self.comm)
-        print("Made source maps")
         # Generate namaster fields
-        f_d, f_w = maps2fields(m_count, m_mean, mask,
-                               syst_nc, syst_wl, pix_schm)
-        print("Converted maps to NaMaster fields")
+        pixel_scheme, f_d, f_wl = self.load_maps(nbin_source, nbin_lens)
+        print("Loaded maps and converted to NaMaster fields")
 
-        ell_bins, d_ell = self.choose_ell_bins(pix_schm)
-        print("Chosen pix scheme")
+        # Binning scheme, currently chosen from the geometry.
+        # TODO: set ell binning from config
+        ell_bins, d_ell = self.choose_ell_bins(pixel_scheme)
+        print("Chosen {} ell bins".format(ell_bins.get_n_bands()))
 
-        w00, w02, w22 = self.setup_workspaces(pix_schm, f_d, f_w, ell_bins)
-        print("Computed workspaces")
+        # Namaster uses workspaces, which we re-use between
+        # bins
+        w00, w02, w22 = self.setup_workspaces(pixel_scheme, f_d, f_wl, ell_bins)
+        print("Set up workspaces")
 
         # Run the compute power spectra portion in parallel
-
         # This splits the calculations among the parallel bins
-        # It's not necessarily the most optimal way of doing it
-        # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly finer
+        # It's not the most optimal way of doing it
+        # as it's not dynamic, just a round-robin assignment.
         for i, j, k in self.split_tasks_by_rank(calcs):
             self.compute_power_spectra(
-                pix_schm, i, j, k, f_w, f_d, w00, w02, w22, ell_bins, d_ell)
+                pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins, d_ell)
+
+        # Pull all the results together to the master process.
         self.collect_results()
 
-        # Prepare the HDF5 output.
-        # When we do this in parallel we can probably
-        # just copy all the results to the root process
-        # to output
-
+        # Write the collect results out to HDF5.
         if self.rank == 0:
-            print("Saved power spectra")
             self.save_power_spectra(nbin_source, nbin_lens)
+            print("Saved power spectra")
 
-        # Binning scheme
-        # TODO: set ell binning from config
+
+
+
+    def load_maps(self, nbin_source, nbin_lens):
+        # Load the various input maps and their metadata
+        map_file = self.open_input('diagnostic_maps', wrapper=True)
+        pix_info = map_file.read_map_info('mask')
+
+        # Choose pixelization and read mask and systematics maps
+        pixel_scheme = choose_pixelization(**pix_info)
+
+        # Load the mask. It should automatically be the same shape as the
+        # others, based on how it was originally generated.
+        # We remove any pixels that are at or below our threshold (default=0)
+        mask = map_file.read_map('mask')
+        mask_threshold = self.config['mask_threshold']
+        mask[mask <= mask_threshold] = 0      
+        mask_sum = mask.sum()
+
+        # Load all the maps in.
+        # TODO: make it possible to just do a subset of these
+        ngal_maps = [map_file.read_map(f'ngal_{b}') for b in range(nbin_lens)]
+        g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
+        g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
+
+
+        # TODO: load systematics maps here, once we are making them.
+        syst_nc = None
+        syst_wl = None
+
+        map_file.close()
+
+        # Cut out any pixels below the threshold,
+        # zeroing out any pixels there
+        cut = mask < mask_threshold
+        mask[cut] = 0
+
+        # We also apply this cut to the count maps,
+        # since otherwise the pixels below threshold would contaminate
+        # the mean calculation below.
+        for ng in ngal_maps:
+            ng[cut] = 0
+
+
+        # Convert the number count maps to overdensity maps.
+        # First compute the overall mean object count per bin.
+        # Maybe we should do this in the mapping code itself?
+        n_means = [ng.sum()/mask_sum for ng in ngal_maps]
+        # and then use that to convert to overdensity
+        d_maps = [(ng/mu)-1 for (ng,mu) in zip(ngal_maps, n_means)]
+
+        if pixel_scheme.name == 'gnomonic':
+            lx = np.radians(pixel_scheme.size_x)
+            ly = np.radians(pixel_scheme.size_y)
+
+            # Density for gnomonic maps
+            d_fields = [
+                nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc) 
+                for d in d_maps]
+            
+            # Lensing for gnomonic maps
+            wl_fields = [
+                nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl) 
+                for g1,g2 in zip(g1_maps, g2_maps)
+            ]
+
+        elif pixel_scheme.name == 'healpix':
+            # Density for healpix maps
+            d_fields = [
+                nmt.NmtField(mask, [d], templates=syst_nc) 
+                for d in d_maps
+            ]
+            # Lensing for healpix maps
+            wl_fields = [
+                nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
+                for g1,g2 in zip(g1_maps, g2_maps)
+            ]
+        else:
+            raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+
+        return pixel_scheme, d_fields, wl_fields
+
 
     def collect_results(self):
         if self.comm is None:
@@ -400,15 +202,15 @@ class TXTwoPointFourier(PipelineStage):
     def setup_results(self):
         self.results = []
 
-    def choose_ell_bins(self, pix_schm):
-        if pix_schm.name == 'healpix':
+    def choose_ell_bins(self, pixel_scheme):
+        if pixel_scheme.name == 'healpix':
             nlb = min(1, int(1. / np.mean(mask)))
-            ell_bins = nmt.NmtBin(pix_schm.nside, nlb=nlb)
-        elif pix_schm.name == 'gnomonic':
-            lx = np.radians(pix_schm.nx * pix_schm.pixel_size_x)
-            ly = np.radians(pix_schm.ny * pix_schm.pixel_size_y)
+            ell_bins = nmt.NmtBin(pixel_scheme.nside, nlb=nlb)
+        elif pixel_scheme.name == 'gnomonic':
+            lx = np.radians(pixel_scheme.nx * pixel_scheme.pixel_size_x)
+            ly = np.radians(pixel_scheme.ny * pixel_scheme.pixel_size_y)
             ell_min = max(2 * np.pi / lx, 2 * np.pi / ly)
-            ell_max = min(pix_schm.nx * np.pi / lx, pix_schm.ny * np.pi / ly)
+            ell_max = min(pixel_scheme.nx * np.pi / lx, pixel_scheme.ny * np.pi / ly)
             d_ell = 2 * ell_min
             n_ell = int((ell_max - ell_min) / d_ell) - 1
             print('n_ell', n_ell)
@@ -424,14 +226,14 @@ class TXTwoPointFourier(PipelineStage):
 
         return ell_bins, d_ell
 
-    def setup_workspaces(self, pix_schm, f_d, f_w, ell_bins):
+    def setup_workspaces(self, pixel_scheme, f_d, f_wl, ell_bins):
         # choose scheme class
-        if pix_schm.name == 'healpix':
+        if pixel_scheme.name == 'healpix':
             workspace_class = nmt.NmtWorkspace
-        elif pix_schm.name == 'gnomonic':
+        elif pixel_scheme.name == 'gnomonic':
             workspace_class = nmt.NmtWorkspaceFlat
         else:
-            raise ValueError(f"No NaMaster workspace for pixel scheme {pix_schm.name}")
+            raise ValueError(f"No NaMaster workspace for pixel scheme {pixel_scheme.name}")
 
         # Compute mode-coupling matrix
         # TODO: mode-coupling could be pre-computed and provided in config.
@@ -439,10 +241,10 @@ class TXTwoPointFourier(PipelineStage):
         w00.compute_coupling_matrix(f_d[0], f_d[0], ell_bins)
 
         w02 = workspace_class()
-        w02.compute_coupling_matrix(f_d[0], f_w[0], ell_bins)
+        w02.compute_coupling_matrix(f_d[0], f_wl[0], ell_bins)
 
         w22 = workspace_class()
-        w22.compute_coupling_matrix(f_w[0], f_w[0], ell_bins)
+        w22.compute_coupling_matrix(f_wl[0], f_wl[0], ell_bins)
 
         return w00, w02, w22
 
@@ -469,7 +271,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pix_schm, i, j, k, f_w, f_d, w00, w02, w22, ell_bins, d_ell):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins, d_ell):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -483,7 +285,7 @@ class TXTwoPointFourier(PipelineStage):
             win = [[np.arange(l - d_ell, l + d_ell),
                     np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
             c = self.compute_one_spectrum(
-                pix_schm, w22, f_w[i], f_w[j], ell_bins)
+                pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins)
             c_ll = c[0]
             self.results.append(Measurement(
                 b'Cll', ls, c_ll, win, d_ell, i, j))
@@ -494,7 +296,7 @@ class TXTwoPointFourier(PipelineStage):
             win = [[np.arange(l - d_ell, l + d_ell),
                     np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
             c = self.compute_one_spectrum(
-                pix_schm, w00, f_d[i], f_d[j], ell_bins)
+                pixel_scheme, w00, f_d[i], f_d[j], ell_bins)
             c_dd = c[0]
             self.results.append(Measurement(
                 b'Cdd', ls, c_dd, win, d_ell, i, j))
@@ -505,19 +307,18 @@ class TXTwoPointFourier(PipelineStage):
             win = [[np.arange(l - d_ell, l + d_ell),
                     np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
             c = self.compute_one_spectrum(
-                pix_schm, w02, f_w[i], f_d[j], ell_bins)
+                pixel_scheme, w02, f_wl[i], f_d[j], ell_bins)
             c_dl = c[0]
             self.results.append(Measurement(
                 b'Cdl', ls, c_dl, win, d_ell, i, j))
 
-        return
 
-    def compute_one_spectrum(self, pix_scheme, w, f1, f2, ell_bins):
-        if pix_scheme.name == 'healpix':
+    def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins):
+        if pixel_scheme.name == 'healpix':
             # correlates two fields f1 and f2 and returns an array of coupled
             # power spectra
             coupled_c_ell = nmt.compute_coupled_cell(f1, f2)
-        elif pix_scheme.name == 'gnomonic':
+        elif pixel_scheme.name == 'gnomonic':
             coupled_c_ell = nmt.compute_coupled_cell_flat(f1, f2, ell_bins)
 
         c_ell = w.decouple_cell(coupled_c_ell)

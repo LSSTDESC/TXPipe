@@ -8,15 +8,19 @@ class Mapper:
         self.lens_bins = lens_bins
         self.tasks = tasks
         self.stats = {}
-        for b in self.bins:
-            for t in self.tasks:
-                self.stats[(b,task)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+        for b in self.source_bins:
+            t = 0
+            self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+
+        for b in self.source_bins:
+            for t in [1,2]:
+                self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
     def add_data(self, shear_data, bin_data, m_data):
         npix = self.pixel_scheme.npix
 
         # Get pixel indices
-        pix_nums = pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
+        pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
 
         # TODO: change from unit weights for lenses
         lens_weights = np.ones_like(shear_data['ra'])
@@ -40,6 +44,7 @@ class Mapper:
                 # Loop through the tomographic lens bins
                 for i,b in enumerate(self.lens_bins):
                     mask_bins = masks_lens[i]
+                    w = lens_weights
                     # Loop through tasks (number counts, gamma_x)
                     self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
 
@@ -64,10 +69,9 @@ class Mapper:
         pixel = np.arange(self.pixel_scheme.npix)
 
         is_master = (comm is None) or (comm.Get_rank()==0)
-        for t in self.tasks:
-            for b in self.bins:
-            stats = self.stats[(b,t)]
-            count, mean, _ = stats.finalize(comm)
+        for b in self.lens_bins:
+            stats = self.stats[(b,0)]
+            count, mean, _ = stats.collect(comm)
 
             if not is_master:
                 continue
@@ -78,15 +82,25 @@ class Mapper:
             count = count.reshape(self.pixel_scheme.shape)
             mean = mean.reshape(self.pixel_scheme.shape)
 
-            if t==0:
-                # In the case of the density bin the mean is actually
-                # the mean weight.  So we want to multiply to get total
-                # weighted galaxy count
-                ngal[b] = mean * count
-            elif t==1:
-                g1[b] = mean
-            elif t==2:
-                g2[b] = mean
+            ngal[b] = (mean * count).flatten()
+
+        for b in self.source_bins:
+            stats_g1 = self.stats[(b,1)]
+            stats_g2 = self.stats[(b,2)]
+            _, mean_g1, _ = stats_g1.collect(comm)
+            _, mean_g2, _ = stats_g2.collect(comm)
+
+            if not is_master:
+                continue
+
+            mean_g1[np.isnan(mean_g1)] = 0
+            mean_g2[np.isnan(mean_g2)] = 0
+
+            mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
+            mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
+
+            g1[b] = mean_g1.flatten()
+            g2[b] = mean_g2.flatten()
         return pixel, ngal, g1, g2
 
 

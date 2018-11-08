@@ -49,12 +49,12 @@ TXDiagnosticMaps:
     # nside: 2048
     pixelization: gnomonic
     # # 
-    pixel_size: 0.02
+    pixel_size: 0.2
 
     ra_cent: 0.0
     dec_cent: 0.0
-    npix_x: 200
-    npix_y: 200
+    npix_x: 20
+    npix_y: 20
 
 TXTwoPointFourier:
     chunk_rows: 10000

@@ -48,7 +48,7 @@ class DepthMapperDR1:
         self.snr_threshold = snr_threshold
         self.snr_delta = snr_delta
         self.comm = comm
-
+        self.sparse = sparse
         self.stats = ParallelStatsCalculator(pixel_scheme.npix, sparse=sparse)
 
     def add_data(self, data):
@@ -58,12 +58,12 @@ class DepthMapperDR1:
         mags = data['mag']
         bins = data['bins']
         # Get healpix pixels
-        pix_nums = pixel_scheme.ang2pix(ra, dec)
+        pix_nums = self.pixel_scheme.ang2pix(ra, dec)
 
         # For each found pixel find all values hitting that pixel
         # and yield the index and their magnitudes
         for p in np.unique(pix_nums):
-            mask = (pix_nums==p) & (abs(snr-snr_threshold)<snr_delta) & (bins>=0)
+            mask = (pix_nums==p) & (abs(snr-self.snr_threshold)<self.snr_delta)
             self.stats.add_data(p, mags[mask])
 
     def finalize(self, comm=None):
@@ -74,7 +74,7 @@ class DepthMapperDR1:
         # convert from sparse arrays to pixel, index arrays.if sparse
         if count is None:
             pixel = None
-        elif sparse:
+        elif self.sparse:
             pixel, count = count.to_arrays()
             _, depth = depth.to_arrays()
             _, depth_var = depth_var.to_arrays()

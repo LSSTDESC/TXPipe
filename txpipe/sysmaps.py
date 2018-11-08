@@ -57,7 +57,7 @@ class TXDiagnosticMaps(PipelineStage):
          - build up the map gradually
          - the master process saves the map
         """
-        from .mapping import DepthMapperDR1
+        from .mapping import DepthMapperDR1, Mapper
         from .utils import choose_pixelization
         import numpy as np
 
@@ -79,9 +79,12 @@ class TXDiagnosticMaps(PipelineStage):
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
+        T = self.open_input('tomography_catalog')
+        d = dict(T['/tomography'].attrs)
+        T.close()
 
-        source_bins = list(range(nbin_source))
-        lens_bins = list(range(nbin_lens))
+        source_bins = list(range(d['nbin_source']))
+        lens_bins = list(range(d['nbin_lens']))
 
 
         # Make two mapper classes, one for the signal itself
@@ -104,7 +107,6 @@ class TXDiagnosticMaps(PipelineStage):
         # but in this case because we are agregating we don't need the "start" and
         # "end" numbers.  So we re-define to ignore them
         shear_it = self.iterate_fits('shear_catalog', 1, shear_cols, chunk_rows)
-        shear_it = (d[2] for d in shear_it)
 
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
@@ -118,24 +120,33 @@ class TXDiagnosticMaps(PipelineStage):
         # Now, we actually start loading the data in.
         # This thing below just loops through all the files at once
         iterator = zip(shear_it, phot_it, bin_it, m_it)
-        for shear_data, phot_data, bin_data, m_data in iterator:
-
+        for (s,e,shear_data), phot_data, bin_data, m_data in iterator:
+            print(f"Read data chunk {s} - {e}")
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper.
             depth_data = {
                 'mag': phot_data[f'mag_{band}_lsst'],
                 'snr': phot_data[f'snr_{band}'],
                 'bins': bin_data['lens_bin'],
+                'ra': phot_data['ra'],
+                'dec': phot_data['dec'],
             }
+
+            # TODO fix iterate_fits so it returns a dict
+            # like iterate_hdf
+            shear_tmp = {'mcal_g': shear_data['mcal_g']}
+            shear_tmp['ra'] = phot_data['ra']
+            shear_tmp['dec'] = phot_data['dec']
 
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
-            mapper.add_data(shear_data, bin_data, m_data)
+            mapper.add_data(shear_tmp, bin_data, m_data)
+
 
         # Collect together the results across all the processors
         # and combine them to get the final results
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
-        pixel, ngals, g1, g2 = mapper.finalize(self.comm)
+        map_pix, ngals, g1, g2 = mapper.finalize(self.comm)
 
 
         
@@ -152,7 +163,7 @@ class TXDiagnosticMaps(PipelineStage):
 
             # I'm expecting this will one day call off to a 10,000 line
             # library or something.
-            mask, npix = self.compute_mask(count)
+            mask, npix = self.compute_mask(depth_count)
             self.save_map(group, "mask", depth_pix, mask, config)
 
             # Save some other handy map info that will be useful later
@@ -163,11 +174,11 @@ class TXDiagnosticMaps(PipelineStage):
             # Now save all the lens bin galaxy counts, under the
             # name ngal
             for b in lens_bins:
-                self.save_map(group, f"ngal_{b}", map_pix, ngals[b])
+                self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
 
             for b in source_bins:
-                self.save_map(group, f"g1_{b}", map_pix, g1[b])
-                self.save_map(group, f"g2_{b}", map_pix, g2[b])
+                self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
+                self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
 
 
     def compute_mask(self, depth_count):

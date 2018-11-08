@@ -107,7 +107,7 @@ class TXSelector(PipelineStage):
 
             print(f"Process {self.rank} running selection for rows {start}-{end}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
-
+            print(tomo_bin.min())
 
             lens_gals = self.select_lens(phot_data)
 
@@ -380,7 +380,7 @@ class TXSelector(PipelineStage):
         n = len(mag_i)
         # HDF does not support bools, so we will prepare a binary array
         # where 0 is a lens and 1 is not
-        lens_gals = np.repeat(1,n)
+        lens_gals = np.repeat(-1,n)
 
         cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
         cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
