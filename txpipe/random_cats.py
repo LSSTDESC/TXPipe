@@ -47,10 +47,8 @@ class TXRandomCat(PipelineStage):
         Mstar = self.config['Mstar']
         alpha15 = 1.5 + self.config['alpha']
         density_at_median = self.config['density']
-        # NEED TO GET SIGMA_E AS A MAP!
-        # BUT THEN ALSO NEED TO AVOID INCLUDING THE ACTUAL LENSING IN IT.
-        # WORK NEEDED!
-        sigma_e = self.config['sigma_e']
+
+        sigma_e = self.read_sigma_e()
 
         # Work out the normalization of a Schechter distribution
         # with the given median depth
@@ -71,7 +69,6 @@ class TXRandomCat(PipelineStage):
         ##################################################################################
 
         ### I think this is redundant if your pz_stack file has separated lens bins
-        # zbins = self.read_zbins()
 
         ### The current file in 'pz_stack' only has 1 lens bin, but zbins loads 4 bins!!
         Ntomo = len(pz_stack['n_of_z']['lens'].keys())-1
@@ -113,7 +110,7 @@ class TXRandomCat(PipelineStage):
                 # First generate some random ellipticities.
                 # This theta is not the orientation angle, it is the 
                 # angle in the e1,e2 plane
-                e = np.random.normal(scale=sigma_e, size=N)
+                e = np.random.normal(scale=sigma_e[j], size=N)
                 theta = np.random.uniform(0,2*np.pi,size=N)
                 e1 = e * np.cos(theta)
                 e2 = e * np.sin(theta)
@@ -148,13 +145,11 @@ class TXRandomCat(PipelineStage):
 
         output_file.close()
 
-    def read_zbins(self):
+    def read_sigma_e(self):
         tomo = self.open_input('tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
+        d = tomo['/tomography/sigma_e'][:]
         tomo.close()
-        nbin = d['nbin_source']
-        zbins = [(d[f'source_zmin_{i}'], d[f'source_zmax_{i}']) for i in range(nbin)]
-        return zbins
+        return d
 
 
 
