@@ -35,7 +35,6 @@ class TXTwoPointFourier(PipelineStage):
     name = 'TXTwoPointFourier'
     inputs = [
         ('shear_catalog', MetacalCatalog),  # Shear catalog
-        ('tomography_catalog', TomographyCatalog),  # Tomography catalog
         ('photoz_stack', HDFFile),  # Photoz stack
         ('diagnostic_maps', DiagnosticMaps),
     ]
@@ -56,24 +55,19 @@ class TXTwoPointFourier(PipelineStage):
 
         self.setup_results()
 
-        # Get some metadata from the tomography file
-        tomo_file = self.open_input('tomography_catalog', wrapper=True)
-        nbin_source = tomo_file.read_nbin('source')
-        nbin_lens = tomo_file.read_nbin('lens')
-        tomo_file.close()
-
         # Generate iterators for shear and tomography catalogs
         cols_shear = ['ra', 'dec', 'mcal_g', 'mcal_flags', 'mcal_mag',
                       'mcal_s2n_r', 'mcal_T']
+
+        # Generate namaster fields
+        pixel_scheme, f_d, f_wl, nbin_source, nbin_lens = self.load_maps()
+        print("Loaded maps and converted to NaMaster fields")
 
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
-        # Generate namaster fields
-        pixel_scheme, f_d, f_wl = self.load_maps(nbin_source, nbin_lens)
-        print("Loaded maps and converted to NaMaster fields")
 
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
@@ -104,10 +98,13 @@ class TXTwoPointFourier(PipelineStage):
 
 
 
-    def load_maps(self, nbin_source, nbin_lens):
+    def load_maps(self):
         # Load the various input maps and their metadata
         map_file = self.open_input('diagnostic_maps', wrapper=True)
         pix_info = map_file.read_map_info('mask')
+
+        nbin_source = map_file.file['maps'].attrs['nbin_source']
+        nbin_lens = map_file.file['maps'].attrs['nbin_lens']
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**pix_info)
@@ -181,7 +178,7 @@ class TXTwoPointFourier(PipelineStage):
         else:
             raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
-        return pixel_scheme, d_fields, wl_fields
+        return pixel_scheme, d_fields, wl_fields, nbin_source, nbin_lens
 
 
     def collect_results(self):
@@ -329,10 +326,6 @@ class TXTwoPointFourier(PipelineStage):
         f = self.open_input('photoz_stack')
 
         tracers = []
-
-        tomo_file = self.open_input('tomography_catalog', wrapper=True)
-        nbin_source = tomo_file.read_nbin('source')
-        nbin_lens = tomo_file.read_nbin('lens')
 
         for i in range(nbin_source):
             z = f['n_of_z/source/z'].value

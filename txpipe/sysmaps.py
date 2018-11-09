@@ -170,6 +170,8 @@ class TXDiagnosticMaps(PipelineStage):
             area = pixel_scheme.pixel_area(degrees=True) * npix
             group.attrs['area'] = area
             group.attrs['area_unit'] = 'sq deg'
+            group.attrs['nbin_source'] = len(source_bins)
+            group.attrs['nbin_lens'] = len(lens_bins)
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
