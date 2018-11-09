@@ -80,8 +80,9 @@ class TXDiagnosticMaps(PipelineStage):
         # but also add additional columns, called mag and snr.
         # This is all probably typical Joe overkill.
         def iterate():
-            for _,_,data in self.iterate_hdf('photometry_catalog', 'photometry', cat_cols, 
+            for s,e,data in self.iterate_hdf('photometry_catalog', 'photometry', cat_cols, 
                                               config['chunk_rows']):
+                print(f"read data chunk {s}-{e}")
                 data['mag'] = data[f'mag_{band}_lsst']
                 data['snr'] = data[f'snr_{band}']
                 yield data
