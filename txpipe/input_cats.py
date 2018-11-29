@@ -77,11 +77,13 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Loop through chunks of 
         for data in self.data_iterator(gc):
+            some_col = list(data.keys())[0]
+            chunk_size = len(data[some_col])
+            s = self.current_index
+            e = s + chunk_size
+            print(f"Read chunk {s} - {e} or {self.cat_size}")
             # Select a random fraction of the catalog
             if self.cat_size != N:
-                some_col = list(data.keys())[0]
-                chunk_size = len(data[some_col])
-
                 select = np.random.binomial(chunk_size, select_fraction)
                 for name in list(data.keys()):
                     data[name] = data[name][select]
