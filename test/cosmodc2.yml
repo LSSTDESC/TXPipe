@@ -21,7 +21,7 @@ stages:
 
 output_dir: ./outputs
 
-config: /global/cscratch1/sd/zuntz/pipe/TXPipe/test/config.yml
+config: ${TXDIR}/test/config-dc2.yml
 
 inputs:
     # See README for paths to download these files
@@ -30,6 +30,6 @@ inputs:
     photoz_trained_model: ${DATA}/inputs-cosmoDC2/photoz_trained_model.npy
 
 resume: False
-log_dir: /global/cscratch1/sd/zuntz/pipe/TXPipe/cosmoDC2-logs
-pipeline_log: /global/cscratch1/sd/zuntz/pipe/TXPipe/cosmoDC2.log
+log_dir: ${TXDIR}/cosmoDC2-logs
+pipeline_log: ${TXDIR}/cosmoDC2.log
 

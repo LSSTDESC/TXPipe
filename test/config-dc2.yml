@@ -45,8 +45,8 @@ TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
-    pixelization: gnomonic
-    nside: 1024
+    pixelization: healpix
+    nside: 4096
     # pixelization: gnomonic
     # # 
     pixel_size: 0.02

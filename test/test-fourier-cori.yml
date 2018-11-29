@@ -1,21 +1,21 @@
-launcher: local
+launcher: cori-interactive
 
 modules: txpipe
 
 
 stages:
     - name: PZPDFMLZ
-      nprocess: 1
+      nprocess: 16
     - name: TXSelector
-      nprocess: 1
+      nprocess: 16
     - name: TXDiagnosticMaps
-      nprocess: 1
+      nprocess: 16
     - name: TXTwoPointFourier
-      nprocess: 1
+      nprocess: 16
     - name: TXPhotozStack
       nprocess: 1
     - name: TXRandomCat
-      nprocess: 1
+      nprocess: 16
 
 
 output_dir: ./outputs

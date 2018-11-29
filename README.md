@@ -60,33 +60,42 @@ source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
 Input test data
 ---------------
 
-You can get input test data from here:
+You can get input test data like this:
 
 ```bash
+mkdir -p inputs/1e5
+cd inputs/1e5
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.hdf
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photoz_trained_model.npy
+cd ../..
 ```
 
-Or if running on NERSC see the commented out parts of test/test.yml
 
 Running the pipeline
 --------------------
 
-Make sure that the ceci directory is on your PYTHONPATH and ceci/bin is on your PATH.
+Make sure that ceci is installed.
 Then you can run:
 
 ```bash
-ceci test/test.yml
-```
-
-or on Cori:
-```bash
-salloc -N 1 -q interactive -C haswell -t 0:30:00
-ceci test/cori-interactive.yml
+export DATA=inputs/1e5
+ceci test/test-fourier.yml
 ```
 
 to run the implemented stages
+
+NERSC
+-----
+
+You can use the file
+
+```bash
+export DATA=inputs/1e5
+ceci test/test-fourier-cori.yml
+```
+
+to test on cori.
 
 Implementation
 --------------
