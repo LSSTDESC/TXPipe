@@ -11,7 +11,7 @@ POS_POS = 2
 
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'l', 'value', 'win', 'd_ell', 'i', 'j'])
+    ['corr_type', 'l', 'value', 'win', 'i', 'j'])
 
 
 class TXTwoPointFourier(PipelineStage):
@@ -58,8 +58,9 @@ class TXTwoPointFourier(PipelineStage):
                       'mcal_s2n_r', 'mcal_T']
 
         # Generate namaster fields
-        pixel_scheme, f_d, f_wl, nbin_source, nbin_lens = self.load_maps()
+        pixel_scheme, f_d, f_wl, nbin_source, nbin_lens, f_sky = self.load_maps()
         print("Loaded maps and converted to NaMaster fields")
+        print(f"Estimated f_sky = {f_sky}")
 
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
@@ -69,7 +70,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
-        ell_bins, d_ell = self.choose_ell_bins(pixel_scheme)
+        ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
         print("Chosen {} ell bins".format(ell_bins.get_n_bands()))
 
         # Namaster uses workspaces, which we re-use between
@@ -83,7 +84,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in self.split_tasks_by_rank(calcs):
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins, d_ell)
+                pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins)
 
         # Pull all the results together to the master process.
         self.collect_results()
@@ -115,6 +116,12 @@ class TXTwoPointFourier(PipelineStage):
         mask_threshold = self.config['mask_threshold']
         mask[mask <= mask_threshold] = 0      
         mask_sum = mask.sum()
+        if pixel_scheme.name == 'healpix':
+            f_sky = mask_sum / pixel_scheme.npix
+        elif pixel_scheme.name == 'gnomonic':
+            npix_sky = 41253. / pixel_size**2
+            f_sky = mask_sum / npix_sky
+
 
         # Load all the maps in.
         # TODO: make it possible to just do a subset of these
@@ -177,7 +184,7 @@ class TXTwoPointFourier(PipelineStage):
         else:
             raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
-        return pixel_scheme, d_fields, wl_fields, nbin_source, nbin_lens
+        return pixel_scheme, d_fields, wl_fields, nbin_source, nbin_lens, f_sky
 
 
     def collect_results(self):
@@ -198,11 +205,15 @@ class TXTwoPointFourier(PipelineStage):
     def setup_results(self):
         self.results = []
 
-    def choose_ell_bins(self, pixel_scheme):
+    def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
         if pixel_scheme.name == 'healpix':
-            nlb = min(1, int(1. / np.mean(mask)))
-            ell_bins = nmt.NmtBin(pixel_scheme.nside, nlb=nlb)
+            # This is just approximate
+            area = f_sky * 4 * np.pi
+            width = np.sqrt(area) #radians
+            nlb = int(4 * np.pi / width)
+            nlb = max(1,nlb)
+            ell_bins = nmt.NmtBin(int(pixel_scheme.nside), nlb=nlb)
         elif pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.nx * pixel_scheme.pixel_size_x)
             ly = np.radians(pixel_scheme.ny * pixel_scheme.pixel_size_y)
@@ -221,7 +232,7 @@ class TXTwoPointFourier(PipelineStage):
             # for k,v in locals().items():
             #     print(f"{k}: {v}")
 
-        return ell_bins, d_ell
+        return ell_bins
 
     def setup_workspaces(self, pixel_scheme, f_d, f_wl, ell_bins):
         import pymaster as nmt
@@ -269,10 +280,11 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins, d_ell):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
+        # TODO: Fix window functions, and how to save them.
 
         # k refers to the type of measurement we are making
 
@@ -280,35 +292,35 @@ class TXTwoPointFourier(PipelineStage):
             print(i, j, k)
             ls = ell_bins.get_effective_ells()
             # Top-hat window functions
-            win = [[np.arange(l - d_ell, l + d_ell),
-                    np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
+            win = [(ell_bins.get_weight_list(b), ell_bins.get_weight_list(b))
+                    for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins)
             c_ll = c[0]
             self.results.append(Measurement(
-                b'Cll', ls, c_ll, win, d_ell, i, j))
+                b'Cll', ls, c_ll, win, i, j))
 
         if k == POS_POS:
             print(i, j, k)
             ls = ell_bins.get_effective_ells()
-            win = [[np.arange(l - d_ell, l + d_ell),
-                    np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
+            win = [(ell_bins.get_weight_list(b), ell_bins.get_weight_list(b))
+                    for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w00, f_d[i], f_d[j], ell_bins)
             c_dd = c[0]
             self.results.append(Measurement(
-                b'Cdd', ls, c_dd, win, d_ell, i, j))
+                b'Cdd', ls, c_dd, win, i, j))
 
         if k == SHEAR_POS:
             print(i, j, k)
             ls = ell_bins.get_effective_ells()
-            win = [[np.arange(l - d_ell, l + d_ell),
-                    np.ones(np.arange(l - d_ell, l + d_ell).size) / (2 * d_ell)] for l in ls]
+            win = [(ell_bins.get_weight_list(b), ell_bins.get_weight_list(b))
+                    for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w02, f_wl[i], f_d[j], ell_bins)
             c_dl = c[0]
             self.results.append(Measurement(
-                b'Cdl', ls, c_dl, win, d_ell, i, j))
+                b'Cdl', ls, c_dl, win, i, j))
 
 
     def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins):
@@ -325,7 +337,6 @@ class TXTwoPointFourier(PipelineStage):
 
     def save_power_spectra(self, nbin_source, nbin_lens):
         import sacc
-        # c_ll, c_Dl, c_dd, ell_bins, d_ell
         f = self.open_input('photoz_stack')
 
         tracers = []
