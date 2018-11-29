@@ -1,5 +1,6 @@
 from ceci import PipelineStage
 from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile, DataFile
+import sys
 
 class PZPDFMLZ(PipelineStage):
     """
@@ -59,7 +60,7 @@ class PZPDFMLZ(PipelineStage):
         chunk_rows = self.config['chunk_rows']
         for start, end, data in self.iterate_hdf('photometry_catalog', "photometry", cols, chunk_rows):
             print(f"Process {self.rank} running photo-z for rows {start}-{end}")
-
+            sys.stdout.flush()
             # Compute some mock photo-z PDFs and point estimates
             pdfs, point_estimates = self.calculate_photozs(data, z, features, trees)
             # Save this chunk of data to the output file

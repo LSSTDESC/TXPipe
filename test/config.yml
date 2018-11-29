@@ -1,6 +1,5 @@
 TXProtoDC2Mock:
-    cat_name: protoDC2_test
-    max_size: 1000000
+    cat_name: cosmoDC2_v1.0
 
 TXRandomPhotozPDF:
     nz: 301
@@ -11,6 +10,7 @@ TXRandomPhotozPDF:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
+    chunk_rows: 100000
 
 TXPhotozStack:
     chunk_rows: 1000
@@ -45,9 +45,9 @@ TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
-    # pixelization: healpix
-    # nside: 2048
-    pixelization: gnomonic
+    pixelization: healpix
+    nside: 4096
+    # pixelization: gnomonic
     # # 
     pixel_size: 0.02
 

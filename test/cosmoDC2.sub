@@ -1,0 +1,28 @@
+#!/bin/bash -l
+
+#SBATCH --qos=regular
+#SBATCH --nodes=4
+#SBATCH --time=6:00:00
+#SBATCH --job-name=cosmoDC2
+#SBATCH --license=SCRATCH,project
+#SBATCH --constraint=haswell
+#SBATCH --account=m1727
+
+# Experimental: burst buffer
+# #DW persistentdw name=zuntz_bb1
+
+source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
+export TXDIR=$PWD
+export HDF5_USE_FILE_LOCKING=FALSE
+export PYTHONPATH=$PYTHONPATH:$TXDIR
+
+# Burst buffer thing:
+#export DATA=${DW_PERSISTENT_STRIPED_zuntz_bb1}
+
+export DATA=$TXDIR
+
+cd $DATA
+mkdir -p outputs
+mkdir -p logs
+
+ceci $TXDIR/test/cosmodc2.yml

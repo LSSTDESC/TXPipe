@@ -1,0 +1,35 @@
+launcher: cori-interactive
+
+modules: txpipe
+
+
+stages:
+    - name: PZPDFMLZ
+      nprocess: 128
+    - name: TXSelector
+      nprocess: 128
+    - name: TXDiagnosticMaps
+      nprocess: 128
+    - name: TXTwoPointFourier
+      nprocess: 128
+    - name: TXPhotozStack
+      nprocess: 1
+
+#    - name: TXRandomCat
+#      nprocess: 16
+
+
+output_dir: ./outputs
+
+config: /global/cscratch1/sd/zuntz/pipe/TXPipe/test/config.yml
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog: ${DATA}/inputs-cosmoDC2/shear_catalog.fits
+    photometry_catalog: ${DATA}/inputs-cosmoDC2/photometry_catalog.hdf
+    photoz_trained_model: ${DATA}/inputs-cosmoDC2/photoz_trained_model.npy
+
+resume: False
+log_dir: /global/cscratch1/sd/zuntz/pipe/TXPipe/cosmoDC2-logs
+pipeline_log: /global/cscratch1/sd/zuntz/pipe/TXPipe/cosmoDC2.log
+

@@ -24,9 +24,9 @@ config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ./mock_shear_catalog.fits
-    photometry_catalog: ./mock_photometry_catalog.hdf
-    photoz_trained_model: ./photoz_trained_model.npy
+    shear_catalog: ./inputs/1e5/mock_shear_catalog.fits
+    photometry_catalog: ./inputs/1e5/mock_photometry_catalog.hdf
+    photoz_trained_model: ./inputs/photoz_trained_model.npy
 
 resume: False
 log_dir: ./test/logs
