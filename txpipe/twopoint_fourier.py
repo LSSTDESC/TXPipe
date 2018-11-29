@@ -13,7 +13,6 @@ Measurement = collections.namedtuple(
     'Measurement',
     ['corr_type', 'l', 'value', 'win', 'i', 'j'])
 
-
 class TXTwoPointFourier(PipelineStage):
     """This Pipeline Stage computes all auto- and cross-correlations
     for a list of tomographic bins, including all galaxy-galaxy,
@@ -102,6 +101,7 @@ class TXTwoPointFourier(PipelineStage):
         # Load the various input maps and their metadata
         map_file = self.open_input('diagnostic_maps', wrapper=True)
         pix_info = map_file.read_map_info('mask')
+        area = map_file.file['maps'].attrs["area"]
 
         nbin_source = map_file.file['maps'].attrs['nbin_source']
         nbin_lens = map_file.file['maps'].attrs['nbin_lens']
@@ -114,13 +114,11 @@ class TXTwoPointFourier(PipelineStage):
         # We remove any pixels that are at or below our threshold (default=0)
         mask = map_file.read_map('mask')
         mask_threshold = self.config['mask_threshold']
-        mask[mask <= mask_threshold] = 0      
+        mask[mask <= mask_threshold] = 0
+        mask[np.isnan(mask)] = 0
         mask_sum = mask.sum()
-        if pixel_scheme.name == 'healpix':
-            f_sky = mask_sum / pixel_scheme.npix
-        elif pixel_scheme.name == 'gnomonic':
-            npix_sky = 41253. / pixel_size**2
-            f_sky = mask_sum / npix_sky
+        f_sky = area / 41253.
+        print(f"area = {area}, fsky = {f_sky}")
 
 
         # Load all the maps in.
@@ -207,16 +205,18 @@ class TXTwoPointFourier(PipelineStage):
 
     def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
+        from .utils.nmt_utils import MyNmtBinFlat, MyNmtBin
         if pixel_scheme.name == 'healpix':
             # This is just approximate
             area = f_sky * 4 * np.pi
             width = np.sqrt(area) #radians
-            nlb = int(4 * np.pi / width)
+            nlb = int(2 * np.pi / width)
             nlb = max(1,nlb)
-            ell_bins = nmt.NmtBin(int(pixel_scheme.nside), nlb=nlb)
+            ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
         elif pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.nx * pixel_scheme.pixel_size_x)
             ly = np.radians(pixel_scheme.ny * pixel_scheme.pixel_size_y)
+            print("sz", pixel_scheme.ny * pixel_scheme.pixel_size_y)
             ell_min = max(2 * np.pi / lx, 2 * np.pi / ly)
             ell_max = min(pixel_scheme.nx * np.pi / lx, pixel_scheme.ny * np.pi / ly)
             d_ell = 2 * ell_min
@@ -228,9 +228,9 @@ class TXTwoPointFourier(PipelineStage):
             l_bpw = np.zeros([2, n_ell])
             l_bpw[0, :] = ell_min + np.arange(n_ell) * d_ell
             l_bpw[1, :] = l_bpw[0, :] + d_ell
-            ell_bins = nmt.NmtBinFlat(l_bpw[0, :], l_bpw[1, :])
-            # for k,v in locals().items():
-            #     print(f"{k}: {v}")
+            ell_bins = MyNmtBinFlat(l_bpw[0, :], l_bpw[1, :])
+            ell_bins.ell_mins = l_bpw[0, :]
+            ell_bins.ell_maxs = l_bpw[1, :]
 
         return ell_bins
 
@@ -292,8 +292,8 @@ class TXTwoPointFourier(PipelineStage):
             print(i, j, k)
             ls = ell_bins.get_effective_ells()
             # Top-hat window functions
-            win = [(ell_bins.get_weight_list(b), ell_bins.get_weight_list(b))
-                    for b,l  in enumerate(ls)]
+            win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
+            print(win)
             c = self.compute_one_spectrum(
                 pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins)
             c_ll = c[0]
@@ -303,8 +303,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             print(i, j, k)
             ls = ell_bins.get_effective_ells()
-            win = [(ell_bins.get_weight_list(b), ell_bins.get_weight_list(b))
-                    for b,l  in enumerate(ls)]
+            win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w00, f_d[i], f_d[j], ell_bins)
             c_dd = c[0]
@@ -314,8 +313,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_POS:
             print(i, j, k)
             ls = ell_bins.get_effective_ells()
-            win = [(ell_bins.get_weight_list(b), ell_bins.get_weight_list(b))
-                    for b,l  in enumerate(ls)]
+            win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w02, f_wl[i], f_d[j], ell_bins)
             c_dl = c[0]
