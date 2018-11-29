@@ -45,7 +45,7 @@ TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
-    pixelization: healpix
+    pixelization: gnonomic
     nside: 4096
     # pixelization: gnomonic
     # # 
@@ -53,8 +53,8 @@ TXDiagnosticMaps:
 
     ra_cent: 0.0
     dec_cent: 0.0
-    npix_x: 20
-    npix_y: 20
+    npix_x: 200
+    npix_y: 200
 
 TXTwoPointFourier:
     chunk_rows: 10000
