@@ -7,12 +7,11 @@
 #SBATCH --license=SCRATCH,project
 #SBATCH --constraint=haswell
 #SBATCH --account=m1727
-#SBATCH --export=NONE
 
 # Experimental: burst buffer
 # #DW persistentdw name=zuntz_bb1
 
-source $LSST/groups/WL/users/zuntz/setup-cori
+source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
 export TXDIR=$PWD
 export HDF5_USE_FILE_LOCKING=FALSE
 export PYTHONPATH=$PYTHONPATH:$TXDIR
@@ -20,9 +19,7 @@ export PYTHONPATH=$PYTHONPATH:$TXDIR
 # Burst buffer thing:
 #export DATA=${DW_PERSISTENT_STRIPED_zuntz_bb1}
 
-
 export DATA=$TXDIR
-
 
 cd $DATA
 mkdir -p outputs
