@@ -49,7 +49,7 @@ TXDiagnosticMaps:
     nside: 1024
     # pixelization: gnomonic
     # # 
-    pixel_size: 0.02
+    pixel_size: 0.2
 
     ra_cent: 0.0
     dec_cent: 0.0
