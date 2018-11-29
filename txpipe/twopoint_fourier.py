@@ -1,8 +1,6 @@
 from ceci import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, DiagnosticMaps, HDFFile, PhotozPDFFile
 import numpy as np
-import pymaster as nmt
-import sacc
 import collections
 from .utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
 
@@ -99,6 +97,7 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_maps(self):
+        import pymaster as nmt
         # Load the various input maps and their metadata
         map_file = self.open_input('diagnostic_maps', wrapper=True)
         pix_info = map_file.read_map_info('mask')
@@ -200,6 +199,7 @@ class TXTwoPointFourier(PipelineStage):
         self.results = []
 
     def choose_ell_bins(self, pixel_scheme):
+        import pymaster as nmt
         if pixel_scheme.name == 'healpix':
             nlb = min(1, int(1. / np.mean(mask)))
             ell_bins = nmt.NmtBin(pixel_scheme.nside, nlb=nlb)
@@ -224,6 +224,7 @@ class TXTwoPointFourier(PipelineStage):
         return ell_bins, d_ell
 
     def setup_workspaces(self, pixel_scheme, f_d, f_wl, ell_bins):
+        import pymaster as nmt
         # choose scheme class
         if pixel_scheme.name == 'healpix':
             workspace_class = nmt.NmtWorkspace
@@ -311,6 +312,7 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins):
+        import pymaster as nmt
         if pixel_scheme.name == 'healpix':
             # correlates two fields f1 and f2 and returns an array of coupled
             # power spectra
@@ -322,6 +324,7 @@ class TXTwoPointFourier(PipelineStage):
         return c_ell
 
     def save_power_spectra(self, nbin_source, nbin_lens):
+        import sacc
         # c_ll, c_Dl, c_dd, ell_bins, d_ell
         f = self.open_input('photoz_stack')
 
