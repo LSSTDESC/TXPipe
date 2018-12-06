@@ -114,5 +114,9 @@ RUN cd /opt \
     && python setup.py install \
     && rm -rf /opt/CCL
 
+RUN pip install ceci --upgrade
+RUN pip install mlz_desc
+
 WORKDIR /opt/txpipe
 CMD ["/bin/bash", "-l"]
+
