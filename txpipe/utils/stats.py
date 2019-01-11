@@ -345,9 +345,21 @@ class ParallelStatsCalculator:
             raise ValueError("mode for ParallelStatsCalculator.collect must be"
                              "'gather' or 'allgather'")
 
-        counts = comm.gather(self._count)
-        means = comm.gather(self._mean)
-        variances = comm.gather(self._variance)
+        if self.sparse:
+            counts = comm.gather(self._count)
+            means = comm.gather(self._mean)
+            variances = comm.gather(self._variance)
+        else:
+            if self.rank == 0:
+                counts = np.zeros(self.size)
+                means = np.zeros(self.size)
+                variances = np.zeros(self.size)
+            else:
+                counts = means = variances = None
+            comm.Gather(self._count, counts)
+            comm.Gather(self._mean, means)
+            comm.Gather(self._variance, means)
+
 
 
         if comm.Get_rank()!=0:
@@ -356,7 +368,16 @@ class ParallelStatsCalculator:
             count, mean, variance = self._collect(counts, means, variances)
 
         if mode == 'allgather':
-            count, mean, variance = comm.bcast([count, mean, variance])
+            if self.sparse:
+                count, mean, variance = comm.bcast([count, mean, variance])
+            else:
+                if self.rank != 0:
+                    count = np.zeros(self.size)
+                    mean = np.zeros(self.size)
+                    variance = np.zeros(self.size)
+                comm.Bcast(count)
+                comm.Bcast(mean)
+                comm.Bcast(variance)
 
         return count, mean, variance
 
