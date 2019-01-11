@@ -107,7 +107,6 @@ class TXSelector(PipelineStage):
 
             print(f"Process {self.rank} running selection for rows {start}-{end}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
-            print(tomo_bin.min())
 
             lens_gals = self.select_lens(phot_data)
 
@@ -375,7 +374,6 @@ class TXSelector(PipelineStage):
         i_lo_cut_val = self.config['i_lo_cut']
         i_hi_cut_val = self.config['i_hi_cut']
         r_i_cut_val = self.config['r_i_cut']
-        print(r_lo_cut_val, r_hi_cut_val)
 
         n = len(mag_i)
         # HDF does not support bools, so we will prepare a binary array
