@@ -341,7 +341,7 @@ class ParallelStatsCalculator:
         if comm is None:
             return self._count, self._mean, self._variance
         
-            rank = comm.Get_rank()
+        rank = comm.Get_rank()
 
         if mode not in ['gather', 'allgather']:
             raise ValueError("mode for ParallelStatsCalculator.collect must be"
