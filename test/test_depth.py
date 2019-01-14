@@ -1,4 +1,4 @@
-from txpipe.depth.dr1 import *
+from txpipe.utils.stats import *
 import numpy as np
 
 def test_stats():
@@ -149,7 +149,7 @@ def mpi_test_stats_sparse():
     size = comm.Get_size()
 
     npix = 10000
-    stats = ParallelStatsCalculator(10000, sparse=True)
+
     used_pixels = [1,10,100,1000,5000,6000,7000,8000, 9000, 9500]
     if rank==0:
         map_values = [np.random.uniform(size=20) for pixel in used_pixels]
