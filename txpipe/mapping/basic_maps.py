@@ -8,7 +8,7 @@ class Mapper:
         self.lens_bins = lens_bins
         self.tasks = tasks
         self.stats = {}
-        for b in self.source_bins:
+        for b in self.lens_bins:
             t = 0
             self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
@@ -65,11 +65,15 @@ class Mapper:
         g1 = {}
         g2 = {}
 
+        rank = 0 if comm is None else comm.Get_rank()
+
         # TODO: support sparse
         pixel = np.arange(self.pixel_scheme.npix)
 
         is_master = (comm is None) or (comm.Get_rank()==0)
         for b in self.lens_bins:
+            if rank==0:
+                print(f"Collating density map for lens bin {b}")
             stats = self.stats[(b,0)]
             count, mean, _ = stats.collect(comm)
 
@@ -85,6 +89,8 @@ class Mapper:
             ngal[b] = (mean * count).flatten()
 
         for b in self.source_bins:
+            if rank==0:
+                print(f"Collating shear map for source bin {b}")
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
             _, mean_g1, _ = stats_g1.collect(comm)
