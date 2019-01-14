@@ -400,6 +400,7 @@ class ParallelStatsCalculator:
                 comm.Bcast(count)
                 comm.Bcast(mean)
                 comm.Bcast(variance)
+        del self._S0, self._C0, self._T0
 
         return count, mean, variance
 
