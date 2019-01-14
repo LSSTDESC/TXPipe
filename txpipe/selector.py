@@ -105,7 +105,7 @@ class TXSelector(PipelineStage):
         # Loop through the input data, processing it chunk by chunk
         for (start, end, pz_data), (_, _, shear_data), (_, _, phot_data) in zip(iter_pz, iter_shear, iter_phot):
 
-            print(f"Process {self.rank} running selection for rows {start}-{end}")
+            print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
 
             lens_gals = self.select_lens(phot_data)
