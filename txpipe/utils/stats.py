@@ -342,32 +342,52 @@ class ParallelStatsCalculator:
             return self._count, self._mean, self._variance
         
         rank = comm.Get_rank()
+        size = comm.Get_size()
 
         if mode not in ['gather', 'allgather']:
             raise ValueError("mode for ParallelStatsCalculator.collect must be"
                              "'gather' or 'allgather'")
 
+
         if self.sparse:
-            counts = comm.gather(self._count)
-            means = comm.gather(self._mean)
-            variances = comm.gather(self._variance)
+            send = lambda x: comm.send(x, dest=0)
         else:
-            if rank == 0:
-                counts = np.zeros(self.size)
-                means = np.zeros(self.size)
-                variances = np.zeros(self.size)
-            else:
-                counts = means = variances = None
-            comm.Gather(self._count, counts)
-            comm.Gather(self._mean, means)
-            comm.Gather(self._variance, means)
+            send = lambda x: comm.Send(x, dest=0)
 
+        if rank==0:            
+            self._S0 = self._variance * self._count
+            self._T0 = self._mean * self._count
+            self._C0 = self._count
+            if not self.sparse:
+                # Buffers for the pieces from the other
+                # processors
+                c1 = np.empty(self.size)
+                m1 = np.empty(self.size)
+                v1 = np.empty(self.size)
 
+        for i in range(1, size):
+            if rank==i:
+                send(self._count)
+                send(self._mean)
+                send(self._variance)
+            elif rank==0:
+                if self.sparse:
+                    c1 = comm.recv(source=i)
+                    m1 = comm.recv(source=i)
+                    v1 = comm.recv(source=i)
+                else:
+                    comm.Recv(c1, source=i)
+                    comm.Recv(m1, source=i)
+                    comm.Recv(v1, source=i)
+                self._accumulate(c1, m1, v1)
 
-        if rank != 0:
+        if rank == 0:
+            count, mean, variance = self._C0, self._T0/self._C0, self._S0/self._C0
+            if not self.sparse:
+                mean[count<1] = np.nan
+                variance[count<2] = np.nan
+        else:
             count, mean, variance = None, None, None
-        else:
-            count, mean, variance = self._collect(counts, means, variances)
 
         if mode == 'allgather':
             if self.sparse:
@@ -383,28 +403,37 @@ class ParallelStatsCalculator:
 
         return count, mean, variance
 
+    def _accumulate(self, c1, m1, v1):
+        if not self.sparse:
+            m1[c1<1] = 0
+            v1[c1<2] = 0
+
+        Cold = self._C0
+        Told = self._T0
+
+        Tnext = m1*c1
+        C = Cold + c1
+        T = Told + Tnext
+
+        if self.sparse:
+            self._S0 = self._S0 + v1*c1 + Cold / (Cold*C) * (Told*c1/Cold - Tnext)**2
+        else:
+            w = np.where(c1>0)
+            self._S0[w] = self._S0[w] + v1[w]*c1[w] \
+                 + Cold[w] / (Cold[w]*C[w]) * (Told[w]*c1[w]/Cold[w] - Tnext[w])**2
+
+            w = np.where(Cold==0)
+            self._S0[w] = v1[w]*c1[w]
+        self._C0 = C
+        self._T0 = T
+
+
 
     def _calculate_serial(self, values_iterator):
         for pixel, values in values_iterator:
             self.add_data(pixel, values)
 
         return self._finalize()
-
-    def _collect(self, counts, means, variances):
-
-        # Deal with any NaNs
-        if not self.sparse:
-            for count, mean, var in zip(counts, means, variances):
-                mean[count<1] = 0
-                var[count<2] = 0
-        count, mean, variance = combine_variances(counts, means, variances, self.sparse)
-
-        if not self.sparse:
-            w = count.nonzero()
-            variance[count<2] = np.nan
-            mean[count<1] = np.nan
-        
-        return count, mean, variance
 
 
     def _calculate_parallel(self, parallel_values_iterator, comm, mode):
