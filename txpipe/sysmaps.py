@@ -121,7 +121,7 @@ class TXDiagnosticMaps(PipelineStage):
         # This thing below just loops through all the files at once
         iterator = zip(shear_it, phot_it, bin_it, m_it)
         for (s,e,shear_data), phot_data, bin_data, m_data in iterator:
-            print(f"Read data chunk {s} - {e}")
+            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper.
             depth_data = {
@@ -145,12 +145,15 @@ class TXDiagnosticMaps(PipelineStage):
 
         # Collect together the results across all the processors
         # and combine them to get the final results
+        if self.rank==0:
+            print("Finalizing maps")
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
         map_pix, ngals, g1, g2 = mapper.finalize(self.comm)
 
         
         # Only the root process saves the output
         if self.rank==0:
+            print("Saving maps")
             # Open the HDF5 output file
             outfile = self.open_output('diagnostic_maps')
             # Use one global section for all the maps
