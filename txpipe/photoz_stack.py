@@ -107,8 +107,8 @@ class TXPhotozStack(PipelineStage):
 
             # And finally save the outputs
             f = self.open_output("photoz_stack")        
-            self.save_result(f, "source", nbin_source, z, source_pdfs)
-            self.save_result(f, "lens", nbin_lens, z, lens_pdfs)
+            self.save_result(f, "source", nbin_source, z, source_pdfs, source_counts)
+            self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
             f.close()
 
     def reduce(self, x):
@@ -154,7 +154,7 @@ class TXPhotozStack(PipelineStage):
 
 
 
-    def save_result(self, outfile, name, nbin, z, stacked_pdfs):
+    def save_result(self, outfile, name, nbin, z, stacked_pdfs, counts):
         """
         Save the computed stacked photo-z bin n(z)
         
@@ -186,6 +186,7 @@ class TXPhotozStack(PipelineStage):
         
         # And all the bins separately
         for b in range(nbin):
+            group.attrs[f"count_{b}"] = counts[b]
             group.create_dataset(f"bin_{b}", data=stacked_pdfs[b])
 
 
