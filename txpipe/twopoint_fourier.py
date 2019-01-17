@@ -162,32 +162,39 @@ class TXTwoPointFourier(PipelineStage):
         # and then use that to convert to overdensity
         d_maps = [(ng/mu)-1 for (ng,mu) in zip(ngal_maps, n_means)]
 
+        d_fields = []
+        wl_fields = []
+
         if pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.size_x)
             ly = np.radians(pixel_scheme.size_y)
 
-            # Density for gnomonic maps
-            d_fields = [
-                nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc) 
-                for d in d_maps]
+            for i,d in enumerate(d_maps):
+                # Density for gnomonic maps
+                print(f"Generating gnomonic density field {i}")
+                field = nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc) 
+                d_fields.append(field)
+
+            for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
+                # Density for gnomonic maps
+                print(f"Generating gnomonic lensing field {i}")
+                field = nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl) 
+                wl_fields.append(field)
             
-            # Lensing for gnomonic maps
-            wl_fields = [
-                nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl) 
-                for g1,g2 in zip(g1_maps, g2_maps)
-            ]
 
         elif pixel_scheme.name == 'healpix':
-            # Density for healpix maps
-            d_fields = [
-                nmt.NmtField(mask, [d], templates=syst_nc) 
-                for d in d_maps
-            ]
-            # Lensing for healpix maps
-            wl_fields = [
-                nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
-                for g1,g2 in zip(g1_maps, g2_maps)
-            ]
+            for i,d in enumerate(d_maps):
+                # Density for gnomonic maps
+                print(f"Generating gnomonic density field {i}")
+                field = nmt.NmtField(mask, [d], templates=syst_nc)
+                d_fields.append(field)
+
+            for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
+                # Density for gnomonic maps
+                print(f"Generating gnomonic lensing field {i}")
+                field = nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
+                wl_fields.append(field)
+
         else:
             raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
