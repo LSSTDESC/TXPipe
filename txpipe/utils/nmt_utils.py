@@ -9,10 +9,21 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
 
     def get_window(self, b):
         return (self.ell_min[b], self.ell_max[b])
+    
+    def get_ell_min(self, b):
+        return self.ell_min[b]
 
+    def get_ell_max(self, b):
+        return self.ell_max[b]
 
 class MyNmtBin(nmt.NmtBin):
     def get_window(self, b):
-        ls = ell_bins.get_ell_list(b)
-        w = ell_bins.get_weight_list(b)
+        ls = self.get_ell_list(b)
+        w = self.get_weight_list(b)
         return (ls, w)
+
+    def get_ell_min(self, b):
+        return self.get_ell_list(b)[0]
+
+    def get_ell_max(self, b):
+        return self.get_ell_list(b)[-1]

@@ -3,11 +3,14 @@ from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlF
 import numpy as np
 import collections
 from .utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
+import sys
 
 # Using the same convention as in twopoint.py
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
+
+NAMES = {SHEAR_SHEAR:"shear-shear", SHEAR_POS:"shear-position", POS_POS:"position-position"}
 
 Measurement = collections.namedtuple(
     'Measurement',
@@ -31,7 +34,6 @@ class TXTwoPointFourier(PipelineStage):
     """
     name = 'TXTwoPointFourier'
     inputs = [
-        ('shear_catalog', MetacalCatalog),  # Shear catalog
         ('photoz_stack', HDFFile),  # Photoz stack
         ('diagnostic_maps', DiagnosticMaps),
     ]
@@ -40,8 +42,8 @@ class TXTwoPointFourier(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 10000,
         "mask_threshold": 0.0,
+        "bandwidth": 0,
     }
 
     def run(self):
@@ -52,30 +54,34 @@ class TXTwoPointFourier(PipelineStage):
 
         self.setup_results()
 
-        # Generate iterators for shear and tomography catalogs
-        cols_shear = ['ra', 'dec', 'mcal_g', 'mcal_flags', 'mcal_mag',
-                      'mcal_s2n_r', 'mcal_T']
 
         # Generate namaster fields
         pixel_scheme, f_d, f_wl, nbin_source, nbin_lens, f_sky = self.load_maps()
-        print("Loaded maps and converted to NaMaster fields")
-        print(f"Estimated f_sky = {f_sky}")
+        if self.rank==0:
+            print("Loaded maps and converted to NaMaster fields")
 
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
-
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
-        print("Chosen {} ell bins".format(ell_bins.get_n_bands()))
+        if self.rank==0:
+            nband = ell_bins.get_n_bands()
+            ell_effs = ell_bins.get_effective_ells()
+            print(f"Chosen {nband} ell bin bands with effective ell values and ranges:")
+            for i in range(nband):
+                leff = ell_effs[i]
+                lmin = ell_bins.get_ell_min(i)
+                lmax = ell_bins.get_ell_max(i)
+                print(f"    {leff:.0f}    ({lmin:.0f} - {lmax:.0f})")
 
         # Namaster uses workspaces, which we re-use between
         # bins
         w00, w02, w22 = self.setup_workspaces(pixel_scheme, f_d, f_wl, ell_bins)
-        print("Set up workspaces")
+        print(f"Rank {self.rank} set up workspaces")
 
         # Run the compute power spectra portion in parallel
         # This splits the calculations among the parallel bins
@@ -85,6 +91,8 @@ class TXTwoPointFourier(PipelineStage):
             self.compute_power_spectra(
                 pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins)
 
+        if self.rank==0:
+            print(f"Collecting results together")
         # Pull all the results together to the master process.
         self.collect_results()
 
@@ -118,7 +126,8 @@ class TXTwoPointFourier(PipelineStage):
         mask[np.isnan(mask)] = 0
         mask_sum = mask.sum()
         f_sky = area / 41253.
-        print(f"area = {area}, fsky = {f_sky}")
+        if self.rank == 0:
+            print(f"Unmasked area = {area}, fsky = {f_sky}")
 
 
         # Load all the maps in.
@@ -210,21 +219,17 @@ class TXTwoPointFourier(PipelineStage):
             # This is just approximate
             area = f_sky * 4 * np.pi
             width = np.sqrt(area) #radians
-            nlb = int(2 * np.pi / width)
-            nlb = max(1,nlb)
+            nlb = self.config['bandwidth']
+            nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
             ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
         elif pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.nx * pixel_scheme.pixel_size_x)
             ly = np.radians(pixel_scheme.ny * pixel_scheme.pixel_size_y)
-            print("sz", pixel_scheme.ny * pixel_scheme.pixel_size_y)
             ell_min = max(2 * np.pi / lx, 2 * np.pi / ly)
             ell_max = min(pixel_scheme.nx * np.pi / lx, pixel_scheme.ny * np.pi / ly)
-            d_ell = 2 * ell_min
+            d_ell = self.config['bandwidth']
+            d_ell = d_ell if d_ell>0 else 2 * ell_min
             n_ell = int((ell_max - ell_min) / d_ell) - 1
-            print('n_ell', n_ell)
-            print('ell_max',ell_max)
-            print('ell_min',ell_min)
-            print('d_ell',d_ell)
             l_bpw = np.zeros([2, n_ell])
             l_bpw[0, :] = ell_min + np.arange(n_ell) * d_ell
             l_bpw[1, :] = l_bpw[0, :] + d_ell
@@ -287,13 +292,13 @@ class TXTwoPointFourier(PipelineStage):
         # TODO: Fix window functions, and how to save them.
 
         # k refers to the type of measurement we are making
-
+        type_name = NAMES[k]
+        print(f"Process {self.rank} calcluating {type_name} spectrum for bin pair {i},{i}")
+        sys.stdout.flush()
         if k == SHEAR_SHEAR:
-            print(i, j, k)
             ls = ell_bins.get_effective_ells()
             # Top-hat window functions
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            print(win)
             c = self.compute_one_spectrum(
                 pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins)
             c_ll = c[0]
@@ -301,7 +306,6 @@ class TXTwoPointFourier(PipelineStage):
                 b'Cll', ls, c_ll, win, i, j))
 
         if k == POS_POS:
-            print(i, j, k)
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
@@ -311,7 +315,6 @@ class TXTwoPointFourier(PipelineStage):
                 b'Cdd', ls, c_dd, win, i, j))
 
         if k == SHEAR_POS:
-            print(i, j, k)
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
