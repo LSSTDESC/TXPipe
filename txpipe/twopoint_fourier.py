@@ -171,13 +171,15 @@ class TXTwoPointFourier(PipelineStage):
 
             for i,d in enumerate(d_maps):
                 # Density for gnomonic maps
-                print(f"Generating gnomonic density field {i}")
+                if self.rank == 0:
+                    print(f"Generating gnomonic density field {i}")
                 field = nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc) 
                 d_fields.append(field)
 
             for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
                 # Density for gnomonic maps
-                print(f"Generating gnomonic lensing field {i}")
+                if self.rank == 0:
+                    print(f"Generating gnomonic lensing field {i}")
                 field = nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl) 
                 wl_fields.append(field)
             
@@ -185,13 +187,13 @@ class TXTwoPointFourier(PipelineStage):
         elif pixel_scheme.name == 'healpix':
             for i,d in enumerate(d_maps):
                 # Density for gnomonic maps
-                print(f"Generating gnomonic density field {i}")
+                print(f"Generating healpix density field {i}")
                 field = nmt.NmtField(mask, [d], templates=syst_nc)
                 d_fields.append(field)
 
             for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
                 # Density for gnomonic maps
-                print(f"Generating gnomonic lensing field {i}")
+                print(f"Generating healpix lensing field {i}")
                 field = nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
                 wl_fields.append(field)
 
@@ -260,12 +262,18 @@ class TXTwoPointFourier(PipelineStage):
         # TODO: mode-coupling could be pre-computed and provided in config.
         w00 = workspace_class()
         w00.compute_coupling_matrix(f_d[0], f_d[0], ell_bins)
+        if self.rank==0:
+            print("Computed w00 coupling matrix")
 
         w02 = workspace_class()
         w02.compute_coupling_matrix(f_d[0], f_wl[0], ell_bins)
+        if self.rank==0:
+            print("Computed w02 coupling matrix")
 
         w22 = workspace_class()
         w22.compute_coupling_matrix(f_wl[0], f_wl[0], ell_bins)
+        if self.rank==0:
+            print("Computed w22 coupling matrix")
 
         return w00, w02, w22
 
