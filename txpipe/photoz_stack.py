@@ -63,18 +63,13 @@ class TXPhotozStack(PipelineStage):
             self.config['chunk_rows']  # number of rows to read at once
         )
 
-        # At the moment I'm not trying to do this in parallel - it doesn't seem worth it.
-        # If we wanted to do that we'd have to gather the stacked pdfs together at the end
-        # and sum them.
-        if self.comm is not None:
-            raise ValueError("The code TXPhotozStack is not designed to be run in parallel")
 
         # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (_, _, tomo_data) in zip(photoz_iterator, tomography_iterator):
+        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, tomography_iterator):
             # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
-
+            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # The method also yields the start and end positions in the file.  We don't need those
             # here because we are just summing them all together.  That's what the underscores
             # are above.
@@ -96,19 +91,32 @@ class TXPhotozStack(PipelineStage):
                 lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
                 lens_counts[b] += w[0].size
 
+        if self.comm:
+            self.reduce(source_pdfs)
+            self.reduce(lens_pdfs)
+            self.reduce(source_counts)
+            self.reduce(lens_counts)
 
-        # Normalize the stacks
-        for b in range(nbin_source):
-            source_pdfs[b] /= source_counts[b]
-        for b in range(nbin_lens):
-            lens_pdfs[b] /= lens_counts[b]
+        if self.rank==0:
+            # Normalize the stacks
+            for b in range(nbin_source):
+                source_pdfs[b] /= source_counts[b]
+            for b in range(nbin_lens):
+                lens_pdfs[b] /= lens_counts[b]
 
 
-        # And finally save the outputs
-        f = self.open_output("photoz_stack")        
-        self.save_result(f, "source", nbin_source, z, source_pdfs)
-        self.save_result(f, "lens", nbin_lens, z, lens_pdfs)
-        f.close()
+            # And finally save the outputs
+            f = self.open_output("photoz_stack")        
+            self.save_result(f, "source", nbin_source, z, source_pdfs, source_counts)
+            self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
+            f.close()
+
+    def reduce(self, x):
+        import numpy as np
+        y = np.zeros_like(x) if self.rank==0 else None
+        self.comm.Reduce(x,y)
+        x[:]=y
+
 
     def get_metadata(self):
         """
@@ -146,7 +154,7 @@ class TXPhotozStack(PipelineStage):
 
 
 
-    def save_result(self, outfile, name, nbin, z, stacked_pdfs):
+    def save_result(self, outfile, name, nbin, z, stacked_pdfs, counts):
         """
         Save the computed stacked photo-z bin n(z)
         
@@ -178,6 +186,7 @@ class TXPhotozStack(PipelineStage):
         
         # And all the bins separately
         for b in range(nbin):
+            group.attrs[f"count_{b}"] = counts[b]
             group.create_dataset(f"bin_{b}", data=stacked_pdfs[b])
 
 

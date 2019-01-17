@@ -311,6 +311,7 @@ class ParallelStatsCalculator:
         if not self.sparse:
             bad = self._count<2
             self._variance[bad] = np.nan
+        del self._M2
         return self._count, self._mean, self._variance        
 
 
@@ -370,6 +371,9 @@ class ParallelStatsCalculator:
                 send(self._count)
                 send(self._mean)
                 send(self._variance)
+                del self._count
+                del self._mean
+                del self._variance
             elif rank==0:
                 if self.sparse:
                     c1 = comm.recv(source=i)
@@ -380,9 +384,10 @@ class ParallelStatsCalculator:
                     comm.Recv(m1, source=i)
                     comm.Recv(v1, source=i)
                 self._accumulate(c1, m1, v1)
-
+                print(f"Done rank {i}")
         if rank == 0:
             count, mean, variance = self._C0, self._T0/self._C0, self._S0/self._C0
+            del self._S0, self._C0, self._T0
             if not self.sparse:
                 mean[count<1] = np.nan
                 variance[count<2] = np.nan
@@ -400,7 +405,6 @@ class ParallelStatsCalculator:
                 comm.Bcast(count)
                 comm.Bcast(mean)
                 comm.Bcast(variance)
-        del self._S0, self._C0, self._T0
 
         return count, mean, variance
 
