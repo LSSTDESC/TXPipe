@@ -45,6 +45,7 @@ class TXDiagnosticMaps(PipelineStage):
         'npix_y':-1, 
         'pixel_size':np.nan, # Pixel size of pixelization scheme
         'depth_band' : 'i',
+        'true_shear' : False,
     }
 
 
@@ -75,7 +76,11 @@ class TXDiagnosticMaps(PipelineStage):
 
         # These are the columns we're going to need from the various files
         phot_cols = ['ra', 'dec', f'snr_{band}', f'mag_{band}_lsst']
-        shear_cols = ['mcal_g']
+
+        if config['true_shear']:
+            shear_cols = ['true_g']
+        else:
+            shear_cols = ['mcal_g']
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -134,7 +139,10 @@ class TXDiagnosticMaps(PipelineStage):
 
             # TODO fix iterate_fits so it returns a dict
             # like iterate_hdf
-            shear_tmp = {'mcal_g': shear_data['mcal_g']}
+            if config['true_shear']:
+                shear_tmp = {'mcal_g': shear_data['true_g']}
+            else:
+                shear_tmp = {'mcal_g': shear_data['mcal_g']}
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
 
