@@ -64,6 +64,8 @@ class Mapper:
         ngal = {}
         g1 = {}
         g2 = {}
+        var_g1 = {}
+        var_g2 = {}
 
         rank = 0 if comm is None else comm.Get_rank()
 
@@ -93,20 +95,40 @@ class Mapper:
                 print(f"Collating shear map for source bin {b}")
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
-            _, mean_g1, _ = stats_g1.collect(comm)
-            _, mean_g2, _ = stats_g2.collect(comm)
+            count_g1, mean_g1, v_g1 = stats_g1.collect(comm)
+            count_g2, mean_g2, v_g2 = stats_g2.collect(comm)
 
             if not is_master:
                 continue
 
+            # Convert variance of value to variance of mean,
+            # Since that is what we want for noise estimation
+            v_g1 /= count_g1
+            v_g2 /= count_g2
+
+            #  Don't think we want to save these at the moment
+            del count_g1
+            del count_g2
+
             mean_g1[np.isnan(mean_g1)] = 0
             mean_g2[np.isnan(mean_g2)] = 0
+
+
+            v_g1[np.isnan(v_g1)] = 0
+            v_g2[np.isnan(v_g2)] = 0
 
             mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
             mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
 
+            v_g1 = v_g1.reshape(self.pixel_scheme.shape)
+            v_g2 = v_g2.reshape(self.pixel_scheme.shape)
+
             g1[b] = mean_g1.flatten()
             g2[b] = mean_g2.flatten()
-        return pixel, ngal, g1, g2
+            
+            var_g1[b] = v_g1.flatten()
+            var_g2[b] = v_g2.flatten()
+
+        return pixel, ngal, g1, g2, var_g1, var_g2
 
 
