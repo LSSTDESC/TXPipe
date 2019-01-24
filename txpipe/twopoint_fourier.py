@@ -44,6 +44,8 @@ class TXTwoPointFourier(PipelineStage):
     config_options = {
         "mask_threshold": 0.0,
         "bandwidth": 0,
+        "apodization_size": 3.0,
+        "apodization_type": "C1",  #"C1", "C2", or "Smooth"
     }
 
     def run(self):
@@ -106,6 +108,12 @@ class TXTwoPointFourier(PipelineStage):
 
     def load_maps(self):
         import pymaster as nmt
+
+        # Parameters that we need at this point
+        apod_size = self.config['apodization_size']
+        apod_type = self.config['apodization_type']
+
+
         # Load the various input maps and their metadata
         map_file = self.open_input('diagnostic_maps', wrapper=True)
         pix_info = map_file.read_map_info('mask')
@@ -169,6 +177,14 @@ class TXTwoPointFourier(PipelineStage):
             lx = np.radians(pixel_scheme.size_x)
             ly = np.radians(pixel_scheme.size_y)
 
+            # Apodize the mask
+            if apod_size > 0:
+                if self.rank==0:
+                    print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
+                mask = nmt.mask_apodization(mask, lx, ly, apod_size, apotype=apod_type)
+            elif self.rank==0:
+                print("Not apodizing mask.")
+
             for i,d in enumerate(d_maps):
                 # Density for gnomonic maps
                 if self.rank == 0:
@@ -185,6 +201,15 @@ class TXTwoPointFourier(PipelineStage):
             
 
         elif pixel_scheme.name == 'healpix':
+            # Apodize the mask
+            if apod_size > 0:
+                if self.rank==0:
+                    print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
+                mask = nmt.mask_apodization(mask, apod_size, apotype=apod_type)
+            elif self.rank==0:
+                print("Not apodizing mask.")
+
+
             for i,d in enumerate(d_maps):
                 # Density for gnomonic maps
                 print(f"Generating healpix density field {i}")
