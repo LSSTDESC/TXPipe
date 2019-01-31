@@ -341,9 +341,10 @@ class TXTwoPointFourier(PipelineStage):
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins)
-            c_ll = c[0]
-            self.results.append(Measurement(
-                b'Cll', ls, c_ll, win, i, j))
+            c_EE = c[0]
+            c_BB = c[3]
+            self.results.append(Measurement('CEE', ls, c_EE, win, i, j))
+            self.results.append(Measurement('CBB', ls, c_BB, win, i, j))
 
         if k == POS_POS:
             ls = ell_bins.get_effective_ells()
@@ -351,17 +352,17 @@ class TXTwoPointFourier(PipelineStage):
             c = self.compute_one_spectrum(
                 pixel_scheme, w00, f_d[i], f_d[j], ell_bins)
             c_dd = c[0]
-            self.results.append(Measurement(
-                b'Cdd', ls, c_dd, win, i, j))
+            self.results.append(Measurement('Cdd', ls, c_dd, win, i, j))
 
         if k == SHEAR_POS:
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w02, f_wl[i], f_d[j], ell_bins)
-            c_dl = c[0]
-            self.results.append(Measurement(
-                b'Cdl', ls, c_dl, win, i, j))
+            c_dE = c[0]
+            c_dB = c[1]
+            self.results.append(Measurement('CdE', ls, c_dE, win, i, j))
+            self.results.append(Measurement('CdB', ls, c_dB, win, i, j))
 
 
     def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins):
@@ -385,13 +386,13 @@ class TXTwoPointFourier(PipelineStage):
         for i in range(nbin_source):
             z = f['n_of_z/source/z'].value
             Nz = f[f'n_of_z/source/bin_{i}'].value
-            T = sacc.Tracer(f"LSST source_{i}".encode('ascii'), b"spin0", z, Nz, exp_sample=b"LSST-source")
+            T = sacc.Tracer(f"LSST source_{i}", b"spin0", z, Nz, exp_sample=b"LSST-source")
             tracers.append(T)
 
         for i in range(nbin_lens):
             z = f['n_of_z/lens/z'].value
             Nz = f[f'n_of_z/lens/bin_{i}'].value
-            T = sacc.Tracer(f"LSST lens_{i}".encode('ascii'), b"spin0", z, Nz, exp_sample=b"LSST-lens")
+            T = sacc.Tracer(f"LSST lens_{i}", b"spin0", z, Nz, exp_sample=b"LSST-lens")
             tracers.append(T)
 
         fields = ['corr_type', 'l', 'value', 'i', 'j', 'win']
@@ -400,20 +401,28 @@ class TXTwoPointFourier(PipelineStage):
         q1 = []
         q2 = []
         type = []
-        for corr_type in [b'Cll', b'Cdd', b'Cdl']:
+        q1s = {
+            'CEE': 'E', # Galaxy E-mode
+            'CBB': 'B', # Galaxy B-mode
+            'Cdd': 'P', # Galaxy position
+            'CdE': 'P',
+            'CdB': 'P',
+            }
+        q2s = {
+            'CEE': 'E',
+            'CBB': 'B',
+            'Cdd': 'P',
+            'CdE': 'E',
+            'CdB': 'B',
+            }
+        for corr_type in ['CEE', 'CBB', 'Cdd', 'CdE', 'CdB']:
             data = [r for r in self.results if r.corr_type == corr_type]
             for bin_pair_data in data:
                 n = len(bin_pair_data.l)
                 type += ['Corr' for i in range(n)]
-                if corr_type == b'Cll':
-                    q1 += ['S' for i in range(n)]
-                    q2 += ['S' for i in range(n)]
-                elif corr_type == b'Cdd':
-                    q1 += ['P' for i in range(n)]
-                    q2 += ['P' for i in range(n)]
-                elif corr_type == b'Cdl':
-                    q1 += ['P' for i in range(n)]
-                    q2 += ['S' for i in range(n)]
+                q1 += [q1s[corr_type] for i in range(n)]
+                q2 += [q2s[corr_type] for i in range(n)]
+
                 for f in fields:
                     v = getattr(bin_pair_data, f)
                     if np.isscalar(v):

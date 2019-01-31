@@ -58,7 +58,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         sacc_data = sacc.SACC.loadFromHDF(f)
 
         codes = {
-            'Cll' : ('S','S'),
+            'Cll' : ('E','E'),
             #'Cdd' : ('P','P'),
             #'Cdl' : ('P','S'),
             }
