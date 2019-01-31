@@ -1,13 +1,9 @@
 from ceci import PipelineStage
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
-import h5py
 import numpy as np
-import treecorr
 import random
 import collections
 import sys
-import healpy as hp
-import sacc
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -142,6 +138,7 @@ class TXTwoPoint(PipelineStage):
         return nbin_source, nbin_lens
 
     def write_output(self, nbins_source, nbins_lens, meta):
+        import sacc
         # TODO fix this to account for the case where we only do a certain number of calcs
         f = self.open_input('photoz_stack')
 
@@ -249,6 +246,7 @@ class TXTwoPoint(PipelineStage):
         return m1, m2, mask
 
     def calc_shear_shear(self,i,j):
+        import treecorr
         print(f"Calculating shear-shear bin pair ({i},{j})")
         m1,m2,mask = self.get_m(i)
 
@@ -277,6 +275,7 @@ class TXTwoPoint(PipelineStage):
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
     def calc_pos_shear(self,i,j):
+        import treecorr
         print(f"Calculating position-shear bin pair ({i},{j})")
         m1, m2, lensmask = self.select_lens()
 
@@ -320,6 +319,7 @@ class TXTwoPoint(PipelineStage):
         return theta, gammat, gammaterr, ng.npairs, ng.weight
 
     def calc_pos_pos(self,i,j):
+        import treecorr
         print(f"Calculating position-position bin pair ({i},{j})")
 
         m1, m2, lensmask = self.select_lens()
@@ -472,7 +472,7 @@ class TXTwoPoint(PipelineStage):
         return neff
 
     def calc_area(self):
-
+        import healpy as hp
         pix=hp.ang2pix(4096, np.pi/2.-np.radians(self.dec),np.radians(self.ra), nest=True)
         area=hp.nside2pixarea(4096)*(180./np.pi)**2
         mask=np.bincount(pix)>0
