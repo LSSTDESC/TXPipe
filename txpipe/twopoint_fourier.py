@@ -239,7 +239,7 @@ class TXTwoPointFourier(PipelineStage):
             self.results = sum(self.results, [])
 
             # Order by type, then bin i, then bin j
-            order = [b'Cll', b'Cdd', b'Cdl']
+            order = ['CEE', 'CBB', 'Cdd', 'CdE', 'CdB']
             key = lambda r: (order.index(r.corr_type), r.i, r.j)
             self.results = sorted(self.results, key=key)
 
