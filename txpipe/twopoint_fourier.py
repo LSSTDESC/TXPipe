@@ -46,6 +46,7 @@ class TXTwoPointFourier(PipelineStage):
         "bandwidth": 0,
         "apodization_size": 3.0,
         "apodization_type": "C1",  #"C1", "C2", or "Smooth"
+        "flip_g2": False,
     }
 
     def run(self):
@@ -108,7 +109,7 @@ class TXTwoPointFourier(PipelineStage):
 
     def load_maps(self):
         import pymaster as nmt
-
+        import healpy
         # Parameters that we need at this point
         apod_size = self.config['apodization_size']
         apod_type = self.config['apodization_type']
@@ -144,6 +145,10 @@ class TXTwoPointFourier(PipelineStage):
         g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
         g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
 
+        if self.config['flip_g2']:
+            for g2 in g2_maps:
+                w = np.where(g2!=healpy.UNSEEN)
+                g2[w]*=-1
 
         # TODO: load systematics maps here, once we are making them.
         syst_nc = None
