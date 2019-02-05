@@ -284,6 +284,7 @@ class TXSelector(PipelineStage):
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='f')
         group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
+        group.create_dataset('mean_R', (nbin_source,), dtype='f')
 
         return outfile
 
@@ -329,11 +330,12 @@ class TXSelector(PipelineStage):
         S: array of shape (nbin,2,2)
             Selection bias matrices
         """
-        sigma_e, N_eff, lens_counts = number_density_stats.collect()
+        sigma_e, mean_r, N_eff, lens_counts = number_density_stats.collect()
 
         if self.rank==0:
             group = outfile['multiplicative_bias']
             group['R_S'][:,:,:] = S
+            group['mean_R'][:] = mean_r
             group = outfile['tomography']
             group['source_counts'][:] = source_counts
             group['lens_counts'][:] = lens_counts

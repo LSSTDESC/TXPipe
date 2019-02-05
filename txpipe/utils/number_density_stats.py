@@ -46,5 +46,5 @@ class NumberDensityStats:
             sigma_e[i] = (0.5 * (variances[0]/mean_r**2 + variances[1]/mean_r**2))**0.5
             N_source[i] = counts[0]
 
-        return sigma_e, N_source, self.lens_counts
+        return sigma_e, mean_r, N_source, self.lens_counts
 
