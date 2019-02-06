@@ -39,12 +39,14 @@ class NumberDensityStats:
         # Get the basic shear numbers - means, counts, variances
         sigma_e = np.zeros(self.nbin_source)
         N_source = np.zeros(self.nbin_source)
+        mean_R = np.zeros(self.nbin_source)
 
         for i in range(self.nbin_source):
             _, mean_r, _ = self.mean_response[i].collect(self.comm, mode='allgather')
             counts, means, variances = self.shear_stats[i].collect(self.comm, mode='allgather')
             sigma_e[i] = (0.5 * (variances[0]/mean_r**2 + variances[1]/mean_r**2))**0.5
             N_source[i] = counts[0]
+            mean_R[i] = mean_r
 
-        return sigma_e, mean_r, N_source, self.lens_counts
+        return sigma_e, mean_R, N_source, self.lens_counts
 
