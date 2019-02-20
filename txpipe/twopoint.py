@@ -69,14 +69,15 @@ class TXTwoPoint(PipelineStage):
         meta = self.calc_metadata(nbins_source)
 
         calcs = self.select_calculations(nbins_source, nbins_lens)
-        print('calcs',calcs)
+        if self.rank==0:
+            print(f"Running these calculations: {calcs}")
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment,
         # but for this case I would expect it to be mostly finer
         for i,j,k in self.split_tasks_by_rank(calcs):
             self.call_treecorr(i, j, k)
-        print('i,j,k',i,j,k)
+
         self.collect_results()
 
         # Prepare the HDF5 output.
@@ -170,7 +171,7 @@ class TXTwoPoint(PipelineStage):
             for bin_pair_data in data:
                 n = len(bin_pair_data.theta)
                 type+=['Corr' for i in range(n)]
-                print(corr_type)
+
                 if corr_type==b'gammat':
                     q1 += ['P' for i in range(n)]
                     q2 += ['S' for i in range(n)]
@@ -219,7 +220,7 @@ class TXTwoPoint(PipelineStage):
             self.results.append(Measurement(b"xim", theta, xim, ximerr, npairs, weight, i, j))
 
         elif k==SHEAR_POS: # gammat
-            theta, val, err, npairs, weight = self.calc_pos_shear(i,j)
+            theta, val, err, npairs, weight = self.calc_shear_pos(i,j)
             if i==j:
                 npairs/=2
                 weight/=2
@@ -247,25 +248,39 @@ class TXTwoPoint(PipelineStage):
 
     def calc_shear_shear(self,i,j):
         import treecorr
-        print(f"Calculating shear-shear bin pair ({i},{j})")
         m1,m2,mask = self.get_m(i)
+        g1 = self.mcal_g1[mask]
+        g2 = self.mcal_g2[mask]
+        n_i = len(g1)
 
         cat_i = treecorr.Catalog(
-            g1 = (self.mcal_g1[mask] - np.mean(self.mcal_g1[mask]))/m1,
-            g2 = (self.mcal_g2[mask] - np.mean(self.mcal_g2[mask]))/m2,
+            g1 = (g1 - g1.mean()) / m1,
+            g2 = (g2 - g2.mean()) / m2,
             ra=self.ra[mask], dec=self.dec[mask],
             ra_units='degree', dec_units='degree')
+        del g1, g2
 
-        m1,m2,mask = self.get_m(j)
+        if i==j:
+            cat_j = cat_i
+            n_j = n_i
+        else:
 
-        cat_j = treecorr.Catalog(
-            g1 = (self.mcal_g1[mask] - np.mean(self.mcal_g1[mask]))/m1,
-            g2 = (self.mcal_g2[mask] - np.mean(self.mcal_g2[mask]))/m2,
-            ra=self.ra[mask], dec=self.dec[mask],
-            ra_units='degree', dec_units='degree')
+            m1,m2,mask = self.get_m(j)
+            g1 = self.mcal_g1[mask]
+            g2 = self.mcal_g2[mask]
+            n_j = len(g1)
+
+            cat_j = treecorr.Catalog(
+                g1 = (g1 - g1.mean()) / m1,
+                g2 = (g2 - g2.mean()) / m2,
+                ra=self.ra[mask], dec=self.dec[mask],
+                ra_units='degree', dec_units='degree')
+            del g1, g2
+
+        print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
 
         gg = treecorr.GGCorrelation(self.config)
-        gg.process(cat_i,cat_j)
+        gg.process(cat_i, cat_j)
 
         theta=np.exp(gg.meanlogr)
         xip = gg.xip
@@ -274,44 +289,47 @@ class TXTwoPoint(PipelineStage):
 
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
-    def calc_pos_shear(self,i,j):
+    def calc_shear_pos(self,i,j):
         import treecorr
-        print(f"Calculating position-shear bin pair ({i},{j})")
-        m1, m2, lensmask = self.select_lens()
 
-        ranmask_i = self.random_binning==i
+        m1,m2,mask = self.get_m(i)
 
-        cat_lens = treecorr.Catalog(
-            ra=self.ra[lensmask],
-            dec=self.dec[lensmask],
-            ra_units='degree',
-            dec_units='degree')
+        g1 = self.mcal_g1[mask]
+        g2 = self.mcal_g2[mask]
+        n_i = len(g1)
+        cat_i = treecorr.Catalog(
+            g1 = (g1 - g1.mean()) / m1,
+            g2 = (g2 - g2.mean()) / m2,
+            ra=self.ra[mask], dec=self.dec[mask],
+            ra_units='degree', dec_units='degree')
+        del g1, g2
 
-        m1,m2,mask = self.get_m(j)
+        mask = self.lens_gals == j
+        random_mask = self.random_binning==j
+        n_j = mask.sum()
+        n_rand = random_mask.sum()
 
         cat_j = treecorr.Catalog(
-            g1 = (self.mcal_g1[mask] - np.mean(self.mcal_g1[mask]))/m1,
-            g2 = (self.mcal_g2[mask] - np.mean(self.mcal_g2[mask]))/m2,
             ra=self.ra[mask],
             dec=self.dec[mask],
             ra_units='degree',
             dec_units='degree')
 
-        mask = self.random_binning==i
-
-        rancat_i  = treecorr.Catalog(
-            ra=self.random_ra[ranmask_i],
-            dec=self.random_dec[ranmask_i],
+        rancat_j  = treecorr.Catalog(
+            ra=self.random_ra[random_mask],
+            dec=self.random_dec[random_mask],
             ra_units='degree',
             dec_units='degree')
+
+        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand} randoms")
 
         ng = treecorr.NGCorrelation(self.config)
         rg = treecorr.NGCorrelation(self.config)
 
-        ng.process(cat_lens,cat_j)
-        rg.process(rancat_i,cat_j)
+        ng.process(cat_j, cat_i)
+        rg.process(rancat_j, cat_i)
 
-        gammat,gammat_im,gammaterr=ng.calculateXi(rg)
+        gammat,gammat_im,gammaterr=ng.calculateXi(rg=rg)
 
         theta=np.exp(ng.meanlogr)
         gammaterr=np.sqrt(gammaterr)
@@ -320,29 +338,41 @@ class TXTwoPoint(PipelineStage):
 
     def calc_pos_pos(self,i,j):
         import treecorr
-        print(f"Calculating position-position bin pair ({i},{j})")
 
-        m1, m2, lensmask = self.select_lens()
+        mask = self.lens_gals == i
+        random_mask = self.random_binning==i
+        n_i = mask.sum()
+        n_rand_i = random_mask.sum()
 
-        cat_lens = treecorr.Catalog(
-            ra=self.ra[lensmask], dec=self.dec[lensmask],
-            ra_units='degree', dec_units='degree')
-
-        m1,m2,mask = self.get_m(j)
-
-        cat_j = treecorr.Catalog(
+        cat_i = treecorr.Catalog(
             ra=self.ra[mask], dec=self.dec[mask],
             ra_units='degree', dec_units='degree')
 
-        mask = self.random_binning==i
         rancat_i  = treecorr.Catalog(
-            ra=self.random_ra[mask], dec=self.random_dec[mask],
+            ra=self.random_ra[random_mask], dec=self.random_dec[random_mask],
             ra_units='degree', dec_units='degree')
 
-        mask = self.random_binning==j
-        rancat_j  = treecorr.Catalog(
-            ra=self.random_ra[mask], dec=self.random_dec[mask],
-            ra_units='degree', dec_units='degree')
+        if i==j:
+            cat_j = cat_i
+            rancat_j = rancat_i
+            n_j = n_i
+            n_rand_j = n_rand_i
+        else:
+            mask = self.lens_gals == j
+            random_mask = self.random_binning==j
+            n_j = mask.sum()
+            n_rand_j = random_mask.sum()
+
+            cat_j = treecorr.Catalog(
+                ra=self.ra[mask], dec=self.dec[mask],
+                ra_units='degree', dec_units='degree')
+
+            rancat_j  = treecorr.Catalog(
+                ra=self.random_ra[random_mask], dec=self.random_dec[random_mask],
+                ra_units='degree', dec_units='degree')
+
+        print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
+            f"{n_rand_i} x {n_rand_j} randoms")
 
 
         nn = treecorr.NNCorrelation(self.config)
@@ -350,13 +380,13 @@ class TXTwoPoint(PipelineStage):
         nr = treecorr.NNCorrelation(self.config)
         rr = treecorr.NNCorrelation(self.config)
 
-        nn.process(cat_lens)
-        rn.process(rancat_i, cat_lens)
-        nr.process(cat_lens, rancat_j)
+        nn.process(cat_i,    cat_j)
+        nr.process(cat_i,    rancat_j)
+        rn.process(rancat_i, cat_j)
         rr.process(rancat_i, rancat_j)
 
         theta=np.exp(nn.meanlogr)
-        wtheta,wthetaerr=nn.calculateXi(rr,dr=nr,rd=rn)
+        wtheta,wthetaerr=nn.calculateXi(rr, dr=nr, rd=rn)
         wthetaerr=np.sqrt(wthetaerr)
 
         return theta, wtheta, wthetaerr, nn.npairs, nn.weight
@@ -404,9 +434,6 @@ class TXTwoPoint(PipelineStage):
         self.mcal_g2 = mcal_g2
         self.ra = ra
         self.dec = dec
-        # self.mcal_mag = mcal_mag[mask]
-        # self.mcal_s2n = mcal_s2n[mask]
-        # self.mcal_T = mcal_T[mask]
 
     def load_random_catalog(self):
 
@@ -424,41 +451,35 @@ class TXTwoPoint(PipelineStage):
         f.close()
 
 
-    def select_lens(self):
-        # Extremely simple lens selector simply by bin
-        mask = self.lens_gals == 0
-
-        m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11, taking the mean for the bin
-        m2 = np.mean(self.r_gamma[mask][:,1,1]) #R22
-
-        return m1, m2, mask
-
     def calc_sigma_e(self, nbins_source):
         """
         Calculate sigma_e for shape catalog.
         """
         sigma_e_list = []
-        mean_e1_list = []
-        mean_e2_list = []
+        mean_g1_list = []
+        mean_g2_list = []
         for i in range(nbins_source):
             m1, m2, mask = self.get_m(i)
             s = (m1+m2)/2
+            g1 = self.mcal_g1[mask]
+            g2 = self.mcal_g2[mask]
+            mean_g1 = g1.mean()
+            mean_g2 = g2.mean()
             # TODO Placeholder for actual weights we want to use
-            w = np.ones(len(self.mcal_g1[mask]))
-            a1 = np.sum(w**2 * (self.mcal_g1[mask]-np.mean(self.mcal_g1[mask]))**2)
-            a2 = np.sum(w**2 * (self.mcal_g2[mask]-np.mean(self.mcal_g2[mask]))**2)
+            w = np.ones_like(g1)
+            a1 = np.sum(w**2 * (g1-mean_g1)**2)
+            a2 = np.sum(w**2 * (g2-mean_g2)**2)
             b  = np.sum(w**2)
             c  = np.sum(w*s)
             d  = np.sum(w)
 
             sigma_e = np.sqrt( (a1/c**2 + a2/c**2) * (d**2/b) / 2. )
-            mean_e1 = np.mean(self.mcal_g1[mask])
-            mean_e2 = np.mean(self.mcal_g2[mask])
 
             sigma_e_list.append(sigma_e)
-            mean_e1_list.append(mean_e1)
-            mean_e2_list.append(mean_e2)
-        return sigma_e_list, mean_e1_list, mean_e2_list
+            mean_g1_list.append(mean_g1)
+            mean_g2_list.append(mean_g2)
+
+        return sigma_e_list, mean_g1_list, mean_g2_list
 
     def calc_neff(self, area, nbins_source):
         neff = []
