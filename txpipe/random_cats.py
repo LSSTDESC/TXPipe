@@ -34,6 +34,10 @@ class TXRandomCat(PipelineStage):
         pixelization = maps_file['maps/depth'].attrs['pixelization']
         pz_stack = self.open_input('photoz_stack')
 
+        # Cut down to pixels that have any objects in
+        hit = depth>0
+        pixel = pixel[hit]
+        depth = depth[hit]
 
         if len(pixel)==1:
             raise ValueError("Only one pixel in depth map!")
@@ -84,7 +88,7 @@ class TXRandomCat(PipelineStage):
         ### Get total number of randoms in all zbins
         ### Once the density gets updated per redshift bin, the output file will need to 
         ### combine all the tomographic bins in a bit more clever/convenient way than currently
-        n_total = np.hstack(numbers.values()).sum()
+        n_total = sum(numbers.values()).sum()
 
         output_file = self.open_output('random_cats')
         group = output_file.create_group('randoms')
