@@ -82,12 +82,12 @@ class TXTwoPointFourier(PipelineStage):
         # fiducial theory C_ell
         tracers = self.load_tracers(nbin_source, nbin_lens)
 
-        # This is needed in the deprojection calculation
-        theory_cl = self.fiducial_theory(tracers, f_d, f_wl, nbin_source, nbin_lens)
-
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
+
+        # This is needed in the deprojection calculation
+        theory_cl = self.fiducial_theory(tracers, ell_bins, nbin_source, nbin_lens)
 
         # If we are rank zero print out some info
         if self.rank==0:
@@ -372,7 +372,7 @@ class TXTwoPointFourier(PipelineStage):
             ls = ell_bins.get_effective_ells()
             # Top-hat window functions
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            cl_noise = self.compute_noise(i,j,k,w22,noise)
+            cl_noise = self.compute_noise(i,j,k,ell_bins,w22,noise)
             cl_guess = [theory, np.zeros_like(theory), np.zeros_like(theory), np.zeros_like(theory)]
             c = self.compute_one_spectrum(
                 pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins, cl_noise, cl_guess)
@@ -384,7 +384,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            cl_noise = self.compute_noise(i,j,k,w00,noise)
+            cl_noise = self.compute_noise(i,j,k,ell_bins,w00,noise)
             cl_guess = [theory]
             c = self.compute_one_spectrum(
                 pixel_scheme, w00, f_d[i], f_d[j], ell_bins, cl_noise, cl_guess)
@@ -394,7 +394,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_POS:
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            cl_noise = self.compute_noise(i,j,k,w02,noise)
+            cl_noise = self.compute_noise(i,j,k,ell_bins,w02,noise)
             cl_guess = [theory, np.zeros_like(theory)]
 
             c = self.compute_one_spectrum(
@@ -404,19 +404,20 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement('CdE', ls, c_dE, win, i, j))
             self.results.append(Measurement('CdB', ls, c_dB, win, i, j))
 
-    def compute_noise(self, i, j, k, w, noise):
+    def compute_noise(self, i, j, k, ell_bins, w, noise):
         # No noise contribution from cross-correlations
         if (i!=j) or (k==SHEAR_POS):
             return None
-        print("x")
+        # print("Setting noise to zero")
+        # return None
         # We loaded in sigma_e and the densities
         # earlier on and put them in the noise dictionary
         noise_level = noise[(i,k)]
 
-        # ell-by-ell noise level of the right size
-        N1 = np.ones(w.wsp.lmax + 1) * noise[(i,k)]
+        n = ell_bins.get_n_bands()
 
-        # return N1
+        # ell-by-ell noise level of the right size
+        N1 = np.ones(n) * noise[(i,k)]
 
         # # Need the same noise for EE, BB, EB, BE
         # # or PE, PB
@@ -426,13 +427,12 @@ class TXTwoPointFourier(PipelineStage):
             N2 = [N1, N1]
         else:
             N2 = [N1]
-        return N2
 
         # # Run the same decoupling process that we will use
         # # on the full spectra
-        # N_b = w.decouple_cell(N2)[0]
+        N_b = w.decouple_cell(N2)
 
-        # return N_b
+        return N_b
 
 
     def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins, cl_noise, theory):
@@ -445,12 +445,15 @@ class TXTwoPointFourier(PipelineStage):
             # power spectra
             coupled_c_ell = nmt.compute_coupled_cell(f1, f2)
             # Compute 
-            cl_bias = nmt.deprojection_bias(f1, f2, theory)
+            # cl_bias = nmt.deprojection_bias(f1, f2, theory)
+            cl_bias = None
 
         elif pixel_scheme.name == 'gnomonic':
             coupled_c_ell = nmt.compute_coupled_cell_flat(f1, f2, ell_bins)
-            ell_eff = ell_bins.get_effective_ells()
-            cl_bias = nmt.deprojection_bias_flat(f1, f2, ell_bins, ell_eff, cl_theory)
+            cl_bias = None
+            #TODO figure out cl_bias
+            # ell_eff = ell_bins.get_effective_ells()
+            # cl_bias = nmt.deprojection_bias_flat(f1, f2, ell_bins, ell_eff, theory)
 
         c_ell = w.decouple_cell(coupled_c_ell, cl_noise=cl_noise, cl_bias=cl_bias)
         return c_ell
@@ -500,7 +503,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return tracers
 
-    def fiducial_theory(self, tracers, f_d, f_wl, nbin_source, nbin_lens):
+    def fiducial_theory(self, tracers, ell_bins, nbin_source, nbin_lens):
         import pyccl as ccl
 
         filename = self.get_input('fiducial_cosmology')
@@ -509,7 +512,8 @@ class TXTwoPointFourier(PipelineStage):
         # We will need the theory C_ell in a continuum up until
         # the full ell_max, because we will need a weighted sum
         # over the values
-        ell_max = f_d[0].fl.lmax
+        ell_max = np.max(ell_bins.ell_max)
+        #f_d[0].fl.lmax
         ell = np.arange(ell_max+1, dtype=int)
 
         # Convert from SACC tracers (which just store N(z))
