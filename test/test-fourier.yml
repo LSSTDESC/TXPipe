@@ -27,6 +27,7 @@ inputs:
     shear_catalog: ${DATA}/mock_shear_catalog.fits
     photometry_catalog: ${DATA}/mock_photometry_catalog.hdf
     photoz_trained_model: ${DATA}/photoz_trained_model.npy
+    fiducial_cosmology: test/fiducial_cosmology.yml
 
 resume: False
 log_dir: ./test/logs
