@@ -1,5 +1,5 @@
 DESC 3x2pt Pipeline Stages
---------------------------
+==========================
 
 This is a collection of modules for the DESC 3x2pt pipeline.
 We will build up the modules needed for the analysis as shown in the Pipelines repository.
@@ -7,28 +7,65 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 It builds on the ceci repository for the infrastructure.
 
 Goals
------
+======
 
 - Test using parsl for some of our larger more complex analyses.
 - Build and test a prototype pipeline infrastructure.
 - Build and run prototype.
 - Perform and publish a DC2 3x2pt analysis.
 
+Getting the code and some test data
+====================================
 
-Installation on your own machine
---------------------------------
-
-Requires python3, numpy, scipy, pyyaml, fitsio, h5py (which in turn needs HDF5), ceci, and parsl.
-
-HDF5 is slow to install - it is available in Homebrew.
-
-To install using pip:
+Get the TXPipe code like this:
 ```bash
-pip scipy pyyaml ceci
-pip install fitsio h5py 
+git clone https://github.com/LSSTDESC/TXPipe
+cd TXPipe
 ```
 
-Installation using Docker
+You can get some input test data like this:
+
+```bash
+
+mkdir -p inputs/1e5
+cd inputs/1e5
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.hdf
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photoz_trained_model.npy
+cd ../..
+```
+
+
+Dependencies
+============
+
+TXPipe has these dependencies:
+
+- python3
+- numpy
+- scipy
+- pyyaml
+- fitsio
+- h5py (which in turn needs HDF5)
+- ceci
+
+Dependencies on your own machine
+---------------------------------
+
+HDF5 is slow to install; it is easier to install using package managers like Homebrew.
+Otherwise you can get it from here: https://www.hdfgroup.org/downloads/hdf5
+
+To install the python dependencies using pip:
+
+```bash
+pip scipy pyyaml ceci
+pip install fitsio h5py mlz-desc
+pip install treecorr
+```
+
+The Fourier space two-point code requires NaMaster, which is considerably harder to install.  For now, stick to the real space version on your own machine!
+
+Dependencies using Docker
 -------------------------
 
 In Docker, from the main directory, this will get you the newest version of the code:
@@ -38,8 +75,8 @@ docker pull joezuntz/txpipe
 docker run --rm -it -v$PWD:/opt/txpipe joezuntz/txpipe
 ```
 
-Installation on Cori
---------------------
+Dependencies on NERSC's Cori
+----------------------------
 
 These dependencies are all already prepared on cori - use this environment:
 
@@ -53,35 +90,27 @@ source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
 
 ```
 
-Input test data
----------------
-
-You can get input test data like this:
-
-```bash
-
-mkdir -p inputs/1e5
-cd inputs/1e5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.hdf
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photoz_trained_model.npy
-cd ../..
-```
-
 
 Running the pipeline
 --------------------
 
-Make sure that ceci is installed.
-Then you can run:
+Once you have installed the dependecies you can run:
 
 ```bash
 export DATA=inputs/1e5
-ceci test/test-fourier.yml
+ceci test/test-real.yml
 ```
 
-to run the implemented stages
+to run the implemented stages.
 
+You can get a list of the individual commands that will be run like this:
+
+```bash
+export DATA=inputs/1e5
+ceci --dry-run test/test-fourier.yml
+```
+
+so that you can run and examine them individually.
 
 Implementation
 --------------
