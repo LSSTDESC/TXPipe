@@ -490,14 +490,14 @@ class TXTwoPointFourier(PipelineStage):
         tracers = []
 
         for i in range(nbin_source):
-            z = f['n_of_z/source/z'].value
-            Nz = f[f'n_of_z/source/bin_{i}'].value
+            z = f['n_of_z/source/z'][:]
+            Nz = f[f'n_of_z/source/bin_{i}'][:]
             T = sacc.Tracer(f"LSST source_{i}", b"spin2", z, Nz, exp_sample=b"LSST-source")
             tracers.append(T)
 
         for i in range(nbin_lens):
-            z = f['n_of_z/lens/z'].value
-            Nz = f[f'n_of_z/lens/bin_{i}'].value
+            z = f['n_of_z/lens/z'][:]
+            Nz = f[f'n_of_z/lens/bin_{i}'][:]
             T = sacc.Tracer(f"LSST lens_{i}", b"spin0", z, Nz, exp_sample=b"LSST-lens")
             tracers.append(T)
 
