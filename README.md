@@ -88,6 +88,8 @@ source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori-nompi
 # When submitting jobs:
 source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
 
+export HDF5_USE_FILE_LOCKING=FALSE
+
 ```
 
 
