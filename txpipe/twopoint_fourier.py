@@ -208,7 +208,7 @@ class TXTwoPointFourier(PipelineStage):
             if apod_size > 0:
                 if self.rank==0:
                     print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
-                mask = nmt.mask_apodization(mask, lx, ly, apod_size, apotype=apod_type)
+                mask = nmt.mask_apodization_flat(mask, lx, ly, apod_size, apotype=apod_type)
             elif self.rank==0:
                 print("Not apodizing mask.")
 
