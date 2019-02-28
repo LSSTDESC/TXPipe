@@ -2,7 +2,6 @@ import pymaster as nmt
 import numpy as np
 
 class MyNmtBinFlat(nmt.NmtBinFlat):
-    is_flat = True
     def __init__(self, l0, lf):
         super().__init__(l0, lf)
         self.ell_min = l0
@@ -25,7 +24,10 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
         return c_ell[b0:b1+1].mean()
 
 class MyNmtBin(nmt.NmtBin):
-    is_flat = False
+    def __init__(self, nside, bpws=None, ells=None, weights=None, nlb=None, lmax=None):
+        super().__init__(nside, bpws=bpws, ells=ells, weights=weights, nlb=nlb, lmax=lmax)
+        self.ell_max = self.lmax
+
     def get_window(self, b):
         ls = self.get_ell_list(b)
         w = self.get_weight_list(b)

@@ -414,7 +414,10 @@ class TXTwoPointFourier(PipelineStage):
         # earlier on and put them in the noise dictionary
         noise_level = noise[(i,k)]
 
-        n = ell_bins.get_n_bands()
+        if ell_bins.is_flat():
+            n = ell_bins.get_n_bands()
+        else:
+            n = w.wsp.lmax + 1
 
         # ell-by-ell noise level of the right size
         N1 = np.ones(n) * noise[(i,k)]
@@ -428,11 +431,12 @@ class TXTwoPointFourier(PipelineStage):
         else:
             N2 = [N1]
 
-        # # Run the same decoupling process that we will use
-        # # on the full spectra
-        N_b = w.decouple_cell(N2)
-
-        return N_b
+        if ell_bins.is_flat():
+            ell = ell_bins.get_effective_ells()
+            N3 = w.couple_cell(ell, N2)
+        else:
+            N3 = w.couple_cell(N2)
+        return N3
 
 
     def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins, cl_noise, theory):
@@ -473,9 +477,9 @@ class TXTwoPointFourier(PipelineStage):
 
         noise = {}
         for i in range(nbin_source):
-            noise[(i,SHEAR_SHEAR)] = sigma_e[i]**2 / n_eff[i]
+            noise[(i,SHEAR_SHEAR)] = f_sky*sigma_e[i]**2 / n_eff[i]
         for i in range(nbin_lens):
-            noise[(i,POS_POS)] = 1.0 / n_lens[i]
+            noise[(i,POS_POS)] = f_sky / n_lens[i]
 
         warnings.warn("Using unweighted lens samples here")
 
