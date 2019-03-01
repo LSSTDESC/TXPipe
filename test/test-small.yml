@@ -4,18 +4,19 @@ modules: txpipe
 
 
 stages:
-    - name: PZPDFMLZ
+    - name: TXRandomPhotozPDF
       nprocess: 1
     - name: TXSelector
       nprocess: 1
     - name: TXDiagnosticMaps
       nprocess: 1
-    - name: TXTwoPointFourier
-      nprocess: 1
     - name: TXPhotozStack
       nprocess: 1
     - name: TXRandomCat
       nprocess: 1
+    - name: TXTwoPointFourier
+      nprocess: 1
+    - name: TXFourierGaussianCovariance
 
 
 output_dir: ./outputs
