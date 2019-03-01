@@ -43,7 +43,7 @@ class TXTwoPointFourier(PipelineStage):
         ('tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
-        ('twopoint_data_fourier', CSVFile)
+        ('twopoint_data_fourier', SACCFile)
     ]
 
     config_options = {
@@ -623,13 +623,9 @@ class TXTwoPointFourier(PipelineStage):
         output_df_shear_position = pd.DataFrame({'ell':output[output['corr_type']=='CdE']['l'],'measured_statistic':output[output['corr_type']=='CdE']['value']})
         output_df_position_position = pd.DataFrame({'ell':output[output['corr_type']=='Cdd']['l'],'measured_statistic':output[output['corr_type']=='Cdd']['value']})
 
-        output_shear_shear = CSVFile()
-        output_shear_position = CSVFile()
-        output_position_poisiton = CSVFile()
-
-        output_shear_shear.write_output('l+'+self.get_output,output_df_shear_shear)
-        output_shear_position.write_output('gl'+self.get_output,output_df_shear_position)
-        output_position_position.write_output('gg'+self.get_output,output_df_position_position)
+        output_df_shear_shear.to_csv(name)('l+'+self.get_output,output_df_shear_shear)
+        output_df_shear_position.to_csv('gl'+self.get_output,output_df_shear_position)
+        output_df_position_position.to_csv('gg'+self.get_output,output_df_position_position)
 
 
         binning = sacc.Binning(type, output['l'], output[

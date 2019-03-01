@@ -1,5 +1,6 @@
 from ceci import PipelineStage
 from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, import CSVFile
+import pandas as pd
 
 class TXPhotozStack(PipelineStage):
     """

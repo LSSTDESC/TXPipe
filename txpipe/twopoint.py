@@ -1,9 +1,10 @@
 from ceci import PipelineStage
-from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
+from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, CSVFile
 import numpy as np
 import random
 import collections
 import sys
+import pandas as pd
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -24,7 +25,7 @@ class TXTwoPoint(PipelineStage):
         ('random_cats', RandomsCatalog)
     ]
     outputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_real', CSVFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -198,6 +199,19 @@ class TXTwoPoint(PipelineStage):
         s.printInfo()
         output_filename = self.get_output("twopoint_data")
         s.saveToHDF(output_filename)
+
+        output_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='xip]['l'],'measured_statistic':output[output['corr_type']=='xip']['value']})
+        utput_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='xim]['l'],'measured_statistic':output[output['corr_type']=='xim']['value']})
+        output_df_shear_position = pd.DataFrame({'ell':output[output['corr_type']=='gammat']['l'],'measured_statistic':output[output['corr_type']=='gammat']['value']})
+        output_df_position_position = pd.DataFrame({'ell':output[output['corr_type']=='wtheta']['l'],'measured_statistic':output[output['corr_type']=='wtheta']['value']})
+
+        output_shear_shear = CSVFile()
+        output_shear_position = CSVFile()
+        output_position_poisiton = CSVFile()
+
+        output_shear_shear.write_output('l+'+self.get_output,output_df_shear_shear)
+        output_shear_position.write_output('gl'+self.get_output,output_df_shear_position)
+        output_position_position.write_output('gg'+self.get_output,output_df_position_position)
 
     def call_treecorr(self,i,j,k):
         """
