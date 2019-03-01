@@ -200,8 +200,8 @@ class TXTwoPoint(PipelineStage):
         output_filename = self.get_output("twopoint_data")
         s.saveToHDF(output_filename)
 
-        output_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='xip]['l'],'measured_statistic':output[output['corr_type']=='xip']['value']})
-        utput_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='xim]['l'],'measured_statistic':output[output['corr_type']=='xim']['value']})
+        output_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='xip']['l'],'measured_statistic':output[output['corr_type']=='xip']['value']})
+        utput_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='xim']['l'],'measured_statistic':output[output['corr_type']=='xim']['value']})
         output_df_shear_position = pd.DataFrame({'ell':output[output['corr_type']=='gammat']['l'],'measured_statistic':output[output['corr_type']=='gammat']['value']})
         output_df_position_position = pd.DataFrame({'ell':output[output['corr_type']=='wtheta']['l'],'measured_statistic':output[output['corr_type']=='wtheta']['value']})
 
