@@ -17,7 +17,7 @@ stages:
     - name: TXTwoPointFourier
       nprocess: 1
     - name: TXFourierGaussianCovariance
-
+      nprocess: 1
 
 output_dir: ./outputs
 

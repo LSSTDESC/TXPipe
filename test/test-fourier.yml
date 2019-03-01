@@ -29,7 +29,7 @@ inputs:
     photoz_trained_model: ${DATA}/photoz_trained_model.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
 
-resume: False
+resume: True
 log_dir: ./test/logs
 pipeline_log: log.txt
 

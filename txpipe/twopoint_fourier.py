@@ -612,7 +612,6 @@ class TXTwoPointFourier(PipelineStage):
                     else:
                         v = v.tolist()
                     output[f] += v
-
         binning = sacc.Binning(type, output['l'], output[
                                'i'], q1, output['j'], q2)
         mean = sacc.MeanVec(output['value'])
