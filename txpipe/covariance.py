@@ -32,8 +32,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         cosmo = self.read_cosmology()
 
         # read binning
-        binning, data_vector, ells = self.read_sacc()
-        binning_info = self.read_sacc()[0]
+        binning_info, data_vector, ells = self.read_sacc()
 
         # read the n(z) and f_sky from the source summary stats
         nz, n_eff, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
@@ -44,7 +43,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # compute covariance
         C = self.compute_covariance(binning_info, theory_c_ell, noise_c_ell, fsky)
-        self.save_outputs_firecrown(C,data_vector,ells,nz)
+        self.save_outputs_firecrown(C,data_vector,ells,nz,binning_info)
 
     def read_cosmology(self):
         import pyccl as ccl
