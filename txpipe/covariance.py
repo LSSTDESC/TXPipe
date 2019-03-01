@@ -13,7 +13,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     inputs = [
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('photoz_stack', HDFFile),  # For the n(z)
-        ('twopoint_data', SACCFile), # For the binning information,  Re
+        ('twopoint_data_fourier', SACCFile), # For the binning information,  Re
         ('diagnostic_maps', DiagnosticMaps),
         ('tomography_catalog', TomographyCatalog)
         #('photoz_pdfs', PhotozPDFFile)
