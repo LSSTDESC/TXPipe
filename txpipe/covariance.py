@@ -57,7 +57,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def read_sacc(self):
         import sacc
-        f = self.get_input('twopoint_data')
+        f = self.get_input('twopoint_data_fourier')
         sacc_data = sacc.SACC.loadFromHDF(f)
 
         codes = {
@@ -74,7 +74,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 angle = sacc_data.binning.get_angle(code1, code2, b1, b2)
                 binning[quant][(b1,b2)] = angle
         values = sacc_data.mean.vector
-        ells = [row[1] for row in s.binning.binar]
+        ells = [row[1] for row in sacc_data.binning.binar]
         return binning, values, ells
 
 
@@ -238,6 +238,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         for bin in range(self.config['nbins_source']):
             zs+=nz['z']
             dndzs+= nz.get('bin_'+bin)
-        nz_output_dic = {'z':nz['z']*, 'dndz':dndzs}
+        nz_output_dic = {'z':nz['z'], 'dndz':dndzs}
         nz_output_df = pd.DataFrame(nz_output_dic)
         nz_output_df.save_file(nz_output_name,nz_output_df)
