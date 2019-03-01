@@ -1,5 +1,5 @@
 from descformats import FitsFile, HDFFile, DataFile, YamlFile
-
+import numpy as np
 def metacalibration_names(names):
     """
     Generate the metacalibrated variants of the inputs names,
@@ -151,8 +151,9 @@ class PhotozPDFFile(HDFFile):
 
 class NumpyCSVFile():
     import numpy as np
-    def save_array(array,name):
-        np.savetxt(name+'.csv', array, delimiter=",")
+    suffix = 'csv'
+    def save_array(self,array,name):
+        np.savetxt(name, array, delimiter=",")
 
 
 class SACCFile(HDFFile):

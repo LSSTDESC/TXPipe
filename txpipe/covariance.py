@@ -19,7 +19,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     ]
 
     outputs = [
-        ('covariance', CSVFile),
+        ('covariance', NumpyCSVFile),
     ]
 
     config_options = {
@@ -71,9 +71,6 @@ class TXFourierGaussianCovariance(PipelineStage):
             for (b1, b2) in bin_pairs:
                 angle = sacc_data.binning.get_angle(code1, code2, b1, b2)
                 binning[quant][(b1,b2)] = angle
-
-        print("BINNING:")
-        print(binning['Cll'])
         return binning
 
 
@@ -205,4 +202,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         #Saving as a CSV file for now because FireCrown can import this but this
         # may eventually be saved in SACC.
         cov_output = NumpyCSVFile()
-        cov_output.save_array(cov,self.get_output('covariance'))
+        cov_output_name = self.get_output('covariance')
+        print(cov_output_name)
+        cov_output.save_array(cov,cov_output_name)
