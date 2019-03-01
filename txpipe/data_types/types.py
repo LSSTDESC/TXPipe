@@ -1,5 +1,5 @@
 from descformats import FitsFile, HDFFile, DataFile, YamlFile
-import numpy as np
+import pandas as pd
 def metacalibration_names(names):
     """
     Generate the metacalibrated variants of the inputs names,
@@ -149,12 +149,10 @@ class DiagnosticMaps(HDFFile):
 class PhotozPDFFile(HDFFile):
     required_datasets = []
 
-class NumpyCSVFile():
-    import numpy as np
+class CSVFile():
     suffix = 'csv'
-    def save_array(self,array,name):
-        np.savetxt(name, array, delimiter=",")
-
+    def save_file(self,name,dataframe):
+        dataframe.to_csv(name)
 
 class SACCFile(HDFFile):
     suffix = 'sacc'

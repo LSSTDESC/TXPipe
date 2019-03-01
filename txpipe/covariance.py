@@ -1,7 +1,8 @@
 from ceci import PipelineStage
-from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, NumpyCSVFile
+from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
 from .data_types import DiagnosticMaps
 import numpy as np
+import pandas as pd
 
 #Needed changes: 1) area is hard coded to 4sq.deg. as file is buggy. 2) code fixed to equal-spaced ell values in real space. 3)
 
@@ -19,7 +20,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     ]
 
     outputs = [
-        ('covariance', NumpyCSVFile),
+        ('covariance', CSVFile),
     ]
 
     config_options = {
@@ -201,7 +202,14 @@ class TXFourierGaussianCovariance(PipelineStage):
     def save_covariance(self,cov):
         #Saving as a CSV file for now because FireCrown can import this but this
         # may eventually be saved in SACC.
-        cov_output = NumpyCSVFile()
+        cov_output = CSVFile()
         cov_output_name = self.get_output('covariance')
-        print(cov_output_name)
-        cov_output.save_array(cov,cov_output_name)
+        is = np.range(cov.shape[0])
+        js = np.range(cov.shape[1])
+        #Note this won't be right if the matrix isn't square but we can't
+        #save this as a pandas dataframe in the way Firecrown is expecting
+        #in that case anyways.
+        vals = [cov[is[x]][js[x]] for x in range(len(is))]
+        cov_dic = {'i':is,'j':js,'cov':vals}
+        cov_df = pd.DataFrame(cov_dic)
+        cov_output.save_file(cov_output_name,cov_df)
