@@ -204,12 +204,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         # may eventually be saved in SACC.
         cov_output = CSVFile()
         cov_output_name = self.get_output('covariance')
-        is = np.range(cov.shape[0])
-        js = np.range(cov.shape[1])
+        iis = np.range(cov.shape[0])
+        jjs = np.range(cov.shape[1])
         #Note this won't be right if the matrix isn't square but we can't
         #save this as a pandas dataframe in the way Firecrown is expecting
         #in that case anyways.
-        vals = [cov[is[x]][js[x]] for x in range(len(is))]
-        cov_dic = {'i':is,'j':js,'cov':vals}
+        vals = [cov[iis[x]][jjs[x]] for x in range(len(iis))]
+        cov_dic = {'i':iis,'j':jjs,'cov':vals}
         cov_df = pd.DataFrame(cov_dic)
         cov_output.save_file(cov_output_name,cov_df)
