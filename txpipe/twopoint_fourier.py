@@ -1,11 +1,10 @@
 from ceci import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, DiagnosticMaps, HDFFile, PhotozPDFFile, CSVFile
+from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, DiagnosticMaps, HDFFile, PhotozPDFFile
 import numpy as np
 import collections
 from .utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
 import sys
 import warnings
-import pandas as pd
 
 
 # Using the same convention as in twopoint.py
@@ -43,7 +42,7 @@ class TXTwoPointFourier(PipelineStage):
         ('tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
-        ('twopoint_data_fourier', SACCFile)
+        ('twopoint_data', SACCFile)
     ]
 
     config_options = {
@@ -74,7 +73,7 @@ class TXTwoPointFourier(PipelineStage):
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
 
-        # Load in the per-bin auto-correlation noise levels and
+        # Load in the per-bin auto-correlation noise levels and 
         # mean response values
         noise, mean_R = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
 
@@ -217,16 +216,16 @@ class TXTwoPointFourier(PipelineStage):
                 # Density for gnomonic maps
                 if self.rank == 0:
                     print(f"Generating gnomonic density field {i}")
-                field = nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc)
+                field = nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc) 
                 d_fields.append(field)
 
             for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
                 # Density for gnomonic maps
                 if self.rank == 0:
                     print(f"Generating gnomonic lensing field {i}")
-                field = nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl)
+                field = nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl) 
                 wl_fields.append(field)
-
+            
 
         elif pixel_scheme.name == 'healpix':
             # Apodize the mask
@@ -247,7 +246,7 @@ class TXTwoPointFourier(PipelineStage):
             for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
                 # Density for gnomonic maps
                 print(f"Generating healpix lensing field {i}")
-                field = nmt.NmtField(mask, [g1, g2], templates=syst_wl)
+                field = nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
                 wl_fields.append(field)
 
         else:
@@ -370,7 +369,6 @@ class TXTwoPointFourier(PipelineStage):
 
 
         if k == SHEAR_SHEAR:
-            csv_output_shear_shear = {}
             ls = ell_bins.get_effective_ells()
             # Top-hat window functions
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
@@ -384,7 +382,6 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement('CBB', ls, c_BB, win, i, j))
 
         if k == POS_POS:
-            csv_output_pos_pos = {}
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             cl_noise = self.compute_noise(i,j,k,ell_bins,w00,noise)
@@ -395,7 +392,6 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement('Cdd', ls, c_dd, win, i, j))
 
         if k == SHEAR_POS:
-            csv_output_shear_pos = {}
             ls = ell_bins.get_effective_ells()
             win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
             cl_noise = self.compute_noise(i,j,k,ell_bins,w02,noise)
@@ -407,7 +403,6 @@ class TXTwoPointFourier(PipelineStage):
             c_dB = c[1]
             self.results.append(Measurement('CdE', ls, c_dE, win, i, j))
             self.results.append(Measurement('CdB', ls, c_dB, win, i, j))
-        return csv_output_shear_shear, csv_output_pos_pos, csv_output_shear_pos
 
     def compute_noise(self, i, j, k, ell_bins, w, noise):
         # No noise contribution from cross-correlations
@@ -453,7 +448,7 @@ class TXTwoPointFourier(PipelineStage):
             # correlates two fields f1 and f2 and returns an array of coupled
             # power spectra
             coupled_c_ell = nmt.compute_coupled_cell(f1, f2)
-            # Compute
+            # Compute 
             # cl_bias = nmt.deprojection_bias(f1, f2, theory)
             cl_bias = None
 
@@ -542,7 +537,7 @@ class TXTwoPointFourier(PipelineStage):
 
         for i in range(nbin_lens):
             x = tracers[i + nbin_source]
-            tag = ('P', i)
+            tag = ('P', i) 
             b = np.ones_like(x.z)
             CTracers[tag] = ccl.NumberCountsTracer(cosmo, dndz=(x.z, x.Nz),
                                         has_rsd=False, bias=(x.z,b))
@@ -556,7 +551,7 @@ class TXTwoPointFourier(PipelineStage):
                 Tj = CTracers[('S',j)]
                 # The full theory C_ell over the range 0..ellmax
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-
+                
 
         # The same for the galaxy galaxy-lensing cross-correlation
         k = SHEAR_POS
@@ -618,16 +613,6 @@ class TXTwoPointFourier(PipelineStage):
                         v = v.tolist()
                     output[f] += v
 
-        # Fix this, shouldn't be this many lines
-        output_df_shear_shear = pd.DataFrame({'ell':output[output['corr_type']=='CEE']['l'],'measured_statistic':output[output['corr_type']=='CEE']['value']})
-        output_df_shear_position = pd.DataFrame({'ell':output[output['corr_type']=='CdE']['l'],'measured_statistic':output[output['corr_type']=='CdE']['value']})
-        output_df_position_position = pd.DataFrame({'ell':output[output['corr_type']=='Cdd']['l'],'measured_statistic':output[output['corr_type']=='Cdd']['value']})
-
-        output_df_shear_shear.to_csv(name)('l+'+self.get_output,output_df_shear_shear)
-        output_df_shear_position.to_csv('gl'+self.get_output,output_df_shear_position)
-        output_df_position_position.to_csv('gg'+self.get_output,output_df_position_position)
-
-
         binning = sacc.Binning(type, output['l'], output[
                                'i'], q1, output['j'], q2)
         mean = sacc.MeanVec(output['value'])
@@ -639,3 +624,5 @@ class TXTwoPointFourier(PipelineStage):
 
 if __name__ == '__main__':
     PipelineStage.main()
+
+

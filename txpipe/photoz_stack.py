@@ -1,6 +1,5 @@
 from ceci import PipelineStage
-from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, CSVFile
-import pandas as pd
+from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile 
 
 class TXPhotozStack(PipelineStage):
     """
@@ -13,8 +12,8 @@ class TXPhotozStack(PipelineStage):
         ('tomography_catalog', TomographyCatalog)
     ]
     outputs = [
-        ('photoz_stack', CSVFile), # Haven't worked out a proper format for this yet
-
+        ('photoz_stack', HDFFile), # Haven't worked out a proper format for this yet
+            
     ]
     config_options = {
         'chunk_rows': 5000,  # number of rows to read at once
@@ -25,7 +24,7 @@ class TXPhotozStack(PipelineStage):
     def run(self):
         """
         Run the analysis for this stage.
-
+        
          - Get metadata and allocate space for output
          - Set up iterators to loop through tomography and PDF input files
          - Accumulate the PDFs for each object in each bin
@@ -67,7 +66,7 @@ class TXPhotozStack(PipelineStage):
 
         # So we just do a single loop through the pair of files.
         for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, tomography_iterator):
-            # pz_data and tomo_data are dictionaries with the keys as column names and the
+            # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
@@ -107,8 +106,10 @@ class TXPhotozStack(PipelineStage):
 
 
             # And finally save the outputs
-            self.save_result("source", nbin_source, z, source_pdfs, source_counts)
-            self.save_result("lens", nbin_lens, z, lens_pdfs, lens_counts)
+            f = self.open_output("photoz_stack")        
+            self.save_result(f, "source", nbin_source, z, source_pdfs, source_counts)
+            self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
+            f.close()
 
     def reduce(self, x):
         import numpy as np
@@ -130,8 +131,8 @@ class TXPhotozStack(PipelineStage):
             to split into.
 
         """
-        # It's a bit odd but we will just get this from the file and
-        # then close it again, because we're going to use the
+        # It's a bit odd but we will just get this from the file and 
+        # then close it again, because we're going to use the 
         # built-in iterator method to get the rest of the data
 
         # open_input is a method defined on the superclass.
@@ -153,10 +154,10 @@ class TXPhotozStack(PipelineStage):
 
 
 
-    def save_result(self, name, nbin, z, stacked_pdfs, counts):
+    def save_result(self, outfile, name, nbin, z, stacked_pdfs, counts):
         """
         Save the computed stacked photo-z bin n(z)
-
+        
         Parameters
         ----------
 
@@ -164,34 +165,32 @@ class TXPhotozStack(PipelineStage):
             Number of bins
 
         z: array of shape (nz,)
-            redshift axis
+            redshift axis 
 
         stacked_pdfs: array of shape (nbin,nz)
             n(z) per bin
 
         """
-
-        out_dic = {'z':z,'dndz':stacked_pdfs}
-        out_df = pd.DataFrame(out_dic)
-
-        out_csv = CSVFile()
-        out_name = self.get_output('photoz_stack')
-        out_csv.save_file(out_name,out_df)
-
         # This is another parent method.  It will open the result
         # as an HDF file which we then deal with.
 
         # Create a group inside for the n_of_z data we made here.
-        #group = outfile.create_group(f"n_of_z/{name}")
+        group = outfile.create_group(f"n_of_z/{name}")
 
         # HDF has "attributes" which are for small metadata like this
-        #group.attrs["nbin"] = nbin
-        #group.attrs["nz"] = len(z)
+        group.attrs["nbin"] = nbin
+        group.attrs["nz"] = len(z)
 
         # Save the redshift sampling
-        #group.create_dataset("z", data=z)
-
+        group.create_dataset("z", data=z)
+        
         # And all the bins separately
-        #for b in range(nbin):
-    #        group.attrs[f"count_{b}"] = counts[b]
-        #    group.create_dataset(f"bin_{b}", data=stacked_pdfs[b])
+        for b in range(nbin):
+            group.attrs[f"count_{b}"] = counts[b]
+            group.create_dataset(f"bin_{b}", data=stacked_pdfs[b])
+
+
+
+
+
+

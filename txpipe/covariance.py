@@ -32,6 +32,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         cosmo = self.read_cosmology()
 
         # read binning
+        binning, data_vector, ells = self.read_sacc()
         binning_info = self.read_binning()
 
         # read the n(z) and f_sky from the source summary stats
@@ -43,7 +44,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # compute covariance
         C = self.compute_covariance(binning_info, theory_c_ell, noise_c_ell, fsky)
-        self.save_covariance(C)
+        self.save_outputs_firecrown(C,data_vector,ells,nz)
 
     def read_cosmology(self):
         import pyccl as ccl
@@ -54,7 +55,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         print(cosmo)
         return cosmo
 
-    def read_binning(self):
+    def read_sacc(self):
         import sacc
         f = self.get_input('twopoint_data')
         sacc_data = sacc.SACC.loadFromHDF(f)
@@ -72,7 +73,9 @@ class TXFourierGaussianCovariance(PipelineStage):
             for (b1, b2) in bin_pairs:
                 angle = sacc_data.binning.get_angle(code1, code2, b1, b2)
                 binning[quant][(b1,b2)] = angle
-        return binning
+        values = sacc_data.mean.vector
+        ells = [row[1] for row in s.binning.binar]
+        return binning, values, ells
 
 
     def read_number_statistics(self):
@@ -199,9 +202,13 @@ class TXFourierGaussianCovariance(PipelineStage):
                     indexcol = 0
         return cov
 
-    def save_covariance(self,cov):
+    def save_outputs_firecrown(self,cov,data_vector,ells,nz,binning):
         #Saving as a CSV file for now because FireCrown can import this but this
         # may eventually be saved in SACC.
+
+        # cov formats
+        # cov=np.zeros((len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell)))
+
         cov_output = CSVFile()
         cov_output_name = self.get_output('covariance')
         iis = np.range(cov.shape[0])
@@ -213,3 +220,24 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov_dic = {'i':iis,'j':jjs,'cov':vals}
         cov_df = pd.DataFrame(cov_dic)
         cov_output.save_file(cov_output_name,cov_df)
+
+        data_output = CSVFile()
+        data_out_name = 'data_vec.csv'
+        data_output_dic = {'ell':ells, 'measured_statistic':data_vector}
+        data_output_df = pd.DataFrame(data_output_dic)
+        data_output_df.save_file(data_output_name,data_output_df)
+
+        nz_output = CSVFile()
+        nz_out_name = 'nz_vec.csv'
+        zs = []
+        dndzs = []
+        #Change this to reference the binning
+        for bin in range(self.config['nbins_lens']):
+            zs+=nz['z']
+            dndzs+= nz.get('bin_'+bin)
+        for bin in range(self.config['nbins_source']):
+            zs+=nz['z']
+            dndzs+= nz.get('bin_'+bin)
+        nz_output_dic = {'z':nz['z']*, 'dndz':dndzs}
+        nz_output_df = pd.DataFrame(nz_output_dic)
+        nz_output_df.save_file(nz_output_name,nz_output_df)
