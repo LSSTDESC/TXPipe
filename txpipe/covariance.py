@@ -33,7 +33,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # read binning
         binning, data_vector, ells = self.read_sacc()
-        binning_info = self.read_binning()
+        binning_info = self.read_sacc()[0]
 
         # read the n(z) and f_sky from the source summary stats
         nz, n_eff, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
