@@ -210,8 +210,8 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         cov_output = CSVFile()
         cov_output_name = self.get_output('covariance')
-        iis = np.range(cov.shape[0])
-        jjs = np.range(cov.shape[1])
+        iis = range(cov.shape[0])
+        jjs = range(cov.shape[1])
         #Note this won't be right if the matrix isn't square but we can't
         #save this as a pandas dataframe in the way Firecrown is expecting
         #in that case anyways.
@@ -221,22 +221,22 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov_output.save_file(cov_output_name,cov_df)
 
         data_output = CSVFile()
-        data_out_name = 'data_vec.csv'
+        data_out_name = './outputs/data_vec.csv'
         data_output_dic = {'ell':ells, 'measured_statistic':data_vector}
         data_output_df = pd.DataFrame(data_output_dic)
-        data_output_df.save_file(data_output_name,data_output_df)
+        data_output_df.to_csv(data_out_name)
 
         nz_output = CSVFile()
-        nz_out_name = 'nz_vec.csv'
+        nz_out_name = './outputs/nz_vec.csv'
         zs = []
         dndzs = []
         #Change this to reference the binning
-        for bin in range(self.config['nbins_lens']):
+        for bin in range(0):
             zs+=nz['z']
-            dndzs+= nz.get('bin_'+bin)
-        for bin in range(self.config['nbins_source']):
-            zs+=nz['z']
-            dndzs+= nz.get('bin_'+bin)
-        nz_output_dic = {'z':nz['z'], 'dndz':dndzs}
+            dndzs+= list(nz.get('bin_'+str(bin)))
+        for bin in range(3):
+            zs+=list(nz['z'])
+            dndzs+= list(nz.get('bin_'+str(bin)))
+        nz_output_dic = {'z':zs, 'dndz':dndzs}
         nz_output_df = pd.DataFrame(nz_output_dic)
-        nz_output_df.save_file(nz_output_name,nz_output_df)
+        nz_output_df.to_csv(nz_out_name)
