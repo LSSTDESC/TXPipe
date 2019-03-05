@@ -199,18 +199,34 @@ class TXTwoPoint(PipelineStage):
 
         tracers = []
 
-        for i in range(nbins_source):
-            z = f['n_of_z/source/z'].value
-            Nz = f[f'n_of_z/source/bin_{i}'].value
-            T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
-            tracers.append(T)
+        if len(self.config['source_bins'] == 0) and len(self.config['lens_bins'] ==0):
+            run_all = True
 
-        for i in range(nbins_lens):
-            z = f['n_of_z/lens/z'].value
-            Nz = f[f'n_of_z/lens/bin_{i}'].value
-            T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
-            tracers.append(T)
+        if run_all:
+            for i in range(nbins_source):
+                z = f['n_of_z/source/z'].value
+                Nz = f[f'n_of_z/source/bin_{i}'].value
+                T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
+                tracers.append(T)
 
+            for i in range(nbins_lens):
+                z = f['n_of_z/lens/z'].value
+                Nz = f[f'n_of_z/lens/bin_{i}'].value
+                T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
+                tracers.append(T)
+
+        else:
+            for i in self.config['source_bins']:
+                z = f['n_of_z/source/z'].value
+                Nz = f[f'n_of_z/source/bin_{i}'].value
+                T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
+                tracers.append(T)
+
+            for i in self.config['lens_bins']:
+                z = f['n_of_z/lens/z'].value
+                Nz = f[f'n_of_z/lens/bin_{i}'].value
+                T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
+                tracers.append(T)
 
         f.close()
 
