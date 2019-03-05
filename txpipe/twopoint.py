@@ -57,7 +57,7 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if self.config['source_bins'] == 0 and self.config['lens_bins'] == 0:
+        if len(self.config['source_bins'] == 0) and len(self.config['lens_bins'] == 0):
             # Get the number of bins from the
             # tomography input file
             # if the user did not select specific bins
