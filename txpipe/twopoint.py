@@ -57,7 +57,7 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if self.config['source_bins'] == 0 and self.config['lens_bins']:
+        if self.config['source_bins'] == 0 and self.config['lens_bins'] == 0:
             # Get the number of bins from the
             # tomography input file
             # if the user did not select specific bins
@@ -66,10 +66,7 @@ class TXTwoPoint(PipelineStage):
         else:
             # Otherwise use the bins the user
             # selected in the config
-            nbins_source = len(self.config['source_bins'])
-            nbins_lens = len(self.config['lens_bins'])
-
-            #nbins_source, nbins_lens = ...
+            nbins_source, nbins_lens = self.read_selec_bins()
 
         print(f'Running with {nbins_source} source bins and {nbins_lens} lens bins')
 
@@ -103,25 +100,50 @@ class TXTwoPoint(PipelineStage):
 
     def select_calculations(self, nbins_source, nbins_lens):
         calcs = []
+        # check if we are running all bins or selected bins
+        if len(self.config['source_bins'] == 0) and len(self.config['lens_bins'] ==0):
+            run_all = True
 
         # For shear-shear we omit pairs with j<i
         k = SHEAR_SHEAR
-        for i in range(nbins_source):
-            for j in range(i+1):
-                calcs.append((i,j,k))
+        if run_all:
+            for i in range(nbins_source):
+                for j in range(i+1):
+                    calcs.append((i,j,k))
+
+        else:
+            for i in self.config['source_bins']:
+                for j in self.config['source_bins']:
+                    if j > i:
+                        continue
+                    else:
+                        calcs.append((i,j,k))
 
         # For shear-position we use all pairs
         k = SHEAR_POS
-        for i in range(nbins_source):
-            for j in range(nbins_lens):
-                calcs.append((i,j,k))
+        if run_all: 
+            for i in range(nbins_source):
+                for j in range(nbins_lens):
+                    calcs.append((i,j,k))
+
+        else:
+            for i in self.config['source_bins']:
+                for j in self.config['lens_bins']:
+                    calcs.append((i,j,k))
 
         # For position-position we omit pairs with j<i
         k = POS_POS
-        for i in range(nbins_lens):
-            for j in range(i+1):
-                calcs.append((i,j,k))
-
+        if run_all:
+            for i in range(nbins_lens):
+                for j in range(i+1):
+                    calcs.append((i,j,k))
+        else:
+            for i in self.config['lens_bins']:
+                for j in self.config['lens_bins']:
+                    if j > i:
+                        continue
+                    else:
+                        calcs.append((i,j,k))
         return calcs
 
     def collect_results(self):
