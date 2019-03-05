@@ -37,6 +37,8 @@ class TXTwoPoint(PipelineStage):
         'flip_g2':True,
         'cores_per_task':20,
         'verbose':1,
+        'source_bins':[],
+        'lens_bins':[]
         }
 
     def run(self):
@@ -55,11 +57,22 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        # Get the number of bins from the
-        # tomography input file
-        nbins_source, nbins_lens  = self.read_nbins()
+        if self.config['source_bins'] == 0 and self.config['lens_bins']:
+            # Get the number of bins from the
+            # tomography input file
+            # if the user did not select specific bins
+            nbins_source, nbins_lens  = self.read_nbins()
+
+        else:
+            # Otherwise use the bins the user
+            # selected in the config
+            nbins_source = len(self.config['source_bins'])
+            nbins_lens = len(self.config['lens_bins'])
+
+            #nbins_source, nbins_lens = ...
 
         print(f'Running with {nbins_source} source bins and {nbins_lens} lens bins')
+
 
         # Various setup and input functions.
         self.load_tomography()
@@ -137,6 +150,25 @@ class TXTwoPoint(PipelineStage):
         nbin_source = d['nbin_source']
         nbin_lens = d['nbin_lens']
         return nbin_source, nbin_lens
+
+    def read_selec_bins(self):
+        list_source_bin = self.config['source_bins']
+        list_lens_bin = self.config['lens_bins']
+        nbin_source = len(list_source_bin)
+        nbin_lens = len(list_lens_bin)
+
+        # catch bad input
+        tom_nbin_source, tom_nbin_lens = self.read_nbins()
+        # if more bins are input than exist, assertion error
+        assert (nbin_source < tom_nbin_source) and (nbin_lens < tom_nbin_lens), 'too many bins'
+        # make sure the bin numbers actually exist
+        for i in list_source_bin:
+            assert i in range(tom_nbin_source), 'source bin {i} is out of bounds'
+        for j in list_lens_bin:
+            assert j in range(tom_nbin_lens), 'lens bin {j} is out of bounds'
+        # if the inputs are fine pass them along
+        return nbin_source, nbin_lens 
+
 
     def write_output(self, nbins_source, nbins_lens, meta):
         import sacc
