@@ -61,15 +61,11 @@ class TXTwoPoint(PipelineStage):
             # Get the number of bins from the
             # tomography input file
             # if the user did not select specific bins
-            nbins_source, nbins_lens  = self.read_nbins()
-            source_list = range(nbins_source)
-            lens_list = range(nbins_lens)
+            nbins_source, nbins_lens, source_list, lens_list  = self.read_nbins()
         else:
             # Otherwise use the bins the user
             # selected in the config
-            nbins_source, nbins_lens = self.read_selec_bins()
-            source_list = self.config['source_bins']
-            lens_list = self.config['lens_bins']
+            nbins_source, nbins_lens, source_list, lens_list = self.read_selec_bins()
 
         print(f'Running with {nbins_source} source bins and {nbins_lens} lens bins')
 
@@ -151,11 +147,15 @@ class TXTwoPoint(PipelineStage):
         tomo.close()
         nbin_source = d['nbin_source']
         nbin_lens = d['nbin_lens']
-        return nbin_source, nbin_lens
+        source_list = range(nbin_source)
+        lens_list = range(nbin_lens)
+        return nbin_source, nbin_lens, source_list, lens_list
 
     def read_selec_bins(self):
-        list_source_bin = self.config['source_bins']
-        list_lens_bin = self.config['lens_bins']
+        # TODO handle the case where the user only specefies 
+        # bins for only sources or only lenses
+        source_list = self.config['source_bins']
+        lens_list = self.config['lens_bins']
         nbin_source = len(list_source_bin)
         nbin_lens = len(list_lens_bin)
 
@@ -164,12 +164,12 @@ class TXTwoPoint(PipelineStage):
         # if more bins are input than exist, assertion error
         assert (nbin_source < tom_nbin_source) and (nbin_lens < tom_nbin_lens), 'too many bins'
         # make sure the bin numbers actually exist
-        for i in list_source_bin:
+        for i in source_list:
             assert i in range(tom_nbin_source), 'source bin {i} is out of bounds'
-        for j in list_lens_bin:
+        for j in lens_list:
             assert j in range(tom_nbin_lens), 'lens bin {j} is out of bounds'
-        # if the inputs are fine pass them along
-        return nbin_source, nbin_lens 
+            
+        return nbin_source, nbin_lens, source_list, lens_list 
 
 
     def write_output(self, source_list, lens_list, meta):
