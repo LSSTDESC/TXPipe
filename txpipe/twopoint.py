@@ -62,11 +62,14 @@ class TXTwoPoint(PipelineStage):
             # tomography input file
             # if the user did not select specific bins
             nbins_source, nbins_lens  = self.read_nbins()
-
+            source_list = range(nbins_source)
+            lens_list = range(nbins_lens)
         else:
             # Otherwise use the bins the user
             # selected in the config
             nbins_source, nbins_lens = self.read_selec_bins()
+            source_list = self.config['source_bins']
+            lens_list = self.config['lens_bins']
 
         print(f'Running with {nbins_source} source bins and {nbins_lens} lens bins')
 
@@ -78,7 +81,7 @@ class TXTwoPoint(PipelineStage):
         self.setup_results()
         meta = self.calc_metadata(nbins_source)
 
-        calcs = self.select_calculations(nbins_source, nbins_lens)
+        calcs = self.select_calculations(source_list, lens_list)
         if self.rank==0:
             print(f"Running these calculations: {calcs}")
         # This splits the calculations among the parallel bins
@@ -95,55 +98,32 @@ class TXTwoPoint(PipelineStage):
         # just copy all the results to the root process
         # to output
         if self.rank==0:
-            self.write_output(nbins_source, nbins_lens, meta)
+            self.write_output(source_list, lens_list, meta)
 
 
-    def select_calculations(self, nbins_source, nbins_lens):
+    def select_calculations(self, source_list, lens_list):
         calcs = []
-        # check if we are running all bins or selected bins
-        if len(self.config['source_bins'] == 0) and len(self.config['lens_bins'] ==0):
-            run_all = True
 
         # For shear-shear we omit pairs with j<i
         k = SHEAR_SHEAR
-        if run_all:
-            for i in range(nbins_source):
-                for j in range(i+1):
+        for i in source_list:
+            for j in range(i+1):
+                if j in source_list:
                     calcs.append((i,j,k))
-
-        else:
-            for i in self.config['source_bins']:
-                for j in self.config['source_bins']:
-                    if j > i:
-                        continue
-                    else:
-                        calcs.append((i,j,k))
 
         # For shear-position we use all pairs
         k = SHEAR_POS
-        if run_all: 
-            for i in range(nbins_source):
-                for j in range(nbins_lens):
-                    calcs.append((i,j,k))
-
-        else:
-            for i in self.config['source_bins']:
-                for j in self.config['lens_bins']:
-                    calcs.append((i,j,k))
+        for i in source_list:
+            for j in lens_list:
+                calcs.append((i,j,k))
 
         # For position-position we omit pairs with j<i
         k = POS_POS
-        if run_all:
-            for i in range(nbins_lens):
-                for j in range(i+1):
+        for i in lens_list:
+            for j in range(i+1):
+                if j in lens_list:
                     calcs.append((i,j,k))
-        else:
-            for i in self.config['lens_bins']:
-                for j in self.config['lens_bins']:
-                    if j > i:
-                        continue
-                    else:
-                        calcs.append((i,j,k))
+
         return calcs
 
     def collect_results(self):
@@ -192,41 +172,25 @@ class TXTwoPoint(PipelineStage):
         return nbin_source, nbin_lens 
 
 
-    def write_output(self, nbins_source, nbins_lens, meta):
+    def write_output(self, source_list, lens_list, meta):
         import sacc
         # TODO fix this to account for the case where we only do a certain number of calcs
         f = self.open_input('photoz_stack')
 
         tracers = []
 
-        if len(self.config['source_bins'] == 0) and len(self.config['lens_bins'] ==0):
-            run_all = True
+        for i in source_list:
+            z = f['n_of_z/source/z'].value
+            Nz = f[f'n_of_z/source/bin_{i}'].value
+            T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
+            tracers.append(T)
 
-        if run_all:
-            for i in range(nbins_source):
-                z = f['n_of_z/source/z'].value
-                Nz = f[f'n_of_z/source/bin_{i}'].value
-                T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
-                tracers.append(T)
+        for i in lens_list:
+            z = f['n_of_z/lens/z'].value
+            Nz = f[f'n_of_z/lens/bin_{i}'].value
+            T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
+            tracers.append(T)
 
-            for i in range(nbins_lens):
-                z = f['n_of_z/lens/z'].value
-                Nz = f[f'n_of_z/lens/bin_{i}'].value
-                T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
-                tracers.append(T)
-
-        else:
-            for i in self.config['source_bins']:
-                z = f['n_of_z/source/z'].value
-                Nz = f[f'n_of_z/source/bin_{i}'].value
-                T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
-                tracers.append(T)
-
-            for i in self.config['lens_bins']:
-                z = f['n_of_z/lens/z'].value
-                Nz = f[f'n_of_z/lens/bin_{i}'].value
-                T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
-                tracers.append(T)
 
         f.close()
 
