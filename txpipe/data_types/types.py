@@ -1,5 +1,5 @@
 from descformats import FitsFile, HDFFile, DataFile, YamlFile
-
+import pandas as pd
 def metacalibration_names(names):
     """
     Generate the metacalibrated variants of the inputs names,
@@ -18,15 +18,15 @@ class MetacalCatalog(FitsFile):
     """
     # These are columns
     metacal_columns = [
-        'mcal_g', 'mcal_g_cov',  'mcal_pars',  'mcal_pars_cov', 
+        'mcal_g', 'mcal_g_cov',  'mcal_pars',  'mcal_pars_cov',
         'mcal_T', 'mcal_T_err', 'mcal_T_r', 'mcal_s2n_r',]
 
-    other_columns = ['mcal_flux_cov', 'mcal_weight', 'mcal_flux', 
+    other_columns = ['mcal_flux_cov', 'mcal_weight', 'mcal_flux',
         'mcal_flux_s2n', 'mcal_mag', 'mcal_gpsf', 'mcal_logsb', 'mcal_Tpsf']
 
     # The parent class will check these columns exist.
-    required_columns = ( metacal_columns 
-                        + metacalibration_names(metacal_columns) 
+    required_columns = ( metacal_columns
+                        + metacalibration_names(metacal_columns)
                         + other_columns )
 
     # Add methods for handling here ...
@@ -149,10 +149,13 @@ class DiagnosticMaps(HDFFile):
 class PhotozPDFFile(HDFFile):
     required_datasets = []
 
+class CSVFile():
+    suffix = 'csv'
+    def save_file(self,name,dataframe):
+        dataframe.to_csv(name)
 
 class SACCFile(HDFFile):
     suffix = 'sacc'
-
 
 
 class NOfZFile(HDFFile):

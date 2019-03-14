@@ -42,7 +42,7 @@ class TXTwoPointFourier(PipelineStage):
         ('tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
-        ('twopoint_data', SACCFile)
+        ('twopoint_data_fourier', SACCFile)
     ]
 
     config_options = {
@@ -618,7 +618,7 @@ class TXTwoPointFourier(PipelineStage):
         mean = sacc.MeanVec(output['value'])
         s = sacc.SACC(tracers, binning, mean)
         s.printInfo()
-        output_filename = self.get_output("twopoint_data")
+        output_filename = self.get_output("twopoint_data_fourier")
         s.saveToHDF(output_filename)
 
 
