@@ -34,12 +34,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         # read the n(z) and f_sky from the source summary stats
         nz, n_eff, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
 
+        # read the lensing binning
+        binning_info_lensing, data_vector_lensing, ells_lensing = self.read_sacc('Cll')
+
         # calculate the overall total C_ell values, including noise
         theory_c_ell_lensing, theory_c_ell_galaxy_galaxy, theory_c_ell_clustering = self.compute_theory_c_ell(cosmo, nz, binning_info)
         noise_c_ell_lensing, noise_c_ell_galaxy_galaxy, noise_c_ell_clustering = self.compute_noise_c_ell(n_eff, sigma_e, binning_info)
-
-        # read the lensing binning
-        binning_info_lensing, data_vector_lensing, ells_lensing = self.read_sacc('Cll')
 
         # compute the lensing covariance
         C_lensing = self.compute_covariance_lensing(binning_info_lensing, theory_c_ell_lensing, noise_c_ell_lensing, fsky)
