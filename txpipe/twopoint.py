@@ -15,6 +15,13 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
+XIP = "shear_xi_plus"
+XIM = "shear_xi_minus"
+GAMMAT = "ggl_gamma_t"
+WTHETA = "galaxy_density_w"
+
+
+
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
@@ -118,14 +125,9 @@ class TXTwoPoint(PipelineStage):
 
         self.results = self.comm.gather(self.results, root=0)
 
+        # Concatenate results on master
         if self.rank==0:
-            # Concatenate results
             self.results = sum(self.results, [])
-
-            # Order by type, then bin i, then bin j
-            order = [b'xip', b'xim', b'gammat', b'wtheta']
-            key = lambda r: (order.index(r.corr_type), r.i, r.j)
-            self.results = sorted(self.results, key=key)
 
     def setup_results(self):
         self.results = []
@@ -139,66 +141,48 @@ class TXTwoPoint(PipelineStage):
         nbin_lens = d['nbin_lens']
         return nbin_source, nbin_lens
 
-    def write_output(self, nbins_source, nbins_lens, meta):
-        import sacc
-        # TODO fix this to account for the case where we only do a certain number of calcs
+
+
+    def write_output(self, nbin_source, nbin_lens, meta):
+        import sacc2
+
+        S = sacc2.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
         f = self.open_input('photoz_stack')
 
-        tracers = []
+        # F
+        for i in range(nbin_source):
+            z = f['n_of_z/source/z'][:]
+            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            S.add_tracer('NZ', f'source_{i}', z, Nz)
 
-        for i in range(nbins_source):
-            z = f['n_of_z/source/z'].value
-            Nz = f[f'n_of_z/source/bin_{i}'].value
-            T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
-            tracers.append(T)
-
-        for i in range(nbins_lens):
-            z = f['n_of_z/lens/z'].value
-            Nz = f[f'n_of_z/lens/bin_{i}'].value
-            T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
-            tracers.append(T)
-
+        for i in range(nbin_lens):
+            z = f['n_of_z/lens/z'][:]
+            Nz = f[f'n_of_z/lens/bin_{i}'][:]
+            S.add_tracer('NZ', f'lens_{i}', z, Nz)
 
         f.close()
 
-        fields = ['corr_type', 'theta', 'value', 'error', 'npair', 'weight', 'i', 'j']
-        output = {f:list() for f in fields}
+        for d in self.results:
+            tracer1 = f'source_{d.i}' if d.corr_type in [XIP, XIM, GAMMAT] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [XIP, XIM] else f'lens_{d.j}'
+            n = len(d.value)
+            for i in range(n):
+                S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i], 
+                    theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
-        q1 = []
-        q2 = []
-        type = []
-        for corr_type in [b'xip', b'xim', b'gammat', b'wtheta']:
-            data = [r for r in self.results if r.corr_type==corr_type]
-            for bin_pair_data in data:
-                n = len(bin_pair_data.theta)
-                type+=['Corr' for i in range(n)]
+        for k,v in meta.items():
+            if np.isscalar(v):
+                S.metadata[k] = v
+            else:
+                for i, vi in enumerate(v):
+                    S.metadata[f'{k}_{i}'] = vi
+        S.to_canonical_order()
+        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
 
-                if corr_type==b'gammat':
-                    q1 += ['P' for i in range(n)]
-                    q2 += ['S' for i in range(n)]
-                elif corr_type==b'wtheta':
-                    q1 += ['P' for i in range(n)]
-                    q2 += ['P' for i in range(n)]
-                elif corr_type==b'xip':
-                    q1 += ['+' for i in range(n)]
-                    q2 += ['+' for i in range(n)]
-                elif corr_type==b'xim':
-                    q1 += ['-' for i in range(n)]
-                    q2 += ['-' for i in range(n)]
-                for f in fields:
-                    v = getattr(bin_pair_data, f)
-                    if np.isscalar(v):
-                        v = [v for i in range(n)]
-                    else:
-                        v = v.tolist()
-                    output[f] += v
 
-        binning=sacc.Binning(type,output['theta'],output['i'],q1,output['j'],q2)
-        mean=sacc.MeanVec(output['value'])
-        s=sacc.SACC(tracers,binning,mean,meta=meta)
-        s.printInfo()
-        output_filename = self.get_output("twopoint_data")
-        s.saveToHDF(output_filename)
 
     def call_treecorr(self,i,j,k):
         """
@@ -217,8 +201,8 @@ class TXTwoPoint(PipelineStage):
                 npairs/=2
                 weight/=2
 
-            self.results.append(Measurement(b"xip", theta, xip, xiperr, npairs, weight, i, j))
-            self.results.append(Measurement(b"xim", theta, xim, ximerr, npairs, weight, i, j))
+            self.results.append(Measurement(XIP, theta, xip, xiperr, npairs, weight, i, j))
+            self.results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
 
         elif k==SHEAR_POS: # gammat
             theta, val, err, npairs, weight = self.calc_shear_pos(i,j)
@@ -226,7 +210,7 @@ class TXTwoPoint(PipelineStage):
                 npairs/=2
                 weight/=2
 
-            self.results.append(Measurement(b"gammat", theta, val, err, npairs, weight, i, j))
+            self.results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
 
         elif k==POS_POS: # wtheta
             theta, val, err, npairs, weight = self.calc_pos_pos(i,j)
@@ -234,7 +218,7 @@ class TXTwoPoint(PipelineStage):
                 npairs/=2
                 weight/=2
 
-            self.results.append(Measurement(b"wtheta", theta, val, err, npairs, weight, i, j))
+            self.results.append(Measurement(WTHETA, theta, val, err, npairs, weight, i, j))
 
 
 
