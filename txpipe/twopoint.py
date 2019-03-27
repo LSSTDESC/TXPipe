@@ -15,11 +15,6 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
-XIP = "shear_xi_plus"
-XIM = "shear_xi_minus"
-GAMMAT = "ggl_gamma_t"
-WTHETA = "galaxy_density_w"
-
 
 
 class TXTwoPoint(PipelineStage):
@@ -145,6 +140,9 @@ class TXTwoPoint(PipelineStage):
 
     def write_output(self, nbin_source, nbin_lens, meta):
         import sacc2
+        XIP = sacc2.known_types.galaxy_shear_xi_plus
+        XIM = sacc2.known_types.galaxy_shear_xi_minus
+        GAMMAT = sacc2.known_types.ggl_gamma_t
 
         S = sacc2.Sacc()
 
@@ -188,6 +186,11 @@ class TXTwoPoint(PipelineStage):
         """
         This is a wrapper for interaction with treecorr.
         """
+        import sacc2
+        XIP = sacc2.known_types.galaxy_shear_xi_plus
+        XIM = sacc2.known_types.galaxy_shear_xi_minus
+        GAMMAT = sacc2.known_types.ggl_gamma_t
+        WTHETA = sacc2.known_types.galaxy_density_w
         # k==0: xi+-
         # k==1: gammat
         # k==2: wtheta

@@ -12,6 +12,8 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
+
+
 NAMES = {SHEAR_SHEAR:"shear-shear", SHEAR_POS:"shear-position", POS_POS:"position-position"}
 
 Measurement = collections.namedtuple(
@@ -265,11 +267,6 @@ class TXTwoPointFourier(PipelineStage):
             # Concatenate results
             self.results = sum(self.results, [])
 
-            # Order by type, then bin i, then bin j
-            order = ['CEE', 'CBB', 'Cdd', 'CdE', 'CdB']
-            key = lambda r: (order.index(r.corr_type), r.i, r.j)
-            self.results = sorted(self.results, key=key)
-
     def setup_results(self):
         self.results = []
 
@@ -359,6 +356,13 @@ class TXTwoPointFourier(PipelineStage):
         # TODO: Fix window functions, and how to save them.
 
         # k refers to the type of measurement we are making
+        import sacc2
+        CEE=sacc2.known_types.galaxy_shear_ee
+        CBB=sacc2.known_types.galaxy_shear_bb
+        CdE=sacc2.known_types.ggl_E
+        CdB=sacc2.known_types.ggl_B
+        Cdd=sacc2.known_types.galaxy_density_cl
+
         type_name = NAMES[k]
         print(f"Process {self.rank} calcluating {type_name} spectrum for bin pair {i},{i}")
         sys.stdout.flush()
@@ -378,8 +382,8 @@ class TXTwoPointFourier(PipelineStage):
                 pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins, cl_noise, cl_guess)
             c_EE = c[0]
             c_BB = c[3]
-            self.results.append(Measurement('CEE', ls, c_EE, win, i, j))
-            self.results.append(Measurement('CBB', ls, c_BB, win, i, j))
+            self.results.append(Measurement(CEE, ls, c_EE, win, i, j))
+            self.results.append(Measurement(CBB, ls, c_BB, win, i, j))
 
         if k == POS_POS:
             ls = ell_bins.get_effective_ells()
@@ -389,7 +393,7 @@ class TXTwoPointFourier(PipelineStage):
             c = self.compute_one_spectrum(
                 pixel_scheme, w00, f_d[i], f_d[j], ell_bins, cl_noise, cl_guess)
             c_dd = c[0]
-            self.results.append(Measurement('Cdd', ls, c_dd, win, i, j))
+            self.results.append(Measurement(Cdd, ls, c_dd, win, i, j))
 
         if k == SHEAR_POS:
             ls = ell_bins.get_effective_ells()
@@ -401,8 +405,8 @@ class TXTwoPointFourier(PipelineStage):
                 pixel_scheme, w02, f_wl[i], f_d[j], ell_bins, cl_noise, cl_guess)
             c_dE = c[0]
             c_dB = c[1]
-            self.results.append(Measurement('CdE', ls, c_dE, win, i, j))
-            self.results.append(Measurement('CdB', ls, c_dB, win, i, j))
+            self.results.append(Measurement(CdE, ls, c_dE, win, i, j))
+            self.results.append(Measurement(CdB, ls, c_dB, win, i, j))
 
     def compute_noise(self, i, j, k, ell_bins, w, noise):
         # No noise contribution from cross-correlations
@@ -488,22 +492,24 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_tracers(self, nbin_source, nbin_lens):
-        import sacc
+        import sacc2
         f = self.open_input('photoz_stack')
 
-        tracers = []
+        tracers = {}
 
         for i in range(nbin_source):
+            name = f"source_{i}"
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
-            T = sacc.Tracer(f"LSST source_{i}", b"spin2", z, Nz, exp_sample=b"LSST-source")
-            tracers.append(T)
+            T = sacc2.BaseTracer.make("NZ", name, z, Nz)
+            tracers[name] = T
 
         for i in range(nbin_lens):
+            name = f"lens_{i}"
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
-            T = sacc.Tracer(f"LSST lens_{i}", b"spin0", z, Nz, exp_sample=b"LSST-lens")
-            tracers.append(T)
+            T = sacc2.BaseTracer.make("NZ", name, z, Nz)
+            tracers[name] = T
 
         return tracers
 
@@ -527,19 +533,19 @@ class TXTwoPointFourier(PipelineStage):
         # Lensing tracers - need to think a little more about
         # the fiducial intrinsic alignment here
         for i in range(nbin_source):
-            x = tracers[i]
+            x = tracers[f'source_{i}']
             tag = ('S', i)
-            CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z, x.Nz))
+            CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z, x.nz))
         # Position tracers - even more important to think about fiducial biases
         # here - these will be very very wrong otherwise!
         # Important enough that I'll put in a warning.
         warnings.warn("Not using galaxy bias in fiducial theory density spectra")
 
         for i in range(nbin_lens):
-            x = tracers[i + nbin_source]
+            x = tracers[f'lens_{i}']
             tag = ('P', i) 
             b = np.ones_like(x.z)
-            CTracers[tag] = ccl.NumberCountsTracer(cosmo, dndz=(x.z, x.Nz),
+            CTracers[tag] = ccl.NumberCountsTracer(cosmo, dndz=(x.z, x.nz),
                                         has_rsd=False, bias=(x.z,b))
 
         # Use CCL to actually calculate the C_ell values for the different cases
@@ -573,53 +579,32 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def save_power_spectra(self, tracers, nbin_source, nbin_lens):
-        import sacc
+        import sacc2
+        from sacc2.windows import TopHatWindow
+        CEE=sacc2.known_types.galaxy_shear_ee
+        CBB=sacc2.known_types.galaxy_shear_bb
+        CdE=sacc2.known_types.ggl_E
+        CdB=sacc2.known_types.ggl_B
+        Cdd=sacc2.known_types.galaxy_density_cl
 
-        fields = ['corr_type', 'l', 'value', 'i', 'j', 'win']
-        output = {f: list() for f in fields}
+        S = sacc2.Sacc()
 
-        q1 = []
-        q2 = []
-        type = []
-        q1s = {
-            'CEE': 'E', # Galaxy E-mode
-            'CBB': 'B', # Galaxy B-mode
-            'Cdd': 'P', # Galaxy position
-            'CdE': 'P',
-            'CdB': 'P',
-            }
-        q2s = {
-            'CEE': 'E',
-            'CBB': 'B',
-            'Cdd': 'P',
-            'CdE': 'E',
-            'CdB': 'B',
-            }
-        for corr_type in ['CEE', 'CBB', 'Cdd', 'CdE', 'CdB']:
-            data = [r for r in self.results if r.corr_type == corr_type]
-            for bin_pair_data in data:
-                n = len(bin_pair_data.l)
-                type += ['Corr' for i in range(n)]
-                q1 += [q1s[corr_type] for i in range(n)]
-                q2 += [q2s[corr_type] for i in range(n)]
+        for tracer in tracers.values():
+            S.add_tracer_object(tracer)
 
-                for f in fields:
-                    v = getattr(bin_pair_data, f)
-                    if np.isscalar(v):
-                        v = [v for i in range(n)]
-                    elif f == 'win':
-                        v = [sacc.Window(v[0], v[1])]
-                    else:
-                        v = v.tolist()
-                    output[f] += v
+        for d in self.results:
+            print(d.i, d.j, d.corr_type)
+            tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CdE, CdB] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CBB] else f'lens_{d.j}'
 
-        binning = sacc.Binning(type, output['l'], output[
-                               'i'], q1, output['j'], q2)
-        mean = sacc.MeanVec(output['value'])
-        s = sacc.SACC(tracers, binning, mean)
-        s.printInfo()
+            n = len(d.l)
+            for i in range(n):
+                win = TopHatWindow(d.win[i][0], d.win[i][1])
+                S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win)
+
+
         output_filename = self.get_output("twopoint_data_fourier")
-        s.saveToHDF(output_filename)
+        S.save_fits(output_filename, overwrite=True)
 
 
 if __name__ == '__main__':
