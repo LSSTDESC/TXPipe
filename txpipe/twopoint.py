@@ -37,8 +37,8 @@ class TXTwoPoint(PipelineStage):
         'flip_g2':True,
         'cores_per_task':20,
         'verbose':1,
-        'source_bins':[],
-        'lens_bins':[]
+        'source_bins':[-1],
+        'lens_bins':[-1]
         }
 
     def run(self):
@@ -57,7 +57,8 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if len(self.config['source_bins'] == 0) and len(self.config['lens_bins'] == 0):
+        # the default is to run all bins, which is set in the config_options above
+        if self.config['source_bins'][0] == -1 and self.config['lens_bins'][0] == -1:
             # Get the number of bins from the
             # tomography input file
             # if the user did not select specific bins
@@ -162,7 +163,8 @@ class TXTwoPoint(PipelineStage):
         # catch bad input
         tom_nbin_source, tom_nbin_lens, _, _ = self.read_nbins()
         # if more bins are input than exist, assertion error
-        assert (nbin_source < tom_nbin_source) and (nbin_lens < tom_nbin_lens), 'too many bins'
+        assert (nbin_source <= tom_nbin_source), 'too many source bins, entered {} max is {}'.format(nbin_source, tom_nbin_source)
+        assert (nbin_lens <= tom_nbin_lens), 'too many lens bins, entered {} max is {}'.format(nbin_lens, tom_nbin_lens)
         # make sure the bin numbers actually exist
         for i in source_list:
             assert i in range(tom_nbin_source), 'source bin {i} is out of bounds'
