@@ -1,5 +1,5 @@
 from descformats import FitsFile, HDFFile, DataFile, YamlFile
-
+import pandas as pd
 def metacalibration_names(names):
     """
     Generate the metacalibrated variants of the inputs names,
@@ -18,15 +18,15 @@ class MetacalCatalog(FitsFile):
     """
     # These are columns
     metacal_columns = [
-        'mcal_g', 'mcal_g_cov',  'mcal_pars',  'mcal_pars_cov', 
+        'mcal_g', 'mcal_g_cov',  'mcal_pars',  'mcal_pars_cov',
         'mcal_T', 'mcal_T_err', 'mcal_T_r', 'mcal_s2n_r',]
 
-    other_columns = ['mcal_flux_cov', 'mcal_weight', 'mcal_flux', 
+    other_columns = ['mcal_flux_cov', 'mcal_weight', 'mcal_flux',
         'mcal_flux_s2n', 'mcal_mag', 'mcal_gpsf', 'mcal_logsb', 'mcal_Tpsf']
 
     # The parent class will check these columns exist.
-    required_columns = ( metacal_columns 
-                        + metacalibration_names(metacal_columns) 
+    required_columns = ( metacal_columns
+                        + metacalibration_names(metacal_columns)
                         + other_columns )
 
     # Add methods for handling here ...
@@ -149,7 +149,54 @@ class DiagnosticMaps(HDFFile):
 class PhotozPDFFile(HDFFile):
     required_datasets = []
 
+class CSVFile():
+    suffix = 'csv'
+    def save_file(self,name,dataframe):
+        dataframe.to_csv(name)
 
 class SACCFile(HDFFile):
     suffix = 'sacc'
 
+
+class NOfZFile(HDFFile):
+    # Must have at least one bin in
+    required_datasets = ['n_of_z/lens/z', 'n_of_z/source/bin_0']
+
+    def validate(self):
+        super().validate()
+
+        for kind in ('lens', 'source'):
+            nbin = self.get_nbin(kind)
+            for b in range(nbin):
+                col_name = 'bin_{}'.format(b)
+                if not col_name in self.file[f'n_of_z/{kind}']:
+                    raise FileValidationError(f"Expected to find {nbin} bins in NOfZFile but was missing at least {col_name}")
+
+    def get_nbin(self, kind):
+        return self.file['n_of_z'][kind].attrs['nbin']
+
+    def get_n_of_z(self, kind, bin_index):
+        group = self.file['n_of_z'][kind]
+        z = group['z'][:]
+        nz = group[f'bin_{bin_index}'][:]
+        return (z, nz)
+
+    def get_n_of_z_spline(self, bin_index, kind='cubic', **kwargs):
+        import scipy.interpolate
+        z, nz = self.get_n_of_z(bin_index)
+        spline = scipy.interpolate.interp1d(z, nz, kind=kind, **kwargs)
+        return spline
+
+    def save_plot(self, filename, **fig_kw):
+        import matplotlib.pyplot as plt
+        plt.figure(**fig_kw)
+        self.plot()
+        plt.legend()
+        plt.savefig(filename)
+        plt.close()
+
+    def plot(self):
+        import matplotlib.pyplot as plt
+        for b in range(self.get_nbin()):
+            z, nz = self.get_n_of_z(b)
+            plt.plot(z, nz, label=f'Bin {b}')
