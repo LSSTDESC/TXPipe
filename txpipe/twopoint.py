@@ -156,11 +156,11 @@ class TXTwoPoint(PipelineStage):
         # bins for only sources or only lenses
         source_list = self.config['source_bins']
         lens_list = self.config['lens_bins']
-        nbin_source = len(list_source_bin)
-        nbin_lens = len(list_lens_bin)
+        nbin_source = len(source_list)
+        nbin_lens = len(lens_list)
 
         # catch bad input
-        tom_nbin_source, tom_nbin_lens = self.read_nbins()
+        tom_nbin_source, tom_nbin_lens, _, _ = self.read_nbins()
         # if more bins are input than exist, assertion error
         assert (nbin_source < tom_nbin_source) and (nbin_lens < tom_nbin_lens), 'too many bins'
         # make sure the bin numbers actually exist
