@@ -191,14 +191,8 @@ class TXTwoPoint(PipelineStage):
         XIM = sacc2.known_types.galaxy_shear_xi_minus
         GAMMAT = sacc2.known_types.ggl_gamma_t
         WTHETA = sacc2.known_types.galaxy_density_w
-        # k==0: xi+-
-        # k==1: gammat
-        # k==2: wtheta
 
-        # Cori value
-
-
-        if k==SHEAR_SHEAR: # xi+-
+        if k==SHEAR_SHEAR:
             theta, xip, xim, xiperr, ximerr, npairs, weight = self.calc_shear_shear(i,j)
             if i==j:
                 npairs/=2
@@ -207,7 +201,7 @@ class TXTwoPoint(PipelineStage):
             self.results.append(Measurement(XIP, theta, xip, xiperr, npairs, weight, i, j))
             self.results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
 
-        elif k==SHEAR_POS: # gammat
+        elif k==SHEAR_POS:
             theta, val, err, npairs, weight = self.calc_shear_pos(i,j)
             if i==j:
                 npairs/=2
@@ -215,7 +209,7 @@ class TXTwoPoint(PipelineStage):
 
             self.results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
 
-        elif k==POS_POS: # wtheta
+        elif k==POS_POS:
             theta, val, err, npairs, weight = self.calc_pos_pos(i,j)
             if i==j:
                 npairs/=2
