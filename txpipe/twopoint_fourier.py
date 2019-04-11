@@ -370,43 +370,41 @@ class TXTwoPointFourier(PipelineStage):
         # We need the theory spectrum for this pair
         theory = cl_theory[(i,j,k)]
 
-
+        # The binning information - effective (mid) ell values and
+        # the window information
+        ls = ell_bins.get_effective_ells()
+        win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
 
         if k == SHEAR_SHEAR:
-            ls = ell_bins.get_effective_ells()
-            # Top-hat window functions
-            win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            cl_noise = self.compute_noise(i,j,k,ell_bins,w22,noise)
+            workspace = w22
+            field_i = f_wl[i]
+            field_j = f_wl[j]
             cl_guess = [theory, np.zeros_like(theory), np.zeros_like(theory), np.zeros_like(theory)]
-            c = self.compute_one_spectrum(
-                pixel_scheme, w22, f_wl[i], f_wl[j], ell_bins, cl_noise, cl_guess)
-            c_EE = c[0]
-            c_BB = c[3]
-            self.results.append(Measurement(CEE, ls, c_EE, win, i, j))
-            self.results.append(Measurement(CBB, ls, c_BB, win, i, j))
+            results_to_use = [(0, CEE), (3, CBB)]
 
-        if k == POS_POS:
-            ls = ell_bins.get_effective_ells()
-            win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            cl_noise = self.compute_noise(i,j,k,ell_bins,w00,noise)
+        elif k == POS_POS:
+            workspace = w00
+            field_i = f_d[i]
+            field_j = f_d[j]
             cl_guess = [theory]
-            c = self.compute_one_spectrum(
-                pixel_scheme, w00, f_d[i], f_d[j], ell_bins, cl_noise, cl_guess)
-            c_dd = c[0]
-            self.results.append(Measurement(Cdd, ls, c_dd, win, i, j))
+            results_to_use = [(0, Cdd)]
 
-        if k == SHEAR_POS:
-            ls = ell_bins.get_effective_ells()
-            win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
-            cl_noise = self.compute_noise(i,j,k,ell_bins,w02,noise)
+        elif k == SHEAR_POS:
+            workspace = w02
+            field_i = f_wl[i]
+            field_j = f_d[j]
             cl_guess = [theory, np.zeros_like(theory)]
+            results_to_use = [(0, CdE), (1, CdB)]
 
-            c = self.compute_one_spectrum(
-                pixel_scheme, w02, f_wl[i], f_d[j], ell_bins, cl_noise, cl_guess)
-            c_dE = c[0]
-            c_dB = c[1]
-            self.results.append(Measurement(CdE, ls, c_dE, win, i, j))
-            self.results.append(Measurement(CdB, ls, c_dB, win, i, j))
+        cl_noise = self.compute_noise(i,j,k,ell_bins,workspace,noise)
+
+
+        c = self.compute_one_spectrum(
+            pixel_scheme, workspace, field_i, field_j, ell_bins, cl_noise, cl_guess)
+
+        for index, name in results_to_use:
+            self.results.append(Measurement(name, ls, c[index], win, i, j))
+
 
     def compute_noise(self, i, j, k, ell_bins, w, noise):
         # No noise contribution from cross-correlations
