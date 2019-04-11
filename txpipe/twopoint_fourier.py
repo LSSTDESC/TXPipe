@@ -591,14 +591,13 @@ class TXTwoPointFourier(PipelineStage):
             S.add_tracer_object(tracer)
 
         for d in self.results:
-            print(d.i, d.j, d.corr_type)
             tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CdE, CdB] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CBB] else f'lens_{d.j}'
 
             n = len(d.l)
             for i in range(n):
                 win = TopHatWindow(d.win[i][0], d.win[i][1])
-                S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win)
+                S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win, i=d.i, j=d.j)
 
 
         output_filename = self.get_output("twopoint_data_fourier")
