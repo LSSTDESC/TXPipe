@@ -4,19 +4,20 @@ modules: txpipe
 
 
 stages:
-    - name: PZPDFMLZ
+    - name: TXRandomPhotozPDF
       nprocess: 1
     - name: TXSelector
       nprocess: 1
     - name: TXDiagnosticMaps
       nprocess: 1
-    - name: TXTwoPointFourier
-      nprocess: 1
     - name: TXPhotozStack
       nprocess: 1
     - name: TXRandomCat
       nprocess: 1
-
+    - name: TXTwoPointFourier
+      nprocess: 1
+    - name: TXFourierGaussianCovariance
+      nprocess: 1
 
 output_dir: ./outputs
 
@@ -24,12 +25,11 @@ config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ${DATA}/mock_shear_catalog.fits
-    photometry_catalog: ${DATA}/mock_photometry_catalog.hdf
-    photoz_trained_model: ${DATA}/photoz_trained_model.npy
+    shear_catalog: ../inputs/1e5/mock_shear_catalog.fits
+    photometry_catalog: ../inputs/1e5/mock_photometry_catalog.hdf
+    photoz_trained_model: ../inputs/1e5/photoz_trained_model.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
 
 resume: True
 log_dir: ./test/logs
 pipeline_log: log.txt
-

@@ -38,7 +38,8 @@ class TXTwoPoint(PipelineStage):
         'cores_per_task':20,
         'verbose':1,
         'source_bins':[-1],
-        'lens_bins':[-1]
+        'lens_bins':[-1],
+        'reduce_randoms_size':1.0,
         }
 
     def run(self):
@@ -479,11 +480,20 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('random_cats')
         data = f['randoms']
-        self.random_dec = data['dec'][:]
-        self.random_e1 =  data['e1'][:]
-        self.random_e2 =  data['e2'][:]
-        self.random_ra =  data['ra'][:]
-        self.random_binning = data['bin'][:]
+
+        cut = self.config['reduce_randoms_size']
+        if 0.0<cut<1.0:
+            N = data['dec'].size
+            sel = np.random.uniform(size=N) < cut
+        else:
+            sel = slice(None)
+
+        self.random_dec = data['dec'][sel]
+        self.random_e1 =  data['e1'][sel]
+        self.random_e2 =  data['e2'][sel]
+        self.random_ra =  data['ra'][sel]
+        self.random_binning = data['bin'][sel]
+
         f.close()
 
 

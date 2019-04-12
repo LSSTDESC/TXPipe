@@ -10,7 +10,7 @@ TXRandomPhotozPDF:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
+    chunk_rows: 400000
 
 TXPhotozStack:
     chunk_rows: 1000000
@@ -59,3 +59,4 @@ TXDiagnosticMaps:
 TXTwoPointFourier:
     chunk_rows: 100000
     bandwidth: 50
+    apodization_size: 3.0

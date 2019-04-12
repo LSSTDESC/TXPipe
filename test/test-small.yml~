@@ -24,12 +24,11 @@ config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ${DATA}/mock_shear_catalog.fits
-    photometry_catalog: ${DATA}/mock_photometry_catalog.hdf
-    photoz_trained_model: ${DATA}/photoz_trained_model.npy
+    shear_catalog: ../inputs/1e5/mock_shear_catalog.fits
+    photometry_catalog: ../inputs/1e5/mock_photometry_catalog.hdf
+    photoz_trained_model: ../inputs/1e5/photoz_trained_model.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
 
 resume: True
 log_dir: ./test/logs
 pipeline_log: log.txt
-

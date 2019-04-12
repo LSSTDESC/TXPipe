@@ -4,13 +4,15 @@ modules: txpipe
 
 
 stages:
+    - name: TXProtoDC2Mock
+      nprocess: 1
     - name: PZPDFMLZ
       nprocess: 1
     - name: TXSelector
       nprocess: 1
     - name: TXDiagnosticMaps
       nprocess: 1
-    - name: TXTwoPoint
+    - name: TXTwoPointFourier
       nprocess: 1
     - name: TXPhotozStack
       nprocess: 1
@@ -18,18 +20,18 @@ stages:
       nprocess: 1
 
 
-output_dir: ./outputs
+output_dir: /global/cscratch1/sd/elp25/outputs-protoDC2-2
 
 config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ${DATA}/mock_shear_catalog.fits
-    photometry_catalog: ${DATA}/mock_photometry_catalog.hdf
+    #shear_catalog: ${DATA}/mock_shear_catalog.fits
+    #photometry_catalog: ${DATA}/mock_photometry_catalog.hdf
     photoz_trained_model: ${DATA}/photoz_trained_model.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
-
-resume: False
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf
+resume: True
 log_dir: ./test/logs
 pipeline_log: log.txt
 
