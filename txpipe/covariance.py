@@ -68,7 +68,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             sacc_data.indices(sacc2.known_types.galaxy_density_cl),
         ]
         mask = np.concatenate(mask)
-        sacc_data.mask(mask)
+        sacc_data.mask_indices(mask)
 
         sacc_data.to_canonical_order()
 
