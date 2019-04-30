@@ -574,7 +574,7 @@ def make_mock_photometry(n_visit, bands, data):
         mag_obs = 25 - 2.5*np.log10(n_obs/factor/t_b/n_visit)
 
         # converting error on n_obs to error on mag
-        mag_err = 2.5*np.log10(np.e)*(n_obs_err/n_obs)
+        mag_err = 2.5/np.log(10.) / obs_snr
 
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
