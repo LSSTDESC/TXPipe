@@ -37,6 +37,8 @@ class TXTwoPoint(PipelineStage):
         'flip_g2':True,
         'cores_per_task':20,
         'verbose':1,
+        'source_bins':[-1],
+        'lens_bins':[-1],
         'reduce_randoms_size':1.0,
         }
 
@@ -56,11 +58,19 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        # Get the number of bins from the
-        # tomography input file
-        nbins_source, nbins_lens  = self.read_nbins()
+        # the default is to run all bins, which is set in the config_options above
+        if self.config['source_bins'][0] == -1 and self.config['lens_bins'][0] == -1:
+            # Get the number of bins from the
+            # tomography input file
+            # if the user did not select specific bins
+            nbins_source, nbins_lens, source_list, lens_list  = self.read_nbins()
+        else:
+            # Otherwise use the bins the user
+            # selected in the config
+            nbins_source, nbins_lens, source_list, lens_list = self.read_selec_bins()
 
         print(f'Running with {nbins_source} source bins and {nbins_lens} lens bins')
+
 
         # Various setup and input functions.
         self.load_tomography()
@@ -69,7 +79,7 @@ class TXTwoPoint(PipelineStage):
         self.setup_results()
         meta = self.calc_metadata(nbins_source)
 
-        calcs = self.select_calculations(nbins_source, nbins_lens)
+        calcs = self.select_calculations(source_list, lens_list)
         if self.rank==0:
             print(f"Running these calculations: {calcs}")
         # This splits the calculations among the parallel bins
@@ -86,29 +96,31 @@ class TXTwoPoint(PipelineStage):
         # just copy all the results to the root process
         # to output
         if self.rank==0:
-            self.write_output(nbins_source, nbins_lens, meta)
+            self.write_output(source_list, lens_list, meta)
 
 
-    def select_calculations(self, nbins_source, nbins_lens):
+    def select_calculations(self, source_list, lens_list):
         calcs = []
 
         # For shear-shear we omit pairs with j<i
         k = SHEAR_SHEAR
-        for i in range(nbins_source):
+        for i in source_list:
             for j in range(i+1):
-                calcs.append((i,j,k))
+                if j in source_list:
+                    calcs.append((i,j,k))
 
         # For shear-position we use all pairs
         k = SHEAR_POS
-        for i in range(nbins_source):
-            for j in range(nbins_lens):
+        for i in source_list:
+            for j in lens_list:
                 calcs.append((i,j,k))
 
         # For position-position we omit pairs with j<i
         k = POS_POS
-        for i in range(nbins_lens):
+        for i in lens_list:
             for j in range(i+1):
-                calcs.append((i,j,k))
+                if j in lens_list:
+                    calcs.append((i,j,k))
 
         return calcs
 
@@ -137,22 +149,46 @@ class TXTwoPoint(PipelineStage):
         tomo.close()
         nbin_source = d['nbin_source']
         nbin_lens = d['nbin_lens']
-        return nbin_source, nbin_lens
+        source_list = range(nbin_source)
+        lens_list = range(nbin_lens)
+        return nbin_source, nbin_lens, source_list, lens_list
 
-    def write_output(self, nbins_source, nbins_lens, meta):
+    def read_selec_bins(self):
+        # TODO handle the case where the user only specefies 
+        # bins for only sources or only lenses
+        source_list = self.config['source_bins']
+        lens_list = self.config['lens_bins']
+        nbin_source = len(source_list)
+        nbin_lens = len(lens_list)
+
+        # catch bad input
+        tom_nbin_source, tom_nbin_lens, _, _ = self.read_nbins()
+        # if more bins are input than exist, assertion error
+        assert (nbin_source <= tom_nbin_source), 'too many source bins, entered {} max is {}'.format(nbin_source, tom_nbin_source)
+        assert (nbin_lens <= tom_nbin_lens), 'too many lens bins, entered {} max is {}'.format(nbin_lens, tom_nbin_lens)
+        # make sure the bin numbers actually exist
+        for i in source_list:
+            assert i in range(tom_nbin_source), 'source bin {i} is out of bounds'
+        for j in lens_list:
+            assert j in range(tom_nbin_lens), 'lens bin {j} is out of bounds'
+            
+        return nbin_source, nbin_lens, source_list, lens_list 
+
+
+    def write_output(self, source_list, lens_list, meta):
         import sacc
         # TODO fix this to account for the case where we only do a certain number of calcs
         f = self.open_input('photoz_stack')
 
         tracers = []
 
-        for i in range(nbins_source):
+        for i in source_list:
             z = f['n_of_z/source/z'].value
             Nz = f[f'n_of_z/source/bin_{i}'].value
             T=sacc.Tracer(f"LSST source_{i}","spin0", z, Nz, exp_sample="LSST-source")
             tracers.append(T)
 
-        for i in range(nbins_lens):
+        for i in lens_list:
             z = f['n_of_z/lens/z'].value
             Nz = f[f'n_of_z/lens/bin_{i}'].value
             T=sacc.Tracer(f"LSST lens_{i}","spin0", z, Nz, exp_sample="LSST-lens")
