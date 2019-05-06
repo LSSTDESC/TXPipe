@@ -1,8 +1,6 @@
 from ceci import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
 
-# could also just load /global/projecta/projectdirs/lsst/groups/CS/descqa/catalog/ANL_AlphaQ_v3.0.hdf5
-
 
 class TXProtoDC2Mock(PipelineStage):
     """
@@ -52,6 +50,7 @@ class TXProtoDC2Mock(PipelineStage):
     def run(self):
         import GCRCatalogs
         cat_name = self.config['cat_name']
+        print(f"Loading from catalog {cat_name}")
         self.bands = ('u','g', 'r', 'i', 'z', 'y')
 
         # Load the input catalog (this is lazy)
@@ -63,6 +62,9 @@ class TXProtoDC2Mock(PipelineStage):
         self.cat_size = min(N, self.config['max_size'])
 
         select_fraction = (1.0 * self.cat_size)/N
+
+        if self.cat_size != N:
+            print("Will select a fraction of approx {select_fraction:.2f} of objects")
 
         # Prepare output files
         metacal_file = self.open_output('shear_catalog', clobber=True)
