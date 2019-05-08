@@ -4,7 +4,7 @@ import numpy as np
 import glob
 import re
 
-class TXGCRInput(PipelineStage):
+class TXMetacalGCRInput(PipelineStage):
     """
     This stage simulates metacal data and metacalibrated
     photometry measurements, starting from a cosmology catalogs
@@ -23,57 +23,64 @@ class TXGCRInput(PipelineStage):
     ]
 
     config_options = {
-        'repo':'',
+        'repo': str,
         'model': 'gauss'
 
     }
 
     def run(self):
 
-        butler_iterator = self.iterate_metacal_butler(data)
 
+        inputs = self.find_metacal_tracts_and_patches()
+        butler_iterator = self.iterate_metacal_butler(inputs)
+
+        n = self.total_length(inputs)
+        print(f"Total catalog size = {n}")
         # We need the first chunk of data so that we
         # know which columns are available.  Later we
         # may want to strip this down to reduce the file
         # size by just using the ones we know we nee.
-        cat = next(butler_iterator)
-        f = self.setup_output(filename, cat, n)
+        data = next(butler_iterator)
+        outfile = self.setup_output(data, n)
 
         # Write out the first data chunk, and keep
         # track of our position
         start = 0
-        end = start + len(cat['id'])
-        self.write_output(f, start, end, cat)
+        end = start + len(data['id'])
+        self.write_output(outfile, start, end, data)
         start = end
 
         # Now write out the remaining chunks of data
-        for cat in butler_iterator:
-            end = start + len(cat)
-            self.write_output(f, start, end, cat)
+        for data in butler_iterator:
+            end = start + len(data['id'])
+            self.write_output(outfile, start, end, data)
             # Keep track of cursor position
             start = end
 
-        f.close()
+        outfile.close()
 
 
     def setup_output(self, cat, n):
+        import h5py
         filename = self.get_output('shear_catalog')
         f = h5py.File(filename, "w")
         g = f.create_group('metacal')
-        for name in cat.columns:
-            g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)    
+        for name, col in cat.items():
+            g.create_dataset(name, shape=(n,), dtype=col.dtype)
         return f
 
-    def write_output(self, f, start, end, cat):
+    def write_output(self, f, start, end, data):
         g = f['metacal']
         print(f"    Saving {start} - {end}")
-        for name in cat.colnames:
-            g[name][start:end] = cat[name]
+        for name, col in data.items():
+            g[name][start:end] = col
             
 
-    def find_metacal_tracts_and_patches(self, repo):
+    def find_metacal_tracts_and_patches(self):
         # This seems to be the only way to pull out the list of available
         # tracts and patches
+        repo = self.config['repo']
+
         files = glob.glob(f'{repo}/deepCoadd-results/merged/*/*/mcalmax-deblended-*-*.fits')    
         p = re.compile("mcalmax\-deblended\-(?P<tract>[0-9]+)\-(?P<patch>[0-9]+,[0-9]+)\.fits")
 
@@ -90,6 +97,7 @@ class TXGCRInput(PipelineStage):
 
 
     def total_length(self, data):
+        from astropy.io import fits
         n = 0
         for f, _, _ in data:
             m = fits.open(f)[1].header['NAXIS2']
@@ -98,9 +106,14 @@ class TXGCRInput(PipelineStage):
 
 
     def iterate_metacal_butler(self, data):
+        import lsst.daf.persistence as dp
+        
+        repo = self.config['repo']
+        butler = dp.Butler(repo)
+
         model = self.config['model']
         m = len(f'mcal_{model}')
-
+        
         for _, tract, patch in data:
             print(f"Loading {tract} {patch}")
 
@@ -121,7 +134,9 @@ class TXGCRInput(PipelineStage):
                 # Strip the 'mcal_gauss' prefix and replace with
                 # just 'mcal_', as the rest of the code is expecting
                 if name.startswith(f"mcal_{model}"):
-                    name = 'mcal_' + name[m:]
+                    new_name = 'mcal' + name[m:]
+                else:
+                    new_name = name
 
                 data[name] = cat[name]
 
