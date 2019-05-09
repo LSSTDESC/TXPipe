@@ -19,44 +19,50 @@ class TXMetacalGCRInput(PipelineStage):
     inputs = []
 
     outputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', HDFFile),
     ]
 
     config_options = {
-        'repo': str,
-        'model': 'gauss'
-
+        'cat_name': str,
     }
 
     def run(self):
+        # Open input data.  We do not treat this as a formal "input"
+        # since it's the starting point of the whol pipeline and so is
+        # not in a TXPipe format.
+        cat_name = self.config['cat_name']
+        cat = GCRCatalogs.load_catalog(cat_name)
 
-
-        inputs = self.find_metacal_tracts_and_patches()
-        butler_iterator = self.iterate_metacal_butler(inputs)
-
-        n = self.total_length(inputs)
+        # Total size is needed to set up the output file,
+        # although in larger files it is a little slow to compute this.
+        n = len(cat)
         print(f"Total catalog size = {n}")
-        # We need the first chunk of data so that we
-        # know which columns are available.  Later we
-        # may want to strip this down to reduce the file
-        # size by just using the ones we know we nee.
-        data = next(butler_iterator)
-        outfile = self.setup_output(data, n)
 
-        # Write out the first data chunk, and keep
-        # track of our position
+        # Columns that we will need.
+        # NEEDED: Magnitudes!
+        cols = (['objectId', 'ra', 'dec'] 
+            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n') 
+            + metacal_band_variants('mcal_flux', 'mcal_flux_err', 'mcal_s2n')
+        )
+
         start = 0
-        end = start + len(data['id'])
-        self.write_output(outfile, start, end, data)
-        start = end
+        outfile = None
 
-        # Now write out the remaining chunks of data
-        for data in butler_iterator:
-            end = start + len(data['id'])
+        # Loop through the data, as chunke natively by GCRCatalogs
+        for data in cat.get_quantities(cols, return_iterator=True):
+
+            # First chunk of data we use to set up the output
+            # It is easier this way (no need to check types etc)
+            # if we change the column list
+            if outfile is None:
+                outfile = self.setup_output(data, n)
+
+            # Write out this chunk of data to HDF
+            end = start + len(data['ra'])
             self.write_output(outfile, start, end, data)
-            # Keep track of cursor position
             start = end
 
+        # All done!
         outfile.close()
 
 
@@ -76,68 +82,18 @@ class TXMetacalGCRInput(PipelineStage):
             g[name][start:end] = col
             
 
-    def find_metacal_tracts_and_patches(self):
-        # This seems to be the only way to pull out the list of available
-        # tracts and patches
-        repo = self.config['repo']
-
-        files = glob.glob(f'{repo}/deepCoadd-results/merged/*/*/mcalmax-deblended-*-*.fits')    
-        p = re.compile("mcalmax\-deblended\-(?P<tract>[0-9]+)\-(?P<patch>[0-9]+,[0-9]+)\.fits")
-
-        results = []
-        for f in files:
-            m = p.search(f)
-            if m is None:
-                continue
-            tract = int(m['tract'])
-            patch = m['patch']
-            results.append((f, tract, patch))
-        return sorted(results)
 
 
-
-    def total_length(self, data):
-        from astropy.io import fits
-        n = 0
-        for f, _, _ in data:
-            m = fits.open(f)[1].header['NAXIS2']
-            n += m
-        return n
-
-
-    def iterate_metacal_butler(self, data):
-        import lsst.daf.persistence as dp
-        
-        repo = self.config['repo']
-        butler = dp.Butler(repo)
-
-        model = self.config['model']
-        m = len(f'mcal_{model}')
-        
-        for _, tract, patch in data:
-            print(f"Loading {tract} {patch}")
-
-            # This returns a SourceCatalog object
-            try:
-                cat = butler.get('deepCoadd_mcalmax_deblended',
-                    dataId={'tract': tract, 'patch': patch, 'filter':'merged'})
-            except dp.NoResults:
-                continue
-
-            # This is the only way I couldd find to pull out the
-            # column names from this object
-            colnames = cat.schema.extract("*").keys()
-
-            # Build up a dictionary of the columns,
-            data = {}
-            for name in colnames:
-                # Strip the 'mcal_gauss' prefix and replace with
-                # just 'mcal_', as the rest of the code is expecting
-                if name.startswith(f"mcal_{model}"):
-                    new_name = 'mcal' + name[m:]
-                else:
-                    new_name = name
-
-                data[name] = cat[name]
-
-            yield data
+def metacal_variants(*names):
+    return [
+        name + suffix 
+        for suffix in ['', '_1p', '_1m', '_2p', '_2m']
+        for name in names
+    ]
+def metacal_band_variants(*names, bands='riz'):
+    return [
+        name + "_" + band + suffix 
+        for suffix in ['', '_1p', '_1m', '_2p', '_2m']
+        for band in bands
+        for name in names
+    ]
