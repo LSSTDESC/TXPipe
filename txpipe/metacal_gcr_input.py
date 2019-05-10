@@ -40,7 +40,7 @@ class TXMetacalGCRInput(PipelineStage):
         print(f"Total catalog size = {n}")
 
         # Columns that we will need.
-        cols = (['objectId', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T']
+        cols = (['objectId', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
             + metacal_band_variants('mcal_mag', 'mcal_mag_err')
         )

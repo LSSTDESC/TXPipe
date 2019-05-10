@@ -1,6 +1,6 @@
 TXMetacalGCRInput:
-    repo: /global/projecta/projectdirs/lsst/global/in2p3/Run1.2i/w_2018_39/rerun/metacal-test3
-    model: gauss
+    cat_name: dc2_object_run1.2i_tract5063_with_metacal.yaml
+
 
 TXProtoDC2Mock:
     cat_name: cosmoDC2_v1.1.4
