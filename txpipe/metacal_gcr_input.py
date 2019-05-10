@@ -40,10 +40,9 @@ class TXMetacalGCRInput(PipelineStage):
         print(f"Total catalog size = {n}")
 
         # Columns that we will need.
-        # NEEDED: Magnitudes!
-        cols = (['objectId', 'ra', 'dec'] 
-            + metacal_variants('mcal_g', 'mcal_T', 'mcal_s2n') 
-            + metacal_band_variants('mcal_flux', 'mcal_flux_err', 'mcal_s2n')
+        cols = (['objectId', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T']
+            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
+            + metacal_band_variants('mcal_mag', 'mcal_mag_err')
         )
 
         start = 0
@@ -73,40 +72,25 @@ class TXMetacalGCRInput(PipelineStage):
         f = h5py.File(filename, "w")
         g = f.create_group('metacal')
         for name, col in cat.items():
-            if name in metacal_variants('mcal_g'):
-                s = name[6:]
-                g.create_dataset('mcal_g1'+s, shape=(n,), dtype=col.dtype)
-                g.create_dataset('mcal_g2'+s, shape=(n,), dtype=col.dtype)
-            else:
-                g.create_dataset(name, shape=(n,), dtype=col.dtype)
+            g.create_dataset(name, shape=(n,), dtype=col.dtype)
         return f
 
     def write_output(self, f, start, end, data):
         g = f['metacal']
         print(f"    Saving {start} - {end}")
         for name, col in data.items():
-            if name in metacal_variants('mcal_g'):
-                g1 = col[:,0]
-                g2 = col[:,1]
-                s = name[6:]
-                g['mcal_g1'+s][start:end] = g1
-                g['mcal_g1'+s][start:end] = g2
-                
-            else:
-                g[name][start:end] = col
-            
-
+            g[name][start:end] = col
 
 
 def metacal_variants(*names):
     return [
-        name + suffix 
+        name + suffix
         for suffix in ['', '_1p', '_1m', '_2p', '_2m']
         for name in names
     ]
 def metacal_band_variants(*names, bands='riz'):
     return [
-        name + "_" + band + suffix 
+        name + "_" + band + suffix
         for suffix in ['', '_1p', '_1m', '_2p', '_2m']
         for band in bands
         for name in names
