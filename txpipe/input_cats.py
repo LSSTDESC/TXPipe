@@ -59,44 +59,68 @@ class TXProtoDC2Mock(PipelineStage):
         import GCRCatalogs
         cat_name = self.config['cat_name']
         print(f"Loading from catalog {cat_name}")
-        self.bands = ('u','g', 'r', 'i', 'z', 'y')
+        self.bands = ('u', 'g', 'r', 'i', 'z', 'y')
 
-        # Load the input catalog (this is lazy)
-        gc = GCRCatalogs.load_catalog(cat_name)
-        print(f"Loaded catalog {cat_name}")
+        if self.rank == 0:
+            # Load the input catalog (this is lazy)
+            complete_cat = GCRCatalogs.load_catalog(cat_name)
+            print(f"Loaded catalog {cat_name}")
 
-        # Get the size, and optionally cut down to a smaller
-        # size if we want to test
-        N = len(gc)
-        print(f"Measured catalog length: {N}")
-        self.cat_size = min(N, self.config['max_size'])
+            # Get the size, and optionally cut down to a smaller
+            # size if we want to test
+            N = len(complete_cat)
+            print(f"Measured catalog length: {N}")
 
-        select_fraction = (1.0 * self.cat_size)/N
+            all_healpix_pixels = cat.get_catalog_info()['healpix_pixels']
+        else:
+            N = 0
+            all_healpix_pixels = None
 
-        if self.cat_size != N:
-            print("Will select a fraction of approx {select_fraction:.2f} of objects")
+        if self.comm:
+            N = self.comm.bcast(N)
+            all_healpix_pixels = self.comm.bcast(all_healpix_pixels)
+
+        my_healpix_pixels = all_healpix_pixels[self.rank::self.size]
+
+        # Reload just the chunk of the catalog that we need
+        gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
+
+
+
 
         # Prepare output files
         metacal_file = self.open_output('shear_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
         self.setup_photometry_output(photo_file)
 
+
+        self.cat_size = min(N, self.config['max_size'])
+        select_fraction = (1.0 * self.cat_size)/N
+
+        if self.cat_size != N:
+            print("Will select a fraction of approx {select_fraction:.2f} of objects")
+
+        # Parallelization
+
+
+
         # Load the metacal response file
         self.load_metacal_response_model()
 
         # Keep track of catalog position
-        self.current_index = 0
+        start = 0
 
         # Loop through chunks of 
         for data in self.data_iterator(gc):
+            # The initial chunk size, of all the input data.
+            # This will be reduced later as we remove objects
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
-            s = self.current_index
-            e = s + chunk_size
-            print(f"Read chunk {s} - {e} of {self.cat_size}")
+            print(f"Process {self.rank} read chunk {start} - {start+chunk_size} of {self.cat_size}")
+
             # Select a random fraction of the catalog
             if self.cat_size != N:
-                select = np.random.binomial(chunk_size, select_fraction)
+                select = np.random.uniform(size=chunk_size) < select_fraction
                 for name in list(data.keys()):
                     data[name] = data[name][select]
 
@@ -106,21 +130,44 @@ class TXProtoDC2Mock(PipelineStage):
 
             # Cut out any objects too faint to be detected and measured
             self.remove_undetected(mock_photometry, mock_metacal)
+            # The chunk size has now changed
+            chunk_size = len(data[some_col])
+
+
+            # start is where this process should start writing this
+            # chunk of data.  end is where the final process will finish
+            # writing, becoming the starting point for the whole next
+            # chunk over all the processes
+            start, end = self.next_output_indices(start, chunk_size)
 
             # Save all output
-            self.write_photometry(photo_file, mock_photometry)
+            self.write_photometry(start, photo_file, mock_photometry)
             self.write_metacal(metacal_file, mock_metacal)
 
-            # Break early if we are cutting down the
-            # catalog
-            if self.current_index >= self.cat_size:
-                break
+            # The next iteration starts writing where the current one ends.
+            start = end
+
 
             
         # Tidy up
         self.truncate_photometry(photo_file)
         photo_file.close()
         metacal_file.close()
+
+    def next_output_indices(self, start, chunk_size):
+        if self.comm is None:
+            end = start + chunk_size
+        else:
+            all_indices = comm.allgather(chunk_size)
+            starting_points = np.concatenate(([0], np.cumsum(all_indices)))
+            # use the old start to find the end point.
+            # the final starting point (not used below, since it is larger
+            # than the largest self.rank value) is the total data length
+            end = start + starting_points[-1]
+            start = starting_points[self.rank]
+        print(f"- Rank {self.rank} writing output to {start}-{start+chunk_size}")
+        return start, end
+
 
 
     def setup_photometry_output(self, photo_file):
@@ -183,7 +230,7 @@ class TXProtoDC2Mock(PipelineStage):
         self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
 
 
-    def write_photometry(self, photo_file, mock_photometry):
+    def write_photometry(self, start, photo_file, mock_photometry):
         """
         Save the photometry we have just simulated to disc
 
@@ -198,7 +245,6 @@ class TXProtoDC2Mock(PipelineStage):
         """
         # Work out the range of data to output (since we will be
         # doing this in chunks)
-        start = self.current_index
         n = len(mock_photometry['id'])
         end = start + n
 
@@ -206,8 +252,6 @@ class TXProtoDC2Mock(PipelineStage):
         for name, col in mock_photometry.items():
             photo_file[f'photometry/{name}'][start:end] = col
 
-        # Update starting point for next round
-        self.current_index += n
 
     def write_metacal(self, metacal_file, metacal_data):
         """
@@ -500,7 +544,7 @@ class TXProtoDC2Mock(PipelineStage):
             metacal[key] = metacal[key][detected]
 
 
-    def truncate_photometry(self, photo_file):
+    def truncate_photometry(self, photo_file, end):
         """
         Cut down the output photometry file to its final 
         size.
@@ -511,7 +555,7 @@ class TXProtoDC2Mock(PipelineStage):
         group = photo_file['photometry']
         cols = list(group.keys())
         for col in cols:
-            group[col].resize((self.current_index,))
+            group[col].resize((end,))
 
 
 def make_mock_photometry(n_visit, bands, data):
