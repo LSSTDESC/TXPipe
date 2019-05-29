@@ -27,7 +27,8 @@ class TXProtoDC2Mock(PipelineStage):
         'cat_name':'protoDC2_test',
         'visits_per_band':165,  # used in the noise simulation
         'snr_limit':4.0,  # used to decide what objects to cut out
-        'max_size': 99999999999999  #for testing on smaller catalogs
+        'max_size': 99999999999999,  #for testing on smaller catalogs
+        'extra_cols': "", # string-separated list of columns to include
         }
 
     def data_iterator(self, gc):
@@ -42,9 +43,16 @@ class TXProtoDC2Mock(PipelineStage):
                 'size_true',
                 'galaxy_id',
                 ]
+        # Add any extra requestd columns
+        cols += self.config['extra_cols'].split()
 
         it = gc.get_quantities(cols, return_iterator=True)
-        for data in it:
+        nfile = len(gc.file_list) if hasattr(gc, '_file_list') else 0
+
+        for i, data in enumerate(it):
+            if nfile:
+                j = i+1
+                print(f"Loading chunk {j}/{nfile}")
             yield data
 
     def run(self):
@@ -55,10 +63,12 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Load the input catalog (this is lazy)
         gc = GCRCatalogs.load_catalog(cat_name)
+        print(f"Loaded catalog {cat_name}")
 
         # Get the size, and optionally cut down to a smaller
         # size if we want to test
         N = len(gc)
+        print(f"Measured catalog length: {N}")
         self.cat_size = min(N, self.config['max_size'])
 
         select_fraction = (1.0 * self.cat_size)/N
@@ -83,7 +93,7 @@ class TXProtoDC2Mock(PipelineStage):
             chunk_size = len(data[some_col])
             s = self.current_index
             e = s + chunk_size
-            print(f"Read chunk {s} - {e} or {self.cat_size}")
+            print(f"Read chunk {s} - {e} of {self.cat_size}")
             # Select a random fraction of the catalog
             if self.cat_size != N:
                 select = np.random.binomial(chunk_size, select_fraction)
@@ -130,6 +140,9 @@ class TXProtoDC2Mock(PipelineStage):
             cols.append(f'snr_{band}_1m')
             cols.append(f'snr_{band}_2p')
             cols.append(f'snr_{band}_2m')
+
+        for col in self.config['extra_cols'].split():
+            cols.append(col)
 
         # Make group for all the photometry
         group = photo_file.create_group('photometry')
@@ -240,6 +253,10 @@ class TXProtoDC2Mock(PipelineStage):
         n_visit = self.config['visits_per_band']
         # Do all the work in the function below
         photo = make_mock_photometry(n_visit, self.bands, data)
+
+        for col in self.config['extra_cols'].split():
+            photo[col] = data[col]
+        
         return photo
 
 
@@ -462,7 +479,6 @@ class TXProtoDC2Mock(PipelineStage):
 
         # the protoDC2 sims have an edge with zero shear.
         # Remove it.
-        print(metacal['true_g'].shape)
         zero_shear_edge = (abs(metacal['true_g'][:,0])==0) & (abs(metacal['true_g'][:,1])==0)
         print("Removing {} objects with identically zero shear in both terms".format(zero_shear_edge.sum()))
 
