@@ -1,5 +1,6 @@
 from ceci import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
+from .utils.metacal import metacal_band_variants, metacal_variants
 import numpy as np
 import glob
 import re
@@ -81,17 +82,3 @@ class TXMetacalGCRInput(PipelineStage):
         for name, col in data.items():
             g[name][start:end] = col
 
-
-def metacal_variants(*names):
-    return [
-        name + suffix
-        for suffix in ['', '_1p', '_1m', '_2p', '_2m']
-        for name in names
-    ]
-def metacal_band_variants(*names, bands='riz'):
-    return [
-        name + "_" + band + suffix
-        for suffix in ['', '_1p', '_1m', '_2p', '_2m']
-        for band in bands
-        for name in names
-    ]

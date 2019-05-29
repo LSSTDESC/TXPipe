@@ -101,6 +101,7 @@ class TXProtoDC2Mock(PipelineStage):
         metacal_file = self.open_output('shear_catalog', clobber=True)
         photo_file = self.open_output('photometry_catalog', parallel=False)
         self.setup_photometry_output(photo_file)
+        self.setup_metacal_output(metacal_file)
 
 
 
@@ -141,8 +142,7 @@ class TXProtoDC2Mock(PipelineStage):
             start, end = self.next_output_indices(start, chunk_size)
 
             # Save all output
-            self.write_photometry(start, photo_file, mock_photometry)
-            self.write_metacal(metacal_file, mock_metacal)
+            self.write_output(start, photo_file, mock_photometry, metacal_file, mock_metacal)
 
             # The next iteration starts writing where the current one ends.
             start = end
@@ -170,7 +170,7 @@ class TXProtoDC2Mock(PipelineStage):
 
 
 
-    def setup_photometry_output(self, photo_file):
+    def setup_photometry_output(self, metacal_file):
         # Get a list of all the column names
         cols = ['ra', 'dec']
         for band in self.bands:
@@ -201,7 +201,28 @@ class TXProtoDC2Mock(PipelineStage):
 
         # The only non-float column for now
         group.create_dataset('id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
-    
+
+
+    def setup_metacal_output(self, metacal_file):
+        # Get a list of all the column names
+        cols = (
+            ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
+            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n','mcal_g1_err', 'mcal_g2_err', 'mcal_T_err')
+            + metacal_band_variants('mcal_mag', 'mcal_mag_err')
+        )
+
+        # Make group for all the photometry
+        group = photo_file.create_group('metacal')
+
+        # Extensible columns becase we don't know the size yet.
+        # We will cut down the size at the end.
+        for col in cols:
+            group.create_dataset(col, (self.cat_size,), maxshape=(self.cat_size,), dtype='f8')
+
+        # The only non-float columns for now
+        group.create_dataset('id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
+        group.create_dataset('mcal_flags', (self.cat_size,), maxshape=(self.cat_size,), dtype='i4')
+        
 
     def load_metacal_response_model(self):
         """
@@ -230,7 +251,7 @@ class TXProtoDC2Mock(PipelineStage):
         self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
 
 
-    def write_photometry(self, start, photo_file, mock_photometry):
+    def write_output(self, start, photo_file, photo_data, metacal_file, metacal_data):
         """
         Save the photometry we have just simulated to disc
 
@@ -239,8 +260,13 @@ class TXProtoDC2Mock(PipelineStage):
 
         photo_file: HDF File object
 
-        mock_photometry: dict
+        metacal_file: HDF File object
+
+        photo_data: dict
             Dictionary of simulated photometry
+
+        metacal_data: dict
+            Dictionary of simulated metacal data
 
         """
         # Work out the range of data to output (since we will be
@@ -249,47 +275,12 @@ class TXProtoDC2Mock(PipelineStage):
         end = start + n
 
         # Save each column
-        for name, col in mock_photometry.items():
+        for name, col in photo_data.items():
             photo_file[f'photometry/{name}'][start:end] = col
 
+        for name, col in metacal_data.items():
+            metacal_file[f'metacal/{name}'][start:end] = col
 
-    def write_metacal(self, metacal_file, metacal_data):
-        """
-        Save the metacal data we have just simulated to disc
-
-        Parameters
-        ----------
-
-        metacal_file: fitsio FITS File object
-
-        metacal_data: dict
-            Dictionary of arrays of simulated metacal values
-
-        """
-        import numpy as np
-
-        # Get the name and data type for eah column
-        # We sort these so that they are always in the same order,
-        # because we will just be appending the data for
-        # subsequent calls
-        dtype = [(name,val.dtype,val[0].shape) for (name,val) in sorted(metacal_data.items())]
-        nobj = metacal_data['R'].size
-
-        # Make a numpy structured array for this data
-        # and fill it in with our values
-        data = np.zeros(nobj, dtype)
-        for key, val in metacal_data.items():
-            data[key] = val
-
-        # The first time we call this we will make an extension
-        # to contain the data.  Subsequent times we just append
-        # to that extension.
-        already_created_ext = len(metacal_file)==2
-        if already_created_ext:
-            metacal_file[-1].append(data)
-        else:
-            metacal_file.write(data)
-            
 
 
     def make_mock_photometry(self, data):
@@ -388,103 +379,80 @@ class TXProtoDC2Mock(PipelineStage):
         e1 = e.real
         e2 = e.imag
     
+        zero = np.zeros(nobj)
         # Now collect together everything to go into the metacal
         # file
         output = {
             # Basic values
-            "R":R,
             'id': photo['id'],
             'ra': photo['ra'],
             'dec': photo['dec'],
             # Keep the truth value just in case
-            "true_g": np.array([g1, g2]).T,
-            # Shears, taken by scaling the overall ellipticity by the response
-            # I think this is the correct thing to use here
-            "mcal_g": np.array([e1*R, e2*R]).T,
-            # metacalibrated variants - we add the shear and then 
-            # apply the response
-            "mcal_g_1p": np.array([(e1+delta_gamma)*R, e2*R]).T,
-            "mcal_g_1m": np.array([(e1-delta_gamma)*R, e2*R]).T,
-            "mcal_g_2p": np.array([e1*R, (e2+delta_gamma)*R]).T,
-            "mcal_g_2m": np.array([e1*R, (e2-delta_gamma)*R]).T,
-            # Size parameter and metacal variants
+            "true_g1": g1,
+            "true_g2": g2,
+
+            # g1
+            "mcal_g1": e1*R,
+            "mcal_g1_1p": (e1+delta_gamma)*R,
+            "mcal_g1_1m": (e1-delta_gamma)*R,
+            "mcal_g1_2p": e1*R,
+            "mcal_g1_2m": e1*R,
+
+            # g2
+            "mcal_g2": e1*R,
+            "mcal_g2_1p": e2*R,
+            "mcal_g2_1m": e2*R,
+            "mcal_g2_2p": (e2+delta_gamma)*R,
+            "mcal_g2_2m": (e2-delta_gamma)*R,
+
+            # T
             "mcal_T": size_T,
             "mcal_T_1p": size_T + R_size*delta_gamma,
             "mcal_T_1m": size_T - R_size*delta_gamma,
             "mcal_T_2p": size_T + R_size*delta_gamma,
             "mcal_T_2m": size_T - R_size*delta_gamma,
-            # Rounded SNR values, as used in the selection,
-            # together with the metacal variants
-            "mcal_s2n_r": snr,
-            "mcal_s2n_r_1p": snr_1p,
-            "mcal_s2n_r_1m": snr_1m,
-            "mcal_s2n_r_2p": snr_2p,
-            "mcal_s2n_r_2m": snr_2m,
-            # Magntiudes and fluxes, just copied from the inputs.
-            # Note that we won't use these directly later as we instead
-            # use stuff from the photometry file
-            'mcal_mag': np.array([
-                photo['mag_r_lsst'], 
-                photo['mag_i_lsst'], 
-                photo['mag_z_lsst']
-                ]).T,
-            'mcal_flux': np.array([
-                flux_r,
-                flux_i,
-                flux_z,
-            ]).T,
-            # not sure if this is right
-            'mcal_flux_s2n': np.array([
-                photo['snr_r'], 
-                photo['snr_i'], 
-                photo['snr_z']
-            ]).T,
-            # mcal_weight appears to be all zeros in the tract files.
-            # possibly they should in fact all be ones.
-            'mcal_weight': np.zeros(nobj),
-            # Fixed PSF parameters - all round with same size
-            'mcal_gpsf': np.zeros((nobj,2)),
-            'mcal_Tpsf': np.repeat(psf_T, nobj),
-            # Everything that gets this far should be used, so flag=0
-            'mcal_flags': np.zeros(nobj, dtype=int),
-            # Pretend these are the same as the standard sizes
-            # actually they are measured on a rounded version
-            "mcal_T_r": size_T,
-            "mcal_T_r_1p": size_T + R_size*delta_gamma,
-            "mcal_T_r_1m": size_T - R_size*delta_gamma,
-            "mcal_T_r_2p": size_T + R_size*delta_gamma,
-            "mcal_T_r_2m": size_T - R_size*delta_gamma,
-            # Everything below here is wrong
-            # Some of these are probably important!
-            # For now I'm leaving them all as zero 
-            # because we're not currently using them in the
-            # main pipeline
-            "mcal_g_cov": np.zeros((nobj,2,2)),
-            "mcal_g_cov_1p": np.zeros((nobj,2,2)),
-            "mcal_g_cov_1m": np.zeros((nobj,2,2)),
-            "mcal_g_cov_2p": np.zeros((nobj,2,2)),
-            "mcal_g_cov_2m": np.zeros((nobj,2,2)),
-            # These are fit parameters and their covariances
-            "mcal_pars":np.zeros((nobj,6)),
-            "mcal_pars_1p":np.zeros((nobj,6)),
-            "mcal_pars_1m":np.zeros((nobj,6)),
-            "mcal_pars_2p":np.zeros((nobj,6)),
-            "mcal_pars_2m":np.zeros((nobj,6)),
-            "mcal_pars_cov":np.zeros((nobj,6,6)),
-            "mcal_pars_cov_1p":np.zeros((nobj,6,6)),
-            "mcal_pars_cov_1m":np.zeros((nobj,6,6)),
-            "mcal_pars_cov_2p":np.zeros((nobj,6,6)),
-            "mcal_pars_cov_2m":np.zeros((nobj,6,6)),
-            "mcal_flux_cov": np.zeros((nobj,2,2)),
-            # This is likely to be important
-            "mcal_T_err": np.zeros(nobj),
-            "mcal_T_err_1p": np.zeros(nobj),
-            "mcal_T_err_1m": np.zeros(nobj),
-            "mcal_T_err_2p": np.zeros(nobj),
-            "mcal_T_err_2m": np.zeros(nobj),
-            # Surface brightness
-            "mcal_logsb": np.zeros(nobj),
 
+            # Terr
+            "mcal_T_err":    zero,
+            "mcal_T_err_1p": zero,
+            "mcal_T_err_1m": zero,
+            "mcal_T_err_2p": zero,
+            "mcal_T_err_2m": zero,
+
+            # size 
+            "mcal_s2n": snr,
+            "mcal_s2n_1p": snr_1p,
+            "mcal_s2n_1m": snr_1m,
+            "mcal_s2n_2p": snr_2p,
+            "mcal_s2nr_2m": snr_2m,
+
+            # Magntiudes and fluxes, just copied from the inputs.
+            'mcal_mag_r': photo['mag_r_lsst'],
+            'mcal_mag_i': photo['mag_i_lsst'],
+            'mcal_mag_z': photo['mag_z_lsst'],
+
+            'mcal_mag_r_1p': photo['mag_r_lsst_1p'],
+            'mcal_mag_r_2p': photo['mag_r_lsst_2p'],
+            'mcal_mag_r_1m': photo['mag_r_lsst_1m'],
+            'mcal_mag_r_2m': photo['mag_r_lsst_2m'],
+
+            'mcal_mag_i_1p': photo['mag_i_lsst_1p'],
+            'mcal_mag_i_2p': photo['mag_i_lsst_2p'],
+            'mcal_mag_i_1m': photo['mag_i_lsst_1m'],
+            'mcal_mag_i_2m': photo['mag_i_lsst_2m'],
+            
+            'mcal_mag_z_1p': photo['mag_z_lsst_1p'],
+            'mcal_mag_z_2p': photo['mag_z_lsst_2p'],
+            'mcal_mag_z_1m': photo['mag_z_lsst_1m'],
+            'mcal_mag_z_2m': photo['mag_z_lsst_2m'],
+
+            # Fixed PSF parameters - all round with same size
+            'mcal_psf_g1': zero,
+            'mcal_psf_g2': zero,
+            'mcal_psf_T' : np.repeat(psf_T, nobj),
+
+            # Everything that gets this far should be used, so flag=0
+            'mcal_flags': np.zeros(nobj, dtype=np.int32),
             }
 
         return output
