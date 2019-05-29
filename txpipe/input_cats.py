@@ -1,5 +1,6 @@
 from ceci import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
+from .utils.metacal import metacal_band_variants, metacal_variants
 import numpy as np
 
 class TXProtoDC2Mock(PipelineStage):
