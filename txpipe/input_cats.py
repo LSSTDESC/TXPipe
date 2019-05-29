@@ -1,6 +1,6 @@
 from ceci import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
-
+import numpy as np
 
 class TXProtoDC2Mock(PipelineStage):
     """
@@ -47,7 +47,7 @@ class TXProtoDC2Mock(PipelineStage):
         cols += self.config['extra_cols'].split()
 
         it = gc.get_quantities(cols, return_iterator=True)
-        nfile = len(gc.file_list) if hasattr(gc, '_file_list') else 0
+        nfile = len(gc._file_list) if hasattr(gc, '_file_list') else 0
 
         for i, data in enumerate(it):
             if nfile:
@@ -58,10 +58,10 @@ class TXProtoDC2Mock(PipelineStage):
     def run(self):
         import GCRCatalogs
         cat_name = self.config['cat_name']
-        print(f"Loading from catalog {cat_name}")
         self.bands = ('u', 'g', 'r', 'i', 'z', 'y')
 
         if self.rank == 0:
+            print(f"Loading from catalog {cat_name}")
             # Load the input catalog (this is lazy)
             complete_cat = GCRCatalogs.load_catalog(cat_name)
             print(f"Loaded catalog {cat_name}")
@@ -71,7 +71,7 @@ class TXProtoDC2Mock(PipelineStage):
             N = len(complete_cat)
             print(f"Measured catalog length: {N}")
 
-            all_healpix_pixels = cat.get_catalog_info()['healpix_pixels']
+            all_healpix_pixels = complete_cat.get_catalog_info()['healpix_pixels']
         else:
             N = 0
             all_healpix_pixels = None
@@ -85,17 +85,10 @@ class TXProtoDC2Mock(PipelineStage):
             my_npix = len(my_healpix_pixels)
             print(f"Rank {self.rank} loading catalog with {my_npix} pixels.")
             gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
+            my_N = len(gc)
         else:
             gc = complete_cat
-
-
-
-
-        # Prepare output files
-        metacal_file = self.open_output('shear_catalog', clobber=True)
-        photo_file = self.open_output('photometry_catalog', parallel=False)
-        self.setup_photometry_output(photo_file)
-
+            my_N = N
 
         self.cat_size = min(N, self.config['max_size'])
         select_fraction = (1.0 * self.cat_size)/N
@@ -103,7 +96,11 @@ class TXProtoDC2Mock(PipelineStage):
         if self.cat_size != N:
             print("Will select a fraction of approx {select_fraction:.2f} of objects")
 
-        # Parallelization
+
+        # Prepare output files
+        metacal_file = self.open_output('shear_catalog', clobber=True)
+        photo_file = self.open_output('photometry_catalog', parallel=False)
+        self.setup_photometry_output(photo_file)
 
 
 
@@ -119,7 +116,7 @@ class TXProtoDC2Mock(PipelineStage):
             # This will be reduced later as we remove objects
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
-            print(f"Process {self.rank} read chunk {start} - {start+chunk_size} of {self.cat_size}")
+            print(f"Process {self.rank} read chunk {start} - {start+chunk_size} of {my_N}")
 
             # Select a random fraction of the catalog
             if self.cat_size != N:
@@ -161,13 +158,13 @@ class TXProtoDC2Mock(PipelineStage):
         if self.comm is None:
             end = start + chunk_size
         else:
-            all_indices = comm.allgather(chunk_size)
+            all_indices = self.comm.allgather(chunk_size)
             starting_points = np.concatenate(([0], np.cumsum(all_indices)))
             # use the old start to find the end point.
             # the final starting point (not used below, since it is larger
             # than the largest self.rank value) is the total data length
             end = start + starting_points[-1]
-            start = starting_points[self.rank]
+            start = start + starting_points[self.rank]
         print(f"- Rank {self.rank} writing output to {start}-{start+chunk_size}")
         return start, end
 
@@ -326,7 +323,6 @@ class TXProtoDC2Mock(PipelineStage):
 
         # These are the numbers from figure F1 of the DES Y1 shear catalog paper
         # (this version is not yet public but is awaiting a second referee response)
-        import numpy as np
 
         # Overall SNR for the three bands usually used for shape measurement
         # We use the true SNR not the estimated one, though these are pretty close
@@ -503,7 +499,6 @@ class TXProtoDC2Mock(PipelineStage):
         Use a configuration parameter snr_limit to decide
         on the detection limit.
         """
-        import numpy as np
         snr_limit = self.config['snr_limit']
 
         # This will become a boolean array in a minute when
@@ -570,8 +565,6 @@ def make_mock_photometry(n_visit, bands, data):
     retrieved here:
     http://faculty.washington.edu/ivezic/Teaching/Astr511/LSST_SNRdoc.pdf
     """
-
-    import numpy as np
 
     output = {}
     nobj = data['galaxy_id'].size
@@ -668,7 +661,6 @@ def make_mock_photometry(n_visit, bands, data):
 
 
 def generate_mock_metacal_mag_responses(bands, nobj):
-    import numpy as np
     nband = len(bands)
     mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
     rho = 0.25  #  approx correlation between response in bands, from HSC tract
@@ -821,7 +813,6 @@ class TXGCRMockMetacal(PipelineStage):
 
         """
         import scipy.interpolate
-        import numpy as np
         model_file = self.open_input("response_model")
         snr_centers = model_file['R_model/log10_snr'][:]
         sz_centers = model_file['R_model/size'][:]
@@ -837,7 +828,6 @@ class TXGCRMockMetacal(PipelineStage):
 
 
 def test():
-    import numpy as np
     import pylab
     data = {
         'ra':None,
