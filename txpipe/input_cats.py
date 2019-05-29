@@ -80,10 +80,13 @@ class TXProtoDC2Mock(PipelineStage):
             N = self.comm.bcast(N)
             all_healpix_pixels = self.comm.bcast(all_healpix_pixels)
 
-        my_healpix_pixels = all_healpix_pixels[self.rank::self.size]
-
-        # Reload just the chunk of the catalog that we need
-        gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
+            # Reload just the chunk of the catalog that we need
+            my_healpix_pixels = all_healpix_pixels[self.rank::self.size]
+            my_npix = len(my_healpix_pixels)
+            print(f"Rank {self.rank} loading catalog with {my_npix} pixels.")
+            gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
+        else:
+            gc = complete_cat
 
 
 
