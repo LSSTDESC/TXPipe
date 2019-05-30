@@ -20,7 +20,7 @@ class TXProtoDC2Mock(PipelineStage):
     ]
 
     outputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', HDFFile),
         ('photometry_catalog', HDFFile),
     ]
 
@@ -30,6 +30,7 @@ class TXProtoDC2Mock(PipelineStage):
         'snr_limit':4.0,  # used to decide what objects to cut out
         'max_size': 99999999999999,  #for testing on smaller catalogs
         'extra_cols': "", # string-separated list of columns to include
+        'max_npix':99999999999999,
         }
 
     def data_iterator(self, gc):
@@ -64,15 +65,21 @@ class TXProtoDC2Mock(PipelineStage):
         if self.rank == 0:
             print(f"Loading from catalog {cat_name}")
             # Load the input catalog (this is lazy)
-            complete_cat = GCRCatalogs.load_catalog(cat_name)
-            print(f"Loaded catalog {cat_name}")
+            # For testing we may want to cut down to a smaller number of pixels.
+            # This is separate from the split by processor later on
+            all_healpix_pixels = GCRCatalogs.available_catalogs[cat_name]['healpix_pixels']
+            max_npix = self.config['max_npix']
+            if max_npix != 99999999999999:
+                print(f"Cutting down initial catalog to {max_npix} healpix pixels")
+                all_healpix_pixels = all_healpix_pixels[:max_npix]
+            complete_cat = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
+            print(f"Loaded overall catalog {cat_name}")
 
             # Get the size, and optionally cut down to a smaller
             # size if we want to test
             N = len(complete_cat)
             print(f"Measured catalog length: {N}")
 
-            all_healpix_pixels = complete_cat.get_catalog_info()['healpix_pixels']
         else:
             N = 0
             all_healpix_pixels = None
@@ -86,7 +93,9 @@ class TXProtoDC2Mock(PipelineStage):
             my_npix = len(my_healpix_pixels)
             print(f"Rank {self.rank} loading catalog with {my_npix} pixels.")
             gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
+            print(f"Rank {self.rank}: loaded")
             my_N = len(gc)
+            print(f"Length to read for rank {self.rank}: {my_N}")
         else:
             gc = complete_cat
             my_N = N
@@ -99,8 +108,8 @@ class TXProtoDC2Mock(PipelineStage):
 
 
         # Prepare output files
-        metacal_file = self.open_output('shear_catalog', clobber=True)
-        photo_file = self.open_output('photometry_catalog', parallel=False)
+        metacal_file = self.open_output('shear_catalog', parallel=self.is_mpi())
+        photo_file = self.open_output('photometry_catalog', parallel=self.is_mpi())
         self.setup_photometry_output(photo_file)
         self.setup_metacal_output(metacal_file)
 
@@ -131,7 +140,7 @@ class TXProtoDC2Mock(PipelineStage):
             mock_metacal = self.make_mock_metacal(data, mock_photometry)
 
             # Cut out any objects too faint to be detected and measured
-            self.remove_undetected(mock_photometry, mock_metacal)
+            self.remove_undetected(data, mock_photometry, mock_metacal)
             # The chunk size has now changed
             chunk_size = len(data[some_col])
 
@@ -171,7 +180,7 @@ class TXProtoDC2Mock(PipelineStage):
 
 
 
-    def setup_photometry_output(self, metacal_file):
+    def setup_photometry_output(self, photo_file):
         # Get a list of all the column names
         cols = ['ra', 'dec']
         for band in self.bands:
@@ -212,8 +221,10 @@ class TXProtoDC2Mock(PipelineStage):
             + metacal_band_variants('mcal_mag', 'mcal_mag_err')
         )
 
+        cols += ['true_g1', 'true_g2']
+
         # Make group for all the photometry
-        group = photo_file.create_group('metacal')
+        group = metacal_file.create_group('metacal')
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -272,7 +283,7 @@ class TXProtoDC2Mock(PipelineStage):
         """
         # Work out the range of data to output (since we will be
         # doing this in chunks)
-        n = len(mock_photometry['id'])
+        n = len(photo_data['id'])
         end = start + n
 
         # Save each column
@@ -282,7 +293,7 @@ class TXProtoDC2Mock(PipelineStage):
         for name, col in metacal_data.items():
             metacal_file[f'metacal/{name}'][start:end] = col
 
-
+        print(f"Rank {self.rank}: write complete")
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
@@ -425,7 +436,7 @@ class TXProtoDC2Mock(PipelineStage):
             "mcal_s2n_1p": snr_1p,
             "mcal_s2n_1m": snr_1m,
             "mcal_s2n_2p": snr_2p,
-            "mcal_s2nr_2m": snr_2m,
+            "mcal_s2n_2m": snr_2m,
 
             # Magntiudes and fluxes, just copied from the inputs.
             'mcal_mag_r': photo['mag_r_lsst'],
@@ -450,7 +461,7 @@ class TXProtoDC2Mock(PipelineStage):
             # Fixed PSF parameters - all round with same size
             'mcal_psf_g1': zero,
             'mcal_psf_g2': zero,
-            'mcal_psf_T' : np.repeat(psf_T, nobj),
+            'mcal_psf_T_mean' : np.repeat(psf_T, nobj),
 
             # Everything that gets this far should be used, so flag=0
             'mcal_flags': np.zeros(nobj, dtype=np.int32),
@@ -460,7 +471,7 @@ class TXProtoDC2Mock(PipelineStage):
 
 
 
-    def remove_undetected(self, photo, metacal):
+    def remove_undetected(self, data, photo, metacal):
         """
         Strip out any undetected objects from the two
         simulated data sets.
@@ -490,7 +501,7 @@ class TXProtoDC2Mock(PipelineStage):
 
         # the protoDC2 sims have an edge with zero shear.
         # Remove it.
-        zero_shear_edge = (abs(metacal['true_g'][:,0])==0) & (abs(metacal['true_g'][:,1])==0)
+        zero_shear_edge = (abs(data['shear_1'])==0) & (abs(data['shear_2'])==0)
         print("Removing {} objects with identically zero shear in both terms".format(zero_shear_edge.sum()))
 
         detected &= (~zero_shear_edge)
@@ -515,9 +526,6 @@ class TXProtoDC2Mock(PipelineStage):
         """
         Cut down the output photometry file to its final 
         size.
-
-        Not sure why I did this as the size should be
-        the same.  I must have had a reason.
         """
         group = photo_file['photometry']
         cols = list(group.keys())
