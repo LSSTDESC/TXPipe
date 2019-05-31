@@ -112,7 +112,7 @@ class TXProtoDC2Mock(PipelineStage):
         select_fraction = target_size / N
 
         if target_size != N:
-            print("Will select a fraction of approx {select_fraction:.2f} of objects")
+            print(f"Will select approx {100*select_fraction:.2f}% of objects ({target_size})")
 
 
         # Prepare output files
@@ -142,6 +142,8 @@ class TXProtoDC2Mock(PipelineStage):
             # by redshift
             if target_size != N:
                 select = np.random.uniform(size=chunk_size) < select_fraction
+                nselect = select.sum()
+                print(f"Cutting down to {nselect}/{chunk_size} objects")
                 for name in list(data.keys()):
                     data[name] = data[name][select]
 
@@ -307,7 +309,7 @@ class TXProtoDC2Mock(PipelineStage):
         n = len(photo_data['id'])
         end = min(start + n, target_size)
 
-        assert photo_data['id'].min()==0
+        assert photo_data['id'].min()>0
 
         t0=default_timer()
         # Save each column
