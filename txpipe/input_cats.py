@@ -73,47 +73,50 @@ class TXProtoDC2Mock(PipelineStage):
             if max_npix != 99999999999999:
                 print(f"Cutting down initial catalog to {max_npix} healpix pixels")
                 all_healpix_pixels = all_healpix_pixels[:max_npix]
-            complete_cat = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
-            print(f"Loaded overall catalog {cat_name}")
+            # complete_cat = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
+            # print(f"Loaded overall catalog {cat_name}")
 
-            # Get the size, and optionally cut down to a smaller
-            # size if we want to test
-            N = len(complete_cat)
-            print(f"Measured catalog length: {N}")
+            # # Get the size, and optionally cut down to a smaller
+            # # size if we want to test
+            # N = len(complete_cat)
+            # print(f"Measured catalog length: {N}")
 
         else:
             N = 0
             all_healpix_pixels = None
 
         if self.comm:
-            N = self.comm.bcast(N)
+            # Split up the pixels to load among the processors
             all_healpix_pixels = self.comm.bcast(all_healpix_pixels)
-
-            # Reload just the chunk of the catalog that we need
+            all_npix = len(all_healpix_pixels)
             my_healpix_pixels = all_healpix_pixels[self.rank::self.size]
             my_npix = len(my_healpix_pixels)
-            print(f"Rank {self.rank} loading catalog with {my_npix} pixels.")
+
+            # Load the catalog for this processor
+            print(f"Rank {self.rank} loading catalog with {my_npix} pixels from total {all_npix}.")
             gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
-            print(f"Rank {self.rank}: loaded")
+
+            # Work out my local length and the total length (from the sum of all the local lengths)
             my_N = len(gc)
-            print(f"Length to read for rank {self.rank}: {my_N}")
+            N = self.comm.allreduce(my_N)
+            print(f"Rank {self.rank}: loaded. Have {my_N} objects from total {N}")
+
         else:
-            gc = complete_cat
-            my_N = N
+            gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
+            N = my_N = len(gc)
 
-        self.cat_size = min(N, self.config['max_size'])
-        select_fraction = (1.0 * self.cat_size)/N
+        target_size = min(N, self.config['max_size'])
+        select_fraction = target_size / N
 
-        if self.cat_size != N:
+        if target_size != N:
             print("Will select a fraction of approx {select_fraction:.2f} of objects")
 
 
         # Prepare output files
         metacal_file = self.open_output('shear_catalog', parallel=self.is_mpi())
         photo_file = self.open_output('photometry_catalog', parallel=self.is_mpi())
-        self.setup_photometry_output(photo_file)
-        self.setup_metacal_output(metacal_file)
-
+        self.setup_photometry_output(photo_file, target_size)
+        self.setup_metacal_output(metacal_file, target_size)
 
 
         # Load the metacal response file
@@ -131,8 +134,10 @@ class TXProtoDC2Mock(PipelineStage):
             chunk_size = len(data[some_col])
             print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {my_N}")
             count += chunk_size
-            # Select a random fraction of the catalog
-            if self.cat_size != N:
+            # Select a random fraction of the catalog if we are cutting down
+            # We can't just take the earliest galaxies because they are ordered
+            # by redshift
+            if target_size != N:
                 select = np.random.uniform(size=chunk_size) < select_fraction
                 for name in list(data.keys()):
                     data[name] = data[name][select]
@@ -144,7 +149,8 @@ class TXProtoDC2Mock(PipelineStage):
             # Cut out any objects too faint to be detected and measured
             self.remove_undetected(data, mock_photometry, mock_metacal)
             # The chunk size has now changed
-            chunk_size = len(data[some_col])
+            some_col = mock_photometry.keys()[0]
+            chunk_size = len(mock_photometry[some_col])
 
 
             # start is where this process should start writing this
@@ -154,10 +160,13 @@ class TXProtoDC2Mock(PipelineStage):
             start, end = self.next_output_indices(start, chunk_size)
 
             # Save all output
-            self.write_output(start, photo_file, mock_photometry, metacal_file, mock_metacal)
+            self.write_output(start, target_size, photo_file, mock_photometry, metacal_file, mock_metacal)
 
             # The next iteration starts writing where the current one ends.
             start = end
+            
+            if start >= target_size:
+                break
 
 
             
@@ -182,7 +191,7 @@ class TXProtoDC2Mock(PipelineStage):
 
 
 
-    def setup_photometry_output(self, photo_file):
+    def setup_photometry_output(self, photo_file, target_size):
         from .utils.hdf_tools import create_dataset_early_allocated
         # Get a list of all the column names
         cols = ['ra', 'dec']
@@ -210,14 +219,14 @@ class TXProtoDC2Mock(PipelineStage):
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
         for col in cols:
-            create_dataset_early_allocated(group, col, self.cat_size, 'f8')
+            create_dataset_early_allocated(group, col, target_size, 'f8')
 
         # The only non-float column for now
-        create_dataset_early_allocated(group, 'id', self.cat_size, 'i8')
+        create_dataset_early_allocated(group, 'id', target_size, 'i8')
 
 
 
-    def setup_metacal_output(self, metacal_file):
+    def setup_metacal_output(self, metacal_file, target_size):
         from .utils.hdf_tools import create_dataset_early_allocated
 
         # Get a list of all the column names
@@ -237,10 +246,10 @@ class TXProtoDC2Mock(PipelineStage):
         
 
         for col in cols:
-            create_dataset_early_allocated(group, col, self.cat_size, 'f8')
+            create_dataset_early_allocated(group, col, target_size, 'f8')
 
-        create_dataset_early_allocated(group, 'id', self.cat_size, 'i8')
-        create_dataset_early_allocated(group, 'mcal_flags', self.cat_size, 'i4')
+        create_dataset_early_allocated(group, 'id', target_size, 'i8')
+        create_dataset_early_allocated(group, 'mcal_flags', target_size, 'i4')
         
 
     def load_metacal_response_model(self):
@@ -270,7 +279,7 @@ class TXProtoDC2Mock(PipelineStage):
         self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
 
 
-    def write_output(self, start, photo_file, photo_data, metacal_file, metacal_data):
+    def write_output(self, start, target_size, photo_file, photo_data, metacal_file, metacal_data):
         """
         Save the photometry we have just simulated to disc
 
@@ -289,10 +298,14 @@ class TXProtoDC2Mock(PipelineStage):
 
         """
         # Work out the range of data to output (since we will be
-        # doing this in chunks)
+        # doing this in chunks). If we have cut down to a random
+        # subset of the catalog then we may have gone over the
+        # target length, depending on the random selection
         n = len(photo_data['id'])
-        end = start + n
-        
+        end = min(start + n, target_size)
+
+        assert photo_data['id'].min()==0
+
         t0=default_timer()
         # Save each column
         for name, col in photo_data.items():
