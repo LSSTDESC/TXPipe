@@ -2,6 +2,7 @@ from ceci import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
 from .utils.metacal import metacal_band_variants, metacal_variants
 import numpy as np
+from timeit import default_timer
 
 class TXProtoDC2Mock(PipelineStage):
     """
@@ -120,6 +121,7 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Keep track of catalog position
         start = 0
+        count = 0
 
         # Loop through chunks of 
         for data in self.data_iterator(gc):
@@ -127,8 +129,8 @@ class TXProtoDC2Mock(PipelineStage):
             # This will be reduced later as we remove objects
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
-            print(f"Process {self.rank} read chunk {start} - {start+chunk_size} of {my_N}")
-
+            print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {my_N}")
+            count += chunk_size
             # Select a random fraction of the catalog
             if self.cat_size != N:
                 select = np.random.uniform(size=chunk_size) < select_fraction
@@ -160,7 +162,7 @@ class TXProtoDC2Mock(PipelineStage):
 
             
         # Tidy up
-        self.truncate_photometry(photo_file)
+        #self.truncate_output(photo_file, metacal_file, end)
         photo_file.close()
         metacal_file.close()
 
@@ -181,6 +183,7 @@ class TXProtoDC2Mock(PipelineStage):
 
 
     def setup_photometry_output(self, photo_file):
+        from .utils.hdf_tools import create_dataset_early_allocated
         # Get a list of all the column names
         cols = ['ra', 'dec']
         for band in self.bands:
@@ -207,13 +210,16 @@ class TXProtoDC2Mock(PipelineStage):
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
         for col in cols:
-            group.create_dataset(col, (self.cat_size,), maxshape=(self.cat_size,), dtype='f8')
+            create_dataset_early_allocated(group, col, self.cat_size, 'f8')
 
         # The only non-float column for now
-        group.create_dataset('id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
+        create_dataset_early_allocated(group, 'id', self.cat_size, 'i8')
+
 
 
     def setup_metacal_output(self, metacal_file):
+        from .utils.hdf_tools import create_dataset_early_allocated
+
         # Get a list of all the column names
         cols = (
             ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
@@ -228,12 +234,13 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
-        for col in cols:
-            group.create_dataset(col, (self.cat_size,), maxshape=(self.cat_size,), dtype='f8')
+        
 
-        # The only non-float columns for now
-        group.create_dataset('id', (self.cat_size,), maxshape=(self.cat_size,), dtype='i8')
-        group.create_dataset('mcal_flags', (self.cat_size,), maxshape=(self.cat_size,), dtype='i4')
+        for col in cols:
+            create_dataset_early_allocated(group, col, self.cat_size, 'f8')
+
+        create_dataset_early_allocated(group, 'id', self.cat_size, 'i8')
+        create_dataset_early_allocated(group, 'mcal_flags', self.cat_size, 'i4')
         
 
     def load_metacal_response_model(self):
@@ -285,15 +292,17 @@ class TXProtoDC2Mock(PipelineStage):
         # doing this in chunks)
         n = len(photo_data['id'])
         end = start + n
-
+        
+        t0=default_timer()
         # Save each column
         for name, col in photo_data.items():
             photo_file[f'photometry/{name}'][start:end] = col
 
+        t1 = default_timer()
         for name, col in metacal_data.items():
             metacal_file[f'metacal/{name}'][start:end] = col
-
-        print(f"Rank {self.rank}: write complete")
+        t2 = default_timer()
+        print(f"Rank {self.rank}: write complete (times {t1-t0}, {t2-t1}, {t2-t0})")
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
@@ -522,12 +531,17 @@ class TXProtoDC2Mock(PipelineStage):
             metacal[key] = metacal[key][detected]
 
 
-    def truncate_photometry(self, photo_file, end):
+    def truncate_output(self, photo_file, metacal_file, end):
         """
         Cut down the output photometry file to its final 
         size.
         """
         group = photo_file['photometry']
+        cols = list(group.keys())
+        for col in cols:
+            group[col].resize((end,))
+
+        group = metacal_file['metacal']
         cols = list(group.keys())
         for col in cols:
             group[col].resize((end,))
