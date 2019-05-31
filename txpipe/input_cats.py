@@ -102,8 +102,11 @@ class TXProtoDC2Mock(PipelineStage):
             print(f"Rank {self.rank}: loaded. Have {my_N} objects from total {N}")
 
         else:
+            all_npix = len(all_healpix_pixels)
+            print(f"Rank {self.rank} loading catalog with all {all_npix} pixels.")
             gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
             N = my_N = len(gc)
+            print(f"Rank {self.rank} loaded: length = {N}.")
 
         target_size = min(N, self.config['max_size'])
         select_fraction = target_size / N
@@ -149,7 +152,7 @@ class TXProtoDC2Mock(PipelineStage):
             # Cut out any objects too faint to be detected and measured
             self.remove_undetected(data, mock_photometry, mock_metacal)
             # The chunk size has now changed
-            some_col = mock_photometry.keys()[0]
+            some_col = list(mock_photometry.keys())[0]
             chunk_size = len(mock_photometry[some_col])
 
 
