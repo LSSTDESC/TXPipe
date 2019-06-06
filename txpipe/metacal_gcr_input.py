@@ -38,12 +38,20 @@ class TXMetacalGCRInput(PipelineStage):
         # Total size is needed to set up the output file,
         # although in larger files it is a little slow to compute this.
         n = len(cat)
-        print(f"Total catalog size = {n}")
+        print(f"Total catalog size = {n}")  
+
+        available = cat.list_all_quantities()
+        bands = []
+        for b in 'ugrizy':
+            if f'mcal_mag_{b}' in available:
+                bands.append(b)
+
+
 
         # Columns that we will need.
         cols = (['objectId', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants('mcal_mag', 'mcal_mag_err')
+            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         )
 
         start = 0

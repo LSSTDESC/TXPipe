@@ -1,4 +1,4 @@
-from descformats import FitsFile, HDFFile, DataFile, YamlFile
+from descformats import FitsFile, HDFFile, DataFile, YamlFile, TextFile
 import pandas as pd
 def metacalibration_names(names):
     """
