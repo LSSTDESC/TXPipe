@@ -21,6 +21,7 @@ class TXMetacalGCRInput(PipelineStage):
 
     outputs = [
         ('shear_catalog', HDFFile),
+        ('photometry_catalog', HDFFile),
     ]
 
     config_options = {
@@ -46,25 +47,34 @@ class TXMetacalGCRInput(PipelineStage):
             if f'mcal_mag_{b}' in available:
                 bands.append(b)
 
-
-
         # Columns that we will need.
         cols = (['objectId', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
             + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         )
 
+        # Photometry columns (non-metacal)
+        for band in 'ugrizy':
+            cols.append(f'{band}_mag')
+            cols.append(f'{band}_mag_err')
+            cols.append(f'snr_{band}_cModel')
+
+
         start = 0
-        outfile = None
+        shear_output = None
+        photo_output = None
 
         # Loop through the data, as chunke natively by GCRCatalogs
         for data in cat.get_quantities(cols, return_iterator=True):
-
+            #
+            self.rename_columns(data)
             # First chunk of data we use to set up the output
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if outfile is None:
-                outfile = self.setup_output(data, n)
+                shear_output = self.setup_shear_output(data, n)
+                photo_output = self.setup_photo_output(data, n)
+
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
@@ -74,8 +84,13 @@ class TXMetacalGCRInput(PipelineStage):
         # All done!
         outfile.close()
 
+    def rename_columns(self, data):
+        for band in 'ugrizy':
+            data[f'snr_{band}'] = data[f'snr_{band}_cModel']
+            del data[f'snr_{band}_cModel']
 
-    def setup_output(self, cat, n):
+
+    def setup_shear_output(self, cat, n):
         import h5py
         filename = self.get_output('shear_catalog')
         f = h5py.File(filename, "w")
@@ -83,6 +98,16 @@ class TXMetacalGCRInput(PipelineStage):
         for name, col in cat.items():
             g.create_dataset(name, shape=(n,), dtype=col.dtype)
         return f
+
+    def setup_photometry_output(self, cat, n):
+        import h5py
+        filename = self.get_output('photometry_catalog')
+        f = h5py.File(filename, "w")
+        g = f.create_group('photometry')
+        for name, col in cat.items():
+            g.create_dataset(name, shape=(n,), dtype=col.dtype)
+        return f
+
 
     def write_output(self, f, start, end, data):
         g = f['metacal']
