@@ -27,7 +27,7 @@ TXSelector:
     max_rows: 1000
     delta_gamma: 0.02
     zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
-    chunk_rows: 1000
+    chunk_rows: 10000
     # Mag cuts
     cperp_cut: 0.2
     r_cpar_cut: 13.5

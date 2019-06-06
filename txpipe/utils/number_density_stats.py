@@ -25,8 +25,8 @@ class NumberDensityStats:
             m1 = R[:,0,0] # R11, taking the mean for the bin, TODO check if that's what we want to do
             m2 = R[:,1,1] # R22
             m = 0.5*(m1+m2)
-            self.shear_stats[i].add_data(0, shear_data['mcal_g'][:,0][w])
-            self.shear_stats[i].add_data(1, shear_data['mcal_g'][:,1][w])
+            self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w])
+            self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w])
             self.mean_response[i].add_data(0, m[w])
 
         for i in range(self.nbin_lens):
