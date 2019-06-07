@@ -20,7 +20,7 @@ class TXMetacalGCRInput(PipelineStage):
     inputs = []
 
     outputs = [
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
     ]
 

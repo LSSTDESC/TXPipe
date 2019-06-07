@@ -26,7 +26,7 @@ class TXSelector(PipelineStage):
     name='TXSelector'
 
     inputs = [
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', MetacalCatalog),
         ('calibration_table', TextFile),
         ('photometry_catalog', HDFFile),
     ]
@@ -68,6 +68,9 @@ class TXSelector(PipelineStage):
          - Write out biases and close the output
         """
 
+        # Suppress some warnings from numpy that are not relevant
+        original_warning_settings = np.seterr(all='ignore')  
+
         # The output file we will put the tomographic
         # information into
         output_file = self.setup_output()
@@ -89,8 +92,6 @@ class TXSelector(PipelineStage):
         shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
         shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
-
-        print(shear_cols)
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -142,6 +143,9 @@ class TXSelector(PipelineStage):
         # Save and complete
         output_file.close()
 
+        # Restore the original warning settings in case we are being called from a library
+        np.seterr(**original_warning_settings)
+
     
 
 
@@ -162,6 +166,7 @@ class TXSelector(PipelineStage):
 
         # Pull out the appropriate columns and combinations of the data
         bands = self.config['bands']
+        print(f"Using these bands to train the tomography selector: {bands}")
 
         # Generate the training data that we will use
         # We record both the name of the column and the data iself

@@ -12,22 +12,14 @@ def metacalibration_names(names):
         out += [name + '_' + s for s in suffices]
     return out
 
-class MetacalCatalog(FitsFile):
+class MetacalCatalog(HDFFile):
     """
     A metacal output catalog
     """
     # These are columns
-    metacal_columns = [
-        'mcal_g', 'mcal_g_cov',  'mcal_pars',  'mcal_pars_cov',
-        'mcal_T', 'mcal_T_err', 'mcal_T_r', 'mcal_s2n_r',]
-
-    other_columns = ['mcal_flux_cov', 'mcal_weight', 'mcal_flux',
-        'mcal_flux_s2n', 'mcal_mag', 'mcal_gpsf', 'mcal_logsb', 'mcal_Tpsf']
-
-    # The parent class will check these columns exist.
-    required_columns = ( metacal_columns
-                        + metacalibration_names(metacal_columns)
-                        + other_columns )
+    required_datasets = ['metacal/mcal_g1', 'metacal/mcal_g1_1p', 
+        'metacal/mcal_g2', 'metacal/mcal_flags', 'metacal/ra',
+        'metacal/mcal_T']
 
     # Add methods for handling here ...
 

@@ -322,7 +322,8 @@ class TXTwoPoint(PipelineStage):
         theta=np.exp(gg.meanlogr)
         xip = gg.xip
         xim = gg.xim
-        xiperr = ximerr = np.sqrt(gg.varxi)
+        xiperr = np.sqrt(gg.varxip)
+        ximerr = np.sqrt(gg.varxim)
 
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
@@ -447,7 +448,7 @@ class TXTwoPoint(PipelineStage):
     def load_shear_catalog(self):
 
         # Columns we need from the shear catalog
-        cat_cols = ['ra','dec','mcal_g','mcal_flags',]
+        cat_cols = ['ra','dec','mcal_g1', 'mcal_g2', 'mcal_flags',]
         # JAZ I couldn't see a use for these at the moment - will probably need them later,
         # though may be able to do those algorithms on-line
         # cat_cols += ['mcal_mag','mcal_s2n_r', 'mcal_T']
@@ -455,10 +456,14 @@ class TXTwoPoint(PipelineStage):
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        data = f[1].read_columns(cat_cols)
+        g = f['metacal']
+        data = {}
+        for col in cat_cols:
+            print(f"Loading {col}")
+            data[col] = g[col][:]
 
-        mcal_g1 = data['mcal_g'][:,0]
-        mcal_g2 = data['mcal_g'][:,1]
+        mcal_g1 = data['mcal_g1']
+        mcal_g2 = data['mcal_g2']
 
         if self.config['flip_g2']:
             mcal_g2 *= -1

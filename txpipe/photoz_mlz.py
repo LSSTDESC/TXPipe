@@ -38,7 +38,7 @@ class PZPDFMLZ(PipelineStage):
         # Open the input catalog and check how many objects
         # we will be running on.
         cat = self.open_input("photometry_catalog")
-        nobj = cat['photometry/id'].size
+        nobj = cat['photometry/ra'].size
         cat.close()
 
         features, trees = self.load_training()
@@ -46,11 +46,10 @@ class PZPDFMLZ(PipelineStage):
         # Prepare the output HDF5 file
         output_file = self.prepare_output(nobj, z)
 
-        suffices = ["", "_1p", "_1m", "_2p", "_2m"]
         bands = self.config['bands']
         # The columns we need to calculate the photo-z.
         # Note that we need all the metacalibrated variants too.
-        cols = [f'mag_{band}_lsst{suffix}' for band in bands for suffix in suffices]
+        cols = [f'{band}_mag' for band in bands]
 
         # Loop through chunks of the data.
         # Parallelism is handled in the iterate_input function - 
@@ -122,60 +121,67 @@ class PZPDFMLZ(PipelineStage):
 
         # Number of z points we will be using
         nbin = len(z) - 1
-        nrow = len(data['mag_i_lsst'])
-
-        expected_features = [
-            'mag_u_lsst', 'mag_g_lsst', 'mag_r_lsst', 
-            'mag_i_lsst', 'mag_z_lsst', 'mag_y_lsst', 
-            'mag_u_lsst-mag_g_lsst', 'mag_g_lsst-mag_r_lsst', 
-            'mag_r_lsst-mag_i_lsst', 'mag_i_lsst-mag_z_lsst', 
-            'mag_z_lsst-mag_y_lsst']
+        nrow = len(data['i_mag'])
 
 
-        if not expected_features == features:
+        # These are the old names for the features
+        if features == [
+            'mag_u_lsst',
+            'mag_g_lsst',
+            'mag_r_lsst',
+            'mag_i_lsst',
+            'mag_z_lsst',
+            'mag_y_lsst', 
+            'mag_u_lsst-mag_g_lsst',
+            'mag_g_lsst-mag_r_lsst',
+            'mag_r_lsst-mag_i_lsst',
+            'mag_i_lsst-mag_z_lsst',
+            'mag_z_lsst-mag_y_lsst']:
+            x =  [data[f'{b}_mag'] for b in 'ugrizy']
+
+            ug = data['u_mag'] - data['g_mag']
+            gr = data['g_mag'] - data['r_mag']
+            ri = data['r_mag'] - data['i_mag']
+            iz = data['i_mag'] - data['z_mag']
+            zy = data['z_mag'] - data['y_mag']
+            x += [ug, gr, ri, iz, zy]
+
+        elif features == [
+         'mag_u_lsst',
+         'mag_g_lsst',
+         'mag_r_lsst',
+         'mag_i_lsst',
+         'mag_u_lsst-mag_g_lsst',
+         'mag_g_lsst-mag_r_lsst',
+         'mag_r_lsst-mag_i_lsst',
+         'mag_i_lsst-mag_z_lsst',
+         'mag_z_lsst-mag_y_lsst']:
+            x =  [data[f'{b}_mag'] for b in 'ugriz']
+            ug = data['u_mag'] - data['g_mag']
+            gr = data['g_mag'] - data['r_mag']
+            ri = data['r_mag'] - data['i_mag']
+            iz = data['i_mag'] - data['z_mag']
+            zy = data['z_mag'] - data['y_mag']
+            x += [ug, gr, ri, iz, zy]
+        else:
             raise ValueError("Need to re-code for the features you used")
 
-        X_v = []
-        variants = ['', '_1p', '_1m', '_2p', '_2m']
-        for v in variants:
-            x_v =  [data[f'mag_{b}_lsst'+v] for b in 'ugrizy']
-            ug = data['mag_u_lsst'+v] - data['mag_g_lsst'+v]
-            gr = data['mag_g_lsst'+v] - data['mag_r_lsst'+v]
-            ri = data['mag_r_lsst'+v] - data['mag_i_lsst'+v]
-            iz = data['mag_i_lsst'+v] - data['mag_z_lsst'+v]
-            zy = data['mag_z_lsst'+v] - data['mag_y_lsst'+v]
-            x_v += [ug, gr, ri, iz, zy]
-            x_v = np.vstack(x_v).T
-
-            X_v.append(x_v)
-
-        x, x_1p, x_1m, x_2p, x_2m = X_v
-
+        x = np.vstack(x).T
 
         pdfs = np.empty((nrow, nbin))
-        point_estimates = np.empty((5, nrow))
+        point_estimates = np.empty(nrow)
 
 
         for i in range(nrow):
+            if i%1000==0:
+                print(i)
 
             # Run all the tree regressors on each of the metacal
             # variants
-            values = [
-                np.concatenate([T.get_vals(xx[i]) for T in trees]).ravel()
-                for xx in [x, x_1p, x_1m, x_2p, x_2m]
-            ]
-
-            pdfs[i], _ = np.histogram(values[0], bins=z)
+            values = np.concatenate([T.get_vals(x[i]) for T in trees]).ravel()
+            pdfs[i], _ = np.histogram(values, bins=z)
             pdfs[i] /= pdfs[i].sum()
-
-            point_estimates[0, i] = np.mean(values[0])
-            point_estimates[1, i] = np.mean(values[1])
-            point_estimates[2, i] = np.mean(values[2])
-            point_estimates[3, i] = np.mean(values[3])
-            point_estimates[4, i] = np.mean(values[4])
-
-
-        
+            point_estimates[i] = np.mean(values)
         return pdfs, point_estimates
 
     def write_output(self, output_file, start, end, pdfs, point_estimates):
@@ -203,11 +209,7 @@ class PZPDFMLZ(PipelineStage):
         """
         group = output_file['pdf']
         group['pdf'][start:end] = pdfs
-        group['mu'][start:end] = point_estimates[0]
-        group['mu_1p'][start:end] = point_estimates[1]
-        group['mu_1m'][start:end] = point_estimates[2]
-        group['mu_2p'][start:end] = point_estimates[3]
-        group['mu_2m'][start:end] = point_estimates[4]
+        group['mu'][start:end] = point_estimates
 
 
 
@@ -247,10 +249,6 @@ class PZPDFMLZ(PipelineStage):
         group.create_dataset("z", (nz,), dtype='f4')
         group.create_dataset("pdf", (nobj,nz), dtype='f4')
         group.create_dataset("mu", (nobj,), dtype='f4')
-        group.create_dataset("mu_1p", (nobj,), dtype='f4')
-        group.create_dataset("mu_1m", (nobj,), dtype='f4')
-        group.create_dataset("mu_2p", (nobj,), dtype='f4')
-        group.create_dataset("mu_2m", (nobj,), dtype='f4')
 
         # One processor writes the redshift axis to output.
         if self.rank==0:

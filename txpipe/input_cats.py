@@ -21,7 +21,7 @@ class TXProtoDC2Mock(PipelineStage):
     ]
 
     outputs = [
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
     ]
 

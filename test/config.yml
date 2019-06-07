@@ -56,11 +56,10 @@ TXDiagnosticMaps:
     # pixelization: gnomonic
     # # 
     pixel_size: 0.2
-
-    ra_cent: 0.0
-    dec_cent: 0.0
-    npix_x: 20
-    npix_y: 20
+    ra_cent: 53.0
+    dec_cent: -27.9
+    npix_x: 50
+    npix_y: 50
 
 TXTwoPointFourier:
     chunk_rows: 10000
