@@ -63,6 +63,10 @@ class TXMetacalGCRInput(PipelineStage):
         # eliminate duplicates
         cols = list(set(shear_cols + photo_cols))
 
+        # We will rename this band
+        for band in 'ugrizy':
+            photo_cols.append(f'snr_{band}')
+
         start = 0
         shear_output = None
         photo_output = None
@@ -75,8 +79,8 @@ class TXMetacalGCRInput(PipelineStage):
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
-                shear_output = self.setup_shear_output(data, n)
-                photo_output = self.setup_photo_output(data, n)
+                shear_output = self.setup_shear_output(data, shear_cols, n)
+                photo_output = self.setup_photo_output(data, photo_cols, n)
 
 
             # Write out this chunk of data to HDF
@@ -96,22 +100,24 @@ class TXMetacalGCRInput(PipelineStage):
             del data[f'snr_{band}_cModel']
 
 
-    def setup_shear_output(self, cat, n):
+    def setup_shear_output(self, cat, cols, n):
         import h5py
         filename = self.get_output('shear_catalog')
         f = h5py.File(filename, "w")
         g = f.create_group('metacal')
         for name, col in cat.items():
-            g.create_dataset(name, shape=(n,), dtype=col.dtype)
+            if name in cols:
+                g.create_dataset(name, shape=(n,), dtype=col.dtype)
         return f
 
-    def setup_photo_output(self, cat, n):
+    def setup_photo_output(self, cat, cols, n):
         import h5py
         filename = self.get_output('photometry_catalog')
         f = h5py.File(filename, "w")
         g = f.create_group('photometry')
         for name, col in cat.items():
-            g.create_dataset(name, shape=(n,), dtype=col.dtype)
+            if name in cols:
+                g.create_dataset(name, shape=(n,), dtype=col.dtype)
         return f
 
 
