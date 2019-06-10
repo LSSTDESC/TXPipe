@@ -66,7 +66,7 @@ class TXTwoPoint(PipelineStage):
 
         # Calculate metadata like the area and related
         # quantities
-        meta = self.calc_metadata(data)
+        meta = self.calculate_metadata(data)
 
         # Choose which pairs of bins to calculate
         calcs = self.select_calculations(data)
@@ -252,7 +252,7 @@ class TXTwoPoint(PipelineStage):
         results = []
 
         if k==SHEAR_SHEAR:
-            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calc_shear_shear(data, i, j)
+            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calculate_shear_shear(data, i, j)
             if i==j:
                 npairs/=2
                 weight/=2
@@ -261,7 +261,7 @@ class TXTwoPoint(PipelineStage):
             results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
 
         elif k==SHEAR_POS:
-            theta, val, err, npairs, weight = self.calc_shear_pos(data, i, j)
+            theta, val, err, npairs, weight = self.calculate_shear_pos(data, i, j)
             if i==j:
                 npairs/=2
                 weight/=2
@@ -269,7 +269,7 @@ class TXTwoPoint(PipelineStage):
             results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
 
         elif k==POS_POS:
-            theta, val, err, npairs, weight = self.calc_pos_pos(data, i, j)
+            theta, val, err, npairs, weight = self.calculate_pos_pos(data, i, j)
             if i==j:
                 npairs/=2
                 weight/=2
@@ -288,7 +288,7 @@ class TXTwoPoint(PipelineStage):
 
         return m1, m2, mask
 
-    def calc_shear_shear(self, data, i, j):
+    def calculate_shear_shear(self, data, i, j):
         import treecorr
         m1,m2,mask = self.get_m(data, i)
 
@@ -333,7 +333,7 @@ class TXTwoPoint(PipelineStage):
 
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
-    def calc_shear_pos(self,data, i, j):
+    def calculate_shear_pos(self,data, i, j):
         import treecorr
 
         m1,m2,mask = self.get_m(data, i)
@@ -381,7 +381,7 @@ class TXTwoPoint(PipelineStage):
 
         return theta, gammat, gammaterr, ng.npairs, ng.weight
 
-    def calc_pos_pos(self, data, i, j):
+    def calculate_pos_pos(self, data, i, j):
         import treecorr
 
         mask = data['lens_bin'] == i
@@ -500,7 +500,7 @@ class TXTwoPoint(PipelineStage):
         f.close()
 
 
-    def calc_sigma_e(self, data):
+    def calculate_sigma_e(self, data):
         """
         Calculate sigma_e for shape catalog.
         """
@@ -530,7 +530,7 @@ class TXTwoPoint(PipelineStage):
 
         return sigma_e_list, mean_g1_list, mean_g2_list
 
-    def calc_neff(self, area, data):
+    def calculate_neff(self, area, data):
         neff = []
         for i in data['source_list']:
             m1, m2, mask = self.get_m(data, i)
@@ -541,7 +541,7 @@ class TXTwoPoint(PipelineStage):
             neff.append(a/b/c)
         return neff
 
-    def calc_area(self, data):
+    def calculate_area(self, data):
         import healpy as hp
         pix=hp.ang2pix(4096, np.pi/2.-np.radians(data['dec']),np.radians(data['ra']), nest=True)
         area=hp.nside2pixarea(4096)*(180./np.pi)**2
@@ -550,11 +550,11 @@ class TXTwoPoint(PipelineStage):
         area=float(area) * 60. * 60.
         return area
 
-    def calc_metadata(self, data):
+    def calculate_metadata(self, data):
         #TODO put the metadata in the output SACC file
-        area = self.calc_area(data)
-        neff = self.calc_neff(area, data)
-        sigma_e, mean_e1, mean_e2 = self.calc_sigma_e(data)
+        area = self.calculate_area(data)
+        neff = self.calculate_neff(area, data)
+        sigma_e, mean_e1, mean_e2 = self.calculate_sigma_e(data)
 
         meta = {}
         meta["neff"] =  neff
