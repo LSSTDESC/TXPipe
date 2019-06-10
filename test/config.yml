@@ -45,6 +45,9 @@ TXRandomCat:
 TXTwoPoint:
     binslop: 0.1
     delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
 
 TXDiagnosticMaps:
     chunk_rows: 10000  # Number of rows to process at once
@@ -58,8 +61,8 @@ TXDiagnosticMaps:
     pixel_size: 0.2
     ra_cent: 53.0
     dec_cent: -27.9
-    npix_x: 50
-    npix_y: 50
+    npix_x: 25
+    npix_y: 25
 
 TXTwoPointFourier:
     chunk_rows: 10000

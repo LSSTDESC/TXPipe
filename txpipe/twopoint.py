@@ -1,4 +1,4 @@
-from ceci import PipelineStage
+from ceci import PipelineStage, optional
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
 import numpy as np
 import random
@@ -23,7 +23,8 @@ class TXTwoPoint(PipelineStage):
         ('shear_catalog', MetacalCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog)
+        ('random_cats', optional(RandomsCatalog)),
+        ('lens_catalog', optional(HDFFile)),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
@@ -42,6 +43,9 @@ class TXTwoPoint(PipelineStage):
         'source_bins':[-1],
         'lens_bins':[-1],
         'reduce_randoms_size':1.0,
+        'do_shear_shear': True,
+        'do_shear_pos': True,
+        'do_pos_pos': True
         }
 
     def run(self):
@@ -55,6 +59,9 @@ class TXTwoPoint(PipelineStage):
         self.load_tomography(data)
         self.load_shear_catalog(data)
         self.load_random_catalog(data)
+        # This one is optional
+        self.load_lens_catalog(data)
+        # Binning information
         self.read_nbin(data)
 
         # Calculate metadata like the area and related
@@ -86,24 +93,29 @@ class TXTwoPoint(PipelineStage):
         calcs = []
 
         # For shear-shear we omit pairs with j>i
-        k = SHEAR_SHEAR
-        for i in source_list:
-            for j in range(i+1):
-                if j in source_list:
-                    calcs.append((i,j,k))
+        if self.config['do_shear_shear']:
+            k = SHEAR_SHEAR
+            for i in source_list:
+                for j in range(i+1):
+                    if j in source_list:
+                        calcs.append((i,j,k))
 
         # For shear-position we use all pairs
-        k = SHEAR_POS
-        for i in source_list:
-            for j in lens_list:
-                calcs.append((i,j,k))
+        if self.config['do_shear_pos']:
+            k = SHEAR_POS
+            for i in source_list:
+                for j in lens_list:
+                    calcs.append((i,j,k))
 
         # For position-position we omit pairs with j>i
-        k = POS_POS
-        for i in lens_list:
-            for j in range(i+1):
-                if j in lens_list:
-                    calcs.append((i,j,k))
+        if self.config['do_pos_pos']:
+            if not 'random_bin' in data:
+                raise ValueError("You need to have a random catalog to calculate position-position correlations")
+            k = POS_POS
+            for i in lens_list:
+                for j in range(i+1):
+                    if j in lens_list:
+                        calcs.append((i,j,k))
 
         if self.rank==0:
             print(f"Running these calculations: {calcs}")
@@ -296,37 +308,65 @@ class TXTwoPoint(PipelineStage):
 
         return m1, m2, mask
 
-    def calculate_shear_shear(self, data, i, j):
+
+    def get_shear_catalog(self, data, i):
         import treecorr
         m1,m2,mask = self.get_m(data, i)
 
         g1 = data['mcal_g1'][mask]
         g2 = data['mcal_g2'][mask]
-        n_i = len(g1)
 
-        cat_i = treecorr.Catalog(
+        cat = treecorr.Catalog(
             g1 = (g1 - g1.mean()) / m1,
             g2 = (g2 - g2.mean()) / m2,
-            ra=data['ra'][mask], dec=data['dec'][mask],
+            ra = data['ra'][mask],
+            dec = data['dec'][mask],
+            ra_units='degree', dec_units='degree')
+        return cat
+
+
+    def get_lens_catalog(self, data, i):
+        import treecorr
+
+
+        mask = data['lens_bin'] == i
+
+        if 'lens_ra' in data:
+            ra = data['lens_ra'][mask]
+            dec = data['lens_dec'][mask]
+        else:
+            ra = data['ra'][mask]
+            dec = data['dec'][mask]
+
+        cat = treecorr.Catalog(
+            ra=ra, dec=dec,
             ra_units='degree', dec_units='degree')
 
-        del g1, g2
+        if 'random_bin' in data:
+            random_mask = data['random_bin']==i
+            rancat  = treecorr.Catalog(
+                ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                ra_units='degree', dec_units='degree')
+        else:
+            rancat = None
+
+        return cat, rancat
+
+
+    def calculate_shear_shear(self, data, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_catalog(data, i)
+        n_i = cat_i.nobj
+
 
         if i==j:
             cat_j = cat_i
             n_j = n_i
         else:
-            m1,m2,mask = self.get_m(data, j)
-            g1 = data['mcal_g1'][mask]
-            g2 = data['mcal_g2'][mask]
-            n_j = len(g1)
+            cat_j = self.get_shear_catalog(data, j)
+            n_j = cat_j.nobj
 
-            cat_j = treecorr.Catalog(
-                g1 = (g1 - g1.mean()) / m1,
-                g2 = (g2 - g2.mean()) / m2,
-                ra=data['ra'][mask], dec=data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-            del g1, g2
 
         print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
 
@@ -344,43 +384,23 @@ class TXTwoPoint(PipelineStage):
     def calculate_shear_pos(self,data, i, j):
         import treecorr
 
-        m1,m2,mask = self.get_m(data, i)
+        cat_i = self.get_shear_catalog(data, i)
+        n_i = cat_i.nobj
 
-        g1 = data['mcal_g1'][mask]
-        g2 = data['mcal_g2'][mask]
-        n_i = len(g1)
-        cat_i = treecorr.Catalog(
-            g1 = (g1 - g1.mean()) / m1,
-            g2 = (g2 - g2.mean()) / m2,
-            ra = data['ra'][mask],
-            dec = data['dec'][mask],
-            ra_units='degree', dec_units='degree')
-        del g1, g2
+        cat_j, rancat_j = self.get_lens_catalog(data, j)
+        n_j = cat_j.nobj
+        n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        mask = data['lens_bin'] == j
-        random_mask = data['random_bin'] == j
-        n_j = mask.sum()
-        n_rand = random_mask.sum()
-
-        cat_j = treecorr.Catalog(
-            ra=data['ra'][mask],
-            dec=data['dec'][mask],
-            ra_units='degree',
-            dec_units='degree')
-
-        rancat_j  = treecorr.Catalog(
-            ra=data['random_ra'][random_mask],
-            dec=data['random_dec'][random_mask],
-            ra_units='degree',
-            dec_units='degree')
-
-        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand} randoms")
+        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
         ng = treecorr.NGCorrelation(self.config)
-        rg = treecorr.NGCorrelation(self.config)
-
         ng.process(cat_j, cat_i)
-        rg.process(rancat_j, cat_i)
+
+        if rancat_j:
+            rg = treecorr.NGCorrelation(self.config)
+            rg.process(rancat_j, cat_i)
+        else:
+            rg = None
 
         gammat, gammat_im, gammaterr = ng.calculateXi(rg=rg)
 
@@ -389,21 +409,13 @@ class TXTwoPoint(PipelineStage):
 
         return theta, gammat, gammaterr, ng.npairs, ng.weight
 
+
     def calculate_pos_pos(self, data, i, j):
         import treecorr
 
-        mask = data['lens_bin'] == i
-        random_mask = data['random_bin']==i
-        n_i = mask.sum()
-        n_rand_i = random_mask.sum()
-
-        cat_i = treecorr.Catalog(
-            ra=data['ra'][mask], dec=data['dec'][mask],
-            ra_units='degree', dec_units='degree')
-
-        rancat_i  = treecorr.Catalog(
-            ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-            ra_units='degree', dec_units='degree')
+        cat_i, rancat_i = self.get_lens_catalog(data, i)
+        n_i = cat_i.nobj
+        n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
         if i==j:
             cat_j = cat_i
@@ -411,18 +423,9 @@ class TXTwoPoint(PipelineStage):
             n_j = n_i
             n_rand_j = n_rand_i
         else:
-            mask = data['lens_bin'] == j
-            random_mask = data['random_bin'] == j
-            n_j = mask.sum()
-            n_rand_j = random_mask.sum()
-
-            cat_j = treecorr.Catalog(
-                ra=data['ra'][mask], dec=data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-
-            rancat_j  = treecorr.Catalog(
-                ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                ra_units='degree', dec_units='degree')
+            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
         print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
             f"{n_rand_i} x {n_rand_j} randoms")
@@ -459,16 +462,25 @@ class TXTwoPoint(PipelineStage):
         data['source_bin']  =  source_bin
         data['lens_bin']  =  lens_bin
         data['r_gamma']  =  r_gamma
+
+    def load_lens_catalog(self, data):
+        filename = self.get_input('lens_catalog')
+        if filename is None:
+            return
+
+        print(f"Loading lens sample from {filename}")
+
+        f = self.open_input('lens_catalog')
+        data['lens_ra']  = f['lens/ra'][:]
+        data['lens_dec'] = f['lens/dec'][:]
+        data['lens_bin'] = f['lens/bin'][:]
+
         
 
     def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
         cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags',]
-        # JAZ I couldn't see a use for these at the moment - will probably need them later,
-        # though may be able to do those algorithms on-line
-        # cat_cols += ['mcal_mag','mcal_s2n_r', 'mcal_T']
-
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
@@ -482,6 +494,10 @@ class TXTwoPoint(PipelineStage):
 
 
     def load_random_catalog(self, data):
+        filename = self.get_input('random_cats')
+        if filename is None:
+            print("Not using randoms")
+            return
 
         # Columns we need from the tomography catalog
         randoms_cols = ['dec','e1','e2','ra','bin']
