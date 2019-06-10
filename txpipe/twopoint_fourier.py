@@ -356,12 +356,12 @@ class TXTwoPointFourier(PipelineStage):
         # TODO: Fix window functions, and how to save them.
 
         # k refers to the type of measurement we are making
-        import sacc2
-        CEE=sacc2.known_types.galaxy_shear_ee
-        CBB=sacc2.known_types.galaxy_shear_bb
-        CdE=sacc2.known_types.ggl_E
-        CdB=sacc2.known_types.ggl_B
-        Cdd=sacc2.known_types.galaxy_density_cl
+        import sacc
+        CEE=sacc.standard_types.galaxy_shear_ee
+        CBB=sacc.standard_types.galaxy_shear_bb
+        CdE=sacc.standard_types.ggl_e
+        CdB=sacc.standard_types.ggl_b
+        Cdd=sacc.standard_types.galaxy_density_cl
 
         type_name = NAMES[k]
         print(f"Process {self.rank} calcluating {type_name} spectrum for bin pair {i},{i}")
@@ -490,7 +490,7 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_tracers(self, nbin_source, nbin_lens):
-        import sacc2
+        import sacc
         f = self.open_input('photoz_stack')
 
         tracers = {}
@@ -499,14 +499,14 @@ class TXTwoPointFourier(PipelineStage):
             name = f"source_{i}"
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
-            T = sacc2.BaseTracer.make("NZ", name, z, Nz)
+            T = sacc.BaseTracer.make("NZ", name, z, Nz)
             tracers[name] = T
 
         for i in range(nbin_lens):
             name = f"lens_{i}"
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
-            T = sacc2.BaseTracer.make("NZ", name, z, Nz)
+            T = sacc.BaseTracer.make("NZ", name, z, Nz)
             tracers[name] = T
 
         return tracers
@@ -577,15 +577,15 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def save_power_spectra(self, tracers, nbin_source, nbin_lens):
-        import sacc2
-        from sacc2.windows import TopHatWindow
-        CEE=sacc2.known_types.galaxy_shear_ee
-        CBB=sacc2.known_types.galaxy_shear_bb
-        CdE=sacc2.known_types.ggl_E
-        CdB=sacc2.known_types.ggl_B
-        Cdd=sacc2.known_types.galaxy_density_cl
+        import sacc
+        from sacc.windows import TopHatWindow
+        CEE=sacc.standard_types.galaxy_shear_ee
+        CBB=sacc.standard_types.galaxy_shear_bb
+        CdE=sacc.standard_types.ggl_e
+        CdB=sacc.standard_types.ggl_b
+        Cdd=sacc.standard_types.galaxy_density_cl
 
-        S = sacc2.Sacc()
+        S = sacc.Sacc()
 
         for tracer in tracers.values():
             S.add_tracer_object(tracer)
