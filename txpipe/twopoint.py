@@ -47,14 +47,6 @@ class TXTwoPoint(PipelineStage):
     def run(self):
         """
         Run the analysis for this stage.
-
-         - reads the config file
-         - prepares the output HDF5 file
-         - loads in the data
-         - computes 3x2 pt. correlation functions
-         - writes the to output
-         - closes the output file
-
         """
 
         # Load the different pieces of data we need into
@@ -63,6 +55,7 @@ class TXTwoPoint(PipelineStage):
         self.load_tomography(data)
         self.load_shear_catalog(data)
         self.load_random_catalog(data)
+        self.read_nbin(data)
 
         # Calculate metadata like the area and related
         # quantities
@@ -129,7 +122,8 @@ class TXTwoPoint(PipelineStage):
 
     def read_nbin(self, data):
         """
-        Determine the bins that
+        Determine the bins to use in this analysis, either from the input file
+        or from the configuration.
         """
         if self.config['source_bins'] == [-1] and self.config['lens_bins'] == [-1]:
             source_list, lens_list = self._read_nbin_from_tomography()
@@ -142,7 +136,6 @@ class TXTwoPoint(PipelineStage):
 
         data['source_list']  =  source_list
         data['lens_list']  =  lens_list
-
 
 
     # These two functions can be combined into a single one.
@@ -169,7 +162,6 @@ class TXTwoPoint(PipelineStage):
 
         nbin_source = len(source_list)
         nbin_lens = len(lens_list)
-
 
         if source_list == [-1]:
             source_list = tomo_source_list
@@ -207,34 +199,46 @@ class TXTwoPoint(PipelineStage):
         # So here we load it in and add it to the data
         f = self.open_input('photoz_stack')
 
-        # F
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
         for i in data['source_list']:
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
 
+        # For both source and lens
         for i in data['lens_list']:
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
-
+        # Closing n(z) file
         f.close()
 
+        # Add the data points that we have one by one, recording which
+        # tracer they each require
         for d in results:
             tracer1 = f'source_{d.i}' if d.corr_type in [XIP, XIM, GAMMAT] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [XIP, XIM] else f'lens_{d.j}'
+            # Each of our Measurement objects contains various theta values,
+            # and we loop through and add them all
             n = len(d.value)
             for i in range(n):
                 S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i], 
                     theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
+        # We also save the associated metadata to the file
         for k,v in meta.items():
             if np.isscalar(v):
                 S.metadata[k] = v
             else:
                 for i, vi in enumerate(v):
                     S.metadata[f'{k}_{i}'] = vi
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
         S.to_canonical_order()
+
+        # Finally, save the output to Sacc file
         S.save_fits(self.get_output('twopoint_data'), overwrite=True)
 
 
@@ -280,6 +284,10 @@ class TXTwoPoint(PipelineStage):
 
 
     def get_m(self, data, i):
+        """
+        Calculate the metacal correction factor for this tomographic bin.
+        # TODO: Add the selection bias R_S?  Or check if it is added elsewhere.
+        """
 
         mask = (data['source_bin'] == i)
 
@@ -448,8 +456,6 @@ class TXTwoPoint(PipelineStage):
         r_gamma = f['multiplicative_bias/R_gamma'][:]
         f.close()
 
-        self.read_nbin(data)
-
         data['source_bin']  =  source_bin
         data['lens_bin']  =  lens_bin
         data['r_gamma']  =  r_gamma
@@ -551,7 +557,6 @@ class TXTwoPoint(PipelineStage):
         return area
 
     def calculate_metadata(self, data):
-        #TODO put the metadata in the output SACC file
         area = self.calculate_area(data)
         neff = self.calculate_neff(area, data)
         sigma_e, mean_e1, mean_e2 = self.calculate_sigma_e(data)
