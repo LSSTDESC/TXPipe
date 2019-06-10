@@ -57,54 +57,42 @@ class TXTwoPoint(PipelineStage):
 
         """
 
-        if self.comm:
-            self.comm.Barrier()
+        # Load the different pieces of data we need into
+        # one large dictionary which we accumulate
+        data = {}
+        self.load_tomography(data)
+        self.load_shear_catalog(data)
+        self.load_random_catalog(data)
 
-        # the default is to run all bins, which is set in the config_options above
-        if self.config['source_bins'][0] == -1 and self.config['lens_bins'][0] == -1:
-            # Get the number of bins from the
-            # tomography input file
-            # if the user did not select specific bins
-            nbins_source, nbins_lens, source_list, lens_list  = self.read_nbins()
-        else:
-            # Otherwise use the bins the user
-            # selected in the config
-            nbins_source, nbins_lens, source_list, lens_list = self.read_selec_bins()
+        # Calculate metadata like the area and related
+        # quantities
+        meta = self.calc_metadata(data)
 
-        print(f'Running with {nbins_source} source bins and {nbins_lens} lens bins')
+        # Choose which pairs of bins to calculate
+        calcs = self.select_calculations(data)
 
-
-        # Various setup and input functions.
-        self.load_tomography()
-        self.load_shear_catalog()
-        self.load_random_catalog()
-        self.setup_results()
-        meta = self.calc_metadata(nbins_source)
-
-        calcs = self.select_calculations(source_list, lens_list)
-        if self.rank==0:
-            print(f"Running these calculations: {calcs}")
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly finer
+        # but for this case I would expect it to be mostly fine
+        results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
-            self.call_treecorr(i, j, k)
+            results += self.call_treecorr(data, i, j, k)
 
-        self.collect_results()
+        # If we are running in parallel this collects the results together
+        results = self.collect_results(results)
 
-        # Prepare the HDF5 output.
-        # When we do this in parallel we can probably
-        # just copy all the results to the root process
-        # to output
+        # Save the results
         if self.rank==0:
-            self.write_output(source_list, lens_list, meta)
+            self.write_output(data, meta, results)
 
 
-    def select_calculations(self, source_list, lens_list):
+    def select_calculations(self, data):
+        source_list = data['source_list']
+        lens_list = data['lens_list']
         calcs = []
 
-        # For shear-shear we omit pairs with j<i
+        # For shear-shear we omit pairs with j>i
         k = SHEAR_SHEAR
         for i in source_list:
             for j in range(i+1):
@@ -117,30 +105,48 @@ class TXTwoPoint(PipelineStage):
             for j in lens_list:
                 calcs.append((i,j,k))
 
-        # For position-position we omit pairs with j<i
+        # For position-position we omit pairs with j>i
         k = POS_POS
         for i in lens_list:
             for j in range(i+1):
                 if j in lens_list:
                     calcs.append((i,j,k))
 
+        if self.rank==0:
+            print(f"Running these calculations: {calcs}")
+
         return calcs
 
-    def collect_results(self):
+    def collect_results(self, results):
         if self.comm is None:
-            return
+            return results
 
-        self.results = self.comm.gather(self.results, root=0)
+        results = self.comm.gather(results, root=0)
 
         # Concatenate results on master
         if self.rank==0:
-            self.results = sum(self.results, [])
+            results = sum(results, [])
 
-    def setup_results(self):
-        self.results = []
+    def read_nbin(self, data):
+        """
+        Determine the bins that
+        """
+        if self.config['source_bins'] == [-1] and self.config['lens_bins'] == [-1]:
+            source_list, lens_list = self._read_nbin_from_tomography()
+        else:
+            source_list, lens_list = self._read_nbin_from_config()
+
+        ns = len(source_list)
+        nl = len(lens_list)
+        print(f'Running with {ns} source bins and {nl} lens bins')
+
+        data['source_list']  =  source_list
+        data['lens_list']  =  lens_list
 
 
-    def read_nbins(self):
+
+    def _read_nbin_from_tomography(self):
+
         tomo = self.open_input('tomography_catalog')
         d = dict(tomo['tomography'].attrs)
         tomo.close()
@@ -148,9 +154,9 @@ class TXTwoPoint(PipelineStage):
         nbin_lens = d['nbin_lens']
         source_list = range(nbin_source)
         lens_list = range(nbin_lens)
-        return nbin_source, nbin_lens, source_list, lens_list
+        return source_list, lens_list
 
-    def read_selec_bins(self):
+    def _read_nbin_from_config(self):
         # TODO handle the case where the user only specefies 
         # bins for only sources or only lenses
         source_list = self.config['source_bins']
@@ -159,21 +165,23 @@ class TXTwoPoint(PipelineStage):
         nbin_lens = len(lens_list)
 
         # catch bad input
-        tom_nbin_source, tom_nbin_lens, _, _ = self.read_nbins()
+        tomo_source_list, tomo_lens_list = self._read_nbin_from_tomography()
+        tomo_nbin_source = len(tomo_source_list)
+        tomo_nbin_lens = len(tomo_lens_list)
         # if more bins are input than exist, assertion error
-        assert (nbin_source <= tom_nbin_source), 'too many source bins, entered {} max is {}'.format(nbin_source, tom_nbin_source)
-        assert (nbin_lens <= tom_nbin_lens), 'too many lens bins, entered {} max is {}'.format(nbin_lens, tom_nbin_lens)
+        assert (nbin_source <= tomo_nbin_source), 'too many source bins, entered {} max is {}'.format(nbin_source, tom_nbin_source)
+        assert (nbin_lens <= tomo_nbin_lens), 'too many lens bins, entered {} max is {}'.format(nbin_lens, tom_nbin_lens)
         # make sure the bin numbers actually exist
         for i in source_list:
-            assert i in range(tom_nbin_source), 'source bin {i} is out of bounds'
+            assert i in range(tomo_nbin_source), 'source bin {i} is out of bounds'
         for j in lens_list:
-            assert j in range(tom_nbin_lens), 'lens bin {j} is out of bounds'
+            assert j in range(tomo_nbin_lens), 'lens bin {j} is out of bounds'
             
-        return nbin_source, nbin_lens, source_list, lens_list 
+        return source_list, lens_list 
 
 
 
-    def write_output(self, source_list, lens_list, meta):
+    def write_output(self, data, meta, results):
         import sacc
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
@@ -186,19 +194,19 @@ class TXTwoPoint(PipelineStage):
         f = self.open_input('photoz_stack')
 
         # F
-        for i in source_list:
+        for i in data['source_list']:
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
 
-        for i in lens_list:
+        for i in data['lens_list']:
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
 
         f.close()
 
-        for d in self.results:
+        for d in results:
             tracer1 = f'source_{d.i}' if d.corr_type in [XIP, XIM, GAMMAT] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [XIP, XIM] else f'lens_{d.j}'
             n = len(d.value)
@@ -217,7 +225,7 @@ class TXTwoPoint(PipelineStage):
 
 
 
-    def call_treecorr(self,i,j,k):
+    def call_treecorr(self, data, i, j, k):
         """
         This is a wrapper for interaction with treecorr.
         """
@@ -227,70 +235,74 @@ class TXTwoPoint(PipelineStage):
         GAMMAT = sacc.standard_types.ggl_gamma_t
         WTHETA = sacc.standard_types.galaxy_density_w
 
+        results = []
+
         if k==SHEAR_SHEAR:
-            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calc_shear_shear(i,j)
+            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calc_shear_shear(data, i, j)
             if i==j:
                 npairs/=2
                 weight/=2
 
-            self.results.append(Measurement(XIP, theta, xip, xiperr, npairs, weight, i, j))
-            self.results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
+            results.append(Measurement(XIP, theta, xip, xiperr, npairs, weight, i, j))
+            results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
 
         elif k==SHEAR_POS:
-            theta, val, err, npairs, weight = self.calc_shear_pos(i,j)
+            theta, val, err, npairs, weight = self.calc_shear_pos(data, i, j)
             if i==j:
                 npairs/=2
                 weight/=2
 
-            self.results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
+            results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
 
         elif k==POS_POS:
-            theta, val, err, npairs, weight = self.calc_pos_pos(i,j)
+            theta, val, err, npairs, weight = self.calc_pos_pos(data, i, j)
             if i==j:
                 npairs/=2
                 weight/=2
 
-            self.results.append(Measurement(WTHETA, theta, val, err, npairs, weight, i, j))
+            results.append(Measurement(WTHETA, theta, val, err, npairs, weight, i, j))
+
+        return results
 
 
+    def get_m(self, data, i):
 
-    def get_m(self,i):
+        mask = (data['source_bin'] == i)
 
-        mask = (self.binning == i)
-
-        m1 = np.mean(self.r_gamma[mask][:,0,0]) # R11, taking the mean for the bin, TODO check if that's what we want to do
-        m2 = np.mean(self.r_gamma[mask][:,1,1]) #R22
+        m1 = np.mean(data['r_gamma'][mask][:,0,0]) # R11, taking the mean for the bin, TODO check if that's what we want to do
+        m2 = np.mean(data['r_gamma'][mask][:,1,1]) #R22
 
         return m1, m2, mask
 
-    def calc_shear_shear(self,i,j):
+    def calc_shear_shear(self, data, i, j):
         import treecorr
-        m1,m2,mask = self.get_m(i)
-        g1 = self.mcal_g1[mask]
-        g2 = self.mcal_g2[mask]
+        m1,m2,mask = self.get_m(data, i)
+
+        g1 = data['mcal_g1'][mask]
+        g2 = data['mcal_g2'][mask]
         n_i = len(g1)
 
         cat_i = treecorr.Catalog(
             g1 = (g1 - g1.mean()) / m1,
             g2 = (g2 - g2.mean()) / m2,
-            ra=self.ra[mask], dec=self.dec[mask],
+            ra=data['ra'][mask], dec=data['dec'][mask],
             ra_units='degree', dec_units='degree')
+
         del g1, g2
 
         if i==j:
             cat_j = cat_i
             n_j = n_i
         else:
-
-            m1,m2,mask = self.get_m(j)
-            g1 = self.mcal_g1[mask]
-            g2 = self.mcal_g2[mask]
+            m1,m2,mask = self.get_m(data, j)
+            g1 = data['mcal_g1'][mask]
+            g2 = data['mcal_g2'][mask]
             n_j = len(g1)
 
             cat_j = treecorr.Catalog(
                 g1 = (g1 - g1.mean()) / m1,
                 g2 = (g2 - g2.mean()) / m2,
-                ra=self.ra[mask], dec=self.dec[mask],
+                ra=data['ra'][mask], dec=data['dec'][mask],
                 ra_units='degree', dec_units='degree')
             del g1, g2
 
@@ -307,35 +319,36 @@ class TXTwoPoint(PipelineStage):
 
         return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
 
-    def calc_shear_pos(self,i,j):
+    def calc_shear_pos(self,data, i, j):
         import treecorr
 
-        m1,m2,mask = self.get_m(i)
+        m1,m2,mask = self.get_m(data, i)
 
-        g1 = self.mcal_g1[mask]
-        g2 = self.mcal_g2[mask]
+        g1 = data['mcal_g1'][mask]
+        g2 = data['mcal_g2'][mask]
         n_i = len(g1)
         cat_i = treecorr.Catalog(
             g1 = (g1 - g1.mean()) / m1,
             g2 = (g2 - g2.mean()) / m2,
-            ra=self.ra[mask], dec=self.dec[mask],
+            ra = data['ra'][mask],
+            dec = data['dec'][mask],
             ra_units='degree', dec_units='degree')
         del g1, g2
 
-        mask = self.lens_gals == j
-        random_mask = self.random_binning==j
+        mask = data['lens_bin'] == j
+        random_mask = data['random_bin'] == j
         n_j = mask.sum()
         n_rand = random_mask.sum()
 
         cat_j = treecorr.Catalog(
-            ra=self.ra[mask],
-            dec=self.dec[mask],
+            ra=data['ra'][mask],
+            dec=data['dec'][mask],
             ra_units='degree',
             dec_units='degree')
 
         rancat_j  = treecorr.Catalog(
-            ra=self.random_ra[random_mask],
-            dec=self.random_dec[random_mask],
+            ra=data['random_ra'][random_mask],
+            dec=data['random_dec'][random_mask],
             ra_units='degree',
             dec_units='degree')
 
@@ -347,27 +360,27 @@ class TXTwoPoint(PipelineStage):
         ng.process(cat_j, cat_i)
         rg.process(rancat_j, cat_i)
 
-        gammat,gammat_im,gammaterr=ng.calculateXi(rg=rg)
+        gammat, gammat_im, gammaterr = ng.calculateXi(rg=rg)
 
-        theta=np.exp(ng.meanlogr)
-        gammaterr=np.sqrt(gammaterr)
+        theta = np.exp(ng.meanlogr)
+        gammaterr = np.sqrt(gammaterr)
 
         return theta, gammat, gammaterr, ng.npairs, ng.weight
 
-    def calc_pos_pos(self,i,j):
+    def calc_pos_pos(self, data, i, j):
         import treecorr
 
-        mask = self.lens_gals == i
-        random_mask = self.random_binning==i
+        mask = data['lens_bin'] == i
+        random_mask = data['random_bin']==i
         n_i = mask.sum()
         n_rand_i = random_mask.sum()
 
         cat_i = treecorr.Catalog(
-            ra=self.ra[mask], dec=self.dec[mask],
+            ra=data['ra'][mask], dec=data['dec'][mask],
             ra_units='degree', dec_units='degree')
 
         rancat_i  = treecorr.Catalog(
-            ra=self.random_ra[random_mask], dec=self.random_dec[random_mask],
+            ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
             ra_units='degree', dec_units='degree')
 
         if i==j:
@@ -376,17 +389,17 @@ class TXTwoPoint(PipelineStage):
             n_j = n_i
             n_rand_j = n_rand_i
         else:
-            mask = self.lens_gals == j
-            random_mask = self.random_binning==j
+            mask = data['lens_bin'] == j
+            random_mask = data['random_bin'] == j
             n_j = mask.sum()
             n_rand_j = random_mask.sum()
 
             cat_j = treecorr.Catalog(
-                ra=self.ra[mask], dec=self.dec[mask],
+                ra=data['ra'][mask], dec=data['dec'][mask],
                 ra_units='degree', dec_units='degree')
 
             rancat_j  = treecorr.Catalog(
-                ra=self.random_ra[random_mask], dec=self.random_dec[random_mask],
+                ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                 ra_units='degree', dec_units='degree')
 
         print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
@@ -409,26 +422,29 @@ class TXTwoPoint(PipelineStage):
 
         return theta, wtheta, wthetaerr, nn.npairs, nn.weight
 
-    def load_tomography(self):
+    def load_tomography(self, data):
 
         # Columns we need from the tomography catalog
-        tom_cols = ['source_bin']
-        bias_cols = ['R_gamma'] #TODO R_S - see Sub.Sec. 4.1 in DES Y1 paper R = Rgamma + Rs
-        binning = []
-
         f = self.open_input('tomography_catalog')
-        self.binning = f['tomography/source_bin'][:]
-        self.lens_gals = f['tomography/lens_bin'][:]
+        source_bin = f['tomography/source_bin'][:]
+        lens_bin = f['tomography/lens_bin'][:]
         f.close()
 
         f = self.open_input('tomography_catalog')
-        self.r_gamma = f['multiplicative_bias/R_gamma'][:]
+        r_gamma = f['multiplicative_bias/R_gamma'][:]
         f.close()
 
-    def load_shear_catalog(self):
+        self.read_nbin(data)
+
+        data['source_bin']  =  source_bin
+        data['lens_bin']  =  lens_bin
+        data['r_gamma']  =  r_gamma
+        
+
+    def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
-        cat_cols = ['ra','dec','mcal_g1', 'mcal_g2', 'mcal_flags',]
+        cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags',]
         # JAZ I couldn't see a use for these at the moment - will probably need them later,
         # though may be able to do those algorithms on-line
         # cat_cols += ['mcal_mag','mcal_s2n_r', 'mcal_T']
@@ -437,63 +453,51 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('shear_catalog')
         g = f['metacal']
-        data = {}
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]
 
-        mcal_g1 = data['mcal_g1']
-        mcal_g2 = data['mcal_g2']
-
         if self.config['flip_g2']:
-            mcal_g2 *= -1
-
-        ra = data['ra']
-        dec = data['dec']
+            data['mcal_g2'] *= -1
 
 
-        self.mcal_g1 = mcal_g1
-        self.mcal_g2 = mcal_g2
-        self.ra = ra
-        self.dec = dec
-
-    def load_random_catalog(self):
+    def load_random_catalog(self, data):
 
         # Columns we need from the tomography catalog
         randoms_cols = ['dec','e1','e2','ra','bin']
         print(f"Loading random catalog columns: {randoms_cols}")
 
         f = self.open_input('random_cats')
-        data = f['randoms']
+        group = f['randoms']
 
         cut = self.config['reduce_randoms_size']
         if 0.0<cut<1.0:
-            N = data['dec'].size
+            N = group['dec'].size
             sel = np.random.uniform(size=N) < cut
         else:
             sel = slice(None)
 
-        self.random_dec = data['dec'][sel]
-        self.random_e1 =  data['e1'][sel]
-        self.random_e2 =  data['e2'][sel]
-        self.random_ra =  data['ra'][sel]
-        self.random_binning = data['bin'][sel]
+        data['random_ra'] =  group['ra'][sel]
+        data['random_dec'] = group['dec'][sel]
+        data['random_e1'] =  group['e1'][sel]
+        data['random_e2'] =  group['e2'][sel]
+        data['random_bin'] = group['bin'][sel]
 
         f.close()
 
 
-    def calc_sigma_e(self, nbins_source):
+    def calc_sigma_e(self, data):
         """
         Calculate sigma_e for shape catalog.
         """
         sigma_e_list = []
         mean_g1_list = []
         mean_g2_list = []
-        for i in range(nbins_source):
-            m1, m2, mask = self.get_m(i)
+        for i in data['source_list']:
+            m1, m2, mask = self.get_m(data, i)
             s = (m1+m2)/2
-            g1 = self.mcal_g1[mask]
-            g2 = self.mcal_g2[mask]
+            g1 = data['mcal_g1'][mask]
+            g2 = data['mcal_g2'][mask]
             mean_g1 = g1.mean()
             mean_g2 = g2.mean()
             # TODO Placeholder for actual weights we want to use
@@ -512,41 +516,40 @@ class TXTwoPoint(PipelineStage):
 
         return sigma_e_list, mean_g1_list, mean_g2_list
 
-    def calc_neff(self, area, nbins_source):
+    def calc_neff(self, area, data):
         neff = []
-        for i in range(nbins_source):
-            m1, m2, mask = self.get_m(i)
-            w    = np.ones(len(self.ra[mask]))
+        for i in data['source_list']:
+            m1, m2, mask = self.get_m(data, i)
+            w    = np.ones(len(data['ra'][mask]))
             a    = np.sum(w)**2
             b    = np.sum(w**2)
             c    = area
             neff.append(a/b/c)
         return neff
 
-    def calc_area(self):
+    def calc_area(self, data):
         import healpy as hp
-        pix=hp.ang2pix(4096, np.pi/2.-np.radians(self.dec),np.radians(self.ra), nest=True)
+        pix=hp.ang2pix(4096, np.pi/2.-np.radians(data['dec']),np.radians(data['ra']), nest=True)
         area=hp.nside2pixarea(4096)*(180./np.pi)**2
         mask=np.bincount(pix)>0
         area=np.sum(mask)*area
         area=float(area) * 60. * 60.
         return area
 
-    def calc_metadata(self, nbins_source):
+    def calc_metadata(self, data):
         #TODO put the metadata in the output SACC file
-        import yaml
-        area = self.calc_area()
-        neff = self.calc_neff(area, nbins_source)
-        sigma_e, mean_e1, mean_e2 = self.calc_sigma_e(nbins_source)
-        data = {
-            "neff": neff,
-            "area": area,
-            "sigma_e": sigma_e,
-            "mean_e1": mean_e1,
-            "mean_e2": mean_e2,
-        }
+        area = self.calc_area(data)
+        neff = self.calc_neff(area, data)
+        sigma_e, mean_e1, mean_e2 = self.calc_sigma_e(data)
 
-        return data
+        meta = {}
+        meta["neff"] =  neff
+        meta["area"] =  area
+        meta["sigma_e"] =  sigma_e
+        meta["mean_e1"] =  mean_e1
+        meta["mean_e2"] =  mean_e2
+
+        return meta
 
 if __name__ == '__main__':
     PipelineStage.main()
