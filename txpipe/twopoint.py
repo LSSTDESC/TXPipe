@@ -145,8 +145,8 @@ class TXTwoPoint(PipelineStage):
 
 
 
+    # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-
         tomo = self.open_input('tomography_catalog')
         d = dict(tomo['tomography'].attrs)
         tomo.close()
@@ -161,21 +161,35 @@ class TXTwoPoint(PipelineStage):
         # bins for only sources or only lenses
         source_list = self.config['source_bins']
         lens_list = self.config['lens_bins']
-        nbin_source = len(source_list)
-        nbin_lens = len(lens_list)
 
         # catch bad input
         tomo_source_list, tomo_lens_list = self._read_nbin_from_tomography()
         tomo_nbin_source = len(tomo_source_list)
         tomo_nbin_lens = len(tomo_lens_list)
-        # if more bins are input than exist, assertion error
-        assert (nbin_source <= tomo_nbin_source), 'too many source bins, entered {} max is {}'.format(nbin_source, tom_nbin_source)
-        assert (nbin_lens <= tomo_nbin_lens), 'too many lens bins, entered {} max is {}'.format(nbin_lens, tom_nbin_lens)
+
+        nbin_source = len(source_list)
+        nbin_lens = len(lens_list)
+
+
+        if source_list == [-1]:
+            source_list = tomo_source_list
+        if lens_list == [-1]:
+            lens_list = tomo_lens_list
+
+        # if more bins are input than exist, raise an error
+        if not nbin_source <= tomo_nbin_source:
+            raise ValueError(f'Requested too many source bins in the config ({nbin_source}): max is {tomo_nbin_source}')
+        if not nbin_lens <= tomo_nbin_lens:
+            raise ValueError(f'Requested too many lens bins in the config ({nbin_lens}): max is {tomo_nbin_lens}')
+
         # make sure the bin numbers actually exist
         for i in source_list:
-            assert i in range(tomo_nbin_source), 'source bin {i} is out of bounds'
-        for j in lens_list:
-            assert j in range(tomo_nbin_lens), 'lens bin {j} is out of bounds'
+            if i not in tomo_source_list:
+                raise ValueError(f"Requested source bin {i} that is not in the input file")
+
+        for i in lens_list:
+            if i not in tomo_lens_list:
+                raise ValueError(f"Requested lens bin {i} that is not in the input file")
             
         return source_list, lens_list 
 
