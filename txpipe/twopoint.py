@@ -201,9 +201,9 @@ class TXTwoPoint(PipelineStage):
 
     def write_output(self, data, meta, results):
         import sacc
-        XIP = sacc.standard_types.galaxy_shear_xi_plus
-        XIM = sacc.standard_types.galaxy_shear_xi_minus
-        GAMMAT = sacc.standard_types.ggl_gamma_t
+        XIP = sacc.standard_types.galaxy_shear_2pt_plus
+        XIM = sacc.standard_types.galaxy_shear_2pt_minus
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_2pt_t
 
         S = sacc.Sacc()
 
@@ -260,10 +260,10 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
-        XIP = sacc.standard_types.galaxy_shear_xi_plus
-        XIM = sacc.standard_types.galaxy_shear_xi_minus
-        GAMMAT = sacc.standard_types.ggl_gamma_t
-        WTHETA = sacc.standard_types.galaxy_density_w
+        XIP = sacc.standard_types.galaxy_shear_2pt_plus
+        XIM = sacc.standard_types.galaxy_shear_2pt_minus
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_2pt_t
+        WTHETA = sacc.standard_types.galaxy_density_2pt
 
         results = []
 

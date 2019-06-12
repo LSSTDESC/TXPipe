@@ -57,15 +57,15 @@ class TXFourierGaussianCovariance(PipelineStage):
         return cosmo
 
     def read_sacc(self):
-        import sacc2
+        import sacc
         f = self.get_input('twopoint_data_fourier')
-        sacc_data = sacc2.Sacc.load_fits(f)
+        sacc_data = sacc.Sacc.load_fits(f)
 
         # Remove the data types that we won't use for inference
         mask = [
-            sacc_data.indices(sacc2.known_types.galaxy_shear_ee),
-            sacc_data.indices(sacc2.known_types.ggl_E),
-            sacc_data.indices(sacc2.known_types.galaxy_density_cl),
+            sacc_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
+            sacc_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
+            sacc_data.indices(sacc.standard_types.galaxy_density_cl),
         ]
         mask = np.concatenate(mask)
         sacc_data.mask_indices(mask)
@@ -119,12 +119,11 @@ class TXFourierGaussianCovariance(PipelineStage):
         # Turn the nz into CCL Tracer objects
         # Use the cosmology object to calculate C_ell values
         import pyccl as ccl
-        import sacc2
+        import sacc
 
-        CEE=sacc2.known_types.galaxy_shear_ee
-        CEd=sacc2.known_types.ggl_E
-        Cdd=sacc2.known_types.galaxy_density_cl
-
+        CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEd = sacc.standard_types.galaxy_shearDensity_cl_e
+        Cdd = sacc.standard_types.galaxy_density_cl
         theory = {}
 
         for data_type in [CEE, CEd, Cdd]:
@@ -155,11 +154,11 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def compute_noise_c_ell(self, n_eff, sigma_e, n_lens, sacc_data):
-        import sacc2
+        import sacc
 
-        CEE=sacc2.known_types.galaxy_shear_ee
-        CEd=sacc2.known_types.ggl_E
-        Cdd=sacc2.known_types.galaxy_density_cl
+        CEE=sacc.standard_types.galaxy_shear_cl_ee
+        CEd=sacc.standard_types.galaxy_shearDensity_cl_e
+        Cdd=sacc.standard_types.galaxy_density_cl
 
         noise = {}
 
@@ -181,21 +180,22 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def compute_covariance(self, sacc_data, theory_c_ell, noise_c_ell, fsky):
-
+        import sacc
         n = len(sacc_data)
         cov = np.zeros((n, n))
 
         # It's useful to convert these names to two-character
         # mappings as we will need combinations of them
+
         names = {
-            'galaxy_density_cl': 'DD',
-            'galaxy_shear_ee': 'EE',
-            'ggl_E': 'ED',
+            sacc.standard_types.galaxy_density_cl: 'DD',
+            sacc.standard_types.galaxy_shear_cl_ee: 'EE',
+            sacc.standard_types.galaxy_shearDensity_cl_e: 'ED',
         }
 
         # ell values must be the same for this all to work
         # TODO: Fix this for cases where we only want to work with a subset of the data
-        ell = sacc_data.get_tag('ell', 'galaxy_shear_ee', ('source_0', 'source_0'))
+        ell = sacc_data.get_tag('ell', sacc.standard_types.galaxy_shear_cl_ee, ('source_0', 'source_0'))
         ell_indices = {ell:v for v,ell in enumerate(ell)}
 
 

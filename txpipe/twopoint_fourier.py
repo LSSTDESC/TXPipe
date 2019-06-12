@@ -357,10 +357,10 @@ class TXTwoPointFourier(PipelineStage):
 
         # k refers to the type of measurement we are making
         import sacc
-        CEE=sacc.standard_types.galaxy_shear_ee
-        CBB=sacc.standard_types.galaxy_shear_bb
-        CdE=sacc.standard_types.ggl_e
-        CdB=sacc.standard_types.ggl_b
+        CEE=sacc.standard_types.galaxy_shear_cl_ee
+        CBB=sacc.standard_types.galaxy_shear_cl_bb
+        CdE=sacc.standard_types.galaxy_shearDensity_cl_e
+        CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
 
         type_name = NAMES[k]
@@ -579,10 +579,10 @@ class TXTwoPointFourier(PipelineStage):
     def save_power_spectra(self, tracers, nbin_source, nbin_lens):
         import sacc
         from sacc.windows import TopHatWindow
-        CEE=sacc.standard_types.galaxy_shear_ee
-        CBB=sacc.standard_types.galaxy_shear_bb
-        CdE=sacc.standard_types.ggl_e
-        CdB=sacc.standard_types.ggl_b
+        CEE=sacc.standard_types.galaxy_shear_cl_ee
+        CBB=sacc.standard_types.galaxy_shear_cl_bb
+        CdE=sacc.standard_types.galaxy_shearDensity_cl_e
+        CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
 
         S = sacc.Sacc()
