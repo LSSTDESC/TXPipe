@@ -1,8 +1,8 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
 from .utils.metacal import metacal_band_variants, metacal_variants
 import numpy as np
-from timeit import default_timer
+from .utils.timer import Timer
 
 class TXProtoDC2Mock(PipelineStage):
     """
@@ -305,16 +305,12 @@ class TXProtoDC2Mock(PipelineStage):
 
         assert photo_data['id'].min()>0
 
-        t0=default_timer()
         # Save each column
         for name in photo_cols:
             photo_file[f'photometry/{name}'][start:end] = photo_ata[name]
 
-        t1 = default_timer()
         for name in metacal_cols:
             metacal_file[f'metacal/{name}'][start:end] = metacal_data[name]
-        t2 = default_timer()
-        print(f"Rank {self.rank}: write complete (times {t1-t0}, {t2-t1}, {t2-t0})")
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
@@ -642,21 +638,29 @@ def make_mock_photometry(n_visit, bands, data):
         output[f'mag_{band}_lsst'] = mag_obs
         output[f'mag_err_{band}_lsst'] = mag_err
 
-        mag_obs_1p = mag_obs + mag_resp*delta_gamma
-        mag_obs_1m = mag_obs - mag_resp*delta_gamma
-        mag_obs_2p = mag_obs + mag_resp*delta_gamma
-        mag_obs_2m = mag_obs - mag_resp*delta_gamma
+        m = mag_resp*delta_gamma
 
-        output[f'mag_{band}_lsst_1p'] = mag_obs_1p
-        output[f'mag_{band}_lsst_1m'] = mag_obs_1m
-        output[f'mag_{band}_lsst_2p'] = mag_obs_2p
-        output[f'mag_{band}_lsst_2m'] = mag_obs_2m
+        m1 = mag_obs + m
+        m2 = mag_obs - m
+        mag_obs_1p = m1
+        mag_obs_1m = m2
+
+
+        output[f'mag_{band}_lsst_1p'] = m1
+        output[f'mag_{band}_lsst_1m'] = m2
+        output[f'mag_{band}_lsst_2p'] = m1
+        output[f'mag_{band}_lsst_2m'] = m2
 
         # Scale the SNR values according the to change in magnitude.r
-        output[f'snr_{band}_1p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1p))
-        output[f'snr_{band}_1m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1m))
-        output[f'snr_{band}_2p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2p))
-        output[f'snr_{band}_2m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2m))
+        s = np.power(10., -0.4*m)
+
+        snr1 = obs_snr * s
+        snr2 = obs_snr / s
+        output[f'snr_{band}_1p'] = snr1
+        output[f'snr_{band}_1m'] = snr2
+        output[f'snr_{band}_2p'] = snr1
+        output[f'snr_{band}_2m'] = snr2
+
 
 
     return output

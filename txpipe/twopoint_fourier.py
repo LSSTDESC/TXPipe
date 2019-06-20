@@ -1,4 +1,4 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, DiagnosticMaps, HDFFile, PhotozPDFFile
 import numpy as np
 import collections
@@ -598,6 +598,10 @@ class TXTwoPointFourier(PipelineStage):
             for i in range(n):
                 win = TopHatWindow(d.win[i][0], d.win[i][1])
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win, i=d.i, j=d.j)
+
+        # Save provenance information
+        for key, value in self.gather_provenance().items():
+            S.metadata[f'provenance/{key}'] = value
 
 
         output_filename = self.get_output("twopoint_data_fourier")

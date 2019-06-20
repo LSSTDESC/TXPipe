@@ -1,4 +1,4 @@
-from ceci import PipelineStage, optional
+from .base_stage import PipelineStage
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
 import numpy as np
 import random
@@ -244,6 +244,12 @@ class TXTwoPoint(PipelineStage):
             else:
                 for i, vi in enumerate(v):
                     S.metadata[f'{k}_{i}'] = vi
+
+        # Add provenance metadata.  In managed formats this is done
+        # automatically, but because the Sacc library is external
+        # we do it manually here.
+        for key, value in self.gather_provenance().items():
+            S.metadata[f'provenance/{key}'] = value
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.

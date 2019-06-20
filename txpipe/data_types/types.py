@@ -1,5 +1,5 @@
-from descformats import FitsFile, HDFFile, DataFile, YamlFile, TextFile
-import pandas as pd
+from .base import FitsFile, HDFFile, DataFile, YamlFile, TextFile
+
 def metacalibration_names(names):
     """
     Generate the metacalibrated variants of the inputs names,

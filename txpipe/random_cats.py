@@ -1,4 +1,4 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile
 from .utils import choose_pixelization
 import numpy as np
