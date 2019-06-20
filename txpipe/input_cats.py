@@ -118,8 +118,8 @@ class TXProtoDC2Mock(PipelineStage):
         # Prepare output files
         metacal_file = self.open_output('shear_catalog', parallel=self.is_mpi())
         photo_file = self.open_output('photometry_catalog', parallel=self.is_mpi())
-        self.setup_photometry_output(photo_file, target_size)
-        self.setup_metacal_output(metacal_file, target_size)
+        photo_cols = self.setup_photometry_output(photo_file, target_size)
+        metacal_cols = self.setup_metacal_output(metacal_file, target_size)
 
 
         # Load the metacal response file
@@ -165,7 +165,7 @@ class TXProtoDC2Mock(PipelineStage):
             start, end = self.next_output_indices(start, chunk_size)
 
             # Save all output
-            self.write_output(start, target_size, photo_file, mock_photometry, metacal_file, mock_metacal)
+            self.write_output(start, target_size, photo_cols, metacal_cols, photo_file, mock_photometry, metacal_file, mock_metacal)
 
             # The next iteration starts writing where the current one ends.
             start = end
@@ -201,19 +201,9 @@ class TXProtoDC2Mock(PipelineStage):
         # Get a list of all the column names
         cols = ['ra', 'dec']
         for band in self.bands:
-            cols.append(f'mag_true_{band}_lsst')
-            cols.append(f'true_snr_{band}')
-            cols.append(f'mag_{band}_lsst')
-            cols.append(f'mag_err_{band}_lsst')
-            cols.append(f'mag_{band}_lsst_1p')
-            cols.append(f'mag_{band}_lsst_1m')
-            cols.append(f'mag_{band}_lsst_2p')
-            cols.append(f'mag_{band}_lsst_2m')
+            cols.append(f'{band}_mag')
+            cols.append(f'{band}_mag_err')
             cols.append(f'snr_{band}')
-            cols.append(f'snr_{band}_1p')
-            cols.append(f'snr_{band}_1m')
-            cols.append(f'snr_{band}_2p')
-            cols.append(f'snr_{band}_2m')
 
         for col in self.config['extra_cols'].split():
             cols.append(col)
@@ -229,6 +219,8 @@ class TXProtoDC2Mock(PipelineStage):
         # The only non-float column for now
         create_dataset_early_allocated(group, 'id', target_size, 'i8')
 
+        return cols + ['id']
+
 
 
     def setup_metacal_output(self, metacal_file, target_size):
@@ -238,7 +230,7 @@ class TXProtoDC2Mock(PipelineStage):
         cols = (
             ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n','mcal_g1_err', 'mcal_g2_err', 'mcal_T_err')
-            + metacal_band_variants('mcal_mag', 'mcal_mag_err')
+            + metacal_band_variants(self.bands, 'mcal_mag', 'mcal_mag_err')
         )
 
         cols += ['true_g1', 'true_g2']
@@ -255,6 +247,8 @@ class TXProtoDC2Mock(PipelineStage):
 
         create_dataset_early_allocated(group, 'id', target_size, 'i8')
         create_dataset_early_allocated(group, 'mcal_flags', target_size, 'i4')
+
+        return cols + ['id',  'mcal_flags']
         
 
     def load_metacal_response_model(self):
@@ -284,7 +278,7 @@ class TXProtoDC2Mock(PipelineStage):
         self.Rstd_spline=scipy.interpolate.SmoothBivariateSpline(snr_grid.T.flatten(), sz_grid.T.flatten(), R_std.flatten())        
 
 
-    def write_output(self, start, target_size, photo_file, photo_data, metacal_file, metacal_data):
+    def write_output(self, start, target_size, photo_cols, metacal_cols, photo_file, photo_data, metacal_file, metacal_data):
         """
         Save the photometry we have just simulated to disc
 
@@ -313,12 +307,12 @@ class TXProtoDC2Mock(PipelineStage):
 
         t0=default_timer()
         # Save each column
-        for name, col in photo_data.items():
-            photo_file[f'photometry/{name}'][start:end] = col
+        for name in photo_cols:
+            photo_file[f'photometry/{name}'][start:end] = photo_ata[name]
 
         t1 = default_timer()
-        for name, col in metacal_data.items():
-            metacal_file[f'metacal/{name}'][start:end] = col
+        for name in metacal_cols:
+            metacal_file[f'metacal/{name}'][start:end] = metacal_data[name]
         t2 = default_timer()
         print(f"Rank {self.rank}: write complete (times {t1-t0}, {t2-t1}, {t2-t0})")
 

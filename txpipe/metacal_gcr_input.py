@@ -48,12 +48,12 @@ class TXMetacalGCRInput(PipelineStage):
                 bands.append(b)
 
         # Columns that we will need.
-        shear_cols = (['objectId', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
+        shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
             + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         )
 
-        photo_cols = ['objectId', 'ra', 'dec']
+        photo_cols = ['id', 'ra', 'dec']
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
             photo_cols.append(f'{band}_mag')
