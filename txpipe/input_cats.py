@@ -2,7 +2,6 @@ from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
 from .utils.metacal import metacal_band_variants, metacal_variants
 import numpy as np
-from timeit import default_timer
 
 class TXProtoDC2Mock(PipelineStage):
     """
@@ -238,7 +237,7 @@ class TXProtoDC2Mock(PipelineStage):
         cols = (
             ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n','mcal_g1_err', 'mcal_g2_err', 'mcal_T_err')
-            + metacal_band_variants('mcal_mag', 'mcal_mag_err')
+            + metacal_band_variants(self.bands, 'mcal_mag', 'mcal_mag_err')
         )
 
         cols += ['true_g1', 'true_g2']
@@ -311,16 +310,12 @@ class TXProtoDC2Mock(PipelineStage):
 
         assert photo_data['id'].min()>0
 
-        t0=default_timer()
         # Save each column
         for name, col in photo_data.items():
             photo_file[f'photometry/{name}'][start:end] = col
 
-        t1 = default_timer()
         for name, col in metacal_data.items():
             metacal_file[f'metacal/{name}'][start:end] = col
-        t2 = default_timer()
-        print(f"Rank {self.rank}: write complete (times {t1-t0}, {t2-t1}, {t2-t0})")
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
@@ -648,10 +643,12 @@ def make_mock_photometry(n_visit, bands, data):
         output[f'mag_{band}_lsst'] = mag_obs
         output[f'mag_err_{band}_lsst'] = mag_err
 
-        mag_obs_1p = mag_obs + mag_resp*delta_gamma
-        mag_obs_1m = mag_obs - mag_resp*delta_gamma
-        mag_obs_2p = mag_obs + mag_resp*delta_gamma
-        mag_obs_2m = mag_obs - mag_resp*delta_gamma
+        m = mag_resp*delta_gamma
+
+        mag_obs_1p = mag_obs + m
+        mag_obs_1m = mag_obs - m
+        mag_obs_2p = mag_obs + m
+        mag_obs_2m = mag_obs - m
 
         output[f'mag_{band}_lsst_1p'] = mag_obs_1p
         output[f'mag_{band}_lsst_1m'] = mag_obs_1m
@@ -659,10 +656,13 @@ def make_mock_photometry(n_visit, bands, data):
         output[f'mag_{band}_lsst_2m'] = mag_obs_2m
 
         # Scale the SNR values according the to change in magnitude.r
-        output[f'snr_{band}_1p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1p))
-        output[f'snr_{band}_1m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_1m))
-        output[f'snr_{band}_2p'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2p))
-        output[f'snr_{band}_2m'] = obs_snr * 10**(0.4*(mag_obs - mag_obs_2m))
+        s = np.power(10., -0.4*m)
+        s1 = np.power(s, -1)
+        output[f'snr_{band}_1p'] = obs_snr * s
+        output[f'snr_{band}_1m'] = obs_snr * s1
+        output[f'snr_{band}_2p'] = obs_snr * s
+        output[f'snr_{band}_2m'] = obs_snr * s1
+
 
 
     return output
