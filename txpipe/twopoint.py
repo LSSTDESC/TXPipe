@@ -1,4 +1,4 @@
-from ceci import PipelineStage, optional
+from .base_stage import PipelineStage
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
 import numpy as np
 import random

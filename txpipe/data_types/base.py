@@ -24,6 +24,7 @@ class DataFile:
     named by a tag.
 
     """
+    supports_parallel_write = False
     def __init__(self, path, mode, validate=True, write_identifier=True, **kwargs):
         self.path = path
         self.mode = mode
@@ -103,6 +104,7 @@ class DataFile:
         self.file.close()
 
 class HDFFile(DataFile):
+    supports_parallel_write = True
     """
     A data file in the HDF5 format.
     Using these files requires the h5py package, which in turn

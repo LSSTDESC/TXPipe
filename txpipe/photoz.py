@@ -1,4 +1,4 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
 
 class TXRandomPhotozPDF(PipelineStage):

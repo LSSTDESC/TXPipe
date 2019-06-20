@@ -1,4 +1,4 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
 from .data_types import DiagnosticMaps
 import numpy as np
