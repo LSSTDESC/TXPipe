@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
 from .utils.metacal import metacal_band_variants, metacal_variants
 import numpy as np
+from .utils.timer import Timer
 
 class TXProtoDC2Mock(PipelineStage):
     """
@@ -645,23 +646,26 @@ def make_mock_photometry(n_visit, bands, data):
 
         m = mag_resp*delta_gamma
 
-        mag_obs_1p = mag_obs + m
-        mag_obs_1m = mag_obs - m
-        mag_obs_2p = mag_obs + m
-        mag_obs_2m = mag_obs - m
+        m1 = mag_obs + m
+        m2 = mag_obs - m
+        mag_obs_1p = m1
+        mag_obs_1m = m2
 
-        output[f'mag_{band}_lsst_1p'] = mag_obs_1p
-        output[f'mag_{band}_lsst_1m'] = mag_obs_1m
-        output[f'mag_{band}_lsst_2p'] = mag_obs_2p
-        output[f'mag_{band}_lsst_2m'] = mag_obs_2m
+
+        output[f'mag_{band}_lsst_1p'] = m1
+        output[f'mag_{band}_lsst_1m'] = m2
+        output[f'mag_{band}_lsst_2p'] = m1
+        output[f'mag_{band}_lsst_2m'] = m2
 
         # Scale the SNR values according the to change in magnitude.r
         s = np.power(10., -0.4*m)
-        s1 = np.power(s, -1)
-        output[f'snr_{band}_1p'] = obs_snr * s
-        output[f'snr_{band}_1m'] = obs_snr * s1
-        output[f'snr_{band}_2p'] = obs_snr * s
-        output[f'snr_{band}_2m'] = obs_snr * s1
+
+        snr1 = obs_snr * s
+        snr2 = obs_snr / s
+        output[f'snr_{band}_1p'] = snr1
+        output[f'snr_{band}_1m'] = snr2
+        output[f'snr_{band}_2p'] = snr1
+        output[f'snr_{band}_2m'] = snr2
 
 
 
