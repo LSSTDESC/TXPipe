@@ -245,6 +245,12 @@ class TXTwoPoint(PipelineStage):
                 for i, vi in enumerate(v):
                     S.metadata[f'{k}_{i}'] = vi
 
+        # Add provenance metadata.  In managed formats this is done
+        # automatically, but because the Sacc library is external
+        # we do it manually here.
+        for key, value in self.gather_provenance().items():
+            S.metadata[f'provenance/{key}'] = value
+
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
