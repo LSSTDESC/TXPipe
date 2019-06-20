@@ -229,8 +229,8 @@ class TXProtoDC2Mock(PipelineStage):
         # Get a list of all the column names
         cols = (
             ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
-            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n','mcal_g1_err', 'mcal_g2_err', 'mcal_T_err')
-            + metacal_band_variants(self.bands, 'mcal_mag', 'mcal_mag_err')
+            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
+            + metacal_band_variants('riz', 'mcal_mag', 'mcal_mag_err')
         )
 
         cols += ['true_g1', 'true_g2']
@@ -307,7 +307,7 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Save each column
         for name in photo_cols:
-            photo_file[f'photometry/{name}'][start:end] = photo_ata[name]
+            photo_file[f'photometry/{name}'][start:end] = photo_data[name]
 
         for name in metacal_cols:
             metacal_file[f'metacal/{name}'][start:end] = metacal_data[name]
@@ -387,9 +387,9 @@ class TXProtoDC2Mock(PipelineStage):
 
         # Convert magnitudes to fluxes according to the baseline
         # use in the metacal numbers
-        flux_r = 10**0.4*(27 - photo['mag_r_lsst'])
-        flux_i = 10**0.4*(27 - photo['mag_i_lsst'])
-        flux_z = 10**0.4*(27 - photo['mag_z_lsst'])
+        flux_r = 10**0.4*(27 - photo['r_mag'])
+        flux_i = 10**0.4*(27 - photo['i_mag'])
+        flux_z = 10**0.4*(27 - photo['z_mag'])
 
         # Note that this is delta_gamma not 2*delta_gamma, because
         # of how we use it below
@@ -456,24 +456,43 @@ class TXProtoDC2Mock(PipelineStage):
             "mcal_s2n_2m": snr_2m,
 
             # Magntiudes and fluxes, just copied from the inputs.
-            'mcal_mag_r': photo['mag_r_lsst'],
-            'mcal_mag_i': photo['mag_i_lsst'],
-            'mcal_mag_z': photo['mag_z_lsst'],
+            'mcal_mag_r': photo['r_mag'],
+            'mcal_mag_i': photo['i_mag'],
+            'mcal_mag_z': photo['z_mag'],
 
-            'mcal_mag_r_1p': photo['mag_r_lsst_1p'],
-            'mcal_mag_r_2p': photo['mag_r_lsst_2p'],
-            'mcal_mag_r_1m': photo['mag_r_lsst_1m'],
-            'mcal_mag_r_2m': photo['mag_r_lsst_2m'],
+            'mcal_mag_err_r': photo['r_mag_err'],
+            'mcal_mag_err_i': photo['i_mag_err'],
+            'mcal_mag_err_z': photo['z_mag_err'],
 
-            'mcal_mag_i_1p': photo['mag_i_lsst_1p'],
-            'mcal_mag_i_2p': photo['mag_i_lsst_2p'],
-            'mcal_mag_i_1m': photo['mag_i_lsst_1m'],
-            'mcal_mag_i_2m': photo['mag_i_lsst_2m'],
+            'mcal_mag_r_1p': photo['r_mag_1p'],
+            'mcal_mag_r_2p': photo['r_mag_2p'],
+            'mcal_mag_r_1m': photo['r_mag_1m'],
+            'mcal_mag_r_2m': photo['r_mag_2m'],
+
+            'mcal_mag_i_1p': photo['i_mag_1p'],
+            'mcal_mag_i_2p': photo['i_mag_2p'],
+            'mcal_mag_i_1m': photo['i_mag_1m'],
+            'mcal_mag_i_2m': photo['i_mag_2m'],
             
-            'mcal_mag_z_1p': photo['mag_z_lsst_1p'],
-            'mcal_mag_z_2p': photo['mag_z_lsst_2p'],
-            'mcal_mag_z_1m': photo['mag_z_lsst_1m'],
-            'mcal_mag_z_2m': photo['mag_z_lsst_2m'],
+            'mcal_mag_z_1p': photo['z_mag_1p'],
+            'mcal_mag_z_2p': photo['z_mag_2p'],
+            'mcal_mag_z_1m': photo['z_mag_1m'],
+            'mcal_mag_z_2m': photo['z_mag_2m'],
+
+            'mcal_mag_err_r_1p': photo['r_mag_err'],
+            'mcal_mag_err_r_2p': photo['r_mag_err'],
+            'mcal_mag_err_r_1m': photo['r_mag_err'],
+            'mcal_mag_err_r_2m': photo['r_mag_err'],
+
+            'mcal_mag_err_i_1p': photo['i_mag_err'],
+            'mcal_mag_err_i_2p': photo['i_mag_err'],
+            'mcal_mag_err_i_1m': photo['i_mag_err'],
+            'mcal_mag_err_i_2m': photo['i_mag_err'],
+
+            'mcal_mag_err_z_1p': photo['z_mag_err'],
+            'mcal_mag_err_z_2p': photo['z_mag_err'],
+            'mcal_mag_err_z_1m': photo['z_mag_err'],
+            'mcal_mag_err_z_2m': photo['z_mag_err'],
 
             # Fixed PSF parameters - all round with same size
             'mcal_psf_g1': zero,
@@ -510,7 +529,7 @@ class TXProtoDC2Mock(PipelineStage):
             # Set objects not detected in one band that are detected in another
             # to inf magnitude in that band, and the SNR to zero.
             photo[f'snr_{band}'][not_detected_in_band] = 0.0
-            photo[f'mag_{band}_lsst'][not_detected_in_band] = np.inf
+            photo[f'{band}_mag'][not_detected_in_band] = np.inf
 
             # Record that we have detected this object at all
             detected |= detected_in_band
@@ -635,8 +654,9 @@ def make_mock_photometry(n_visit, bands, data):
 
         output[f'true_snr_{band}'] = true_snr
         output[f'snr_{band}'] = obs_snr
-        output[f'mag_{band}_lsst'] = mag_obs
-        output[f'mag_err_{band}_lsst'] = mag_err
+        output[f'{band}_mag'] = mag_obs
+        output[f'mag_err_{band}'] = mag_err
+        output[f'{band}_mag_err'] = mag_err
 
         m = mag_resp*delta_gamma
 
@@ -646,10 +666,10 @@ def make_mock_photometry(n_visit, bands, data):
         mag_obs_1m = m2
 
 
-        output[f'mag_{band}_lsst_1p'] = m1
-        output[f'mag_{band}_lsst_1m'] = m2
-        output[f'mag_{band}_lsst_2p'] = m1
-        output[f'mag_{band}_lsst_2m'] = m2
+        output[f'{band}_mag_1p'] = m1
+        output[f'{band}_mag_1m'] = m2
+        output[f'{band}_mag_2p'] = m1
+        output[f'{band}_mag_2m'] = m2
 
         # Scale the SNR values according the to change in magnitude.r
         s = np.power(10., -0.4*m)
@@ -756,7 +776,7 @@ class TXGCRMockMetacal(PipelineStage):
 
 
         mag_names = [f'mag_{b}' for b in self.bands]
-        err_names = [f'magerr_{b}' for b in self.bands]
+        err_names = [f'{b}_mag_err' for b in self.bands]
         snr_names = [f'snr_{b}_cModel' for b in self.bands]
         # Columns we need from the cosmo simulation
         cols = mag_names + err_names + snr_names
@@ -773,12 +793,12 @@ class TXGCRMockMetacal(PipelineStage):
             output = {}
             for band, mag_resp in zip(self.bands, mag_responses):
                 # Mags and SNR are in the catalog already
-                mag_obs = data[f'mag_{band}']
+                mag_obs = data[f'{band}_mag']
                 snr     = data[f'snr_{band}_cModel']
-                mag_err = data[f'magerr_{band}']
+                mag_err = data[f'{band}_mag_err']
 
-                output[f'mag_{band}']    = mag_obs
-                output[f'magerr_{band}'] = mag_err
+                output[f'{band}_mag']    = mag_obs
+                output[f'{band}_mag_err'] = mag_err
                 output[f'snr_{band}']    = snr
 
                 # Generate the metacalibrated values
@@ -789,10 +809,10 @@ class TXGCRMockMetacal(PipelineStage):
 
                 # Save them, but we will also need them to generate
                 # metacalibrated SNRs below
-                output[f'mag_{band}_1p'] = mag_obs_1p
-                output[f'mag_{band}_1m'] = mag_obs_1m
-                output[f'mag_{band}_2p'] = mag_obs_2p
-                output[f'mag_{band}_2m'] = mag_obs_2m
+                output[f'{band}_mag_1p'] = mag_obs_1p
+                output[f'{band}_mag_1m'] = mag_obs_1m
+                output[f'{band}_mag_2p'] = mag_obs_2p
+                output[f'{band}_mag_2m'] = mag_obs_2m
 
                 # Scale the SNR values according the to change in magnitude.
                 output[f'snr_{band}_1p'] = snr * 10**(0.4*(mag_obs - mag_obs_1p))
