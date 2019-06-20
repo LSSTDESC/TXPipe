@@ -22,10 +22,12 @@ output_dir: metacal-outputs/
 
 config: test/config.yml
 
+# use DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed  on NERSC
+
 inputs:
     # See README for paths to download these files
-    shear_catalog: ${LSST}/groups/WL/users/zuntz/data/metacal-testbed/shear_catalog.hdf
-    photometry_catalog: ${LSST}/groups/WL/users/zuntz/data/metacal-testbed/photometry_catalog.hdf
+    shear_catalog: ${DATA}/shear_catalog.hdf
+    photometry_catalog: ${DATA}/photometry_catalog.hdf
     photoz_trained_model: test/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
     calibration_table: test/sample_cosmodc2_w10year_errors.dat
