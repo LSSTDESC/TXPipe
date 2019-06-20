@@ -23,8 +23,7 @@ class TXTwoPoint(PipelineStage):
         ('shear_catalog', MetacalCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
-        ('random_cats', optional(RandomsCatalog)),
-        ('lens_catalog', optional(HDFFile)),
+        ('random_cats', RandomsCatalog),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
@@ -59,7 +58,7 @@ class TXTwoPoint(PipelineStage):
         self.load_tomography(data)
         self.load_shear_catalog(data)
         self.load_random_catalog(data)
-        # This one is optional
+        # This one is optional - this class does nothing with it
         self.load_lens_catalog(data)
         # Binning information
         self.read_nbin(data)
@@ -464,16 +463,8 @@ class TXTwoPoint(PipelineStage):
         data['r_gamma']  =  r_gamma
 
     def load_lens_catalog(self, data):
-        filename = self.get_input('lens_catalog')
-        if filename is None:
-            return
-
-        print(f"Loading lens sample from {filename}")
-
-        f = self.open_input('lens_catalog')
-        data['lens_ra']  = f['lens/ra'][:]
-        data['lens_dec'] = f['lens/dec'][:]
-        data['lens_bin'] = f['lens/bin'][:]
+        # Subclasses can load an external lens catalog
+        pass
 
         
 
@@ -586,5 +577,25 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
+class TXTwoPointLensCat(PipelineStage):
+    name='TXTwoPointLensCat'
+    inputs = [
+        ('shear_catalog', MetacalCatalog),
+        ('tomography_catalog', TomographyCatalog),
+        ('photoz_stack', HDFFile),
+        ('random_cats', RandomsCatalog),
+        ('lens_catalog', HDFFile),
+    ]
+    def load_lens_catalog(self, data):
+        filename = self.get_input('lens_catalog')
+        print(f"Loading lens sample from {filename}")
+
+        f = self.open_input('lens_catalog')
+        data['lens_ra']  = f['lens/ra'][:]
+        data['lens_dec'] = f['lens/dec'][:]
+        data['lens_bin'] = f['lens/bin'][:]
+
+
 if __name__ == '__main__':
     PipelineStage.main()
+
