@@ -46,16 +46,16 @@ class DataFile:
         of useful information about the origina 
         """
         UUID = uuid.uuid4().hex
-        creation_date = datetime.datetime.now().isoformat()
+        creation = datetime.datetime.now().isoformat()
         domain = socket.getfqdn()
-        user = getpass.getuser()
+        username = getpass.getuser()
 
         # Add other provenance and related 
         return {
             'uuid': UUID,
-            'creation': creation_date,
+            'creation': creation,
             'domain': domain,
-            'username': user,
+            'username': username,
             }
 
     def write_provenance(self):
@@ -77,8 +77,18 @@ class DataFile:
         """
         Concrete subclasses for which it is possible should override
         this method and read the provenance information from the file.
+
+        Other classes will return this dictionary of UNKNOWNs
         """
-        pass
+        provenance = {
+            'uuid':     "UNKNOWN",
+            'creation': "UNKNOWN",
+            'domain':   "UNKNOWN",
+            'username': "UNKNOWN",
+        }
+
+        return provenance
+
 
     def validate(self):
         """
@@ -129,6 +139,9 @@ class HDFFile(DataFile):
         Write provenance information to a new group,
         called 'provenance'
         """
+
+        # This method *must* be called by all the processes in a parallel
+        # run.  
         self._provenance_group = self.file.create_group('provenance')
 
         # Call the sub-method to do each item
@@ -145,6 +158,7 @@ class HDFFile(DataFile):
         if self._provenance_group is None:
             warnings.warn(f"Unable to save provenance information to file {self.path}")
             return
+
         print(f"Writing provenance item {key} = {value}")
         self._provenance_group.attrs[key] = value
 
@@ -160,9 +174,9 @@ class HDFFile(DataFile):
         
         provenance = {
             'uuid':     attrs.get('uuid', "UNKNOWN"),
-            'creation': attrs.get('creation_date', "UNKNOWN"),
+            'creation': attrs.get('creation', "UNKNOWN"),
             'domain':   attrs.get('domain', "UNKNOWN"),
-            'username': attrs.get('user', "UNKNOWN"),
+            'username': attrs.get('username', "UNKNOWN"),
         }
 
         print(f"Read provenance {provenance} for file {self.path}")
@@ -231,9 +245,9 @@ class FitsFile(DataFile):
         header = self.file[0].read_header()
         provenance = {
             'uuid':     header.get('uuid', 'UNKNOWN'),
-            'creation': header.get('creation_date', 'UNKNOWN'),
+            'creation': header.get('creation', 'UNKNOWN'),
             'domain':   header.get('domain', 'UNKNOWN'),
-            'username': header.get('user', 'UNKNOWN'),
+            'username': header.get('username', 'UNKNOWN'),
         }
         return provenance
 
