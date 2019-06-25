@@ -1,4 +1,12 @@
-slauncher: local
+launcher: local
+
+# If the launcher requires it (at the moment that is just for "cori")
+# then this info is used to configure it.  Otherwise it is ignored
+site:
+    cpu: haswell
+    queue: debug
+    max_jobs: 2
+    setup: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
 
 modules: txpipe
 
@@ -22,7 +30,8 @@ output_dir: metacal-outputs/
 
 config: test/config.yml
 
-# use DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed  on NERSC
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
