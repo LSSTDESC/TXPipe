@@ -249,7 +249,12 @@ class TXTwoPoint(PipelineStage):
         # automatically, but because the Sacc library is external
         # we do it manually here.
         for key, value in self.gather_provenance().items():
-            S.metadata[f'provenance/{key}'] = value
+            if isinstance(value, str) and '\n' in value:
+                values = value.split("\n")
+                for i,v in enumerate(values):
+                    S.metadata[f'provenance/{key}_{i}'] = v
+            else:
+                S.metadata[f'provenance/{key}'] = value
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.

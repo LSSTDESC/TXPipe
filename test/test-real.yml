@@ -41,7 +41,7 @@ inputs:
     fiducial_cosmology: test/fiducial_cosmology.yml
     calibration_table: test/sample_cosmodc2_w10year_errors.dat
 
-resume: False
+resume: True
 log_dir: ./test/logs
 pipeline_log: log.txt
 

@@ -159,7 +159,6 @@ class HDFFile(DataFile):
             warnings.warn(f"Unable to save provenance information to file {self.path}")
             return
 
-        print(f"Writing provenance item {key} = {value}")
         self._provenance_group.attrs[key] = value
 
     def read_provenance(self):
@@ -179,7 +178,6 @@ class HDFFile(DataFile):
             'username': attrs.get('username', "UNKNOWN"),
         }
 
-        print(f"Read provenance {provenance} for file {self.path}")
         return provenance
 
 
@@ -238,8 +236,12 @@ class FitsFile(DataFile):
         """
         if self.mode == 'r':
             raise ValueError("Cannot write provenance to a file opened in read mode")
-
-        self.file[0].write_key(key, value)
+        if isinstance(value, str) and '\n' in value:
+            values = value.split("\n")
+            for i,v in enumerate(values):
+                self.file[0].write_key(key+f"_{i}", v)
+        else:
+            self.file[0].write_key(key, value)
 
     def read_provenance(self):
         header = self.file[0].read_header()

@@ -1,7 +1,7 @@
 from ceci import PipelineStage as PipelineStageBase
 from .data_types import HDFFile
 from textwrap import dedent
-
+from .utils.provenance import find_module_versions, git_diff, git_current_revision
 
 class PipelineStage(PipelineStageBase):
     name = "Error"
@@ -19,6 +19,12 @@ class PipelineStage(PipelineStageBase):
             input_id = f.provenance['uuid']
             provenance[f"input/{name}"] = input_id
             f.close()
+
+        provenance["gitdiff"] = git_diff()
+        provenance['githead'] = git_current_revision()
+
+        for module, version in find_module_versions().items():
+            provenance[f"versions/{module}"] = version
 
         return provenance
 
