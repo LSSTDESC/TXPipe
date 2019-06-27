@@ -79,7 +79,7 @@ class PZPDFMLZ(PipelineStage):
         import sys
         sys.modules['mlz'] = sys.modules['mlz_desc']
         filename = self.get_input('photoz_trained_model')
-        features, trees = np.load(filename)
+        features, trees = np.load(filename, allow_pickle=True)
         return features, trees
 
     def calculate_photozs(self, data, z, features, trees):
