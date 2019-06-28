@@ -29,6 +29,8 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def run(self):
+        import pyccl as ccl
+        import sacc
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
 

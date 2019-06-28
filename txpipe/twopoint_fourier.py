@@ -56,6 +56,9 @@ class TXTwoPointFourier(PipelineStage):
     }
 
     def run(self):
+        import pymaster
+        import healpy
+        import sacc
         config = self.config
 
         if self.comm:

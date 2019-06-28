@@ -731,8 +731,12 @@ class TXGCRMockMetacal(PipelineStage):
         return n
 
     def run(self):
-        #input_filename="/global/cscratch1/sd/jchiang8/desc/HSC/merged_tract_8524.hdf5"
+        # import everything early so we are told asap if anything
+        # is missing
         import GCRCatalogs
+        from .utils import hdf_tools
+        import scipy.interpolate
+
         cat_name = self.config['cat_name']
         self.bands = 'ugrizy'
 

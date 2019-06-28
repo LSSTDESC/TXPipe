@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile, DataFile
 import sys
+import numpy as np
 
 class PZPDFMLZ(PipelineStage):
     """
@@ -28,8 +29,9 @@ class PZPDFMLZ(PipelineStage):
     def run(self):
         """
         """
-        import numpy as np
-        import fitsio
+        import mlz_desc
+        import mlz_desc.ml_codes
+        import scipy.stats
 
         zmax = self.config['zmax']
         nz = self.config['nz']
@@ -73,7 +75,6 @@ class PZPDFMLZ(PipelineStage):
         output_file.close()
 
     def load_training(self):
-        import numpy as np
         import mlz_desc
         import mlz_desc.ml_codes
         import sys

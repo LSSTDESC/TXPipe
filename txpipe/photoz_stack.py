@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile 
+import numpy as np
 
 class TXPhotozStack(PipelineStage):
     """
@@ -30,8 +31,6 @@ class TXPhotozStack(PipelineStage):
          - Accumulate the PDFs for each object in each bin
          - Divide by the counts to get the stacked PDF
         """
-        import numpy as np
-
 
         # Set up the array we will stack the PDFs into
         # first get the sizes from metadata
@@ -112,7 +111,6 @@ class TXPhotozStack(PipelineStage):
             f.close()
 
     def reduce(self, x):
-        import numpy as np
         y = np.zeros_like(x) if self.rank==0 else None
         self.comm.Reduce(x,y)
         x[:]=y

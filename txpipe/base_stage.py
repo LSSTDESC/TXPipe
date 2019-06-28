@@ -77,13 +77,9 @@ class PipelineStage(PipelineStageBase):
                 """))
                 raise RuntimeError("h5py module is not MPI-enabled.")
 
+        extra_provenance = self.gather_provenance()
         # Return an opened object representing the file
-        obj = output_class(path, 'w', **kwargs)
-
-
-        for key, value in self.gather_provenance().items():
-            obj.add_provenance(key, value)
-
+        obj = output_class(path, 'w', extra_provenance=extra_provenance, **kwargs)
 
 
         if wrapper:

@@ -67,6 +67,8 @@ class TXSelector(PipelineStage):
          - Average the selection biases
          - Write out biases and close the output
         """
+        import astropy.table
+        import sklearn.ensemble
 
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all='ignore')  
@@ -249,8 +251,6 @@ class TXSelector(PipelineStage):
         shear_data: table or dict of arrays
             A chunk of input shear data with metacalibration variants.
         """
-        import numpy as np
-
         delta_gamma = self.config['delta_gamma']
         nbin = len(self.config['zbins'])
 
@@ -342,8 +342,6 @@ class TXSelector(PipelineStage):
         S: array (nbin,2,2)
             Average selection bias
         """
-        import numpy as np
-
         if self.is_mpi():
             s = self.comm.gather(selection_biases)
             if self.rank!=0:
@@ -477,8 +475,6 @@ class TXSelector(PipelineStage):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
-        import numpy as np
-
         mag_i = phot_data['i_mag']
         mag_r = phot_data['r_mag']
         mag_g = phot_data['g_mag']

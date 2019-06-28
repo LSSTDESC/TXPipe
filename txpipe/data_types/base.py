@@ -3,6 +3,9 @@ import datetime
 import socket
 import getpass
 import warnings
+import pathlib
+import yaml
+import shutil
 
 class FileValidationError(Exception):
     pass
@@ -25,7 +28,7 @@ class DataFile:
 
     """
     supports_parallel_write = False
-    def __init__(self, path, mode, validate=True, write_identifier=True, **kwargs):
+    def __init__(self, path, mode, extra_provenance=None, validate=True, write_identifier=True, **kwargs):
         self.path = path
         self.mode = mode
         self.file = self.open(path, mode, **kwargs)
@@ -34,13 +37,13 @@ class DataFile:
             self.validate()
 
         if mode == 'w':
-            self.provenance = self.generate_provenance()
+            self.provenance = self.generate_provenance(extra_provenance)
             self.write_provenance()
         else:
             self.provenance = self.read_provenance()
 
     @staticmethod
-    def generate_provenance():
+    def generate_provenance(extra_provenance):
         """
         Generate provenance information - a dictionary
         of useful information about the origina 
@@ -51,12 +54,16 @@ class DataFile:
         username = getpass.getuser()
 
         # Add other provenance and related 
-        return {
+        provenance = {
             'uuid': UUID,
             'creation': creation,
             'domain': domain,
             'username': username,
             }
+
+        if extra_provenance:
+            provenance.update(extra_provenance)
+        return provenance
 
     def write_provenance(self):
         """
@@ -113,6 +120,13 @@ class DataFile:
     def close(self):
         self.file.close()
 
+    @classmethod
+    def make_name(cls, tag):
+        if cls.suffix:
+            return f'{tag}.{cls.suffix}'
+        else:
+            return tag
+
 class HDFFile(DataFile):
     supports_parallel_write = True
     """
@@ -139,6 +153,8 @@ class HDFFile(DataFile):
         Write provenance information to a new group,
         called 'provenance'
         """
+        if self.mode == 'r':
+            raise ValueError("Cannot write provenance to a file opened in read-only mode")
 
         # This method *must* be called by all the processes in a parallel
         # run.  
@@ -146,20 +162,7 @@ class HDFFile(DataFile):
 
         # Call the sub-method to do each item
         for key, value in self.provenance.items():
-            self.add_provenance(key, value)
-
-    def add_provenance(self,  key, value):
-        """
-        Add a single item of provenance data to the file
-        """
-        if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read-only mode")
-
-        if self._provenance_group is None:
-            warnings.warn(f"Unable to save provenance information to file {self.path}")
-            return
-
-        self._provenance_group.attrs[key] = value
+            self._provenance_group.attrs[key] = value
 
     def read_provenance(self):
         try:
@@ -168,8 +171,6 @@ class HDFFile(DataFile):
         except KeyError:
             group = None
             attrs = {}
-
-        self._provenance_group = group
         
         provenance = {
             'uuid':     attrs.get('uuid', "UNKNOWN"),
@@ -177,6 +178,8 @@ class HDFFile(DataFile):
             'domain':   attrs.get('domain', "UNKNOWN"),
             'username': attrs.get('username', "UNKNOWN"),
         }
+
+        self._provenance_group = group
 
         return provenance
 
@@ -227,21 +230,17 @@ class FitsFile(DataFile):
         called 'provenance'
         """
         # Call the sub-method to do each item
-        for key, value in self.provenance.items():
-            self.add_provenance(key, value)
-
-    def add_provenance(self,  key, value):
-        """
-        Add a single item of provenance data to the file
-        """
         if self.mode == 'r':
             raise ValueError("Cannot write provenance to a file opened in read mode")
-        if isinstance(value, str) and '\n' in value:
-            values = value.split("\n")
-            for i,v in enumerate(values):
-                self.file[0].write_key(key+f"_{i}", v)
-        else:
-            self.file[0].write_key(key, value)
+
+        for key, value in self.provenance.items():
+            if isinstance(value, str) and '\n' in value:
+                values = value.split("\n")
+                for i,v in enumerate(values):
+                    self.file[0].write_key(key+f"_{i}", v)
+            else:
+                self.file[0].write_key(key, value)
+
 
     def read_provenance(self):
         header = self.file[0].read_header()
@@ -281,3 +280,55 @@ class YamlFile(DataFile):
     """
     suffix = 'yml'
 
+class Directory(DataFile):
+    suffix = ''
+
+    @classmethod
+    def open(self, path, mode):
+        p = pathlib.Path(path)
+
+        if mode == "w":
+            if p.exists():
+                shutil.rmtree(p)
+            p.mkdir(parents=True)
+        else:
+            if not p.is_dir():
+                raise ValueError(f"Directory input {path} does not exist")
+        return p
+
+    def write_provenance(self):
+        """
+        Write provenance information to a new group,
+        called 'provenance'
+        """
+        # This method *must* be called by all the processes in a parallel
+        # run.  
+        if self.mode == 'r':
+            raise ValueError("Cannot write provenance to a directory opened in read-only mode")
+
+        self._provenance_file = open(self.file / 'provenance.yml', 'w')
+
+        # Call the sub-method to do each item
+        yaml.dump(self.provenance, self._provenance_file)
+        self._provenance_file.flush()
+
+
+    def read_provenance(self):
+        try:
+            f = open(self.file / 'provenance.yml')
+            attrs = yaml.load(f)
+
+        except KeyError:
+            f = None
+            attrs = {}
+
+        self._provenance_file = f
+        
+        provenance = {
+            'uuid':     attrs.get('uuid', "UNKNOWN"),
+            'creation': attrs.get('creation', "UNKNOWN"),
+            'domain':   attrs.get('domain', "UNKNOWN"),
+            'username': attrs.get('username', "UNKNOWN"),
+        }
+
+        return provenance

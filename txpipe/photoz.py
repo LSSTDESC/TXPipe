@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
+import numpy as np
 
 class TXRandomPhotozPDF(PipelineStage):
     """
@@ -51,8 +52,7 @@ class TXRandomPhotozPDF(PipelineStage):
          - closes the output file
 
         """
-        import numpy as np
-        import fitsio
+        import scipy.stats
 
         zmax = self.config['zmax']
         nz = self.config['nz']
@@ -128,7 +128,6 @@ class TXRandomPhotozPDF(PipelineStage):
             Point-estimated photo-zs for each of the 5 metacalibrated variants
 
         """
-        import numpy as np
         import scipy.stats
 
         # Number of z points we will be using

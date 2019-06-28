@@ -16,3 +16,4 @@ from .input_cats import TXProtoDC2Mock
 from .photoz_mlz import PZPDFMLZ
 from .covariance import TXFourierGaussianCovariance
 from .metacal_gcr_input import TXMetacalGCRInput
+from .diagnostics import TXDiagnostics

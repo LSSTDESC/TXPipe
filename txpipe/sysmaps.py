@@ -60,7 +60,6 @@ class TXDiagnosticMaps(PipelineStage):
         """
         from .mapping import DepthMapperDR1, Mapper
         from .utils import choose_pixelization
-        import numpy as np
 
         # Read input configuration informatiomn
         config = self.config

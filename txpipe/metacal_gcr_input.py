@@ -30,6 +30,7 @@ class TXMetacalGCRInput(PipelineStage):
 
     def run(self):
         import GCRCatalogs
+        import h5py
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whol pipeline and so is
         # not in a TXPipe format.

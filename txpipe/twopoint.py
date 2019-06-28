@@ -51,7 +51,9 @@ class TXTwoPoint(PipelineStage):
         """
         Run the analysis for this stage.
         """
-
+        import sacc
+        import healpy
+        import treecorr
         # Load the different pieces of data we need into
         # one large dictionary which we accumulate
         data = {}
