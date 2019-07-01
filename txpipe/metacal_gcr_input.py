@@ -84,7 +84,8 @@ class TXMetacalGCRInput(PipelineStage):
         shear_out_cols = shear_cols
 
         # For the photometry output we strip off the _cModeel suffix.
-        photo_out_cols = [col[:-7] for col in photo_cols if col.endswith('_cModel') else col]
+        photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
+                            for col in photo_cols]
 
         # The star output names are mostly different tot he input names
         star_out_cols = ['id', 'ra', 'dec', 
