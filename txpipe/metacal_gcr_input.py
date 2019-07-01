@@ -22,6 +22,7 @@ class TXMetacalGCRInput(PipelineStage):
     outputs = [
         ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
+        ('star_catalog', HDFFile),
     ]
 
     config_options = {
@@ -54,19 +55,46 @@ class TXMetacalGCRInput(PipelineStage):
             + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         )
 
+        # Input columns for photometry
         photo_cols = ['id', 'ra', 'dec']
+
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
             photo_cols.append(f'{band}_mag')
             photo_cols.append(f'{band}_mag_err')
             photo_cols.append(f'snr_{band}_cModel')
 
-        # eliminate duplicates
-        cols = list(set(shear_cols + photo_cols))
+        # Columns we need to load in for the star data - 
+        # the measured object moments and the identifier telling us
+        # if it was used in PSF measurement
+        star_cols = [
+            'id',
+            'ra',
+            'dec',
+            'calib_psf_used',
+            'ext_shapeHSM_HsmPsfMoments_xx',
+            'ext_shapeHSM_HsmPsfMoments_xy',
+            'ext_shapeHSM_HsmPsfMoments_yy',
+            'ext_shapeHSM_HsmSourceMomentsRound_xx',
+            'ext_shapeHSM_HsmSourceMomentsRound_xy',
+            'ext_shapeHSM_HsmSourceMomentsRound_yy',
+        ]
 
-        # We will rename this band
-        for band in 'ugrizy':
-            photo_cols.append(f'snr_{band}')
+        # For shear we just copy the input direct to the output
+        shear_out_cols = shear_cols
+
+        # For the photometry output we strip off the _cModeel suffix.
+        photo_out_cols = [col[:-7] for col in photo_cols if col.endswith('_cModel') else col]
+
+        # The star output names are mostly different tot he input names
+        star_out_cols = ['id', 'ra', 'dec', 
+            'measured_e1', 'measured_e2',
+            'model_e1', 'model_e2',
+            'measured_T', 'model_T'
+        ]
+
+        # eliminate duplicates before loading
+        cols = list(set(shear_cols + photo_cols + star_cols))
 
         start = 0
         shear_output = None
@@ -80,51 +108,77 @@ class TXMetacalGCRInput(PipelineStage):
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
-                shear_output = self.setup_shear_output(data, shear_cols, n)
-                photo_output = self.setup_photo_output(data, photo_cols, n)
+                shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
+                photo_output = self.setup_output('photometry_catalog', 'metacal', data, photo_out_cols, n)
+                star_output  = self.setup_output('star_catalog', 'stars', data, star_out_cols, n)
 
+            star_data = self.compute_star_data(data)
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
             print(f"    Saving {start} - {end}")
-            self.write_output(shear_output['metacal'],    shear_cols, start, end, data)
-            self.write_output(photo_output['photometry'], photo_cols, start, end, data)
+            self.write_output(shear_output, shear_out_cols, start, end, data)
+            self.write_output(photo_output, photo_out_cols, start, end, data)
+            self.write_output(star_output,  star_out_cols,  start, end, star_data)
             start = end
 
         # All done!
         photo_output.close()
         shear_output.close()
+        star_output.close()
 
     def rename_columns(self, data):
         for band in 'ugrizy':
             data[f'snr_{band}'] = data[f'snr_{band}_cModel']
             del data[f'snr_{band}_cModel']
 
-
-    def setup_shear_output(self, cat, cols, n):
+    def setup_output(self, name, group, cat, cols, n):
         import h5py
-        filename = self.get_output('shear_catalog')
-        f = h5py.File(filename, "w")
-        g = f.create_group('metacal')
-        for name, col in cat.items():
-            if name in cols:
-                g.create_dataset(name, shape=(n,), dtype=col.dtype)
-        return f
-
-    def setup_photo_output(self, cat, cols, n):
-        import h5py
-        filename = self.get_output('photometry_catalog')
-        f = h5py.File(filename, "w")
-        g = f.create_group('photometry')
-        for name, col in cat.items():
-            if name in cols:
-                g.create_dataset(name, shape=(n,), dtype=col.dtype)
-        return f
+        f = self.open_output(name)
+        g = f.create_group(group)
+        for name in cols:
+            g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)
+        return g
 
 
     def write_output(self, g, cols, start, end, data):
         for name in cols:
-            if name.endswith('_cModel'):
-                name = name[:-len('_cModel')]
             g[name][start:end] = data[name]
+
+
+    def compute_star_data(self, data):
+        star_data = {}
+        # We specifically use the stars chosen for PSF measurement
+        star = data['calib_psf_used']
+
+        # General columns
+        star_data['ra'] = data['ra'][star]
+        star_data['dec'] = data['dec'][star]
+        star_data['id'] = data['id'][star]
+
+        # HSM reports moments.  We convert these into
+        # ellipticities.  We do this for both the star shape
+        # itself and the PSF model.
+        kinds = [
+            ('ext_shapeHSM_HsmSourceMoments', 'measured_'),
+            ('ext_shapeHSM_HsmPsfMoments', 'model_')
+        ]
+
+        for in_name, out_name in kinds:
+            # Pulling out the correct moment columns
+            Ixx = data[f'{in_name}_xx'][star]
+            Iyy = data[f'{in_name}_yy'][star]
+            Ixy = data[f'{in_name}_xy'][star]
+
+            # Conversion of moments to e1, e2
+            T = Ixx + Iyy
+            e = (Ixx - Iyy + 2j * Ixy) / (Ixx + Iyy)
+            e1 = e.real
+            e2 = e.imag
+
+            # save to output
+            star_data[f'{out_name}e1'] = e1
+            star_data[f'{out_name}e2'] = e2
+
+        return star_data
 
