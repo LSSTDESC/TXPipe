@@ -332,3 +332,29 @@ class Directory(DataFile):
         }
 
         return provenance
+
+
+
+class PNGFile(DataFile):
+    suffix = 'png'
+
+    @classmethod
+    def open(self, path, mode):
+        import matplotlib
+        import matplotlib.pyplot as plt
+        if mode != "w":
+            raise ValueError("Reading existing PNG files is not supported")
+        return plt.figure()
+
+
+    def close(self):
+        import matplotlib.pyplot as plt
+        self.file.savefig(self.path, metadata=self.provenance)
+        plt.close(self.file)
+
+    def write_provenance(self):
+        # provenance is written on closing the file
+        pass
+
+    def read_provenance(self):
+        raise ValueError("Reading existing PNG files is not supported")

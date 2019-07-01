@@ -1,4 +1,4 @@
-from .base import FitsFile, HDFFile, DataFile, YamlFile, TextFile, Directory
+from .base import FitsFile, HDFFile, DataFile, YamlFile, TextFile, Directory, PNGFile
 
 def metacalibration_names(names):
     """
