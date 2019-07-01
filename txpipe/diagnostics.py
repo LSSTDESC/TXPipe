@@ -20,7 +20,8 @@ class TXDiagnostics(PipelineStage):
 
     def run(self):
         # PSF tests
-        import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.use('agg')
 
         outdir = self.open_output('null_tests', 'w')
         plotters = [getattr(self, f)(outdir) for f in dir(self) if f.startswith('plot_')]
