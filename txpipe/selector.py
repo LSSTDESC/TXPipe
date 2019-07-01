@@ -1,6 +1,8 @@
-from ceci import PipelineStage
-from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile
+from .base_stage import PipelineStage
+from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import NumberDensityStats
+from .utils.metacal import metacal_variants, metacal_band_variants
+import numpy as np
 
 class TXSelector(PipelineStage):
     """
@@ -25,7 +27,7 @@ class TXSelector(PipelineStage):
 
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('photoz_pdfs', PhotozPDFFile),
+        ('calibration_table', TextFile),
         ('photometry_catalog', HDFFile),
     ]
 
@@ -34,6 +36,7 @@ class TXSelector(PipelineStage):
     ]
 
     config_options = {
+        'bands': 'riz', # bands from metacal to use
         'T_cut':float,
         's2n_cut':float,
         'delta_gamma': float,
@@ -64,34 +67,41 @@ class TXSelector(PipelineStage):
          - Average the selection biases
          - Write out biases and close the output
         """
-        import numpy as np
+        import astropy.table
+        import sklearn.ensemble
 
+        # Suppress some warnings from numpy that are not relevant
+        original_warning_settings = np.seterr(all='ignore')  
+
+        # The output file we will put the tomographic
+        # information into
         output_file = self.setup_output()
 
-        # Columns we need from the redshift data
-        pz_cols = ['mu', 'mu_1p', 'mu_1m', 'mu_2p', 'mu_2m']
+        # various config options
+        bands = self.config['bands']
+        chunk_rows = self.config['chunk_rows']
 
-        # Colums we need from the photometry data
-        phot_cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
-                'mag_true_r_lsst', 'mag_true_i_lsst', 
-                'mag_true_z_lsst']
+
+        # Build a classifier used to put objects into tomographic bins
+        classifier, features = self.build_tomographic_classifier()        
+
+        # Colums we need from the photometry data.
+        # We use the photometry data to select the lenses.
+        # Although this will be one by redmagic soon.
+        phot_cols = ['g_mag', 'r_mag', 'i_mag']
 
         # Columns we need from the shear catalog
-        cat_cols = ['mcal_flags', 'mcal_Tpsf']
-
-        # Including all the metacalibration variants of these columns
-        for c in ['mcal_T', 'mcal_s2n_r', 'mcal_g']:
-            cat_cols += [c, c+"_1p", c+"_1m", c+"_2p", c+"_2m", ]
-
+        shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
+        shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
+        shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data 
-        chunk_rows = self.config['chunk_rows']
-        iter_pz    = self.iterate_hdf('photoz_pdfs', 'pdf', pz_cols, chunk_rows)
-        iter_shear = self.iterate_fits('shear_catalog', 1, cat_cols, chunk_rows)
+        iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
+
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -102,17 +112,26 @@ class TXSelector(PipelineStage):
         selection_biases = []
         number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
 
-        # Loop through the input data, processing it chunk by chunk
-        for (start, end, pz_data), (_, _, shear_data), (_, _, phot_data) in zip(iter_pz, iter_shear, iter_phot):
 
+        # Loop through the input data, processing it chunk by chunk
+        for (start, end, shear_data), (_, _, phot_data) in zip(iter_shear, iter_phot):
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
+
+            # Select most likely tomographic source bin
+            pz_data = self.apply_classifier(classifier, features, shear_data)
+
+            # Combine this selection with size and snr cuts to produce a source selection
+            # and calculate the shear bias it would generate
             tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
 
+            # Select lens bin objects
             lens_gals = self.select_lens(phot_data)
 
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, lens_gals, R, lens_gals)
 
+            # Accumulate information on the number counts and the selection biases.
+            # These will be brought together at the end.
             number_density_stats.add_data(shear_data, tomo_bin, R, lens_gals)
 
             # The selection biases are the mean over all the data, so we
@@ -126,6 +145,98 @@ class TXSelector(PipelineStage):
         # Save and complete
         output_file.close()
 
+        # Restore the original warning settings in case we are being called from a library
+        np.seterr(**original_warning_settings)
+
+    
+
+
+    def build_tomographic_classifier(self):
+        # Load the training data
+        # Build the SOM from the training data
+        from astropy.table import Table
+        from sklearn.ensemble import RandomForestClassifier
+
+        if self.rank > 0:
+            classifier = self.comm.bcast(None)
+            features = self.comm.bcast(None)
+            return classifier, features
+
+        # Load the training data
+        training_file = self.get_input("calibration_table")
+        training_data_table = Table.read(training_file, format='ascii')
+
+        # Pull out the appropriate columns and combinations of the data
+        bands = self.config['bands']
+        print(f"Using these bands to train the tomography selector: {bands}")
+
+        # Generate the training data that we will use
+        # We record both the name of the column and the data iself
+        features = []
+        training_data = []
+        for b1 in bands[:]:
+            # First we use the magnitudes themselves
+            features.append(b1)
+            training_data.append(training_data_table[b1])
+            # We also use the colours as training data, even the redundant ones
+            for b2 in bands[:]:
+                if b1<b2:
+                    features.append(f'{b1}-{b2}')
+                    training_data.append(training_data_table[b1] - training_data_table[b2])
+        training_data = np.array(training_data).T
+
+        print("Training data for bin classifier has shape ", training_data.shape)
+
+        # Now put the training data into redshift bins
+        # We use -1 to indicate that we are outside the desired ranges
+        z = training_data_table['sz']
+        training_bin = np.repeat(-1, len(z))
+        print("Using these bin edges:", self.config['zbin_edges'])
+        for i,(zmin, zmax) in enumerate(self.config['zbins']):
+            training_bin[(z>zmin) & (z<zmax)] = i
+            ntrain_bin = ((z>zmin) & (z<zmax)).sum()
+            print(f"Training set: {ntrain_bin} objects in tomographic bin {i}")
+
+        # Can be replaced with any classifier
+        classifier = RandomForestClassifier(max_depth=10, max_features=None, n_estimators=20)
+        classifier.fit(training_data, training_bin)
+
+        # Sklearn fitters can be pickled, which means they can also be sent through
+        # mpi4py
+        if self.is_mpi():
+            self.comm.bcast(classifier)
+            self.comm.bcast(features)
+
+        return classifier, features
+
+
+    def apply_classifier(self, classifier, features, shear_data):
+        """Apply the classifier to the measured magnitudes
+        """
+        bands = self.config['bands']
+        variants = ['', '_1p', '_2p', '_1m', '_2m']
+
+        pz_data = {}
+        
+        for v in variants:
+            # Pull out the columns that we have trained this bin selection
+            # model on.
+            data = []
+            for f in features:
+                # may be a single band
+                if len(f) == 1:
+                    col = shear_data[f'mcal_mag_{f}{v}']
+                # or a colour
+                else:
+                    b1,b2 = f.split('-')
+                    col = shear_data[f'mcal_mag_{b1}{v}'] - shear_data[f'mcal_mag_{b2}{v}']
+                col[~np.isfinite(col)] = np.nanmax(col)
+                data.append(col)
+            data = np.array(data).T
+
+            # Run the random forest on this data chunk
+            pz_data[f'zbin{v}'] = classifier.predict(data)
+        return pz_data
 
 
     def calculate_tomography(self, pz_data, shear_data):
@@ -140,13 +251,10 @@ class TXSelector(PipelineStage):
         shear_data: table or dict of arrays
             A chunk of input shear data with metacalibration variants.
         """
-        import numpy as np
-
-        g = shear_data['mcal_g']
         delta_gamma = self.config['delta_gamma']
         nbin = len(self.config['zbins'])
 
-        n = len(shear_data)
+        n = len(shear_data['mcal_g1'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
@@ -160,47 +268,55 @@ class TXSelector(PipelineStage):
         # We also keep count of total count of objects in each bin
         counts = np.zeros(nbin, dtype=int)
 
+        g1 = shear_data['mcal_g1']
+        g2 = shear_data['mcal_g2']
 
-        for i,(zmin, zmax) in enumerate(self.config['zbins']):
+        nbin = len(self.config['zbins'])
+
+        for i in range(nbin):
 
             # The main selection.  The select function below returns a
             # boolean array where True means "selected and in this bin"
             # and False means "cut or not in this bin".
-            sel_00 = self.select(shear_data, pz_data, '', zmin, zmax)
+            sel_00 = self.select(shear_data, pz_data, '', i)
 
             # The metacalibration selections, used to work out selection
             # biases
-            sel_1p = self.select(shear_data, pz_data, '_1p', zmin, zmax)
-            sel_2p = self.select(shear_data, pz_data, '_2p', zmin, zmax)
-            sel_1m = self.select(shear_data, pz_data, '_1m', zmin, zmax)
-            sel_2m = self.select(shear_data, pz_data, '_2m', zmin, zmax)
+            sel_1p = self.select(shear_data, pz_data, '_1p', i)
+            sel_2p = self.select(shear_data, pz_data, '_2p', i)
+            sel_1m = self.select(shear_data, pz_data, '_1m', i)
+            sel_2m = self.select(shear_data, pz_data, '_2m', i)
 
             # Assign these objects to this bin
             tomo_bin[sel_00] = i
 
             # Multiplicative estimator bias in this bin
             # One value per object
-            R_1 = (shear_data['mcal_g_1p'][sel_00] - shear_data['mcal_g_1m'][sel_00]) / delta_gamma
-            R_2 = (shear_data['mcal_g_2p'][sel_00] - shear_data['mcal_g_2m'][sel_00]) / delta_gamma
+            R_11 = (shear_data['mcal_g1_1p'][sel_00] - shear_data['mcal_g1_1m'][sel_00]) / delta_gamma
+            R_12 = (shear_data['mcal_g1_2p'][sel_00] - shear_data['mcal_g1_2m'][sel_00]) / delta_gamma
+            R_21 = (shear_data['mcal_g2_1p'][sel_00] - shear_data['mcal_g2_1m'][sel_00]) / delta_gamma
+            R_22 = (shear_data['mcal_g2_2p'][sel_00] - shear_data['mcal_g2_2m'][sel_00]) / delta_gamma
 
             # Selection bias for this chunk - we must average over these later.
             # For now there is one value per bin.
-            S_1 = (g[sel_1p].mean(0) - g[sel_1m].mean(0)) / delta_gamma
-            S_2 = (g[sel_2p].mean(0) - g[sel_2m].mean(0)) / delta_gamma
+            S_11 = (g1[sel_1p].mean() - g1[sel_1m].mean()) / delta_gamma
+            S_12 = (g1[sel_2p].mean() - g1[sel_2m].mean()) / delta_gamma
+            S_21 = (g2[sel_1p].mean() - g2[sel_1m].mean()) / delta_gamma
+            S_22 = (g2[sel_2p].mean() - g2[sel_2m].mean()) / delta_gamma
 
             # Save in a more useful ordering for the output - 
             # as a matrix
-            R[sel_00,0,0] = R_1[:,0]
-            R[sel_00,0,1] = R_1[:,1]
-            R[sel_00,1,0] = R_2[:,0]
-            R[sel_00,1,1] = R_2[:,1]
+            R[sel_00,0,0] = R_11
+            R[sel_00,0,1] = R_12
+            R[sel_00,1,0] = R_21
+            R[sel_00,1,1] = R_22
 
 
             # Also save the selection biases as a matrix.
-            S[i,0,0] = S_1[0]
-            S[i,0,1] = S_1[1]
-            S[i,1,0] = S_2[0]
-            S[i,1,1] = S_2[1]
+            S[i,0,0] = S_11
+            S[i,0,1] = S_12
+            S[i,1,0] = S_21
+            S[i,1,1] = S_22
             counts[i] = sel_00.sum()
 
         return tomo_bin, R, S, counts
@@ -226,8 +342,6 @@ class TXSelector(PipelineStage):
         S: array (nbin,2,2)
             Average selection bias
         """
-        import numpy as np
-
         if self.is_mpi():
             s = self.comm.gather(selection_biases)
             if self.rank!=0:
@@ -253,7 +367,6 @@ class TXSelector(PipelineStage):
 
 
 
-
     def setup_output(self):
         """
         Set up the output data file.
@@ -261,7 +374,7 @@ class TXSelector(PipelineStage):
         Creates the data sets and groups to put module output
         in the tomography_catalog output file.
         """
-        n = self.open_input('shear_catalog')[1].get_nrows()
+        n = self.open_input('shear_catalog')['metacal/ra'].size
         zbins = self.config['zbins']
         nbin_source = len(zbins)
         nbin_lens = 1
@@ -362,11 +475,9 @@ class TXSelector(PipelineStage):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
-        import numpy as np
-
-        mag_i = phot_data['mag_true_i_lsst']
-        mag_r = phot_data['mag_true_r_lsst']
-        mag_g = phot_data['mag_true_g_lsst']
+        mag_i = phot_data['i_mag']
+        mag_r = phot_data['r_mag']
+        mag_g = phot_data['g_mag']
 
         # Mag cuts 
         cperp_cut_val = self.config['cperp_cut']
@@ -409,29 +520,28 @@ class TXSelector(PipelineStage):
 
         return lens_gals
 
-    def select(self, shear_data, pz_data, variant, zmin, zmax):
+    def select(self, shear_data, pz_data, variant, bin_index):
         n = len(shear_data)
 
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
 
         T_col = 'mcal_T' + variant
-        s2n_col = 'mcal_s2n_r' + variant
+        s2n_col = 'mcal_s2n' + variant
 
-        z_col = 'mu' + variant
+        z_col = 'zbin' + variant
 
         s2n = shear_data[s2n_col]
         T = shear_data[T_col]
-        z = pz_data[z_col]
+        zbin = pz_data[z_col]
 
-        Tpsf = shear_data['mcal_Tpsf']
+        Tpsf = shear_data['mcal_psf_T_mean']
         flag = shear_data['mcal_flags']
 
         sel  = flag==0
         sel &= (T/Tpsf)>T_cut
         sel &= s2n>s2n_cut
-        sel &= z>=zmin
-        sel &= z<zmax
+        sel &= zbin==bin_index
 
         return sel
 

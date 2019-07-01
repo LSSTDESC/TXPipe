@@ -1,8 +1,9 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
 from .data_types import DiagnosticMaps
 import numpy as np
 import pandas as pd
+import warnings
 
 #Needed changes: 1) area is hard coded to 4sq.deg. as file is buggy. 2) code fixed to equal-spaced ell values in real space. 3)
 
@@ -20,7 +21,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     ]
 
     outputs = [
-        ('covariance', CSVFile),
+        ('summary_statistics', SACCFile),
     ]
 
     config_options = {
@@ -28,22 +29,25 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def run(self):
+        import pyccl as ccl
+        import sacc
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
 
         # read binning
-        binning_info, data_vector, ells = self.read_sacc()
+        sacc_data = self.read_sacc()
 
         # read the n(z) and f_sky from the source summary stats
-        nz, n_eff, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
+        nz, n_eff, n_lens, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
 
         # calculate the overall total C_ell values, including noise
-        theory_c_ell = self.compute_theory_c_ell(cosmo, nz, binning_info)
-        noise_c_ell = self.compute_noise_c_ell(n_eff, sigma_e, binning_info)
+        theory_c_ell = self.compute_theory_c_ell(cosmo, nz, sacc_data)
+        noise_c_ell = self.compute_noise_c_ell(n_eff, sigma_e, n_lens, sacc_data)
 
         # compute covariance
-        C = self.compute_covariance(binning_info, theory_c_ell, noise_c_ell, fsky)
-        self.save_outputs_firecrown(C,data_vector,ells,nz,binning_info)
+        cov = self.compute_covariance(sacc_data, theory_c_ell, noise_c_ell, fsky)
+        self.save_outputs(sacc_data, cov)
+        #self.save_outputs_firecrown(C,data_vector,ells,nz,binning_info)
 
     def read_cosmology(self):
         import pyccl as ccl
@@ -57,24 +61,20 @@ class TXFourierGaussianCovariance(PipelineStage):
     def read_sacc(self):
         import sacc
         f = self.get_input('twopoint_data_fourier')
-        sacc_data = sacc.SACC.loadFromHDF(f)
+        sacc_data = sacc.Sacc.load_fits(f)
 
-        codes = {
-            'Cll' : ('E','E'),
-            #'Cdd' : ('P','P'),
-            #'Cdl' : ('P','S'),
-            }
+        # Remove the data types that we won't use for inference
+        mask = [
+            sacc_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
+            sacc_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
+            sacc_data.indices(sacc.standard_types.galaxy_density_cl),
+        ]
+        mask = np.concatenate(mask)
+        sacc_data.keep_indices(mask)
 
-        binning = {quant: {} for quant in codes}
+        sacc_data.to_canonical_order()
 
-        for quant, (code1,code2) in codes.items():
-            bin_pairs = sacc_data.binning.get_bin_pairs(code1,code2)
-            for (b1, b2) in bin_pairs:
-                angle = sacc_data.binning.get_angle(code1, code2, b1, b2)
-                binning[quant][(b1,b2)] = angle
-        values = sacc_data.mean.vector
-        ells = [row[1] for row in sacc_data.binning.binar]
-        return binning, values, ells
+        return sacc_data
 
 
     def read_number_statistics(self):
@@ -82,24 +82,29 @@ class TXFourierGaussianCovariance(PipelineStage):
         tomo_file = self.open_input('tomography_catalog')
         maps_file = self.open_input('diagnostic_maps')
 
-        N_tomo_bins=len(tomo_file['tomography/sigma_e'].value)
+        N_tomo_bins=len(tomo_file['tomography/sigma_e'][:])
         print("NBINS: ", N_tomo_bins)
 
         nz = {}
-        nz['z'] = input_data[f'n_of_z/source/z'].value
+        nz['z'] = input_data[f'n_of_z/source/z'][:]
         for i in range(N_tomo_bins):
-            nz['bin_'+ str(i)] = input_data[f'n_of_z/source/bin_{i}'].value
+            nz['bin_'+ str(i)] = input_data[f'n_of_z/source/bin_{i}'][:]
 
-        N_eff = tomo_file['tomography/N_eff'].value
+        N_eff = tomo_file['tomography/N_eff'][:]
+        N_lens = tomo_file['tomography/lens_counts'][:]
+
         area = maps_file['maps'].attrs['area']
         print(area)
         area = 4.0/((180./np.pi)**2) #read this in when not array of 0.04 (CONVERTED TO SR)
         print("area: ",area)
         print("NEFF : ", N_eff)
-        n_eff=N_eff/area
+        n_eff=N_eff / area
         print((180./np.pi)**2)
         print("nEFF : ", n_eff)
-        sigma_e = tomo_file['tomography/sigma_e'].value
+        sigma_e = tomo_file['tomography/sigma_e'][:]
+
+        n_lens = N_lens / area
+        print("lens density : ", n_eff)
 
         fullsky=4*np.pi #*(180./np.pi)**2 #(FULL SKY IN STERADIANS)
         fsky=area/fullsky
@@ -110,133 +115,148 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         print('n_eff, sigma_e, fsky: ')
         print( n_eff, sigma_e, fsky)
-        return nz, n_eff, sigma_e, fsky, N_tomo_bins
+        return nz, n_eff, n_lens, sigma_e, fsky, N_tomo_bins
 
-    def compute_theory_c_ell(self, cosmo, nz, binning):
+    def compute_theory_c_ell(self, cosmo, nz, sacc_data):
         # Turn the nz into CCL Tracer objects
         # Use the cosmology object to calculate C_ell values
         import pyccl as ccl
+        import sacc
 
-        theory_c_ell = {}
-        ell=binning['Cll'][0,0]
-        z = nz.get('z')
+        CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEd = sacc.standard_types.galaxy_shearDensity_cl_e
+        Cdd = sacc.standard_types.galaxy_density_cl
+        theory = {}
 
-        for key in binning['Cll']:
-            nz_1 = nz.get('bin_'+ str(key[0]))
-            nz_2 = nz.get('bin_' + str(key[1]))
-            tracer1 = ccl.WeakLensingTracer(cosmo, dndz=(z, nz_1))
-            tracer2 = ccl.WeakLensingTracer(cosmo, dndz=(z, nz_2))
-            theory_c_ell[str(key[0]) + str(key[1])] = ccl.angular_cl(cosmo, tracer1, tracer2, ell)
+        for data_type in [CEE, CEd, Cdd]:
+            for t1, t2 in sacc_data.get_tracer_combinations(data_type):
+                ell = sacc_data.get_tag('ell', data_type, (t1, t2))
+                tracer1 = sacc_data.get_tracer(t1)
+                tracer2 = sacc_data.get_tracer(t2)
+                dndz1 = (tracer1.z, tracer1.nz)
+                dndz2 = (tracer2.z, tracer2.nz)
 
-        print('THEORY_Cl:')
-        print(theory_c_ell)
-        return theory_c_ell
+                if data_type in [CEE, CEd]:
+                    cTracer1 = ccl.WeakLensingTracer(cosmo, dndz=dndz1)
+                else:
+                    bias = (tracer1.z, np.ones_like(tracer1.z))
+                    cTracer1 = ccl.NumberCountsTracer(cosmo, has_rsd=False, bias=bias, dndz=dndz1)
+                    warnings.warn("Not including bias in fiducial cosmology")
 
+                if data_type == CEE:
+                    cTracer2 = ccl.WeakLensingTracer(cosmo, dndz=dndz1)
+                else:
+                    bias = (tracer2.z, np.ones_like(tracer2.z))
+                    cTracer2 = ccl.NumberCountsTracer(cosmo, has_rsd=False, bias=bias, dndz=dndz2)
 
-    def compute_noise_c_ell(self, n_eff, sigma_e, binning):
-        #avg number of galaxies in a zbin
-        noise_c_ell = {}
-        ell=binning['Cll'][0,0]
+                print(" - Calculating fiducial C_ell for ", data_type, t1, t2)
+                theory[(data_type, t1, t2)] = ccl.angular_cl(cosmo, cTracer1, cTracer2, ell)
 
-        for key in binning['Cll']:
-            if key[0]==key[1]:
-                noise_c_ell[str(key[0]) + str(key[1])] = np.ones(len(ell))*(sigma_e[key[0]]**2/n_eff[key[0]])
-            else:
-                noise_c_ell[str(key[0]) + str(key[1])] = np.zeros(len(ell))
-
-        print('NOISE_Cl:')
-        print(noise_c_ell)
-        return noise_c_ell
-
-
-    def compute_covariance(self, binning, theory_c_ell, noise_c_ell, fsky):
-        ell=binning['Cll'][0,0]
-        delta_ell=ell[1]-ell[0] #not in general equal, this needs to be improved
-
-        obs_c_ell = {}
-        for key in binning['Cll']:
-            obs_c_ell[str(key[0]) + str(key[1])] = theory_c_ell[str(key[0]) + str(key[1])] + noise_c_ell[str(key[0]) + str(key[1])]
-
-        def switch_keys(bin_1, bin_2, obs_c_ell):
-            if str(bin_1) + str(bin_2) in theory_c_ell.keys():
-                obs_c_ell_xy = obs_c_ell.get(str(bin_1) + str(bin_2))
-                return obs_c_ell_xy
-            else:
-                obs_c_ell_yx = obs_c_ell.get(str(bin_2) + str(bin_1))
-                return obs_c_ell_yx
+        return theory
 
 
-        indexrow = 0
-        indexcol = 0
-        cov=np.zeros((len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell)))
+    def compute_noise_c_ell(self, n_eff, sigma_e, n_lens, sacc_data):
+        import sacc
 
-        for key_row in binning['Cll']:
-            for key_col in binning['Cll']:
+        CEE=sacc.standard_types.galaxy_shear_cl_ee
+        CEd=sacc.standard_types.galaxy_shearDensity_cl_e
+        Cdd=sacc.standard_types.galaxy_density_cl
 
-                i = key_row[0]
-                j = key_row[1]
-                m = key_col[0]
-                n = key_col[1]
+        noise = {}
 
-                obs_c_ell_im = switch_keys(str(i), str(m), obs_c_ell)
-                obs_c_ell_jn = switch_keys(str(j), str(n), obs_c_ell)
-                obs_c_ell_in = switch_keys(str(i), str(n), obs_c_ell)
-                obs_c_ell_jm = switch_keys(str(j), str(m), obs_c_ell)
+        for data_type in sacc_data.get_data_types():
+            for (tracer1, tracer2) in sacc_data.get_tracer_combinations(data_type):
+                ell = sacc_data.get_tag('ell', data_type, (tracer1, tracer2))
+                n = len(ell)
+                b = int(tracer1.split("_")[1])
+                if tracer1 != tracer2:
+                    N = np.zeros_like(ell)
+                elif data_type == CEE:
+                    N = np.ones(n) * (sigma_e[b]**2 / n_eff[b])
+                else:
+                    assert data_type == Cdd
+                    N = np.ones(n) / n_lens[b]
+                noise[(data_type, tracer1, tracer2)] = N
 
-                prefactor = 1./((2*ell+1)*delta_ell*fsky)
+        return noise
 
-                mini_cov = np.zeros((len(ell),len(ell)))
-                for a in range(len(ell)):
-                    for b in range(len(ell)):
-                        if a==b:
-                            mini_cov[a][b] = obs_c_ell_im[a]*obs_c_ell_jn[b] + obs_c_ell_in[a]*obs_c_ell_jm[b]
 
-                cov[indexrow*len(ell):indexrow*len(ell)+len(ell),indexcol*len(ell):indexcol*len(ell)+len(ell)] = prefactor*mini_cov
-                print(prefactor)
-                print(mini_cov)
+    def compute_covariance(self, sacc_data, theory_c_ell, noise_c_ell, fsky):
+        import sacc
+        n = len(sacc_data)
+        cov = np.zeros((n, n))
 
-                indexcol += 1
-                if indexcol == 10:
-                    indexrow += 1
-                    indexcol = 0
+        # It's useful to convert these names to two-character
+        # mappings as we will need combinations of them
+
+        names = {
+            sacc.standard_types.galaxy_density_cl: 'DD',
+            sacc.standard_types.galaxy_shear_cl_ee: 'EE',
+            sacc.standard_types.galaxy_shearDensity_cl_e: 'ED',
+        }
+
+        # ell values must be the same for this all to work
+        # TODO: Fix this for cases where we only want to work with a subset of the data
+        ell = sacc_data.get_tag('ell', sacc.standard_types.galaxy_shear_cl_ee, ('source_0', 'source_0'))
+        ell_indices = {ell:v for v,ell in enumerate(ell)}
+
+
+        # Compute total C_ell for each bin (signal + noise)
+        CL = {}
+        for dt in sacc_data.get_data_types():
+            for t1, t2 in sacc_data.get_tracer_combinations(dt):
+                A, B = names[dt]
+                # Save both the first combination and the flipped version, e.g. 
+                # C^{ED}_{ij} = C^{DE}_{ji}
+                # In many cases these will be the same, but this will
+                # not be the slow part of the code
+                CL[(A, B, t1, t2)] = theory_c_ell[(dt, t1, t2)] + noise_c_ell[(dt, t1, t2)]
+                CL[(B, A, t2, t1)] = CL[(A, B, t1, t2)]
+
+
+        # <C^{AB}_{ij} C^{CD}_{mn}> = C^{AC}_{im} C^{BD}_{jn} + C^{AD}_{in} C^{BC}_{jk}
+        # First loop over rows
+        for x in range(n):
+            # The data point object
+            d1 = sacc_data.data[x]
+            # Binning information for this data point
+            # This is the nominal ell value
+            ell1 = d1['ell']
+            ell_index = ell_indices[ell1]
+            # And the window function to get the range
+            win = d1['window']
+            delta_ell = win.max - win.min
+
+            # The prefactor depends only on ell and delta_ell
+            f = 1.0/((2*ell1+1)*fsky*delta_ell)
+
+            # This is e.g. "EE", "DE" or "ED"
+            A,B = names[d1.data_type]
+
+            # These tracer names are also part of the C_ell dictonary key
+            i = d1.tracers[0]
+            j = d1.tracers[1]
+
+            # Now loop over columns
+            for y in range(n):
+                d2 = sacc_data.data[y]
+                ell2 = d2['ell']
+
+                # Dirac delta function
+                if ell1 != ell2:
+                    continue
+
+                # Again, this is EE, ED, or DD
+                C,D = names[d2.data_type]
+                # Also tracer names
+                k = d2.tracers[0]
+                l = d2.tracers[1]
+
+                cov[x,y] = f * (CL[(A, C, i, k)][ell_index] * CL[(B, D, j, l)][ell_index] + CL[(A, D, i, l)][ell_index] * CL[(B, C, j, k)][ell_index])
+
         return cov
 
-    def save_outputs_firecrown(self,cov,data_vector,ells,nz,binning):
-        #Saving as a CSV file for now because FireCrown can import this but this
-        # may eventually be saved in SACC.
-
-        # cov formats
-        # cov=np.zeros((len(binning['Cll'])*len(ell),len(binning['Cll'])*len(ell)))
-
-        cov_output = CSVFile()
-        cov_output_name = self.get_output('covariance')
-        iis = range(cov.shape[0])
-        jjs = range(cov.shape[1])
-        #Note this won't be right if the matrix isn't square but we can't
-        #save this as a pandas dataframe in the way Firecrown is expecting
-        #in that case anyways.
-        vals = [cov[iis[x]][jjs[x]] for x in range(len(iis))]
-        cov_dic = {'i':iis,'j':jjs,'cov':vals}
-        cov_df = pd.DataFrame(cov_dic)
-        cov_output.save_file(cov_output_name,cov_df)
-
-        data_output = CSVFile()
-        data_out_name = './outputs/data_vec.csv'
-        data_output_dic = {'ell':ells, 'measured_statistic':data_vector}
-        data_output_df = pd.DataFrame(data_output_dic)
-        data_output_df.to_csv(data_out_name)
-
-        nz_output = CSVFile()
-        nz_out_name = './outputs/nz_vec.csv'
-        zs = []
-        dndzs = []
-        #Change this to reference the binning
-        for bin in range(0):
-            zs+=nz['z']
-            dndzs+= list(nz.get('bin_'+str(bin)))
-        for bin in range(3):
-            zs+=list(nz['z'])
-            dndzs+= list(nz.get('bin_'+str(bin)))
-        nz_output_dic = {'z':zs, 'dndz':dndzs}
-        nz_output_df = pd.DataFrame(nz_output_dic)
-        nz_output_df.to_csv(nz_out_name)
+    def save_outputs(self, sacc_data, cov):
+        filename = self.get_output('summary_statistics')
+        sacc_data.add_covariance(cov)
+        sacc_data.save_fits(filename)

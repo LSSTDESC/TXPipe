@@ -27,11 +27,13 @@ You can get some input test data like this:
 
 ```bash
 
-mkdir -p inputs/1e5
-cd inputs/1e5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_shear_catalog.fits
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/mock_photometry_catalog.hdf
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photoz_trained_model.npy
+mkdir -p data/example
+cd data/example
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
+
 cd ../..
 ```
 
@@ -99,7 +101,7 @@ Running the pipeline
 Once you have installed the dependecies you can run:
 
 ```bash
-export DATA=inputs/1e5
+export DATA=data/example
 ceci test/test-real.yml
 ```
 
@@ -108,7 +110,7 @@ to run the implemented stages.
 You can get a list of the individual commands that will be run like this:
 
 ```bash
-export DATA=inputs/1e5
+export DATA=data/example
 ceci --dry-run test/test-fourier.yml
 ```
 

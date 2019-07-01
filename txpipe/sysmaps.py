@@ -1,4 +1,4 @@
-from ceci import PipelineStage
+from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile
 import numpy as np
 
@@ -21,7 +21,7 @@ class TXDiagnosticMaps(PipelineStage):
     # In the long run this may become DM output
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', HDFFile),
         ('tomography_catalog', TomographyCatalog),
     ]
 
@@ -60,7 +60,6 @@ class TXDiagnosticMaps(PipelineStage):
         """
         from .mapping import DepthMapperDR1, Mapper
         from .utils import choose_pixelization
-        import numpy as np
 
         # Read input configuration informatiomn
         config = self.config
@@ -75,12 +74,12 @@ class TXDiagnosticMaps(PipelineStage):
         band = config['depth_band']
 
         # These are the columns we're going to need from the various files
-        phot_cols = ['ra', 'dec', f'snr_{band}', f'mag_{band}_lsst']
+        phot_cols = ['ra', 'dec', f'snr_{band}', f'{band}_mag']
 
         if config['true_shear']:
             shear_cols = ['true_g']
         else:
-            shear_cols = ['mcal_g']
+            shear_cols = ['mcal_g1', 'mcal_g2']
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -111,7 +110,7 @@ class TXDiagnosticMaps(PipelineStage):
         # These methods by default yield trios of (start, end, data),
         # but in this case because we are agregating we don't need the "start" and
         # "end" numbers.  So we re-define to ignore them
-        shear_it = self.iterate_fits('shear_catalog', 1, shear_cols, chunk_rows)
+        shear_it = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
 
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
@@ -130,7 +129,7 @@ class TXDiagnosticMaps(PipelineStage):
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper.
             depth_data = {
-                'mag': phot_data[f'mag_{band}_lsst'],
+                'mag': phot_data[f'{band}_mag'],
                 'snr': phot_data[f'snr_{band}'],
                 'bins': bin_data['lens_bin'],
                 'ra': phot_data['ra'],
@@ -140,9 +139,9 @@ class TXDiagnosticMaps(PipelineStage):
             # TODO fix iterate_fits so it returns a dict
             # like iterate_hdf
             if config['true_shear']:
-                shear_tmp = {'mcal_g': shear_data['true_g']}
+                shear_tmp = {'mcal_g1': shear_data['true_g1'], 'mcal_g2': shear_data['true_g2']}
             else:
-                shear_tmp = {'mcal_g': shear_data['mcal_g']}
+                shear_tmp = {'mcal_g1': shear_data['mcal_g1'], 'mcal_g2': shear_data['mcal_g2']}
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
 
