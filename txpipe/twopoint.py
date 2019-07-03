@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile
+from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
 import numpy as np
 import random
 import collections
@@ -590,7 +590,7 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
-class TXTwoPointLensCat(PipelineStage):
+class TXTwoPointLensCat(TXTwoPoint):
     name='TXTwoPointLensCat'
     inputs = [
         ('shear_catalog', MetacalCatalog),
@@ -608,6 +608,136 @@ class TXTwoPointLensCat(PipelineStage):
         data['lens_dec'] = f['lens/dec'][:]
         data['lens_bin'] = f['lens/bin'][:]
 
+
+class TXGammaTFieldCenters(TXTwoPoint):
+    name = "TXGammaTFieldCenters"
+    inputs = [
+        ('shear_catalog', MetacalCatalog),
+        ('tomography_catalog', TomographyCatalog),
+        ('photoz_stack', HDFFile),
+        ('random_cats', RandomsCatalog),
+        ('field_centers', HDFFile),
+    ]
+    outputs = [
+        ('gammat_field_center', SACCFile),
+        ('gammat_field_center_plot', PNGFile),
+    ]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        'calcs':[0,1,2],
+        'min_sep':2.5,
+        'max_sep':250,
+        'nbins':20,
+        'bin_slop':0.1,
+        'sep_units':'arcmin',
+        'flip_g2':True,
+        'cores_per_task':20,
+        'verbose':1,
+        'reduce_randoms_size':1.0,
+        }
+
+    def run(self):
+        import matplotlib
+        matplotlib.use('agg')
+        self.config['source_bins'] = [-1]
+        self.config['lens_bins'] = [-1]
+        super().run()
+
+    def read_nbin(self, data):
+        data['source_list'] = [0]
+        data['lens_list'] = [0]
+
+    def load_lens_catalog(self, data):
+        filename = self.get_input('field_centers')
+        print(f"Loading lens sample from {filename}")
+
+        f = self.open_input('field_centers')
+        data['lens_ra']  = f['field_centers/ratel'][:]
+        data['lens_dec'] = f['field_centers/dectel'][:]
+        f.close()
+
+        npoint = data['lens_ra'].size
+        data['lens_bin'] = np.zeros(npoint)
+
+    def load_tomography(self, data):
+        super().load_tomography(data)
+        data['source_bin'][:] = data['source_bin'].clip(-1,0)
+
+    def select_calculations(self, data):
+        return [(0,0,SHEAR_POS)]
+
+    def write_output(self, data, meta, results):
+        self.write_output_sacc(data, meta, results)
+        self.write_output_plot(results)
+
+    def write_output_plot(self, results):
+        import matplotlib.pyplot as plt
+        d = results[0]
+
+        fig = self.open_output('gammat_field_center_plot', wrapper=True)
+
+        plt.errorbar(d.theta,  d.theta*d.value, d.error, fmt='ro', capsize=3)
+        plt.xscale('log')
+
+        plt.xlabel(r"$\theta$ / arcmin")
+        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
+        plt.title("Field Center Tangential Shear")
+
+        fig.close()
+
+    def write_output_sacc(self, data, meta, results):
+        import sacc
+        dt = "galaxyFieldCenter_shearDensity_xi_t"
+
+        S = sacc.Sacc()
+
+        f = self.open_input('photoz_stack')
+        z = f['n_of_z/source2d/z'][:]
+        Nz = f[f'n_of_z/source2d/bin_0'][:]
+        f.close()
+
+        # Add the data points that we have one by one, recording which
+        # tracer they each require
+        S.add_tracer('misc', 'fieldcenter')
+        S.add_tracer('NZ', 'source2d', z, Nz)
+
+        d = results[0]
+        assert len(results)==1
+
+        # Each of our Measurement objects contains various theta values,
+        # and we loop through and add them all
+        n = len(d.value)
+        for i in range(n):
+            S.add_data_point(dt, ('source2d', 'fieldcenter'), d.value[i],
+                theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+
+        # We also save the associated metadata to the file
+        for k,v in meta.items():
+            if np.isscalar(v):
+                S.metadata[k] = v
+            else:
+                for i, vi in enumerate(v):
+                    S.metadata[f'{k}_{i}'] = vi
+
+        # Add provenance metadata.  In managed formats this is done
+        # automatically, but because the Sacc library is external
+        # we do it manually here.
+        for key, value in self.gather_provenance().items():
+            if isinstance(value, str) and '\n' in value:
+                values = value.split("\n")
+                for i,v in enumerate(values):
+                    S.metadata[f'provenance/{key}_{i}'] = v
+            else:
+                S.metadata[f'provenance/{key}'] = value
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('gammat_field_center'), overwrite=True)
+
+        # Also make a plot of the data
 
 if __name__ == '__main__':
     PipelineStage.main()

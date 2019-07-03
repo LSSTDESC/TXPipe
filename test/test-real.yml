@@ -26,6 +26,8 @@ stages:
       nprocess: 1
     - name: TXDiagnostics
       nprocess: 1
+    - name: TXGammaTFieldCenters
+      nprocess: 1
       
 output_dir: metacal-outputs/
 
@@ -41,6 +43,7 @@ inputs:
     photoz_trained_model: ${DATA}/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
     calibration_table: ${DATA}/sample_cosmodc2_w10year_errors.dat
+    field_centers: ${DATA}/field_centers.hdf5
 
 resume: True
 log_dir: ./test/logs
