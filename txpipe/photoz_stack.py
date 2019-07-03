@@ -97,12 +97,12 @@ class TXPhotozStack(PipelineStage):
             source_counts_2d += w[0].size
 
         if self.comm:
-            self.reduce(source_pdfs)
-            self.reduce(source_pdfs_2d)
-            self.reduce(lens_pdfs)
-            self.reduce(source_counts)
-            self.reduce(source_counts_2d)
-            self.reduce(lens_counts)
+            source_pdfs      = self.reduce(source_pdfs)
+            source_pdfs_2d   = self.reduce(source_pdfs_2d)
+            lens_pdfs        = self.reduce(lens_pdfs)
+            source_counts    = self.reduce(source_counts)
+            source_counts_2d = self.reduce(source_counts_2d)
+            lens_counts      = self.reduce(lens_counts)
 
         if self.rank==0:
             # Normalize the stacks
@@ -121,9 +121,12 @@ class TXPhotozStack(PipelineStage):
             f.close()
 
     def reduce(self, x):
-        y = np.zeros_like(x) if self.rank==0 else None
-        self.comm.Reduce(x,y)
-        x[:]=y
+        if np.isscalar(x):
+            y = self.comm.reduce(x)
+        else:
+            y = np.zeros_like(x) if self.rank==0 else None
+            self.comm.Reduce(x,y)
+        return y
 
 
     def get_metadata(self):
