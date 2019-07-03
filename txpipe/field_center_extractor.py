@@ -23,14 +23,54 @@ class TXButlerFieldCenters(PipelineStage):
         # central detector in whole focal plane, just as example
         exposure_refs = butler.subset('calexp', raftName='R22', detectorName='S11')
 
+        float_params =[
+            "mjd-obs",
+            "filter",
+            "testtype",
+            "imgtype",
+            "ratel",
+            "dectel",
+            "rotangle",
+            "bgmean",
+            "bgvar",
+            "magzero_rms",
+            "colorterm1",
+            "colorterm2",
+            "colorterm3",
+            "fluxmag0",
+            "fluxmag0err",
+            "exptime",
+            "darktime",
+            
+        ]
+
+        int_params = [
+            "runnum",
+            "obsid",
+            "magzero_nobj",
+            "ap_corr_map_id",
+            "psf_id",
+            "skywcs_id",
+            "psf_id",
+            "skywcs_id",
+        ]
+
+        str_params  = [
+            "date-avg",
+            "timesys",
+            "rottype",
+        ]
+
+
         # Spaces for output columns
         n = len(refs)
-        ra = np.zeros(n)
-        dec = np.zeros(n)
-        rot = np.zeros(n)
-        obs_id = np.zeros(n, dtype=int)
-        run_num = np.zeros(n, dtype=int)
-        exp_id = np.zeros(n, dtype=int)
+
+        data =  {p:np.zeros(n) for p in float_params}
+        data += {p:np.zeros(n, type=int) for p in int_params}
+        data += {list() for p in str_params}
+
+        num_params = float_params + int_params
+
 
         # Loop through. Much faster to access the file
         # directly rather than through ref.get, which seems
@@ -44,20 +84,14 @@ class TXButlerFieldCenters(PipelineStage):
             f = fits.open(fn)
             hdr = f[0].header
             # columns that we want, pulled out of FITS headers.
-            ra[i] = hdr["RATEL"]
-            dec[i] = hdr["DECTEL"]
-            rot[i] = hdr['ROTANGLE']
-            obs_id[i] = hdr['OBSID']
-            run_num[i] = hdr['RUNNUM']
-            exp_id[i] = hdr['EXPID']
+            for p in num_params:
+                data[p][i] = hdr[p.upper()]
+            for p in str_params:
+                data[p].append(hdr[p.upper()])
 
         # Save output
         f = self.open_output('field_centers')
         g = f.create_group('field_centers')
-        g.create_dataset('ra', data=ra)
-        g.create_dataset('dec', data=dec)
-        g.create_dataset('rot', data=rot)
-        g.create_dataset('run_num', data=run_num)
-        g.create_dataset('obs_id', data=obs_id)
-        g.create_dataset('exp_id', data=exp_id)
-        f.close()
+        for name, col in data.items():
+            g.create_dataset(name, data=col)
+         f.close()
