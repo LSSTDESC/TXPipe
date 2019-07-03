@@ -37,8 +37,10 @@ class TXPhotozStack(PipelineStage):
         z, nbin_source, nbin_lens = self.get_metadata()
         nz = len(z)
         source_pdfs = np.zeros((nbin_source, nz))
+        source_pdfs_2d = np.zeros(nz)
         lens_pdfs = np.zeros((nbin_lens, nz))
         source_counts = np.zeros(nbin_source)
+        source_counts_2d = 0
         lens_counts = np.zeros(nbin_lens)
 
 
@@ -90,10 +92,16 @@ class TXPhotozStack(PipelineStage):
                 lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
                 lens_counts[b] += w[0].size
 
+            w = np.where(tomo_data['source_bin']>=0)
+            source_pdfs_2d += pz_data['pdf'][w].sum(axis=0)
+            source_counts_2d += w[0].size
+
         if self.comm:
             self.reduce(source_pdfs)
+            self.reduce(source_pdfs_2d)
             self.reduce(lens_pdfs)
             self.reduce(source_counts)
+            self.reduce(source_counts_2d)
             self.reduce(lens_counts)
 
         if self.rank==0:
@@ -102,11 +110,13 @@ class TXPhotozStack(PipelineStage):
                 source_pdfs[b] /= source_counts[b]
             for b in range(nbin_lens):
                 lens_pdfs[b] /= lens_counts[b]
+            source_pdfs_2d /= source_counts_2d
 
 
             # And finally save the outputs
             f = self.open_output("photoz_stack")        
             self.save_result(f, "source", nbin_source, z, source_pdfs, source_counts)
+            self.save_result(f, "source2d", 1, z, [source_pdfs_2d], [source_counts_2d])
             self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
             f.close()
 
