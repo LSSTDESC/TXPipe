@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile 
 import numpy as np
+import warnings
 
 class TXPhotozStack(PipelineStage):
     """
@@ -34,6 +35,8 @@ class TXPhotozStack(PipelineStage):
 
         # Set up the array we will stack the PDFs into
         # first get the sizes from metadata
+        # We also set up accumulators for the combined
+        # total tomographic bin (2d)
         z, nbin_source, nbin_lens = self.get_metadata()
         nz = len(z)
         source_pdfs = np.zeros((nbin_source, nz))
@@ -64,6 +67,8 @@ class TXPhotozStack(PipelineStage):
             self.config['chunk_rows']  # number of rows to read at once
         )
 
+        warnings.warn("WEIGHTS/RESPONSE ARE NOT CURRENTLY INCLUDED CORRECTLY in PZ STACKING")
+
 
         # So we just do a single loop through the pair of files.
         for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, tomography_iterator):
@@ -92,10 +97,15 @@ class TXPhotozStack(PipelineStage):
                 lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
                 lens_counts[b] += w[0].size
 
+            # For the 2D source bin we take every object that is selected
+            # for any tomographic bin (the non-selected objects
+            # have bin=-1)s
             w = np.where(tomo_data['source_bin']>=0)
             source_pdfs_2d += pz_data['pdf'][w].sum(axis=0)
             source_counts_2d += w[0].size
 
+        # Collect together the results from the different processors,
+        # if we are running in parallel
         if self.comm:
             source_pdfs      = self.reduce(source_pdfs)
             source_pdfs_2d   = self.reduce(source_pdfs_2d)
@@ -121,6 +131,10 @@ class TXPhotozStack(PipelineStage):
             f.close()
 
     def reduce(self, x):
+        # For scalars (i.e. just the 2D source count for now)
+        # we just sum over all processors using reduce
+        # For vectors we use Reduce, which applies specifically
+        # to numpy arrays
         if np.isscalar(x):
             y = self.comm.reduce(x)
         else:
