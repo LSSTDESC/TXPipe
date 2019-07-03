@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile
+from .data_types import Directory, HDFFile, PNGFile
 from .utils.stats import ParallelStatsCalculator
 import numpy as np
 
@@ -11,10 +11,11 @@ class TXDiagnostics(PipelineStage):
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
-#        ('field_centres', HDFFile),
     ]
     outputs = [
         ('null_tests', Directory),
+        ('g_psf_T', PNGFile),
+        ('g_psf_g', PNGFile),
     ]
     config = {}
 
@@ -110,7 +111,8 @@ class TXDiagnostics(PipelineStage):
         std21 = np.sqrt(var21/count21)
         std22 = np.sqrt(var22/count22)
 
-        fig = plt.figure()
+        fig = self.open_output('g_psf_g', wrapper=True)
+        dx = 0.1*(mu1[1] - mu1[0])
 
         plt.subplot(2,1,1)
         plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+')
@@ -126,9 +128,9 @@ class TXDiagnostics(PipelineStage):
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.tight_layout()
-        outfile = str(outdir.file / 'g_psf_g.png')
-        plt.savefig(outfile)
-        plt.close()
+
+        # This also saves the figure
+        fig.close()
 
     def plot_psf_size_shear(self, outdir):
         # mean shear in bins of PSF
@@ -164,26 +166,17 @@ class TXDiagnostics(PipelineStage):
 
         dx = 0.05*(psf_g_mid[1] - psf_g_mid[0])
         if self.rank == 0:
-            fig = plt.figure()
+            fig = self.open_output('g_psf_T', wrapper=True)
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+')
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+')
             plt.xlabel("PSF T")
             plt.ylabel("Mean g")
             plt.legend()
-            outfile = str(outdir.file / 'g1_psf_T.png')
             plt.tight_layout()
-            plt.savefig(outfile)
-            plt.close()
+            fig.close()
 
 
 # gamma t around field centres
 # gamma t around 
 
 # PSF as function of shear
-
-
-
-
-
-
-
