@@ -12,16 +12,25 @@ class TXButlerFieldCenters(PipelineStage):
     outputs = [
         ('field_centers', HDFFile),
     ]
-    config = {'dc2_name': str}
+    config_options = {'dc2_name': str}
 
     def run(self):
+        from astropy.io import fits
+
         # find butler by name using this tool.
         # change later to general repo path.
         from desc_dc2_dm_data import get_butler
-        butler = get_butler(self.config['dc2_name'])
+
+        run = self.config['dc2_name']
+
+        print(f"Getting butler for repo {run}")
+        butler = get_butler(run)
+        print("Butler loaded")
 
         # central detector in whole focal plane, just as example
-        exposure_refs = butler.subset('calexp', raftName='R22', detectorName='S11')
+        refs = butler.subset('calexp', raftName='R22', detectorName='S11')
+        n = len(refs)
+        print(f"Found {n} exposure centers.  Reading metadata.")
 
         float_params =[
             "mjd-obs",
@@ -63,8 +72,6 @@ class TXButlerFieldCenters(PipelineStage):
 
 
         # Spaces for output columns
-        n = len(refs)
-
         data =  {p:np.zeros(n) for p in float_params}
         data += {p:np.zeros(n, type=int) for p in int_params}
         data += {list() for p in str_params}
@@ -81,7 +88,7 @@ class TXButlerFieldCenters(PipelineStage):
                 print(i)
             # Open the file for this reference
             filename = ref.getUri()
-            f = fits.open(fn)
+            f = fits.open(filename)
             hdr = f[0].header
             # columns that we want, pulled out of FITS headers.
             for p in num_params:
@@ -92,6 +99,7 @@ class TXButlerFieldCenters(PipelineStage):
         # Save output
         f = self.open_output('field_centers')
         g = f.create_group('field_centers')
+
         for name, col in data.items():
             g.create_dataset(name, data=col)
          f.close()
