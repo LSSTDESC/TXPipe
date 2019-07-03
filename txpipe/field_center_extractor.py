@@ -32,11 +32,9 @@ class TXButlerFieldCenters(PipelineStage):
         n = len(refs)
         print(f"Found {n} exposure centers.  Reading metadata.")
 
+        # columns that we want to save
         float_params =[
             "mjd-obs",
-            "filter",
-            "testtype",
-            "imgtype",
             "ratel",
             "dectel",
             "rotangle",
@@ -60,21 +58,22 @@ class TXButlerFieldCenters(PipelineStage):
             "ap_corr_map_id",
             "psf_id",
             "skywcs_id",
-            "psf_id",
-            "skywcs_id",
         ]
 
         str_params  = [
             "date-avg",
             "timesys",
             "rottype",
+            "filter",
+            "testtype",
+            "imgtype",
         ]
 
 
         # Spaces for output columns
         data =  {p:np.zeros(n) for p in float_params}
-        data += {p:np.zeros(n, type=int) for p in int_params}
-        data += {list() for p in str_params}
+        data.update({p:np.zeros(n, dtype=int) for p in int_params})
+        data.update({p:list() for p in str_params})
 
         num_params = float_params + int_params
 
@@ -86,10 +85,12 @@ class TXButlerFieldCenters(PipelineStage):
             # Progress update
             if i%20==0:
                 print(i)
+
             # Open the file for this reference
             filename = ref.getUri()
             f = fits.open(filename)
             hdr = f[0].header
+
             # columns that we want, pulled out of FITS headers.
             for p in num_params:
                 data[p][i] = hdr[p.upper()]
@@ -100,6 +101,11 @@ class TXButlerFieldCenters(PipelineStage):
         f = self.open_output('field_centers')
         g = f.create_group('field_centers')
 
-        for name, col in data.items():
-            g.create_dataset(name, data=col)
-         f.close()
+        for name in num_params:
+            g.create_dataset(name, data=data[name])
+        for name in str_params:
+            # H5PY cannot deal with fixed-length unicode arrays (the numpy default in py3)
+            # so convert to ASCII
+            g.create_dataset(name, data=np.array(data[name], dtype="S"))
+
+        f.close()
