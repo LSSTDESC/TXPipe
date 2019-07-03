@@ -68,7 +68,8 @@ class TXButlerFieldCenters(PipelineStage):
             "testtype",
             "imgtype",
         ]
-
+        print("WARNING WAWNING WARNING!")
+        print("USING ALL FIELD CENTERS INCLUDING DEEP FIELDS I THINK")
 
         # Spaces for output columns
         data =  {p:np.zeros(n) for p in float_params}
