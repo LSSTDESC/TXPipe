@@ -24,19 +24,37 @@ class TXDiagnostics(PipelineStage):
         matplotlib.use('agg')
 
         outdir = self.open_output('null_tests', 'w')
+
+        # Collect together all the methods on this class called self.plot_*
+        # They are all expected to be python coroutines - generators that
+        # use the yield feature to pause and wait for more input.
+        # We instantiate them all here
         plotters = [getattr(self, f)(outdir) for f in dir(self) if f.startswith('plot_')]
+
+        # Start off each of the plotters.  This will make them all run up to the 
+        # first yield statement, then pause and wait for the first chunk of data
         for plotter in plotters:
             plotter.send(None)
+
+        # Create an iterator for reading through the input data.
+        # This method automatically splits up data among the processes,
+        # so the plotters should handle this.
         chunk_rows = 10000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
 
+        # Now loop through each chunk of input data, one at a time.
+        # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in iter_shear:
             print(f"Read data {start} - {end}")
+            # This causes each data = yield statement in each plotter to
+            # be given this data chunk as the variable data.
             for plotter in plotters:
                 plotter.send(data)
 
-        # Tell all the plotters to finish up
+        # Tell all the plotters to finish, collect together results from the different
+        # processors, and make their final plots.  Plotters need to respond
+        # to the None input and 
         for plotter in plotters:
             try:
                 plotter.send(None)
@@ -84,30 +102,33 @@ class TXDiagnostics(PipelineStage):
         _, mu1, _ = mu1.collect(self.comm, mode='gather')
         _, mu2, _ = mu2.collect(self.comm, mode='gather')
 
+        if self.rank != 0:
+            return
+
         std11 = np.sqrt(var11/count11)
         std12 = np.sqrt(var12/count12)
         std21 = np.sqrt(var21/count21)
         std22 = np.sqrt(var22/count22)
 
-        dx = 0.05*(psf_g_mid[1] - psf_g_mid[0])
-        if self.rank == 0:
-            fig = plt.figure()
-            plt.subplot(2,1,1)
-            plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+')
-            plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+')
-            plt.xlabel("PSF g1")
-            plt.ylabel("Mean g")
-            plt.legend()
-            plt.subplot(2,1,2)
-            plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+')
-            plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+')
-            plt.legend()
-            plt.xlabel("PSF g2")
-            plt.ylabel("Mean g")
-            plt.tight_layout()
-            outfile = str(outdir.file / 'g_psf_g.png')
-            plt.savefig(outfile)
-            plt.close()
+        fig = plt.figure()
+
+        plt.subplot(2,1,1)
+        plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+')
+        plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+')
+        plt.xlabel("PSF g1")
+        plt.ylabel("Mean g")
+        plt.legend()
+
+        plt.subplot(2,1,2)
+        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+')
+        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+')
+        plt.legend()
+        plt.xlabel("PSF g2")
+        plt.ylabel("Mean g")
+        plt.tight_layout()
+        outfile = str(outdir.file / 'g_psf_g.png')
+        plt.savefig(outfile)
+        plt.close()
 
     def plot_psf_size_shear(self, outdir):
         # mean shear in bins of PSF
