@@ -12,10 +12,15 @@ class TXButlerFieldCenters(PipelineStage):
     outputs = [
         ('field_centers', HDFFile),
     ]
-    config_options = {'dc2_name': str}
+    config_options = {
+        'dc2_name': '1.2p',
+        'opsim_db': "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db",
+        'propId': 54,
+        }
 
     def run(self):
         from astropy.io import fits
+        import sqlite3
 
         # find butler by name using this tool.
         # change later to general repo path.
@@ -31,6 +36,9 @@ class TXButlerFieldCenters(PipelineStage):
         refs = butler.subset('calexp', raftName='R22', detectorName='S11')
         n = len(refs)
         print(f"Found {n} exposure centers.  Reading metadata.")
+
+        matching_visits = self.find_matching_opsim_visits()
+        print(f"Found list of visits with propId=={propId}")
 
         # columns that we want to save
         float_params =[
@@ -68,17 +76,13 @@ class TXButlerFieldCenters(PipelineStage):
             "testtype",
             "imgtype",
         ]
-        print("WARNING WAWNING WARNING!")
-        print("USING ALL FIELD CENTERS INCLUDING DEEP FIELDS I THINK")
 
+
+        params = float_params + int_params + str_params
         # Spaces for output columns
-        data =  {p:np.zeros(n) for p in float_params}
-        data.update({p:np.zeros(n, dtype=int) for p in int_params})
-        data.update({p:list() for p in str_params})
+        data = {p:list() for p in params}
 
         num_params = float_params + int_params
-
-
         # Loop through. Much faster to access the file
         # directly rather than through ref.get, which seems
         # to load in the full image 
@@ -92,11 +96,16 @@ class TXButlerFieldCenters(PipelineStage):
             f = fits.open(filename)
             hdr = f[0].header
 
+            if hdr['obsid'] not in matching_visits:
+                continue
+
             # columns that we want, pulled out of FITS headers.
-            for p in num_params:
-                data[p][i] = hdr[p.upper()]
-            for p in str_params:
+            for p in params:
                 data[p].append(hdr[p.upper()])
+
+        m = len(data.values()[0])
+        f = 100. * m / n
+        print(f"{m} / {n} visits match propId={propId} ({f:.2f}%)")
 
         # Save output
         f = self.open_output('field_centers')
@@ -104,9 +113,22 @@ class TXButlerFieldCenters(PipelineStage):
 
         for name in num_params:
             g.create_dataset(name, data=data[name])
+
         for name in str_params:
             # H5PY cannot deal with fixed-length unicode arrays (the numpy default in py3)
             # so convert to ASCII
             g.create_dataset(name, data=np.array(data[name], dtype="S"))
 
         f.close()
+
+    def find_matching_opsim_visits(self):
+        import sqlite3
+        db = self.config['opsim_db']
+        propId = self.config['propId']
+        connection = sqlite3.connect(db)
+        cursor = connection.cursor()
+        cursor.execute('select obsHistID from summary where propId=:propId', {'propId':propId})
+        obsHistID = {Id[0] for Id in cursor.fetchall()}
+        return obsHistID
+
+
