@@ -82,6 +82,8 @@ class TXRoweStatistics(PipelineStage):
             plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3)
         plt.xscale('log')
         plt.yscale('log')
+        plt.xlabel(r"$\theta$")
+        plt.ylabel(r"$\xi_+(\theta)$")
         plt.legend()
         f.close()
 
@@ -91,6 +93,8 @@ class TXRoweStatistics(PipelineStage):
             plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3)
         plt.xscale('log')
         plt.yscale('log')
+        plt.xlabel(r"$\theta$")
+        plt.ylabel(r"$\xi_+(\theta)$")
         plt.legend()
         f.close()
 
