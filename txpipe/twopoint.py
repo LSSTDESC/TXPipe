@@ -239,6 +239,16 @@ class TXTwoPoint(PipelineStage):
                 S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i], 
                     theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
+        self.write_metadata(S, meta)
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
+
+    def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
         for k,v in meta.items():
             if np.isscalar(v):
@@ -257,14 +267,6 @@ class TXTwoPoint(PipelineStage):
                     S.metadata[f'provenance/{key}_{i}'] = v
             else:
                 S.metadata[f'provenance/{key}'] = value
-
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
-
 
 
     def call_treecorr(self, data, i, j, k):
@@ -591,6 +593,11 @@ class TXTwoPoint(PipelineStage):
         return meta
 
 class TXTwoPointLensCat(TXTwoPoint):
+    """
+    This subclass of the standard TXTwoPoint takes its
+    lens sample from an external source instead of using
+    the photometric sample.
+    """
     name='TXTwoPointLensCat'
     inputs = [
         ('shear_catalog', MetacalCatalog),
@@ -610,6 +617,10 @@ class TXTwoPointLensCat(TXTwoPoint):
 
 
 class TXGammaTFieldCenters(TXTwoPoint):
+    """
+    This subclass of the standard TXTwoPoint uses the centers
+    of exposure fields as "lenses", as a systematics test.
+    """
     name = "TXGammaTFieldCenters"
     inputs = [
         ('shear_catalog', MetacalCatalog),
@@ -637,6 +648,9 @@ class TXGammaTFieldCenters(TXTwoPoint):
         }
 
     def run(self):
+        # Before running the parent class we add source_bins and lens_bins
+        # options that it is expecting, both set to -1 to indicate that we
+        # will choose them automatically (below).
         import matplotlib
         matplotlib.use('agg')
         self.config['source_bins'] = [-1]
@@ -644,10 +658,14 @@ class TXGammaTFieldCenters(TXTwoPoint):
         super().run()
 
     def read_nbin(self, data):
+        # We use only a single source and lens bin in this case - 
+        # the source is the complete 2D field and the lens is the
+        # field centers
         data['source_list'] = [0]
         data['lens_list'] = [0]
 
     def load_lens_catalog(self, data):
+        # We load our lenses from the field_centers input.
         filename = self.get_input('field_centers')
         print(f"Loading lens sample from {filename}")
 
@@ -660,13 +678,22 @@ class TXGammaTFieldCenters(TXTwoPoint):
         data['lens_bin'] = np.zeros(npoint)
 
     def load_tomography(self, data):
+        # We run the parent class tomography selection but then
+        # overrided it to squash all of the bins  0 .. nbin -1
+        # down to the zero bin.  This means that any selected
+        # objects (from any tomographic bin) are now in the same
+        # bin, and unselected objects still have bin -1
         super().load_tomography(data)
         data['source_bin'][:] = data['source_bin'].clip(-1,0)
 
     def select_calculations(self, data):
+        # We only want a single calculation, the gamma_T around
+        # the field centers
         return [(0,0,SHEAR_POS)]
 
     def write_output(self, data, meta, results):
+        # we write output both to file for later and to
+        # a plot
         self.write_output_sacc(data, meta, results)
         self.write_output_plot(results)
 
@@ -686,6 +713,9 @@ class TXGammaTFieldCenters(TXTwoPoint):
         fig.close()
 
     def write_output_sacc(self, data, meta, results):
+        # We write out the results slightly differently here
+        # beause they go to a different file and have different
+        # tracers and tags.
         import sacc
         dt = "galaxyFieldCenter_shearDensity_xi_t"
 
@@ -711,24 +741,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
             S.add_data_point(dt, ('source2d', 'fieldcenter'), d.value[i],
                 theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
-        # We also save the associated metadata to the file
-        for k,v in meta.items():
-            if np.isscalar(v):
-                S.metadata[k] = v
-            else:
-                for i, vi in enumerate(v):
-                    S.metadata[f'{k}_{i}'] = vi
-
-        # Add provenance metadata.  In managed formats this is done
-        # automatically, but because the Sacc library is external
-        # we do it manually here.
-        for key, value in self.gather_provenance().items():
-            if isinstance(value, str) and '\n' in value:
-                values = value.split("\n")
-                for i,v in enumerate(values):
-                    S.metadata[f'provenance/{key}_{i}'] = v
-            else:
-                S.metadata[f'provenance/{key}'] = value
+        self.write_metadata(S, meta)
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
