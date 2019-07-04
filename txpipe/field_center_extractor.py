@@ -27,6 +27,7 @@ class TXButlerFieldCenters(PipelineStage):
         from desc_dc2_dm_data import get_butler
 
         run = self.config['dc2_name']
+        propId = self.config['propId']
 
         print(f"Getting butler for repo {run}")
         butler = get_butler(run)
@@ -88,8 +89,8 @@ class TXButlerFieldCenters(PipelineStage):
         # to load in the full image 
         for i,ref in enumerate(refs):
             # Progress update
-            if i%20==0:
-                print(i)
+            if i%100==0:
+                print(f'Read {i} / {n}')
 
             # Open the file for this reference
             filename = ref.getUri()
@@ -103,7 +104,7 @@ class TXButlerFieldCenters(PipelineStage):
             for p in params:
                 data[p].append(hdr[p.upper()])
 
-        m = len(data.values()[0])
+        m = len(data['ratel'])
         f = 100. * m / n
         print(f"{m} / {n} visits match propId={propId} ({f:.2f}%)")
 
