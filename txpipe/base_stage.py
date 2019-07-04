@@ -5,8 +5,12 @@ from .utils.provenance import find_module_versions, git_diff, git_current_revisi
 
 class PipelineStage(PipelineStageBase):
     name = "Error"
-    inputs = {}
-    outputs = {}
+    inputs = []
+    outputs = []
+    config_options = {}
+
+    def run(self):
+        print("Please do not execute this stage again.")
 
     def gather_provenance(self):
         provenance = {}
