@@ -6,7 +6,7 @@ site:
     cpu: haswell
     queue: debug
     max_jobs: 2
-    setup: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
+    setup: ${PWD}/test/setup-cori
 
 modules: txpipe
 
