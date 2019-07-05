@@ -77,32 +77,29 @@ class TXButlerFieldCenters(PipelineStage):
             "testtype",
             "imgtype",
         ]
-
+        # We can add WCS information here if needed, there is lots
+        # of it.
 
         params = float_params + int_params + str_params
         # Spaces for output columns
         data = {p:list() for p in params}
 
         num_params = float_params + int_params
-        # Loop through. Much faster to access the file
-        # directly rather than through ref.get, which seems
-        # to load in the full image 
+        # Loop through the images and get their metadata
         for i,ref in enumerate(refs):
             # Progress update
             if i%100==0:
                 print(f'Read {i} / {n}')
 
-            # Open the file for this reference
-            filename = ref.getUri()
-            f = fits.open(filename)
-            hdr = f[0].header
+            # Read the metadata for this exposure reference
+            metadata = butler.get('calexp_md', dataId=ref.dataId).toDict()
 
-            if hdr['obsid'] not in matching_visits:
+            if metadata['OBSID'] not in matching_visits:
                 continue
 
             # columns that we want, pulled out of FITS headers.
             for p in params:
-                data[p].append(hdr[p.upper()])
+                data[p].append(metadata[p.upper()])
 
         m = len(data['ratel'])
         f = 100. * m / n
