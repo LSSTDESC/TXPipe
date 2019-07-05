@@ -36,7 +36,7 @@ class TXExposureInfo(PipelineStage):
         # central detector in whole focal plane, just as example
         refs = butler.subset('calexp', raftName='R22', detectorName='S11')
         n = len(refs)
-        print(f"Found {n} exposure centers.  Reading metadata.")
+        print(f"Found {n} exposure centers.  Reading exposure info.")
 
         matching_visits = self.find_matching_opsim_visits()
         print(f"Found list of visits with propId=={propId}")
@@ -89,7 +89,7 @@ class TXExposureInfo(PipelineStage):
         for i,ref in enumerate(refs):
             # Progress update
             if i%100==0:
-                print(f'Read {i} / {n}')
+                print(f'Reading metadata for exposure {i+1} / {n}')
 
             # Read the metadata for this exposure reference
             metadata = butler.get('calexp_md', dataId=ref.dataId).toDict()
