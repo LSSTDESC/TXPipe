@@ -10,7 +10,7 @@ class TXButlerFieldCenters(PipelineStage):
     inputs = [
     ]
     outputs = [
-        ('field_centers', HDFFile),
+        ('exposures', HDFFile),
     ]
     config_options = {
         'dc2_name': '1.2p',
@@ -106,8 +106,8 @@ class TXButlerFieldCenters(PipelineStage):
         print(f"{m} / {n} visits match propId={propId} ({f:.2f}%)")
 
         # Save output
-        f = self.open_output('field_centers')
-        g = f.create_group('field_centers')
+        f = self.open_output('exposures')
+        g = f.create_group('exposures')
 
         for name in num_params:
             g.create_dataset(name, data=data[name])

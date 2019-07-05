@@ -627,7 +627,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('field_centers', HDFFile),
+        ('exposures', HDFFile),
     ]
     outputs = [
         ('gammat_field_center', SACCFile),
@@ -665,13 +665,13 @@ class TXGammaTFieldCenters(TXTwoPoint):
         data['lens_list'] = [0]
 
     def load_lens_catalog(self, data):
-        # We load our lenses from the field_centers input.
-        filename = self.get_input('field_centers')
+        # We load our lenses from the exposures input.
+        filename = self.get_input('exposures')
         print(f"Loading lens sample from {filename}")
 
-        f = self.open_input('field_centers')
-        data['lens_ra']  = f['field_centers/ratel'][:]
-        data['lens_dec'] = f['field_centers/dectel'][:]
+        f = self.open_input('exposures')
+        data['lens_ra']  = f['exposures/ratel'][:]
+        data['lens_dec'] = f['exposures/dectel'][:]
         f.close()
 
         npoint = data['lens_ra'].size
