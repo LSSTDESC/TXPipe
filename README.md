@@ -41,31 +41,21 @@ cd ../..
 Dependencies
 ============
 
-TXPipe has these dependencies:
+TXPipe requires python>=3.6.
 
-- python3
-- numpy
-- scipy
-- pyyaml
-- fitsio
-- h5py (which in turn needs HDF5)
-- ceci
-
-Dependencies on your own machine
----------------------------------
-
-HDF5 is slow to install; it is easier to install using package managers like Homebrew.
-Otherwise you can get it from here: https://www.hdfgroup.org/downloads/hdf5
-
-To install the python dependencies using pip:
-
-```bash
-pip scipy pyyaml ceci
-pip install fitsio h5py mlz-desc
-pip install treecorr
+The various stages within it depend on the python packages listed in requirements.txt, and can be install using:
+```
+pip install -r requirements.txt
 ```
 
-The Fourier space two-point code requires NaMaster, which is considerably harder to install.  For now, stick to the real space version on your own machine!
+The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
+
+To try a C_ell analysis, it can be installed from here:
+
+https://github.com/LSSTDESC/NaMaster/
+
+although there is a conda recipe to install it.
+
 
 Dependencies using Docker
 -------------------------

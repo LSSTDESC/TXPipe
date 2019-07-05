@@ -1,0 +1,15 @@
+ceci
+h5py
+pandas
+sacc
+pyccl
+numpy
+matplotlib
+GCRCatalogs
+scipy
+mlz_desc
+treecorr
+sklearn
+astropy
+healpy
+pymaster
