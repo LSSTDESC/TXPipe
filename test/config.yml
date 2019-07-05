@@ -1,7 +1,7 @@
 TXMetacalGCRInput:
     cat_name: dc2_object_run1.2i_tract5063_with_metacal.yaml
 
-TXButlerFieldCenters:
+TXExposureInfo:
     dc2_name: '1.2p'
 
 TXProtoDC2Mock:

@@ -2,10 +2,10 @@ from .base_stage import PipelineStage
 from .data_types import HDFFile
 import numpy as np
 
-class TXButlerFieldCenters(PipelineStage):
+class TXExposureInfo(PipelineStage):
     """
     """
-    name='TXButlerFieldCenters'
+    name='TXExposureInfo'
 
     inputs = [
     ]
