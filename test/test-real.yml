@@ -43,7 +43,7 @@ inputs:
     photoz_trained_model: ${DATA}/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
     calibration_table: ${DATA}/sample_cosmodc2_w10year_errors.dat
-    exposures: ${DATA}/field_centers.hdf5
+    exposures: ${DATA}/exposures.hdf
 
 resume: True
 log_dir: ./test/logs
