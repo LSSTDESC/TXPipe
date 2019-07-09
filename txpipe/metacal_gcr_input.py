@@ -75,9 +75,9 @@ class TXMetacalGCRInput(PipelineStage):
             'ext_shapeHSM_HsmPsfMoments_xx',
             'ext_shapeHSM_HsmPsfMoments_xy',
             'ext_shapeHSM_HsmPsfMoments_yy',
-            'ext_shapeHSM_HsmSourceMomentsRound_xx',
-            'ext_shapeHSM_HsmSourceMomentsRound_xy',
-            'ext_shapeHSM_HsmSourceMomentsRound_yy',
+            'ext_shapeHSM_HsmSourceMoments_xx',
+            'ext_shapeHSM_HsmSourceMoments_xy',
+            'ext_shapeHSM_HsmSourceMoments_yy',
         ]
 
         # For shear we just copy the input direct to the output
@@ -98,30 +98,34 @@ class TXMetacalGCRInput(PipelineStage):
         cols = list(set(shear_cols + photo_cols + star_cols))
 
         start = 0
+        star_start = 0
         shear_output = None
         photo_output = None
 
         # Loop through the data, as chunke natively by GCRCatalogs
         for data in cat.get_quantities(cols, return_iterator=True):
-            #
+            # Some columns have different names in input than output
             self.rename_columns(data)
+            # The star ellipticities are derived from the measured moments for now
+            star_data = self.compute_star_data(data)
+
             # First chunk of data we use to set up the output
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
                 shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
-                photo_output = self.setup_output('photometry_catalog', 'metacal', data, photo_out_cols, n)
-                star_output  = self.setup_output('star_catalog', 'stars', data, star_out_cols, n)
-
-            star_data = self.compute_star_data(data)
+                photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
+                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
+            star_end = star_start + len(star_data['ra'])
             print(f"    Saving {start} - {end}")
-            self.write_output(shear_output, shear_out_cols, start, end, data)
-            self.write_output(photo_output, photo_out_cols, start, end, data)
-            self.write_output(star_output,  star_out_cols,  start, end, star_data)
+            self.write_output(shear_output, 'metacal', shear_out_cols, start, end, data)
+            self.write_output(photo_output, 'photometry', photo_out_cols, start, end, data)
+            self.write_output(star_output,  'stars', star_out_cols,  star_start, star_end, star_data)
             start = end
+            star_start = star_end
 
         # All done!
         photo_output.close()
@@ -138,11 +142,12 @@ class TXMetacalGCRInput(PipelineStage):
         f = self.open_output(name)
         g = f.create_group(group)
         for name in cols:
-            g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)
-        return g
+            g.create_dataset(name, shape=(len(cat[name]),), maxshape=(n,), dtype=cat[name].dtype)
+        return f
 
 
-    def write_output(self, g, cols, start, end, data):
+    def write_output(self, output_file, group_name, cols, start, end, data):
+        g = output_file[group_name]
         for name in cols:
             g[name][start:end] = data[name]
 
@@ -180,6 +185,7 @@ class TXMetacalGCRInput(PipelineStage):
             # save to output
             star_data[f'{out_name}e1'] = e1
             star_data[f'{out_name}e2'] = e2
+            star_data[f'{out_name}T'] = T
 
         return star_data
 
