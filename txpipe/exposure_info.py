@@ -97,7 +97,7 @@ class TXExposureInfo(PipelineStage):
             if metadata['OBSID'] not in matching_visits:
                 continue
 
-            # columns that we want, pulled out of FITS headers.
+            # columns that we want to save to file, from the metadata
             for p in params:
                 data[p].append(metadata[p.upper()])
 
