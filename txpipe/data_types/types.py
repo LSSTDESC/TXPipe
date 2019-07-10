@@ -55,6 +55,14 @@ class DiagnosticMaps(HDFFile):
         'maps/depth/pixel',
         ]
 
+    def get_nbins(self):
+        group = self.file['maps']
+        info = dict(group.attrs)
+        nbin_lens = info.get('nbin_lens', 0)
+        nbin_source = info.get('nbin_source', 0)
+        return nbin_source, nbin_lens
+
+
     def read_healpix(self, map_name, return_all=False):
         import healpy
         import numpy as np
@@ -87,7 +95,7 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
-    def display_healpix(self, map_name, **kwargs):
+    def plot_healpix(self, map_name, view='cart', **kwargs):
         import healpy
         import numpy as np
         m, pix, nside = self.read_healpix(map_name, return_all=True)
@@ -96,7 +104,12 @@ class DiagnosticMaps(HDFFile):
         lon_range = [lon.min()-0.1, lon.max()+0.1]
         lat_range = [lat.min()-0.1, lat.max()+0.1]
         title = kwargs.pop('title', map_name)
-        healpy.cartview(m,lonra=lon_range, latra=lat_range, title=title, **kwargs)
+        if view == 'cart':
+            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, **kwargs)
+        elif view == 'moll':
+            healpy.mollview(m, title=title, **kwargs)
+        else:
+            raise ValueError(f"Unknown Healpix view mode {mode}")
 
     def read_gnomonic(self, map_name):
         import numpy as np
@@ -117,24 +130,35 @@ class DiagnosticMaps(HDFFile):
         m[y,x] = val
         return m
 
-
-    def display_gnomonic(self, map_name, **kwargs):
-        import pylab
+    def plot_gnomonic(self, map_name, **kwargs):
+        import matplotlib.pyplot as plt
         import numpy as np
         info = self.read_map_info(map_name)
         ra_min, ra_max = info['ra_min'], info['ra_max']
         if ra_min > 180 and ra_max<180:
             ra_min -= 360
-        ra_range = (ra_min, ra_max)
+        ra_range = (ra_max, ra_min)
         dec_range = (info['dec_min'],info['dec_max'])
 
+        # the view arg is needed for healpix but not gnomonic
+        kwargs.pop('view')
         m = self.read_gnomonic(map_name)
         extent = list(ra_range) + list(dec_range)
         title = kwargs.pop('title', map_name)
-        pylab.imshow(m, aspect='equal', extent=extent, **kwargs)
-        pylab.title(title)
-        pylab.colorbar()
-        pylab.show()
+        plt.imshow(m, aspect='equal', extent=extent, **kwargs)
+        plt.title(title)
+        plt.colorbar()
+
+    def plot(self, map_name, **kwargs):
+        info = self.read_map_info(map_name)
+        pixelization = info['pixelization']
+        if pixelization == 'gnomonic':
+            m = self.plot_gnomonic(map_name, **kwargs)
+        elif pixelization == 'healpix':
+            m = self.plot_healpix(map_name, **kwargs)
+        else:
+            raise ValueError(f"Unknown map pixelization type {pixelization}")
+        return m
 
 
 
