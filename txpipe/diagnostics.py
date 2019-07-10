@@ -3,7 +3,7 @@ from .data_types import Directory, HDFFile, PNGFile
 from .utils.stats import ParallelStatsCalculator
 import numpy as np
 
-class TXDiagnostics(PipelineStage):
+class TXInputDiagnostics(PipelineStage):
     """
     """
     name='TXDiagnostics'
@@ -173,7 +173,3 @@ class TXDiagnostics(PipelineStage):
             fig.close()
 
 
-# gamma t around field centres
-# gamma t around 
-
-# PSF as function of shear
