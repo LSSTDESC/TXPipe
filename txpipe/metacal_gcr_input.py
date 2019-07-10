@@ -22,7 +22,7 @@ class TXMetacalGCRInput(PipelineStage):
     outputs = [
         ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
-        ('star_catalog', HDFFile),
+#        ('star_catalog', HDFFile),
     ]
 
     config_options = {
@@ -71,13 +71,13 @@ class TXMetacalGCRInput(PipelineStage):
             'id',
             'ra',
             'dec',
-            'calib_psf_used',
-            'ext_shapeHSM_HsmPsfMoments_xx',
-            'ext_shapeHSM_HsmPsfMoments_xy',
-            'ext_shapeHSM_HsmPsfMoments_yy',
-            'ext_shapeHSM_HsmSourceMoments_xx',
-            'ext_shapeHSM_HsmSourceMoments_xy',
-            'ext_shapeHSM_HsmSourceMoments_yy',
+#            'calib_psf_used',
+            'Ixx',
+            'Ixy',
+            'Iyy',
+            'IxxPSF',
+            'IxyPSF',
+            'IyyPSF',
         ]
 
         # For shear we just copy the input direct to the output
@@ -107,7 +107,7 @@ class TXMetacalGCRInput(PipelineStage):
             # Some columns have different names in input than output
             self.rename_columns(data)
             # The star ellipticities are derived from the measured moments for now
-            star_data = self.compute_star_data(data)
+#            star_data = self.compute_star_data(data)
 
             # First chunk of data we use to set up the output
             # It is easier this way (no need to check types etc)
@@ -115,22 +115,24 @@ class TXMetacalGCRInput(PipelineStage):
             if shear_output is None:
                 shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
                 photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
-                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
+#                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
+
+
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
-            star_end = star_start + len(star_data['ra'])
+#           star_end = star_start + len(star_data['ra'])
             print(f"    Saving {start} - {end}")
             self.write_output(shear_output, 'metacal', shear_out_cols, start, end, data)
             self.write_output(photo_output, 'photometry', photo_out_cols, start, end, data)
-            self.write_output(star_output,  'stars', star_out_cols,  star_start, star_end, star_data)
+#           self.write_output(star_output,  'stars', star_out_cols,  star_start, star_end, star_data)
             start = end
-            star_start = star_end
+#           star_start = star_end
 
         # All done!
         photo_output.close()
         shear_output.close()
-        star_output.close()
+#        star_output.close()
 
     def rename_columns(self, data):
         for band in 'ugrizy':
@@ -142,7 +144,7 @@ class TXMetacalGCRInput(PipelineStage):
         f = self.open_output(name)
         g = f.create_group(group)
         for name in cols:
-            g.create_dataset(name, shape=(len(cat[name]),), maxshape=(n,), dtype=cat[name].dtype)
+            g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)
         return f
 
 
@@ -166,15 +168,15 @@ class TXMetacalGCRInput(PipelineStage):
         # ellipticities.  We do this for both the star shape
         # itself and the PSF model.
         kinds = [
-            ('ext_shapeHSM_HsmSourceMoments', 'measured_'),
-            ('ext_shapeHSM_HsmPsfMoments', 'model_')
+            ('', 'measured_'),
+            ('PSF', 'model_')
         ]
 
         for in_name, out_name in kinds:
             # Pulling out the correct moment columns
-            Ixx = data[f'{in_name}_xx'][star]
-            Iyy = data[f'{in_name}_yy'][star]
-            Ixy = data[f'{in_name}_xy'][star]
+            Ixx = data[f'Ixx{in_name}'][star]
+            Iyy = data[f'Iyy{in_name}'][star]
+            Ixy = data[f'Ixy{in_name}'][star]
 
             # Conversion of moments to e1, e2
             T = Ixx + Iyy
