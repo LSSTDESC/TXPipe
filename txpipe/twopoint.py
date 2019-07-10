@@ -133,6 +133,8 @@ class TXTwoPoint(PipelineStage):
         if self.rank==0:
             results = sum(results, [])
 
+        return results
+
     def read_nbin(self, data):
         """
         Determine the bins to use in this analysis, either from the input file
