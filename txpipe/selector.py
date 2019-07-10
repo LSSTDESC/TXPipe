@@ -3,6 +3,7 @@ from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatal
 from .utils import NumberDensityStats
 from .utils.metacal import metacal_variants, metacal_band_variants
 import numpy as np
+import warnings
 
 class TXSelector(PipelineStage):
     """
@@ -230,7 +231,11 @@ class TXSelector(PipelineStage):
                 else:
                     b1,b2 = f.split('-')
                     col = shear_data[f'mcal_mag_{b1}{v}'] - shear_data[f'mcal_mag_{b2}{v}']
-                col[~np.isfinite(col)] = np.nanmax(col)
+                if np.all(~np.isfinite(col)):
+                    # entire column is NaN.  Hopefully this will get deselected elsewhere
+                    col[:] = 30.0
+                else:
+                    col[~np.isfinite(col)] = np.nanmax(col)
                 data.append(col)
             data = np.array(data).T
 
@@ -299,10 +304,13 @@ class TXSelector(PipelineStage):
 
             # Selection bias for this chunk - we must average over these later.
             # For now there is one value per bin.
-            S_11 = (g1[sel_1p].mean() - g1[sel_1m].mean()) / delta_gamma
-            S_12 = (g1[sel_2p].mean() - g1[sel_2m].mean()) / delta_gamma
-            S_21 = (g2[sel_1p].mean() - g2[sel_1m].mean()) / delta_gamma
-            S_22 = (g2[sel_2p].mean() - g2[sel_2m].mean()) / delta_gamma
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+
+                S_11 = (g1[sel_1p].mean() - g1[sel_1m].mean()) / delta_gamma
+                S_12 = (g1[sel_2p].mean() - g1[sel_2m].mean()) / delta_gamma
+                S_21 = (g2[sel_1p].mean() - g2[sel_1m].mean()) / delta_gamma
+                S_22 = (g2[sel_2p].mean() - g2[sel_2m].mean()) / delta_gamma
 
             # Save in a more useful ordering for the output - 
             # as a matrix
