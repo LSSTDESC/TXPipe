@@ -339,12 +339,12 @@ class PNGFile(DataFile):
     suffix = 'png'
 
     @classmethod
-    def open(self, path, mode):
+    def open(self, path, mode, **kwargs):
         import matplotlib
         import matplotlib.pyplot as plt
         if mode != "w":
             raise ValueError("Reading existing PNG files is not supported")
-        return plt.figure()
+        return plt.figure(**kwargs)
 
 
     def close(self):
