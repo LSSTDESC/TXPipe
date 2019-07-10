@@ -13,7 +13,6 @@ class TXDiagnostics(PipelineStage):
         ('shear_catalog', HDFFile),
     ]
     outputs = [
-        ('null_tests', Directory),
         ('g_psf_T', PNGFile),
         ('g_psf_g', PNGFile),
     ]
@@ -24,13 +23,11 @@ class TXDiagnostics(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
 
-        outdir = self.open_output('null_tests', 'w')
-
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
-        plotters = [getattr(self, f)(outdir) for f in dir(self) if f.startswith('plot_')]
+        plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
 
         # Start off each of the plotters.  This will make them all run up to the 
         # first yield statement, then pause and wait for the first chunk of data
@@ -62,7 +59,7 @@ class TXDiagnostics(PipelineStage):
             except StopIteration:
                 pass
 
-    def plot_psf_shear(self, outdir):
+    def plot_psf_shear(self):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
@@ -132,7 +129,7 @@ class TXDiagnostics(PipelineStage):
         # This also saves the figure
         fig.close()
 
-    def plot_psf_size_shear(self, outdir):
+    def plot_psf_size_shear(self):
         # mean shear in bins of PSF
         print("Making PSF size plot")
         import matplotlib.pyplot as plt
