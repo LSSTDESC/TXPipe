@@ -98,16 +98,22 @@ class DiagnosticMaps(HDFFile):
     def plot_healpix(self, map_name, view='cart', **kwargs):
         import healpy
         import numpy as np
+
         m, pix, nside = self.read_healpix(map_name, return_all=True)
         lon,lat=healpy.pix2ang(nside,pix,lonlat=True)
         npix=healpy.nside2npix(nside)
-        lon_range = [lon.min()-0.1, lon.max()+0.1]
-        lat_range = [lat.min()-0.1, lat.max()+0.1]
+        if len(pix)==len(m):
+            w = np.where((m!=healpy.UNSEEN)&(m!=0))
+        else:
+            w = None
+        lon_range = [lon[w].min()-0.1, lon[w].max()+0.1]
+        lat_range = [lat[w].min()-0.1, lat[w].max()+0.1]
+        m[m==0] = healpy.UNSEEN
         title = kwargs.pop('title', map_name)
         if view == 'cart':
-            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, **kwargs)
+            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs)
         elif view == 'moll':
-            healpy.mollview(m, title=title, **kwargs)
+            healpy.mollview(m, title=title, fig=fig, hold=True, **kwargs)
         else:
             raise ValueError(f"Unknown Healpix view mode {mode}")
 
