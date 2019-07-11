@@ -165,13 +165,37 @@ class DiagnosticMaps(HDFFile):
 class PhotozPDFFile(HDFFile):
     required_datasets = []
 
-class CSVFile():
+class CSVFile(DataFile):
     suffix = 'csv'
     def save_file(self,name,dataframe):
         dataframe.to_csv(name)
 
-class SACCFile(HDFFile):
+class SACCFile(DataFile):
     suffix = 'sacc'
+
+    @classmethod
+    def open(cls, path, mode, **kwargs):
+        import sacc
+        if mode == 'w':
+            raise ValueError("Do not use the open_output method to write sacc files.  Use sacc.write_fits")
+        return sacc.Sacc.load_fits(path)
+
+    def read_provenance(self):
+        meta = self.file.metadata
+        provenance = {
+            'uuid':     meta.get('provenance/uuid', "UNKNOWN"),
+            'creation': meta.get('provenance/creation', "UNKNOWN"),
+            'domain':   meta.get('provenance/domain', "UNKNOWN"),
+            'username': meta.get('provenance/username', "UNKNOWN"),
+        }
+
+        return provenance
+
+
+    def close(self):
+        pass
+
+
 
 
 class NOfZFile(HDFFile):
@@ -211,8 +235,8 @@ class NOfZFile(HDFFile):
         plt.savefig(filename)
         plt.close()
 
-    def plot(self):
+    def plot(self, kind):
         import matplotlib.pyplot as plt
-        for b in range(self.get_nbin()):
-            z, nz = self.get_n_of_z(b)
+        for b in range(self.get_nbin(kind)):
+            z, nz = self.get_n_of_z(kind, b)
             plt.plot(z, nz, label=f'Bin {b}')
