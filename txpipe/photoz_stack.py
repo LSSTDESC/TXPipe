@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile 
+from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile
 import numpy as np
 import warnings
 
@@ -14,7 +14,7 @@ class TXPhotozStack(PipelineStage):
         ('tomography_catalog', TomographyCatalog)
     ]
     outputs = [
-        ('photoz_stack', HDFFile), # Haven't worked out a proper format for this yet
+        ('photoz_stack', NOfZFile),
             
     ]
     config_options = {
