@@ -6,7 +6,7 @@ import numpy as np
 class TXInputDiagnostics(PipelineStage):
     """
     """
-    name='TXDiagnostics'
+    name='TXInputDiagnostics'
 
     inputs = [
         ('photometry_catalog', HDFFile),
