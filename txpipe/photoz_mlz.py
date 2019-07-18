@@ -174,9 +174,6 @@ class PZPDFMLZ(PipelineStage):
 
 
         for i in range(nrow):
-            if i%1000==0:
-                print(i)
-
             # Run all the tree regressors on each of the metacal
             # variants
             values = np.concatenate([T.get_vals(x[i]) for T in trees]).ravel()

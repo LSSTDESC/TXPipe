@@ -22,7 +22,7 @@ class TXMetacalGCRInput(PipelineStage):
     outputs = [
         ('shear_catalog', MetacalCatalog),
         ('photometry_catalog', HDFFile),
-#        ('star_catalog', HDFFile),
+        ('star_catalog', HDFFile),
     ]
 
     config_options = {
@@ -37,6 +37,7 @@ class TXMetacalGCRInput(PipelineStage):
         # not in a TXPipe format.
         cat_name = self.config['cat_name']
         cat = GCRCatalogs.load_catalog(cat_name)
+        cat.master.use_cache = False
 
         # Total size is needed to set up the output file,
         # although in larger files it is a little slow to compute this.
@@ -71,7 +72,7 @@ class TXMetacalGCRInput(PipelineStage):
             'id',
             'ra',
             'dec',
-#            'calib_psf_used',
+            'calib_psf_used',
             'Ixx',
             'Ixy',
             'Iyy',
@@ -102,12 +103,14 @@ class TXMetacalGCRInput(PipelineStage):
         shear_output = None
         photo_output = None
 
+        print("Skipping bad tract 2897 - remove this later!")
+
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in cat.get_quantities(cols, return_iterator=True):
+        for data in cat.get_quantities(cols, return_iterator=True, native_filters='tract != 2897'):
             # Some columns have different names in input than output
             self.rename_columns(data)
             # The star ellipticities are derived from the measured moments for now
-#            star_data = self.compute_star_data(data)
+            star_data = self.compute_star_data(data)
 
             # First chunk of data we use to set up the output
             # It is easier this way (no need to check types etc)
@@ -115,24 +118,24 @@ class TXMetacalGCRInput(PipelineStage):
             if shear_output is None:
                 shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
                 photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
-#                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
+                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
 
 
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
-#           star_end = star_start + len(star_data['ra'])
+            star_end = star_start + len(star_data['ra'])
             print(f"    Saving {start} - {end}")
             self.write_output(shear_output, 'metacal', shear_out_cols, start, end, data)
             self.write_output(photo_output, 'photometry', photo_out_cols, start, end, data)
-#           self.write_output(star_output,  'stars', star_out_cols,  star_start, star_end, star_data)
+            self.write_output(star_output,  'stars', star_out_cols,  star_start, star_end, star_data)
             start = end
-#           star_start = star_end
+            star_start = star_end
 
         # All done!
         photo_output.close()
         shear_output.close()
-#        star_output.close()
+        star_output.close()
 
     def rename_columns(self, data):
         for band in 'ugrizy':

@@ -33,6 +33,7 @@ curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
 curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/exposures.hdf
 
 cd ../..
 ```

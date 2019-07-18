@@ -241,6 +241,16 @@ class TXTwoPoint(PipelineStage):
                 S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i], 
                     theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
+        self.write_metadata(S, meta)
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
+
+    def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
         for k,v in meta.items():
             if np.isscalar(v):
@@ -259,14 +269,6 @@ class TXTwoPoint(PipelineStage):
                     S.metadata[f'provenance/{key}_{i}'] = v
             else:
                 S.metadata[f'provenance/{key}'] = value
-
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
-
 
 
     def call_treecorr(self, data, i, j, k):
@@ -592,7 +594,12 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
-class TXTwoPointLensCat(PipelineStage):
+class TXTwoPointLensCat(TXTwoPoint):
+    """
+    This subclass of the standard TXTwoPoint takes its
+    lens sample from an external source instead of using
+    the photometric sample.
+    """
     name='TXTwoPointLensCat'
     inputs = [
         ('shear_catalog', MetacalCatalog),
@@ -609,7 +616,6 @@ class TXTwoPointLensCat(PipelineStage):
         data['lens_ra']  = f['lens/ra'][:]
         data['lens_dec'] = f['lens/dec'][:]
         data['lens_bin'] = f['lens/bin'][:]
-
 
 
 class TXTwoPointPlots(PipelineStage):
@@ -860,6 +866,145 @@ class TXTwoPointPlots(PipelineStage):
         plt.tight_layout()
         plt.subplots_adjust(hspace=0,wspace=0)
         xi_plot.close()
+
+
+
+class TXGammaTFieldCenters(TXTwoPoint):
+    """
+    This subclass of the standard TXTwoPoint uses the centers
+    of exposure fields as "lenses", as a systematics test.
+    """
+    name = "TXGammaTFieldCenters"
+    inputs = [
+        ('shear_catalog', MetacalCatalog),
+        ('tomography_catalog', TomographyCatalog),
+        ('photoz_stack', HDFFile),
+        ('random_cats', RandomsCatalog),
+        ('exposures', HDFFile),
+    ]
+    outputs = [
+        ('gammat_field_center', SACCFile),
+        ('gammat_field_center_plot', PNGFile),
+    ]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        'calcs':[0,1,2],
+        'min_sep':2.5,
+        'max_sep':250,
+        'nbins':20,
+        'bin_slop':0.1,
+        'sep_units':'arcmin',
+        'flip_g2':True,
+        'cores_per_task':20,
+        'verbose':1,
+        'reduce_randoms_size':1.0,
+        }
+
+    def run(self):
+        # Before running the parent class we add source_bins and lens_bins
+        # options that it is expecting, both set to -1 to indicate that we
+        # will choose them automatically (below).
+        import matplotlib
+        matplotlib.use('agg')
+        self.config['source_bins'] = [-1]
+        self.config['lens_bins'] = [-1]
+        super().run()
+
+    def read_nbin(self, data):
+        # We use only a single source and lens bin in this case - 
+        # the source is the complete 2D field and the lens is the
+        # field centers
+        data['source_list'] = [0]
+        data['lens_list'] = [0]
+
+    def load_lens_catalog(self, data):
+        # We load our lenses from the exposures input.
+        filename = self.get_input('exposures')
+        print(f"Loading lens sample from {filename}")
+
+        f = self.open_input('exposures')
+        data['lens_ra']  = f['exposures/ratel'][:]
+        data['lens_dec'] = f['exposures/dectel'][:]
+        f.close()
+
+        npoint = data['lens_ra'].size
+        data['lens_bin'] = np.zeros(npoint)
+
+    def load_tomography(self, data):
+        # We run the parent class tomography selection but then
+        # overrided it to squash all of the bins  0 .. nbin -1
+        # down to the zero bin.  This means that any selected
+        # objects (from any tomographic bin) are now in the same
+        # bin, and unselected objects still have bin -1
+        super().load_tomography(data)
+        data['source_bin'][:] = data['source_bin'].clip(-1,0)
+
+    def select_calculations(self, data):
+        # We only want a single calculation, the gamma_T around
+        # the field centers
+        return [(0,0,SHEAR_POS)]
+
+    def write_output(self, data, meta, results):
+        # we write output both to file for later and to
+        # a plot
+        self.write_output_sacc(data, meta, results)
+        self.write_output_plot(results)
+
+    def write_output_plot(self, results):
+        import matplotlib.pyplot as plt
+        d = results[0]
+
+        fig = self.open_output('gammat_field_center_plot', wrapper=True)
+
+        plt.errorbar(d.theta,  d.theta*d.value, d.error, fmt='ro', capsize=3)
+        plt.xscale('log')
+
+        plt.xlabel(r"$\theta$ / arcmin")
+        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
+        plt.title("Field Center Tangential Shear")
+
+        fig.close()
+
+    def write_output_sacc(self, data, meta, results):
+        # We write out the results slightly differently here
+        # beause they go to a different file and have different
+        # tracers and tags.
+        import sacc
+        dt = "galaxyFieldCenter_shearDensity_xi_t"
+
+        S = sacc.Sacc()
+
+        f = self.open_input('photoz_stack')
+        z = f['n_of_z/source2d/z'][:]
+        Nz = f[f'n_of_z/source2d/bin_0'][:]
+        f.close()
+
+        # Add the data points that we have one by one, recording which
+        # tracer they each require
+        S.add_tracer('misc', 'fieldcenter')
+        S.add_tracer('NZ', 'source2d', z, Nz)
+
+        d = results[0]
+        assert len(results)==1
+
+        # Each of our Measurement objects contains various theta values,
+        # and we loop through and add them all
+        n = len(d.value)
+        for i in range(n):
+            S.add_data_point(dt, ('source2d', 'fieldcenter'), d.value[i],
+                theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+
+        self.write_metadata(S, meta)
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('gammat_field_center'), overwrite=True)
+
+        # Also make a plot of the data
+
 
 if __name__ == '__main__':
     PipelineStage.main()
