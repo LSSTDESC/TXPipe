@@ -1,24 +1,18 @@
 TXMetacalGCRInput:
-    cat_name: dc2_object_run1.2i_tract5063_with_metacal.yaml
-
+    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
 TXProtoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     extra_cols: redshift_true size_true shear_1 shear_2
 
-TXRandomPhotozPDF:
-    nz: 301
-    zmax: 3.0
-    chunk_rows: 1000
-    bands: ugriz
 
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
+    chunk_rows: 250000
 
 TXPhotozStack:
-    chunk_rows: 1000
+    chunk_rows: 100000
 
 TXSelector:
     bands: riz #used for selection
@@ -27,7 +21,7 @@ TXSelector:
     max_rows: 1000
     delta_gamma: 0.02
     zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
-    chunk_rows: 10000
+    chunk_rows: 100000
     # Mag cuts
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -39,7 +33,7 @@ TXSelector:
     # may also need one for r_cpar_cut
 
 TXRandomCat:
-    chunk_rows: 1084192
+    chunk_rows: 100000
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
@@ -50,19 +44,20 @@ TXTwoPoint:
     do_shear_pos: True
 
 TXDiagnosticMaps:
-    chunk_rows: 10000  # Number of rows to process at once
+    chunk_rows: 100000  # Number of rows to process at once
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
-    pixelization: gnomonic
+    pixelization: healpix
     nside: 1024
     # pixelization: gnomonic
     # # 
     pixel_size: 0.2
-    ra_cent: 53.0
-    dec_cent: -27.9
-    npix_x: 25
-    npix_y: 25
+    ra_cent: 62.
+    dec_cent: -35.
+    npix_x: 60
+    npix_y: 60
+
 
 TXTwoPointFourier:
-    chunk_rows: 10000
+    chunk_rows: 100000
