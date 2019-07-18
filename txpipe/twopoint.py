@@ -783,7 +783,7 @@ class TXTwoPointPlots(PipelineStage):
 
                 plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
                 plt.xscale('log')
-                plt.ylim(-20,20)
+                plt.ylim(-2,2)
                 plt.xlim(tmin, tmax)
 
                 if i==nsource-1:
@@ -840,7 +840,7 @@ class TXTwoPointPlots(PipelineStage):
 
                 plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
                 plt.xscale('log')
-                plt.ylim(-10,10)
+                plt.ylim(-1,1)
                 plt.xlim(tmin, tmax)
 
                 if j>0:
