@@ -1,6 +1,10 @@
 TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
+TXExposureInfo:
+    dc2_name: '1.2p'
+
+
 TXProtoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     extra_cols: redshift_true size_true shear_1 shear_2
