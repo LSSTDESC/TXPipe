@@ -230,10 +230,10 @@ class TXDiagnosticMaps(PipelineStage):
 
 
 
-class TXPMapPlots(PipelineStage):
+class TXMapPlots(PipelineStage):
     """
     """
-    name='TXPMapPlots'
+    name='TXMapPlots'
 
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
