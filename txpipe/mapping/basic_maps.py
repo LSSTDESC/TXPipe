@@ -56,7 +56,7 @@ class Mapper:
                 # Loop through tomographic source bins
                 for i,b in enumerate(self.source_bins):
                     mask_bins = masks_source[i]
-                    w = shear_data[f'mcal_g{t}']
+                    w = shear_data[f'g{t}']
                     self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
 
 
@@ -125,10 +125,8 @@ class Mapper:
 
             g1[b] = mean_g1.flatten()
             g2[b] = mean_g2.flatten()
-            
+
             var_g1[b] = v_g1.flatten()
             var_g2[b] = v_g2.flatten()
 
         return pixel, ngal, g1, g2, var_g1, var_g2
-
-

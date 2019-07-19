@@ -161,7 +161,7 @@ class TXDiagnosticMaps(PipelineStage):
             print("Finalizing maps")
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
         map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
-        map_pix, ngals, g1, g2, var_g1, var_g2 = mapper_psf.finalize(self.comm)
+        map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf = mapper_psf.finalize(self.comm)
 
 
         # Only the root process saves the output
@@ -192,12 +192,17 @@ class TXDiagnosticMaps(PipelineStage):
             # name ngal
             for b in lens_bins:
                 self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
+                self.save_map(group, f"ngal_{b}", map_pix_psf, ngals_psf[b], config)
 
             for b in source_bins:
                 self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
                 self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
                 self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
                 self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
+                self.save_map(group, f"g1_{b}", map_pix_psf, g1_psf[b], config)
+                self.save_map(group, f"g2_{b}", map_pix_psf, g2_psf[b], config)
+                self.save_map(group, f"var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
+                self.save_map(group, f"var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
 
 
     def compute_mask(self, depth_count):
