@@ -6,6 +6,11 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the ceci repository for the infrastructure.
 
+Permissions
+===========
+
+Email or Slack Joe Zuntz to be added to the development team.
+
 Goals
 ======
 
