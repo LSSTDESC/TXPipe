@@ -528,9 +528,7 @@ class TXSelector(PipelineStage):
 
         return lens_gals
 
-    def select(self, shear_data, pz_data, variant, bin_index):
-        n = len(shear_data)
-
+    def select(self, shear_data, pz_data, variant, bin_index, verbose=False):
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
 
@@ -546,10 +544,18 @@ class TXSelector(PipelineStage):
         Tpsf = shear_data['mcal_psf_T_mean']
         flag = shear_data['mcal_flags']
 
+        n0 = len(flag)
         sel  = flag==0
+        f1 = sel.sum() / n0
         sel &= (T/Tpsf)>T_cut
+        f2 = sel.sum() / n0
         sel &= s2n>s2n_cut
+        f3 = sel.sum() / n0
         sel &= zbin==bin_index
+        f4 = sel.sum() / n0
+        
+        if verbose:
+            print(f"Bin {bin_index} {f1:.1%} flag, {f2:.1%} size, {f3:.1%} SNR, {f4:.1%} z")
 
         return sel
 
