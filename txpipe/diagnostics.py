@@ -40,20 +40,21 @@ class TXInputDiagnostics(PipelineStage):
         # so the plotters should handle this.
         chunk_rows = 10000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean']
-        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
+        photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data), (_, _, data2) in iter_shear:
+        for (start, end, data), (_, _, data2) in zip(iter_shear, iter_phot):
             print(f"Read data {start} - {end}")
             data.update(data2)
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             for plotter in plotters:
                 plotter.send(data)
-
+            if end>1e6:
+                break
         # Tell all the plotters to finish, collect together results from the different
         # processors, and make their final plots.  Plotters need to respond
         # to the None input and 
@@ -202,7 +203,7 @@ class TXInputDiagnostics(PipelineStage):
                 break
 
             for b, h in zip(bands, hists):
-                b1 = np.digitize(data[f'mag_{b}'], edges) - 1
+                b1 = np.digitize(data[f'{b}_mag'], edges) - 1
 
                 for i in range(size):
                     w = np.where(b1==i)
@@ -214,9 +215,9 @@ class TXInputDiagnostics(PipelineStage):
                 self.comm.Reduce(None, h)
 
         if self.rank == 0:
-            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nbands*4))
+            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*4))
             for i, (b,h) in enumerate(zip(bands, hists)):
-                plt.subplot(nbands, 1, i+1)
+                plt.subplot(nband, 1, i+1)
                 plt.bar(mid, h, width=width)
                 plt.xlabel(f"Mag {b}")
                 plt.ylabel("N")
