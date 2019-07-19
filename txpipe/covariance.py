@@ -100,7 +100,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             raise ValueError("Units of area have changed")
         area = area_deg2 * np.radians(1)**2
 
-        print("area = {area_deg2:.1f} deg^2 = {area:.1f} sr")
+        print(f"area = {area_deg2:.1f} deg^2 = {area:.1f} sr")
         print("NEFF : ", N_eff)
         n_eff=N_eff / area
         print((180./np.pi)**2)
