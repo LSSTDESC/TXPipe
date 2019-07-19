@@ -15,6 +15,7 @@ class TXInputDiagnostics(PipelineStage):
     outputs = [
         ('g_psf_T', PNGFile),
         ('g_psf_g', PNGFile),
+        ('mag_hist', PNGFile),
     ]
     config = {}
 
@@ -39,12 +40,15 @@ class TXInputDiagnostics(PipelineStage):
         # so the plotters should handle this.
         chunk_rows = 10000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean']
+        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for start, end, data in iter_shear:
+        for (start, end, data), (_, _, data2) in iter_shear:
             print(f"Read data {start} - {end}")
+            data.update(data2)
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             for plotter in plotters:
@@ -173,3 +177,48 @@ class TXInputDiagnostics(PipelineStage):
             fig.close()
 
 
+
+    def plot_mag_histograms(self):
+        if self.comm:
+            import mpi4py.MPI
+        # mean shear in bins of PSF
+        print("Making mag histogram")
+        import matplotlib.pyplot as plt
+        size = 20
+        mag_min = 20
+        mag_max = 30
+        edges = np.linspace(mag_min, mag_max, size+1)
+        mid = 0.5*(edges[1:] + edges[:-1])
+        width = edges[1] - edges[0]
+        bands = 'ugrizy'
+        nband = len(bands)
+        hists = [np.zeros(size, dtype=int) for b in bands]
+
+
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            for b, h in zip(bands, hists):
+                b1 = np.digitize(data[f'mag_{b}'], edges) - 1
+
+                for i in range(size):
+                    w = np.where(b1==i)
+                    count = w[0].size
+                    h[i] += count
+
+        for h in hists:
+            if self.comm:
+                self.comm.Reduce(None, h)
+
+        if self.rank == 0:
+            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nbands*4))
+            for i, (b,h) in enumerate(zip(bands, hists)):
+                plt.subplot(nbands, 1, i+1)
+                plt.bar(mid, h, width=width)
+                plt.xlabel(f"Mag {b}")
+                plt.ylabel("N")
+            plt.tight_layout()
+            fig.close()
