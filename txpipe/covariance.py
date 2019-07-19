@@ -93,10 +93,14 @@ class TXFourierGaussianCovariance(PipelineStage):
         N_eff = tomo_file['tomography/N_eff'][:]
         N_lens = tomo_file['tomography/lens_counts'][:]
 
-        area = maps_file['maps'].attrs['area']
-        print(area)
-        area = 4.0/((180./np.pi)**2) #read this in when not array of 0.04 (CONVERTED TO SR)
-        print("area: ",area)
+        # area in sq deg
+        area_deg2 = maps_file['maps'].attrs['area']
+        area_unit = maps_file['maps'].attrs['area unit']
+        if area_unit != 'sq deg':
+            raise ValueError("Units of area have changed")
+        area = area_deg2 * np.radians(1)**2
+
+        print("area = {area_deg2:.1f} deg^2 = {area:.1f} sr")
         print("NEFF : ", N_eff)
         n_eff=N_eff / area
         print((180./np.pi)**2)
