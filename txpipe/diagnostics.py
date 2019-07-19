@@ -39,7 +39,7 @@ class TXInputDiagnostics(PipelineStage):
         # Create an iterator for reading through the input data.
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
-        chunk_rows = 10000
+        chunk_rows = 100000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean']
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
         tomo_cols = ['source_bin']
@@ -57,8 +57,7 @@ class TXInputDiagnostics(PipelineStage):
             # be given this data chunk as the variable data.
             for plotter in plotters:
                 plotter.send(data)
-            if end>1e6:
-                break
+
         # Tell all the plotters to finish, collect together results from the different
         # processors, and make their final plots.  Plotters need to respond
         # to the None input and 
@@ -218,7 +217,7 @@ class TXInputDiagnostics(PipelineStage):
 
                     w &= (data['source_bin']>=0)
                     count = w.sum()
-                    h2[i] += count1
+                    h2[i] += count
 
         for h in full_hists:
             if self.comm:
@@ -229,12 +228,14 @@ class TXInputDiagnostics(PipelineStage):
                 self.comm.Reduce(None, h)
 
         if self.rank == 0:
-            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*4))
-            for i, (b,h1,h2) in enumerate(zip(bands, full_hists. source_hists)):
+            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*3))
+            for i, (b,h1,h2) in enumerate(zip(bands, full_hists, source_hists)):
                 plt.subplot(nband, 1, i+1)
-                plt.bar(mid, h1, width=width, fill=False, label='Complete')
-                plt.bar(mid, h2, width=width, fill=False, label='Selected source')
+                plt.bar(mid, h1, width=width, fill=False,  label='Complete', edgecolor='r')
+                plt.bar(mid, h2, width=width, fill=True,  label='WL Source', color='g')
                 plt.xlabel(f"Mag {b}")
                 plt.ylabel("N")
+                if i==0:
+                    plt.legend()
             plt.tight_layout()
             fig.close()
