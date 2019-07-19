@@ -40,9 +40,9 @@ class TXDiagnosticMaps(PipelineStage):
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
         'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
         'ra_cent':np.nan,  # These parameters are only required if pixelization==tan
-        'dec_cent':np.nan,  
-        'npix_x':-1, 
-        'npix_y':-1, 
+        'dec_cent':np.nan,
+        'npix_x':-1,
+        'npix_y':-1,
         'pixel_size':np.nan, # Pixel size of pixelization scheme
         'depth_band' : 'i',
         'true_shear' : False,
@@ -79,7 +79,7 @@ class TXDiagnosticMaps(PipelineStage):
         if config['true_shear']:
             shear_cols = ['true_g']
         else:
-            shear_cols = ['mcal_g1', 'mcal_g2']
+            shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -91,10 +91,11 @@ class TXDiagnosticMaps(PipelineStage):
         lens_bins = list(range(d['nbin_lens']))
 
 
-        # Make two mapper classes, one for the signal itself
-        # (shear and galaxy count) and the other for the depth
-        # calculation
+        # Make three mapper classes, one for the signal itself
+        # (shear and galaxy count), another for the depth
+        # calculation, and a third one for the PSF
         mapper = Mapper(pixel_scheme, lens_bins, source_bins)
+        mapper_psf = Mapper(pixel_scheme, lens_bins, source_bins)
         depth_mapper = DepthMapperDR1(pixel_scheme,
                                       config['snr_threshold'],
                                       config['snr_delta'],
@@ -117,7 +118,7 @@ class TXDiagnosticMaps(PipelineStage):
 
         bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
         bin_it = (d[2] for d in bin_it)
-                
+
         m_it = self.iterate_hdf('tomography_catalog','multiplicative_bias', m_cols, chunk_rows)
         m_it = (d[2] for d in m_it)
 
@@ -142,12 +143,16 @@ class TXDiagnosticMaps(PipelineStage):
                 shear_tmp = {'mcal_g1': shear_data['true_g1'], 'mcal_g2': shear_data['true_g2']}
             else:
                 shear_tmp = {'mcal_g1': shear_data['mcal_g1'], 'mcal_g2': shear_data['mcal_g2']}
+                shear_psf_tmp = {'mcal_psf_g1': shear_data['mcal_psf_g1'], 'mcal_psf_g2': shear_data['mcal_psf_g2']}
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
+            shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
+            shear_psf_tmp['dec'] = phot_data['dec']     # Does it have 'dec' ?
 
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
             mapper.add_data(shear_tmp, bin_data, m_data)
+            mapper_psf.add_data(shear_psf_tmp, bin_data, m_data) # Same?
 
 
         # Collect together the results across all the processors
@@ -156,8 +161,9 @@ class TXDiagnosticMaps(PipelineStage):
             print("Finalizing maps")
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
         map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
+        map_pix, ngals, g1, g2, var_g1, var_g2 = mapper_psf.finalize(self.comm)
 
-        
+
         # Only the root process saves the output
         if self.rank==0:
             print("Saving maps")
