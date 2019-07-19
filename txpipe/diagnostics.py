@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile, PNGFile
+from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 import numpy as np
 
@@ -11,6 +11,7 @@ class TXInputDiagnostics(PipelineStage):
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
+        ('tomography_catalog', TomographyCatalog),
     ]
     outputs = [
         ('g_psf_T', PNGFile),
@@ -41,14 +42,17 @@ class TXInputDiagnostics(PipelineStage):
         chunk_rows = 10000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean']
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
+        tomo_cols = ['source_bin']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
+        iter_tomo = self.iterate_hdf('tomography_catalog', 'tomography', tomo_cols, chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data), (_, _, data2) in zip(iter_shear, iter_phot):
+        for (start, end, data), (_, _, data2), (_, _, data3) in zip(iter_shear, iter_phot, iter_tomo):
             print(f"Read data {start} - {end}")
             data.update(data2)
+            data.update(data3)
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             for plotter in plotters:
@@ -193,7 +197,8 @@ class TXInputDiagnostics(PipelineStage):
         width = edges[1] - edges[0]
         bands = 'ugrizy'
         nband = len(bands)
-        hists = [np.zeros(size, dtype=int) for b in bands]
+        full_hists = [np.zeros(size, dtype=int) for b in bands]
+        source_hists = [np.zeros(size, dtype=int) for b in bands]
 
 
         while True:
@@ -202,23 +207,33 @@ class TXInputDiagnostics(PipelineStage):
             if data is None:
                 break
 
-            for b, h in zip(bands, hists):
+            for (b, h1,h2) in zip(bands, full_hists, source_hists):
                 b1 = np.digitize(data[f'{b}_mag'], edges) - 1
 
-                for i in range(size):
-                    w = np.where(b1==i)
-                    count = w[0].size
-                    h[i] += count
 
-        for h in hists:
+                for i in range(size):
+                    w = b1==i
+                    count = w.sum()
+                    h1[i] += count
+
+                    w &= (data['source_bin']>=0)
+                    count = w.sum()
+                    h2[i] += count1
+
+        for h in full_hists:
+            if self.comm:
+                self.comm.Reduce(None, h)
+
+        for h in source_hists:
             if self.comm:
                 self.comm.Reduce(None, h)
 
         if self.rank == 0:
             fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*4))
-            for i, (b,h) in enumerate(zip(bands, hists)):
+            for i, (b,h1,h2) in enumerate(zip(bands, full_hists. source_hists)):
                 plt.subplot(nband, 1, i+1)
-                plt.bar(mid, h, width=width)
+                plt.bar(mid, h1, width=width, fill=False, label='Complete')
+                plt.bar(mid, h2, width=width, fill=False, label='Selected source')
                 plt.xlabel(f"Mag {b}")
                 plt.ylabel("N")
             plt.tight_layout()
