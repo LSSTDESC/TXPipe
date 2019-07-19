@@ -14,18 +14,14 @@ RUN mkdir /opt/mpich && cd /opt/mpich \
     && tar xvzf mpich-3.2.tar.gz &&  cd mpich-3.2 && ./configure --disable-wrapper-rpath && make -j4 \
     && make install && rm -rf /opt/mpich
 
-RUN mkdir /opt/gsl && cd /opt/gsl \
-    && wget http://mirror.koddos.net/gnu/gsl/gsl-2.4.tar.gz \
-    && tar xvzf gsl-2.4.tar.gz \
-    && cd gsl-2.4 \
-    && ./configure && make && make install \
-    && rm -rf /opt/gsl
 
 # other dependencies, some for matplotlib
 RUN apt-get update  && \
-	apt-get install -y  libcfitsio-dev  libfftw3-dev   git  \
+	apt-get install -y  libcfitsio-dev  libfftw3-dev   git  libgsl-dev \
     && apt-get clean all
 
+
+# Need to install manually because we want MPI-enabled version
 RUN mkdir /opt/hdf && cd /opt/hdf \
     && wget -O hdf5-1.10.2.tar.gz "https://www.hdfgroup.org/package/source-gzip-2/?wpdmdl=11810&refresh=5ad9be5a30b831524219482" \
     && tar xvf hdf5-1.10.2.tar.gz \
@@ -45,14 +41,6 @@ RUN mkdir /opt/mpi4py && cd /opt/mpi4py \
 
 
 
-# The environment variables needed by the CosmoSIS build and runtime.
-ENV GSL_INC /usr/include
-ENV GSL_LIB /usr/lib/x86_64-linux-gnu
-ENV CFITSIO_INC /usr/include
-ENV CFITSIO_LIB /usr/lib/x86_64-linux-gnu
-ENV FFTW_LIBRARY /usr/lib/x86_64-linux-gnu
-ENV FFTW_INC_DIR /usr/include
-ENV LAPACK_LINK -L/usr/lib -lopenblas
 ENV HDF5_MPI ON
 
 # Ceci
@@ -69,7 +57,6 @@ RUN pip install Cython==0.28.2 \
                 setuptools==38.5.2
 
 RUN pip install astropy==3.0.1 \
-                emcee==2.2.1 \
                 scipy==1.0.1 \
                 scikit-learn==0.19 \
                 fitsio==0.9.11 \
