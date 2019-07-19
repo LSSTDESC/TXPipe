@@ -113,7 +113,7 @@ class DiagnosticMaps(HDFFile):
         if view == 'cart':
             healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs)
         elif view == 'moll':
-            healpy.mollview(m, title=title, fig=fig, hold=True, **kwargs)
+            healpy.mollview(m, title=title, hold=True, **kwargs)
         else:
             raise ValueError(f"Unknown Healpix view mode {mode}")
 
