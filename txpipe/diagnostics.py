@@ -3,10 +3,10 @@ from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 import numpy as np
 
-class TXInputDiagnostics(PipelineStage):
+class TXDiagnosticPlots(PipelineStage):
     """
     """
-    name='TXInputDiagnostics'
+    name='TXDiagnosticPlots'
 
     inputs = [
         ('photometry_catalog', HDFFile),

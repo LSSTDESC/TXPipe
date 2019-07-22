@@ -24,7 +24,7 @@ stages:
       nprocess: 1
     - name: TXRandomCat
       nprocess: 1
-    - name: TXDiagnostics
+    - name: TXDiagnosticPlots
       nprocess: 1
     - name: TXGammaTFieldCenters
       nprocess: 1
