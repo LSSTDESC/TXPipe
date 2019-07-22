@@ -140,10 +140,10 @@ class TXDiagnosticMaps(PipelineStage):
             # TODO fix iterate_fits so it returns a dict
             # like iterate_hdf
             if config['true_shear']:
-                shear_tmp = {'mcal_g1': shear_data['true_g1'], 'mcal_g2': shear_data['true_g2']}
+                shear_tmp = {'g1': shear_data['true_g1'], 'g2': shear_data['true_g2']}
             else:
-                shear_tmp = {'mcal_g1': shear_data['mcal_g1'], 'mcal_g2': shear_data['mcal_g2']}
-                shear_psf_tmp = {'mcal_psf_g1': shear_data['mcal_psf_g1'], 'mcal_psf_g2': shear_data['mcal_psf_g2']}
+                shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
+                shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
             shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
@@ -192,17 +192,18 @@ class TXDiagnosticMaps(PipelineStage):
             # name ngal
             for b in lens_bins:
                 self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
-                self.save_map(group, f"ngal_{b}", map_pix_psf, ngals_psf[b], config)
+                self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
 
             for b in source_bins:
                 self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
                 self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
                 self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
                 self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
-                self.save_map(group, f"g1_{b}", map_pix_psf, g1_psf[b], config)
-                self.save_map(group, f"g2_{b}", map_pix_psf, g2_psf[b], config)
-                self.save_map(group, f"var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
-                self.save_map(group, f"var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
+                # PSF maps
+                self.save_map(group, f"psf_g1_{b}", map_pix_psf, g1_psf[b], config)
+                self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
+                self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
+                self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
 
 
     def compute_mask(self, depth_count):
