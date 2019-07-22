@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile
+from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile
 import numpy as np
 
 class TXDiagnosticMaps(PipelineStage):
@@ -242,8 +242,61 @@ class TXDiagnosticMaps(PipelineStage):
 
 
 
+class TXMapPlots(PipelineStage):
+    """
+    """
+    name='TXMapPlots'
+
+    inputs = [
+        ('diagnostic_maps', DiagnosticMaps),
+    ]
+    outputs = [
+        ('depth_map', PNGFile),
+        ('ngal_lens_map', PNGFile),
+        ('g1_map', PNGFile),
+        ('g2_map', PNGFile),
+        ('mask_map', PNGFile),
+    ]
+    config = {}
+
+    def run(self):
+        # PSF tests
+        import matplotlib
+        matplotlib.use('agg')
+        import matplotlib.pyplot as plt
+        m = self.open_input("diagnostic_maps", wrapper=True)
+
+        fig = self.open_output('depth_map', wrapper=True, figsize=(5,5))
+        m.plot('depth', view='cart')
+        fig.close()
+
+        nbin_source, nbin_lens = m.get_nbins()
+
+        fig = self.open_output('ngal_lens_map', wrapper=True, figsize=(5*nbin_lens, 5))
+        for i in range(nbin_lens):
+            plt.subplot(1, nbin_lens, i+1)
+            m.plot(f'ngal_{i}', view='cart')
+        fig.close()
+
+        fig = self.open_output('g1_map', wrapper=True, figsize=(5*nbin_source, 5))
+        for i in range(nbin_source):
+            plt.subplot(1, nbin_source, i+1)
+            m.plot(f'g1_{i}', view='cart')
+        fig.close()
+
+        fig = self.open_output('g2_map', wrapper=True, figsize=(5*nbin_source, 5))
+        for i in range(nbin_source):
+            plt.subplot(1, nbin_source, i+1)
+            m.plot(f'g2_{i}', view='cart')
+        fig.close()
+
+        fig = self.open_output('mask_map', wrapper=True, figsize=(5,5))
+        m.plot('mask', view='cart')
+        fig.close()
+
 
 
 
 if __name__ == '__main__':
     PipelineStage.main()
+

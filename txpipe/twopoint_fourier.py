@@ -604,7 +604,13 @@ class TXTwoPointFourier(PipelineStage):
 
         # Save provenance information
         for key, value in self.gather_provenance().items():
-            S.metadata[f'provenance/{key}'] = value
+            if isinstance(value, str) and '\n' in value:
+                values = value.split("\n")
+                for i,v in enumerate(values):
+                    S.metadata[f'provenance/{key}_{i}'] = v
+            else:
+                S.metadata[f'provenance/{key}'] = value
+
 
 
         output_filename = self.get_output("twopoint_data_fourier")
