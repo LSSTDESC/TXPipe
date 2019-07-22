@@ -60,13 +60,13 @@ To try a C_ell analysis, it can be installed from here:
 
 https://github.com/LSSTDESC/NaMaster/
 
-although there is a conda recipe to install it.
+although there is a conda recipe to install it.  You will need to install the pymaster python library along with it.
 
 
 Dependencies using Docker
 -------------------------
 
-In Docker, from the main directory, this will get you the newest version of the code:
+In Docker, from the main directory, this will get you the newest version of the required dependencies:
 
 ```bash
 docker pull joezuntz/txpipe
@@ -142,7 +142,7 @@ Basic tools to find the file path:
 - self.get_input(tag)
 - self.get_output(tag)
 
-Get base class to find and open the file for you
+Get base class to find and open the file for you:
 
 - self.open_input(tag, **kwargs)
 - self.open_output(tag, **kwargs)
@@ -165,8 +165,6 @@ according to MPI rank:
 
 - self.iterate_fits(tag, hdunum, cols, chunk_rows)
 - self.iterate_hdf(tag, group_name, cols, chunk_rows)
-
-
 
 
 

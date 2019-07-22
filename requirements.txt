@@ -12,4 +12,4 @@ treecorr
 sklearn
 astropy
 healpy
-pymaster
+#pymaster
