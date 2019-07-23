@@ -2,7 +2,7 @@ TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
 TXExposureInfo:
-    dc2_name: '1.2p'
+    dc2_name: '2.1i'
 
 
 TXProtoDC2Mock:
