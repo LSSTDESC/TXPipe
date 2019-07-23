@@ -167,6 +167,8 @@ class TXMetacalGCRInput(PipelineStage):
         star_data['ra'] = data['ra'][star]
         star_data['dec'] = data['dec'][star]
         star_data['id'] = data['id'][star]
+        for band in 'ugrizy':
+            star_data[f'{band}_mag'] = data[f'{band}_mag'][star]
 
         # HSM reports moments.  We convert these into
         # ellipticities.  We do this for both the star shape
