@@ -123,8 +123,10 @@ class TXBrighterFatterPlot(PipelineStage):
     ]
 
     config_options = {
-        'band': 'i',
-        'nbin': 40,
+        'band': 'r',
+        'nbin': 20,
+        'mmin': 18.5,
+        'mmax': 23.5,
     }
 
     def run(self):
@@ -143,7 +145,8 @@ class TXBrighterFatterPlot(PipelineStage):
         g = f['stars']
 
         band = self.config['band']
-        data['mag'] = g[f'{band}_mag']
+        data = {}
+        data['mag'] = g[f'{band}_mag'][:]
         data['delta_e1'] = g['measured_e1'][:] - g['model_e1'][:]
         data['delta_e2'] = g['measured_e2'][:] - g['model_e2'][:]
         data['delta_T'] = g['measured_T'][:] - g['model_T'][:]
@@ -152,8 +155,9 @@ class TXBrighterFatterPlot(PipelineStage):
 
     def compute_binned_stats(self, data):
         mag = data['mag']
-        mmin = 0.999*np.nanmin(mag)
-        mmax = 1.001*np.nanmax(mag)
+        mmin = self.config['mmin']
+        mmax = self.config['mmax']
+        nbin = self.config['nbin']
         edges = np.linspace(mmin, mmax, nbin+1)
         index = np.digitize(mag, edges)
         dT = np.zeros(nbin)
@@ -166,7 +170,7 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
         for i in range(nbin):
-            w = np.where(index==i+1)
+            w = np.where((index==i+1) & np.isfinite(data['delta_T']) & np.isfinite(data['delta_e1']) & np.isfinite(data['delta_e2']) )
             m[i] = mag[w].mean()
             dT_i = data['delta_T'][w]
             e1_i = data['delta_e1'][w]
@@ -181,18 +185,22 @@ class TXBrighterFatterPlot(PipelineStage):
         return [m, dT, errT, e1, err1, e2, err2]
 
     def save_plots(self, results):
+        import matplotlib.pyplot as plt
         m, dT, errT, e1, err1, e2, err2 = results
         band = self.config['band']
         f = self.open_output('brighter_fatter', wrapper=True, figsize=(6,8))
-        plt.subplot(1,2,1, sharex=True)
-        plt.errorbar(m, dt, errT)
-        plt.ylabel("$T_\text{PSF} - T_\text{model}$ ($\text{arcsec}^2$)")
-        plt.subplot(1,2,2, sharex=True)
-        plt.errorbar(m, e1, err1, label='$e_1$')
-        plt.errorbar(m, e2, err2, label='$e_2$')
-        plt.ylabel("$e_\text{PSF} - e_\text{model}$")
+        ax = plt.subplot(2,1,1)
+        plt.errorbar(m, dT, errT, fmt='.')
+        plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
+        plt.ylim(-0.025, 0.1)
+        plt.subplot(2,1,2, sharex=ax)
+        plt.errorbar(m, e1, err1, label='$e_1$', fmt='.')
+        plt.errorbar(m, e2, err2, label='$e_2$', fmt='.')
+        plt.ylabel(r"$e_\mathrm{PSF} - e_\mathrm{model}$")
         plt.xlabel(f"{band}-band magnitude")
+        plt.ylim(-0.02, 0.02)
         plt.legend()
+        plt.tight_layout()
         f.close()
 
     def save_stats(self, results):
