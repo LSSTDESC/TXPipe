@@ -93,7 +93,8 @@ class TXMetacalGCRInput(PipelineStage):
             'measured_e1', 'measured_e2',
             'model_e1', 'model_e2',
             'measured_T', 'model_T'
-        ]
+        ] + [f'{band}_mag' for band in 'ugrizy']
+
 
         # eliminate duplicates before loading
         cols = list(set(shear_cols + photo_cols + star_cols))
