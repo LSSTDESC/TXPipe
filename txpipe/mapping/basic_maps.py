@@ -2,11 +2,12 @@ from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, Par
 import numpy as np
 
 class Mapper:
-    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2)):
+    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2), sparse=False):
         self.pixel_scheme = pixel_scheme
         self.source_bins = source_bins
         self.lens_bins = lens_bins
         self.tasks = tasks
+        self.sparse = sparse
         self.stats = {}
         for b in self.lens_bins:
             t = 0
@@ -61,6 +62,7 @@ class Mapper:
 
 
     def finalize(self, comm=None):
+        from healpy import UNSEEN
         ngal = {}
         g1 = {}
         g2 = {}
@@ -68,9 +70,12 @@ class Mapper:
         var_g2 = {}
 
         rank = 0 if comm is None else comm.Get_rank()
-
-        # TODO: support sparse
         pixel = np.arange(self.pixel_scheme.npix)
+
+        # mask is one where *any* of the maps are valid.
+        # this lets us maintain a single pixelization for
+        # everything.
+        mask = np.zeros(self.pixel_scheme.npix, dtype=np.bool)
 
         is_master = (comm is None) or (comm.Get_rank()==0)
         for b in self.lens_bins:
@@ -82,6 +87,13 @@ class Mapper:
             if not is_master:
                 continue
 
+            # There's a bit of a difference between the number counts
+            # and the shear in terms of the value to use
+            # when no objects are seen.  For the ngal we will use
+            # zero, because an observed but empty region should indeed
+            # have that. The number density for shear should be much
+            # higher, to the point where we don't have this issue.
+            # So we use UNSEEN for shear and 0 for counts.
             count[np.isnan(count)] = 0
             mean[np.isnan(mean)] = 0
 
@@ -89,6 +101,7 @@ class Mapper:
             mean = mean.reshape(self.pixel_scheme.shape)
 
             ngal[b] = (mean * count).flatten()
+            mask[count>0] = True
 
         for b in self.source_bins:
             if rank==0:
@@ -106,16 +119,20 @@ class Mapper:
             v_g1 /= count_g1
             v_g2 /= count_g2
 
+            # Update the mask
+            mask[count_g1>0] = True
+            mask[count_g2>0] = True
+
             #  Don't think we want to save these at the moment
             del count_g1
             del count_g2
 
-            mean_g1[np.isnan(mean_g1)] = 0
-            mean_g2[np.isnan(mean_g2)] = 0
+            mean_g1[np.isnan(mean_g1)] = UNSEEN
+            mean_g2[np.isnan(mean_g2)] = UNSEEN
 
 
-            v_g1[np.isnan(v_g1)] = 0
-            v_g2[np.isnan(v_g2)] = 0
+            v_g1[np.isnan(v_g1)] = UNSEEN
+            v_g2[np.isnan(v_g2)] = UNSEEN
 
             mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
             mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
@@ -128,5 +145,12 @@ class Mapper:
 
             var_g1[b] = v_g1.flatten()
             var_g2[b] = v_g2.flatten()
+
+        # Remove pixels not detected in anything
+        if self.sparse:
+            pixel = pixel[mask]
+            for d in [ngal, g1, g2, var_g1, var_g2]:
+                for k,v in list(d.items()):
+                    d[k] = v[mask]
 
         return pixel, ngal, g1, g2, var_g1, var_g2
