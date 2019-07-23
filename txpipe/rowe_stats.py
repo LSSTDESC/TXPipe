@@ -110,3 +110,101 @@ class TXRoweStatistics(PipelineStage):
         f.close()
 
 
+
+
+class TXBrighterFatterPlot(PipelineStage):
+    name = 'TXBrighterFatterPlot'
+
+    inputs =[('star_catalog', HDFFile)]
+
+    outputs = [
+        ('brighter_fatter', PNGFile),
+        ('brighter_fatter_plot_data', HDFFile),
+    ]
+
+    config_options = {
+        'band': 'i',
+        'nbin': 40,
+    }
+
+    def run(self):
+        import h5py
+        import matplotlib
+        matplotlib.use('agg')
+
+        data = self.load_stars()
+        results = self.compute_binned_stats(data)
+
+        self.save_stats(results)
+        self.save_plots(results)
+
+    def load_stars(self):
+        f = self.open_input('star_catalog')
+        g = f['stars']
+
+        band = self.config['band']
+        data['mag'] = g[f'{band}_mag']
+        data['delta_e1'] = g['measured_e1'][:] - g['model_e1'][:]
+        data['delta_e2'] = g['measured_e2'][:] - g['model_e2'][:]
+        data['delta_T'] = g['measured_T'][:] - g['model_T'][:]
+
+        return data
+
+    def compute_binned_stats(self, data):
+        mag = data['mag']
+        mmin = 0.999*np.nanmin(mag)
+        mmax = 1.001*np.nanmax(mag)
+        edges = np.linspace(mmin, mmax, nbin+1)
+        index = np.digitize(mag, edges)
+        dT = np.zeros(nbin)
+        errT = np.zeros(nbin)
+        e1 = np.zeros(nbin)
+        e2 = np.zeros(nbin)
+        err1 = np.zeros(nbin)
+        err2 = np.zeros(nbin)
+        m = np.zeros(nbin)
+
+
+        for i in range(nbin):
+            w = np.where(index==i+1)
+            m[i] = mag[w].mean()
+            dT_i = data['delta_T'][w]
+            e1_i = data['delta_e1'][w]
+            e2_i = data['delta_e2'][w]
+            dT[i] = dT_i.mean()
+            errT[i] = dT_i.std() / np.sqrt(dT_i.size)
+            e1[i] = e1_i.mean()
+            err1[i] = e1_i.std() / np.sqrt(e1_i.size)
+            e2[i] = e2_i.mean()
+            err2[i] = e2_i.std() / np.sqrt(e2_i.size)
+
+        return [m, dT, errT, e1, err1, e2, err2]
+
+    def save_plots(self, results):
+        m, dT, errT, e1, err1, e2, err2 = results
+        band = self.config['band']
+        f = self.open_output('brighter_fatter', wrapper=True, figsize=(6,8))
+        plt.subplot(1,2,1, sharex=True)
+        plt.errorbar(m, dt, errT)
+        plt.ylabel("$T_\text{PSF} - T_\text{model}$ ($\text{arcsec}^2$)")
+        plt.subplot(1,2,2, sharex=True)
+        plt.errorbar(m, e1, err1, label='$e_1$')
+        plt.errorbar(m, e2, err2, label='$e_2$')
+        plt.ylabel("$e_\text{PSF} - e_\text{model}$")
+        plt.xlabel(f"{band}-band magnitude")
+        plt.legend()
+        f.close()
+
+    def save_stats(self, results):
+        (m, dT, errT, e1, err1, e2, err2) = results
+        f = self.open_output('brighter_fatter_plot_data')
+        g = f.create_group('brighter_fatter')
+        g.attrs['band'] = self.config['band']
+        g.create_dataset('mag', data=m)
+        g.create_dataset('delta_T', data=dT)
+        g.create_dataset('delta_T_error', data=errT)
+        g.create_dataset('delta_e1', data=e1)
+        g.create_dataset('delta_e1_error', data=err1)
+        g.create_dataset('delta_e2', data=e2)
+        g.create_dataset('delta_e2_error', data=err2)
+        f.close()
