@@ -235,7 +235,8 @@ class TXSelector(PipelineStage):
                     # entire column is NaN.  Hopefully this will get deselected elsewhere
                     col[:] = 30.0
                 else:
-                    col[~np.isfinite(col)] = np.nanmax(col)
+                    ok = np.isfinite(col)
+                    col[~ok] = col[ok].max()
                 data.append(col)
             data = np.array(data).T
 
