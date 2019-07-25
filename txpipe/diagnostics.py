@@ -18,7 +18,9 @@ class TXDiagnosticPlots(PipelineStage):
         ('g_psf_g', PNGFile),
         ('mag_hist', PNGFile),
     ]
-    config = {}
+    config_options = {
+        'chunk_rows': 100000,
+    }
 
     def run(self):
         # PSF tests
@@ -39,7 +41,7 @@ class TXDiagnosticPlots(PipelineStage):
         # Create an iterator for reading through the input data.
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
-        chunk_rows = 100000
+        chunk_rows = self.config['chunk_rows']
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean']
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
         tomo_cols = ['source_bin']
