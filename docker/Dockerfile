@@ -107,3 +107,5 @@ RUN pip install mlz_desc
 WORKDIR /opt/txpipe
 CMD ["/bin/bash", "-l"]
 
+# Temporary
+RUN pip uninstall -y ceci && pip install git+https://github.com/LSSTDESC/ceci@minirunner

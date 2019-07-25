@@ -112,6 +112,29 @@ ceci --dry-run test/test-fourier.yml
 
 so that you can run and examine them individually.
 
+
+Using docker (shifter) on NERSC
+-------------------------------
+
+You can use docker images on NERSC using the Shifter program.  This is usually much faster to load than using NERSC libraries directly, and also means you can use the same environment on your laptop as on NERSC.
+
+To get a bash environment with the TXPipe dependecies set up, run:
+
+```
+shifter --image docker:joezuntz/txpipe bash
+```
+
+You can then run individual TXPipe steps.
+
+If you want to run inside a job (interactive or batch) under MPI using srun, you do so *outside* the shifter call, like this:
+
+```
+srun -n 32 shifter --image docker:joezuntz/txpipe python3 -m txpipe ...
+```
+
+ceci does not yet know how to do this yet, so it must be done manually.
+
+
 Implementation
 --------------
 
