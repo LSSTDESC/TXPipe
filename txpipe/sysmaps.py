@@ -94,8 +94,8 @@ class TXDiagnosticMaps(PipelineStage):
         # Make three mapper classes, one for the signal itself
         # (shear and galaxy count), another for the depth
         # calculation, and a third one for the PSF
-        mapper = Mapper(pixel_scheme, lens_bins, source_bins)
-        mapper_psf = Mapper(pixel_scheme, lens_bins, source_bins)
+        mapper = Mapper(pixel_scheme, lens_bins, source_bins, sparse=config['sparse'])
+        mapper_psf = Mapper(pixel_scheme, lens_bins, source_bins, sparse=config['sparse'])
         depth_mapper = DepthMapperDR1(pixel_scheme,
                                       config['snr_threshold'],
                                       config['snr_delta'],
