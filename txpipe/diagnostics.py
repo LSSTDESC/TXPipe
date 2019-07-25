@@ -270,52 +270,6 @@ class TXDiagnostics(PipelineStage):
         plt.ylim(0,1.1*max(count2))
         fig.close()
 
-    def plot_shear_response(self):
-        # mean shear response as a function of SNR
-        print("Making Shear Response plot")
-        import matplotlib.pyplot as plt
-        size = 10
-        snr_edges = np.logspace(1, 3, size+1)
-        snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
-        calc1 = ParallelStatsCalculator(size)
-        calc2 = ParallelStatsCalculator(size)
-        mu = ParallelStatsCalculator(size)
-        while True:
-            data = yield
-
-            if data is None:
-                break
-
-            b1 = np.digitize(data['mcal_s2n'], snr_edges) - 1
-
-            for i in range(size):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][w])
-                calc2.add_data(i, data['mcal_g2'][w])
-                mu.add_data(i, data['mcal_s2n'][w])
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
-        _, mu, _ = mu.collect(self.comm, mode='gather')
-
-        std1 = np.sqrt(var1/count1)
-        std2 = np.sqrt(var2/count2)
-
-        dx = 0.05*(snr_mid[1] - snr_mid[0])
-        if self.rank == 0:
-            fig = self.open_output('g_snr', wrapper=True)
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+')
-            plt.xscale('log')
-            plt.xlabel("SNR")
-            plt.ylabel("Mean g")
-            plt.legend()
-            plt.tight_layout()
-            fig.close()
-
-
-
 # gamma t around field centres
 # gamma t around
 
