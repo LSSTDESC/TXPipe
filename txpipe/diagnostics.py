@@ -18,7 +18,10 @@ class TXDiagnostics(PipelineStage):
         ('g_psf_g', PNGFile),
         ('g1_hist', PNGFile),
         ('g2_hist', PNGFile),
-        ('g_snr', PNGFile)
+        ('g_snr', PNGFile),
+        ('g_T', PNGFile),
+        ('snr_hist', PNGFile),
+        ('e_hist', PNGFile)
     ]
     config = {}
 
@@ -44,7 +47,7 @@ class TXDiagnostics(PipelineStage):
         # so the plotters should handle this.
         #TODO exactly what SNR do we want here
         chunk_rows = 10000
-        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean','mcal_s2n']
+        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean','mcal_s2n','mcal_T']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
         tomo_cols = ['R_S','R_gamma']
         iter_tomo = self.iterate_hdf('tomography_catalog','multiplicative_bias',tomo_cols,chunk_rows)
@@ -71,6 +74,7 @@ class TXDiagnostics(PipelineStage):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
+        from scipy import stats
         size = 11
         psf_g_edges = np.linspace(-5e-5, 5e-5, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
@@ -119,16 +123,32 @@ class TXDiagnostics(PipelineStage):
         fig = self.open_output('g_psf_g', wrapper=True)
         dx = 0.1*(mu1[1] - mu1[0])
 
+        slope11, intercept11, r_value11, p_value11, std_err11 = stats.linregress(mu1+dx,mean11)
+        line11 = slope11*(mu1+dx)+intercept11
+
+        slope12, intercept12, r_value12, p_value12, std_err12 = stats.linregress(mu1-dx,mean12)
+        line12 = slope12*(mu1+dx)+intercept12
+
+        slope21, intercept21, r_value21, p_value21, std_err21 = stats.linregress(mu2+dx,mean21)
+        line21 = slope21*(mu2+dx)+intercept21
+
+        slope22, intercept22, r_value22, p_value22, std_err22 = stats.linregress(mu2-dx,mean22)
+        line22 = slope22*(mu2-dx)+intercept22
+
         plt.subplot(2,1,1)
-        plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+')
-        plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+')
+        plt.plot(mu1+dx,line11,color='blue')
+        plt.plot(mu1-dx,line12,color='red')
+        plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+',color='blue')
+        plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+',color='red')
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
 
         plt.subplot(2,1,2)
-        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+')
-        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+')
+        plt.plot(mu2+dx,line21,color='blue')
+        plt.plot(mu2-dx,line22,color='red')
+        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='blue')
+        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='red')
         plt.legend()
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
@@ -141,6 +161,7 @@ class TXDiagnostics(PipelineStage):
         # mean shear in bins of PSF
         print("Making PSF size plot")
         import matplotlib.pyplot as plt
+        from scipy import stats
         size = 11
         psf_g_edges = np.linspace(0.18, 0.19, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
@@ -171,9 +192,17 @@ class TXDiagnostics(PipelineStage):
 
         dx = 0.05*(psf_g_mid[1] - psf_g_mid[0])
         if self.rank == 0:
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
+            line1 = slope1*(mu+dx)+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
+            line2 = slope2*(mu+dx)+intercept2
+
+
             fig = self.open_output('g_psf_T', wrapper=True)
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+')
+            plt.plot(mu+dx,line1,color='blue')
+            plt.plot(mu-dx,line2,color='red')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
             plt.xlabel("PSF T")
             plt.ylabel("Mean g")
             plt.legend()
@@ -181,9 +210,10 @@ class TXDiagnostics(PipelineStage):
             fig.close()
 
     def plot_snr_shear(self):
-        # mean shear in bins of PSF
+        # mean shear in bins of snr
         print("Making mean shear SNR plot")
         import matplotlib.pyplot as plt
+        from scipy import stats
         size = 10
         snr_edges = np.logspace(1, 3, size+1)
         snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
@@ -214,11 +244,68 @@ class TXDiagnostics(PipelineStage):
 
         dx = 0.05*(snr_mid[1] - snr_mid[0])
         if self.rank == 0:
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
+            line1 = slope1*(mu+dx)+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
+            line2 = slope2*(mu+dx)+intercept2
             fig = self.open_output('g_snr', wrapper=True)
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+')
+            plt.plot(mu+dx,line1,color='blue')
+            plt.plot(mu-dx,line2,color='red')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
             plt.xscale('log')
             plt.xlabel("SNR")
+            plt.ylabel("Mean g")
+            plt.legend()
+            plt.tight_layout()
+            fig.close()
+
+    def plot_size_shear(self):
+        # mean shear in bins of PSF
+        print("Making mean shear SNR plot")
+        import matplotlib.pyplot as plt
+        from scipy import stats
+        size = 10
+        T_edges = np.logspace(-1, 2, size+1)
+        T_mid = 0.5*(T_edges[1:] + T_edges[:-1])
+        calc1 = ParallelStatsCalculator(size)
+        calc2 = ParallelStatsCalculator(size)
+        mu = ParallelStatsCalculator(size)
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            b1 = np.digitize(data['mcal_T'], T_edges) - 1
+
+            for i in range(size):
+                w = np.where(b1==i)
+                # Do more things here to establish
+                calc1.add_data(i, data['mcal_g1'][w])
+                calc2.add_data(i, data['mcal_g2'][w])
+                mu.add_data(i, data['mcal_T'][w])
+
+        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
+        count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
+        _, mu, _ = mu.collect(self.comm, mode='gather')
+
+        std1 = np.sqrt(var1/count1)
+        std2 = np.sqrt(var2/count2)
+
+        dx = 0.05*(T_mid[1] - T_mid[0])
+        if self.rank == 0:
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
+            line1 = slope1*(mu+dx)+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
+            line2 = slope2*(mu+dx)+intercept2
+            fig = self.open_output('g_T', wrapper=True)
+            plt.plot(mu+dx,line1,color='blue')
+            plt.plot(mu-dx,line2,color='red')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
+            plt.xscale('log')
+            plt.xlabel("galaxy size T")
             plt.ylabel("Mean g")
             plt.legend()
             plt.tight_layout()
@@ -231,6 +318,7 @@ class TXDiagnostics(PipelineStage):
         # make this more general for all quantities
         print('plotting histogram')
         import matplotlib.pyplot as plt
+        from scipy import stats
         bins = 50
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
@@ -265,9 +353,45 @@ class TXDiagnostics(PipelineStage):
 
         fig = self.open_output('g2_hist', wrapper=True)
         plt.bar(mids, count2, width=edges[1]-edges[0], align='center',edgecolor='black',color='purple')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
         plt.xlabel("g2")
         plt.ylabel(r'$N_{galaxies}$')
         plt.ylim(0,1.1*max(count2))
+        fig.close()
+
+    def plot_snr_histogram(self):
+        # general plotter for histograms
+        # TODO think about a smart way to define the bin numbers, also
+        # make this more general for all quantities
+        print('plotting snr histogram')
+        import matplotlib.pyplot as plt
+        bins = 50
+        edges = np.linspace(0, 100, bins+1)
+        mids = 0.5*(edges[1:] + edges[:-1])
+        calc1 = ParallelStatsCalculator(bins)
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            b1 = np.digitize(data['mcal_s2n'], edges) - 1
+
+            for i in range(bins):
+                w = np.where(b1==i)
+                # Do more things here to establish
+                calc1.add_data(i, data['mcal_s2n'][w])
+
+        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
+        std1 = np.sqrt(var1/count1)
+        if self.rank != 0:
+            return
+        fig = self.open_output('snr_hist', wrapper=True)
+        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        plt.xlabel("snr")
+        plt.ylabel(r'$N_{galaxies}$')
+        plt.ylim(0,1.1*max(count1))
         fig.close()
 
 # gamma t around field centres
