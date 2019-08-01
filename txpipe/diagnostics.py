@@ -11,7 +11,8 @@ class TXDiagnostics(PipelineStage):
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
-        ('tomography_catalog', TomographyCatalog)
+        ('tomography_catalog', TomographyCatalog),
+        ('star_catalog', HDFFile)
     ]
     outputs = [
         ('g_psf_T', PNGFile),
@@ -21,7 +22,10 @@ class TXDiagnostics(PipelineStage):
         ('g_snr', PNGFile),
         ('g_T', PNGFile),
         ('snr_hist', PNGFile),
-        ('e_hist', PNGFile)
+        ('e1_psf_residual_hist', PNGFile),
+        ('e2_psf_residual_hist', PNGFile),
+        ('T_psf_residual_hist', PNGFile)
+
     ]
     config = {}
 
@@ -49,15 +53,19 @@ class TXDiagnostics(PipelineStage):
         chunk_rows = 10000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean','mcal_s2n','mcal_T']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        tomo_cols = ['R_S','R_gamma']
+        tomo_cols = ['R_gamma']
         iter_tomo = self.iterate_hdf('tomography_catalog','multiplicative_bias',tomo_cols,chunk_rows)
+        star_cols = ['measured_e1','model_e1','measured_e2','model_e2','measured_T','model_T']
+        iter_star = self.iterate_hdf('star_catalog','stars',star_cols,chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for start, end, data in iter_shear:
+        for (start, end, data), (_, _, data2), (_, _, data3) in zip(iter_shear, iter_tomo, iter_star):
             print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
+            data.update(data2)
+            data.update(data3)
             for plotter in plotters:
                 plotter.send(data)
 
@@ -136,8 +144,24 @@ class TXDiagnostics(PipelineStage):
         line22 = slope22*(mu2-dx)+intercept22
 
         plt.subplot(2,1,1)
-        plt.plot(mu1+dx,line11,color='blue')
-        plt.plot(mu1-dx,line12,color='red')
+
+        # compute the mean and the chi^2/dof
+        flat1 = 0
+        z = (mean11 - flat1) / std11
+        chi2 = np.sum(z ** 2)
+        chi2dof = chi2 / (len(mean11) - 1)
+
+        plt.plot(mu1+dx,line11,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+        plt.plot(mu1+dx,[0]*len(line11),color='black')
+
+        # compute the mean and the chi^2/dof
+        flat1 = 0
+        z = (mean12 - flat1) / std12
+        chi2 = np.sum(z ** 2)
+        chi2dof = chi2 / (len(mean12) - 1)
+
+        plt.plot(mu1-dx,line12,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+        plt.plot(mu1-dx,[0]*len(line12),color='black')
         plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+',color='blue')
         plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+',color='red')
         plt.xlabel("PSF g1")
@@ -147,6 +171,7 @@ class TXDiagnostics(PipelineStage):
         plt.subplot(2,1,2)
         plt.plot(mu2+dx,line21,color='blue')
         plt.plot(mu2-dx,line22,color='red')
+        plt.plot(mu1-dx,[0]*len(line22),color='black')
         plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='blue')
         plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='red')
         plt.legend()
@@ -198,14 +223,30 @@ class TXDiagnostics(PipelineStage):
             line2 = slope2*(mu+dx)+intercept2
 
 
+
+
             fig = self.open_output('g_psf_T', wrapper=True)
-            plt.plot(mu+dx,line1,color='blue')
-            plt.plot(mu-dx,line2,color='red')
+
+            # compute the mean and the chi^2/dof
+            flat1 = 0
+            z = (mean1 - flat1) / std1
+            chi2 = np.sum(z ** 2)
+            chi2dof = chi2 / (len(mean1) - 1)
+            plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+            plt.legend(loc='best')
+
+            # compute the mean and the chi^2/dof
+            flat1 = 0
+            z = (mean2 - flat1) / std2
+            chi2 = np.sum(z ** 2)
+            chi2dof = chi2 / (len(mean2) - 1)
+            plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
             plt.xlabel("PSF T")
             plt.ylabel("Mean g")
-            plt.legend()
+            plt.legend(loc='best')
             plt.tight_layout()
             fig.close()
 
@@ -249,11 +290,23 @@ class TXDiagnostics(PipelineStage):
             slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
             line2 = slope2*(mu+dx)+intercept2
             fig = self.open_output('g_snr', wrapper=True)
-            plt.plot(mu+dx,line1,color='blue')
-            plt.plot(mu-dx,line2,color='red')
+            # compute the mean and the chi^2/dof
+            flat1 = 0
+            z = (mean1 - flat1) / std1
+            chi2 = np.sum(z ** 2)
+            chi2dof = chi2 / (len(mean1) - 1)
+            plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
+
+            # compute the mean and the chi^2/dof
+            flat1 = 0
+            z = (mean2 - flat1) / std2
+            chi2 = np.sum(z ** 2)
+            chi2dof = chi2 / (len(mean2) - 1)
+            plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
-            plt.xscale('log')
             plt.xlabel("SNR")
             plt.ylabel("Mean g")
             plt.legend()
@@ -262,7 +315,7 @@ class TXDiagnostics(PipelineStage):
 
     def plot_size_shear(self):
         # mean shear in bins of PSF
-        print("Making mean shear SNR plot")
+        print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
         size = 10
@@ -300,11 +353,21 @@ class TXDiagnostics(PipelineStage):
             slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
             line2 = slope2*(mu+dx)+intercept2
             fig = self.open_output('g_T', wrapper=True)
-            plt.plot(mu+dx,line1,color='blue')
-            plt.plot(mu-dx,line2,color='red')
+
+            flat1 = 0
+            z = (mean1 - flat1) / std1
+            chi2 = np.sum(z ** 2)
+            chi2dof = chi2 / (len(mean1) - 1)
+            plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+
+            flat1 = 0
+            z = (mean2 - flat1) / std2
+            chi2 = np.sum(z ** 2)
+            chi2dof = chi2 / (len(mean2) - 1)
+            plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
-            plt.xscale('log')
             plt.xlabel("galaxy size T")
             plt.ylabel("Mean g")
             plt.legend()
@@ -394,7 +457,107 @@ class TXDiagnostics(PipelineStage):
         plt.ylim(0,1.1*max(count1))
         fig.close()
 
-# gamma t around field centres
-# gamma t around
+    def plot_psf_e1_residual_histogram(self):
+        # general plotter for histograms
+        # TODO think about a smart way to define the bin numbers, also
+        # make this more general for all quantities
+        print('plotting psf e1 residual histogram')
+        import matplotlib.pyplot as plt
+        bins = 50
+        edges = np.linspace(-1, 1, bins+1)
+        mids = 0.5*(edges[1:] + edges[:-1])
+        calc1 = ParallelStatsCalculator(bins)
+        while True:
+            data = yield
 
-# PSF as function of shear
+            if data is None:
+                break
+
+            b1 = np.digitize(data['measured_e1'], edges) - 1
+
+            for i in range(bins):
+                w = np.where(b1==i)
+                # Do more things here to establish
+                calc1.add_data(i, (data['measured_e1'][w]-data['model_e1'][w])/data['measured_e1'][w])
+
+        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
+        std1 = np.sqrt(var1/count1)
+        if self.rank != 0:
+            return
+        fig = self.open_output('e1_psf_residual_hist', wrapper=True)
+        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        plt.xlabel("($e_{1}-e_{1,psf})/e_{1,psf}$")
+        plt.ylabel(r'$N_{stars}$')
+        plt.ylim(0,1.1*max(count1))
+        fig.close()
+
+    def plot_psf_e2_residual_histogram(self):
+        # general plotter for histograms
+        # TODO think about a smart way to define the bin numbers, also
+        # make this more general for all quantities
+        print('plotting psf e2 residual histogram')
+        import matplotlib.pyplot as plt
+        bins = 50
+        edges = np.linspace(-1, 1, bins+1)
+        mids = 0.5*(edges[1:] + edges[:-1])
+        calc1 = ParallelStatsCalculator(bins)
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            b1 = np.digitize(data['measured_e2'], edges) - 1
+
+            for i in range(bins):
+                w = np.where(b1==i)
+                # Do more things here to establish
+                calc1.add_data(i, (data['measured_e2'][w]-data['model_e2'][w])/data['measured_e2'][w])
+
+        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
+        std1 = np.sqrt(var1/count1)
+        if self.rank != 0:
+            return
+        fig = self.open_output('e2_psf_residual_hist', wrapper=True)
+        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        plt.xlabel("$(e_{2}-e_{2,psf})/e_{2,psf}$")
+        plt.ylabel(r'$N_{stars}$')
+        plt.ylim(0,1.1*max(count1))
+        fig.close()
+
+    def plot_psf_T_residual_histogram(self):
+        # general plotter for histograms
+        # TODO think about a smart way to define the bin numbers, also
+        # make this more general for all quantities
+        print('plotting psf T residual histogram')
+        import matplotlib.pyplot as plt
+        bins = 50
+        edges = np.linspace(-100, 100, bins+1)
+        mids = 0.5*(edges[1:] + edges[:-1])
+        calc1 = ParallelStatsCalculator(bins)
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            b1 = np.digitize(data['measured_T'], edges) - 1
+
+            for i in range(bins):
+                w = np.where(b1==i)
+                # Do more things here to establish
+                calc1.add_data(i, (data['measured_T'][w]-data['model_T'][w])/data['measured_T'][w])
+
+        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
+        std1 = np.sqrt(var1/count1)
+        if self.rank != 0:
+            return
+        fig = self.open_output('T_psf_residual_hist', wrapper=True)
+        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        plt.xlabel("$(T-T_{psf})/T_{psf}$")
+        plt.ylabel(r'$N_{stars}$')
+        plt.ylim(0,1.1*max(count1))
+        fig.close()
