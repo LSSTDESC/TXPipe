@@ -70,7 +70,7 @@ class TXPSFDiagnostics(PipelineStage):
         print('plotting psf e1 residual histogram')
         import matplotlib.pyplot as plt
         bins = 50
-        edges = np.linspace(-.1, .1, bins+1)
+        edges = np.linspace(-10, 10, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
         while True:
@@ -79,7 +79,7 @@ class TXPSFDiagnostics(PipelineStage):
             if data is None:
                 break
 
-            b1 = np.digitize(data['measured_e1'], edges) - 1
+            b1 = np.digitize((data['measured_e1']-data['model_e1'])/data['measured_e1'], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
@@ -105,7 +105,7 @@ class TXPSFDiagnostics(PipelineStage):
         print('plotting psf e2 residual histogram')
         import matplotlib.pyplot as plt
         bins = 50
-        edges = np.linspace(-.1, .1, bins+1)
+        edges = np.linspace(-10, 10, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
         while True:
@@ -114,7 +114,7 @@ class TXPSFDiagnostics(PipelineStage):
             if data is None:
                 break
 
-            b1 = np.digitize(data['measured_e2'], edges) - 1
+            b1 = np.digitize((data['measured_e2']-data['model_e2'])/data['measured_e2'], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
@@ -140,7 +140,7 @@ class TXPSFDiagnostics(PipelineStage):
         print('plotting psf T residual histogram')
         import matplotlib.pyplot as plt
         bins = 50
-        edges = np.linspace(-10, 10, bins+1)
+        edges = np.linspace(-.1, .1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
         while True:
@@ -149,7 +149,7 @@ class TXPSFDiagnostics(PipelineStage):
             if data is None:
                 break
 
-            b1 = np.digitize(data['measured_T'], edges) - 1
+            b1 = np.digitize((data['measured_T']-data['model_T'])/data['measured_T'], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
