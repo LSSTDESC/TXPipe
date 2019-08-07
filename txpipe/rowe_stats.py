@@ -80,6 +80,8 @@ class TXRoweStatistics(PipelineStage):
         for i in 1,3,4:
             theta, xi, err = rowe_stats[i]
             plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3)
+        plt.bar(0.0,2e-05,width=5,align='edge',color='yellow',alpha=0.2)
+        plt.bar(5,1e-07,width=245,align='edge',color='yellow',alpha=0.2)
         plt.xscale('log')
         plt.yscale('log')
         plt.xlabel(r"$\theta$")
@@ -91,6 +93,8 @@ class TXRoweStatistics(PipelineStage):
         for i in 2,5:
             theta, xi, err = rowe_stats[i]
             plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3)
+        plt.bar(0.0,2e-05,width=5,align='edge',color='yellow',alpha=0.2)
+        plt.bar(5,1e-07,width=245,align='edge',color='yellow',alpha=0.2)
         plt.xscale('log')
         plt.yscale('log')
         plt.xlabel(r"$\theta$")
