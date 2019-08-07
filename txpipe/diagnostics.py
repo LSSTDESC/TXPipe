@@ -12,7 +12,6 @@ class TXDiagnostics(PipelineStage):
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
         ('tomography_catalog', TomographyCatalog),
-        ('star_catalog', HDFFile)
     ]
     outputs = [
         ('g_psf_T', PNGFile),
@@ -22,9 +21,6 @@ class TXDiagnostics(PipelineStage):
         ('g_snr', PNGFile),
         ('g_T', PNGFile),
         ('snr_hist', PNGFile),
-        ('e1_psf_residual_hist', PNGFile),
-        ('e2_psf_residual_hist', PNGFile),
-        ('T_psf_residual_hist', PNGFile)
 
     ]
     config = {}
@@ -49,23 +45,22 @@ class TXDiagnostics(PipelineStage):
         # Create an iterator for reading through the input data.
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
-        #TODO exactly what SNR do we want here
         chunk_rows = 10000
-        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2', 'mcal_g1', 'mcal_g2', 'mcal_psf_T_mean','mcal_s2n','mcal_T']
+        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g2','mcal_psf_T_mean','mcal_s2n','mcal_T']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        tomo_cols = ['R_gamma']
-        iter_tomo = self.iterate_hdf('tomography_catalog','multiplicative_bias',tomo_cols,chunk_rows)
+        tomo_cols = ['source_bin','lens_bin']
+        iter_tomo = self.iterate_hdf('tomography_catalog','tomography',tomo_cols,chunk_rows)
         star_cols = ['measured_e1','model_e1','measured_e2','model_e2','measured_T','model_T']
         iter_star = self.iterate_hdf('star_catalog','stars',star_cols,chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data), (_, _, data2), (_, _, data3) in zip(iter_shear, iter_tomo, iter_star):
+        for (start, end, data), (_, _, data2), in zip(iter_shear,iter_tomo):
             print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             data.update(data2)
-            data.update(data3)
+            #data.update(data3)
             for plotter in plotters:
                 plotter.send(data)
 
@@ -97,21 +92,22 @@ class TXDiagnostics(PipelineStage):
 
             if data is None:
                 break
-
-            b1 = np.digitize(data['mcal_psf_g1'], psf_g_edges) - 1
-            b2 = np.digitize(data['mcal_psf_g2'], psf_g_edges) - 1
+            qual_cut = data['source_bin'] !=-1
+            qual_cut &= data['lens_bin'] !=-1
+            b1 = np.digitize(data['mcal_psf_g1'][qual_cut], psf_g_edges) - 1
+            b2 = np.digitize(data['mcal_psf_g2'][qual_cut], psf_g_edges) - 1
 
             for i in range(size):
                 w1 = np.where(b1==i)
                 w2 = np.where(b2==i)
 
                 # Do more things here to establish
-                calc11.add_data(i, data['mcal_g1'][w1])
-                calc12.add_data(i, data['mcal_g2'][w1])
-                calc21.add_data(i, data['mcal_g1'][w2])
-                calc22.add_data(i, data['mcal_g2'][w2])
-                mu1.add_data(i, data['mcal_psf_g1'][w1])
-                mu2.add_data(i, data['mcal_psf_g2'][w2])
+                calc11.add_data(i, data['mcal_g1'][qual_cut][w1])
+                calc12.add_data(i, data['mcal_g2'][qual_cut][w1])
+                calc21.add_data(i, data['mcal_g1'][qual_cut][w2])
+                calc22.add_data(i, data['mcal_g2'][qual_cut][w2])
+                mu1.add_data(i, data['mcal_psf_g1'][qual_cut][w1])
+                mu2.add_data(i, data['mcal_psf_g2'][qual_cut][w2])
         count11, mean11, var11 = calc11.collect(self.comm, mode='gather')
         count12, mean12, var12 = calc12.collect(self.comm, mode='gather')
         count21, mean21, var21 = calc21.collect(self.comm, mode='gather')
@@ -134,11 +130,11 @@ class TXDiagnostics(PipelineStage):
         slope11, intercept11, r_value11, p_value11, std_err11 = stats.linregress(mu1+dx,mean11)
         line11 = slope11*(mu1+dx)+intercept11
 
-        slope12, intercept12, r_value12, p_value12, std_err12 = stats.linregress(mu1-dx,mean12)
+        slope12, intercept12, r_value12, p_value12, std_err12 = stats.linregress(mu1+dx,mean12)
         line12 = slope12*(mu1+dx)+intercept12
 
-        slope21, intercept21, r_value21, p_value21, std_err21 = stats.linregress(mu2+dx,mean21)
-        line21 = slope21*(mu2+dx)+intercept21
+        slope21, intercept21, r_value21, p_value21, std_err21 = stats.linregress(mu2-dx,mean21)
+        line21 = slope21*(mu2-dx)+intercept21
 
         slope22, intercept22, r_value22, p_value22, std_err22 = stats.linregress(mu2-dx,mean22)
         line22 = slope22*(mu2-dx)+intercept22
@@ -168,16 +164,31 @@ class TXDiagnostics(PipelineStage):
         plt.ylabel("Mean g")
         plt.legend()
 
+
         plt.subplot(2,1,2)
-        plt.plot(mu2+dx,line21,color='blue')
-        plt.plot(mu2-dx,line22,color='red')
+        
+        # compute the mean and the chi^2/dof
+        flat1 = 0
+        z = (mean21 - flat1) / std21
+        chi2 = np.sum(z ** 2)
+        chi2dof = chi2 / (len(mean21) - 1)
+
+        plt.plot(mu1+dx,line21,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+        plt.plot(mu1+dx,[0]*len(line21),color='black')
+
+        # compute the mean and the chi^2/dof
+        flat1 = 0
+        z = (mean22 - flat1) / std22
+        chi2 = np.sum(z ** 2)
+        chi2dof = chi2 / (len(mean22) - 1)
+
+        plt.plot(mu1-dx,line22,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
         plt.plot(mu1-dx,[0]*len(line22),color='black')
-        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='blue')
-        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='red')
-        plt.legend()
-        plt.xlabel("PSF g2")
+        plt.errorbar(mu1+dx, mean21, std21, label='g1', fmt='+',color='blue')
+        plt.errorbar(mu1-dx, mean22, std22, label='g2', fmt='+',color='red')
+        plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
-        plt.tight_layout()
+        plt.legend()
 
         # This also saves the figure
         fig.close()
@@ -188,25 +199,29 @@ class TXDiagnostics(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         size = 11
-        psf_g_edges = np.linspace(0.18, 0.19, size+1)
+        psf_g_edges = np.linspace(0.2, 1.0, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
         mu = ParallelStatsCalculator(size)
+            
         while True:
             data = yield
 
             if data is None:
                 break
+            
+            qual_cut = data['source_bin'] !=-1
+            qual_cut &= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data['mcal_psf_T_mean'], psf_g_edges) - 1
+            b1 = np.digitize(data['mcal_psf_T_mean'][qual_cut], psf_g_edges) - 1
 
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][w])
-                calc2.add_data(i, data['mcal_g2'][w])
-                mu.add_data(i, data['mcal_psf_T_mean'][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                mu.add_data(i, data['mcal_psf_T_mean'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
@@ -219,11 +234,8 @@ class TXDiagnostics(PipelineStage):
         if self.rank == 0:
             slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
             line1 = slope1*(mu+dx)+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
-            line2 = slope2*(mu+dx)+intercept2
-
-
-
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu-dx,mean2)
+            line2 = slope2*(mu-dx)+intercept2
 
             fig = self.open_output('g_psf_T', wrapper=True)
 
@@ -256,18 +268,22 @@ class TXDiagnostics(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         size = 10
-        snr_edges = np.logspace(1, 3, size+1)
+        snr_edges = np.linspace(0,1000,size+1)
         snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
         mu = ParallelStatsCalculator(size)
+        
         while True:
             data = yield
 
             if data is None:
                 break
+            
+            qual_cut = data['source_bin'] !=-1
+            qual_cut &= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data['mcal_s2n'], snr_edges) - 1
+            b1 = np.digitize(data['mcal_s2n'][qual_cut], snr_edges) - 1
 
             for i in range(size):
                 w = np.where(b1==i)
@@ -297,7 +313,7 @@ class TXDiagnostics(PipelineStage):
             chi2dof = chi2 / (len(mean1) - 1)
             plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
             plt.plot(mu+dx,[0]*len(mu+dx),color='black')
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
 
             # compute the mean and the chi^2/dof
             flat1 = 0
@@ -306,7 +322,7 @@ class TXDiagnostics(PipelineStage):
             chi2dof = chi2 / (len(mean2) - 1)
             plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
             plt.plot(mu+dx,[0]*len(mu+dx),color='black')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
             plt.xlabel("SNR")
             plt.ylabel("Mean g")
             plt.legend()
@@ -314,30 +330,34 @@ class TXDiagnostics(PipelineStage):
             fig.close()
 
     def plot_size_shear(self):
-        # mean shear in bins of PSF
+        # mean shear in bins of galaxy size
         print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
         size = 10
-        T_edges = np.logspace(-1, 2, size+1)
+        T_edges = np.linspace(0,1,size+1)
         T_mid = 0.5*(T_edges[1:] + T_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
         mu = ParallelStatsCalculator(size)
+        
         while True:
             data = yield
 
             if data is None:
                 break
+            
+            qual_cut = data['source_bin'] !=-1
+            qual_cut &= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data['mcal_T'], T_edges) - 1
+            b1 = np.digitize(data['mcal_T'][qual_cut], T_edges) - 1
 
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][w])
-                calc2.add_data(i, data['mcal_g2'][w])
-                mu.add_data(i, data['mcal_T'][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                mu.add_data(i, data['mcal_T'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
@@ -375,7 +395,7 @@ class TXDiagnostics(PipelineStage):
             fig.close()
 
 
-    def plot_histogram(self):
+    def plot_g_histogram(self):
         # general plotter for histograms
         # TODO think about a smart way to define the bin numbers, also
         # make this more general for all quantities
@@ -387,19 +407,23 @@ class TXDiagnostics(PipelineStage):
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
         calc2 = ParallelStatsCalculator(bins)
+        
+        
         while True:
             data = yield
 
             if data is None:
                 break
-
-            b1 = np.digitize(data['mcal_g1'], edges) - 1
+            qual_cut = data['source_bin'] !=-1
+            qual_cut &= data['lens_bin'] !=-1
+        
+            b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][w])
-                calc2.add_data(i, data['mcal_g2'][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
@@ -429,21 +453,25 @@ class TXDiagnostics(PipelineStage):
         print('plotting snr histogram')
         import matplotlib.pyplot as plt
         bins = 50
-        edges = np.linspace(0, 100, bins+1)
+        edges = np.linspace(0, 10, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
+        
         while True:
             data = yield
 
             if data is None:
                 break
+            
+            qual_cut = data['source_bin'] !=-1
+            qual_cut &= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data['mcal_s2n'], edges) - 1
+            b1 = np.digitize(np.log10(data['mcal_s2n'][qual_cut]), edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_s2n'][w])
+                calc1.add_data(i, np.log10(data['mcal_s2n'][qual_cut][w]))
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         std1 = np.sqrt(var1/count1)
@@ -452,112 +480,7 @@ class TXDiagnostics(PipelineStage):
         fig = self.open_output('snr_hist', wrapper=True)
         plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("snr")
+        plt.xlabel("log(snr)")
         plt.ylabel(r'$N_{galaxies}$')
-        plt.ylim(0,1.1*max(count1))
-        fig.close()
-
-    def plot_psf_e1_residual_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
-        print('plotting psf e1 residual histogram')
-        import matplotlib.pyplot as plt
-        bins = 50
-        edges = np.linspace(-1, 1, bins+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        while True:
-            data = yield
-
-            if data is None:
-                break
-
-            b1 = np.digitize(data['measured_e1'], edges) - 1
-
-            for i in range(bins):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, (data['measured_e1'][w]-data['model_e1'][w])/data['measured_e1'][w])
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        if self.rank != 0:
-            return
-        fig = self.open_output('e1_psf_residual_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("($e_{1}-e_{1,psf})/e_{1,psf}$")
-        plt.ylabel(r'$N_{stars}$')
-        plt.ylim(0,1.1*max(count1))
-        fig.close()
-
-    def plot_psf_e2_residual_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
-        print('plotting psf e2 residual histogram')
-        import matplotlib.pyplot as plt
-        bins = 50
-        edges = np.linspace(-1, 1, bins+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        while True:
-            data = yield
-
-            if data is None:
-                break
-
-            b1 = np.digitize(data['measured_e2'], edges) - 1
-
-            for i in range(bins):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, (data['measured_e2'][w]-data['model_e2'][w])/data['measured_e2'][w])
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        if self.rank != 0:
-            return
-        fig = self.open_output('e2_psf_residual_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("$(e_{2}-e_{2,psf})/e_{2,psf}$")
-        plt.ylabel(r'$N_{stars}$')
-        plt.ylim(0,1.1*max(count1))
-        fig.close()
-
-    def plot_psf_T_residual_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
-        print('plotting psf T residual histogram')
-        import matplotlib.pyplot as plt
-        bins = 50
-        edges = np.linspace(-100, 100, bins+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        while True:
-            data = yield
-
-            if data is None:
-                break
-
-            b1 = np.digitize(data['measured_T'], edges) - 1
-
-            for i in range(bins):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, (data['measured_T'][w]-data['model_T'][w])/data['measured_T'][w])
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        if self.rank != 0:
-            return
-        fig = self.open_output('T_psf_residual_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("$(T-T_{psf})/T_{psf}$")
-        plt.ylabel(r'$N_{stars}$')
         plt.ylim(0,1.1*max(count1))
         fig.close()
