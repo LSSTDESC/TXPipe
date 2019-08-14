@@ -364,6 +364,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # k refers to the type of measurement we are making
         import sacc
+        import pymaster
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
@@ -405,9 +406,13 @@ class TXTwoPointFourier(PipelineStage):
 
         cl_noise = self.compute_noise(i,j,k,ell_bins,workspace,noise)
 
-
-        c = self.compute_one_spectrum(
-            pixel_scheme, workspace, field_i, field_j, ell_bins, cl_noise, cl_guess)
+        if pixel_scheme.name == 'healpix':
+            c = pymaster.compute_full_master(field_i, field_j, ell_bins,
+                cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
+        elif pixel_scheme.name == 'gnomonic':
+            c = pymaster.compute_full_master_flat(field_i, field_j, ell_bins,
+                cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=cl_theory['ell'],
+                workspace=workspace)
 
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
@@ -447,29 +452,6 @@ class TXTwoPointFourier(PipelineStage):
             N3 = w.couple_cell(N2)
         return N3
 
-
-    def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins, cl_noise, theory):
-        import pymaster as nmt
-
-
-
-        if pixel_scheme.name == 'healpix':
-            # correlates two fields f1 and f2 and returns an array of coupled
-            # power spectra
-            coupled_c_ell = nmt.compute_coupled_cell(f1, f2)
-            # Compute 
-            # cl_bias = nmt.deprojection_bias(f1, f2, theory)
-            cl_bias = None
-
-        elif pixel_scheme.name == 'gnomonic':
-            coupled_c_ell = nmt.compute_coupled_cell_flat(f1, f2, ell_bins)
-            cl_bias = None
-            #TODO figure out cl_bias
-            # ell_eff = ell_bins.get_effective_ells()
-            # cl_bias = nmt.deprojection_bias_flat(f1, f2, ell_bins, ell_eff, theory)
-
-        c_ell = w.decouple_cell(coupled_c_ell, cl_noise=cl_noise, cl_bias=cl_bias)
-        return c_ell
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         tomo = self.open_input('tomography_catalog')
