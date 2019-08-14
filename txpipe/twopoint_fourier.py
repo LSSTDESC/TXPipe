@@ -172,6 +172,10 @@ class TXTwoPointFourier(PipelineStage):
         g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
         g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
 
+        # Mask any pixels which have the healpix bad value
+        for m in g1_maps + g2_maps + ngal_maps:
+            mask[m==healpy.UNSEEN] = 0
+
         if self.config['flip_g2']:
             for g2 in g2_maps:
                 w = np.where(g2!=healpy.UNSEEN)
@@ -551,6 +555,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Use CCL to actually calculate the C_ell values for the different cases
         theory_cl = {}
+        theory_cl['ell'] = ell
         k = SHEAR_SHEAR
         for i in range(nbin_source):
             for j in range(i+1):
