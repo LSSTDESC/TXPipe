@@ -405,7 +405,8 @@ class TXSelector(PipelineStage):
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='f')
         group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
-        group.create_dataset('mean_R', (nbin_source,), dtype='f')
+        group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
+        group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
 
         return outfile
 
@@ -456,7 +457,8 @@ class TXSelector(PipelineStage):
         if self.rank==0:
             group = outfile['multiplicative_bias']
             group['R_S'][:,:,:] = S
-            group['mean_R'][:] = mean_r
+            group['R_gamma_mean'][:,:,:] = mean_r
+            group['R_total'][:,:,:] = mean_r + S
             group = outfile['tomography']
             group['source_counts'][:] = source_counts
             group['lens_counts'][:] = lens_counts
