@@ -101,7 +101,7 @@ class TXDiagnostics(PipelineStage):
                 w1 = np.where(b1==i)
                 w2 = np.where(b2==i)
 
-                # Do more things here to establish
+                
                 calc11.add_data(i, data['mcal_g1'][qual_cut][w1])
                 calc12.add_data(i, data['mcal_g2'][qual_cut][w1])
                 calc21.add_data(i, data['mcal_g1'][qual_cut][w2])
@@ -125,39 +125,29 @@ class TXDiagnostics(PipelineStage):
         std22 = np.sqrt(var22/count22)
 
         fig = self.open_output('g_psf_g', wrapper=True)
+        #Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1*(mu1[1] - mu1[0])
 
-        slope11, intercept11, r_value11, p_value11, std_err11 = stats.linregress(mu1+dx,mean11)
-        line11 = slope11*(mu1+dx)+intercept11
+        slope11, intercept11, r_value11, p_value11, std_err11 = stats.linregress(mu1,mean11)
+        line11 = slope11*(mu1)+intercept11
 
-        slope12, intercept12, r_value12, p_value12, std_err12 = stats.linregress(mu1+dx,mean12)
-        line12 = slope12*(mu1+dx)+intercept12
+        slope12, intercept12, r_value12, p_value12, std_err12 = stats.linregress(mu1,mean12)
+        line12 = slope12*(mu1)+intercept12
 
-        slope21, intercept21, r_value21, p_value21, std_err21 = stats.linregress(mu2-dx,mean21)
-        line21 = slope21*(mu2-dx)+intercept21
+        slope21, intercept21, r_value21, p_value21, std_err21 = stats.linregress(mu2,mean21)
+        line21 = slope21*(mu2)+intercept21
 
-        slope22, intercept22, r_value22, p_value22, std_err22 = stats.linregress(mu2-dx,mean22)
-        line22 = slope22*(mu2-dx)+intercept22
+        slope22, intercept22, r_value22, p_value22, std_err22 = stats.linregress(mu2,mean22)
+        line22 = slope22*(mu2)+intercept22
 
         plt.subplot(2,1,1)
 
-        # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (mean11 - flat1) / std11
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(mean11) - 1)
+        
+        plt.plot(mu1,line11,color='blue',label=r"$m=%.4f\pm%.4f$" %(slope11, std_err11))
+        plt.plot(mu1,[0]*len(line11),color='black')
 
-        plt.plot(mu1+dx,line11,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-        plt.plot(mu1+dx,[0]*len(line11),color='black')
-
-        # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (mean12 - flat1) / std12
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(mean12) - 1)
-
-        plt.plot(mu1-dx,line12,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-        plt.plot(mu1-dx,[0]*len(line12),color='black')
+        plt.plot(mu1,line12,color='red',label=r"$m=%.4f\pm%.4f$" %(slope12, std_err12))
+        plt.plot(mu1,[0]*len(line12),color='black')
         plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+',color='blue')
         plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+',color='red')
         plt.xlabel("PSF g1")
@@ -166,26 +156,14 @@ class TXDiagnostics(PipelineStage):
 
 
         plt.subplot(2,1,2)
-        
-        # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (mean21 - flat1) / std21
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(mean21) - 1)
 
-        plt.plot(mu1+dx,line21,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-        plt.plot(mu1+dx,[0]*len(line21),color='black')
+        plt.plot(mu2,line21,color='blue',label=r"$m=%.4f\pm%.4f$" %(slope21, std_err21))
+        plt.plot(mu2,[0]*len(line21),color='black')
 
-        # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (mean22 - flat1) / std22
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(mean22) - 1)
-
-        plt.plot(mu1-dx,line22,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-        plt.plot(mu1-dx,[0]*len(line22),color='black')
-        plt.errorbar(mu1+dx, mean21, std21, label='g1', fmt='+',color='blue')
-        plt.errorbar(mu1-dx, mean22, std22, label='g2', fmt='+',color='red')
+        plt.plot(mu2,line22,color='red',label=r"$m=%.4f\pm%.4f$" %(slope22, std_err22))
+        plt.plot(mu2,[0]*len(line22),color='black')
+        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='blue')
+        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='red')
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
@@ -199,7 +177,7 @@ class TXDiagnostics(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         size = 11
-        psf_g_edges = np.linspace(0.2, 1.0, size+1)
+        psf_g_edges = np.linspace(0.2, 0.5, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
@@ -232,30 +210,22 @@ class TXDiagnostics(PipelineStage):
 
         dx = 0.05*(psf_g_mid[1] - psf_g_mid[0])
         if self.rank == 0:
-            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
-            line1 = slope1*(mu+dx)+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu-dx,mean2)
-            line2 = slope2*(mu-dx)+intercept2
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
+            line1 = slope1*(mu)+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
+            line2 = slope2*(mu)+intercept2
 
             fig = self.open_output('g_psf_T', wrapper=True)
 
-            # compute the mean and the chi^2/dof
-            flat1 = 0
-            z = (mean1 - flat1) / std1
-            chi2 = np.sum(z ** 2)
-            chi2dof = chi2 / (len(mean1) - 1)
-            plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
+            plt.plot(mu,line1,color='blue',label=r"$m=%.4f\pm%.4f$" %(slope1, std_err1))
+            plt.plot(mu,[0]*len(mu),color='black')
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
             plt.legend(loc='best')
 
-            # compute the mean and the chi^2/dof
-            flat1 = 0
-            z = (mean2 - flat1) / std2
-            chi2 = np.sum(z ** 2)
-            chi2dof = chi2 / (len(mean2) - 1)
-            plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+            plt.plot(mu-dx,line2,color='red',label=r"$m=%.4f\pm%.4f$" %(slope2, std_err2))
+            plt.plot(mu,[0]*len(mu),color='black')
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
+            plt.xlim(0.2,0.5)
             plt.xlabel("PSF T")
             plt.ylabel("Mean g")
             plt.legend(loc='best')
@@ -268,7 +238,7 @@ class TXDiagnostics(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         size = 10
-        snr_edges = np.linspace(0,1000,size+1)
+        snr_edges = np.logspace(1,3,size+1)
         snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
@@ -288,10 +258,10 @@ class TXDiagnostics(PipelineStage):
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][w])
-                calc2.add_data(i, data['mcal_g2'][w])
-                mu.add_data(i, data['mcal_s2n'][w])
-
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                mu.add_data(i, data['mcal_s2n'][qual_cut][w])
+                           
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
@@ -301,27 +271,19 @@ class TXDiagnostics(PipelineStage):
 
         dx = 0.05*(snr_mid[1] - snr_mid[0])
         if self.rank == 0:
-            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
-            line1 = slope1*(mu+dx)+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
-            line2 = slope2*(mu+dx)+intercept2
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
+            line1 = slope1*(mu)+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
+            line2 = slope2*(mu)+intercept2
             fig = self.open_output('g_snr', wrapper=True)
-            # compute the mean and the chi^2/dof
-            flat1 = 0
-            z = (mean1 - flat1) / std1
-            chi2 = np.sum(z ** 2)
-            chi2dof = chi2 / (len(mean1) - 1)
-            plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
+            
+            plt.plot(mu,line1,color='blue',label=r"$m=%.4f\pm%.4f$" %(slope1, std_err1))
+            plt.plot(mu,[0]*len(mu),color='black')
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
 
-            # compute the mean and the chi^2/dof
-            flat1 = 0
-            z = (mean2 - flat1) / std2
-            chi2 = np.sum(z ** 2)
-            chi2dof = chi2 / (len(mean2) - 1)
-            plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
+            plt.plot(mu,line2,color='red',label=r"$m=%.4f\pm%.4f$" %(slope2, std_err2))
+            plt.plot(mu,[0]*len(mu-dx),color='black')
+            plt.xscale('log')
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
             plt.xlabel("SNR")
             plt.ylabel("Mean g")
@@ -368,25 +330,18 @@ class TXDiagnostics(PipelineStage):
 
         dx = 0.05*(T_mid[1] - T_mid[0])
         if self.rank == 0:
-            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu+dx,mean1)
-            line1 = slope1*(mu+dx)+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu+dx,mean2)
-            line2 = slope2*(mu+dx)+intercept2
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
+            line1 = slope1*(mu)+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
+            line2 = slope2*(mu)+intercept2
             fig = self.open_output('g_T', wrapper=True)
-
-            flat1 = 0
-            z = (mean1 - flat1) / std1
-            chi2 = np.sum(z ** 2)
-            chi2dof = chi2 / (len(mean1) - 1)
-            plt.plot(mu+dx,line1,color='blue',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
-            plt.plot(mu+dx,[0]*len(mu+dx),color='black')
+            
+            plt.plot(mu,line1,color='blue',label=r"$m=%.4f\pm%.4f$" %(slope1, std_err1))
+            plt.plot(mu,[0]*len(mu),color='black')
             plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
-
-            flat1 = 0
-            z = (mean2 - flat1) / std2
-            chi2 = np.sum(z ** 2)
-            chi2dof = chi2 / (len(mean2) - 1)
-            plt.plot(mu-dx,line2,color='red',label='$\chi^2/dof = $'+str(np.round(chi2dof,5)))
+            
+            plt.plot(mu,line2,color='red',label=r"$m=%.4f\pm%.4f$" %(slope2, std_err2))
+            plt.plot(mu,[0]*len(mu),color='black')
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
             plt.xlabel("galaxy size T")
             plt.ylabel("Mean g")
@@ -396,9 +351,6 @@ class TXDiagnostics(PipelineStage):
 
 
     def plot_g_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
         print('plotting histogram')
         import matplotlib.pyplot as plt
         from scipy import stats
@@ -447,13 +399,10 @@ class TXDiagnostics(PipelineStage):
         fig.close()
 
     def plot_snr_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
         print('plotting snr histogram')
         import matplotlib.pyplot as plt
         bins = 50
-        edges = np.linspace(0, 10, bins+1)
+        edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
         
@@ -466,20 +415,21 @@ class TXDiagnostics(PipelineStage):
             qual_cut = data['source_bin'] !=-1
             qual_cut &= data['lens_bin'] !=-1
 
-            b1 = np.digitize(np.log10(data['mcal_s2n'][qual_cut]), edges) - 1
+            b1 = np.digitize(data['mcal_s2n'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, np.log10(data['mcal_s2n'][qual_cut][w]))
+                calc1.add_data(i, data['mcal_s2n'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         std1 = np.sqrt(var1/count1)
         if self.rank != 0:
             return
         fig = self.open_output('snr_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
+        plt.bar(mids, count1, width=edges[1:]-edges[:-1],edgecolor='black',align='center',color='blue')
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        plt.xscale('log')
         plt.xlabel("log(snr)")
         plt.ylabel(r'$N_{galaxies}$')
         plt.ylim(0,1.1*max(count1))
