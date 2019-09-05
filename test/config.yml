@@ -65,3 +65,4 @@ TXDiagnosticMaps:
 
 TXTwoPointFourier:
     chunk_rows: 100000
+    flip_g2: True
