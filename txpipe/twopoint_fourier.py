@@ -456,7 +456,7 @@ class TXTwoPointFourier(PipelineStage):
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         tomo = self.open_input('tomography_catalog')
         sigma_e = tomo['tomography/sigma_e'][:]
-        mean_R = tomo['multiplicative_bias/mean_R'][:]
+        mean_R = tomo['multiplicative_bias/R_gamma_mean'][:]
         N_eff = tomo['tomography/N_eff'][:]
         lens_counts = tomo['tomography/lens_counts'][:]
         tomo.close()
