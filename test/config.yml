@@ -46,6 +46,7 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
+    flip_g2: False
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once
@@ -65,4 +66,4 @@ TXDiagnosticMaps:
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: True
+    flip_g2: False
