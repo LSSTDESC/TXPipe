@@ -57,9 +57,14 @@ class NumberDensityStats:
             mean_R[i,1,0] = mean_r[2]
             mean_R[i,1,1] = mean_r[3]
 
-        lc = self.lens_counts.copy()
+        lc = np.zeros_like(self.lens_counts)
         if self.comm is not None:
-            self.comm.Reduce(None, lc)
+            self.comm.Reduce(
+                [self.lens_counts, MPI.DOUBLE],
+                [lc, MPI.DOUBLE],
+                op = MPI.SUM,
+                root = 0
+            )
 
         return sigma_e, mean_R, N_source, lc
 
