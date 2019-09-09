@@ -57,5 +57,9 @@ class NumberDensityStats:
             mean_R[i,1,0] = mean_r[2]
             mean_R[i,1,1] = mean_r[3]
 
-        return sigma_e, mean_R, N_source, self.lens_counts
+        lc = self.lens_counts.copy()
+        if self.comm is not None:
+            self.comm.Reduce(None, lc)
+
+        return sigma_e, mean_R, N_source, lc
 
