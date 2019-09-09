@@ -59,10 +59,11 @@ class NumberDensityStats:
 
         lc = np.zeros_like(self.lens_counts)
         if self.comm is not None:
+            import mpi4py.MPI
             self.comm.Reduce(
-                [self.lens_counts, MPI.DOUBLE],
-                [lc, MPI.DOUBLE],
-                op = MPI.SUM,
+                [self.lens_counts, mpi4py.MPI.DOUBLE],
+                [lc, mpi4py.MPI.DOUBLE],
+                op = mpi4py.MPI.SUM,
                 root = 0
             )
 
