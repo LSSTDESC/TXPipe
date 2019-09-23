@@ -211,8 +211,6 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     ]
 
     config_options = {
-        'shear_cat_name': str,
-        'photo_cat_name': str,
     }
 
     def run(self):
@@ -221,13 +219,19 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whole pipeline and so is
         # not in a TXPipe format.
-        shear_cat_name = self.config['shear_cat_name']
-        shear_cat = GCRCatalogs.load_catalog(shear_cat_name)
+        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
+            {'base_dir': 
+            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
+            })
         shear_cat.master.use_cache = False
 
-        photo_cat_name = self.config['photo_cat_name']
-        photo_cat = GCRCatalogs.load_catalog(photo_cat_name)
+        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
+            {'base_dir': 
+            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary'
+            })
+
         photo_cat.master.use_cache = False
+
 
 
         # Total size is needed to set up the output file,
