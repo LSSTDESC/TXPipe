@@ -223,21 +223,12 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             {'base_dir': 
             '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
             })
-        shear_cat.master.use_cache = False
 
         photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
             {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary'
+            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
             })
 
-        photo_cat.master.use_cache = False
-
-
-
-        # Total size is needed to set up the output file,
-        # although in larger files it is a little slow to compute this.
-        n = len(shear_cat)
-        print(f"Total catalog size = {n}")  
 
         available = shear_cat.list_all_quantities()
         bands = []
@@ -246,20 +237,26 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
                 bands.append(b)
 
         # Columns that we will need.
-        shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
+        shear_cols = (['id', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
             + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         )
 
         # Input columns for photometry
         photo_cols = ['id', 'ra', 'dec']
-
+        photo_out_cols = photo_cols[:]
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
-            photo_cols.append(f'{band}_mag')
-            photo_cols.append(f'{band}_mag_err')
-            photo_cols.append(f'snr_{band}_cModel')
+            photo_cols.append(f'mag_{band}')
+            photo_cols.append(f'magerr_{band}')
+            photo_cols.append(f'{band}_modelfit_CModel_instFluxErr')
+            photo_cols.append(f'{band}_modelfit_CModel_instFlux')
 
+            photo_out_cols.append(f'{band}_mag')
+            photo_out_cols.append(f'{band}_mag_err')
+            photo_out_cols.append(f'snr_{band}')
+
+            
         # Columns we need to load in for the star data - 
         # the measured object moments and the identifier telling us
         # if it was used in PSF measurement
@@ -277,11 +274,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         ]
 
         # For shear we just copy the input direct to the output
-        shear_out_cols = shear_cols
-
-        # For the photometry output we strip off the _cModeel suffix.
-        photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
-                            for col in photo_cols]
+        shear_out_cols = shear_cols + ['ra', 'dec']
 
         # The star output names are mostly different tot he input names
         star_out_cols = ['id', 'ra', 'dec', 
@@ -299,16 +292,21 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         shear_output = None
         photo_output = None
 
-        shear_data = shear_cat.get_quantities(shear_cols)
+        print("Loading {} columns from photo cat".format(len(photo_cols)))
         photo_data = photo_cat.get_quantities(photo_cols)
+
+        print("Loading {} columns from shear cat".format(len(shear_cols)))
+        shear_data = shear_cat.get_quantities(shear_cols)
+
 
         shear_ind, photo_ind = intersecting_indices(shear_data['id'], photo_data['id'])
 
-        for col in shear_cols:
+        for col in list(shear_data.keys()):
             shear_data[col] = shear_data[col][shear_ind]
-        for col in photo_cols:
+        for col in list(photo_data.keys()):
             photo_data[col] = photo_data[col][photo_ind]
-        
+
+        n = len(shear_data['id'])
         data = {**shear_data, **photo_data}
 
         # Loop through the data, as chunke natively by GCRCatalogs
@@ -341,6 +339,17 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         shear_output.close()
         star_output.close()
 
+    def rename_columns(self, data):
+        for band in 'ugrizy':
+            data[f'{band}_mag'] = data[f'mag_{band}']
+            del data[f'mag_{band}']
+            data[f'{band}_mag_err'] = data[f'magerr_{band}']
+            del data[f'magerr_{band}']
+            data[f'snr_{band}'] = data[f'{band}_modelfit_CModel_instFlux'] / data[f'{band}_modelfit_CModel_instFluxErr']
+            del data[f'{band}_modelfit_CModel_instFlux']
+            del data[f'{band}_modelfit_CModel_instFluxErr']
+
+        
 
 # response to an old Stack Overflow question of mine:
 # https://stackoverflow.com/questions/33529057/indices-that-intersect-and-sort-two-numpy-arrays
