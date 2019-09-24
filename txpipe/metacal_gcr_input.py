@@ -219,15 +219,17 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whole pipeline and so is
         # not in a TXPipe format.
-        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
-            {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
-            })
+        shear_cat = GCRCatalogs.load_catalog('dc2_object_run2.1.1i_with_metacal.yaml')
+        photo_cat = shear_cat
+        # shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
+        #     {'base_dir': 
+        #     '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
+        #     })
 
-        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
-            {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
-            })
+        # photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
+        #     {'base_dir': 
+        #     '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
+        #     })
 
 
         available = shear_cat.list_all_quantities()
