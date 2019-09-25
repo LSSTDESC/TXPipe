@@ -219,17 +219,17 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whole pipeline and so is
         # not in a TXPipe format.
-        shear_cat = GCRCatalogs.load_catalog('dc2_object_run2.1.1i_with_metacal.yaml')
-        photo_cat = shear_cat
-        # shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
-        #     {'base_dir': 
-        #     '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
-        #     })
+        # shear_cat = GCRCatalogs.load_catalog('dc2_object_run2.1.1i_with_metacal.yaml')
+        # photo_cat = shear_cat
+        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
+            {'base_dir': 
+            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
+            })
 
-        # photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
-        #     {'base_dir': 
-        #     '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
-        #     })
+        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
+            {'base_dir': 
+            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
+             })
 
 
         available = shear_cat.list_all_quantities()
@@ -303,6 +303,9 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
 
         shear_ind, photo_ind = intersecting_indices(shear_data['id'], photo_data['id'])
 
+        import pdb
+        pdb.set_trace()
+        
         for col in list(shear_data.keys()):
             shear_data[col] = shear_data[col][shear_ind]
         for col in list(photo_data.keys()):
@@ -356,23 +359,10 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
 # response to an old Stack Overflow question of mine:
 # https://stackoverflow.com/questions/33529057/indices-that-intersect-and-sort-two-numpy-arrays
 def intersecting_indices(x, y):
-    """my_intersect(x, y) -> xm, ym
-    x, y: 1-d arrays of unique values
-    xm, ym: indices into x and y giving sorted intersection
-    """
-    # basic idea taken from numpy.lib.arraysetops.intersect1d
-    aux = np.concatenate((x, y))
-    sidx = aux.argsort()
-    # Note: intersect1d uses aux[:-1][aux[1:]==aux[:-1]] here - I don't know why the first [:-1] is necessary
-    inidx = aux[sidx[1:]] == aux[sidx[:-1]]
+    u_x, u_idx_x = np.unique(x, return_index=True)
+    u_y, u_idx_y = np.unique(y, return_index=True)
+    i_xy = np.intersect1d(u_x, u_y, assume_unique=True)
+    i_idx_x = u_idx_x[np.in1d(u_x, i_xy, assume_unique=True)]
+    i_idx_y = u_idx_y[np.in1d(u_y, i_xy, assume_unique=True)]
+    return i_idx_x, i_idx_y
 
-    # quicksort is not stable, so must do some work to extract indices
-    # (if stable, sidx[inidx.nonzero()]  would be for x)
-    # interlace the two sets of indices, and check against lengths
-    xym = np.vstack((sidx[inidx.nonzero()],
-                     sidx[1:][inidx.nonzero()])).T.flatten()
-
-    xm = xym[xym < len(x)]
-    ym = xym[xym >= len(x)] - len(x)
-
-    return xm, ym
