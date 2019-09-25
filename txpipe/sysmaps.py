@@ -156,7 +156,7 @@ class TXDiagnosticMaps(PipelineStage):
             depth_mapper.add_data(depth_data)
             mapper.add_data(shear_tmp, bin_data, m_data)
             mapper_psf.add_data(shear_psf_tmp, bin_data, m_data) # Same?
-
+            flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
 
         # Collect together the results across all the processors
         # and combine them to get the final results
@@ -190,7 +190,7 @@ class TXDiagnosticMaps(PipelineStage):
             group.attrs['area_unit'] = 'sq deg'
             group.attrs['nbin_source'] = len(source_bins)
             group.attrs['nbin_lens'] = len(lens_bins)
-            group.attrs['flag_exponent_max'] = flag_exponent_max
+            group.attrs['flag_exponent_max'] = config['flag_exponent_max']
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
@@ -211,6 +211,8 @@ class TXDiagnosticMaps(PipelineStage):
 
             for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
                 f = 2**i
+                t = m.sum()
+                print(f"Map shows total {t} objects with flag {f}")
                 self.save_map(group, f"flag_{f}", p, m, config)
 
 
