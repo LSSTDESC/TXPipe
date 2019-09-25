@@ -46,6 +46,7 @@ class TXDiagnosticMaps(PipelineStage):
         'pixel_size':np.nan, # Pixel size of pixelization scheme
         'depth_band' : 'i',
         'true_shear' : False,
+        'flag_exponent_max': 8,
     }
 
 
@@ -58,7 +59,7 @@ class TXDiagnosticMaps(PipelineStage):
          - build up the map gradually
          - the master process saves the map
         """
-        from .mapping import DepthMapperDR1, Mapper
+        from .mapping import DepthMapperDR1, Mapper, FlagMapper
         from .utils import choose_pixelization
 
         # Read input configuration informatiomn
@@ -80,6 +81,7 @@ class TXDiagnosticMaps(PipelineStage):
             shear_cols = ['true_g']
         else:
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
+        shear_cols.append('mcal_flags')
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -101,6 +103,7 @@ class TXDiagnosticMaps(PipelineStage):
                                       config['snr_delta'],
                                       sparse = config['sparse'],
                                       comm = self.comm)
+        flag_mapper = FlagMapper(pixel_scheme, config['flag_exponent_max'], sparse=config['sparse'])
 
 
         # Build some "iterators".  Iterators are things you can loop through,

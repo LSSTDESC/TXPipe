@@ -154,3 +154,55 @@ class Mapper:
                     d[k] = v[mask]
 
         return pixel, ngal, g1, g2, var_g1, var_g2
+
+
+class FlagMapper:
+    def __init__(self, pixel_scheme, flag_exponent_max, sparse=False):
+        self.pixel_scheme = pixel_scheme
+        self.sparse = sparse
+        self.maps = [np.zeros(self.pixel_scheme.npix, type=np.int32) for i in range(flag_exponent_max)]
+        self.flag_exponent_max = flag_exponent_max
+
+    def add_data(self, ra, dec, flags):
+        pix_nums = self.pixel_scheme.ang2pix(ra, dec)
+        for i, m in enumerate(self.maps):
+            f = 2**i
+            w = np.where(f & flags > 0)
+            for p in pix_nums[w]:
+                m[p] += 1
+
+    def _combine_root(self, comm):
+        from mpi4py.MPI import INT32_T, SUM
+        rank = comm.Get_rank()
+        maps = []
+        for i, m in enumerate(self.maps):
+            y = np.zeros_like(m) if rank==0 else None
+            comm.Reduce(
+                [m, INT32_T],
+                [y, INT32_T],
+                op = SUM,
+                root = 0
+            )
+            maps.append(y)
+        return maps
+
+
+    def finalize(self, comm=None):
+        if comm is None:
+            maps = self.maps
+        else:
+            maps = self._combine_root(comm)
+
+        pixel = np.arange(self.pixel_scheme.npix)
+
+        if self.sparse:
+            pixels = []
+            maps_out = []
+            for m in maps:
+                w = np.where(m>0)
+                pixels.append(pixel[w])
+                maps_out.append(m[w])
+        else:
+            pixels = [pixel for m in maps]
+            maps_out = maps
+        return pixels, maps_out
