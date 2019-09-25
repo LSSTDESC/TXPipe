@@ -190,6 +190,7 @@ class TXDiagnosticMaps(PipelineStage):
             group.attrs['area_unit'] = 'sq deg'
             group.attrs['nbin_source'] = len(source_bins)
             group.attrs['nbin_lens'] = len(lens_bins)
+            group.attrs['flag_exponent_max'] = flag_exponent_max
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
@@ -262,6 +263,7 @@ class TXMapPlots(PipelineStage):
         ('ngal_lens_map', PNGFile),
         ('g1_map', PNGFile),
         ('g2_map', PNGFile),
+        ('flag_map', PNGFile),
         ('mask_map', PNGFile),
     ]
     config = {}
@@ -278,6 +280,7 @@ class TXMapPlots(PipelineStage):
         fig.close()
 
         nbin_source, nbin_lens = m.get_nbins()
+        flag_exponent_max = m.file['maps'].attrs['flag_exponent_max']
 
         fig = self.open_output('ngal_lens_map', wrapper=True, figsize=(5*nbin_lens, 5))
         for i in range(nbin_lens):
@@ -295,6 +298,13 @@ class TXMapPlots(PipelineStage):
         for i in range(nbin_source):
             plt.subplot(1, nbin_source, i+1)
             m.plot(f'g2_{i}', view='cart')
+        fig.close()
+
+        fig = self.open_output('flag_map', wrapper=True, figsize=(5*flag_exponent_max, 5))
+        for i in range(flag_exponent_max):
+            plt.subplot(1, flag_exponent_max, i+1)
+            f = 2**i
+            m.plot(f'flag_{f}', view='cart')
         fig.close()
 
         fig = self.open_output('mask_map', wrapper=True, figsize=(5,5))
