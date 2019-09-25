@@ -165,7 +165,7 @@ class TXDiagnosticMaps(PipelineStage):
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
         map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
         map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf = mapper_psf.finalize(self.comm)
-
+        flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
         # Only the root process saves the output
         if self.rank==0:
@@ -207,6 +207,10 @@ class TXDiagnosticMaps(PipelineStage):
                 self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
                 self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
                 self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
+
+            for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
+                f = 2**i
+                self.save_map(group, f"flag_{f}", p, m, config)
 
 
     def compute_mask(self, depth_count):

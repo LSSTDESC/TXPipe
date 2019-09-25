@@ -160,7 +160,7 @@ class FlagMapper:
     def __init__(self, pixel_scheme, flag_exponent_max, sparse=False):
         self.pixel_scheme = pixel_scheme
         self.sparse = sparse
-        self.maps = [np.zeros(self.pixel_scheme.npix, type=np.int32) for i in range(flag_exponent_max)]
+        self.maps = [np.zeros(self.pixel_scheme.npix, dtype=np.int32) for i in range(flag_exponent_max)]
         self.flag_exponent_max = flag_exponent_max
 
     def add_data(self, ra, dec, flags):
@@ -192,9 +192,10 @@ class FlagMapper:
             maps = self.maps
         else:
             maps = self._combine_root(comm)
+            if comm.Get_rank()>0:
+                return None, None
 
         pixel = np.arange(self.pixel_scheme.npix)
-
         if self.sparse:
             pixels = []
             maps_out = []
