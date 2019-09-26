@@ -287,6 +287,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             'measured_e1', 'measured_e2',
             'model_e1', 'model_e2',
             'measured_T', 'model_T'
+            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
         ]
 
         photo_cols = list(set(photo_cols + star_cols))
@@ -306,9 +307,6 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
 
 
         shear_ind, photo_ind = intersecting_indices(shear_data['id'], photo_data['id'])
-
-        import pdb
-        pdb.set_trace()
         
         for col in list(shear_data.keys()):
             shear_data[col] = shear_data[col][shear_ind]
