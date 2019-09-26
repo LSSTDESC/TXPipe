@@ -19,3 +19,6 @@ from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXDiagnosticPlots
 from .rowe_stats import TXRoweStatistics
 from .exposure_info import TXExposureInfo
+from .psf_diagnostics import TXPSFDiagnostics
+from .twopoint import TXGammaTDimStars
+from .twopoint import TXGammaTBrightStars

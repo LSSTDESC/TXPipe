@@ -46,6 +46,7 @@ class TXDiagnosticMaps(PipelineStage):
         'pixel_size':np.nan, # Pixel size of pixelization scheme
         'depth_band' : 'i',
         'true_shear' : False,
+        'flag_exponent_max': 8,
     }
 
 
@@ -58,7 +59,7 @@ class TXDiagnosticMaps(PipelineStage):
          - build up the map gradually
          - the master process saves the map
         """
-        from .mapping import DepthMapperDR1, Mapper
+        from .mapping import DepthMapperDR1, Mapper, FlagMapper
         from .utils import choose_pixelization
 
         # Read input configuration informatiomn
@@ -80,6 +81,7 @@ class TXDiagnosticMaps(PipelineStage):
             shear_cols = ['true_g']
         else:
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
+        shear_cols.append('mcal_flags')
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -101,6 +103,7 @@ class TXDiagnosticMaps(PipelineStage):
                                       config['snr_delta'],
                                       sparse = config['sparse'],
                                       comm = self.comm)
+        flag_mapper = FlagMapper(pixel_scheme, config['flag_exponent_max'], sparse=config['sparse'])
 
 
         # Build some "iterators".  Iterators are things you can loop through,
@@ -153,7 +156,7 @@ class TXDiagnosticMaps(PipelineStage):
             depth_mapper.add_data(depth_data)
             mapper.add_data(shear_tmp, bin_data, m_data)
             mapper_psf.add_data(shear_psf_tmp, bin_data, m_data) # Same?
-
+            flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
 
         # Collect together the results across all the processors
         # and combine them to get the final results
@@ -162,7 +165,7 @@ class TXDiagnosticMaps(PipelineStage):
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
         map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
         map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf = mapper_psf.finalize(self.comm)
-
+        flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
         # Only the root process saves the output
         if self.rank==0:
@@ -187,6 +190,7 @@ class TXDiagnosticMaps(PipelineStage):
             group.attrs['area_unit'] = 'sq deg'
             group.attrs['nbin_source'] = len(source_bins)
             group.attrs['nbin_lens'] = len(lens_bins)
+            group.attrs['flag_exponent_max'] = config['flag_exponent_max']
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
@@ -204,6 +208,12 @@ class TXDiagnosticMaps(PipelineStage):
                 self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
                 self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
                 self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
+
+            for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
+                f = 2**i
+                t = m.sum()
+                print(f"Map shows total {t} objects with flag {f}")
+                self.save_map(group, f"flag_{f}", p, m, config)
 
 
     def compute_mask(self, depth_count):
@@ -255,6 +265,7 @@ class TXMapPlots(PipelineStage):
         ('ngal_lens_map', PNGFile),
         ('g1_map', PNGFile),
         ('g2_map', PNGFile),
+        ('flag_map', PNGFile),
         ('mask_map', PNGFile),
     ]
     config = {}
@@ -271,6 +282,7 @@ class TXMapPlots(PipelineStage):
         fig.close()
 
         nbin_source, nbin_lens = m.get_nbins()
+        flag_exponent_max = m.file['maps'].attrs['flag_exponent_max']
 
         fig = self.open_output('ngal_lens_map', wrapper=True, figsize=(5*nbin_lens, 5))
         for i in range(nbin_lens):
@@ -288,6 +300,13 @@ class TXMapPlots(PipelineStage):
         for i in range(nbin_source):
             plt.subplot(1, nbin_source, i+1)
             m.plot(f'g2_{i}', view='cart')
+        fig.close()
+
+        fig = self.open_output('flag_map', wrapper=True, figsize=(5*flag_exponent_max, 5))
+        for i in range(flag_exponent_max):
+            plt.subplot(1, flag_exponent_max, i+1)
+            f = 2**i
+            m.plot(f'flag_{f}', view='cart')
         fig.close()
 
         fig = self.open_output('mask_map', wrapper=True, figsize=(5,5))
