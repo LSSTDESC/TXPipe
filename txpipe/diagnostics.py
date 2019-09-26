@@ -100,7 +100,7 @@ class TXDiagnosticPlots(PipelineStage):
             if data is None:
                 break
             qual_cut = data['source_bin'] !=-1
-            qual_cut &= data['lens_bin'] !=-1
+#            qual_cut |= data['lens_bin'] !=-1
             b1 = np.digitize(data['mcal_psf_g1'][qual_cut], psf_g_edges) - 1
             b2 = np.digitize(data['mcal_psf_g2'][qual_cut], psf_g_edges) - 1
 
@@ -197,7 +197,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
             
             qual_cut = data['source_bin'] !=-1
-            qual_cut &= data['lens_bin'] !=-1
+#            qual_cut |= data['lens_bin'] !=-1
 
             b1 = np.digitize(data['mcal_psf_T_mean'][qual_cut], psf_g_edges) - 1
 
@@ -258,7 +258,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
             
             qual_cut = data['source_bin'] !=-1
-            qual_cut &= data['lens_bin'] !=-1
+#            qual_cut |= data['lens_bin'] !=-1
 
             b1 = np.digitize(data['mcal_s2n'][qual_cut], snr_edges) - 1
 
@@ -317,7 +317,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
             
             qual_cut = data['source_bin'] !=-1
-            qual_cut &= data['lens_bin'] !=-1
+#            qual_cut |= data['lens_bin'] !=-1
 
             b1 = np.digitize(data['mcal_T'][qual_cut], T_edges) - 1
 
@@ -374,7 +374,7 @@ class TXDiagnosticPlots(PipelineStage):
             if data is None:
                 break
             qual_cut = data['source_bin'] !=-1
-            qual_cut &= data['lens_bin'] !=-1
+#            qual_cut |= data['lens_bin'] !=-1
         
             b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
 
@@ -420,7 +420,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
             
             qual_cut = data['source_bin'] !=-1
-            qual_cut &= data['lens_bin'] !=-1
+#            qual_cut |= data['lens_bin'] !=-1
 
             b1 = np.digitize(data['mcal_s2n'][qual_cut], edges) - 1
 
