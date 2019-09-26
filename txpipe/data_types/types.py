@@ -102,6 +102,9 @@ class DiagnosticMaps(HDFFile):
         m, pix, nside = self.read_healpix(map_name, return_all=True)
         lon,lat=healpy.pix2ang(nside,pix,lonlat=True)
         npix=healpy.nside2npix(nside)
+        if len(pix)==0:
+            print(f"Empty map {map_name}")
+            return
         if len(pix)==len(m):
             w = np.where((m!=healpy.UNSEEN)&(m!=0))
         else:
