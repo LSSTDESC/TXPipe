@@ -50,7 +50,7 @@ class TXDiagnosticPlots(PipelineStage):
         # Create an iterator for reading through the input data.
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
-        chunk_rows = 10000
+        chunk_rows = self.config['chunk_rows']
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g2','mcal_psf_T_mean','mcal_s2n','mcal_T']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
 
@@ -212,11 +212,11 @@ class TXDiagnosticPlots(PipelineStage):
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
 
-        std1 = np.sqrt(var1/count1)
-        std2 = np.sqrt(var2/count2)
-
-        dx = 0.05*(psf_g_mid[1] - psf_g_mid[0])
         if self.rank == 0:
+            std1 = np.sqrt(var1/count1)
+            std2 = np.sqrt(var2/count2)
+            
+            dx = 0.05*(psf_g_mid[1] - psf_g_mid[0])
             slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
             line1 = slope1*(mu)+intercept1
             slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
@@ -273,11 +273,11 @@ class TXDiagnosticPlots(PipelineStage):
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
 
-        std1 = np.sqrt(var1/count1)
-        std2 = np.sqrt(var2/count2)
-
-        dx = 0.05*(snr_mid[1] - snr_mid[0])
         if self.rank == 0:
+            std1 = np.sqrt(var1/count1)
+            std2 = np.sqrt(var2/count2)
+            
+            dx = 0.05*(snr_mid[1] - snr_mid[0])
             slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
             line1 = slope1*(mu)+intercept1
             slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
@@ -332,11 +332,11 @@ class TXDiagnosticPlots(PipelineStage):
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
 
-        std1 = np.sqrt(var1/count1)
-        std2 = np.sqrt(var2/count2)
-
-        dx = 0.05*(T_mid[1] - T_mid[0])
         if self.rank == 0:
+            std1 = np.sqrt(var1/count1)
+            std2 = np.sqrt(var2/count2)
+            
+            dx = 0.05*(T_mid[1] - T_mid[0])
             slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
             line1 = slope1*(mu)+intercept1
             slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
@@ -386,10 +386,10 @@ class TXDiagnosticPlots(PipelineStage):
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        std2 = np.sqrt(var2/count2)
         if self.rank != 0:
             return
+        std1 = np.sqrt(var1/count1)
+        std2 = np.sqrt(var2/count2)
         fig = self.open_output('g1_hist', wrapper=True)
         plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
         plt.xlabel("g1")
@@ -430,9 +430,9 @@ class TXDiagnosticPlots(PipelineStage):
                 calc1.add_data(i, data['mcal_s2n'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
         if self.rank != 0:
             return
+        std1 = np.sqrt(var1/count1)
         fig = self.open_output('snr_hist', wrapper=True)
         plt.bar(mids, count1, width=edges[1:]-edges[:-1],edgecolor='black',align='center',color='blue')
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
@@ -479,13 +479,9 @@ class TXDiagnosticPlots(PipelineStage):
                     count = w.sum()
                     h2[i] += count
 
-        for h in full_hists:
-            if self.comm:
-                self.comm.Reduce(None, h)
-
-        for h in source_hists:
-            if self.comm:
-                self.comm.Reduce(None, h)
+        if self.comm is not None:
+            full_hists = reduce(self.comm, full_hists)
+            source_hists = reduce(self.comm, source_hists)
 
         if self.rank == 0:
             fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*3))
@@ -499,3 +495,16 @@ class TXDiagnosticPlots(PipelineStage):
                     plt.legend()
             plt.tight_layout()
             fig.close()
+
+
+def reduce(comm, H):
+    H2 = []
+    rank = comm.Get_rank()
+    for	h in H:
+        if rank == 0:
+            hsum = np.zeros_like(h)
+        else:
+            hsum = None
+            comm.Reduce(h, hsum)
+            H2.append(hsum)
+    return H2
