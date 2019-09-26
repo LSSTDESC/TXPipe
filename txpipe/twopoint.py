@@ -1016,7 +1016,6 @@ class TXGammaTBrightStars(TXTwoPoint):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('exposures', HDFFile),
         ('star_catalog', HDFFile)
     ]
     outputs = [
@@ -1155,7 +1154,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
-        #S.save_fits(self.get_output('gammat_stars_plot'), overwrite=True)
+        S.save_fits(self.get_output('gammat_bright_stars'), overwrite=True)
 
         # Also make a plot of the data
 
@@ -1170,7 +1169,6 @@ class TXGammaTDimStars(TXTwoPoint):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('exposures', HDFFile),
         ('star_catalog', HDFFile)
     ]
     outputs = [
@@ -1308,7 +1306,7 @@ class TXGammaTDimStars(TXTwoPoint):
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
-        #S.save_fits(self.get_output('gammat_stars_plot'), overwrite=True)
+        S.save_fits(self.get_output('gammat_dim_stars'), overwrite=True)
 
         # Also make a plot of the data
 
