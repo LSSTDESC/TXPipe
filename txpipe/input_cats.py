@@ -428,7 +428,7 @@ class TXProtoDC2Mock(PipelineStage):
             "mcal_g1_2m": e1*R,
 
             # g2
-            "mcal_g2": e1*R,
+            "mcal_g2": e2*R,
             "mcal_g2_1p": e2*R,
             "mcal_g2_1m": e2*R,
             "mcal_g2_2p": (e2+delta_gamma)*R,

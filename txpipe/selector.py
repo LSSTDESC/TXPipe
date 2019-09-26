@@ -235,7 +235,8 @@ class TXSelector(PipelineStage):
                     # entire column is NaN.  Hopefully this will get deselected elsewhere
                     col[:] = 30.0
                 else:
-                    col[~np.isfinite(col)] = np.nanmax(col)
+                    ok = np.isfinite(col)
+                    col[~ok] = col[ok].max()
                 data.append(col)
             data = np.array(data).T
 
@@ -405,7 +406,8 @@ class TXSelector(PipelineStage):
         group = outfile.create_group('multiplicative_bias')
         group.create_dataset('R_gamma', (n,2,2), dtype='f')
         group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
-        group.create_dataset('mean_R', (nbin_source,), dtype='f')
+        group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
+        group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
 
         return outfile
 
@@ -456,7 +458,8 @@ class TXSelector(PipelineStage):
         if self.rank==0:
             group = outfile['multiplicative_bias']
             group['R_S'][:,:,:] = S
-            group['mean_R'][:] = mean_r
+            group['R_gamma_mean'][:,:,:] = mean_r
+            group['R_total'][:,:,:] = mean_r + S
             group = outfile['tomography']
             group['source_counts'][:] = source_counts
             group['lens_counts'][:] = lens_counts
@@ -528,9 +531,7 @@ class TXSelector(PipelineStage):
 
         return lens_gals
 
-    def select(self, shear_data, pz_data, variant, bin_index):
-        n = len(shear_data)
-
+    def select(self, shear_data, pz_data, variant, bin_index, verbose=False):
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
 
@@ -546,10 +547,18 @@ class TXSelector(PipelineStage):
         Tpsf = shear_data['mcal_psf_T_mean']
         flag = shear_data['mcal_flags']
 
+        n0 = len(flag)
         sel  = flag==0
+        f1 = sel.sum() / n0
         sel &= (T/Tpsf)>T_cut
+        f2 = sel.sum() / n0
         sel &= s2n>s2n_cut
+        f3 = sel.sum() / n0
         sel &= zbin==bin_index
+        f4 = sel.sum() / n0
+        
+        if verbose:
+            print(f"Bin {bin_index} {f1:.1%} flag, {f2:.1%} size, {f3:.1%} SNR, {f4:.1%} z")
 
         return sel
 

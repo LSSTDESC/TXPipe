@@ -3,16 +3,17 @@ from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator, combine_variances
 import numpy as np
 
-class TXDiagnostics(PipelineStage):
+class TXDiagnosticPlots(PipelineStage):
     """
     """
-    name='TXDiagnostics'
+    name='TXDiagnosticPlots'
 
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
         ('tomography_catalog', TomographyCatalog),
     ]
+
     outputs = [
         ('g_psf_T', PNGFile),
         ('g_psf_g', PNGFile),
@@ -21,9 +22,13 @@ class TXDiagnostics(PipelineStage):
         ('g_snr', PNGFile),
         ('g_T', PNGFile),
         ('snr_hist', PNGFile),
+        ('mag_hist', PNGFile),
 
     ]
-    config = {}
+
+    config_options = {
+        'chunk_rows': 100000,
+    }
 
     def run(self):
         # PSF tests
@@ -48,19 +53,21 @@ class TXDiagnostics(PipelineStage):
         chunk_rows = 10000
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g2','mcal_psf_T_mean','mcal_s2n','mcal_T']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+
+        photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
+        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
+
         tomo_cols = ['source_bin','lens_bin']
         iter_tomo = self.iterate_hdf('tomography_catalog','tomography',tomo_cols,chunk_rows)
-        star_cols = ['measured_e1','model_e1','measured_e2','model_e2','measured_T','model_T']
-        iter_star = self.iterate_hdf('star_catalog','stars',star_cols,chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data), (_, _, data2), in zip(iter_shear,iter_tomo):
+        for (start, end, data), (_, _, data2), (_, _, data3) in zip(iter_shear, iter_tomo, iter_phot):
             print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             data.update(data2)
-            #data.update(data3)
+            data.update(data3)
             for plotter in plotters:
                 plotter.send(data)
 
@@ -434,3 +441,61 @@ class TXDiagnostics(PipelineStage):
         plt.ylabel(r'$N_{galaxies}$')
         plt.ylim(0,1.1*max(count1))
         fig.close()
+
+    def plot_mag_histograms(self):
+        if self.comm:
+            import mpi4py.MPI
+        # mean shear in bins of PSF
+        print("Making mag histogram")
+        import matplotlib.pyplot as plt
+        size = 20
+        mag_min = 20
+        mag_max = 30
+        edges = np.linspace(mag_min, mag_max, size+1)
+        mid = 0.5*(edges[1:] + edges[:-1])
+        width = edges[1] - edges[0]
+        bands = 'ugrizy'
+        nband = len(bands)
+        full_hists = [np.zeros(size, dtype=int) for b in bands]
+        source_hists = [np.zeros(size, dtype=int) for b in bands]
+
+
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            for (b, h1,h2) in zip(bands, full_hists, source_hists):
+                b1 = np.digitize(data[f'{b}_mag'], edges) - 1
+
+
+                for i in range(size):
+                    w = b1==i
+                    count = w.sum()
+                    h1[i] += count
+
+                    w &= (data['source_bin']>=0)
+                    count = w.sum()
+                    h2[i] += count
+
+        for h in full_hists:
+            if self.comm:
+                self.comm.Reduce(None, h)
+
+        for h in source_hists:
+            if self.comm:
+                self.comm.Reduce(None, h)
+
+        if self.rank == 0:
+            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*3))
+            for i, (b,h1,h2) in enumerate(zip(bands, full_hists, source_hists)):
+                plt.subplot(nband, 1, i+1)
+                plt.bar(mid, h1, width=width, fill=False,  label='Complete', edgecolor='r')
+                plt.bar(mid, h2, width=width, fill=True,  label='WL Source', color='g')
+                plt.xlabel(f"Mag {b}")
+                plt.ylabel("N")
+                if i==0:
+                    plt.legend()
+            plt.tight_layout()
+            fig.close()

@@ -19,7 +19,7 @@ class TXRoweStatistics(PipelineStage):
         ('rowe_stats', HDFFile),
     ]
 
-    config = {
+    config_options = {
         'min_sep':0.5,
         'max_sep':250.0,
         'nbins':20,

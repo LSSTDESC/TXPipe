@@ -172,6 +172,10 @@ class TXTwoPointFourier(PipelineStage):
         g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
         g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
 
+        # Mask any pixels which have the healpix bad value
+        for m in g1_maps + g2_maps + ngal_maps:
+            mask[m==healpy.UNSEEN] = 0
+
         if self.config['flip_g2']:
             for g2 in g2_maps:
                 w = np.where(g2!=healpy.UNSEEN)
@@ -360,6 +364,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # k refers to the type of measurement we are making
         import sacc
+        import pymaster
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
@@ -401,9 +406,13 @@ class TXTwoPointFourier(PipelineStage):
 
         cl_noise = self.compute_noise(i,j,k,ell_bins,workspace,noise)
 
-
-        c = self.compute_one_spectrum(
-            pixel_scheme, workspace, field_i, field_j, ell_bins, cl_noise, cl_guess)
+        if pixel_scheme.name == 'healpix':
+            c = pymaster.compute_full_master(field_i, field_j, ell_bins,
+                cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
+        elif pixel_scheme.name == 'gnomonic':
+            c = pymaster.compute_full_master_flat(field_i, field_j, ell_bins,
+                cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=cl_theory['ell'],
+                workspace=workspace)
 
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
@@ -444,33 +453,10 @@ class TXTwoPointFourier(PipelineStage):
         return N3
 
 
-    def compute_one_spectrum(self, pixel_scheme, w, f1, f2, ell_bins, cl_noise, theory):
-        import pymaster as nmt
-
-
-
-        if pixel_scheme.name == 'healpix':
-            # correlates two fields f1 and f2 and returns an array of coupled
-            # power spectra
-            coupled_c_ell = nmt.compute_coupled_cell(f1, f2)
-            # Compute 
-            # cl_bias = nmt.deprojection_bias(f1, f2, theory)
-            cl_bias = None
-
-        elif pixel_scheme.name == 'gnomonic':
-            coupled_c_ell = nmt.compute_coupled_cell_flat(f1, f2, ell_bins)
-            cl_bias = None
-            #TODO figure out cl_bias
-            # ell_eff = ell_bins.get_effective_ells()
-            # cl_bias = nmt.deprojection_bias_flat(f1, f2, ell_bins, ell_eff, theory)
-
-        c_ell = w.decouple_cell(coupled_c_ell, cl_noise=cl_noise, cl_bias=cl_bias)
-        return c_ell
-
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         tomo = self.open_input('tomography_catalog')
         sigma_e = tomo['tomography/sigma_e'][:]
-        mean_R = tomo['multiplicative_bias/mean_R'][:]
+        mean_R = tomo['multiplicative_bias/R_gamma_mean'][:]
         N_eff = tomo['tomography/N_eff'][:]
         lens_counts = tomo['tomography/lens_counts'][:]
         tomo.close()
@@ -551,6 +537,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Use CCL to actually calculate the C_ell values for the different cases
         theory_cl = {}
+        theory_cl['ell'] = ell
         k = SHEAR_SHEAR
         for i in range(nbin_source):
             for j in range(i+1):
@@ -604,7 +591,13 @@ class TXTwoPointFourier(PipelineStage):
 
         # Save provenance information
         for key, value in self.gather_provenance().items():
-            S.metadata[f'provenance/{key}'] = value
+            if isinstance(value, str) and '\n' in value:
+                values = value.split("\n")
+                for i,v in enumerate(values):
+                    S.metadata[f'provenance/{key}_{i}'] = v
+            else:
+                S.metadata[f'provenance/{key}'] = value
+
 
 
         output_filename = self.get_output("twopoint_data_fourier")

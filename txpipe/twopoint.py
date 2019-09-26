@@ -618,6 +618,257 @@ class TXTwoPointLensCat(TXTwoPoint):
         data['lens_bin'] = f['lens/bin'][:]
 
 
+class TXTwoPointPlots(PipelineStage):
+    """
+    Make n(z) plots
+
+    """
+    name='TXTwoPointPlots'
+    inputs = [
+        ('twopoint_data', SACCFile),
+    ]
+    outputs = [
+        ('shear_xi', PNGFile),
+        ('shearDensity_xi', PNGFile),
+        ('density_xi', PNGFile),
+    ]
+
+    config_options = {
+
+    }
+
+
+    def run(self):
+        import sacc
+        import matplotlib
+        matplotlib.use('agg')
+        matplotlib.rcParams["xtick.direction"]='in'
+        matplotlib.rcParams["ytick.direction"]='in'
+
+        gammat = sacc.standard_types.galaxy_shearDensity_xi_t
+        wtheta = sacc.standard_types.galaxy_density_xi
+
+        filename = self.get_input('twopoint_data')
+        s = sacc.Sacc.load_fits(filename)
+
+        sources, lenses = self.read_nbin(s)
+        print(f"Plotting xi for {len(sources)} sources and {len(lenses)} lenses")
+
+
+        self.plot_shear_shear(s, sources)
+        self.plot_shear_density(s, sources, lenses)
+        self.plot_density_density(s, lenses)
+
+
+    def read_nbin(self, s):
+        import sacc
+
+        xip = sacc.standard_types.galaxy_shear_xi_plus
+        wtheta = sacc.standard_types.galaxy_density_xi
+
+        source_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(xip):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        lens_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(wtheta):
+            lens_tracers.add(b1)
+            lens_tracers.add(b2)
+
+        sources = list(sorted(source_tracers))
+        lenses = list(sorted(lens_tracers))
+
+        return sources, lenses
+
+
+    def plot_shear_shear(self, s, sources):
+        import sacc
+        import matplotlib.pyplot as plt
+
+        xip = sacc.standard_types.galaxy_shear_xi_plus
+        xim = sacc.standard_types.galaxy_shear_xi_minus
+        nsource = len(sources)
+
+        xi_plot = self.open_output('shear_xi', wrapper=True, figsize=(nsource*3,(nsource)*2))
+
+        theta = s.get_tag('theta', xip)
+        tmin = np.min(theta)
+        tmax = np.max(theta)
+
+        coord = lambda dt,i,j: (nsource+1-j, i) if dt==xim else (j, nsource-1-i)
+
+        for dt in [xip, xim]:
+            for i,src1 in enumerate(sources[:]):
+                for j,src2 in enumerate(sources[:]):
+                    D = s.get_data_points(dt, (src1,src2))
+
+
+                    if len(D)==0:
+                        continue
+
+                    ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
+
+                    scale = 1e-4
+
+                    theta = np.array([d.get_tag('theta') for d in D])
+                    xi    = np.array([d.value for d in D])
+                    err   = np.array([d.get_tag('error') for d  in D])
+                    w = err>0
+                    theta = theta[w]
+                    xi = xi[w]
+                    err = err[w]
+
+                    plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
+                    plt.xscale('log')
+                    plt.ylim(-30,30)
+                    plt.xlim(tmin, tmax)
+
+                    if dt==xim:
+                        if j>0:
+                            ax.set_xticklabels([])
+                        else:
+                            plt.xlabel(r'$\theta$ (arcmin)')
+
+                        if i==nsource-1:
+                            ax.yaxis.tick_right()
+                            ax.yaxis.set_label_position("right")
+                            ax.set_ylabel(r'$\theta \cdot \xi_{-} \cot 10^4)$')
+                        else:
+                            ax.set_yticklabels([])
+                    else:
+                        ax.set_xticklabels([])
+                        if i==nsource-1:
+                            ax.set_ylabel(r'$\theta \cdot \xi_{+} \cdot 10^4$')
+                        else:
+                            ax.set_yticklabels([])
+
+                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                        fontsize=10, verticalalignment='top', bbox=props)
+
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=0,wspace=0)
+
+
+        xi_plot.close()
+
+
+    def plot_shear_density(self, s, sources, lenses):
+        import sacc
+        import matplotlib.pyplot as plt
+
+        gammat = sacc.standard_types.galaxy_shearDensity_xi_t
+        nsource = len(sources)
+        nlens = len(lenses)
+        xi_plot = self.open_output('shearDensity_xi', wrapper=True, figsize=(nlens*3,(nsource)*2))
+
+        theta = s.get_tag('theta', gammat)
+        tmin = np.min(theta)
+        tmax = np.max(theta)
+
+
+        for i,src1 in enumerate(sources):
+            for j,src2 in enumerate(lenses):
+                D = s.get_data_points(gammat, (src1,src2))
+
+                if len(D)==0:
+                    continue
+
+                ax = plt.subplot2grid((nsource, nlens), (i,j))
+
+                scale = 1e-2
+
+                theta = np.array([d.get_tag('theta') for d in D])
+                xi    = np.array([d.value for d in D])
+                err   = np.array([d.get_tag('error') for d  in D])
+                w = err>0
+                theta = theta[w]
+                xi = xi[w]
+                err = err[w]
+
+                plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
+                plt.xscale('log')
+                plt.ylim(-2,2)
+                plt.xlim(tmin, tmax)
+
+                if i==nsource-1:
+                    plt.xlabel(r'$\theta$ (arcmin)')
+                else:
+                    ax.set_xticklabels([])
+
+                if j==0:
+                    plt.ylabel(r"$\theta \cdot \gamma_t \cdot 10^2$")
+                else:
+                    ax.set_yticklabels([])
+
+                props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                    fontsize=10, verticalalignment='top', bbox=props)
+
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=0,wspace=0)
+
+
+        xi_plot.close()
+
+    def plot_density_density(self, s, lenses):
+        import sacc
+        import matplotlib.pyplot as plt
+
+        wtheta = sacc.standard_types.galaxy_density_xi
+        nlens = len(lenses)
+        xi_plot = self.open_output('density_xi', wrapper=True, figsize=(nlens*3,nlens*2))
+
+        theta = s.get_tag('theta', wtheta)
+        tmin = np.min(theta)
+        tmax = np.max(theta)
+
+
+        for i,src1 in enumerate(lenses[:]):
+            for j,src2 in enumerate(lenses[:]):
+                D = s.get_data_points(wtheta, (src1,src2))
+
+                if len(D)==0:
+                    continue
+
+                ax = plt.subplot2grid((nlens, nlens), (i,j))
+
+                scale = 1
+
+                theta = np.array([d.get_tag('theta') for d in D])
+                xi    = np.array([d.value for d in D])
+                err   = np.array([d.get_tag('error') for d  in D])
+                w = err>0
+                theta = theta[w]
+                xi = xi[w]
+                err = err[w]
+
+                plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
+                plt.xscale('log')
+                plt.ylim(-1,1)
+                plt.xlim(tmin, tmax)
+
+                if j>0:
+                    ax.set_xticklabels([])
+                else:
+                    plt.xlabel(r'$\theta$ (arcmin)')
+
+                if i==0:
+                    plt.ylabel(r"$\theta \cdot w$")
+                else:
+                    ax.set_yticklabels([])
+
+                props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                    fontsize=10, verticalalignment='top', bbox=props)
+
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=0,wspace=0)
+        xi_plot.close()
+
+
+
 class TXGammaTFieldCenters(TXTwoPoint):
     """
     This subclass of the standard TXTwoPoint uses the centers
