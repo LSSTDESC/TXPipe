@@ -279,9 +279,9 @@ class TXDiagnosticMaps(PipelineStage):
         source_counts = tomo_file['tomography/source_counts'][:]
         lens_density = lens_counts / area_sq_arcmin
         source_density = source_counts / area_sq_arcmin
-        meta_file.create_dataset('density/n_eff', data=n_eff)
-        meta_file.create_dataset('density/lens_density', data=lens_density)
-        meta_file.create_dataset('density/source_density', data=source_density)
+        meta_file.create_dataset('tracers/n_eff', data=n_eff)
+        meta_file.create_dataset('tracers/lens_density', data=lens_density)
+        meta_file.create_dataset('tracers/source_density', data=source_density)
         meta_file['tracers'].attrs['area'] = area
         meta_file['tracers'].attrs['area_unit'] = 'sq deg'
         copy_attrs('tomography', 'tracers')
