@@ -45,7 +45,7 @@ while True:
     print(s,e)
     zt = photo['photometry/redshift_true'][s:e]
     source_bin = tomo['tomography/source_bin'][s:e]
-    lens_bin = tomo['tomography/source_bin'][s:e]
+    lens_bin = tomo['tomography/lens_bin'][s:e]
 
     for i in range(nbin_source):
         w = np.where(source_bin==i)
