@@ -263,9 +263,8 @@ class TXDiagnosticMaps(PipelineStage):
 
         def copy_attrs(name, out_name):
             for k,v in tomo_file[name].attrs.items():
-                meta_file[name].attrs[k] = v
+                meta_file[out_name].attrs[k] = v
 
-        copy_attrs('tomography', 'tracers')
 
         copy('multiplicative_bias', 'tracers', 'R_gamma_mean')
         copy('multiplicative_bias', 'tracers', 'R_S')
@@ -285,6 +284,7 @@ class TXDiagnosticMaps(PipelineStage):
         meta_file.create_dataset('density/source_density', data=source_density)
         meta_file['tracers'].attrs['area'] = area
         meta_file['tracers'].attrs['area_unit'] = 'sq deg'
+        copy_attrs('tomography', 'tracers')
 
         meta_file.close()
 
