@@ -216,7 +216,7 @@ class TXDiagnosticMaps(PipelineStage):
                 print(f"Map shows total {t} objects with flag {f}")
                 self.save_map(group, f"flag_{f}", p, m, config)
 
-            self.save_metadata_file()
+            self.save_metadata_file(area)
 
 
     def compute_mask(self, depth_count):
