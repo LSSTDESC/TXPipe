@@ -29,6 +29,7 @@ class TXDiagnosticMaps(PipelineStage):
     # containing all the maps
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
+        ('tracer_metdata', HDFFile),
     ]
 
     # Configuration information for this stage
@@ -215,6 +216,8 @@ class TXDiagnosticMaps(PipelineStage):
                 print(f"Map shows total {t} objects with flag {f}")
                 self.save_map(group, f"flag_{f}", p, m, config)
 
+            self.save_metadata_file()
+
 
     def compute_mask(self, depth_count):
         mask = np.zeros_like(depth_count)
@@ -249,6 +252,43 @@ class TXDiagnosticMaps(PipelineStage):
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
         subgroup.create_dataset("value", data=value)
+
+    def save_metadata_file(self, area):
+        area_sq_arcmin = area * 60**2
+        tomo_file = self.open_input('tomography_catalog')
+        meta_file = self.open_output('tracer_metdata')
+        def copy(in_section, out_section, name):
+            x = tomo_file[f'{in_section}/{name}'][:]
+            meta_file.create_dataset(f'{out_section}/{name}', data=x)
+
+        def copy_attrs(name, out_name):
+            for k,v in tomo_file[name].attrs.items():
+                meta_file[name].attrs[k] = v
+
+        copy_attrs('tomography', 'tracers')
+
+        copy('multiplicative_bias', 'tracers', 'R_gamma_mean')
+        copy('multiplicative_bias', 'tracers', 'R_S')
+        copy('multiplicative_bias', 'tracers', 'R_total')
+        copy('tomography', 'tracers', 'N_eff')
+        copy('tomography', 'tracers', 'lens_counts')
+        copy('tomography', 'tracers', 'sigma_e')
+        copy('tomography', 'tracers', 'source_counts')
+        N_eff = tomo_file['tomography/N_eff'][:]
+        n_eff = N_eff / area_sq_arcmin
+        lens_counts = tomo_file['tomography/lens_counts'][:]
+        source_counts = tomo_file['tomography/source_counts'][:]
+        lens_density = lens_counts / area_sq_arcmin
+        source_density = source_counts / area_sq_arcmin
+        meta_file.create_dataset('density/n_eff', data=n_eff)
+        meta_file.create_dataset('density/lens_density', data=lens_density)
+        meta_file.create_dataset('density/source_density', data=source_density)
+        meta_file['tracers'].attrs['area'] = area
+        meta_file['tracers'].attrs['area_unit'] = 'sq deg'
+
+        meta_file.close()
+
+
 
 
 
