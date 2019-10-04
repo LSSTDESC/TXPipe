@@ -1,12 +1,9 @@
-launcher: mini
+launcher: cori-mini
 
 # If the launcher requires it (at the moment that is just for "cori")
 # then this info is used to configure it.  Otherwise it is ignored
 site:
-    cpu: haswell
-    queue: debug
-    max_jobs: 2
-    setup: ${PWD}/test/setup-cori
+  shifter: joezuntz/txpipe
 
 modules: txpipe
 
