@@ -72,6 +72,8 @@ class TXTwoPoint(PipelineStage):
         # Choose which pairs of bins to calculate
         calcs = self.select_calculations(data)
 
+        sys.stdout.flush()
+        
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment,
@@ -307,7 +309,7 @@ class TXTwoPoint(PipelineStage):
                 weight/=2
 
             results.append(Measurement(WTHETA, theta, val, err, npairs, weight, i, j))
-
+        sys.stdout.flush()
         return results
 
 
