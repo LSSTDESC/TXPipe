@@ -13,7 +13,7 @@ TXProtoDC2Mock:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 250000
+    chunk_rows: 110000
 
 TXPhotozStack:
     chunk_rows: 100000
@@ -47,6 +47,7 @@ TXTwoPoint:
     do_shear_shear: True
     do_shear_pos: True
     flip_g2: False
+    verbose: 0
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once

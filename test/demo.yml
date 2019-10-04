@@ -12,7 +12,8 @@ stages:
     - name: TXSelector
       nprocess: 8
     - name: PZPDFMLZ
-      nprocess: 32
+      nprocess: 64
+      nodes: 2
     - name: TXPhotozStack
       nprocess: 8
     - name: TXPhotozPlots
