@@ -326,12 +326,17 @@ class TXBrighterFatterPlot(PipelineStage):
         return data
 
     def compute_binned_stats(self, data):
+        # Which band this corresponds to depends on the
+        # configuration option chosen
         mag = data['mag']
         mmin = self.config['mmin']
         mmax = self.config['mmax']
         nbin = self.config['nbin']
+        # bin edges in magnitude
         edges = np.linspace(mmin, mmax, nbin+1)
         index = np.digitize(mag, edges)
+
+        # Space for all the output values to go in
         dT = np.zeros(nbin)
         errT = np.zeros(nbin)
         e1 = np.zeros(nbin)
@@ -342,11 +347,16 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
         for i in range(nbin):
+            # Select only objects where everything is finite, as well
+            # as only thing in this tomographic bin
             w = np.where((index==i+1) & np.isfinite(data['delta_T']) & np.isfinite(data['delta_e1']) & np.isfinite(data['delta_e2']) )
+            # x-value = mean mag
             m[i] = mag[w].mean()
+            # y values
             dT_i = data['delta_T'][w]
             e1_i = data['delta_e1'][w]
             e2_i = data['delta_e2'][w]
+            # Mean and error on mean of each of these quantities
             dT[i] = dT_i.mean()
             errT[i] = dT_i.std() / np.sqrt(dT_i.size)
             e1[i] = e1_i.mean()
@@ -361,21 +371,27 @@ class TXBrighterFatterPlot(PipelineStage):
         m, dT, errT, e1, err1, e2, err2 = results
         band = self.config['band']
         f = self.open_output('brighter_fatter_plot', wrapper=True, figsize=(6,8))
+        # Top plot - classic BF size plot, the size residual as a function of
+        # magnitude
         ax = plt.subplot(2,1,1)
         plt.errorbar(m, dT, errT, fmt='.')
         plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
         plt.ylim(-0.025, 0.1)
+        # Lower plot - the e1 and e2 residuals as a function of mag
         plt.subplot(2,1,2, sharex=ax)
         plt.errorbar(m, e1, err1, label='$e_1$', fmt='.')
         plt.errorbar(m, e2, err2, label='$e_2$', fmt='.')
         plt.ylabel(r"$e_\mathrm{PSF} - e_\mathrm{model}$")
         plt.xlabel(f"{band}-band magnitude")
+        # May need to adjust this range
         plt.ylim(-0.02, 0.02)
         plt.legend()
         plt.tight_layout()
         f.close()
 
     def save_stats(self, results):
+        # Save all the stats in results for later plotting
+        # Save to standard HDF5 format.
         (m, dT, errT, e1, err1, e2, err2) = results
         f = self.open_output('brighter_fatter_data')
         g = f.create_group('brighter_fatter')
