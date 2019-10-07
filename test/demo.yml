@@ -30,6 +30,7 @@ stages:
       threads_per_process: 64
     - name: TXGammaTDimStars
       threads_per_process: 64
+    - name: TXBrighterFatterPlot
     - name: TXRoweStatistics
       nprocess: 1
       threads_per_process: 64
