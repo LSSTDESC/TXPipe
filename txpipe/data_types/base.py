@@ -28,6 +28,7 @@ class DataFile:
 
     """
     supports_parallel_write = False
+    suffix = None
     def __init__(self, path, mode, extra_provenance=None, validate=True, **kwargs):
         self.path = path
         self.mode = mode

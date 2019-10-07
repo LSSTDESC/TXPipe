@@ -25,7 +25,8 @@ class TXExposureInfo(PipelineStage):
         # find butler by name using this tool.
         # change later to general repo path.
         from desc_dc2_dm_data import get_butler
-
+        from lsst.daf.persistence import NoResults
+        
         run = self.config['dc2_name']
         propId = self.config['propId']
 
@@ -39,30 +40,31 @@ class TXExposureInfo(PipelineStage):
         print(f"Found {n} exposure centers.  Reading exposure info.")
 
         matching_visits = self.find_matching_opsim_visits()
-        print(f"Found list of visits with propId=={propId}")
+        nmatch = len(matching_visits)
+        print(f"Found list of {nmatch} visits with propId=={propId}")
 
-        # columns that we want to save
         float_params =[
             "mjd-obs",
-            "ratel",
-            "dectel",
-            "rotangle",
+            "bore-ra",
+            "bore-dec",
+            "bore-az",
+            "bore-alt",
+            "bore-rotang",
+            "bore-airmass",
+            "humidity",
             "bgmean",
             "bgvar",
             "magzero_rms",
             "colorterm1",
             "colorterm2",
             "colorterm3",
-            "fluxmag0",
-            "fluxmag0err",
             "exptime",
             "darktime",
             
         ]
 
         int_params = [
-            "runnum",
-            "obsid",
+            "expid",
             "magzero_nobj",
             "ap_corr_map_id",
             "psf_id",
@@ -75,7 +77,7 @@ class TXExposureInfo(PipelineStage):
             "rottype",
             "filter",
             "testtype",
-            "imgtype",
+            "obstype",
         ]
         # We can add WCS information here if needed, there is lots
         # of it.
@@ -92,16 +94,19 @@ class TXExposureInfo(PipelineStage):
                 print(f'Reading metadata for exposure {i+1} / {n}')
 
             # Read the metadata for this exposure reference
-            metadata = butler.get('calexp_md', dataId=ref.dataId).toDict()
-
-            if metadata['OBSID'] not in matching_visits:
+            try:
+                metadata = butler.get('calexp_md', dataId=ref.dataId).toDict()
+            except NoResults:
+                continue
+            obsid = int(str(metadata['EXPID'])[:-3])
+            if obsid not in matching_visits:
                 continue
 
             # columns that we want to save to file, from the metadata
             for p in params:
                 data[p].append(metadata[p.upper()])
 
-        m = len(data['ratel'])
+        m = len(data['bore-ra'])
         f = 100. * m / n
         print(f"{m} / {n} visits match propId={propId} ({f:.2f}%)")
 
