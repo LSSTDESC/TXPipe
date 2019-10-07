@@ -17,8 +17,7 @@ from .photoz_mlz import PZPDFMLZ
 from .covariance import TXFourierGaussianCovariance
 from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXDiagnosticPlots
-from .psf_plots import TXRoweStatistics
 from .exposure_info import TXExposureInfo
-from .psf_diagnostics import TXPSFDiagnostics
+from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .twopoint import TXGammaTDimStars
 from .twopoint import TXGammaTBrightStars
