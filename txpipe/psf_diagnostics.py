@@ -290,8 +290,8 @@ class TXBrighterFatterPlot(PipelineStage):
     inputs =[('star_catalog', HDFFile)]
 
     outputs = [
-        ('brighter_fatter', PNGFile),
-        ('brighter_fatter_plot_data', HDFFile),
+        ('brighter_fatter_plot', PNGFile),
+        ('brighter_fatter_data', HDFFile),
     ]
 
     config_options = {
@@ -360,7 +360,7 @@ class TXBrighterFatterPlot(PipelineStage):
         import matplotlib.pyplot as plt
         m, dT, errT, e1, err1, e2, err2 = results
         band = self.config['band']
-        f = self.open_output('brighter_fatter', wrapper=True, figsize=(6,8))
+        f = self.open_output('brighter_fatter_plot', wrapper=True, figsize=(6,8))
         ax = plt.subplot(2,1,1)
         plt.errorbar(m, dT, errT, fmt='.')
         plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
@@ -377,7 +377,7 @@ class TXBrighterFatterPlot(PipelineStage):
 
     def save_stats(self, results):
         (m, dT, errT, e1, err1, e2, err2) = results
-        f = self.open_output('brighter_fatter_plot_data')
+        f = self.open_output('brighter_fatter_data')
         g = f.create_group('brighter_fatter')
         g.attrs['band'] = self.config['band']
         g.create_dataset('mag', data=m)
