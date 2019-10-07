@@ -93,8 +93,7 @@ class TXMetacalGCRInput(PipelineStage):
             'measured_e1', 'measured_e2',
             'model_e1', 'model_e2',
             'measured_T', 'model_T',
-            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
-        ]
+            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
 
         # eliminate duplicates before loading
         cols = list(set(shear_cols + photo_cols + star_cols))
@@ -167,6 +166,8 @@ class TXMetacalGCRInput(PipelineStage):
         star_data['ra'] = data['ra'][star]
         star_data['dec'] = data['dec'][star]
         star_data['id'] = data['id'][star]
+        for band in 'ugrizy':
+            star_data[f'{band}_mag'] = data[f'{band}_mag'][star]
 
         for b in 'ugrizy':
             star_data[f'{b}_mag'] = data[f'{b}_mag'][star]
