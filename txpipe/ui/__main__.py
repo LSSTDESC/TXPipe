@@ -2,4 +2,5 @@ from . import gui
 from .. import *
 
 if __name__ == '__main__':
-    gui.main()
+    print("This UI code is experimental and not yet ready for use.")
+#    gui.main()
