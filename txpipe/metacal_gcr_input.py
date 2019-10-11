@@ -216,6 +216,10 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     ]
 
     config_options = {
+        "metacal_cat": "dc2_metacal_griz_run2.1i_dr1b",
+        "metacal_dir": "/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final",
+        "photo_cat": "dc2_object_run2.1i_dr1b",
+        "photo_dir": "/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final",
     }
 
     def run(self):
@@ -226,15 +230,11 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # not in a TXPipe format.
         # shear_cat = GCRCatalogs.load_catalog('dc2_object_run2.1.1i_with_metacal.yaml')
         # photo_cat = shear_cat
-        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
-            {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
-            })
+        shear_cat = GCRCatalogs.load_catalog(self.config['metacal_cat'],
+            {'base_dir': self.config['metacal_dir']})
 
-        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
-            {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
-             })
+        photo_cat = GCRCatalogs.load_catalog(self.config['photo_cat'],
+            {'base_dir': self.config['photo_dir']})
 
 
         available = shear_cat.list_all_quantities()
