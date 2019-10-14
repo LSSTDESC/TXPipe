@@ -216,11 +216,14 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     ]
 
     config_options = {
-        "metacal_cat": "dc2_metacal_griz_run2.1i_dr1b",
-        "metacal_dir": "/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final",
-        "photo_cat": "dc2_object_run2.1i_dr1b",
-        "photo_dir": "/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final",
+        'photo_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/calexp-v1:coadd-dr1b-v1/object_table_parquet'
+        'photo_is_hdf5': False,
+        'metacal_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary'
     }
+
+    # dirs for in2p3
+    # '/sps/lsst/data/desc/catalogs/Run2.1i/dpdd/calexp-v1:coadd-dr1b-v1/object_table_parquet',
+    # "/sps/lsst/dataproducts/desc/DC2/Run2.1i/w_2019_19-v2/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary",
 
     def run(self):
         import GCRCatalogs
@@ -230,11 +233,23 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # not in a TXPipe format.
         # shear_cat = GCRCatalogs.load_catalog('dc2_object_run2.1.1i_with_metacal.yaml')
         # photo_cat = shear_cat
-        shear_cat = GCRCatalogs.load_catalog(self.config['metacal_cat'],
-            {'base_dir': self.config['metacal_dir']})
+        metacal_dir = self.config['metacal_dir']
+        photo_dir = self.config['photo_dir']
 
-        photo_cat = GCRCatalogs.load_catalog(self.config['photo_cat'],
-            {'base_dir': self.config['photo_dir']})
+        metacal_config = {'base_dir': metacal_dir}
+        photo_config = {'base_dir': photo_dir}
+
+        if photo_is_hdf5:
+            photo_config['filename_pattern'] = 'object_tract_\\d+\\.hdf5'
+            photo_config['subclass_name'] = 'dc2_object.DC2ObjectCatalog'
+
+        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b', metacal_config)
+        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b', photo_config)
+        # ?? :
+        #'filename_pattern': 'object_tract_\\d+\\.hdf5',
+        #'subclass_name': 'dc2_object.DC2ObjectCatalog'
+
+
 
 
         available = shear_cat.list_all_quantities()
