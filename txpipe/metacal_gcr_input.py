@@ -31,6 +31,7 @@ class TXMetacalGCRInput(PipelineStage):
 
     def run(self):
         import GCRCatalogs
+        import GCR
         import h5py
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whol pipeline and so is
@@ -216,9 +217,9 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     ]
 
     config_options = {
-        'photo_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/calexp-v1:coadd-dr1b-v1/object_table_parquet'
+        'photo_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/calexp-v1:coadd-dr1b-v1/object_table_parquet',
         'photo_is_hdf5': False,
-        'metacal_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary'
+        'metacal_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary',
     }
 
     # dirs for in2p3
@@ -239,7 +240,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         metacal_config = {'base_dir': metacal_dir}
         photo_config = {'base_dir': photo_dir}
 
-        if photo_is_hdf5:
+        if self.config['photo_is_hdf5']:
             photo_config['filename_pattern'] = 'object_tract_\\d+\\.hdf5'
             photo_config['subclass_name'] = 'dc2_object.DC2ObjectCatalog'
 
@@ -248,7 +249,11 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # ?? :
         #'filename_pattern': 'object_tract_\\d+\\.hdf5',
         #'subclass_name': 'dc2_object.DC2ObjectCatalog'
-
+        composite_cat = GCR.CompositeCatalog(
+            [shear_cat, photo_cat], 
+            ['dc2_metacal_griz_run2.1i_dr1b', 'dc2_object_run2.1i_dr1b'],
+            ['id','id']
+        )
 
 
 
@@ -329,11 +334,10 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         for col in list(photo_data.keys()):
             photo_data[col] = photo_data[col][photo_ind]
 
-        n = len(shear_data['id'])
-        data = {**shear_data, **photo_data}
+        n = len(composite_cat)
 
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in [data]:
+        for data in composite_cat.get_quantities(photo_cols + shear_cols return_iterator=True):
             # Some columns have different names in input than output
             self.rename_columns(data)
             # The star ellipticities are derived from the measured moments for now
