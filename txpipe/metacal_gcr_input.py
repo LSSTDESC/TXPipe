@@ -312,24 +312,28 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
         ]
 
+        print("Counting stars")
         is_star = photo_cat.get_quantities(['calib_psf_used'])['calib_psf_used']
         nstar = is_star.sum()
         print(f"Found {nstar} stars")
 
         photo_cols = list(set(photo_cols + star_cols))
-
+        cols = photo_cols + shear_cols
         # eliminate duplicates before loading
-
         start = 0
         star_start = 0
         shear_output = None
         photo_output = None
 
+        print("Counting all objects")
         n = len(composite_cat)
 
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in composite_cat.get_quantities(photo_cols + shear_cols, return_iterator=True):
+        print("Starting data load")
+        for data in composite_cat.get_quantities(cols, return_iterator=True):
             # Some columns have different names in input than output
+            chunk_size = len(data['id'])
+            print(f"Loaded chunk of size {chunk_size}")
             self.rename_columns(data)
             # The star ellipticities are derived from the measured moments for now
             star_data = self.compute_star_data(data)
