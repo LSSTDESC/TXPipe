@@ -227,6 +227,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     # "/sps/lsst/dataproducts/desc/DC2/Run2.1i/w_2019_19-v2/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary",
 
     def run(self):
+        import GCR
         import GCRCatalogs
         import h5py
         # Open input data.  We do not treat this as a formal "input"
@@ -311,6 +312,10 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
         ]
 
+        is_star = photo_cat.get_quantities(['calib_psf_used'])['calib_psf_used']
+        nstar = is_star.sum()
+        print(f"Found {nstar} stars")
+
         photo_cols = list(set(photo_cols + star_cols))
 
         # eliminate duplicates before loading
@@ -320,24 +325,10 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         shear_output = None
         photo_output = None
 
-        print("Loading {} columns from photo cat".format(len(photo_cols)))
-        photo_data = photo_cat.get_quantities(photo_cols)
-
-        print("Loading {} columns from shear cat".format(len(shear_cols)))
-        shear_data = shear_cat.get_quantities(shear_cols)
-
-
-        shear_ind, photo_ind = intersecting_indices(shear_data['id'], photo_data['id'])
-        
-        for col in list(shear_data.keys()):
-            shear_data[col] = shear_data[col][shear_ind]
-        for col in list(photo_data.keys()):
-            photo_data[col] = photo_data[col][photo_ind]
-
         n = len(composite_cat)
 
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in composite_cat.get_quantities(photo_cols + shear_cols return_iterator=True):
+        for data in composite_cat.get_quantities(photo_cols + shear_cols, return_iterator=True):
             # Some columns have different names in input than output
             self.rename_columns(data)
             # The star ellipticities are derived from the measured moments for now
@@ -349,7 +340,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             if shear_output is None:
                 shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
                 photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
-                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
+                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, nstar)
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
