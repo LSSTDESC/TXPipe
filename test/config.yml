@@ -46,7 +46,7 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    flip_g2: False
+    flip_g2: True  # use true when using metacal shears
     verbose: 0
 
 TXDiagnosticMaps:

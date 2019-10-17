@@ -10,8 +10,8 @@ def example():
     ]
 
     sacc_files = [
-        'cosmodc2-2.1i-outputs/twopoint_data_flip.sacc',
-        'cosmodc2-2.1.1i-outputs/twopoint_data_flip.sacc',
+        'cosmodc2-2.1i-outputs/twopoint_data.sacc',
+        'cosmodc2-2.1.1i-outputs/twopoint_data.sacc',
         ]
     cosmo = pyccl.Cosmology.read_yaml("./test/fiducial_cosmology.yml")
 
