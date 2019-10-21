@@ -12,3 +12,8 @@ def metacal_band_variants(bands, *names):
         for band in bands
         for name in names
     ]
+
+def apply_response(R,g1,g2):
+    R11 = R[0][0]
+    R22  = R[1][1]
+    return g1/R11, g2/R22

@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
-from .utils.stats import ParallelStatsCalculator, combine_variances
+from .utils.stats import ParallelStatsCalculator
+from .utils.metacal import apply_response
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -39,6 +40,10 @@ class TXDiagnosticPlots(PipelineStage):
         # They are all expected to be python coroutines - generators that
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
+        
+        global r_tot
+        r_tot = self.load_response()
+        
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
 
         # Start off each of the plotters.  This will make them all run up to the
@@ -79,6 +84,17 @@ class TXDiagnosticPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
+    
+    def load_response(self):
+        # Not doing this in parallel because it's a small set of numbers 
+        f = self.open_input('tomography_catalog')
+        r_total = f['multiplicative_bias/R_total'][:]
+        f.close()
+        
+        #Take the average response across the bins
+        mean_rtot  = np.mean(r_total,axis=0)
+        
+        return mean_rtot
 
     def plot_psf_shear(self):
         # mean shear in bins of PSF
@@ -109,10 +125,10 @@ class TXDiagnosticPlots(PipelineStage):
                 w2 = np.where(b2==i)
 
                 
-                calc11.add_data(i, data['mcal_g1'][qual_cut][w1])
-                calc12.add_data(i, data['mcal_g2'][qual_cut][w1])
-                calc21.add_data(i, data['mcal_g1'][qual_cut][w2])
-                calc22.add_data(i, data['mcal_g2'][qual_cut][w2])
+                calc11.add_data(i, data['mcal_g1'][qual_cut][w1]/r_tot[0][0])
+                calc12.add_data(i, data['mcal_g2'][qual_cut][w1]/r_tot[1][1])
+                calc21.add_data(i, data['mcal_g1'][qual_cut][w2]/r_tot[0][0])
+                calc22.add_data(i, data['mcal_g2'][qual_cut][w2]/r_tot[1][1])
                 mu1.add_data(i, data['mcal_psf_g1'][qual_cut][w1])
                 mu2.add_data(i, data['mcal_psf_g2'][qual_cut][w2])
         count11, mean11, var11 = calc11.collect(self.comm, mode='gather')
@@ -204,8 +220,8 @@ class TXDiagnosticPlots(PipelineStage):
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
                 mu.add_data(i, data['mcal_psf_T_mean'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -265,8 +281,8 @@ class TXDiagnosticPlots(PipelineStage):
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
                 mu.add_data(i, data['mcal_s2n'][qual_cut][w])
                            
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -324,8 +340,8 @@ class TXDiagnosticPlots(PipelineStage):
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
                 mu.add_data(i, data['mcal_T'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -376,13 +392,13 @@ class TXDiagnosticPlots(PipelineStage):
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
         
-            b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
+            b1 = np.digitize(data['mcal_g1'][qual_cut]/r_tot[0][0], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')

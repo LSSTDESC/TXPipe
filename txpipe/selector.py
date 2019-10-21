@@ -86,7 +86,7 @@ class TXSelector(PipelineStage):
         # Build a classifier used to put objects into tomographic bins
         classifier, features = self.build_tomographic_classifier()        
 
-        # Colums we need from the photometry data.
+        # Columns we need from the photometry data.
         # We use the photometry data to select the lenses.
         # Although this will be one by redmagic soon.
         phot_cols = ['g_mag', 'r_mag', 'i_mag']
