@@ -26,6 +26,7 @@ def make_axis(i, j, nx, ny, axes):
 def full_3x2pt_plots(sacc_files, labels, cosmo=None, theory_sacc_files=None, theory_labels=None):
     sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
+    theory_sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files]
 
     plot_theory = (cosmo is not None)
 
