@@ -1,0 +1,19 @@
+language: python
+
+python:
+  - "3.7"
+  - "3.8"
+
+install:
+  - pip install -r requirements.txt
+  - wget -O txpipe-example-data.tar.gz  "https://www.dropbox.com/s/401e8ngmb36zr40/txpipe-example-data.tar.gz?dl=1"
+  - tar -zxvf txpipe-example-data.tar.gz
+
+cache:
+  - pip: true
+  - directories:
+    - data/example
+
+script:
+  - ceci test/travis.yml
+  - cat pipeline.log
