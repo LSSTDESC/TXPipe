@@ -26,11 +26,11 @@ def make_axis(i, j, nx, ny, axes):
 def full_3x2pt_plots(sacc_files, labels, cosmo=None, theory_sacc_files=None, theory_labels=None):
     sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
-    theory_sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files]
-
     plot_theory = (cosmo is not None)
 
+
     if plot_theory:
+        theory_sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files]
         # By default, just plot a single theory line, not one per observable line
         # Label it "Theory"
         if theory_sacc_files is None:
@@ -103,7 +103,7 @@ def make_plot(corr, obs_data, theory_data):
         nx = nbin_lens
         ymin = 2e-4
         ymax = 1e-1
-        name = r'\gamma_T(\theta)'
+        name = r'w(\theta)'
         auto_only = True
         half_only = False
 
