@@ -13,7 +13,7 @@ TXProtoDC2Mock:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 110000
+    chunk_rows: 100000
 
 TXPhotozStack:
     chunk_rows: 100000

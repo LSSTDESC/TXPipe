@@ -1,5 +1,3 @@
 module swap PrgEnv-intel PrgEnv-gnu
 module unload craype-hugepages2M
 module load python/3.7-anaconda-2019.07
-export DATA=./cosmodc2-2.1.1i-inputs
-. env/bin/activate

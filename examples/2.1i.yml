@@ -19,24 +19,25 @@ stages:
     - name: TXPhotozPlots
     - name: TXDiagnosticMaps
       nprocess: 8
-#    - name: TXMapPlots
     - name: TXRandomCat
     - name: TXTwoPoint
       nprocess: 2
+      nodes: 2
       threads_per_process: 64
     - name: TXTwoPointPlots
-#    - name: TXDiagnosticPlots
-#      nprocess: 8
-#    - name: TXGammaTBrightStars
-#      threads_per_process: 64
-#    - name: TXGammaTDimStars
-#      threads_per_process: 64
-#    - name: TXBrighterFatterPlot
-#    - name: TXRoweStatistics
-#      nprocess: 2
-#      threads_per_process: 64
-#    - name: TXPSFDiagnostics
-#      nprocess: 1
+    - name: TXMapPlots
+    - name: TXDiagnosticPlots
+      nprocess: 8
+    - name: TXGammaTBrightStars
+      threads_per_process: 64
+    - name: TXGammaTDimStars
+      threads_per_process: 64
+    - name: TXBrighterFatterPlot
+    - name: TXRoweStatistics
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 64
+    - name: TXPSFDiagnostics
 
 output_dir: cosmodc2-2.1i-outputs
 config: test/config.yml

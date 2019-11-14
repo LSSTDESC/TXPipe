@@ -1,57 +1,54 @@
-launcher: local
-
-# If the launcher requires it (at the moment that is just for "cori")
-# then this info is used to configure it.  Otherwise it is ignored
-site:
-    cpu: haswell
-    queue: debug
-    max_jobs: 2
-    setup: ${PWD}/test/setup-cori
-
-modules: txpipe
-
-
+# Stages to run
 stages:
     - name: TXSelector
-      nprocess: 1
     - name: PZPDFMLZ
-      nprocess: 1
     - name: TXPhotozStack
-      nprocess: 1
     - name: TXDiagnosticMaps
-      nprocess: 1
     - name: TXRandomCat
-      nprocess: 1
     - name: TXTwoPoint
-      nprocess: 1
     - name: TXDiagnosticPlots
-      nprocess: 1
     - name: TXGammaTFieldCenters
-      nprocess: 1
-#    - name: TXGammaTBrightStars
-#      nprocess: 1
-#    - name: TXGammaTDimStars
-#      nprocess: 1
-#    - name: TXRoweStatistics
-#      nprocess: 1
-output_dir: outputs/
+    - name: TXGammaTBrightStars
+    - name: TXGammaTDimStars
+    - name: TXRoweStatistics
 
-config: test/config.yml
+# Where to put outputs
+output_dir: data/example/outputs
+
+# How to run the pipeline (which site, e.g. cori, local=laptop)
+launcher: local
+
+# Information for the pipeline about how many jobs it can
+# run and how it can do so
+site:
+  max_threads: 1
+
+# python modules to import to search for stages
+modules: txpipe
+
+# configuration settings
+config: examples/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ${DATA}/shear_catalog.hdf5
-    photometry_catalog: ${DATA}/photometry_catalog.hdf5
-    photoz_trained_model: ${DATA}/cosmoDC2_trees_i25.3.npy
-    fiducial_cosmology: test/fiducial_cosmology.yml
-    calibration_table: ${DATA}/sample_cosmodc2_w10year_errors.dat
-    exposures: ${DATA}/exposures.hdf5
-    star_catalog: ${DATA}/star_catalog.hdf5
+    shear_catalog: data/example/inputs/shear_catalog.hdf5
+    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    exposures: data/example/inputs/exposures.hdf5
+    star_catalog: data/example/inputs/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
 
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
 resume: True
-log_dir: ./test/logs
-pipeline_log: log.txt
+# where to put output logs for individual stages
+log_dir: data/example/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log.txt
+
 
