@@ -31,6 +31,7 @@ class TXMetacalGCRInput(PipelineStage):
 
     def run(self):
         import GCRCatalogs
+        import GCR
         import h5py
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whol pipeline and so is
@@ -216,9 +217,17 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     ]
 
     config_options = {
+        'photo_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/calexp-v1:coadd-dr1b-v1/object_table_parquet',
+        'photo_is_hdf5': False,
+        'metacal_dir': '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1i/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary',
     }
 
+    # dirs for in2p3
+    # '/sps/lsst/data/desc/catalogs/Run2.1i/dpdd/calexp-v1:coadd-dr1b-v1/object_table_parquet',
+    # "/sps/lsst/dataproducts/desc/DC2/Run2.1i/w_2019_19-v2/dpdd/coadd-dr1b-v1:metacal-dr1b-v2/metacal_table_summary",
+
     def run(self):
+        import GCR
         import GCRCatalogs
         import h5py
         # Open input data.  We do not treat this as a formal "input"
@@ -226,15 +235,27 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # not in a TXPipe format.
         # shear_cat = GCRCatalogs.load_catalog('dc2_object_run2.1.1i_with_metacal.yaml')
         # photo_cat = shear_cat
-        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b',
-            {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/metacal_table_summary/final'
-            })
+        metacal_dir = self.config['metacal_dir']
+        photo_dir = self.config['photo_dir']
 
-        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b',
-            {'base_dir': 
-            '/global/projecta/projectdirs/lsst/production/DC2_ImSim/Run2.1.1i/dpdd/calexp-v1:coadd-v1/object_table_summary/final'
-             })
+        metacal_config = {'base_dir': metacal_dir}
+        photo_config = {'base_dir': photo_dir}
+
+        if self.config['photo_is_hdf5']:
+            photo_config['filename_pattern'] = 'object_tract_\\d+\\.hdf5'
+            photo_config['subclass_name'] = 'dc2_object.DC2ObjectCatalog'
+
+        shear_cat = GCRCatalogs.load_catalog('dc2_metacal_griz_run2.1i_dr1b', metacal_config)
+        photo_cat = GCRCatalogs.load_catalog('dc2_object_run2.1i_dr1b', photo_config)
+        # ?? :
+        #'filename_pattern': 'object_tract_\\d+\\.hdf5',
+        #'subclass_name': 'dc2_object.DC2ObjectCatalog'
+        composite_cat = GCR.CompositeCatalog(
+            [shear_cat, photo_cat], 
+            ['dc2_metacal_griz_run2.1i_dr1b', 'dc2_object_run2.1i_dr1b'],
+            ['id','id']
+        )
+
 
 
         available = shear_cat.list_all_quantities()
@@ -291,35 +312,28 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
         ]
 
+        print("Counting stars")
+        is_star = photo_cat.get_quantities(['calib_psf_used'])['calib_psf_used']
+        nstar = is_star.sum()
+        print(f"Found {nstar} stars")
+
         photo_cols = list(set(photo_cols + star_cols))
-
+        cols = photo_cols + shear_cols
         # eliminate duplicates before loading
-
         start = 0
         star_start = 0
         shear_output = None
         photo_output = None
 
-        print("Loading {} columns from photo cat".format(len(photo_cols)))
-        photo_data = photo_cat.get_quantities(photo_cols)
-
-        print("Loading {} columns from shear cat".format(len(shear_cols)))
-        shear_data = shear_cat.get_quantities(shear_cols)
-
-
-        shear_ind, photo_ind = intersecting_indices(shear_data['id'], photo_data['id'])
-        
-        for col in list(shear_data.keys()):
-            shear_data[col] = shear_data[col][shear_ind]
-        for col in list(photo_data.keys()):
-            photo_data[col] = photo_data[col][photo_ind]
-
-        n = len(shear_data['id'])
-        data = {**shear_data, **photo_data}
+        print("Counting all objects")
+        n = len(composite_cat)
 
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in [data]:
+        print("Starting data load")
+        for data in composite_cat.get_quantities(cols, return_iterator=True):
             # Some columns have different names in input than output
+            chunk_size = len(data['id'])
+            print(f"Loaded chunk of size {chunk_size}")
             self.rename_columns(data)
             # The star ellipticities are derived from the measured moments for now
             star_data = self.compute_star_data(data)
@@ -330,7 +344,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             if shear_output is None:
                 shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
                 photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
-                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
+                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, nstar)
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
