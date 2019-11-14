@@ -55,7 +55,7 @@ inputs:
     shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/shear_catalog.hdf5
     photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/photometry_catalog.hdf5
     photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/cosmoDC2_trees_i25.3.npy
-    fiducial_cosmology: test/fiducial_cosmology.yml
+    fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/sample_cosmodc2_w10year_errors.dat
     star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/star_catalog.hdf5
     exposures: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/exposures.hdf5
