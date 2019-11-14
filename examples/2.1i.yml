@@ -1,7 +1,7 @@
+# This larger run has nearly 79M galaxies in
 launcher: cori-mini
 
-# If the launcher requires it (at the moment that is just for "cori")
-# then this info is used to configure it.  Otherwise it is ignored
+# These site options tell the launcher to use shifter
 site:
     shifter: joezuntz/txpipe-dev
 
@@ -20,6 +20,7 @@ stages:
     - name: TXDiagnosticMaps
       nprocess: 8
     - name: TXRandomCat
+      nodes: 1
     - name: TXTwoPoint
       nprocess: 2
       nodes: 2
@@ -39,7 +40,7 @@ stages:
       threads_per_process: 64
     - name: TXPSFDiagnostics
 
-output_dir: cosmodc2-2.1i-outputs
+output_dir: data/2.1i/outputs
 config: test/config.yml
 
 
@@ -51,15 +52,15 @@ config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: cosmodc2-2.1i-inputs/shear_catalog.hdf5
-    photometry_catalog: cosmodc2-2.1i-inputs/photometry_catalog.hdf5
-    photoz_trained_model: cosmodc2-2.1i-inputs/cosmoDC2_trees_i25.3.npy
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/shear_catalog.hdf5
+    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/photometry_catalog.hdf5
+    photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: test/fiducial_cosmology.yml
-    calibration_table: cosmodc2-2.1i-inputs/sample_cosmodc2_w10year_errors.dat
-    star_catalog: cosmodc2-2.1i-inputs/star_catalog.hdf5
-    exposures: cosmodc2-2.1i-inputs/exposures.hdf5
+    calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/sample_cosmodc2_w10year_errors.dat
+    star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/star_catalog.hdf5
+    exposures: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/exposures.hdf5
 
 resume: True
-log_dir: cosmodc2-2.1i-outputs/logs
-pipeline_log: log.txt
+log_dir: data/2.1i/logs
+pipeline_log: data/2.1i/log.txt
 

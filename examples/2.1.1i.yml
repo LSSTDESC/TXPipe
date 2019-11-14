@@ -1,3 +1,4 @@
+# This moderately-sized run has 7M galaxies in
 launcher: cori-mini
 
 # If the launcher requires it (at the moment that is just for "cori")
@@ -13,7 +14,8 @@ modules: txpipe
 # Sometimes (like for the TXDiagnosticMaps stage) which uses a lot of memory,
 # we want to use fewer processes but keep them on that one node.
 # Sometimes for slower codes we want to use lots of proceses on multiple nodes
-# and sometimes we have thread-enabled codes that want fewer processes but lots of threads
+# and sometimes we have thread-enabled codes that want fewer processes but lots of threads.
+# Setting nodes to any value (even 1) enables using srun on cori, as does using multiple threads.
 stages:
     - name: TXSelector
       nprocess: 8
@@ -23,7 +25,6 @@ stages:
     - name: TXPhotozStack
       nprocess: 8
     - name: TXPhotozPlots
-      nprocess: 1
     - name: TXDiagnosticMaps
     - name: TXMapPlots
     - name: TXRandomCat
@@ -38,10 +39,8 @@ stages:
       threads_per_process: 64
     - name: TXBrighterFatterPlot
     - name: TXRoweStatistics
-      nprocess: 1
       threads_per_process: 64
     - name: TXPSFDiagnostics
-      nprocess: 1
 
 output_dir: data/2.1.1i/outputs
 config: examples/config.yml
