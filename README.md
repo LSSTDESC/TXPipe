@@ -7,12 +7,12 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 It builds on the ceci repository for the infrastructure.
 
 Permissions
-===========
+-----------
 
 Email or Slack Joe Zuntz to be added to the development team.
 
 Goals
-======
+-----
 
 - Test using parsl for some of our larger more complex analyses.
 - Build and test a prototype pipeline infrastructure.
@@ -20,34 +20,8 @@ Goals
 - Perform and publish a DC2 3x2pt analysis.
 
 
-Getting the code and some test data
-====================================
-
-Get the TXPipe code like this:
-```bash
-git clone https://github.com/LSSTDESC/TXPipe
-cd TXPipe
-```
-
-You can get some input test data like this:
-
-```bash
-
-mkdir -p data/example/inputs
-cd data/example/inputs
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/exposures.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/star_catalog.hdf5
-
-cd ../../..
-```
-
-
-Dependencies
-============
+Getting Dependencies
+--------------------
 
 TXPipe requires python>=3.6.
 
@@ -57,6 +31,8 @@ The various stages within it depend on the python packages listed in requirement
 ```
 pip install -r requirements.txt
 ```
+
+**NOTE** The current pipeline version needs the *minirunner* branch of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -98,10 +74,37 @@ If you want to run pipelines under MPI, you can install a minimal environment on
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install ceci
+pip install -e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
 ```
 
 Then use shifter to run the actual jobs.
+
+
+
+Getting the code and some test data
+-----------------------------------
+
+Get the TXPipe code like this:
+```bash
+git clone https://github.com/LSSTDESC/TXPipe
+cd TXPipe
+```
+
+You can get some input test data like this:
+
+```bash
+
+mkdir -p data/example/inputs
+cd data/example/inputs
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf5
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf5
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/exposures.hdf5
+curl -O https://portal.nersc.gov/project/lsst/WeakLensing/star_catalog.hdf5
+
+cd ../../..
+```
 
 
 Running the pipeline
@@ -134,7 +137,7 @@ Example larger runs, which can be run on NERSC under interactive jobs (for now) 
 # To get an interactive job:
 salloc -N 2  -q interactive -C haswell -t 01:00:00 -A m1727
 # <wait for allocation>
-ceci examples/2.1.i.yml
+ceci examples/2.1.1i.yml
 ```
 
 A larger run is in `examples/2.1i.yml`.
