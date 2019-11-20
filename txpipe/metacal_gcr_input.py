@@ -283,6 +283,13 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             photo_out_cols.append(f'{band}_mag')
             photo_out_cols.append(f'{band}_mag_err')
             photo_out_cols.append(f'snr_{band}')
+        
+        # Additionally grab the psf model from the photometry (object) catalog
+        psf_cols = ['IxxPSF',
+            'IxyPSF',
+            'IyyPSF',
+        ]
+        photo_cols+=psf_cols
 
             
         # Columns we need to load in for the star data - 
@@ -301,8 +308,8 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             'IyyPSF',
         ]
 
-        # For shear we just copy the input direct to the output
-        shear_out_cols = shear_cols + ['ra', 'dec']
+        # For shear we just copy the input direct to the output with the additional psf model columns
+        shear_out_cols = shear_cols + ['ra', 'dec'] + psf_cols
 
         # The star output names are mostly different tot he input names
         star_out_cols = ['id', 'ra', 'dec', 
@@ -317,7 +324,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         nstar = is_star.sum()
         print(f"Found {nstar} stars")
 
-        photo_cols = list(set(photo_cols + star_cols))
+        photo_cols = list(set(photo_cols + star_cols + psf_cols))
         cols = photo_cols + shear_cols
         # eliminate duplicates before loading
         start = 0
