@@ -47,10 +47,12 @@ def git_diff():
         return "ERROR_NO_GIT_DIFF_AVAILABLE"
     # We use git diff head because it shows all differences,
     # including any that have been staged but not committed.
-    diff = subprocess.run('git diff HEAD'.split(),
-        cwd=dirname, universal_newlines=True, timeout=5,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
+    try:
+        diff = subprocess.run('git diff HEAD'.split(),
+                cwd=dirname, universal_newlines=True, timeout=5,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except UnicodeDecodeError:
+        return "ERROR_NO_GIT_DIFF_AVAILABLE"
     # You can't interleave stdout and stderr when you do capture_output,
     # unfortunately.
     return diff.stdout
@@ -61,8 +63,11 @@ def git_current_revision():
     dirname = get_caller_directory(grandparent=True)
     if dirname is None:
         return "ERROR_NO_GIT_REV_AVAILABLE"
-    rev = subprocess.run('git rev-parse HEAD'.split(),
-        cwd=dirname, universal_newlines=True, timeout=5,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+        rev = subprocess.run('git rev-parse HEAD'.split(),
+            cwd=dirname, universal_newlines=True, timeout=5,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except UnicodeDecodeError:
+        return "ERROR_NO_GIT_REV_AVAILABLE"
     return rev.stdout
 
