@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
-from .utils.metacal import apply_response
+from .utils.metacal import calculate_selection_bias, calculate_multiplicative_bias, apply_metacal_response
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -29,6 +29,7 @@ class TXDiagnosticPlots(PipelineStage):
 
     config_options = {
         'chunk_rows': 100000,
+        'delta_gamma': 0.02
     }
 
     def run(self):
@@ -40,9 +41,6 @@ class TXDiagnosticPlots(PipelineStage):
         # They are all expected to be python coroutines - generators that
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
-        
-        global r_tot
-        r_tot = self.load_response()
         
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
 
@@ -56,7 +54,9 @@ class TXDiagnosticPlots(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = self.config['chunk_rows']
-        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g2','mcal_psf_T_mean','mcal_s2n','mcal_T']
+        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+                     'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
+                     'mcal_s2n_2m']
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
 
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
@@ -84,17 +84,6 @@ class TXDiagnosticPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
-    
-    def load_response(self):
-        # Not doing this in parallel because it's a small set of numbers 
-        f = self.open_input('tomography_catalog')
-        r_total = f['multiplicative_bias/R_total'][:]
-        f.close()
-        
-        #Take the average response across the bins
-        mean_rtot  = np.mean(r_total,axis=0)
-        
-        return mean_rtot
 
     def plot_psf_shear(self):
         # mean shear in bins of PSF
@@ -125,10 +114,10 @@ class TXDiagnosticPlots(PipelineStage):
                 w2 = np.where(b2==i)
 
                 
-                calc11.add_data(i, data['mcal_g1'][qual_cut][w1]/r_tot[0][0])
-                calc12.add_data(i, data['mcal_g2'][qual_cut][w1]/r_tot[1][1])
-                calc21.add_data(i, data['mcal_g1'][qual_cut][w2]/r_tot[0][0])
-                calc22.add_data(i, data['mcal_g2'][qual_cut][w2]/r_tot[1][1])
+                calc11.add_data(i, data['mcal_g1'][qual_cut][w1])
+                calc12.add_data(i, data['mcal_g2'][qual_cut][w1])
+                calc21.add_data(i, data['mcal_g1'][qual_cut][w2])
+                calc22.add_data(i, data['mcal_g2'][qual_cut][w2])
                 mu1.add_data(i, data['mcal_psf_g1'][qual_cut][w1])
                 mu2.add_data(i, data['mcal_psf_g2'][qual_cut][w2])
         count11, mean11, var11 = calc11.collect(self.comm, mode='gather')
@@ -220,8 +209,8 @@ class TXDiagnosticPlots(PipelineStage):
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
                 mu.add_data(i, data['mcal_psf_T_mean'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -281,8 +270,8 @@ class TXDiagnosticPlots(PipelineStage):
             for i in range(size):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
                 mu.add_data(i, data['mcal_s2n'][qual_cut][w])
                            
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -319,6 +308,9 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        
+        delta_gamma = self.config['delta_gamma']
+        
         size = 10
         T_edges = np.linspace(0,1,size+1)
         T_mid = 0.5*(T_edges[1:] + T_edges[:-1])
@@ -335,19 +327,33 @@ class TXDiagnosticPlots(PipelineStage):
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data['mcal_T'][qual_cut], T_edges) - 1
+            b = np.digitize(data['mcal_T'][qual_cut], T_edges) - 1
+            b_1p = np.digitize(data['mcal_T_1p'][qual_cut], T_edges) - 1 
+            b_2p = np.digitize(data['mcal_T_2p'][qual_cut], T_edges) - 1
+            b_1m = np.digitize(data['mcal_T_1m'][qual_cut], T_edges) - 1 
+            b_2m = np.digitize(data['mcal_T_2m'][qual_cut], T_edges) - 1
 
             for i in range(size):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
+                w = np.where(b==i)
+                w_1p = np.where(b_1p==i)
+                w_2p = np.where(b_2p==i)
+                w_1m = np.where(b_1m==i)
+                w_2m = np.where(b_2m==i)
+                # Calculate the shear response 
+                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
+                
+                calc1.add_data(i, g1)
+                calc2.add_data(i, g2)
                 mu.add_data(i, data['mcal_T'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
-
+        
         if self.rank == 0:
             std1 = np.sqrt(var1/count1)
             std2 = np.sqrt(var2/count2)
@@ -392,13 +398,13 @@ class TXDiagnosticPlots(PipelineStage):
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
         
-            b1 = np.digitize(data['mcal_g1'][qual_cut]/r_tot[0][0], edges) - 1
+            b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w]/r_tot[0][0])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w]/r_tot[1][1])
+                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
+                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
