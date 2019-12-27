@@ -37,6 +37,7 @@ class TXSelector(PipelineStage):
     ]
 
     config_options = {
+        'input_pz': False,
         'bands': 'riz', # bands from metacal to use
         'T_cut':float,
         's2n_cut':float,
@@ -82,9 +83,9 @@ class TXSelector(PipelineStage):
         bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
 
-
-        # Build a classifier used to put objects into tomographic bins
-        classifier, features = self.build_tomographic_classifier()        
+        if self.config['input_pz'] == False:
+            # Build a classifier used to put objects into tomographic bins
+            classifier, features = self.build_tomographic_classifier()        
 
         # Colums we need from the photometry data.
         # We use the photometry data to select the lenses.
@@ -95,6 +96,8 @@ class TXSelector(PipelineStage):
         shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
         shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+        if self.config['input_pz'] == True:
+            shear_cols += ['mean_z']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -102,7 +105,6 @@ class TXSelector(PipelineStage):
         # each get different chunks of the data 
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -117,9 +119,13 @@ class TXSelector(PipelineStage):
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data), (_, _, phot_data) in zip(iter_shear, iter_phot):
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
-
-            # Select most likely tomographic source bin
-            pz_data = self.apply_classifier(classifier, features, shear_data)
+            
+            if self.config['input_pz'] == False:
+              # Select most likely tomographic source bin
+              pz_data = self.apply_classifier(classifier, features, shear_data)
+            
+            if self.config['input_pz'] == True:
+              pz_data = self.apply_simple_redshift_cut(shear_data)
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
@@ -244,6 +250,22 @@ class TXSelector(PipelineStage):
             pz_data[f'zbin{v}'] = classifier.predict(data)
         return pz_data
 
+    def apply_simple_redshift_cut(self, shear_data):
+        variants = ['', '_1p', '_2p', '_1m', '_2m']
+
+        pz_data = {}
+
+        for v in variants:
+            zz = shear_data['mean_z{v}']
+
+            pz_data_v = np.zeros(len(zz)) -1
+            for zi in range(len(self.config['zbin_edges'])-1):
+                mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
+                pz_data_v[mask_zbin] = zi
+            
+            pz_data[f'zbin{v}'] = pz_data_v
+
+        return pz_data
 
     def calculate_tomography(self, pz_data, shear_data):
         """
