@@ -82,6 +82,7 @@ class TXSelector(PipelineStage):
         # various config options
         bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
+        #print(self.config['input_pz'])
 
         if self.config['input_pz'] == False:
             # Build a classifier used to put objects into tomographic bins
