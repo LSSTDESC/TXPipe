@@ -99,6 +99,11 @@ class TXSelector(PipelineStage):
         shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
         if self.config['input_pz'] == True:
             shear_cols += ['mean_z']
+            shear_cols += ['mean_z_1p']
+            shear_cols += ['mean_z_1m']
+            shear_cols += ['mean_z_2p']
+            shear_cols += ['mean_z_2m']
+
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -257,7 +262,7 @@ class TXSelector(PipelineStage):
         pz_data = {}
 
         for v in variants:
-            zz = shear_data['mean_z{v}']
+            zz = shear_data[f'mean_z{v}']
 
             pz_data_v = np.zeros(len(zz)) -1
             for zi in range(len(self.config['zbin_edges'])-1):
