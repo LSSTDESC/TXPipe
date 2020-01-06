@@ -192,7 +192,8 @@ class TXRoweStatistics(PipelineStage):
         'max_sep':250.0,
         'nbins':20,
         'bin_slop':0.01,
-        'sep_units':'arcmin',        
+        'sep_units':'arcmin',
+        'psf_size_units':'sigma'
     }
 
     def run(self):
@@ -224,7 +225,10 @@ class TXRoweStatistics(PipelineStage):
         e2 = g['measured_e2'][:]
         de1 = e1 - g['model_e1'][:]
         de2 = e2 - g['model_e2'][:]
-        T_frac = (g['measured_T'][:] - g['model_T'][:]) / g['measured_T'][:]
+        if self.config['psf_size_units']=='T':
+            T_frac = (g['measured_T'][:] - g['model_T'][:]) / g['measured_T'][:]
+        elif self.config['psf_size_units']=='sigma':
+            T_frac = (g['measured_T'][:]**2 - g['model_T'][:]**2) / g['measured_T'][:]**2
 
         e_psf = np.array((e1, e2))
         de_psf = np.array((de1, de2))
