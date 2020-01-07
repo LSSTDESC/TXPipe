@@ -90,6 +90,8 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        
+        delta_gamma = self.config['delta_gamma']
         size = 11
         psf_g_edges = np.linspace(-5e-5, 5e-5, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
@@ -106,18 +108,33 @@ class TXDiagnosticPlots(PipelineStage):
                 break
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
+    
             b1 = np.digitize(data['mcal_psf_g1'][qual_cut], psf_g_edges) - 1
+                
             b2 = np.digitize(data['mcal_psf_g2'][qual_cut], psf_g_edges) - 1
 
             for i in range(size):
-                w1 = np.where(b1==i)
-                w2 = np.where(b2==i)
-
+                w1 = np.where(b1==i)   
                 
-                calc11.add_data(i, data['mcal_g1'][qual_cut][w1])
-                calc12.add_data(i, data['mcal_g2'][qual_cut][w1])
-                calc21.add_data(i, data['mcal_g1'][qual_cut][w2])
-                calc22.add_data(i, data['mcal_g2'][qual_cut][w2])
+                w2 = np.where(b2==i)
+                
+                # Calculate the shear response (no selection bias for psf quantities)
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                        data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1_1, g2_1 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1]) 
+                
+                calc11.add_data(i, g1_1)
+                calc12.add_data(i, g2_1)
+                
+                # Calculate the shear response 
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                        data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1_2, g2_2 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                
+                calc21.add_data(i, g1_2)
+                calc22.add_data(i, g2_2)
                 mu1.add_data(i, data['mcal_psf_g1'][qual_cut][w1])
                 mu2.add_data(i, data['mcal_psf_g2'][qual_cut][w2])
         count11, mean11, var11 = calc11.collect(self.comm, mode='gather')
@@ -176,7 +193,7 @@ class TXDiagnosticPlots(PipelineStage):
         plt.plot(mu2,[0]*len(line22),color='black')
         plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='blue')
         plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='red')
-        plt.xlabel("PSF g1")
+        plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
 
@@ -188,6 +205,8 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making PSF size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        
+        delta_gamma = self.config['delta_gamma']
         size = 11
         psf_g_edges = np.linspace(0.2, 0.5, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
@@ -203,14 +222,21 @@ class TXDiagnosticPlots(PipelineStage):
             
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
-
+    
             b1 = np.digitize(data['mcal_psf_T_mean'][qual_cut], psf_g_edges) - 1
 
             for i in range(size):
                 w = np.where(b1==i)
+                
+                # Calculate the shear response 
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1, g2 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
+                
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, g1)
+                calc2.add_data(i, g2)
                 mu.add_data(i, data['mcal_psf_T_mean'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -249,6 +275,8 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making mean shear SNR plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        
+        delta_gamma = self.config['delta_gamma']
         size = 10
         snr_edges = np.logspace(1,3,size+1)
         snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
@@ -266,12 +294,28 @@ class TXDiagnosticPlots(PipelineStage):
 #            qual_cut |= data['lens_bin'] !=-1
 
             b1 = np.digitize(data['mcal_s2n'][qual_cut], snr_edges) - 1
+            b_1p = np.digitize(data['mcal_s2n_1p'][qual_cut], snr_edges) - 1 
+            b_2p = np.digitize(data['mcal_s2n_2p'][qual_cut], snr_edges) - 1
+            b_1m = np.digitize(data['mcal_s2n_1m'][qual_cut], snr_edges) - 1 
+            b_2m = np.digitize(data['mcal_s2n_2m'][qual_cut], snr_edges) - 1
 
             for i in range(size):
                 w = np.where(b1==i)
+                w_1p = np.where(b_1p==i)
+                w_2p = np.where(b_2p==i)
+                w_1m = np.where(b_1m==i)
+                w_2m = np.where(b_2m==i)
+                
+                
+                # Calculate the shear response 
+                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, g1)
+                calc2.add_data(i, g2)
                 mu.add_data(i, data['mcal_s2n'][qual_cut][w])
                            
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -383,6 +427,8 @@ class TXDiagnosticPlots(PipelineStage):
         print('plotting histogram')
         import matplotlib.pyplot as plt
         from scipy import stats
+        
+        delta_gamma = self.config['delta_gamma']
         bins = 50
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
@@ -399,12 +445,45 @@ class TXDiagnosticPlots(PipelineStage):
 #            qual_cut |= data['lens_bin'] !=-1
         
             b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
+            b1_1p = np.digitize(data['mcal_g1_1p'][qual_cut], edges) - 1 
+            b1_2p = np.digitize(data['mcal_g1_2p'][qual_cut], edges) - 1
+            b1_1m = np.digitize(data['mcal_g1_1m'][qual_cut], edges) - 1 
+            b1_2m = np.digitize(data['mcal_g1_2m'][qual_cut], edges) - 1
+            
+            b2 = np.digitize(data['mcal_g2'][qual_cut], edges) - 1
+            b2_1p = np.digitize(data['mcal_g2_1p'][qual_cut], edges) - 1 
+            b2_2p = np.digitize(data['mcal_g2_2p'][qual_cut], edges) - 1
+            b2_1m = np.digitize(data['mcal_g2_1m'][qual_cut], edges) - 1 
+            b2_2m = np.digitize(data['mcal_g2_2m'][qual_cut], edges) - 1
 
             for i in range(bins):
-                w = np.where(b1==i)
+                w1 = np.where(b1==i)
+                w1_1p = np.where(b1_1p==i)
+                w1_2p = np.where(b1_2p==i)
+                w1_1m = np.where(b1_1m==i)
+                w1_2m = np.where(b1_2m==i)
+                
+                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_g1'][qual_cut][w])
-                calc2.add_data(i, data['mcal_g2'][qual_cut][w])
+                calc1.add_data(i, g1)
+                
+                
+                w2 = np.where(b2==i)
+                w2_1p = np.where(b2_1p==i)
+                w2_2p = np.where(b2_2p==i)
+                w2_1m = np.where(b2_1m==i)
+                w2_2m = np.where(b2_2m==i)
+                
+                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w2_1p, w2_2p,w2_1m, w2_2m, delta_gamma)
+                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
+                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                
+                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                calc2.add_data(i, g2)
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
@@ -430,6 +509,8 @@ class TXDiagnosticPlots(PipelineStage):
     def plot_snr_histogram(self):
         print('plotting snr histogram')
         import matplotlib.pyplot as plt
+        
+        delta_gamma = self.config['delta_gamma']
         bins = 50
         edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
