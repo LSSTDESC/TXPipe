@@ -129,7 +129,7 @@ class TXDiagnosticPlots(PipelineStage):
                 
                 # Calculate the shear response 
                 R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                        data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'],data['mcal_g2_2m'][qual_cut],delta_gamma)
+                                        data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1_2, g2_2 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
                 
@@ -230,7 +230,7 @@ class TXDiagnosticPlots(PipelineStage):
                 
                 # Calculate the shear response 
                 R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 
@@ -310,7 +310,7 @@ class TXDiagnosticPlots(PipelineStage):
                 # Calculate the shear response 
                 S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
                 R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'],data['mcal_g2_2m'][qual_cut],delta_gamma)
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 # Do more things here to establish
@@ -387,7 +387,7 @@ class TXDiagnosticPlots(PipelineStage):
                 # Calculate the shear response 
                 S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
                 R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 
