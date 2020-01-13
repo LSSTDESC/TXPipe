@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
-from .utils.metacal import calculate_selection_bias, calculate_multiplicative_bias, apply_metacal_response
+from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -93,7 +93,7 @@ class TXDiagnosticPlots(PipelineStage):
         
         delta_gamma = self.config['delta_gamma']
         size = 11
-        psf_g_edges = np.linspace(-5e-5, 5e-5, size+1)
+        psf_g_edges = np.linspace(-0.024, 0.044, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
         calc11 = ParallelStatsCalculator(size)
         calc12 = ParallelStatsCalculator(size)
@@ -119,8 +119,8 @@ class TXDiagnosticPlots(PipelineStage):
                 w2 = np.where(b2==i)
                 
                 # Calculate the shear response (no selection bias for psf quantities)
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                        data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                        data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1_1, g2_1 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1]) 
                 
@@ -128,8 +128,8 @@ class TXDiagnosticPlots(PipelineStage):
                 calc12.add_data(i, g2_1)
                 
                 # Calculate the shear response 
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                        data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                        data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1_2, g2_2 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
                 
@@ -172,13 +172,13 @@ class TXDiagnosticPlots(PipelineStage):
         plt.subplot(2,1,1)
 
         
-        plt.plot(mu1,line11,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope11, std_err11))
+        plt.plot(mu1,line11,color='red',label=r"$m=%.4f \pm %.4f$" %(slope11, std_err11))
         plt.plot(mu1,[0]*len(line11),color='black')
 
-        plt.plot(mu1,line12,color='red',label=r"$m=%.4f \pm %.4f$" %(slope12, std_err12))
+        plt.plot(mu1,line12,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope12, std_err12))
         plt.plot(mu1,[0]*len(line12),color='black')
-        plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+',color='blue')
-        plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+',color='red')
+        plt.errorbar(mu1+dx, mean11, std11, label='g1', fmt='+',color='red')
+        plt.errorbar(mu1-dx, mean12, std12, label='g2', fmt='+',color='blue')
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
@@ -186,13 +186,13 @@ class TXDiagnosticPlots(PipelineStage):
 
         plt.subplot(2,1,2)
 
-        plt.plot(mu2,line21,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope21, std_err21))
+        plt.plot(mu2,line21,color='red',label=r"$m=%.4f \pm %.4f$" %(slope21, std_err21))
         plt.plot(mu2,[0]*len(line21),color='black')
 
-        plt.plot(mu2,line22,color='red',label=r"$m=%.4f \pm %.4f$" %(slope22, std_err22))
+        plt.plot(mu2,line22,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope22, std_err22))
         plt.plot(mu2,[0]*len(line22),color='black')
-        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='blue')
-        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='red')
+        plt.errorbar(mu2+dx, mean21, std21, label='g1', fmt='+',color='red')
+        plt.errorbar(mu2-dx, mean22, std22, label='g2', fmt='+',color='blue')
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
@@ -208,7 +208,7 @@ class TXDiagnosticPlots(PipelineStage):
         
         delta_gamma = self.config['delta_gamma']
         size = 11
-        psf_g_edges = np.linspace(0.2, 0.5, size+1)
+        psf_g_edges = np.linspace(0.3, 0.6, size+1)
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
@@ -229,8 +229,8 @@ class TXDiagnosticPlots(PipelineStage):
                 w = np.where(b1==i)
                 
                 # Calculate the shear response 
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, 0, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 
@@ -255,17 +255,17 @@ class TXDiagnosticPlots(PipelineStage):
 
             fig = self.open_output('g_psf_T', wrapper=True)
 
-            plt.plot(mu,line1,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
+            plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
             plt.plot(mu,[0]*len(mu),color='black')
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
             plt.legend(loc='best')
 
-            plt.plot(mu-dx,line2,color='red',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
+            plt.plot(mu-dx,line2,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
             plt.plot(mu,[0]*len(mu),color='black')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
-            plt.xlim(0.2,0.5)
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
             plt.xlabel("PSF T")
             plt.ylabel("Mean g")
+            plt.ylim(-0.0015,0.0015)
             plt.legend(loc='best')
             plt.tight_layout()
             fig.close()
@@ -278,7 +278,7 @@ class TXDiagnosticPlots(PipelineStage):
         
         delta_gamma = self.config['delta_gamma']
         size = 10
-        snr_edges = np.logspace(1,3,size+1)
+        snr_edges = np.logspace(.1,2.5,size+1)
         snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
@@ -308,9 +308,9 @@ class TXDiagnosticPlots(PipelineStage):
                 
                 
                 # Calculate the shear response 
-                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 # Do more things here to establish
@@ -327,20 +327,21 @@ class TXDiagnosticPlots(PipelineStage):
             std2 = np.sqrt(var2/count2)
             
             dx = 0.05*(snr_mid[1] - snr_mid[0])
-            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
-            line1 = slope1*(mu)+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
-            line2 = slope2*(mu)+intercept2
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu),mean1)
+            line1 = slope1*(np.log10(mu))+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu),mean2)
+            line2 = slope2*(np.log10(mu))+intercept2
             fig = self.open_output('g_snr', wrapper=True)
             
-            plt.plot(mu,line1,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
+            plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
             plt.plot(mu,[0]*len(mu),color='black')
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
 
-            plt.plot(mu,line2,color='red',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
+            plt.plot(mu,line2,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
             plt.plot(mu,[0]*len(mu-dx),color='black')
             plt.xscale('log')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
+            plt.ylim(-0.0015,0.0015)
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
             plt.xlabel("SNR")
             plt.ylabel("Mean g")
             plt.legend()
@@ -356,7 +357,7 @@ class TXDiagnosticPlots(PipelineStage):
         delta_gamma = self.config['delta_gamma']
         
         size = 10
-        T_edges = np.linspace(0,1,size+1)
+        T_edges = np.linspace(0.1,2.1,size+1)
         T_mid = 0.5*(T_edges[1:] + T_edges[:-1])
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
@@ -384,9 +385,9 @@ class TXDiagnosticPlots(PipelineStage):
                 w_1m = np.where(b_1m==i)
                 w_2m = np.where(b_2m==i)
                 # Calculate the shear response 
-                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
                 
@@ -403,19 +404,21 @@ class TXDiagnosticPlots(PipelineStage):
             std2 = np.sqrt(var2/count2)
             
             dx = 0.05*(T_mid[1] - T_mid[0])
-            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
-            line1 = slope1*(mu)+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
-            line2 = slope2*(mu)+intercept2
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu),mean1)
+            line1 = slope1*(np.log10(mu))+intercept1
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu),mean2)
+            line2 = slope2*(np.log10(mu))+intercept2
             fig = self.open_output('g_T', wrapper=True)
             
-            plt.plot(mu,line1,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
+            plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
             plt.plot(mu,[0]*len(mu),color='black')
-            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='blue')
+            plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
             
-            plt.plot(mu,line2,color='red',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
+            plt.plot(mu,line2,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
             plt.plot(mu,[0]*len(mu),color='black')
-            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='red')
+            plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
+            plt.ylim(-0.0015,0.0015)
+            plt.xscale('log')
             plt.xlabel("galaxy size T")
             plt.ylabel("Mean g")
             plt.legend()
@@ -463,9 +466,9 @@ class TXDiagnosticPlots(PipelineStage):
                 w1_1m = np.where(b1_1m==i)
                 w1_2m = np.where(b1_2m==i)
                 
-                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
                 # Do more things here to establish
@@ -478,9 +481,9 @@ class TXDiagnosticPlots(PipelineStage):
                 w2_1m = np.where(b2_1m==i)
                 w2_2m = np.where(b2_2m==i)
                 
-                S = calculate_selection_bias(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w2_1p, w2_2p,w2_1m, w2_2m, delta_gamma)
-                R = calculate_multiplicative_bias(data['mcal_g1_1p'],data['mcal_g1_2p'],data['mcal_g1_1m'],data['mcal_g1_2m'],
-                                                  data['mcal_g2_1p'],data['mcal_g2_2p'],data['mcal_g2_1m'],data['mcal_g2_2m'],[qual_cut],delta_gamma)
+                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w2_1p, w2_2p,w2_1m, w2_2m, delta_gamma)
+                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
                 g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
                 calc2.add_data(i, g2)

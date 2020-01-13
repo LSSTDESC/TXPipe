@@ -13,7 +13,7 @@ def metacal_band_variants(bands, *names):
         for name in names
     ]
 
-def calculate_selection_bias(g1, g2, sel_1p, sel_2p, sel_1m, sel_2m, delta_gamma):
+def calculate_selection_response(g1, g2, sel_1p, sel_2p, sel_1m, sel_2m, delta_gamma):
     import numpy as np
     
     S = np.ones((2,2))
@@ -30,15 +30,15 @@ def calculate_selection_bias(g1, g2, sel_1p, sel_2p, sel_1m, sel_2m, delta_gamma
     
     return S
 
-def calculate_multiplicative_bias(g1_1p,g1_2p,g1_1m,g1_2m,g2_1p,g2_2p,g2_1m,g2_2m,sel_00,delta_gamma):
+def calculate_shear_response(g1_1p,g1_2p,g1_1m,g1_2m,g2_1p,g2_2p,g2_1m,g2_2m,delta_gamma):
     import numpy as np 
     
-    n = len(g1_1p[sel_00])
+    n = len(g1_1p)
     R =  R = np.zeros((n,2,2))
-    R_11 = (g1_1p[sel_00] - g1_1m[sel_00]) / delta_gamma
-    R_12 = (g1_2p[sel_00] - g1_2m[sel_00]) / delta_gamma
-    R_21 = (g2_1p[sel_00] - g2_1m[sel_00]) / delta_gamma
-    R_22 = (g2_2p[sel_00] - g2_2m[sel_00]) / delta_gamma
+    R_11 = (g1_1p - g1_1m) / delta_gamma
+    R_12 = (g1_2p - g1_2m) / delta_gamma
+    R_21 = (g2_1p - g2_1m) / delta_gamma
+    R_22 = (g2_2p - g2_2m) / delta_gamma
     
     R[:,0,0] = R_11
     R[:,0,1] = R_12
