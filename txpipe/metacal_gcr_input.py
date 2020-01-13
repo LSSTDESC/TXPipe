@@ -252,8 +252,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         #'subclass_name': 'dc2_object.DC2ObjectCatalog'
         composite_cat = GCR.CompositeCatalog(
             [shear_cat, photo_cat], 
-            ['dc2_metacal_griz_run2.1i_dr1b', 'dc2_object_run2.1i_dr1b'],
-            ['id','id']
+            ['metacal', 'object'],
         )
 
 
