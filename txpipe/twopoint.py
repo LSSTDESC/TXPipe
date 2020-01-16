@@ -321,7 +321,8 @@ class TXTwoPoint(PipelineStage):
 
         mask = (data['source_bin'] == i)
         
-        g1, g2 = apply_response(data['R_total'][i],data['mcal_g1'][mask],data['mcal_g2'][mask])
+        # We use S=0 here because we have already included it in R_total
+        g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
 
         return g1, g2, mask
 
