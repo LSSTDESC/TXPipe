@@ -1,5 +1,5 @@
 # This moderately-sized run has 7M galaxies in
-launcher: cori-mini
+launcher: local
 
 # If the launcher requires it (at the moment that is just for "cori")
 # then this info is used to configure it.  Otherwise it is ignored
@@ -18,31 +18,22 @@ modules: txpipe
 # Setting nodes to any value (even 1) enables using srun on cori, as does using multiple threads.
 stages:
     - name: TXSelector
-      nprocess: 8
     - name: PZPDFMLZ
-      nprocess: 64
-      nodes: 2
     - name: TXPhotozStack
-      nprocess: 8
     - name: TXPhotozPlots
     - name: TXDiagnosticMaps
     - name: TXMapPlots
     - name: TXRandomCat
     - name: TXTwoPoint
-      threads_per_process: 64
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-      nprocess: 8
     - name: TXGammaTBrightStars
-      threads_per_process: 64
     - name: TXGammaTDimStars
-      threads_per_process: 64
     - name: TXBrighterFatterPlot
     - name: TXRoweStatistics
-      threads_per_process: 64
     - name: TXPSFDiagnostics
 
-output_dir: data/2.1.1i/outputs
+output_dir: data/2.2i-t3828/outputs
 config: examples/config.yml
 
 # On NERSC, set this before running:
@@ -50,14 +41,14 @@ config: examples/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/shear_catalog.hdf5
-    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/photometry_catalog.hdf5
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/shear_catalog.hdf5
+    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/photometry_catalog.hdf5
     photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/sample_cosmodc2_w10year_errors.dat
-    star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/star_catalog.hdf5
+    star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/star_catalog.hdf5
 
 resume: True
-log_dir: data/2.1.1i/logs
-pipeline_log: data/2.1.1i/log.txt
+log_dir: data/2.2i-t3828/logs
+pipeline_log: data/2.2i-t3828/log.txt
 
