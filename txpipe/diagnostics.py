@@ -278,13 +278,21 @@ class TXDiagnosticPlots(PipelineStage):
         from scipy import stats
         
         delta_gamma = self.config['delta_gamma']
+
+        # Parameters of the binning in SNR
         size = 10
         snr_edges = np.logspace(.1,2.5,size+1)
         snr_mid = 0.5*(snr_edges[1:] + snr_edges[:-1])
+
+        # We have to work out the mean g1, g2, 
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
         mu = ParallelStatsCalculator(size)
 
+        # This is the function we use to decide which bin in SNR
+        # objects are in.  We will pass this function to the
+        # ParallelCalibrator object so it can work out the associated
+        # selection bias
         def select(data, i):
             # This column lookup will automatically be replaced by
             # mcal_s2n_1p, etc, where relevant
@@ -294,36 +302,48 @@ class TXDiagnosticPlots(PipelineStage):
             w = np.where( (data['source_bin'] !=-1) & (s2n>snr_edges[i]) & (s2n<snr_edges[i+1]))
             return w
 
+        # We need one calibrator per bin (in SNR), because each will have its own response
         calibrators = [ParallelCalibrator(select, delta_gamma) for i in range(size)]
             
         while True:
+            # This happens when we have loaded a new data chunk
             data = yield
 
+            # Indicates the end of the data stream
             if data is None:
                 break
             
             for i in range(size):
+                # For each bin, find the selection of objects going into that bin
+                # As a side effect this also lets ouur Calibrator objects build up
+                # the total shear and selection response for this bin
                 w = calibrators[i].add_data(data, i)
-                g1 = data['mcal_g1'][w]
-                g2 = data['mcal_g2'][w]
-                
-                calc1.add_data(i, g1)
-                calc2.add_data(i, g2)
+
+                # Accumulate the data falling into this bin
+                calc1.add_data(i, data['mcal_g1'][w])
+                calc2.add_data(i, data['mcal_g2'][w])
                 mu.add_data(i, data['mcal_s2n'][w])
                            
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
 
+        # Now we have the complete sample we can get the calibration matrix
+        # to apply to it.
         for i in range(size):
+            # Tell the Calibrators to work out the total responses
             R, S, _ = calibrators[i].collect()
+            # Total response is just the sum of the two pieces
             R += S
+            # Apply the matrix in full
             g = [mean1[i], mean2[i]]
             g = np.linalg.inv(R) @ g
+            # and unpack means again
             mean1[i] = g[0]
             mean2[i] = g[1]
 
         if self.rank == 0:
+            # Get the error on the mean
             std1 = np.sqrt(var1/count1)
             std2 = np.sqrt(var2/count2)
             
