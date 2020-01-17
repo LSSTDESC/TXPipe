@@ -53,7 +53,8 @@ class TXSelector(PipelineStage):
         'r_hi_cut':19.6,
         'i_lo_cut':17.5,
         'i_hi_cut':19.9,
-        'r_i_cut':2.0
+        'r_i_cut':2.0,
+        'random_seed': 42,
     }
 
     def run(self):
@@ -197,7 +198,8 @@ class TXSelector(PipelineStage):
             print(f"Training set: {ntrain_bin} objects in tomographic bin {i}")
 
         # Can be replaced with any classifier
-        classifier = RandomForestClassifier(max_depth=10, max_features=None, n_estimators=20)
+        classifier = RandomForestClassifier(max_depth=10, max_features=None, n_estimators=20,
+            random_state=self.config['random_seed'])
         classifier.fit(training_data, training_bin)
 
         # Sklearn fitters can be pickled, which means they can also be sent through
@@ -476,7 +478,7 @@ class TXSelector(PipelineStage):
         
         variant = data.suffix
         if verbose:
-            print(f"Bin {bin_index} ({variant}) {f1:.1%} flag, {f2:.1%} size, {f3:.1%} SNR, {f4:.1%} z")
+            print(f"Bin {bin_index} ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} z")
 
         return sel
 
