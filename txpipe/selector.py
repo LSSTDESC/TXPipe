@@ -278,7 +278,7 @@ class TXSelector(PipelineStage):
 
 
         for i in range(nbin):
-            _, _, _, sel_00 = calibrators[i].add_data(data, i)
+            sel_00 = calibrators[i].add_data(data, i)
             tomo_bin[sel_00] = i
             counts[i] = sel_00.sum()
 

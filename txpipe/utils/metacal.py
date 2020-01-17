@@ -163,7 +163,7 @@ class ParallelCalibrator:
 
         if isinstance(sel_00, tuple):
             # tupe returned from np.where
-            n = len(sel_00)[0]
+            n = len(sel_00[0])
         elif np.issubdtype(sel_00.dtype, np.integer):
             # integer array
             n = len(sel_00)
@@ -191,9 +191,7 @@ class ParallelCalibrator:
         self.S.append(S)
         self.counts.append(n)
 
-        print(S)
-
-        return g1, g2, R, sel_00
+        return sel_00
 
     def collect(self, comm=None):
         """
