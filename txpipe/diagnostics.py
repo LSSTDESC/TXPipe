@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
-from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response
+from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, ParallelCalibrator
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -101,6 +101,7 @@ class TXDiagnosticPlots(PipelineStage):
         calc22 = ParallelStatsCalculator(size)
         mu1 = ParallelStatsCalculator(size)
         mu2 = ParallelStatsCalculator(size)
+
         while True:
             data = yield
 
@@ -283,53 +284,56 @@ class TXDiagnosticPlots(PipelineStage):
         calc1 = ParallelStatsCalculator(size)
         calc2 = ParallelStatsCalculator(size)
         mu = ParallelStatsCalculator(size)
-        
+
+        def select(data, i):
+            # This column lookup will automatically be replaced by
+            # mcal_s2n_1p, etc, where relevant
+            # We don't currently store the source_bin
+            # values for the metacal variants, but we could do
+            s2n = data['mcal_s2n']
+            w = np.where( (data['source_bin'] !=-1) & (s2n>snr_edges[i]) & (s2n<snr_edges[i+1]))
+            return w
+
+        calibrators = [ParallelCalibrator(select, delta_gamma) for i in range(size)]
+            
         while True:
             data = yield
 
             if data is None:
                 break
             
-            qual_cut = data['source_bin'] !=-1
-#            qual_cut |= data['lens_bin'] !=-1
-
-            b1 = np.digitize(data['mcal_s2n'][qual_cut], snr_edges) - 1
-            b_1p = np.digitize(data['mcal_s2n_1p'][qual_cut], snr_edges) - 1 
-            b_2p = np.digitize(data['mcal_s2n_2p'][qual_cut], snr_edges) - 1
-            b_1m = np.digitize(data['mcal_s2n_1m'][qual_cut], snr_edges) - 1 
-            b_2m = np.digitize(data['mcal_s2n_2m'][qual_cut], snr_edges) - 1
-
             for i in range(size):
-                w = np.where(b1==i)
-                w_1p = np.where(b_1p==i)
-                w_2p = np.where(b_2p==i)
-                w_1m = np.where(b_1m==i)
-                w_2m = np.where(b_2m==i)
+                w = calibrators[i].add_data(data, i)
+                g1 = data['mcal_g1'][w]
+                g2 = data['mcal_g2'][w]
                 
-                
-                # Calculate the shear response 
-                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w_1p, w_2p,w_1m, w_2m, delta_gamma)
-                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                
-                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w], data['mcal_g2'][qual_cut][w])
-                # Do more things here to establish
                 calc1.add_data(i, g1)
                 calc2.add_data(i, g2)
-                mu.add_data(i, data['mcal_s2n'][qual_cut][w])
+                mu.add_data(i, data['mcal_s2n'][w])
                            
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         _, mu, _ = mu.collect(self.comm, mode='gather')
+
+        for i in range(size):
+            R, S, _ = calibrators[i].collect()
+            R += S
+            g = [mean1[i], mean2[i]]
+            g = np.linalg.inv(R) @ g
+            mean1[i] = g[0]
+            mean2[i] = g[1]
 
         if self.rank == 0:
             std1 = np.sqrt(var1/count1)
             std2 = np.sqrt(var2/count2)
             
             dx = 0.05*(snr_mid[1] - snr_mid[0])
-            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu),mean1)
+            good = (mu>0) & (np.isfinite(mean1))
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu[good]),mean1[good])
             line1 = slope1*(np.log10(mu))+intercept1
-            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu),mean2)
+
+            good = (mu>0) & (np.isfinite(mean2))
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu[good]),mean2[good])
             line2 = slope2*(np.log10(mu))+intercept2
             fig = self.open_output('g_snr', wrapper=True)
             
@@ -340,7 +344,7 @@ class TXDiagnosticPlots(PipelineStage):
             plt.plot(mu,line2,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
             plt.plot(mu,[0]*len(mu-dx),color='black')
             plt.xscale('log')
-            plt.ylim(-0.0015,0.0015)
+            # plt.ylim(-0.0015,0.0015)
             plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
             plt.xlabel("SNR")
             plt.ylabel("Mean g")
