@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import NumberDensityStats
-from .utils.metacal import metacal_variants, metacal_band_variants
+from .utils.metacal import metacal_variants, metacal_band_variants, ParallelCalibrator
 import numpy as np
 import warnings
 
@@ -38,6 +38,7 @@ class TXSelector(PipelineStage):
 
     config_options = {
         'bands': 'riz', # bands from metacal to use
+        'verbose': False,
         'T_cut':float,
         's2n_cut':float,
         'delta_gamma': float,
@@ -81,6 +82,7 @@ class TXSelector(PipelineStage):
         # various config options
         bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
+        delta_gamma = self.config['delta_gamma']
 
 
         # Build a classifier used to put objects into tomographic bins
@@ -112,6 +114,7 @@ class TXSelector(PipelineStage):
 
         selection_biases = []
         number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
+        calibrators = [ParallelCalibrator(self.select, delta_gamma) for i in range(nbin_source)]
 
 
         # Loop through the input data, processing it chunk by chunk
@@ -123,7 +126,7 @@ class TXSelector(PipelineStage):
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
-            tomo_bin, R, S, counts = self.calculate_tomography(pz_data, shear_data)
+            tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calibrators)
 
             # Select lens bin objects
             lens_gals = self.select_lens(phot_data)
@@ -133,15 +136,10 @@ class TXSelector(PipelineStage):
 
             # Accumulate information on the number counts and the selection biases.
             # These will be brought together at the end.
-            number_density_stats.add_data(shear_data, tomo_bin, R, lens_gals)
-
-            # The selection biases are the mean over all the data, so we
-            # build them up as we go along and average them at the end.
-            selection_biases.append((S,counts))
+            number_density_stats.add_data(shear_data, tomo_bin, lens_gals)
 
         # Do the selection bias averaging and output that too.
-        S, source_counts = self.average_selection_bias(selection_biases)
-        self.write_global_values(output_file, S, source_counts, number_density_stats)
+        self.write_global_values(output_file, calibrators, number_density_stats)
 
         # Save and complete
         output_file.close()
@@ -245,7 +243,7 @@ class TXSelector(PipelineStage):
         return pz_data
 
 
-    def calculate_tomography(self, pz_data, shear_data):
+    def calculate_tomography(self, pz_data, shear_data, calibrators):
         """
         Select objects to go in each tomographic bin and their calibration.
 
@@ -259,120 +257,30 @@ class TXSelector(PipelineStage):
         """
         delta_gamma = self.config['delta_gamma']
         nbin = len(self.config['zbins'])
-
         n = len(shear_data['mcal_g1'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
-
-        # The two biases - the response to shear R and the
-        # selection bias S.
-        R = np.zeros((n,2,2))
-        S = np.zeros((nbin,2,2))
+        R = np.zeros((n, 2, 2))
 
         # We also keep count of total count of objects in each bin
         counts = np.zeros(nbin, dtype=int)
 
-        g1 = shear_data['mcal_g1']
-        g2 = shear_data['mcal_g2']
+        data = {**pz_data, **shear_data}
 
-        nbin = len(self.config['zbins'])
+        R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
+        R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
+        R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
+        R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+
 
         for i in range(nbin):
-
-            # The main selection.  The select function below returns a
-            # boolean array where True means "selected and in this bin"
-            # and False means "cut or not in this bin".
-            sel_00 = self.select(shear_data, pz_data, '', i)
-
-            # The metacalibration selections, used to work out selection
-            # biases
-            sel_1p = self.select(shear_data, pz_data, '_1p', i)
-            sel_2p = self.select(shear_data, pz_data, '_2p', i)
-            sel_1m = self.select(shear_data, pz_data, '_1m', i)
-            sel_2m = self.select(shear_data, pz_data, '_2m', i)
-
-            # Assign these objects to this bin
+            _, _, _, sel_00 = calibrators[i].add_data(data, i)
             tomo_bin[sel_00] = i
-
-            # Multiplicative estimator bias in this bin
-            # One value per object
-            R_11 = (shear_data['mcal_g1_1p'][sel_00] - shear_data['mcal_g1_1m'][sel_00]) / delta_gamma
-            R_12 = (shear_data['mcal_g1_2p'][sel_00] - shear_data['mcal_g1_2m'][sel_00]) / delta_gamma
-            R_21 = (shear_data['mcal_g2_1p'][sel_00] - shear_data['mcal_g2_1m'][sel_00]) / delta_gamma
-            R_22 = (shear_data['mcal_g2_2p'][sel_00] - shear_data['mcal_g2_2m'][sel_00]) / delta_gamma
-
-            # Selection bias for this chunk - we must average over these later.
-            # For now there is one value per bin.
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=RuntimeWarning)
-
-                S_11 = (g1[sel_1p].mean() - g1[sel_1m].mean()) / delta_gamma
-                S_12 = (g1[sel_2p].mean() - g1[sel_2m].mean()) / delta_gamma
-                S_21 = (g2[sel_1p].mean() - g2[sel_1m].mean()) / delta_gamma
-                S_22 = (g2[sel_2p].mean() - g2[sel_2m].mean()) / delta_gamma
-
-            # Save in a more useful ordering for the output - 
-            # as a matrix
-            R[sel_00,0,0] = R_11
-            R[sel_00,0,1] = R_12
-            R[sel_00,1,0] = R_21
-            R[sel_00,1,1] = R_22
-
-
-            # Also save the selection biases as a matrix.
-            S[i,0,0] = S_11
-            S[i,0,1] = S_12
-            S[i,1,0] = S_21
-            S[i,1,1] = S_22
             counts[i] = sel_00.sum()
 
-        return tomo_bin, R, S, counts
-
-        
-    def average_selection_bias(self, selection_biases):
-        """
-        Compute the average selection bias.
-
-        Average the selection biases, which are matrices
-        of shape [nbin, 2, 2].  Each matrix comes from 
-        a different chunk of data and we do a weighted
-        average over them all.
-
-        Parameters
-        ----------
-
-        selection_biases: list of pairs (bias, count)
-            The selection biases
-
-        Returns
-        -------
-        S: array (nbin,2,2)
-            Average selection bias
-        """
-        if self.is_mpi():
-            s = self.comm.gather(selection_biases)
-            if self.rank!=0:
-                return None,None
-            selection_biases = flatten_list(s)
-
-
-        S = 0.0
-        N = 0
-
-        # Accumulate the total and the counts
-        # for each bin
-        for S_i, count in selection_biases:
-            S += count[:,np.newaxis,np.newaxis]*S_i
-            N += count
-
-        # And finally divide by the total count
-        # to get the average
-        for i,n_i in enumerate(N):
-            S[i]/=n_i
-
-        return S, N
+        return tomo_bin, R, counts
 
 
 
@@ -441,7 +349,7 @@ class TXSelector(PipelineStage):
         group = outfile['multiplicative_bias']
         group['R_gamma'][start:end,:,:] = R
 
-    def write_global_values(self, outfile, S, source_counts, number_density_stats):
+    def write_global_values(self, outfile, calibrators, number_density_stats):
         """
         Write out overall selection biases
 
@@ -453,18 +361,31 @@ class TXSelector(PipelineStage):
         S: array of shape (nbin,2,2)
             Selection bias matrices
         """
-        sigma_e, mean_r, N_eff, lens_counts = number_density_stats.collect()
+        nbin_source = len(calibrators)
+
+        R = np.zeros((nbin_source, 2, 2))
+        S = np.zeros((nbin_source, 2, 2))
+        N = np.zeros(nbin_source)
+        R_scalar = np.zeros(nbin_source)
+
+        sigma_e, lens_counts = number_density_stats.collect()
+
+        for i, cal in enumerate(calibrators):
+            R[i], S[i], N[i] = cal.collect(self.comm)
+            sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
+        
 
         if self.rank==0:
             group = outfile['multiplicative_bias']
             group['R_S'][:,:,:] = S
-            group['R_gamma_mean'][:,:,:] = mean_r
-            group['R_total'][:,:,:] = mean_r + S
+            group['R_gamma_mean'][:,:,:] = R
+            group['R_total'][:,:,:] = R + S
             group = outfile['tomography']
-            group['source_counts'][:] = source_counts
             group['lens_counts'][:] = lens_counts
             group['sigma_e'][:] = sigma_e
-            group['N_eff'][:] = N_eff
+            # These are the same in metacal
+            group['source_counts'][:] = N
+            group['N_eff'][:] = N
 
 
     def read_config(self, args):
@@ -531,21 +452,17 @@ class TXSelector(PipelineStage):
 
         return lens_gals
 
-    def select(self, shear_data, pz_data, variant, bin_index, verbose=False):
+    def select(self, data, bin_index):
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
+        verbose = self.config['verbose']
 
-        T_col = 'mcal_T' + variant
-        s2n_col = 'mcal_s2n' + variant
+        s2n = data['mcal_s2n']
+        T = data['mcal_T']
+        zbin = data['zbin']
 
-        z_col = 'zbin' + variant
-
-        s2n = shear_data[s2n_col]
-        T = shear_data[T_col]
-        zbin = pz_data[z_col]
-
-        Tpsf = shear_data['mcal_psf_T_mean']
-        flag = shear_data['mcal_flags']
+        Tpsf = data['mcal_psf_T_mean']
+        flag = data['mcal_flags']
 
         n0 = len(flag)
         sel  = flag==0
@@ -557,8 +474,9 @@ class TXSelector(PipelineStage):
         sel &= zbin==bin_index
         f4 = sel.sum() / n0
         
+        variant = data.suffix
         if verbose:
-            print(f"Bin {bin_index} {f1:.1%} flag, {f2:.1%} size, {f3:.1%} SNR, {f4:.1%} z")
+            print(f"Bin {bin_index} ({variant}) {f1:.1%} flag, {f2:.1%} size, {f3:.1%} SNR, {f4:.1%} z")
 
         return sel
 
