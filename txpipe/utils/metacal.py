@@ -99,6 +99,8 @@ class ParallelCalibrator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
+    At the end an MPI communuicator can be supplied to collect together
+    the results from the different processes.
 
     To do this we need the function used to select the data, and the instance
     this function to each of the metacalibrated variants automatically by
@@ -146,6 +148,8 @@ class ParallelCalibrator:
             Keyword arguments to be passed to the selection function
         
         """
+        # These all wrap the catalog such that lookups find the variant
+        # column if available
         data_00 = _DataWrapper(data, '')
         data_1p = _DataWrapper(data, '_1p')
         data_1m = _DataWrapper(data, '_1m')
@@ -161,6 +165,8 @@ class ParallelCalibrator:
         g1 = data_00['mcal_g1']
         g2 = data_00['mcal_g2']
 
+        # Selector can return several reasonable ways to choose
+        # objects - where result, boolean mask, integer indices
         if isinstance(sel_00, tuple):
             # tupe returned from np.where
             n = len(sel_00[0])
@@ -177,11 +183,14 @@ class ParallelCalibrator:
         S = np.zeros((2,2))
         R = np.zeros((n,2,2))
 
+        # This is the selection bias, associated with the fact that sometimes different
+        # objects would be selected to be put into a bin depending on their shear
         S[0,0] = (g1[sel_1p].mean() - g1[sel_1m].mean()) / self.delta_gamma
         S[0,1] = (g1[sel_2p].mean() - g1[sel_2m].mean()) / self.delta_gamma
         S[1,0] = (g2[sel_1p].mean() - g2[sel_1m].mean()) / self.delta_gamma
         S[1,1] = (g2[sel_2p].mean() - g2[sel_2m].mean()) / self.delta_gamma
 
+        # This is the estimator response, correcting  bias of the shear estimator itself
         R[:,0,0] = (data_1p['mcal_g1'][sel_00] - data_1m['mcal_g1'][sel_00]) / self.delta_gamma
         R[:,0,1] = (data_2p['mcal_g1'][sel_00] - data_2m['mcal_g1'][sel_00]) / self.delta_gamma
         R[:,1,0] = (data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]) / self.delta_gamma
@@ -223,6 +232,7 @@ class ParallelCalibrator:
         S_sum = np.zeros((2,2))
         N = 0
 
+        # Find the correctly weighted averages of all the values we have
         for R, S, n in zip(self.R, self.S, self.counts):
             R_sum += R*n
             S_sum += S*n
