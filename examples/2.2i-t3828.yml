@@ -18,28 +18,19 @@ modules: txpipe
 # Setting nodes to any value (even 1) enables using srun on cori, as does using multiple threads.
 stages:
     - name: TXSelector
-      nprocess: 8
     - name: PZPDFMLZ
-      nprocess: 64
-      nodes: 2
     - name: TXPhotozStack
-      nprocess: 8
     - name: TXPhotozPlots
     - name: TXDiagnosticMaps
     - name: TXMapPlots
     - name: TXRandomCat
     - name: TXTwoPoint
-      threads_per_process: 64
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-      nprocess: 8
     - name: TXGammaTBrightStars
-      threads_per_process: 64
     - name: TXGammaTDimStars
-      threads_per_process: 64
     - name: TXBrighterFatterPlot
     - name: TXRoweStatistics
-      threads_per_process: 64
     - name: TXPSFDiagnostics
 
 output_dir: data/2.2i-t3828/outputs
