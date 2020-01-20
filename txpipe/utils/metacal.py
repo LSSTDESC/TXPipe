@@ -182,7 +182,6 @@ class ParallelCalibrator:
         else:
             raise ValueError("Selection function passed to Calibrator return type not known")
 
-
         S = np.zeros((2,2))
         R = np.zeros((n,2,2))
 
@@ -237,13 +236,16 @@ class ParallelCalibrator:
 
         # Find the correctly weighted averages of all the values we have
         for R, S, n in zip(self.R, self.S, self.counts):
+            # This deals with cases where n is 0 and R/S are NaN
+            if n == 0:
+                continue
             R_sum += R*n
             S_sum += S*n
             N += n
 
         R = R_sum / N
         S = S_sum / N
-
+        
         return R, S, N
 
 class MeanShearInBins:

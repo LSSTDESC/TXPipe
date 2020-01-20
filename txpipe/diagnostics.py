@@ -176,7 +176,7 @@ class TXDiagnosticPlots(PipelineStage):
         
         delta_gamma = self.config['delta_gamma']
         size = 11
-        psf_T_edges = np.linspace(0.3, 0.6, size+1)
+        psf_T_edges = np.linspace(0.2, 0.28, size+1)
 
 
         binnedShear = MeanShearInBins('mcal_psf_T_mean', psf_T_edges, delta_gamma, cut_source_bin=True)
@@ -215,7 +215,7 @@ class TXDiagnosticPlots(PipelineStage):
         plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
         plt.xlabel("PSF T")
         plt.ylabel("Mean g")
-        plt.ylim(-0.0015,0.0015)
+        #plt.ylim(-0.0015,0.0015)
         plt.legend(loc='best')
         plt.tight_layout()
         fig.close()
@@ -319,7 +319,7 @@ class TXDiagnosticPlots(PipelineStage):
         plt.plot(mu,line2,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
         plt.plot(mu,[0]*len(mu),color='black')
         plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
-        plt.ylim(-0.0015,0.0015)
+        #plt.ylim(-0.0015,0.0015)
         plt.xscale('log')
         plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
