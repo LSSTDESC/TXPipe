@@ -1,4 +1,7 @@
 import numpy as np
+from .stats import ParallelStatsCalculator
+
+
 def metacal_variants(*names):
     return [
         name + suffix
@@ -242,4 +245,71 @@ class ParallelCalibrator:
         S = S_sum / N
 
         return R, S, N
+
+class MeanShearInBins:
+    def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False):
+        self.x_name = x_name
+        self.limits = limits
+        self.delta_gamma = delta_gamma
+        self.cut_source_bin = cut_source_bin
+        self.size = len(self.limits) - 1
+
+        # We have to work out the mean g1, g2 
+        self.g1 = ParallelStatsCalculator(self.size)
+        self.g2 = ParallelStatsCalculator(self.size)
+        self.x  = ParallelStatsCalculator(self.size)
+
+        self.calibrators = [ParallelCalibrator(self.selector, delta_gamma) for i in range(self.size)]
+
+
+    def selector(self, data, i):
+        x = data[self.x_name]
+        w = (x > self.limits[i]) & (x < self.limits[i+1])
+        if self.cut_source_bin:
+            w &= data['source_bin'] !=-1
+        return np.where(w)
+
+
+    def add_data(self, data):
+        for i in range(self.size):
+            w = self.calibrators[i].add_data(data, i)
+            self.g1.add_data(i, data['mcal_g1'][w])
+            self.g2.add_data(i, data['mcal_g2'][w])
+            self.x.add_data(i, data[self.x_name][w])
+
+    def collect(self, comm=None):
+        count1, g1, var1 = self.g1.collect(comm, mode='gather')
+        count2, g2, var2 = self.g2.collect(comm, mode='gather')
+        _, mu, _ = self.x.collect(comm, mode='gather')
+
+        # Now we have the complete sample we can get the calibration matrix
+        # to apply to it.
+        R = []
+        for i in range(self.size):
+            # Tell the Calibrators to work out the responses
+            r, s, _ = self.calibrators[i].collect(comm)
+            # and record the total (a 2x2 matrix)
+            R.append(r+s)
+
+        # Only the root processor does the rest
+        if (comm is not None) and (comm.Get_rank() != 0):
+            return None, None, None, None, None
+
+        sigma1 = np.zeros(self.size)
+        sigma2 = np.zeros(self.size)
+
+        for i in range(self.size):
+            # Get the shears and the errors on their means
+            g = [g1[i], g2[i]]
+            sigma = np.sqrt([var1[i]/count1[i], var2[i]/count2[i]])
+
+            # Get the inverse response matrix to apply
+            R_inv = np.linalg.inv(R[i])
+
+            # Apply the matrix in full to the shears and errors
+            g1[i], g2[i] = R_inv @ g
+            sigma1[i], sigma2[i] = R_inv @ sigma
+
+
+        return mu, g1, g2, sigma1, sigma2
 
