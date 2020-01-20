@@ -1,5 +1,5 @@
 # This moderately-sized run has 7M galaxies in
-launcher: cori-mini
+launcher: local
 
 # If the launcher requires it (at the moment that is just for "cori")
 # then this info is used to configure it.  Otherwise it is ignored
