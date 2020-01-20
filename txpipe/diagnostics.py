@@ -138,8 +138,6 @@ class TXDiagnosticPlots(PipelineStage):
 
         plt.subplot(2,1,1)
 
-        print("mu1 = ", mu1)
-
         
         plt.plot(mu1,line11,color='red',label=r"$m=%.4f \pm %.4f$" %(slope11, std_err11))
         plt.plot(mu1,[0]*len(line11),color='black')
@@ -165,6 +163,7 @@ class TXDiagnosticPlots(PipelineStage):
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.tight_layout()
 
         # This also saves the figure
         fig.close()
