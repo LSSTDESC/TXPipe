@@ -43,9 +43,9 @@ inputs:
     # See README for paths to download these files
     shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/shear_catalog.hdf5
     photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/photometry_catalog.hdf5
-    photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/cosmoDC2_trees_i25.3.npy
+    photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
-    calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1.1i-inputs/sample_cosmodc2_w10year_errors.dat
+    calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/sample_cosmodc2_w10year_errors.dat
     star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/star_catalog.hdf5
 
 resume: True
