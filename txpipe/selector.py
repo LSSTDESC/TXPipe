@@ -82,9 +82,8 @@ class TXSelector(PipelineStage):
         # various config options
         bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
-        #print(self.config['input_pz'])
 
-        if self.config['input_pz'] == False:
+        if not self.config['input_pz']:
             # Build a classifier used to put objects into tomographic bins
             classifier, features = self.build_tomographic_classifier()        
 
@@ -97,7 +96,7 @@ class TXSelector(PipelineStage):
         shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
         shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
-        if self.config['input_pz'] == True:
+        if self.config['input_pz']:
             shear_cols += ['mean_z']
             shear_cols += ['mean_z_1p']
             shear_cols += ['mean_z_1m']
@@ -125,13 +124,13 @@ class TXSelector(PipelineStage):
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data), (_, _, phot_data) in zip(iter_shear, iter_phot):
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
-            
-            if self.config['input_pz'] == False:
+
+            if self.config['input_pz']:
+              pz_data = self.apply_simple_redshift_cut(shear_data)
+
+            else:
               # Select most likely tomographic source bin
               pz_data = self.apply_classifier(classifier, features, shear_data)
-            
-            if self.config['input_pz'] == True:
-              pz_data = self.apply_simple_redshift_cut(shear_data)
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
@@ -264,7 +263,7 @@ class TXSelector(PipelineStage):
         for v in variants:
             zz = shear_data[f'mean_z{v}']
 
-            pz_data_v = np.zeros(len(zz)) -1
+            pz_data_v = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['zbin_edges'])-1):
                 mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
                 pz_data_v[mask_zbin] = zi
