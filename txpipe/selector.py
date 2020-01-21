@@ -126,11 +126,11 @@ class TXSelector(PipelineStage):
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
             if self.config['input_pz']:
-              pz_data = self.apply_simple_redshift_cut(shear_data)
+                pz_data = self.apply_simple_redshift_cut(shear_data)
 
             else:
-              # Select most likely tomographic source bin
-              pz_data = self.apply_classifier(classifier, features, shear_data)
+                # Select most likely tomographic source bin
+                pz_data = self.apply_classifier(classifier, features, shear_data)
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
