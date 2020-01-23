@@ -6,6 +6,10 @@ stages:
     - name: TXDiagnosticMaps
     - name: TXRandomCat
     - name: TXTwoPoint
+    - name: TXTwoPointFourier
+      nprocess: 1
+      nodes: 1
+      threads_per_process: 64
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
     - name: TXGammaTBrightStars
@@ -21,7 +25,7 @@ launcher: local
 # Information for the pipeline about how many jobs it can
 # run and how it can do so
 site:
-  max_threads: 1
+  max_threads: 64
 
 # python modules to import to search for stages
 modules: txpipe

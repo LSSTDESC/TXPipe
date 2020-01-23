@@ -72,3 +72,4 @@ TXDiagnosticMaps:
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: False
+    fiducial_cosmology: examples/cosmo_HSC.yml
