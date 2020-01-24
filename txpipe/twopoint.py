@@ -95,7 +95,7 @@ class TXTwoPoint(PipelineStage):
         # Some derived classes, such as those cross-correlating with stars
         # might not have blind in options hence the first check
         if 'blind' in self.config and self.config['blind']:
-            result = self.blind_muir(results)
+            result = self.blind_muir(data, meta, results)
             
         # If we are running in parallel this collects the results together
         results = self.collect_results(results)
@@ -219,9 +219,13 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
-    def blind_muir(self,results):
+    def blind_muir(self, data, meta, results):
         import pyccl as ccl
         import firecrown
+        from firecrown.ccl.sources import WLSource
+        from firecrown.ccl.sources import NumberCountsSource
+        from firecrown.ccl.two_point import compute_loglike
+        import sacc
         ## here we actually do blinding
         if self.rank==0:
             print(f"Blinding... ")
@@ -247,7 +251,38 @@ class TXTwoPoint(PipelineStage):
             offset_ccl_params [par] += self.config['blind_'+par][1]*np.random.normal(0.,1.)
         fid_cosmo = ccl.Cosmology(**fid_ccl_params)
         offset_cosmo = ccl.Cosmology(**offset_ccl_params)
+        sacc = self.write_output(data,meta,results, return_sacc_object=True)
 
+        fc_data = {}
+        fc_data ['parameters'] = {}
+        fc_data ['two_point'] = {}
+        fc_data ['two_point']['eval'] = compute_loglike
+        fc_data ['two_point']['data'] = {}
+        fc_data ['two_point']['data']['systematics'] = {}
+        fc_data ['two_point']['data']['sources'] = {}
+        fc_data ['two_point']['data']['statistics'] = {}
+        ## first sources
+        sdic =  fc_data ['two_point']['data']['sources'] 
+        for key,tracer in sacc.tracers.items():
+            ## This is a hack, need to think how to do this better
+            if 'source' in key:
+                sdic[key] = WLSource(key)
+            if 'lens' in key:
+                ## NOT BIAS WE WANT !!! ## TODO
+                sdic[key] = NumberCountsSource(key, bias=1)
+        for _,source in sdic.items():
+            source.read(sacc)
+
+        xidic = fc_data ['two_point']['data']['statistics']
+        print (data.keys())
+
+        ## now try to get predictions
+        _, stats = firecrown.compute_loglike(cosmo=fid_cosmo, data=fc_data)
+
+
+        
+            
+        
         print ("Not quite done...")
             
 
@@ -256,7 +291,7 @@ class TXTwoPoint(PipelineStage):
     
 
 
-    def write_output(self, data, meta, results):
+    def write_output(self, data, meta, results, return_sacc_object=False):
         import sacc
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
@@ -300,6 +335,11 @@ class TXTwoPoint(PipelineStage):
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
+
+        ## if return_sacc_object is true, we just return the object without
+        ## actually dumping it
+        if return_sacc_object:
+            return S
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output('twopoint_data'), overwrite=True)
