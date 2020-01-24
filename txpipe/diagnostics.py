@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
-from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
+from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins
 from .utils.fitting import fit_straight_line
 import numpy as np
 
@@ -30,7 +30,8 @@ class TXDiagnosticPlots(PipelineStage):
 
     config_options = {
         'chunk_rows': 100000,
-        'delta_gamma': 0.02
+        'delta_gamma': 0.02,
+        'shear_catalog_type': 'nonmetacal'
     }
 
     def run(self):
@@ -372,7 +373,12 @@ class TXDiagnosticPlots(PipelineStage):
                 R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
                                                   data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
-                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                if self.config['shear_catalog_type']=='metacal':
+                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                elif self.config['shear_catalog_type']=='nonmetacal':
+                    g1, g2 = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                else:
+                    raise ValueError(f"Please specify metacal or nonmetacal for shear_catalog in config.")
                 # Do more things here to establish
                 calc1.add_data(i, g1)
                 
@@ -387,7 +393,12 @@ class TXDiagnosticPlots(PipelineStage):
                 R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
                                                   data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                 
-                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                if self.config['shear_catalog_type']=='metacal':
+                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                elif self.config['shear_catalog_type']=='nonmetacal':
+                    g1, g2 = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                else:
+                    raise ValueError(f"Please specify metacal or nonmetacal for shear_catalog in config.")
                 calc2.add_data(i, g2)
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')

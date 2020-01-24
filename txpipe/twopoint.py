@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
-from .utils.calibration_tools import apply_metacal_response
+from .utils.calibration_tools import apply_lensfit_calibration, apply_metacal_response
 import numpy as np
 import random
 import collections
@@ -45,7 +45,8 @@ class TXTwoPoint(PipelineStage):
         'reduce_randoms_size':1.0,
         'do_shear_shear': True,
         'do_shear_pos': True,
-        'do_pos_pos': True
+        'do_pos_pos': True,
+        'shear_catalog_type': 'nonmetacal'
         }
 
     def run(self):
@@ -322,7 +323,10 @@ class TXTwoPoint(PipelineStage):
         mask = (data['source_bin'] == i)
         
         # We use S=0 here because we have already included it in R_total
-        g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+        if self.config['shear_catalog_type']=='metacal':
+            g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+        elif self.config['shear_catalog_type']=='nonmetacal':
+            g1, g2 = apply_lensfit_calibration(data['mcal_g1'][mask],data['mcal_g2'][mask])
 
         return g1, g2, mask
 
