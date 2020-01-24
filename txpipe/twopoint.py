@@ -45,7 +45,9 @@ class TXTwoPoint(PipelineStage):
         'reduce_randoms_size':1.0,
         'do_shear_shear': True,
         'do_shear_pos': True,
-        'do_pos_pos': True
+        'do_pos_pos': True,
+        'var_methods': 'jackknife',
+        'npatch': 50
         }
 
     def run(self):
@@ -74,7 +76,7 @@ class TXTwoPoint(PipelineStage):
         calcs = self.select_calculations(data)
 
         sys.stdout.flush()
-        
+
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment,
@@ -320,7 +322,7 @@ class TXTwoPoint(PipelineStage):
         """
 
         mask = (data['source_bin'] == i)
-        
+
         # We use S=0 here because we have already included it in R_total
         g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
 
@@ -542,7 +544,7 @@ class TXTwoPoint(PipelineStage):
         area = self.calculate_area(data)
         sigma_e = tomo['tomography/sigma_e'][:]
         N_eff = tomo['tomography/N_eff'][:]
-        
+
         mean_g1_list = []
         mean_g2_list = []
         for i in data['source_list']:
@@ -1028,11 +1030,11 @@ class TXGammaTBrightStars(TXTwoPoint):
         print(f"Loading lens sample from {filename}")
 
         f = self.open_input('star_catalog')
-        
+
         mags = f['stars/r_mag'][:]
         bright_cut = mags>14
         bright_cut &= mags<18.3
-        
+
         data['lens_ra']  = f['stars/ra'][:][bright_cut]
         data['lens_dec'] = f['stars/dec'][:][bright_cut]
         f.close()
@@ -1184,7 +1186,7 @@ class TXGammaTDimStars(TXTwoPoint):
         mags = f['stars/r_mag'][:]
         dim_cut = mags>18.2
         dim_cut &= mags<22
-        
+
         data['lens_ra']  = f['stars/ra'][:][dim_cut]
         data['lens_dec'] = f['stars/dec'][:][dim_cut]
         f.close()
