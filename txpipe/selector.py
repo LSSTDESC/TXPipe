@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import NumberDensityStats
-from .utils.calibration_tools import metacal_variants, metacal_band_variants, ParallelCalibrator
+from .utils.calibration_tools import metacal_variants, metacal_band_variants, ParallelCalibratorMetacal
 import numpy as np
 import warnings
 
@@ -122,7 +122,7 @@ class TXSelector(PipelineStage):
 
         selection_biases = []
         number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
-        calibrators = [ParallelCalibrator(self.select, delta_gamma) for i in range(nbin_source)]
+        calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
 
 
         # Loop through the input data, processing it chunk by chunk

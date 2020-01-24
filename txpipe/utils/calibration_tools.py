@@ -98,7 +98,7 @@ class _DataWrapper:
         return (name in self.data)
 
 
-class ParallelCalibrator:
+class ParallelCalibratorMetacal:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
@@ -117,7 +117,7 @@ class ParallelCalibrator:
         the chunk of data to select on.  It should look up the original
         names of the columns to select on, without the metacal suffix.
 
-        The ParallelCalibrator will then wrap the data passed to it so that
+        The ParallelCalibratorMetacal will then wrap the data passed to it so that
         when a metacalibrated column is used for selection then the appropriate
         variant column is selected instead.
 
@@ -248,6 +248,110 @@ class ParallelCalibrator:
         
         return R, S, N
 
+    
+class ParallelCalibratorNonMetacal:
+    """
+    This class builds up the total calibration factors for a lensfit catalog from each chunk of data it is given.
+    At the end an MPI communicator can be supplied to collect together
+    the results from the different processes.
+    """
+    def __init__(self):
+        """
+        Initialize the Calibrator using the function you will use to select
+        objects. That function should take at least one argument,
+        the chunk of data to select on.  It should look up the original
+        names of the columns to select on, without the metacal suffix.
+
+        The ParallelCalibratorMetacal will then wrap the data passed to it so that
+        when a metacalibrated column is used for selection then the appropriate
+        variant column is selected instead.
+
+        The selector can take further *args and **kwargs, passed in when adding
+        data.
+
+        Parameters
+        ----------
+        """
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function
+        
+        """
+        # These all wrap the catalog such that lookups find the variant
+        # column if available
+        data = _DataWrapper(data, '')
+        
+        
+        # TODO: Replace this with the new column names for this catalog type 
+        g1 = data_00['mcal_g1']
+        g2 = data_00['mcal_g2']
+
+       # TODO Replace this with the weight and m calculations 
+    
+    
+        R[:,1,1] = (data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]) / self.delta_gamma
+
+        self.R.append(R.mean(axis=0))
+        self.S.append(S)
+        self.counts.append(n)
+
+        return sel_00
+
+    def collect(self, comm=None):
+        """
+        Finalize and sum up all the response values, returning separate
+        R (estimator response) and S (selection bias) 2x2 matrices
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+
+        Returns
+        -------
+        R: 2x2 array
+            Estimator response matrix
+
+        S: 2x2 array
+            Selection bias matrix
+
+        """
+        # MPI allgather to get full arrays for everyone
+        if comm is not None:
+            self.R = sum(self.comm.allgather(self.R), [])
+            self.S = sum(self.comm.allgather(self.S), [])
+            self.counts = sum(self.comm.allgather(self.counts), [])
+
+        R_sum = np.zeros((2,2))
+        S_sum = np.zeros((2,2))
+        N = 0
+
+        # Find the correctly weighted averages of all the values we have
+        for R, S, n in zip(self.R, self.S, self.counts):
+            # This deals with cases where n is 0 and R/S are NaN
+            if n == 0:
+                continue
+            R_sum += R*n
+            S_sum += S*n
+            N += n
+
+        R = R_sum / N
+        S = S_sum / N
+        
+        return R, S, N    
+
+
 class MeanShearInBins:
     def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False):
         self.x_name = x_name
@@ -261,7 +365,7 @@ class MeanShearInBins:
         self.g2 = ParallelStatsCalculator(self.size)
         self.x  = ParallelStatsCalculator(self.size)
 
-        self.calibrators = [ParallelCalibrator(self.selector, delta_gamma) for i in range(self.size)]
+        self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
 
 
     def selector(self, data, i):
