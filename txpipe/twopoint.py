@@ -4,6 +4,7 @@ import numpy as np
 import random
 import collections
 import sys
+import copy
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -44,8 +45,16 @@ class TXTwoPoint(PipelineStage):
         'reduce_randoms_size':1.0,
         'do_shear_shear': True,
         'do_shear_pos': True,
-        'do_pos_pos': True
-        }
+        'do_pos_pos': True,
+        'blind': False,
+        'blind_seed': 1972,  ## seed uniquely specifies the shift in parameters
+        'blind_Omega_b': [0.0485, 0.001], ## fiducial_model_value, shift_sigma
+        'blind_Omega_c': [0.2545, 0.01],
+        'blind_w0': [-1.0, 0.1],
+        'blind_h': [0.682, 0.02],
+        'blind_sigma8': [0.801, 0.01],
+        'blind_n_s': [0.971, 0.03]
+      }
 
     def run(self):
         """
@@ -82,9 +91,17 @@ class TXTwoPoint(PipelineStage):
         for i,j,k in self.split_tasks_by_rank(calcs):
             results += self.call_treecorr(data, i, j, k)
 
+        # Blind data vector if neccessary
+        # Some derived classes, such as those cross-correlating with stars
+        # might not have blind in options hence the first check
+        if 'blind' in self.config and self.config['blind']:
+            result = self.blind_muir(results)
+            
         # If we are running in parallel this collects the results together
         results = self.collect_results(results)
 
+
+        
         # Save the results
         if self.rank==0:
             self.write_output(data, meta, results)
@@ -202,6 +219,41 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
+    def blind_muir(self,results):
+        import pyccl as ccl
+        import firecrown
+        ## here we actually do blinding
+        if self.rank==0:
+            print(f"Blinding... ")
+        np.random.seed(self.config["blind_seed"])
+        # blind signature -- this ensures seed is consistent across
+        # numpy versions
+        blind_sig = ''.join(format(x, '02x') for x in np.random.bytes(4))
+        if self.rank==0:
+            print ("Blinding signature: %s"%(blind_sig))
+        fid_ccl_params = {
+            'Omega_k': 0.0,
+            'Omega_b':  self.config['blind_Omega_b'][0],
+            'Omega_c':  self.config['blind_Omega_c'][0],
+            'w0': self.config['blind_w0'][0],
+            'wa': 0.0,
+            'h': self.config['blind_h'][0],
+            'sigma8': self.config['blind_sigma8'][0],
+            'n_s': self.config['blind_n_s'][0],
+            #'transfer_function': TODO have some sensible CCL options
+        }
+        offset_ccl_params = copy.copy(fid_ccl_params)
+        for par in ['Omega_b','Omega_c','w0','h','sigma8','n_s']:
+            offset_ccl_params [par] += self.config['blind_'+par][1]*np.random.normal(0.,1.)
+        fid_cosmo = ccl.Cosmology(**fid_ccl_params)
+        offset_cosmo = ccl.Cosmology(**offset_ccl_params)
+
+        print ("Not quite done...")
+            
+
+            
+        return results
+    
 
 
     def write_output(self, data, meta, results):
