@@ -10,7 +10,7 @@ import sys
 # for holding individual measurements
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'theta', 'value', 'error', 'npair', 'weight', 'i', 'j'])
+    ['corr_type', 'object', 'i', 'j'])
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
@@ -212,6 +212,7 @@ class TXTwoPoint(PipelineStage):
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
 
@@ -236,16 +237,63 @@ class TXTwoPoint(PipelineStage):
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
+        ggs = []
+        ngs = []
+        nns = []
         for d in results:
-            tracer1 = f'source_{d.i}' if d.corr_type in [XIP, XIM, GAMMAT] else f'lens_{d.i}'
-            tracer2 = f'source_{d.j}' if d.corr_type in [XIP, XIM] else f'lens_{d.j}'
+            #First lets try and get Covariance matrix
+            tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'
+
+            if d.corr_type == XI:
+                ggs.append(d.object)
+                theta = np.exp(d.object.meanlogr)
+                xip = d.object.xip
+                xim = d.object.xim
+                xiperr = np.sqrt(d.object.varxip)
+                ximerr = np.sqrt(d.object.varxim)
+                npair = d.object.npairs
+                weight = d.object.weight
+                n = len(xip)
+                for i in range(n):
+                    S.add_data_point(XIP, (tracer1,tracer2), xip[i],
+                        theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
+                    S.add_data_point(XIM, (tracer1,tracer2), xim[i],
+                        theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
+            elif d.corr_type == GAMMAT:
+                ngs.append(d.object)
+                theta = np.exp(d.object.meanlogr)
+                gammat = d.object.xi
+                gammaterr = np.sqrt(d.object.varxi)
+                npair = d.object.npairs
+                weight = d.object.weight
+                n = len(gammat)
+                for i in range(n):
+                    S.add_data_point(GAMMAT, (tracer1,tracer2), gammat[i],
+                        theta=theta[i], error=gammaterr[i], weight=weight[i])
+            else:
+                nns.append(d.object)
+                theta = np.exp(d.object.meanlogr)
+                wtheta = d.object.xi
+                wthetaerr = np.sqrt(d.object.varxi)
+                npair = d.object.npairs
+                weight = d.object.weight
+                n = len(wtheta)
+                for i in range(n):
+                    S.add_data_point(WTHETA, (tracer1,tracer2), wtheta[i],
+                        theta=theta[i], error=wthetaerr[i], weight=weight[i])
+
             # Each of our Measurement objects contains various theta values,
             # and we loop through and add them all
-            n = len(d.value)
-            for i in range(n):
-                S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i],
-                    theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+            #n = len()
+            #for i in range(n):
+            #    S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i],
+            #        theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
+        comb = ggs + ngs + nns
+        cov = treecorr.estimate_multi_cov(comb, self.config_options['var_methods'])
+
+        S.add_covariance(cov)
         #self.write_metadata(S, meta)
 
         # Our data points may currently be in any order depending on which processes
@@ -280,38 +328,38 @@ class TXTwoPoint(PipelineStage):
         """
         This is a wrapper for interaction with treecorr.
         """
-        import sacc
-        XIP = sacc.standard_types.galaxy_shear_xi_plus
-        XIM = sacc.standard_types.galaxy_shear_xi_minus
-        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
-        WTHETA = sacc.standard_types.galaxy_density_xi
+        #import sacc
+        #XIP = sacc.standard_types.galaxy_shear_xi_plus
+        #XIM = sacc.standard_types.galaxy_shear_xi_minus
+        #GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        #WTHETA = sacc.standard_types.galaxy_density_xi
 
         results = []
 
         if k==SHEAR_SHEAR:
-            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calculate_shear_shear(data, i, j)
-            if i==j:
-                npairs/=2
-                weight/=2
+            gg = self.calculate_shear_shear(data, i, j)
+            #if i==j:
+            #    npairs/=2
+            #    weight/=2
 
-            results.append(Measurement(XIP, theta, xip, xiperr, npairs, weight, i, j))
-            results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
+            results.append(Measurement(XI, gg, i, j))
+            #results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
 
         elif k==SHEAR_POS:
-            theta, val, err, npairs, weight = self.calculate_shear_pos(data, i, j)
-            if i==j:
-                npairs/=2
-                weight/=2
+            ng = self.calculate_shear_pos(data, i, j)
+            #if i==j:
+            #    npairs/=2
+            #    weight/=2
 
-            results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
+            results.append(Measurement(GAMMAT, ng, i, j))
 
         elif k==POS_POS:
-            theta, val, err, npairs, weight = self.calculate_pos_pos(data, i, j)
-            if i==j:
-                npairs/=2
-                weight/=2
+            nn = self.calculate_pos_pos(data, i, j)
+            #if i==j:
+            #    npairs/=2
+            #    weight/=2
 
-            results.append(Measurement(WTHETA, theta, val, err, npairs, weight, i, j))
+            results.append(Measurement(WTHETA, nn, i, j))
         sys.stdout.flush()
         return results
 
@@ -349,7 +397,7 @@ class TXTwoPoint(PipelineStage):
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
-            
+
         return cat
 
 
@@ -413,13 +461,14 @@ class TXTwoPoint(PipelineStage):
         gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i, cat_j)
 
-        theta=np.exp(gg.meanlogr)
-        xip = gg.xip
-        xim = gg.xim
-        xiperr = np.sqrt(gg.varxip)
-        ximerr = np.sqrt(gg.varxim)
+        #theta=np.exp(gg.meanlogr)
+        #xip = gg.xip
+        #xim = gg.xim
+        #xiperr = np.sqrt(gg.varxip)
+        #ximerr = np.sqrt(gg.varxim)
 
-        return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
+        #return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
+        return gg
 
     def calculate_shear_pos(self,data, i, j):
         import treecorr
@@ -444,10 +493,11 @@ class TXTwoPoint(PipelineStage):
 
         gammat, gammat_im, gammaterr = ng.calculateXi(rg=rg)
 
-        theta = np.exp(ng.meanlogr)
-        gammaterr = np.sqrt(gammaterr)
+        #theta = np.exp(ng.meanlogr)
+        #gammaterr = np.sqrt(gammaterr)
 
-        return theta, gammat, gammaterr, ng.npairs, ng.weight
+        #return theta, gammat, gammaterr, ng.npairs, ng.weight
+        return ng
 
 
     def calculate_pos_pos(self, data, i, j):
@@ -481,11 +531,12 @@ class TXTwoPoint(PipelineStage):
         rn.process(rancat_i, cat_j)
         rr.process(rancat_i, rancat_j)
 
-        theta=np.exp(nn.meanlogr)
+        #theta=np.exp(nn.meanlogr)
         wtheta,wthetaerr=nn.calculateXi(rr, dr=nr, rd=rn)
-        wthetaerr=np.sqrt(wthetaerr)
+        #wthetaerr=np.sqrt(wthetaerr)
 
-        return theta, wtheta, wthetaerr, nn.npairs, nn.weight
+        #return theta, wtheta, wthetaerr, nn.npairs, nn.weight
+        return nn
 
     def load_tomography(self, data):
 
