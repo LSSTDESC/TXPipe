@@ -333,12 +333,23 @@ class TXTwoPoint(PipelineStage):
         import treecorr
         g1,g2,mask = self.get_m(data, i)
 
-        cat = treecorr.Catalog(
-            g1 = g1,
-            g2 = g2,
-            ra = data['ra'][mask],
-            dec = data['dec'][mask],
-            ra_units='degree', dec_units='degree')
+
+        if self.config_options['var_methods']=='jackknife':
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree',
+                npatch=self.config_options['npatch'])
+        else:
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree')
+            
         return cat
 
 
@@ -355,15 +366,27 @@ class TXTwoPoint(PipelineStage):
             ra = data['ra'][mask]
             dec = data['dec'][mask]
 
-        cat = treecorr.Catalog(
-            ra=ra, dec=dec,
-            ra_units='degree', dec_units='degree')
+        if self.config_options['var_methods']=='jackknife':
+            cat = treecorr.Catalog(
+                ra=ra, dec=dec,
+                ra_units='degree', dec_units='degree',
+                npatch=self.config_options['npatch'])
+        else:
+            cat = treecorr.Catalog(
+                ra=ra, dec=dec,
+                ra_units='degree', dec_units='degree')
 
         if 'random_bin' in data:
             random_mask = data['random_bin']==i
-            rancat  = treecorr.Catalog(
-                ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                ra_units='degree', dec_units='degree')
+            if self.config_options['var_methods']=='jackknife':
+                rancat  = treecorr.Catalog(
+                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                    ra_units='degree', dec_units='degree',
+                    npatch=self.config_options['npatch'])
+            else:
+                rancat  = treecorr.Catalog(
+                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                    ra_units='degree', dec_units='degree')
         else:
             rancat = None
 
