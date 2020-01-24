@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
-from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
+from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
 from .utils.fitting import fit_straight_line
 import numpy as np
 

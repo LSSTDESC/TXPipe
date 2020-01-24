@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
-from .utils.metacal import metacal_band_variants, metacal_variants
+from .utils.calibration_tools import metacal_band_variants, metacal_variants
 import numpy as np
 import glob
 import re

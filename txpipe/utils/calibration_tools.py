@@ -102,7 +102,7 @@ class ParallelCalibrator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
-    At the end an MPI communuicator can be supplied to collect together
+    At the end an MPI communicator can be supplied to collect together
     the results from the different processes.
 
     To do this we need the function used to select the data, and the instance

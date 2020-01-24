@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
-from .utils.metacal import apply_metacal_response
+from .utils.calibration_tools import apply_metacal_response
 import numpy as np
 import random
 import collections
