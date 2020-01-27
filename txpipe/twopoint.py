@@ -254,6 +254,9 @@ class TXTwoPoint(PipelineStage):
                 ximerr = np.sqrt(d.object.varxim)
                 npair = d.object.npairs
                 weight = d.object.weight
+                if d.i == d.j:
+                    npair = npair/2
+                    weight = weight/2
                 n = len(xip)
                 for i in range(n):
                     S.add_data_point(XIP, (tracer1,tracer2), xip[i],
@@ -267,6 +270,9 @@ class TXTwoPoint(PipelineStage):
                 gammaterr = np.sqrt(d.object.varxi)
                 npair = d.object.npairs
                 weight = d.object.weight
+                if d.i == d.j:
+                    npair = npair/2
+                    weight = weight/2
                 n = len(gammat)
                 for i in range(n):
                     S.add_data_point(GAMMAT, (tracer1,tracer2), gammat[i],
@@ -278,6 +284,9 @@ class TXTwoPoint(PipelineStage):
                 wthetaerr = np.sqrt(d.object.varxi)
                 npair = d.object.npairs
                 weight = d.object.weight
+                if d.i == d.j:
+                    npair = npair/2
+                    weight = weight/2
                 n = len(wtheta)
                 for i in range(n):
                     S.add_data_point(WTHETA, (tracer1,tracer2), wtheta[i],
