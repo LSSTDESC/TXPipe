@@ -209,6 +209,7 @@ class TXTwoPoint(PipelineStage):
 
     def write_output(self, data, meta, results):
         import sacc
+        import treecorr
         XI = "combined"
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
