@@ -90,21 +90,22 @@ class TXTwoPoint(PipelineStage):
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
             results += self.call_treecorr(data, i, j, k)
-
-        # Blind data vector if neccessary
-        # Some derived classes, such as those cross-correlating with stars
-        # might not have blind in options hence the first check
-        if 'blind' in self.config and self.config['blind']:
-            result = self.blind_muir(data, meta, results)
             
         # If we are running in parallel this collects the results together
         results = self.collect_results(results)
 
+        # Blind data vector if neccessary
+        # Some derived classes, such as those cross-correlating with stars
+        # might not have blind in options hence the first check
 
-        
-        # Save the results
+            # Save the results
         if self.rank==0:
-            self.write_output(data, meta, results)
+            if 'blind' in self.config and self.config['blind']:
+                sacc = self.write_output(data,meta,results, return_sacc_object=True)
+                blinded_sacc = self.blind_muir(sacc, meta)
+                blinded_sacc.save_fits(self.get_output('twopoint_data'), overwrite=True)
+            else:
+                self.write_output(data, meta, results)
 
 
     def select_calculations(self, data):
@@ -219,13 +220,10 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
-    def blind_muir(self, data, meta, results):
+    def blind_muir(self, sacc, meta):
         import pyccl as ccl
         import firecrown
-        from firecrown.ccl.sources import WLSource
-        from firecrown.ccl.sources import NumberCountsSource
-        from firecrown.ccl.two_point import compute_loglike
-        import sacc
+        import io
         ## here we actually do blinding
         if self.rank==0:
             print(f"Blinding... ")
@@ -235,59 +233,82 @@ class TXTwoPoint(PipelineStage):
         blind_sig = ''.join(format(x, '02x') for x in np.random.bytes(4))
         if self.rank==0:
             print ("Blinding signature: %s"%(blind_sig))
-        fid_ccl_params = {
-            'Omega_k': 0.0,
+
+
+        fid_params = {
             'Omega_b':  self.config['blind_Omega_b'][0],
             'Omega_c':  self.config['blind_Omega_c'][0],
-            'w0': self.config['blind_w0'][0],
-            'wa': 0.0,
             'h': self.config['blind_h'][0],
+            'w0': self.config['blind_w0'][0],
             'sigma8': self.config['blind_sigma8'][0],
             'n_s': self.config['blind_n_s'][0],
-            #'transfer_function': TODO have some sensible CCL options
         }
-        offset_ccl_params = copy.copy(fid_ccl_params)
-        for par in ['Omega_b','Omega_c','w0','h','sigma8','n_s']:
-            offset_ccl_params [par] += self.config['blind_'+par][1]*np.random.normal(0.,1.)
-        fid_cosmo = ccl.Cosmology(**fid_ccl_params)
-        offset_cosmo = ccl.Cosmology(**offset_ccl_params)
-        sacc = self.write_output(data,meta,results, return_sacc_object=True)
+        offset_params = copy.copy(fid_params)
+        for par in fid_params.keys():
+            offset_params [par] += self.config['blind_'+par][1]*np.random.normal(0.,1.)
+        fc_config = """
+           parameters:
+             ## missing params set in fid_params and offset_params
+             Omega_k: 0.0
+             wa: 0.0
 
-        fc_data = {}
-        fc_data ['parameters'] = {}
-        fc_data ['two_point'] = {}
-        fc_data ['two_point']['eval'] = compute_loglike
-        fc_data ['two_point']['data'] = {}
-        fc_data ['two_point']['data']['systematics'] = {}
-        fc_data ['two_point']['data']['sources'] = {}
-        fc_data ['two_point']['data']['statistics'] = {}
-        ## first sources
-        sdic =  fc_data ['two_point']['data']['sources'] 
+             one: 1
+           
+           two_point:
+             module: firecrown.ccl.two_point
+           
+             systematics:
+               dummy:
+                  kind: PhotoZShiftBias
+                  delta_z: one
+
+        """
+
+        ### sources
+        fc_config+="     sources: \n"
+        srclist=[]
+        lenslist=[]
         for key,tracer in sacc.tracers.items():
             ## This is a hack, need to think how to do this better
             if 'source' in key:
-                sdic[key] = WLSource(key)
+                fc_config+="""
+                                  {src}:
+                                     kind: WLSource
+                                     sacc_tracer: {src}\n""".format(src=key)
+                srclist.append(key)
             if 'lens' in key:
-                ## NOT BIAS WE WANT !!! ## TODO
-                sdic[key] = NumberCountsSource(key, bias=1)
-        for _,source in sdic.items():
-            source.read(sacc)
-
-        xidic = fc_data ['two_point']['data']['statistics']
-        print (data.keys())
-
+                fc_config+="""
+                                  {lens}:
+                                     kind: NumberCountsSource
+                                     bias: one
+                                     sacc_tracer: {lens}\n""".format(lens=key)
+                lenslist.append(key)
+        fc_config+="             statistics: \n"
+        ##
+        ## Something dummy to start with
+        fc_config+="""
+                                 cl_src0_src0:
+                                   sources: ['source_0', 'source_0']
+                                   sacc_data_type: galaxy_shear_xi_plus
+                   """
+                
         ## now try to get predictions
-        _, stats = firecrown.compute_loglike(cosmo=fid_cosmo, data=fc_data)
+        config, data = firecrown.parse(io.StringIO(fc_config),
+               memory_data={'two_point':{'sacc_data':sacc},'parameters':fid_params})
+        fidcosmo = firecrown.get_ccl_cosmology(config['parameters'])
+        _, fidstat = firecrown.compute_loglike(cosmo=fidcosmo, data=data)
 
+        config, data = firecrown.parse(io.StringIO(fc_config),
+               memory_data={'two_point':{'sacc_data':sacc},'parameters':offset_params})
+        offsetcosmo = firecrown.get_ccl_cosmology(config['parameters'])
+        _, offsetstat = firecrown.compute_loglike(cosmo=offsetcosmo, data=data)
 
-        
-            
         
         print ("Not quite done...")
             
 
             
-        return results
+        return  sacc
     
 
 
