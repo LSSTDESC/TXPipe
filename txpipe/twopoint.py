@@ -5,6 +5,7 @@ import numpy as np
 import random
 import collections
 import sys
+import treecorr
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -301,7 +302,7 @@ class TXTwoPoint(PipelineStage):
             #        theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
         comb = ggs + ngs + nns
-        cov = treecorr.estimate_multi_cov(comb, self.config_options['var_methods'])
+        cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
 
         S.add_covariance(cov)
         #self.write_metadata(S, meta)
@@ -392,15 +393,14 @@ class TXTwoPoint(PipelineStage):
         import treecorr
         g1,g2,mask = self.get_m(data, i)
 
-
-        if self.config_options['var_methods']=='jackknife':
+        if self.config['var_methods']=='jackknife':
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',
-                npatch=self.config_options['npatch'])
+                npatch=self.config['npatch'])
         else:
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -425,11 +425,11 @@ class TXTwoPoint(PipelineStage):
             ra = data['ra'][mask]
             dec = data['dec'][mask]
 
-        if self.config_options['var_methods']=='jackknife':
+        if self.config['var_methods']=='jackknife':
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
                 ra_units='degree', dec_units='degree',
-                npatch=self.config_options['npatch'])
+                npatch=self.config['npatch'])
         else:
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
@@ -437,11 +437,11 @@ class TXTwoPoint(PipelineStage):
 
         if 'random_bin' in data:
             random_mask = data['random_bin']==i
-            if self.config_options['var_methods']=='jackknife':
+            if self.config['var_methods']=='jackknife':
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                     ra_units='degree', dec_units='degree',
-                    npatch=self.config_options['npatch'])
+                    npatch=self.config['npatch'])
             else:
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
@@ -952,6 +952,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
+        'var_methods': 'jackknife',
+        'npatch': 50
         }
 
     def run(self):
@@ -1088,6 +1090,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
+        'var_methods': 'jackknife',
+        'npatch': 50
         }
 
     def run(self):
@@ -1241,6 +1245,8 @@ class TXGammaTDimStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
+        'var_methods': 'jackknife',
+        'npatch': 50
         }
 
     def run(self):
