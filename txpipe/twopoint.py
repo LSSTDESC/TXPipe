@@ -294,12 +294,12 @@ class TXTwoPoint(PipelineStage):
                 
         ## now try to get predictions
         config, data = firecrown.parse(io.StringIO(fc_config),
-               memory_data={'two_point':{'sacc_data':sacc},'parameters':fid_params})
+               settings={'two_point':{'sacc_data':sacc},'parameters':fid_params})
         fidcosmo = firecrown.get_ccl_cosmology(config['parameters'])
         _, fidstat = firecrown.compute_loglike(cosmo=fidcosmo, data=data)
 
         config, data = firecrown.parse(io.StringIO(fc_config),
-               memory_data={'two_point':{'sacc_data':sacc},'parameters':offset_params})
+               settings={'two_point':{'sacc_data':sacc},'parameters':offset_params})
         offsetcosmo = firecrown.get_ccl_cosmology(config['parameters'])
         _, offsetstat = firecrown.compute_loglike(cosmo=offsetcosmo, data=data)
 
