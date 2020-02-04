@@ -1010,10 +1010,13 @@ class TXGammaTFieldCenters(TXTwoPoint):
     def write_output_plot(self, results):
         import matplotlib.pyplot as plt
         d = results[0]
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
 
         fig = self.open_output('gammat_field_center_plot', wrapper=True)
 
-        plt.errorbar(d.theta,  d.theta*d.value, d.error, fmt='ro', capsize=3)
+        plt.errorbar(dtheta,  dtheta*dvalue, derror, fmt='ro', capsize=3)
         plt.xscale('log')
 
         plt.xlabel(r"$\theta$ / arcmin")
@@ -1043,13 +1046,18 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         d = results[0]
         assert len(results)==1
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
+        dnpair = d.object.npairs
+        dweight = d.object.weight
 
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
-        n = len(d.value)
+        n = len(dvalue)
         for i in range(n):
-            S.add_data_point(dt, ('source2d', 'fieldcenter'), d.value[i],
-                theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+            S.add_data_point(dt, ('source2d', 'starcenter'), dvalue[i],
+                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
 
         #self.write_metadata(S, meta)
 
@@ -1203,8 +1211,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         dvalue = d.object.xi
         derror = np.sqrt(d.object.varxi)
         dtheta = np.exp(d.object.meanlogr)
-        npair = d.object.npairs
-        weight = d.object.weight
+        dnpair = d.object.npairs
+        dweight = d.object.weight
 
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
@@ -1365,8 +1373,8 @@ class TXGammaTDimStars(TXTwoPoint):
         dvalue = d.object.xi
         derror = np.sqrt(d.object.varxi)
         dtheta = np.exp(d.object.meanlogr)
-        npair = d.object.npairs
-        weight = d.object.weight
+        dnpair = d.object.npairs
+        dweight = d.object.weight
 
 
         # Each of our Measurement objects contains various theta values,
