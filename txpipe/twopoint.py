@@ -1099,8 +1099,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
-        'npatch': 50
+        'var_methods': 'shot',
+        'npatch': 50 
         }
 
     def run(self):
@@ -1139,6 +1139,7 @@ class TXGammaTBrightStars(TXTwoPoint):
 
         npoint = data['lens_ra'].size
         data['lens_bin'] = np.zeros(npoint)
+        print('len lens', len(data['lens_ra']))
 
     def load_tomography(self, data):
         # We run the parent class tomography selection but then
