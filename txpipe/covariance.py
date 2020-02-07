@@ -4,8 +4,18 @@ from .data_types import DiagnosticMaps
 import numpy as np
 import pandas as pd
 import warnings
+import pyccl as ccl
+import sacc
+
+import sys
+sys.path.append("/global/homes/c/chihway/TJPCov")
+from wigner_transform import *
+from parser import *
+d2r=np.pi/180
 
 #Needed changes: 1) area is hard coded to 4sq.deg. as file is buggy. 2) code fixed to equal-spaced ell values in real space. 3)
+
+# how do we want to have the real and Fourier stages? 
 
 
 class TXFourierGaussianCovariance(PipelineStage):
@@ -29,8 +39,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def run(self):
-        import pyccl as ccl
-        import sacc
+
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
 
@@ -50,7 +59,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         #self.save_outputs_firecrown(C,data_vector,ells,nz,binning_info)
 
     def read_cosmology(self):
-        import pyccl as ccl
         filename = self.get_input('fiducial_cosmology')
         cosmo = ccl.Cosmology.read_yaml(filename)
 
@@ -59,7 +67,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         return cosmo
 
     def read_sacc(self):
-        import sacc
         f = self.get_input('twopoint_data_fourier')
         sacc_data = sacc.Sacc.load_fits(f)
 
@@ -124,8 +131,6 @@ class TXFourierGaussianCovariance(PipelineStage):
     def compute_theory_c_ell(self, cosmo, nz, sacc_data):
         # Turn the nz into CCL Tracer objects
         # Use the cosmology object to calculate C_ell values
-        import pyccl as ccl
-        import sacc
 
         CEE = sacc.standard_types.galaxy_shear_cl_ee
         CEd = sacc.standard_types.galaxy_shearDensity_cl_e
@@ -160,7 +165,6 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def compute_noise_c_ell(self, n_eff, sigma_e, n_lens, sacc_data):
-        import sacc
 
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CEd=sacc.standard_types.galaxy_shearDensity_cl_e
@@ -199,6 +203,8 @@ class TXFourierGaussianCovariance(PipelineStage):
             sacc.standard_types.galaxy_shearDensity_cl_e: 'ED',
         }
 
+        # ell values must be the same for this all to work
+        # TODO: Fix this for cases where we only want to work with a subset of the data
         # ell values must be the same for this all to work
         # TODO: Fix this for cases where we only want to work with a subset of the data
         ell = sacc_data.get_tag('ell', sacc.standard_types.galaxy_shear_cl_ee, ('source_0', 'source_0'))
@@ -262,5 +268,3 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def save_outputs(self, sacc_data, cov):
         filename = self.get_output('summary_statistics')
-        sacc_data.add_covariance(cov)
-        sacc_data.save_fits(filename)

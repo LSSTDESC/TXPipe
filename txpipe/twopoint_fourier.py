@@ -92,7 +92,7 @@ class TXTwoPointFourier(PipelineStage):
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
 
         # This is needed in the deprojection calculation
-        theory_cl = self.fiducial_theory(tracers, ell_bins, nbin_source, nbin_lens)
+        #theory_cl = self.fiducial_theory(tracers, ell_bins, nbin_source, nbin_lens)
 
         # If we are rank zero print out some info
         if self.rank==0:
@@ -545,6 +545,8 @@ class TXTwoPointFourier(PipelineStage):
                 Tj = CTracers[('S',j)]
                 # The full theory C_ell over the range 0..ellmax
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+                #theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj)
+
                 
 
         # The same for the galaxy galaxy-lensing cross-correlation
@@ -554,6 +556,7 @@ class TXTwoPointFourier(PipelineStage):
                 Ti = CTracers[('S',i)]
                 Tj = CTracers[('P',j)]
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+                #theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj)
 
         # And finally for the density correlations
         k = POS_POS
@@ -562,6 +565,7 @@ class TXTwoPointFourier(PipelineStage):
                 Ti = CTracers[('P',i)]
                 Tj = CTracers[('P',j)]
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+                #theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj)
 
         return theory_cl
 
