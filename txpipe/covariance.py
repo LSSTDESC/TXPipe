@@ -18,8 +18,8 @@ d2r=np.pi/180
 # how do we want to have the real and Fourier stages? 
 
 
-class TXFourierGaussianCovariance(PipelineStage):
-    name='TXFourierGaussianCovariance'
+class TXGaussianCovariance(PipelineStage):
+    name='TXGaussianCovariance'
 
     inputs = [
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
@@ -44,19 +44,51 @@ class TXFourierGaussianCovariance(PipelineStage):
         cosmo = self.read_cosmology()
 
         # read binning
-        sacc_data = self.read_sacc()
+        two_point_data = self.read_sacc()
 
         # read the n(z) and f_sky from the source summary stats
         nz, n_eff, n_lens, sigma_e, fsky, N_tomo_bins = self.read_number_statistics()
+        
+        meta = {}
+        meta['fsky'] = fsky
+        meta['ell'] = np.arange(2,500)
+        meta['ell_bins'] = np.arange(2,500,45)
+        #two_point_data.metadata['fsky']=fsky
+        #two_point_data.metadata['ell']=np.arange(2,500) #np.arange(2,500)
+        #two_point_data.metadata['ell_bins']= 1.0*np.arange(2,500,45)
+        th_min=2.5/60 # in degrees
+        th_max=250./60
+        n_th_bins=20
+        #two_point_data.metadata['th_bins']=np.logspace(np.log10(th_min),np.log10(th_max),n_th_bins+1)
+        meta['th_bins']=np.logspace(np.log10(th_min),np.log10(th_max),n_th_bins+1)
+
+        th=np.logspace(np.log10(th_min*0.98),np.log10(1),n_th_bins*30) #covariance is oversampled at th values and then binned.
+        th2=np.linspace(1,th_max*1.02,n_th_bins*30) #binned covariance can be sensitive to the th values. Make sue you check convergence for your application
+        # th2=np.logspace(np.log10(1),np.log10(th_max),60*6)
+        #two_point_data.metadata['th']=np.unique(np.sort(np.append(th,th2)))
+        meta['th']=np.unique(np.sort(np.append(th,th2)))
+        #thb=0.5*(two_point_data.metadata['th_bins'][1:]+two_point_data.metadata['th_bins'][:-1])
+        thb=0.5*(meta['th_bins'][1:]+meta['th_bins'][:-1])
+
+
+        #C_ell covariance
+        cov_cl = get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=False)
+        #xi covariance .... right now shear-shear is xi+ only. xi- needs to be added in the loops.
+        #cov_xi = get_all_cov(two_point_data=twopoint_data,do_xi=True)
 
         # calculate the overall total C_ell values, including noise
-        theory_c_ell = self.compute_theory_c_ell(cosmo, nz, sacc_data)
-        noise_c_ell = self.compute_noise_c_ell(n_eff, sigma_e, n_lens, sacc_data)
+        #theory_c_ell = self.compute_theory_c_ell(cosmo, nz, sacc_data)
+        #noise_c_ell = self.compute_noise_c_ell(n_eff, sigma_e, n_lens, sacc_data)
 
         # compute covariance
-        cov = self.compute_covariance(sacc_data, theory_c_ell, noise_c_ell, fsky)
-        self.save_outputs(sacc_data, cov)
+        #cov = self.compute_covariance(sacc_data, theory_c_ell, noise_c_ell, fsky)
+        self.save_outputs(two_point_data, cov_cl)
         #self.save_outputs_firecrown(C,data_vector,ells,nz,binning_info)
+
+    def save_outputs(self, two_point_data, cov):
+        filename = self.get_output('summary_statistics')
+        two_point_data.add_covariance(cov)
+        two_point_data.save_fits(filename, overwrite=True)
 
     def read_cosmology(self):
         filename = self.get_input('fiducial_cosmology')
@@ -68,20 +100,20 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def read_sacc(self):
         f = self.get_input('twopoint_data_fourier')
-        sacc_data = sacc.Sacc.load_fits(f)
+        two_point_data = sacc.Sacc.load_fits(f)
 
         # Remove the data types that we won't use for inference
         mask = [
-            sacc_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
-            sacc_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
-            sacc_data.indices(sacc.standard_types.galaxy_density_cl),
+            two_point_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
+            two_point_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
+            two_point_data.indices(sacc.standard_types.galaxy_density_cl),
         ]
         mask = np.concatenate(mask)
-        sacc_data.keep_indices(mask)
+        two_point_data.keep_indices(mask)
 
-        sacc_data.to_canonical_order()
+        two_point_data.to_canonical_order()
 
-        return sacc_data
+        return two_point_data
 
 
     def read_number_statistics(self):
@@ -102,7 +134,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # area in sq deg
         area_deg2 = maps_file['maps'].attrs['area']
-        area_unit = maps_file['maps'].attrs['area unit']
+        area_unit = maps_file['maps'].attrs['area_unit']
         if area_unit != 'sq deg':
             raise ValueError("Units of area have changed")
         area = area_deg2 * np.radians(1)**2
@@ -128,143 +160,162 @@ class TXFourierGaussianCovariance(PipelineStage):
         print( n_eff, sigma_e, fsky)
         return nz, n_eff, n_lens, sigma_e, fsky, N_tomo_bins
 
-    def compute_theory_c_ell(self, cosmo, nz, sacc_data):
-        # Turn the nz into CCL Tracer objects
-        # Use the cosmology object to calculate C_ell values
+"""
+filename='./examples/des_y1_3x2pt/des_y1_3x2pt.yaml'
+inp_config,inp_dat=parse(filename)
 
-        CEE = sacc.standard_types.galaxy_shear_cl_ee
-        CEd = sacc.standard_types.galaxy_shearDensity_cl_e
-        Cdd = sacc.standard_types.galaxy_density_cl
-        theory = {}
+# cosmo = ccl.Cosmology(Omega_c = 0.27, Omega_b = 0.045, h = 0.67, sigma8 = 0.83, n_s = 0.96,transfer_function='boltzmann_class')
+cosmo_param_names=['Omega_c', 'Omega_b', 'h', 'sigma8', 'n_s' ,'transfer_function']
+cosmo_params={name:inp_config['parameters'][name] for name in cosmo_param_names}
+cosmo = ccl.Cosmology(**cosmo_params)
 
-        for data_type in [CEE, CEd, Cdd]:
-            for t1, t2 in sacc_data.get_tracer_combinations(data_type):
-                ell = sacc_data.get_tag('ell', data_type, (t1, t2))
-                tracer1 = sacc_data.get_tracer(t1)
-                tracer2 = sacc_data.get_tracer(t2)
-                dndz1 = (tracer1.z, tracer1.nz)
-                dndz2 = (tracer2.z, tracer2.nz)
+twopoint_data = sacc.Sacc.load_fits(inp_config['two_point']['sacc_file']) #FROM FIRECROWN EXAMPLE.
 
-                if data_type in [CEE, CEd]:
-                    cTracer1 = ccl.WeakLensingTracer(cosmo, dndz=dndz1)
-                else:
-                    bias = (tracer1.z, np.ones_like(tracer1.z))
-                    cTracer1 = ccl.NumberCountsTracer(cosmo, has_rsd=False, bias=bias, dndz=dndz1)
-                    warnings.warn("Not including bias in fiducial cosmology")
+#FIXME: f_sky, ell_bins and th_bins should be passed by sacc. ell0 and th can be decided based on binning or can also be passed by sacc.
+twopoint_data.metadata['fsky']=0.3
+twopoint_data.metadata['ell']=np.arange(2,500)
+twopoint_data.metadata['ell_bins']=np.arange(2,500,20)
+th_min=2.5/60 # in degrees
+th_max=250./60
+n_th_bins=20
+twopoint_data.metadata['th_bins']=np.logspace(np.log10(th_min),np.log10(th_max),n_th_bins+1)
 
-                if data_type == CEE:
-                    cTracer2 = ccl.WeakLensingTracer(cosmo, dndz=dndz1)
-                else:
-                    bias = (tracer2.z, np.ones_like(tracer2.z))
-                    cTracer2 = ccl.NumberCountsTracer(cosmo, has_rsd=False, bias=bias, dndz=dndz2)
+th=np.logspace(np.log10(th_min*0.98),np.log10(1),n_th_bins*30) #covariance is oversampled at th values and then binned.
+th2=np.linspace(1,th_max*1.02,n_th_bins*30) #binned covariance can be sensitive to the th values. Make sue you check convergence for your application
+# th2=np.logspace(np.log10(1),np.log10(th_max),60*6)
+twopoint_data.metadata['th']=np.unique(np.sort(np.append(th,th2)))
+thb=0.5*(twopoint_data.metadata['th_bins'][1:]+twopoint_data.metadata['th_bins'][:-1])
 
-                print(" - Calculating fiducial C_ell for ", data_type, t1, t2)
-                theory[(data_type, t1, t2)] = ccl.angular_cl(cosmo, cTracer1, cTracer2, ell)
+#The spin based factor to decide the wigner transform. Based on spin of tracers. Sometimes we may use s1_s2 to denote these factors
+WT_factors={}
+WT_factors['lens','source']=(0,2)
+WT_factors['source','lens']=(2,0) #same as (0,2)
+WT_factors['source','source']={'plus':(2,2),'minus':(2,-2)}
+WT_factors['lens','lens']=(0,0)
 
-        return theory
+"""
+#this function will generate and return CCL_tracer objects and also compute the noise for all the tracers
+def get_tracer_info(cosmo, two_point_data={}):
+    ccl_tracers={}
+    tracer_Noise={}
+    for tracer in two_point_data.tracers:
+        tracer_dat = two_point_data.get_tracer(tracer)
+        z= tracer_dat.z
+        #FIXME: Following should be read from sacc dataset.
+        Ngal = 26. #arc_min^2
+        sigma_e=.26
+        b = 1.5*np.ones(len(z)) #Galaxy bias (constant with scale and z)
+        AI = .5*np.ones(len(z)) #Galaxy bias (constant with scale and z)
+        Ngal=Ngal*3600/d2r**2
 
+        dNdz = tracer_dat.nz
+        dNdz/=(dNdz*np.gradient(z)).sum()
+        dNdz*=Ngal
 
-    def compute_noise_c_ell(self, n_eff, sigma_e, n_lens, sacc_data):
+        if 'source' in tracer or 'src' in tracer:
+            ccl_tracers[tracer]=ccl.WeakLensingTracer(cosmo, dndz=(z, dNdz),ia_bias=(z,AI)) #CCL automatically normalizes dNdz
+            tracer_Noise[tracer]=sigma_e**2/Ngal
+        elif 'lens' in tracer:
+            tracer_Noise[tracer]=1./Ngal
+            ccl_tracers[tracer]=ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,dNdz), bias=(z,b))
+    return ccl_tracers,tracer_Noise
 
-        CEE=sacc.standard_types.galaxy_shear_cl_ee
-        CEd=sacc.standard_types.galaxy_shearDensity_cl_e
-        Cdd=sacc.standard_types.galaxy_density_cl
-
-        noise = {}
-
-        for data_type in sacc_data.get_data_types():
-            for (tracer1, tracer2) in sacc_data.get_tracer_combinations(data_type):
-                ell = sacc_data.get_tag('ell', data_type, (tracer1, tracer2))
-                n = len(ell)
-                b = int(tracer1.split("_")[1])
-                if tracer1 != tracer2:
-                    N = np.zeros_like(ell)
-                elif data_type == CEE:
-                    N = np.ones(n) * (sigma_e[b]**2 / n_eff[b])
-                else:
-                    assert data_type == Cdd
-                    N = np.ones(n) / n_lens[b]
-                noise[(data_type, tracer1, tracer2)] = N
-
-        return noise
-
-
-    def compute_covariance(self, sacc_data, theory_c_ell, noise_c_ell, fsky):
-        import sacc
-        n = len(sacc_data)
-        cov = np.zeros((n, n))
-
-        # It's useful to convert these names to two-character
-        # mappings as we will need combinations of them
-
-        names = {
-            sacc.standard_types.galaxy_density_cl: 'DD',
-            sacc.standard_types.galaxy_shear_cl_ee: 'EE',
-            sacc.standard_types.galaxy_shearDensity_cl_e: 'ED',
-        }
-
-        # ell values must be the same for this all to work
-        # TODO: Fix this for cases where we only want to work with a subset of the data
-        # ell values must be the same for this all to work
-        # TODO: Fix this for cases where we only want to work with a subset of the data
-        ell = sacc_data.get_tag('ell', sacc.standard_types.galaxy_shear_cl_ee, ('source_0', 'source_0'))
-        ell_indices = {ell:v for v,ell in enumerate(ell)}
+def get_cov_WT_spin(tracer_comb=None):
+#     tracers=tuple(i.split('_')[0] for i in tracer_comb)
+    tracers=[]
+    for i in tracer_comb:
+        if 'lens' in i:
+            tracers+=['lens']
+        if 'src' in i:
+            tracers+=['source']
+    return WT_factors[tuple(tracers)]
 
 
-        # Compute total C_ell for each bin (signal + noise)
-        CL = {}
-        for dt in sacc_data.get_data_types():
-            for t1, t2 in sacc_data.get_tracer_combinations(dt):
-                A, B = names[dt]
-                # Save both the first combination and the flipped version, e.g. 
-                # C^{ED}_{ij} = C^{DE}_{ji}
-                # In many cases these will be the same, but this will
-                # not be the slow part of the code
-                CL[(A, B, t1, t2)] = theory_c_ell[(dt, t1, t2)] + noise_c_ell[(dt, t1, t2)]
-                CL[(B, A, t2, t1)] = CL[(A, B, t1, t2)]
 
 
-        # <C^{AB}_{ij} C^{CD}_{mn}> = C^{AC}_{im} C^{BD}_{jn} + C^{AD}_{in} C^{BC}_{jk}
-        # First loop over rows
-        for x in range(n):
-            # The data point object
-            d1 = sacc_data.data[x]
-            # Binning information for this data point
-            # This is the nominal ell value
-            ell1 = d1['ell']
-            ell_index = ell_indices[ell1]
-            # And the window function to get the range
-            win = d1['window']
-            delta_ell = win.max - win.min
+#compute a single covariance matrix for a given pair of C_ell or xi.  
+def cl_gaussian_cov(cosmo, meta, tracer_comb1=None,tracer_comb2=None,ccl_tracers=None,tracer_Noise=None,two_point_data=None,do_xi=False,
+                    xi_plus_minus1='plus',xi_plus_minus2='plus'):
+    #fsky should be read from the sacc
+    #tracers 1,2,3,4=tracer_comb1[0],tracer_comb1[1],tracer_comb2[0],tracer_comb2[1]
+    ell=meta['ell']
+    cl={}
+    cl[13] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[0]], ccl_tracers[tracer_comb2[0]], ell)
+    cl[24] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[1]], ccl_tracers[tracer_comb2[1]], ell)
+    cl[14] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[0]], ccl_tracers[tracer_comb2[1]], ell)
+    cl[23] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[1]], ccl_tracers[tracer_comb2[0]], ell)
 
-            # The prefactor depends only on ell and delta_ell
-            f = 1.0/((2*ell1+1)*fsky*delta_ell)
+    SN={}
+    SN[13]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
+    SN[24]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
+    SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
+    SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
 
-            # This is e.g. "EE", "DE" or "ED"
-            A,B = names[d1.data_type]
+    if do_xi:
+        norm=np.pi*4*meta['fsky']
+    else: #do c_ell
+        norm=(2*ell+1)*np.gradient(ell)*meta['fsky']
 
-            # These tracer names are also part of the C_ell dictonary key
-            i = d1.tracers[0]
-            j = d1.tracers[1]
+    coupling_mat={}
+    coupling_mat[1324]=np.eye(len(ell)) #placeholder
+    coupling_mat[1423]=np.eye(len(ell)) #placeholder
 
-            # Now loop over columns
-            for y in range(n):
-                d2 = sacc_data.data[y]
-                ell2 = d2['ell']
+    cov={}
+    cov[1324]=np.outer(cl[13]+SN[13],cl[24]+SN[24])*coupling_mat[1324]
+    cov[1423]=np.outer(cl[14]+SN[14],cl[23]+SN[23])*coupling_mat[1423]
 
-                # Dirac delta function
-                if ell1 != ell2:
-                    continue
+    cov['final']=cov[1423]+cov[1324]
 
-                # Again, this is EE, ED, or DD
-                C,D = names[d2.data_type]
-                # Also tracer names
-                k = d2.tracers[0]
-                l = d2.tracers[1]
+    if do_xi:
+        s1_s2_1=get_cov_WT_spin(tracer_comb=tracer_comb1)
+        s1_s2_2=get_cov_WT_spin(tracer_comb=tracer_comb2)
+        if isinstance(s1_s2_1,dict):
+            s1_s2_1=s1_s2_1[xi_plus_minus1]
+        if isinstance(s1_s2_2,dict):
+            s1_s2_2=s1_s2_2[xi_plus_minus2]
+        th,cov['final']=WT.projected_covariance2(l_cl=ell,s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
+                                                      cl_cov=cov['final'])
 
-                cov[x,y] = f * (CL[(A, C, i, k)][ell_index] * CL[(B, D, j, l)][ell_index] + CL[(A, D, i, l)][ell_index] * CL[(B, C, j, k)][ell_index])
+    cov['final']/=norm
 
-        return cov
+    if do_xi:
+        thb,cov['final_b']=bin_cov(r=th/d2r,r_bins=meta['th_bins'],cov=cov['final'])
+    else:
+        if meta['ell_bins'] is not None:
+            lb,cov['final_b']=bin_cov(r=ell,r_bins=meta['ell_bins'],cov=cov['final'])
 
-    def save_outputs(self, sacc_data, cov):
-        filename = self.get_output('summary_statistics')
+#     cov[1324]=None #if want to save memory
+#     cov[1423]=None #if want to save memory
+    return cov
+
+
+#compute all the covariances and then combine them into one single giant matrix
+def get_all_cov(cosmo, meta, two_point_data={},do_xi=False):
+    #FIXME: Only input needed should be two_point_data, which is the sacc data file. Other parameters should be included within sacc and read from there.
+    ccl_tracers,tracer_Noise=get_tracer_info(cosmo, two_point_data=two_point_data)
+    tracer_combs=two_point_data.get_tracer_combinations()# we will loop over all these
+    N2pt=len(tracer_combs)
+    if meta['ell_bins'] is not None:
+        Nell_bins=len(meta['ell_bins'])-1
+    else:
+        Nell_bins=len(meta['ell_bins'])
+    if do_xi:
+        Nell_bins=len(meta['th_bins'])-1
+    cov_full=np.zeros((Nell_bins*N2pt,Nell_bins*N2pt))
+    for i in np.arange(N2pt):
+        tracer_comb1=tracer_combs[i]
+        indx_i=i*Nell_bins
+        for j in np.arange(i,N2pt):
+            tracer_comb2=tracer_combs[j]
+            indx_j=j*Nell_bins
+            cov_ij=cl_gaussian_cov(cosmo, meta, tracer_comb1=tracer_comb1,tracer_comb2=tracer_comb2,ccl_tracers=ccl_tracers,
+                                        tracer_Noise=tracer_Noise,do_xi=do_xi,two_point_data=two_point_data)
+            if do_xi or meta['th_bins'] is not None:
+                cov_ij=cov_ij['final_b']
+            else:
+                cov_ij=cov_ij['final']
+            cov_full[indx_i:indx_i+Nell_bins,indx_j:indx_j+Nell_bins]=cov_ij
+            cov_full[indx_j:indx_j+Nell_bins,indx_i:indx_i+Nell_bins]=cov_ij.T
+    return cov_full
+
+

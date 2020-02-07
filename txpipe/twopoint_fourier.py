@@ -92,7 +92,7 @@ class TXTwoPointFourier(PipelineStage):
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
 
         # This is needed in the deprojection calculation
-        #theory_cl = self.fiducial_theory(tracers, ell_bins, nbin_source, nbin_lens)
+        theory_cl = self.fiducial_theory(tracers, ell_bins, nbin_source, nbin_lens)
 
         # If we are rank zero print out some info
         if self.rank==0:
