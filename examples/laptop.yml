@@ -1,11 +1,11 @@
 # Stages to run
 stages:
-        #- name: TXSelector
-      #- name: PZPDFMLZ
-      #- name: TXPhotozStack
-      #- name: TXDiagnosticMaps
-      #- name: TXRandomCat
-      #- name: TXTwoPointFourier
+    - name: TXSelector
+    - name: PZPDFMLZ
+    - name: TXPhotozStack
+    - name: TXDiagnosticMaps
+    - name: TXRandomCat
+    - name: TXTwoPointFourier
       #- name: TXFourierGaussianCovariance
     - name: TXGaussianCovariance  
       #- name: TXTwoPoint

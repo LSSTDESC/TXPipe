@@ -8,7 +8,7 @@ import pyccl as ccl
 import sacc
 
 import sys
-sys.path.append("/global/homes/c/chihway/TJPCov")
+sys.path.append("../TJPCov")
 from wigner_transform import *
 from parser import *
 d2r=np.pi/180
@@ -27,7 +27,6 @@ class TXGaussianCovariance(PipelineStage):
         ('twopoint_data_fourier', SACCFile), # For the binning information,  Re
         ('diagnostic_maps', DiagnosticMaps),
         ('tomography_catalog', TomographyCatalog)
-        #('photoz_pdfs', PhotozPDFFile)
     ]
 
     outputs = [
@@ -70,6 +69,12 @@ class TXGaussianCovariance(PipelineStage):
         #thb=0.5*(two_point_data.metadata['th_bins'][1:]+two_point_data.metadata['th_bins'][:-1])
         thb=0.5*(meta['th_bins'][1:]+meta['th_bins'][:-1])
 
+
+        WT_factors={}
+        WT_factors['lens','source']=(0,2)
+        WT_factors['source','lens']=(2,0) #same as (0,2)
+        WT_factors['source','source']={'plus':(2,2),'minus':(2,-2)}
+        WT_factors['lens','lens']=(0,0)
 
         #C_ell covariance
         cov_cl = get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=False)
