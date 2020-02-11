@@ -248,9 +248,9 @@ class ParallelCalibratorMetacal:
         """
         # MPI allgather to get full arrays for everyone
         if comm is not None:
-            self.R = sum(self.comm.allgather(self.R), [])
-            self.S = sum(self.comm.allgather(self.S), [])
-            self.counts = sum(self.comm.allgather(self.counts), [])
+            self.R = sum(comm.allgather(self.R), [])
+            self.S = sum(comm.allgather(self.S), [])
+            self.counts = sum(comm.allgather(self.counts), [])
 
         R_sum = np.zeros((2,2))
         S_sum = np.zeros((2,2))
