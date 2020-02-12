@@ -5,7 +5,6 @@ import numpy as np
 import random
 import collections
 import sys
-import treecorr
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
