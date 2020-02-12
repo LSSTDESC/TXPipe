@@ -46,7 +46,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'shear_catalog_type': 'nonmetacal'
+        'shear_catalog_type': 'metacal'
         }
 
     def run(self):
@@ -325,8 +325,10 @@ class TXTwoPoint(PipelineStage):
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
             g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
-        elif self.config['shear_catalog_type']=='nonmetacal':
+        elif self.config['shear_catalog_type']=='lensfit':
             g1, g2 = apply_lensfit_calibration(data['mcal_g1'][mask],data['mcal_g2'][mask])
+        else:
+            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
 
         return g1, g2, mask
 

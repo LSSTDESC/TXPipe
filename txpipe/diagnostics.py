@@ -31,7 +31,7 @@ class TXDiagnosticPlots(PipelineStage):
     config_options = {
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
-        'shear_catalog_type': 'nonmetacal'
+        'shear_catalog_type': 'metacal'
     }
 
     def run(self):
@@ -375,10 +375,10 @@ class TXDiagnosticPlots(PipelineStage):
                 
                 if self.config['shear_catalog_type']=='metacal':
                     g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
-                elif self.config['shear_catalog_type']=='nonmetacal':
+                elif self.config['shear_catalog_type']=='lensfit':
                     g1, g2 = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
                 else:
-                    raise ValueError(f"Please specify metacal or nonmetacal for shear_catalog in config.")
+                    raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 # Do more things here to establish
                 calc1.add_data(i, g1)
                 

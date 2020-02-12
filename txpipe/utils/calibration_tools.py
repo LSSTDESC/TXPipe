@@ -74,17 +74,8 @@ def apply_lensfit_calibration(g1, g2, weight=None,m=None):
         weight = np.array([1])
     if m==None:
         m = np.array([1])
-    lfit_g = np.stack([g1,g2], axis=1)
 
-    lfit_g1 = (weight*lfit_g[:,0] ) /  np.sum(weight)
-
-    lfit_g2 = (weight*lfit_g[:,1] ) /  np.sum(weight)
-
-    one_plus_K = np.sum( weight * (1 + m) ) / np.sum(weight)
-
-    lfit_g = np.stack([lfit_g1/one_plus_K , lfit_g2 /one_plus_K ], axis=1)
-
-    return g1, g2#lfit_g[:,0], lfit_g[:,1]
+    return g1, g2
 
 
 
