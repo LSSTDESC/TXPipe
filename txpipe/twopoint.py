@@ -83,7 +83,8 @@ class TXTwoPoint(PipelineStage):
         # but for this case I would expect it to be mostly fine
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
-            results += self.call_treecorr(data, i, j, k)
+            result = self.call_treecorr(data, i, j, k)
+            results.append(result)
 
         # If we are running in parallel this collects the results together
         results = self.collect_results(results)
@@ -340,40 +341,24 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
-        XI = "combined"
-        #XI = sacc.standard_types.galaxy_shear_xi_plus
-        #XIM = sacc.standard_types.galaxy_shear_xi_minus
-        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
-        WTHETA = sacc.standard_types.galaxy_density_xi
 
-        results = []
 
         if k==SHEAR_SHEAR:
-            gg = self.calculate_shear_shear(data, i, j)
-            #if i==j:
-            #    npairs/=2
-            #    weight/=2
-
-            results.append(Measurement(XI, gg, i, j))
-            #results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
-
+            xx = self.calculate_shear_shear(data, i, j)
+            xtype = "combined"
         elif k==SHEAR_POS:
-            ng = self.calculate_shear_pos(data, i, j)
-            #if i==j:
-            #    npairs/=2
-            #    weight/=2
-
-            results.append(Measurement(GAMMAT, ng, i, j))
-
+            xx = self.calculate_shear_pos(data, i, j)
+            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            nn = self.calculate_pos_pos(data, i, j)
-            #if i==j:
-            #    npairs/=2
-            #    weight/=2
+            xx = self.calculate_pos_pos(data, i, j)
+            xtype = sacc.standard_types.galaxy_density_xi
+        else:
+            raise ValueError(f"Unknown correlation function {k}")
+        
+        result = Measurement(xtype, xx, i, j)
 
-            results.append(Measurement(WTHETA, nn, i, j))
         sys.stdout.flush()
-        return results
+        return result
 
 
     def get_m(self, data, i):
