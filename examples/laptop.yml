@@ -6,8 +6,8 @@ stages:
     - name: TXDiagnosticMaps
     - name: TXRandomCat
     - name: TXTwoPointFourier
-      #- name: TXFourierGaussianCovariance
-    - name: TXGaussianCovariance  
+    - name: TXFourierGaussianCovariance
+      #- name: TXGaussianCovariance  
       #- name: TXTwoPoint
       #- name: TXDiagnosticPlots
       #- name: TXGammaTFieldCenters

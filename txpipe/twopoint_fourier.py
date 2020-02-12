@@ -280,6 +280,13 @@ class TXTwoPointFourier(PipelineStage):
     def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
         from .utils.nmt_utils import MyNmtBinFlat, MyNmtBin
+        """
+        if self.config['input_ell_bins']:
+            bin_edges = self.config['ell_bin_edges']
+            ell_bins = MyNmtBinFlat(bin_edges[:-1], bin_edges[1:])
+            ell_bins.ell_mins = bin_edges[:-1]
+            ell_bins.ell_maxs = bin_edges[1:]    
+        """
         if pixel_scheme.name == 'healpix':
             # This is just approximate
             area = f_sky * 4 * np.pi

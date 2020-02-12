@@ -35,9 +35,9 @@ TXSelector:
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
-    r_hi_cut: 19.6
+    r_hi_cut: 24.6
     i_lo_cut: 17.5
-    i_hi_cut: 19.9
+    i_hi_cut: 24.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
@@ -52,7 +52,11 @@ TXTwoPoint:
     do_shear_shear: True
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
     verbose: 0
+    
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once
@@ -73,3 +77,7 @@ TXDiagnosticMaps:
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: False
+    #input_ell_bins: True
+    #ell_bin_edges: [100.0,200.0,300.0,400.0,600.0,800.0,1000.0,1400.0,1800.0,2200.0,3000.0,3800.0,4600.0,6200.0,7800.0,9400.0,12600.0,15800.0]
+
+
