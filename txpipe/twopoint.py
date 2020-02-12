@@ -47,7 +47,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_methods': 'jackknife',
-        'npatch': 50
+        'npatch': 35
         }
 
     def run(self):
@@ -240,16 +240,17 @@ class TXTwoPoint(PipelineStage):
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
-        ggs = []
-        ngs = []
-        nns = []
+        #ggs = []
+        #ngs = []
+        #nns = []
+        comb = []
         for d in results:
             #First lets try and get Covariance matrix
             tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'
-
+            comb.append(d.object)
             if d.corr_type == XI:
-                ggs.append(d.object)
+                #ggs.append(d.object)
                 theta = np.exp(d.object.meanlogr)
                 xip = d.object.xip
                 xim = d.object.xim
@@ -267,7 +268,7 @@ class TXTwoPoint(PipelineStage):
                     S.add_data_point(XIM, (tracer1,tracer2), xim[i],
                         theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
             elif d.corr_type == GAMMAT:
-                ngs.append(d.object)
+                #ngs.append(d.object)
                 theta = np.exp(d.object.meanlogr)
                 gammat = d.object.xi
                 gammaterr = np.sqrt(d.object.varxi)
@@ -281,7 +282,7 @@ class TXTwoPoint(PipelineStage):
                     S.add_data_point(GAMMAT, (tracer1,tracer2), gammat[i],
                         theta=theta[i], error=gammaterr[i], weight=weight[i])
             else:
-                nns.append(d.object)
+                #nns.append(d.object)
                 theta = np.exp(d.object.meanlogr)
                 wtheta = d.object.xi
                 wthetaerr = np.sqrt(d.object.varxi)
@@ -302,7 +303,6 @@ class TXTwoPoint(PipelineStage):
             #    S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i],
             #        theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
 
-        comb = ggs + ngs + nns
         cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
 
         S.add_covariance(cov)
@@ -354,7 +354,7 @@ class TXTwoPoint(PipelineStage):
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
-        
+
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
@@ -1012,7 +1012,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         # tracer they each require
         S.add_tracer('misc', 'fieldcenter')
         S.add_tracer('NZ', 'source2d', z, Nz)
-        
+
         d = results[0]
         assert len(results)==1
         dvalue = d.object.xi
@@ -1069,7 +1069,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'shot',
-        'npatch': 50 
+        'npatch': 50
         }
 
     def run(self):
