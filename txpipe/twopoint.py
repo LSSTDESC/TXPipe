@@ -457,13 +457,6 @@ class TXTwoPoint(PipelineStage):
         gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i, cat_j)
 
-        #theta=np.exp(gg.meanlogr)
-        #xip = gg.xip
-        #xim = gg.xim
-        #xiperr = np.sqrt(gg.varxip)
-        #ximerr = np.sqrt(gg.varxim)
-
-        #return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
         return gg
 
     def calculate_shear_pos(self,data, i, j):
@@ -487,12 +480,8 @@ class TXTwoPoint(PipelineStage):
         else:
             rg = None
 
-        gammat, gammat_im, gammaterr = ng.calculateXi(rg=rg)
+        ng.calculateXi(rg=rg)
 
-        #theta = np.exp(ng.meanlogr)
-        #gammaterr = np.sqrt(gammaterr)
-
-        #return theta, gammat, gammaterr, ng.npairs, ng.weight
         return ng
 
 
@@ -527,11 +516,7 @@ class TXTwoPoint(PipelineStage):
         rn.process(rancat_i, cat_j)
         rr.process(rancat_i, rancat_j)
 
-        #theta=np.exp(nn.meanlogr)
-        wtheta,wthetaerr=nn.calculateXi(rr, dr=nr, rd=rn)
-        #wthetaerr=np.sqrt(wthetaerr)
-
-        #return theta, wtheta, wthetaerr, nn.npairs, nn.weight
+        nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
     def load_tomography(self, data):
