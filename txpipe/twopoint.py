@@ -33,7 +33,7 @@ class TXTwoPoint(PipelineStage):
     config_options = {
         'calcs':[0,1,2],
         'min_sep':2.5,
-        'max_sep':250,
+        'max_sep':250.,
         'nbins':20,
         'bin_slop':0.1,
         'sep_units':'arcmin',
