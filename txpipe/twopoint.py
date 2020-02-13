@@ -47,7 +47,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_methods': 'jackknife',
-        'npatch': 35
+        'npatch': 5
         }
 
     def run(self):
@@ -415,6 +415,7 @@ class TXTwoPoint(PipelineStage):
                 ra=ra, dec=dec,
                 ra_units='degree', dec_units='degree',
                 npatch=self.config['npatch'])
+            print ("cat", cat)
         else:
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
@@ -426,7 +427,7 @@ class TXTwoPoint(PipelineStage):
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                     ra_units='degree', dec_units='degree',
-                    npatch=self.config['npatch'])
+                    patch_centers=cat.patch_centers)
             else:
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
@@ -923,7 +924,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 50
+        'npatch': 5
         }
 
     def run(self):
@@ -1069,7 +1070,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'shot',
-        'npatch': 50
+        'npatch': 5
         }
 
     def run(self):
@@ -1233,7 +1234,7 @@ class TXGammaTDimStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 50
+        'npatch': 5
         }
 
     def run(self):
