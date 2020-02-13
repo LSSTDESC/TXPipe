@@ -58,7 +58,7 @@ class TXMetacalGCRInput(PipelineStage):
         )
 
         # Input columns for photometry
-        photo_cols = ['id', 'ra', 'dec']
+        photo_cols = ['id', 'ra', 'dec', 'extendedness']
 
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
@@ -270,7 +270,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         )
 
         # Input columns for photometry
-        photo_cols = ['id', 'ra', 'dec']
+        photo_cols = ['id', 'ra', 'dec', 'extendedness']
         photo_out_cols = photo_cols[:]
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
