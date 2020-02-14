@@ -322,6 +322,7 @@ class TXSelector(PipelineStage):
         """
         n = self.open_input('shear_catalog')['metacal/ra'].size
         zbins = self.config['zbins']
+        print(zbins)
         nbin_source = len(zbins)
         nbin_lens = 1
 

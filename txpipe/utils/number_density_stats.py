@@ -19,7 +19,7 @@ class NumberDensityStats:
             w = np.where(shear_bin==i)
             self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w])
             self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w])
-
+        
         for i in range(self.nbin_lens):
             n = (lens_bin==i).sum()
             self.lens_counts[i] += n
@@ -37,9 +37,12 @@ class NumberDensityStats:
             # as this value is not calibrated
             sigma_e[i] = (0.5 * (variances[0] + variances[1]))**0.5
 
-        lens_counts = np.zeros_like(self.lens_counts)
-        if self.comm is not None:
+
+        if self.comm is None:
+            lens_counts = self.lens_counts
+        else:
             import mpi4py.MPI
+            lens_counts = np.zeros_like(self.lens_counts)
             self.comm.Reduce(
                 [self.lens_counts, mpi4py.MPI.DOUBLE],
                 [lens_counts, mpi4py.MPI.DOUBLE],

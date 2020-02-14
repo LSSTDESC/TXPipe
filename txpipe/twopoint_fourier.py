@@ -420,7 +420,7 @@ class TXTwoPointFourier(PipelineStage):
             c = pymaster.compute_full_master_flat(field_i, field_j, ell_bins,
                 cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=cl_theory['ell'],
                 workspace=workspace)
-
+        print(c)
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
@@ -596,7 +596,9 @@ class TXTwoPointFourier(PipelineStage):
             tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CBB] else f'lens_{d.j}'
 
             n = len(d.l)
+            print(n)
             for i in range(n):
+                print(d.value[i])
                 win = TopHatWindow(d.win[i][0], d.win[i][1])
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win, i=d.i, j=d.j)
 

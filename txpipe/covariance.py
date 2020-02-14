@@ -25,7 +25,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         ('photoz_stack', HDFFile),  # For the n(z)
         ('twopoint_data_fourier', SACCFile), # For the binning information,  Re
         ('diagnostic_maps', DiagnosticMaps),
-        ('tomography_catalog', TomographyCatalog)
+        ('tomography_catalog', TomographyCatalog),
     ]
 
     outputs = [
@@ -34,6 +34,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     config_options = {
             #bias
+        'do_xi':False,
             #IA
     }
 
@@ -83,7 +84,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         WT_factors['lens','lens']=(0,0)
 
         #C_ell covariance
-        cov_cl = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=False)
+        cov_cl = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=self.config['do_xi'])
         
         #xi covariance .... right now shear-shear is xi+ only. xi- needs to be added in the loops.
         #cov_xi = get_all_cov(two_point_data=twopoint_data,do_xi=True)
@@ -128,22 +129,13 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         return two_point_data
 
-
     def read_number_statistics(self):
         input_data = self.open_input('photoz_stack')
         tomo_file = self.open_input('tomography_catalog')
         maps_file = self.open_input('diagnostic_maps')
 
-        #N_tomo_bins=len(tomo_file['tomography/sigma_e'][:])
-        #print("NBINS: ", N_tomo_bins)
-
-        #nz = {}
-        #nz['z'] = input_data[f'n_of_z/source/z'][:]
-        #for i in range(N_tomo_bins):
-        #    nz['bin_'+ str(i)] = input_data[f'n_of_z/source/bin_{i}'][:]
-
-        N_eff = tomo_file['tomography/N_eff'][:]
-        N_lens = tomo_file['tomography/lens_counts'][:]
+        N_eff = tomo_file['tomography/N_eff']
+        N_lens = tomo_file['tomography/lens_counts']
 
         # area in sq deg
         area_deg2 = maps_file['maps'].attrs['area']
@@ -159,7 +151,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         sigma_e = tomo_file['tomography/sigma_e'][:]
 
         n_lens = N_lens / area
-        print("lens density : ", n_eff)
+        print("lens density : ", n_lens)
 
         fullsky=4*np.pi #*(180./np.pi)**2 #(FULL SKY IN STERADIANS)
         fsky=area/fullsky
@@ -179,7 +171,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         for tracer in two_point_data.tracers:
             tracer_dat = two_point_data.get_tracer(tracer)
-            nbin = int(two_point_data.tracers[tracer].name[-1])
+            nbin = int(two_point_data.tracers[tracer].name[-1]) #might be a better way of doing this?
             z = tracer_dat.z
             dNdz = tracer_dat.nz
             dNdz /= (dNdz*np.gradient(z)).sum()
@@ -196,7 +188,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             
             elif 'lens' in tracer:
                 b = meta['gal_bias'][nbin]*np.ones(len(z))
-                Ngal = meta['n_eff'][nbin]
+                Ngal = meta['n_lens'][nbin]
                 #Ngal = Ngal*3600/d2r**2
                 #dNdz *= Ngal
                 tracer_Noise[tracer]=1./Ngal
@@ -232,9 +224,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         SN[24]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
         SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
         SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
-
-        print(cl)
-        print(SN)
 
         if do_xi:
             norm=np.pi*4*meta['fsky']
@@ -317,7 +306,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         return cov_full
 
 
-"""
+
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     name='TXRealGaussianCovariance'
 
@@ -330,12 +319,20 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     ]
 
     outputs = [
-        ('summary_statistics_real', SACCFile),
+#        ('summary_statistics_real', SACCFile),
     ]
 
     config_options = {
-    }
+        'do_xi':True,
+            }
+
 
 
     def run(self):
-"""
+        super().run()
+
+    def save_outputs(self, two_point_data, cov):
+        filename = self.get_output('summary_statistics_real')
+        two_point_data.add_covariance(cov)
+        two_point_data.save_fits(filename, overwrite=True)
+

@@ -35,9 +35,9 @@ TXSelector:
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
-    r_hi_cut: 24.6
+    r_hi_cut: 19.6
     i_lo_cut: 17.5
-    i_hi_cut: 24.9
+    i_hi_cut: 19.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
