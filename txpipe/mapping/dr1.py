@@ -85,7 +85,7 @@ class DepthMapperDR1:
     
 class BrightObjectMapper:
     def __init__(self, pixel_scheme, mag_threshold, sparse=False, comm=None):
-        """Class to build up depth maps iteratively as we cycle through a data set.
+        """Class to build up bright object maps iteratively as we cycle through a data set.
 
         Two methods should be used:
         - add_data which should be called each time a new data chunk is loaded
@@ -96,11 +96,8 @@ class BrightObjectMapper:
         pixel_scheme: PixelScheme object
             Converter from angle to pixel
 
-        snr_threshold: float
-            Value of SNR to use as the depth (e.g. 5.0 for 5 sigma depth)
-
-        snr_delta: float, optional
-            Half-width of the SNR values to use for the depth estimation
+        mag_threshold: float
+            Value of magnitude to use as the cutoff for bright objects
 
         sparse: bool, optional
             Whether to use sparse indexing for the calculation.  Faster if only a small number of pixels
@@ -116,13 +113,13 @@ class BrightObjectMapper:
             Indices of all pixels with any objects
 
         count: array
-            Number of objects in each pixel
+            Number of bright objects in each pixel
 
-        depth: array
-            Estimated depth of each pixel
+        brmag: array
+            mean magnitude of bright objects in each pixel
 
-        depth_var: array
-            Estimated variance of depth of each pixel
+        brmag_var: array
+            variance of magnitude of bright objects in each pixel
 
         """
         self.pixel_scheme = pixel_scheme
@@ -147,7 +144,7 @@ class BrightObjectMapper:
 
     def finalize(self, comm=None):
 
-        count, depth, depth_var = self.stats.collect(comm)
+        count, brmag, brmag_var = self.stats.collect(comm)
 
         # Generate the pixel indexing (if parallel and the master process) and 
         # convert from sparse arrays to pixel, index arrays.if sparse
@@ -155,9 +152,9 @@ class BrightObjectMapper:
             pixel = None
         elif self.sparse:
             pixel, count = count.to_arrays()
-            _, depth = depth.to_arrays()
-            _, depth_var = depth_var.to_arrays()
+            _, brmag = brmag.to_arrays()
+            _, brmag_var = brmag_var.to_arrays()
         else:
-            pixel = np.arange(len(depth))
+            pixel = np.arange(len(brmag))
 
-        return pixel, count, depth, depth_var
+        return pixel, count, brmag, brmag_var

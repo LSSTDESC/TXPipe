@@ -38,8 +38,8 @@ class TXDiagnosticMaps(PipelineStage):
         'nside':0,   # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
         'snr_threshold':float,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
-        'mag_threshold':22.0,
-        'max_count':10.0,
+        'mag_threshold':22.0, # The magnitude threshold for a object to be counted as bright
+        'max_count':10.0, # Maximum number of bright objects in a pixel for it to not be masked
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
         'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
         'ra_cent':np.nan,  # These parameters are only required if pixelization==tan
@@ -139,7 +139,7 @@ class TXDiagnosticMaps(PipelineStage):
         for (s,e,shear_data), phot_data, bin_data, m_data in iterator:
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Pick out a few relevant columns from the different
-            # files to give to the depth mapper.
+            # files to give to the depth mapper & bright object mapper
             depth_data = {
                 'mag': phot_data[f'{band}_mag'],
                 'snr': phot_data[f'snr_{band}'],
