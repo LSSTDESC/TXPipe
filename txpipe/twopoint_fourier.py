@@ -3,6 +3,7 @@ from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlF
 import numpy as np
 import collections
 from .utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
+from .utils.theory import theory_3x2pt
 import sys
 import warnings
 
@@ -59,6 +60,7 @@ class TXTwoPointFourier(PipelineStage):
         import pymaster
         import healpy
         import sacc
+        import pyccl
         config = self.config
 
         if self.comm:
@@ -82,17 +84,20 @@ class TXTwoPointFourier(PipelineStage):
         # mean response values
         noise, mean_R = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
 
-        # Load the n(z) values, which are both saved in the output
-        # file alongside the spectra, and used to calcualate the
-        # fiducial theory C_ell
-        tracers = self.load_tracers(nbin_source, nbin_lens)
 
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
 
-        # This is needed in the deprojection calculation
-        theory_cl = self.fiducial_theory(tracers, ell_bins, nbin_source, nbin_lens)
+        # Load the n(z) values, which are both saved in the output
+        # file alongside the spectra, and then used to calcualate the
+        # fiducial theory C_ell, which is used in the deprojection calculation
+        tracers = self.load_tracers(nbin_source, nbin_lens)
+        theory_cl = theory_3x2pt(
+            self.get_input('fiducial_cosmology'),
+            tracers,
+            max(ell_bins.ell_max),
+            nbin_source, nbin_lens)
 
         # If we are rank zero print out some info
         if self.rank==0:
@@ -500,70 +505,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return tracers
 
-    def fiducial_theory(self, tracers, ell_bins, nbin_source, nbin_lens):
-        import pyccl as ccl
 
-        filename = self.get_input('fiducial_cosmology')
-        cosmo = ccl.Cosmology.read_yaml(filename)
-
-        # We will need the theory C_ell in a continuum up until
-        # the full ell_max, because we will need a weighted sum
-        # over the values
-        ell_max = np.max(ell_bins.ell_max)
-        #f_d[0].fl.lmax
-        ell = np.arange(ell_max+1, dtype=int)
-
-        # Convert from SACC tracers (which just store N(z))
-        # to CCL tracers (which also have cosmology info in them).
-        CTracers = {}
-
-        # Lensing tracers - need to think a little more about
-        # the fiducial intrinsic alignment here
-        for i in range(nbin_source):
-            x = tracers[f'source_{i}']
-            tag = ('S', i)
-            CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z, x.nz))
-        # Position tracers - even more important to think about fiducial biases
-        # here - these will be very very wrong otherwise!
-        # Important enough that I'll put in a warning.
-        warnings.warn("Not using galaxy bias in fiducial theory density spectra")
-
-        for i in range(nbin_lens):
-            x = tracers[f'lens_{i}']
-            tag = ('P', i) 
-            b = np.ones_like(x.z)
-            CTracers[tag] = ccl.NumberCountsTracer(cosmo, dndz=(x.z, x.nz),
-                                        has_rsd=False, bias=(x.z,b))
-
-        # Use CCL to actually calculate the C_ell values for the different cases
-        theory_cl = {}
-        theory_cl['ell'] = ell
-        k = SHEAR_SHEAR
-        for i in range(nbin_source):
-            for j in range(i+1):
-                Ti = CTracers[('S',i)]
-                Tj = CTracers[('S',j)]
-                # The full theory C_ell over the range 0..ellmax
-                theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-                
-
-        # The same for the galaxy galaxy-lensing cross-correlation
-        k = SHEAR_POS
-        for i in range(nbin_source):
-            for j in range(nbin_lens):
-                Ti = CTracers[('S',i)]
-                Tj = CTracers[('P',j)]
-                theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-
-        # And finally for the density correlations
-        k = POS_POS
-        for i in range(nbin_lens):
-            for j in range(i+1):
-                Ti = CTracers[('P',i)]
-                Tj = CTracers[('P',j)]
-                theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-
-        return theory_cl
 
 
     def save_power_spectra(self, tracers, nbin_source, nbin_lens):
