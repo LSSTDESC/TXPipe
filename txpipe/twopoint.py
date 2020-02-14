@@ -25,6 +25,7 @@ class TXTwoPoint(PipelineStage):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
+        ('patch_centers', HDFFile),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
@@ -379,13 +380,15 @@ class TXTwoPoint(PipelineStage):
         g1,g2,mask = self.get_m(data, i)
 
         if self.config['var_methods']=='jackknife':
+            patchcenters = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',
-                npatch=self.config['npatch'])
+                patch_centers=patchcenters)
+                #npatch=self.config['npatch'])
         else:
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -411,11 +414,13 @@ class TXTwoPoint(PipelineStage):
             dec = data['dec'][mask]
 
         if self.config['var_methods']=='jackknife':
+            patchcenters = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
                 ra_units='degree', dec_units='degree',
-                npatch=self.config['npatch'])
-            print ("cat", cat)
+                patch_centers=patchcenters)
+                #npatch=self.config['npatch'])
+            #print ("cat", cat)
         else:
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
@@ -427,7 +432,7 @@ class TXTwoPoint(PipelineStage):
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                     ra_units='degree', dec_units='degree',
-                    patch_centers=cat.patch_centers)
+                    patch_centers=patchcenters)
             else:
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],

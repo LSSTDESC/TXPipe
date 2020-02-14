@@ -40,6 +40,7 @@ inputs:
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
+    patch_centers: data/example/inputs/jackcenters.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
 
@@ -50,5 +51,3 @@ resume: True
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
-
-
