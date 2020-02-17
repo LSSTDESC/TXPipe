@@ -96,7 +96,7 @@ class TXTwoPointFourier(PipelineStage):
         theory_cl = theory_3x2pt(
             self.get_input('fiducial_cosmology'),
             tracers,
-            max(ell_bins.ell_max),
+            ell_bins.ell_max,
             nbin_source, nbin_lens)
 
         # If we are rank zero print out some info
@@ -431,9 +431,9 @@ class TXTwoPointFourier(PipelineStage):
         # We loaded in sigma_e and the densities
         # earlier on, and put them in the tomo_info dictionary
         if k==SHEAR_SHEAR:
-            noise_level = tomo_info['sigma_e'][i]**2 / tomo_info['n_eff_steradian']
+            noise_level = tomo_info['sigma_e'][i]**2 / tomo_info['n_eff_steradian'][i]
         else:
-            noise_level = 1.0 / tomo_info['n_lens_steradian']
+            noise_level = 1.0 / tomo_info['n_lens_steradian'][i]
 
         # Number of ell values in the uncoupled C_ell (banded in flat case)
         if ell_bins.is_flat():
@@ -452,23 +452,22 @@ class TXTwoPointFourier(PipelineStage):
         # Couple to take coupled C_ell value
         if ell_bins.is_flat():
             ell = ell_bins.get_effective_ells()
-            cl_noise = w00.couple_cell(N2)
+            cl_noise = w.couple_cell(N2)
         else:
-            cl_noise = w00.couple_cell(N2)
+            cl_noise = w.couple_cell(N2)
 
         return cl_noise
 
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         metadata = self.open_input('tracer_metdata')
-        sigma_e = metadata['tomography/sigma_e'][:]
-        mean_R = metadata['multiplicative_bias/R_gamma_mean'][:]
-        N_eff = metadata['tomography/N_eff'][:]
-        lens_counts = metadata['tomography/lens_counts'][:]
+        sigma_e = metadata['tracers/sigma_e'][:]
+        mean_R = metadata['tracers/R_gamma_mean'][:]
+        N_eff = metadata['tracers/N_eff'][:]
+        lens_counts = metadata['tracers/lens_counts'][:]
         metadata.close()
 
         area = 4*np.pi*f_sky
-
         n_eff = N_eff / area
         n_lens = lens_counts / area
 
