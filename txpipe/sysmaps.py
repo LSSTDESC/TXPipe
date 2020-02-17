@@ -299,6 +299,7 @@ class FakeTracer:
     def __init__(self, mu, sigma):
         self.z = np.arange(0.0, 3.0, 0.01)
         self.nz = np.exp(-0.5*(self.z - mu)**2 / sigma**2) / np.sqrt(2*np.pi) / sigma
+        self.nsample = len(self.z)
 
 class TXFakeMaps(TXDiagnosticMaps):
     """
@@ -313,6 +314,7 @@ class TXFakeMaps(TXDiagnosticMaps):
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
         ('tracer_metdata', HDFFile),
+        ('photoz_stack', HDFFile),
     ]
 
     # Configuration information for this stage
@@ -396,57 +398,56 @@ class TXFakeMaps(TXDiagnosticMaps):
         flag_pixs = pix
         flag_maps = [zero for i in range(config['flag_exponent_max'])]
 
-        # Only the root process saves the output
-        if self.rank==0:
-            print("Saving maps")
-            # Open the HDF5 output file
-            outfile = self.open_output('diagnostic_maps')
-            # Use one global section for all the maps
-            group = outfile.create_group("maps")
-            # Save each of the maps in a separate subsection
-            self.save_map(group, "depth", depth_pix, depth, config)
-            self.save_map(group, "depth_count", depth_pix, depth_count, config)
-            self.save_map(group, "depth_var", depth_pix, depth_var, config)
+        print("Saving maps")
+        # Open the HDF5 output file
+        outfile = self.open_output('diagnostic_maps')
+        # Use one global section for all the maps
+        group = outfile.create_group("maps")
+        # Save each of the maps in a separate subsection
+        self.save_map(group, "depth", depth_pix, depth, config)
+        self.save_map(group, "depth_count", depth_pix, depth_count, config)
+        self.save_map(group, "depth_var", depth_pix, depth_var, config)
 
-            # I'm expecting this will one day call off to a 10,000 line
-            # library or something.
-            mask, npix = self.compute_mask(depth_count)
-            self.save_map(group, "mask", depth_pix, mask, config)
+        # I'm expecting this will one day call off to a 10,000 line
+        # library or something.
+        mask, npix = self.compute_mask(depth_count)
+        self.save_map(group, "mask", depth_pix, mask, config)
 
-            # Save some other handy map info that will be useful later
-            area = pixel_scheme.pixel_area(degrees=True) * npix
-            group.attrs['area'] = area
-            group.attrs['area_unit'] = 'sq deg'
-            group.attrs['nbin_source'] = len(source_bins)
-            group.attrs['nbin_lens'] = len(lens_bins)
-            group.attrs['flag_exponent_max'] = config['flag_exponent_max']
+        # Save some other handy map info that will be useful later
+        area = pixel_scheme.pixel_area(degrees=True) * npix
+        group.attrs['area'] = area
+        group.attrs['area_unit'] = 'sq deg'
+        group.attrs['nbin_source'] = len(source_bins)
+        group.attrs['nbin_lens'] = len(lens_bins)
+        group.attrs['flag_exponent_max'] = config['flag_exponent_max']
 
-            # Now save all the lens bin galaxy counts, under the
-            # name ngal
-            for b in lens_bins:
-                self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
-                self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
+        # Now save all the lens bin galaxy counts, under the
+        # name ngal
+        for b in lens_bins:
+            self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
+            self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
 
-            for b in source_bins:
-                self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
-                self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
-                self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
-                self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
-                # PSF maps
-                self.save_map(group, f"psf_g1_{b}", map_pix_psf, g1_psf[b], config)
-                self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
-                self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
-                self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
+        for b in source_bins:
+            self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
+            self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
+            self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
+            self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
+            # PSF maps
+            self.save_map(group, f"psf_g1_{b}", map_pix_psf, g1_psf[b], config)
+            self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
+            self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
+            self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
 
-            for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
-                f = 2**i
-                t = m.sum()
-                print(f"Map shows total {t} objects with flag {f}")
-                self.save_map(group, f"flag_{f}", p, m, config)
+        for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
+            f = 2**i
+            t = m.sum()
+            print(f"Map shows total {t} objects with flag {f}")
+            self.save_map(group, f"flag_{f}", p, m, config)
 
             self.save_metadata_file(area, nbin_source, nbin_lens)
+            self.save_photoz_stack(nbin_source, nbin_lens)
 
-    def generate_theory_cl(self, nbin_source, nbin_lens):
+    def generate_tracers(self, nbin_source, nbin_lens):
         tracers = {}
         for i in range(nbin_source):
             mu = self.config['source_bin_centers'][i]
@@ -457,7 +458,33 @@ class TXFakeMaps(TXDiagnosticMaps):
             mu = self.config['lens_bin_centers'][i]
             sigma = self.config['lens_bin_widths'][i]
             tracers[f'lens_{i}'] = FakeTracer(mu, sigma)
+        return tracers
 
+    def save_photoz_stack(self, nbin_source, nbin_lens):
+        tracers = self.generate_tracers(nbin_source, nbin_lens)
+
+        outfile = self.open_output('photoz_stack')
+
+        for name, n in [('source', nbin_source), ('lens', nbin_lens)]:
+            group = outfile.create_group(f"n_of_z/{name}")
+            group.attrs["nbin"] = n
+        
+            for i in range(n):
+                tracer = tracers[f'source_{i}']
+                group.create_dataset(f"bin_{i}", data=tracer.nz)
+
+                # TODO: make and save counts for each bin
+                # group.attrs["count_{}"] = ...
+
+                if i==0:
+                    group.create_dataset("z", data=tracer.z)
+                    group.attrs["nz"] = len(tracer.z)
+        outfile.close()
+
+
+
+    def generate_theory_cl(self, nbin_source, nbin_lens):
+        tracers = self.generate_tracers(nbin_source, nbin_lens)
         cosmo_file = self.get_input("fiducial_cosmology")
         ell_max = 3*self.config['nside'] - 1
         theory_cl = theory_3x2pt(cosmo_file, tracers, ell_max, nbin_source, nbin_lens)
@@ -525,26 +552,25 @@ class TXFakeMaps(TXDiagnosticMaps):
         return source_maps, lens_maps
 
     def add_noise(self, source_maps, lens_maps):
-
-
-        pix_area_steradians = 4 * np.pi / len(source_maps[0][0])
-        pix_area_deg2 = pix_area_steradians * np.degrees(1)**2
+        import healpy as hp
+        pix_area_deg2 = hp.nside2pixarea(self.config['nside'], degrees=True)
         pix_area_arcmin2 = pix_area_deg2 * 3600
 
         for i, (g1, g2) in enumerate(source_maps):
             sigma_e = self.config['sigma_e'][i]
             n_eff_arcmin2 = self.config['n_eff'][i]
-            n_eff_pixel = n_eff_arcmin2 / pix_area_arcmin2
+            n_eff_pixel = n_eff_arcmin2 * pix_area_arcmin2
             sigma_pixel = sigma_e / np.sqrt(n_eff_pixel)
             
             g1 += np.random.normal(size=g1.size) * sigma_pixel
-            g2 += np.random.normal(size=g1.size) * sigma_pixel
+            g2 += np.random.normal(size=g2.size) * sigma_pixel
+
 
         for i, m in enumerate(lens_maps):
             n_arcmin2 = self.config['lens_counts'][i]
             n_pixel = n_arcmin2 / pix_area_arcmin2
             sigma_pixel = 1.0 / np.sqrt(n_eff_pixel)
-            print(i, sigma_pixel)
+            print(i, sigma_pixel)   
             
             m += np.random.normal(size=m.size) * sigma_pixel
 
