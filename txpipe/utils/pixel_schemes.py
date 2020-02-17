@@ -97,13 +97,13 @@ class HealpixScheme:
 
 
         """
-        theta, phi = self.healpy.ang2pix(self.nside, pix, nest=self.nest)
+        thet, phi = self.healpy.pix2ang(self.nside, pix, nest=self.nest)
         if not theta:
-            theta = np.pi/2 - theta
+            thet = np.pi/2 - thet
         if not radians:
-            theta = np.degrees(theta)
+            thet = np.degrees(thet)
             phi = np.degrees(phi)
-        return phi, theta
+        return phi, thet
 
     def pixel_area(self, degrees=False):
         """
