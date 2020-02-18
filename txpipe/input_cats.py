@@ -174,13 +174,13 @@ class TXCosmoDC2Mock(PipelineStage):
             if start >= target_size:
                 break
         # Tidy up
-        #self.truncate_output(photo_file, metacal_file, end)
+
         photo_file.close()
         metacal_file.close()
 
         self.truncate_outputs(end)
 
-    def trunucate_outputs(self, n):
+    def truncate_outputs(self, n):
         import h5py
         if self.comm is not None:
             self.comm.Barrier()
@@ -190,14 +190,14 @@ class TXCosmoDC2Mock(PipelineStage):
             print(f"Resizing all outupts to size {n}")
             f = h5py.File(self.get_output('photometry_catalog'))
             g = f['photometry']
-            for col in g.keys():
-                g[col].resize(n)
+            for col in list(g.keys()):
+                g[col].resize((n,))
             f.close()
 
             f = h5py.File(self.get_output('shear_catalog'))
             g = f['metacal']
             for col in g.keys():
-                g[col].resize(n)
+                g[col].resize((n,))
 
 
 
@@ -218,7 +218,6 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
     def setup_photometry_output(self, photo_file, target_size):
-        from .utils.hdf_tools import create_dataset_early_allocated
         # Get a list of all the column names
         cols = ['ra', 'dec']
         for band in self.bands:
@@ -235,18 +234,16 @@ class TXCosmoDC2Mock(PipelineStage):
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
         for col in cols:
-            create_dataset_early_allocated(group, col, target_size, 'f8')
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
         # The only non-float column for now
-        create_dataset_early_allocated(group, 'id', target_size, 'i8')
+        group.create_dataset('id', (target_size,), maxshape=(target_size,), dtype='i8')
 
         return cols + ['id']
 
 
 
     def setup_metacal_output(self, metacal_file, target_size):
-        from .utils.hdf_tools import create_dataset_early_allocated
-
         # Get a list of all the column names
         cols = (
             ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
@@ -264,10 +261,11 @@ class TXCosmoDC2Mock(PipelineStage):
         
 
         for col in cols:
-            create_dataset_early_allocated(group, col, target_size, 'f8')
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
-        create_dataset_early_allocated(group, 'id', target_size, 'i8')
-        create_dataset_early_allocated(group, 'mcal_flags', target_size, 'i4')
+        group.create_dataset('id', (target_size,), maxshape=(target_size,), dtype='i8')
+        group.create_dataset('mcal_flags', (target_size,), maxshape=(target_size,), dtype='i8')
+
 
         return cols + ['id',  'mcal_flags']
         
@@ -587,20 +585,6 @@ class TXCosmoDC2Mock(PipelineStage):
             metacal[key] = metacal[key][detected]
 
 
-    def truncate_output(self, photo_file, metacal_file, end):
-        """
-        Cut down the output photometry file to its final 
-        size.
-        """
-        group = photo_file['photometry']
-        cols = list(group.keys())
-        for col in cols:
-            group[col].resize((end,))
-
-        group = metacal_file['metacal']
-        cols = list(group.keys())
-        for col in cols:
-            group[col].resize((end,))
 
 
 def make_mock_photometry(n_visit, bands, data):
