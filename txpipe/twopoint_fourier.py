@@ -380,33 +380,34 @@ class TXTwoPointFourier(PipelineStage):
         print(f"Process {self.rank} calcluating {type_name} spectrum for bin pair {i},{i}")
         sys.stdout.flush()
 
-        # We need the theory spectrum for this pair
-        theory = cl_theory[(i,j,k)]
 
         # The binning information - effective (mid) ell values and
         # the window information
         ls = ell_bins.get_effective_ells()
         win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
 
+        # We need the theory spectrum for this pair
+        #TODO: when we have templates to deproject, use this.
+        theory = cl_theory[(i,j,k)]
+        ell_guess = cl_theory['ell']
+        cl_guess = None
+
         if k == SHEAR_SHEAR:
             workspace = w22
             field_i = f_wl[i]
             field_j = f_wl[j]
-            cl_guess = [theory, np.zeros_like(theory), np.zeros_like(theory), np.zeros_like(theory)]
             results_to_use = [(0, CEE), (3, CBB)]
 
         elif k == POS_POS:
             workspace = w00
             field_i = f_d[i]
             field_j = f_d[j]
-            cl_guess = [theory]
             results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
             workspace = w02
             field_i = f_wl[i]
             field_j = f_d[j]
-            cl_guess = [theory, np.zeros_like(theory)]
             results_to_use = [(0, CdE), (1, CdB)]
 
         cl_noise = self.compute_noise(i,j,k,ell_bins,workspace,tomo_info)
@@ -416,7 +417,7 @@ class TXTwoPointFourier(PipelineStage):
                 cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
         elif pixel_scheme.name == 'gnomonic':
             c = pymaster.compute_full_master_flat(field_i, field_j, ell_bins,
-                cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=cl_theory['ell'],
+                cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=ell_guess,
                 workspace=workspace)
 
         for index, name in results_to_use:
