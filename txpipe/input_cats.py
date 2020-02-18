@@ -69,7 +69,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # Load the input catalog (this is lazy)
             # For testing we may want to cut down to a smaller number of pixels.
             # This is separate from the split by processor later on
-            all_healpix_pixels = GCRCatalogs.available_catalogs[cat_name]['healpix_pixels']
+            all_healpix_pixels = GCRCatalogs.get_available_catalogs()[cat_name]['healpix_pixels']
             max_npix = self.config['max_npix']
             if max_npix != 99999999999999:
                 print(f"Cutting down initial catalog to {max_npix} healpix pixels")
