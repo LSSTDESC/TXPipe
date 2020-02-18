@@ -173,13 +173,33 @@ class TXCosmoDC2Mock(PipelineStage):
             
             if start >= target_size:
                 break
-
-
-            
         # Tidy up
         #self.truncate_output(photo_file, metacal_file, end)
         photo_file.close()
         metacal_file.close()
+
+        self.truncate_outputs(end)
+
+    def trunucate_outputs(self, n):
+        import h5py
+        if self.comm is not None:
+            self.comm.Barrier()
+
+        if self.rank == 0:
+            # all files should now be closed for all procs
+            print(f"Resizing all outupts to size {n}")
+            f = h5py.File(self.get_output('photometry_catalog'))
+            g = f['photometry']
+            for col in g.keys():
+                g[col].resize(n)
+            f.close()
+
+            f = h5py.File(self.get_output('shear_catalog'))
+            g = f['metacal']
+            for col in g.keys():
+                g[col].resize(n)
+
+
 
     def next_output_indices(self, start, chunk_size):
         if self.comm is None:
