@@ -221,6 +221,7 @@ class TXDiagnosticMaps(PipelineStage):
             for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
                 f = 2**i
                 t = m.sum()
+                #TODO: check flag pixels
                 print(f"Map shows total {t} objects with flag {f}")
                 self.save_map(group, f"flag_{f}", p, m, config)
 
