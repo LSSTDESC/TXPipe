@@ -138,7 +138,6 @@ class TXTwoPointFourier(PipelineStage):
 
 
 
-
     def load_maps(self):
         import pymaster as nmt
         import healpy
@@ -170,12 +169,13 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             print(f"Unmasked area = {area}, fsky = {f_sky}")
 
-
         # Load all the maps in.
         # TODO: make it possible to just do a subset of these
         ngal_maps = [map_file.read_map(f'ngal_{b}') for b in range(nbin_lens)]
         g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
         g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
+        lensing_weights = [map_file.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
+        depth_map = map_file.read_map(f'depth')
 
         # Mask any pixels which have the healpix bad value
         for m in g1_maps + g2_maps + ngal_maps:
@@ -211,62 +211,61 @@ class TXTwoPointFourier(PipelineStage):
         # and then use that to convert to overdensity
         d_maps = [(ng/mu)-1 for (ng,mu) in zip(ngal_maps, n_means)]
 
-        d_fields = []
-        wl_fields = []
+
+        density_fields = []
+        lensing_fields = []
 
         if pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.size_x)
             ly = np.radians(pixel_scheme.size_y)
 
-            # Apodize the mask
-            if apod_size > 0:
-                if self.rank==0:
-                    print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
-                mask = nmt.mask_apodization_flat(mask, lx, ly, apod_size, apotype=apod_type)
-            elif self.rank==0:
-                print("Not apodizing mask.")
+        # For the lensing mask we optionall apodize the binary mask.
+        # TODO: include the masked object fraction in here.
+        # TODO: ask about including the depth map in here
+        if apod_size > 0:
+            if self.rank==0:
+                print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
 
-            for i,d in enumerate(d_maps):
-                # Density for gnomonic maps
-                if self.rank == 0:
-                    print(f"Generating gnomonic density field {i}")
-                field = nmt.NmtFieldFlat(lx, ly, mask, [d], templates=syst_nc) 
-                d_fields.append(field)
-
-            for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
-                # Density for gnomonic maps
-                if self.rank == 0:
-                    print(f"Generating gnomonic lensing field {i}")
-                field = nmt.NmtFieldFlat(lx, ly, mask, [g1,g2], templates=syst_wl) 
-                wl_fields.append(field)
-            
-
-        elif pixel_scheme.name == 'healpix':
-            # Apodize the mask
-            if apod_size > 0:
-                if self.rank==0:
-                    print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
-                mask = nmt.mask_apodization(mask, apod_size, apotype=apod_type)
-            elif self.rank==0:
-                print("Not apodizing mask.")
-
-
-            for i,d in enumerate(d_maps):
-                # Density for gnomonic maps
-                print(f"Generating healpix density field {i}")
-                field = nmt.NmtField(mask, [d], templates=syst_nc)
-                d_fields.append(field)
-
-            for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
-                # Density for gnomonic maps
-                print(f"Generating healpix lensing field {i}")
-                field = nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
-                wl_fields.append(field)
-
+            if pixel_scheme.name == 'gnomonic':
+                    lens_mask = nmt.mask_apodization_flat(mask, lx, ly, apod_size, apotype=apod_type)
+            elif pixel_scheme.name == 'healpix':
+                lens_mask = nmt.mask_apodization(mask, apod_size, apotype=apod_type)
+            else:
+                raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
         else:
-            raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+            lens_mask = mask
 
-        return pixel_scheme, d_fields, wl_fields, nbin_source, nbin_lens, f_sky
+
+        # we do apodize the density masks, but not the WL ones
+        for i,d in enumerate(d_maps):
+            if self.rank == 0:
+                print(f"Generating density field {i}")
+            if pixel_scheme.name == 'gnomonic':
+                field = nmt.NmtFieldFlat(lx, ly, lens_mask, [d], templates=syst_nc) 
+            elif pixel_scheme.name == 'healpix':
+                field = nmt.NmtField(lensing_weights[i], [d], templates=syst_nc)
+            else:
+                raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+            density_fields.append(field)
+
+
+
+        for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
+            # Density for gnomonic maps
+            if self.rank == 0:
+                print(f"Generating lensing field {i}")
+            if pixel_scheme.name == 'gnomonic':
+                field = nmt.NmtFieldFlat(lx, ly, wmask, [g1,g2], templates=syst_wl) 
+            elif pixel_scheme.name == 'healpix':
+                field = nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
+            else:
+                raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+
+            lensing_fields.append(field)
+        
+
+
+        return pixel_scheme, density_fields, lensing_fields, nbin_source, nbin_lens, f_sky
 
 
     def collect_results(self):
