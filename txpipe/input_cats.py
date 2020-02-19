@@ -150,10 +150,14 @@ class TXCosmoDC2Mock(PipelineStage):
 
             # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
-            mock_metacal = self.make_mock_metacal(data, mock_photometry)
 
-            # Cut out any objects too faint to be detected and measured
+            # Cut out any objects too faint to be detected and measured.
+            # We have to do this after the photometry, so that we know if
+            # the object is detected, but we can do it before making the mock
+            # metacal info, saving us some time simulating un-needed objects
             self.remove_undetected(data, mock_photometry, mock_metacal)
+
+            mock_metacal = self.make_mock_metacal(data, mock_photometry)
             # The chunk size has now changed
             some_col = list(mock_photometry.keys())[0]
             chunk_size = len(mock_photometry[some_col])
