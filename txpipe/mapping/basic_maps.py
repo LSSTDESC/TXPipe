@@ -68,6 +68,7 @@ class Mapper:
         g2 = {}
         var_g1 = {}
         var_g2 = {}
+        counts_g = {}
 
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
@@ -123,16 +124,19 @@ class Mapper:
             mask[count_g1>0] = True
             mask[count_g2>0] = True
 
-            #  Don't think we want to save these at the moment
-            del count_g1
-            del count_g2
+            # We only need to keep one of these as they should be
+            # the same.
+            counts_g[b] = count_g2.reshape(self.pixel_scheme.shape).flatten()
 
             mean_g1[np.isnan(mean_g1)] = UNSEEN
             mean_g2[np.isnan(mean_g2)] = UNSEEN
 
-
             v_g1[np.isnan(v_g1)] = UNSEEN
             v_g2[np.isnan(v_g2)] = UNSEEN
+
+            # I really don't recall why I'm changing the shape
+            # back and forth here.  Maybe I had a reason?
+            # TODO: Remove this and see what happens.
 
             mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
             mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
@@ -146,14 +150,15 @@ class Mapper:
             var_g1[b] = v_g1.flatten()
             var_g2[b] = v_g2.flatten()
 
+
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2]:
+            for d in [ngal, g1, g2, var_g1, var_g2, counts_g]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, g1, g2, var_g1, var_g2
+        return pixel, ngal, g1, g2, var_g1, var_g2, counts_g
 
 
 class FlagMapper:
