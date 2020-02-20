@@ -150,10 +150,14 @@ class TXCosmoDC2Mock(PipelineStage):
 
             # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
-            mock_metacal = self.make_mock_metacal(data, mock_photometry)
 
-            # Cut out any objects too faint to be detected and measured
+            # Cut out any objects too faint to be detected and measured.
+            # We have to do this after the photometry, so that we know if
+            # the object is detected, but we can do it before making the mock
+            # metacal info, saving us some time simulating un-needed objects
             self.remove_undetected(data, mock_photometry, mock_metacal)
+
+            mock_metacal = self.make_mock_metacal(data, mock_photometry)
             # The chunk size has now changed
             some_col = list(mock_photometry.keys())[0]
             chunk_size = len(mock_photometry[some_col])
@@ -338,7 +342,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # The visit count affects the overall noise levels
         n_visit = self.config['visits_per_band']
         # Do all the work in the function below
-        photo = make_mock_photometry(n_visit, self.bands, data)
+        photo = make_mock_photometry(n_visit, self.bands, data, self.config['unit_response'])
 
         for col in self.config['extra_cols'].split():
             photo[col] = data[col]
@@ -587,7 +591,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 
-def make_mock_photometry(n_visit, bands, data):
+def make_mock_photometry(n_visit, bands, data, unit_response):
     """
     Generate a mock photometric table with noise added
 
@@ -629,7 +633,10 @@ def make_mock_photometry(n_visit, bands, data):
     factor = 5455./gain * (D/6.5)**2 * (time/30.)
 
     # Fake some metacal responses
-    mag_responses = generate_mock_metacal_mag_responses(bands, nobj)
+    if unit_response:
+        mag_response = [1.0 for i in bands]
+    else:
+        mag_responses = generate_mock_metacal_mag_responses(bands, nobj)
 
     delta_gamma = 0.01  # this is the half-delta gamma, i.e. gamma_+ - gamma_0
     # that's the right thing to use here because we are doing m+ = m0 + dm/dy*dy
@@ -701,6 +708,7 @@ def make_mock_photometry(n_visit, bands, data):
 
 
 def generate_mock_metacal_mag_responses(bands, nobj):
+    print("WARNING: getting oddly large S/N variation from mock metacal mags")
     nband = len(bands)
     mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
     rho = 0.25  #  approx correlation between response in bands, from HSC tract
@@ -725,6 +733,6 @@ def test():
     M5 = [24.22, 25.17, 24.74, 24.38, 23.80]
     for b,m5 in zip(bands, M5):
         data[f'mag_true_{b}_lsst'] = np.repeat(m5, 10000)
-    results = make_mock_photometry(n_visit, bands, data)
+    results = make_mock_photometry(n_visit, bands, data, True)
     pylab.hist(results['snr_r'], bins=50, histtype='step')
     pylab.savefig('snr_r.png')
