@@ -156,7 +156,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # We have to do this after the photometry, so that we know if
             # the object is detected, but we can do it before making the mock
             # metacal info, saving us some time simulating un-needed objects
-            self.remove_undetected(data, mock_photometry, mock_metacal)
+            self.remove_undetected(data, mock_photometry)
 
             mock_metacal = self.make_mock_metacal(data, mock_photometry)
             # The chunk size has now changed
@@ -539,7 +539,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 
-    def remove_undetected(self, data, photo, metacal):
+    def remove_undetected(self, data, photo):
         """
         Strip out any undetected objects from the two
         simulated data sets.
@@ -586,8 +586,8 @@ class TXCosmoDC2Mock(PipelineStage):
         for key in list(photo.keys()): 
             photo[key] = photo[key][detected]
 
-        for key in list(metacal.keys()):
-            metacal[key] = metacal[key][detected]
+        for key in list(data.keys()):
+            data[key] = data[key][detected]
 
 
 
@@ -635,7 +635,7 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
 
     # Fake some metacal responses
     if unit_response:
-        mag_response = [1.0 for i in bands]
+        mag_responses = [1.0 for i in bands]
     else:
         mag_responses = generate_mock_metacal_mag_responses(bands, nobj)
 
