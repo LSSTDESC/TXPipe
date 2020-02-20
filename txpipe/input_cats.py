@@ -46,6 +46,7 @@ class TXCosmoDC2Mock(PipelineStage):
                 'shear_1', 'shear_2',
                 'size_true',
                 'galaxy_id',
+                'redshift_true',
                 ]
         # Add any extra requestd columns
         cols += self.config['extra_cols'].split()
