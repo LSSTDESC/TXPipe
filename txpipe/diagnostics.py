@@ -376,7 +376,7 @@ class TXDiagnosticPlots(PipelineStage):
                 if self.config['shear_catalog_type']=='metacal':
                     g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
                 elif self.config['shear_catalog_type']=='lensfit':
-                    g1, g2 = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1],data['lensfit_weight'][qual_cut][w1])
                 else:
                     raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 # Do more things here to establish
@@ -395,10 +395,10 @@ class TXDiagnosticPlots(PipelineStage):
                 
                 if self.config['shear_catalog_type']=='metacal':
                     g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
-                elif self.config['shear_catalog_type']=='nonmetacal':
-                    g1, g2 = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                elif self.config['shear_catalog_type']=='lensfit':
+                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
                 else:
-                    raise ValueError(f"Please specify metacal or nonmetacal for shear_catalog in config.")
+                    raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 calc2.add_data(i, g2)
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')

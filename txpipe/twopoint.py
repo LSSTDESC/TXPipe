@@ -321,28 +321,44 @@ class TXTwoPoint(PipelineStage):
         """
 
         mask = (data['source_bin'] == i)
-        
+
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
             g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+            return g1, g2, mask
+
         elif self.config['shear_catalog_type']=='lensfit':
-            g1, g2 = apply_lensfit_calibration(data['mcal_g1'][mask],data['mcal_g2'][mask])
+            #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['mcal_g1'][mask],data['mcal_g2'][mask],data['lensfit_weight'])
+            return g1, g2, weight, one_plus_K, mask
+
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-
-        return g1, g2, mask
 
 
     def get_shear_catalog(self, data, i):
         import treecorr
-        g1,g2,mask = self.get_m(data, i)
 
-        cat = treecorr.Catalog(
-            g1 = g1,
-            g2 = g2,
-            ra = data['ra'][mask],
-            dec = data['dec'][mask],
-            ra_units='degree', dec_units='degree')
+        if self.config['shear_catalog_type']=='metacal':
+            g1,g2,mask = self.get_m(data, i)
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree')
+        elif self.config['shear_catalog_type']=='lensfit':
+            g1,g2,weight,one_plus_K,mask = self.get_m(data, i)
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                w = weight,
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree')
+        else:
+            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+
         return cat
 
 
@@ -552,7 +568,10 @@ class TXTwoPoint(PipelineStage):
         mean_g1_list = []
         mean_g2_list = []
         for i in data['source_list']:
-            g1, g2, mask = self.get_m(data, i)
+            if self.config['shear_catalog_type']=='metacal':
+                g1, g2, mask = self.get_m(data, i)
+            elif self.config['shear_catalog_type']=='lensfit':
+                g1, g2, weight, one_plus_K, mask = self.get_m(data, i)
             mean_g1 = g1.mean()
             mean_g2 = g2.mean()
             mean_g1_list.append(mean_g1)

@@ -60,22 +60,26 @@ def apply_metacal_response(R, S, g1, g2):
     R_total = R+S
     
     # Invert the responsivity matrix
-    Rinv = pinv(R)
+    Rinv = pinv(R_total)
     
     mcal_g = np.dot(Rinv, np.array(mcal_g).T).T
     
     return mcal_g[:,0], mcal_g[:,1]
 
 
-def apply_lensfit_calibration(g1, g2, weight=None,m=None):
+def apply_lensfit_calibration(g1, g2, weight, m=None):
     #This function needs to be checked!
-    
-    if weight==None:
-        weight = np.array([1])
-    if m==None:
-        m = np.array([1])
 
-    return g1, g2
+    lfit_g = np.stack([g1,g2], axis=1)
+
+    #If m is provided, compute the 1+k term for the ensemble
+    if m!=None:
+        one_plus_K = np.sum( weight * (1 + m) ) / np.sum(weight)
+    else:
+        #no 1+K term will be applied
+        one_plus_K = 1.
+
+    return lfit_g[:,0], lfit_g[:,1], weight, one_plus_K
 
 
 
