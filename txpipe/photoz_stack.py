@@ -289,7 +289,13 @@ class TXTrueNumberDensity(PipelineStage):
         # We also set up accumulators for the combined
         # total tomographic bin (2d)
         nbin_source, nbin_lens = self.get_metadata()
-        nz = self.config['nz']
+
+        # nz is number of bins in the code, but number of edges
+        # in the input file for consistency with other stages
+        nz = self.config['nz'] - 1
+        zmax = self.config['zmax']
+
+        # Space to accumulate histograms
         source_pdfs = np.zeros((nbin_source, nz))
         source_pdfs_2d = np.zeros(nz)
         lens_pdfs = np.zeros((nbin_lens, nz))
@@ -297,6 +303,11 @@ class TXTrueNumberDensity(PipelineStage):
         source_counts_2d = 0
         lens_counts = np.zeros(nbin_lens)
 
+        
+        # lower edges
+        zedge = np.histogram([], range=(0,zmax), bins=nz)[1][:-1]
+
+        
         # We use two iterators to loop through the data files.
         # These load the data chunk by chunk instead of all at once
         # iterate_hdf is a method that the superclass defines.
@@ -318,10 +329,9 @@ class TXTrueNumberDensity(PipelineStage):
         )
 
         warnings.warn("WEIGHTS/RESPONSE ARE NOT CURRENTLY INCLUDED CORRECTLY in PZ STACKING")
-        zmax = self.config['zmax']
 
         # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, tomography_iterator):
+        for (_, _, pz_data), (s, e, tomo_data) in zip(photo_iterator, tomography_iterator):
             # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
@@ -337,21 +347,21 @@ class TXTrueNumberDensity(PipelineStage):
             for b in range(nbin_source):
                 w = np.where(tomo_data['source_bin']==b)
 
-                source_pdfs[b] += np.histogram(z[w], bins=nz, range=(0,zmax))
+                source_pdfs[b] += np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 source_counts[b] += w[0].size
 
             for b in range(nbin_lens):
                 w = np.where(tomo_data['lens_bin']==b)
 
                 # Summ all the PDFs from that bin
-                lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))
+                lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 lens_counts[b] += w[0].size
 
             # For the 2D source bin we take every object that is selected
             # for any tomographic bin (the non-selected objects
             # have bin=-1)s
             w = np.where(tomo_data['source_bin']>=0)
-            source_pdfs_2d +=  np.histogram(z[w], bins=nz, range=(0,zmax))
+            source_pdfs_2d +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
             source_counts_2d += w[0].size
 
         # Collect together the results from the different processors,
@@ -375,9 +385,9 @@ class TXTrueNumberDensity(PipelineStage):
 
             # And finally save the outputs
             f = self.open_output("photoz_stack")        
-            self.save_result(f, "source", nbin_source, z, source_pdfs, source_counts)
-            self.save_result(f, "source2d", 1, z, [source_pdfs_2d], [source_counts_2d])
-            self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
+            self.save_result(f, "source", nbin_source, zedge, source_pdfs, source_counts)
+            self.save_result(f, "source2d", 1, zedge, [source_pdfs_2d], [source_counts_2d])
+            self.save_result(f, "lens", nbin_lens, zedge, lens_pdfs, lens_counts)
             f.close()
 
     def reduce(self, x):
