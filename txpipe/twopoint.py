@@ -48,7 +48,6 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_methods': 'jackknife',
-        'npatch': 5
         }
 
     def run(self):

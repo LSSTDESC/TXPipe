@@ -62,12 +62,15 @@ TXDiagnosticMaps:
     pixelization: healpix
     nside: 1024
     # pixelization: gnomonic
-    # # 
+    # #
     pixel_size: 0.2
     ra_cent: 62.
     dec_cent: -35.
     npix_x: 60
     npix_y: 60
+
+    #number of patches to make for the jackknife
+    npatch: 5
 
 
 TXTwoPointFourier:
