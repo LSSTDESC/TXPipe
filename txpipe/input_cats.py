@@ -635,7 +635,7 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
 
     # Fake some metacal responses
     if unit_response:
-        mag_responses = [1.0 for i in bands]
+        mag_responses = [0.0 for i in bands]
     else:
         mag_responses = generate_mock_metacal_mag_responses(bands, nobj)
 
