@@ -25,10 +25,8 @@ class TXTwoPointFourier(PipelineStage):
     for a list of tomographic bins, including all galaxy-galaxy,
     galaxy-shear and shear-shear power spectra. Sources and lenses
     both come from the same shear_catalog and tomography_catalog objects.
-
     The power spectra are computed after deprojecting a number of
     systematic-dominated modes, represented as input maps.
-
     In the future we will want to include the following generalizations:
      - TODO: specify which cross-correlations in particular to include
              (e.g. which bin pairs and which source/lens combinations).
@@ -280,13 +278,6 @@ class TXTwoPointFourier(PipelineStage):
     def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
         from .utils.nmt_utils import MyNmtBinFlat, MyNmtBin
-        """
-        if self.config['input_ell_bins']:
-            bin_edges = self.config['ell_bin_edges']
-            ell_bins = MyNmtBinFlat(bin_edges[:-1], bin_edges[1:])
-            ell_bins.ell_mins = bin_edges[:-1]
-            ell_bins.ell_maxs = bin_edges[1:]    
-        """
         if pixel_scheme.name == 'healpix':
             # This is just approximate
             area = f_sky * 4 * np.pi
@@ -420,7 +411,7 @@ class TXTwoPointFourier(PipelineStage):
             c = pymaster.compute_full_master_flat(field_i, field_j, ell_bins,
                 cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=cl_theory['ell'],
                 workspace=workspace)
-        print(c)
+
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
@@ -552,8 +543,6 @@ class TXTwoPointFourier(PipelineStage):
                 Tj = CTracers[('S',j)]
                 # The full theory C_ell over the range 0..ellmax
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-                #theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj)
-
                 
 
         # The same for the galaxy galaxy-lensing cross-correlation
@@ -563,7 +552,6 @@ class TXTwoPointFourier(PipelineStage):
                 Ti = CTracers[('S',i)]
                 Tj = CTracers[('P',j)]
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-                #theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj)
 
         # And finally for the density correlations
         k = POS_POS
@@ -572,7 +560,6 @@ class TXTwoPointFourier(PipelineStage):
                 Ti = CTracers[('P',i)]
                 Tj = CTracers[('P',j)]
                 theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-                #theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj)
 
         return theory_cl
 
@@ -596,10 +583,9 @@ class TXTwoPointFourier(PipelineStage):
             tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CBB] else f'lens_{d.j}'
 
             n = len(d.l)
-            print(n)
             for i in range(n):
-                print(d.value[i])
-                win = TopHatWindow(d.win[i][0], d.win[i][1])
+                ell_vals = d.win[i][0]  # second term is weights
+                win = TopHatWindow(ell_vals[0], ell_vals[-1])
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win, i=d.i, j=d.j)
 
         # Save provenance information
