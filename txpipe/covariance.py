@@ -167,17 +167,17 @@ class TXFourierGaussianCovariance(PipelineStage):
 
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
-                AI = meta['IA'][nbin]*np.ones(len(z))
+                IA = 1.0*np.ones(len(z)) # place holder
                 Ngal = meta['n_eff'][nbin]
                 # check that this normalization is correct
                 #Ngal = Ngal*3600/d2r**2
                 #dNdz *= Ngal
                 
-                ccl_tracers[tracer]=ccl.WeakLensingTracer(cosmo, dndz=(z, dNdz),ia_bias=(z,AI)) #CCL automatically normalizes dNdz
+                ccl_tracers[tracer]=ccl.WeakLensingTracer(cosmo, dndz=(z, dNdz),ia_bias=(z,IA)) #CCL automatically normalizes dNdz
                 tracer_Noise[tracer]=sigma_e**2/Ngal
             
             elif 'lens' in tracer:
-                b = meta['gal_bias'][nbin]*np.ones(len(z))
+                b = 1.0*np.ones(len(z))  # place holder
                 Ngal = meta['n_lens'][nbin]
                 #Ngal = Ngal*3600/d2r**2
                 #dNdz *= Ngal
@@ -285,6 +285,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         tracer_combs = two_point_data.get_tracer_combinations() # we will loop over all these
         N2pt = len(tracer_combs)
         
+        N2pt0 = -1
         if do_xi:
             N2pt0 = N2pt*1
             tracer_combs_temp = tracer_combs.copy()
