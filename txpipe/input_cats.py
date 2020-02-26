@@ -383,6 +383,10 @@ class TXCosmoDC2Mock(PipelineStage):
         snr_2p = (photo['snr_r_2p']**2 + photo['snr_i_2p'] + photo['snr_z_2p'])**0.5
         snr_2m = (photo['snr_r_2m']**2 + photo['snr_i_2m'] + photo['snr_z_2m'])**0.5
 
+        if self.config['unit_response']:
+            assert np.allclose(snr, snr_1p)
+            assert np.allclose(snr, snr_2m)
+        
         nobj = snr.size
 
         log10_snr = np.log10(snr)
