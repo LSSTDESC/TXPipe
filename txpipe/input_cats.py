@@ -560,8 +560,13 @@ class TXCosmoDC2Mock(PipelineStage):
             not_detected_in_band = ~detected_in_band
             # Set objects not detected in one band that are detected in another
             # to inf magnitude in that band, and the SNR to zero.
-            photo[f'snr_{band}'][not_detected_in_band] = 0.0
-            photo[f'{band}_mag'][not_detected_in_band] = np.inf
+            # We have to do this for each of the variants also, because otherwise
+            # we end up with wildly different final SNR values later.
+            # This is the metadetection issue really!
+            for v in metacal_variants(f'snr_{band}'):
+                photo[v][not_detected_in_band] = 0.0
+            for v in metacal_variants(f'{band}_mag'):
+                photo[v][not_detected_in_band] = np.inf
 
             # Record that we have detected this object at all
             detected |= detected_in_band
