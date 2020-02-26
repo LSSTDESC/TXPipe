@@ -44,14 +44,17 @@ class TXFourierGaussianCovariance(PipelineStage):
         cosmo = self.read_cosmology()
 
         # read binning
-        two_point_data = self.read_sacc()
+        if not self.config['do_xi']:
+            two_point_data = self.read_sacc_fourier()
+        else:
+            two_point_data = self.read_sacc_real()
 
         # read the n(z) and f_sky from the source summary stats
         n_eff, n_lens, sigma_e, fsky = self.read_number_statistics()
         
         meta = {}
         meta['fsky'] = fsky
-        meta['ell'] = np.arange(2,5000)
+        meta['ell'] = np.arange(2,5000) #5000
         meta['sigma_e'] = sigma_e
         meta['n_eff'] = n_eff # per radian2
         meta['n_lens'] = n_lens # per radian2
@@ -76,15 +79,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         #thb=0.5*(two_point_data.metadata['th_bins'][1:]+two_point_data.metadata['th_bins'][:-1])
         #thb=0.5*(meta['th_bins'][1:]+meta['th_bins'][:-1])
 
-
-        WT_factors={}
-        WT_factors['lens','source']=(0,2)
-        WT_factors['source','lens']=(2,0) #same as (0,2)
-        WT_factors['source','source']={'plus':(2,2),'minus':(2,-2)}
-        WT_factors['lens','lens']=(0,0)
-
         #C_ell covariance
-        cov_cl = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=self.config['do_xi'])
+        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=self.config['do_xi'])
         
         #xi covariance .... right now shear-shear is xi+ only. xi- needs to be added in the loops.
         #cov_xi = get_all_cov(two_point_data=twopoint_data,do_xi=True)
@@ -95,11 +91,12 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # compute covariance
         #cov = self.compute_covariance(sacc_data, theory_c_ell, noise_c_ell, fsky)
-        
-        self.save_outputs(two_point_data, cov_cl)
-        #self.save_outputs_firecrown(C,data_vector,ells,nz,binning_info)
+        if not self.config['do_xi']:
+            self.save_outputs_fourier(two_point_data, cov)
+        else:
+            self.save_outputs_real(two_point_data, cov)
 
-    def save_outputs(self, two_point_data, cov):
+    def save_outputs_fourier(self, two_point_data, cov):
         filename = self.get_output('summary_statistics_fourier')
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
@@ -112,7 +109,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         print(cosmo)
         return cosmo
 
-    def read_sacc(self):
+    def read_sacc_fourier(self):
         f = self.get_input('twopoint_data_fourier')
         two_point_data = sacc.Sacc.load_fits(f)
 
@@ -121,6 +118,29 @@ class TXFourierGaussianCovariance(PipelineStage):
             two_point_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
             two_point_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
             two_point_data.indices(sacc.standard_types.galaxy_density_cl),
+        ]
+        mask = np.concatenate(mask)
+        two_point_data.keep_indices(mask)
+
+        two_point_data.to_canonical_order()
+
+        return two_point_data
+
+    def save_outputs_real(self, two_point_data, cov):
+        filename = self.get_output('summary_statistics_real')
+        two_point_data.add_covariance(cov)
+        two_point_data.save_fits(filename, overwrite=True)
+
+    def read_sacc_real(self):
+        f = self.get_input('twopoint_data_real')
+        two_point_data = sacc.Sacc.load_fits(f)
+
+        # Remove the data types that we won't use for inference
+        mask = [
+            two_point_data.indices(sacc.standard_types.galaxy_density_xi),
+            two_point_data.indices(sacc.standard_types.galaxy_shearDensity_xi_t),
+            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_plus),
+            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_minus),
         ]
         mask = np.concatenate(mask)
         two_point_data.keep_indices(mask)
@@ -198,11 +218,18 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def get_cov_WT_spin(self, tracer_comb=None):
     #     tracers=tuple(i.split('_')[0] for i in tracer_comb)
+
+        WT_factors={}
+        WT_factors['lens','source']=(0,2)
+        WT_factors['source','lens']=(2,0) #same as (0,2)
+        WT_factors['source','source']={'plus':(2,2),'minus':(2,-2)}
+        WT_factors['lens','lens']=(0,0)
+
         tracers=[]
         for i in tracer_comb:
             if 'lens' in i:
                 tracers+=['lens']
-            if 'src' in i:
+            if 'source' in i:
                 tracers+=['source']
         return WT_factors[tuple(tracers)]
 
@@ -227,7 +254,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         if do_xi:
             norm=np.pi*4*meta['fsky']
-        else: #do c_ell
+        else: 
             norm=(2*ell+1)*np.gradient(ell)*meta['fsky']
 
         coupling_mat={}
@@ -247,13 +274,18 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_1=s1_s2_1[xi_plus_minus1]
             if isinstance(s1_s2_2,dict):
                 s1_s2_2=s1_s2_2[xi_plus_minus2]
+
+
+            WT_kwargs = {'l': ell,'theta': ell_bins*d2r,'s1_s2':[(2,2),(2,-2),(0,2),(2,0),(0,0)]}
+            WT = wigner_transform(**WT_kwargs)
+
             th,cov['final']=WT.projected_covariance2(l_cl=ell,s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
                                                       cl_cov=cov['final'])
 
         cov['final']/=norm
 
         if do_xi:
-            thb,cov['final_b'] = bin_cov(r=th/d2r,r_bins=meta['th_bins'],cov=cov['final'])
+            thb,cov['final_b'] = bin_cov(r=th/d2r,r_bins=ell_bins,cov=cov['final'])
         else:
             if ell_bins is not None:
                 lb,cov['final_b'] = bin_cov(r=ell,r_bins=ell_bins,cov=cov['final'])
@@ -273,6 +305,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         ell_edges = np.array(ell_edges)
         return ell_edges
 
+    def get_th_bins(self, two_point_data):
+        return np.concatenate(([self.config['min_sep']],np.logspace(self.config['min_sep'], self.config['max_sep'], self.config['nbins'])),axis=0)
 
     #compute all the covariances and then combine them into one single giant matrix
     def get_all_cov(self, cosmo, meta, two_point_data={},do_xi=False):
@@ -280,14 +314,18 @@ class TXFourierGaussianCovariance(PipelineStage):
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         tracer_combs = two_point_data.get_tracer_combinations() # we will loop over all these
         N2pt = len(tracer_combs)
-        ell_bins = self.get_ell_bins(two_point_data)
+        print(N2pt)
+
+        if not do_xi:
+            ell_bins = self.get_ell_bins(two_point_data)
+        else:
+            ell_bins = self.get_th_bins(two_point_data)
 
         if ell_bins is not None:
             Nell_bins = len(ell_bins)-1
-        else:
+        else: 
             Nell_bins = len(ell_bins)
-        #if do_xi:
-        #    Nell_bins=len(meta['th_bins'])-1
+
         cov_full=np.zeros((Nell_bins*N2pt,Nell_bins*N2pt))
         for i in np.arange(N2pt):
             tracer_comb1=tracer_combs[i]
@@ -319,11 +357,14 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     ]
 
     outputs = [
-#        ('summary_statistics_real', SACCFile),
+        ('summary_statistics_real', SACCFile),
     ]
 
     config_options = {
         'do_xi':True,
+        'min_sep':2.5,
+        'max_sep':250,
+        'nbins':20,
             }
 
 
@@ -331,8 +372,4 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     def run(self):
         super().run()
 
-    def save_outputs(self, two_point_data, cov):
-        filename = self.get_output('summary_statistics_real')
-        two_point_data.add_covariance(cov)
-        two_point_data.save_fits(filename, overwrite=True)
 

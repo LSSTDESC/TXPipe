@@ -9,6 +9,7 @@ stages:
     - name: TXFourierGaussianCovariance
       #- name: TXGaussianCovariance  
     - name: TXTwoPoint
+    - name: TXRealGaussianCovariance
       #- name: TXDiagnosticPlots
       #- name: TXGammaTFieldCenters
       #- name: TXGammaTBrightStars
