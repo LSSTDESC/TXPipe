@@ -33,6 +33,7 @@ class TXCosmoDC2Mock(PipelineStage):
         'extra_cols': "", # string-separated list of columns to include
         'max_npix':99999999999999,
         'unit_response': False,
+        'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
         }
 
     def data_iterator(self, gc):
@@ -438,6 +439,10 @@ class TXCosmoDC2Mock(PipelineStage):
         # True shears without shape noise
         g1 = data['shear_1']
         g2 = data['shear_2']
+
+        if self.config['flip_g2']:
+            g2 *= -1
+
         # Do the full combination of (g,epsilon) -> e, not the approx one
         g = g1 + 1j*g2
         e = (eps + g) / (1+g.conj()*eps)
