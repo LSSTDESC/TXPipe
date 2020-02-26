@@ -7,7 +7,7 @@ SHEAR_POS = 1
 POS_POS = 2
 
 
-def theory_3x2pt(cosmology_file, tracers, ell_max, nbin_source, nbin_lens):
+def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     """Compute the 3x2pt theory, for example for a fiducial cosmology
 
     Parameters
@@ -19,9 +19,6 @@ def theory_3x2pt(cosmology_file, tracers, ell_max, nbin_source, nbin_lens):
         dict of objects (e.g. sacc tracers) containing z, nz.
         keys are source_0, source_1, ..., lens_0, lens_1, ...
     
-    ell_max: int
-        max ell to calculate
-
     nbin_source: int
         number of source bins
 
@@ -39,12 +36,11 @@ def theory_3x2pt(cosmology_file, tracers, ell_max, nbin_source, nbin_lens):
 
     cosmo = ccl.Cosmology.read_yaml(cosmology_file)
 
-    # We will need the theory C_ell in a continuum up until
-    # the full ell_max, because we will need a weighted sum
-    # over the values
-    ell_max = ell_max
-    #f_d[0].fl.lmax
-    ell = np.arange(ell_max+1, dtype=int)
+    ell_max = 2000 if fourier else 100_000
+    n_ell = 100 if fourier else 200
+    ell = np.logspace(1, np.log10(ell_max), n_ell).astype(int)
+    ell = np.unique(ell)
+
 
     # Convert from SACC tracers (which just store N(z))
     # to CCL tracers (which also have cosmology info in them).
@@ -78,7 +74,7 @@ def theory_3x2pt(cosmology_file, tracers, ell_max, nbin_source, nbin_lens):
             Tj = CTracers[('S',j)]
             # The full theory C_ell over the range 0..ellmax
             theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-            theory_cl [(j,i,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+            theory_cl [(j,i,k)] = theory_cl [(i,j,k)]
             
 
     # The same for the galaxy galaxy-lensing cross-correlation
@@ -96,6 +92,26 @@ def theory_3x2pt(cosmology_file, tracers, ell_max, nbin_source, nbin_lens):
             Ti = CTracers[('P',i)]
             Tj = CTracers[('P',j)]
             theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-            theory_cl [(j,i,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+            theory_cl [(j,i,k)] = theory_cl [(i,j,k)]
 
-    return theory_cl
+    if fourier:
+        return theory_cl
+
+    theta_min = 1.0 / 60
+    theta_max = 3.0
+    theta = np.logspace(np.log(theta_min), np.log(theta_max), 200)
+
+    theory_xi = {'theta': theta*60} # arcmin
+    for key, val in theory_cl.items():
+        if key == 'ell':
+            continue
+        i,j,k = key
+        corr_type = {SHEAR_SHEAR: 'L+', POS_POS: 'GG', SHEAR_POS: 'GL'}[k]
+        xi = ccl.correlation(cosmo, ell, val, theta, corr_type=corr_type)
+        if k == SHEAR_SHEAR:
+            xim = ccl.correlation(cosmo, ell, val, theta, corr_type='L-')
+            theory_xi[(i,j,k)] = [xi,xim]
+        else:
+            theory_xi[(i,j,k)] = xi
+
+    return theory_cl, theory_xi
