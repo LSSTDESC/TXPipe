@@ -54,7 +54,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         
         meta = {}
         meta['fsky'] = fsky
-        meta['ell'] = np.arange(2,5000) #5000
+        meta['ell'] = np.arange(2,500) #5000
+        meta['th'] = np.logspace(np.log10(0.1/60),np.log10(600./60),60) #200
         meta['sigma_e'] = sigma_e
         meta['n_eff'] = n_eff # per radian2
         meta['n_lens'] = n_lens # per radian2
@@ -140,7 +141,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             two_point_data.indices(sacc.standard_types.galaxy_density_xi),
             two_point_data.indices(sacc.standard_types.galaxy_shearDensity_xi_t),
             two_point_data.indices(sacc.standard_types.galaxy_shear_xi_plus),
-            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_minus),
+         #   two_point_data.indices(sacc.standard_types.galaxy_shear_xi_minus),
         ]
         mask = np.concatenate(mask)
         two_point_data.keep_indices(mask)
@@ -276,7 +277,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2=s1_s2_2[xi_plus_minus2]
 
 
-            WT_kwargs = {'l': ell,'theta': ell_bins*d2r,'s1_s2':[(2,2),(2,-2),(0,2),(2,0),(0,0)]}
+            WT_kwargs = {'l': ell,'theta': meta['th']*d2r,'s1_s2':[(2,2),(2,-2),(0,2),(2,0),(0,0)]}
             WT = wigner_transform(**WT_kwargs)
 
             th,cov['final']=WT.projected_covariance2(l_cl=ell,s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
@@ -306,7 +307,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         return ell_edges
 
     def get_th_bins(self, two_point_data):
-        return np.concatenate(([self.config['min_sep']],np.logspace(self.config['min_sep'], self.config['max_sep'], self.config['nbins'])),axis=0)
+        th_arcmin = np.logspace(np.log10(self.config['min_sep']), np.log10(self.config['max_sep']), self.config['nbins']+1)
+        return th_arcmin/60.0
 
     #compute all the covariances and then combine them into one single giant matrix
     def get_all_cov(self, cosmo, meta, two_point_data={},do_xi=False):
@@ -314,7 +316,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         tracer_combs = two_point_data.get_tracer_combinations() # we will loop over all these
         N2pt = len(tracer_combs)
-        print(N2pt)
 
         if not do_xi:
             ell_bins = self.get_ell_bins(two_point_data)
