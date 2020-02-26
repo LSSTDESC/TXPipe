@@ -378,10 +378,10 @@ class TXCosmoDC2Mock(PipelineStage):
             photo['snr_i']**2 + 
             photo['snr_z']**2
             )**0.5
-        snr_1p = (photo['snr_r_1p']**2 + photo['snr_i_1p'] + photo['snr_z_1p'])**0.5
-        snr_1m = (photo['snr_r_1m']**2 + photo['snr_i_1m'] + photo['snr_z_1m'])**0.5
-        snr_2p = (photo['snr_r_2p']**2 + photo['snr_i_2p'] + photo['snr_z_2p'])**0.5
-        snr_2m = (photo['snr_r_2m']**2 + photo['snr_i_2m'] + photo['snr_z_2m'])**0.5
+        snr_1p = (photo['snr_r_1p']**2 + photo['snr_i_1p']**2 + photo['snr_z_1p']**2)**0.5
+        snr_1m = (photo['snr_r_1m']**2 + photo['snr_i_1m']**2 + photo['snr_z_1m']**2)**0.5
+        snr_2p = (photo['snr_r_2p']**2 + photo['snr_i_2p']**2 + photo['snr_z_2p']**2)**0.5
+        snr_2m = (photo['snr_r_2m']**2 + photo['snr_i_2m']**2 + photo['snr_z_2m']**2)**0.5
 
         if self.config['unit_response']:
             assert np.allclose(snr, snr_1p)
