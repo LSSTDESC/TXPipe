@@ -22,6 +22,12 @@ PZPDFMLZ:
 TXPhotozStack:
     chunk_rows: 100000
 
+# Mock version of stacking:
+TXTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+    chunk_rows: 100000
+
 TXSelector:
     input_pz: False
     bands: riz #used for selection
