@@ -303,7 +303,7 @@ class FakeTracer:
 
 class TXFakeMaps(TXDiagnosticMaps):
     """
-    Generate fake maps using flask
+    Generate fake maps using healpy
     """
     name='TXFakeMaps'
 
@@ -364,8 +364,7 @@ class TXFakeMaps(TXDiagnosticMaps):
         lens_bins = list(range(nbin_lens))
         npix_full = config['npix']
 
-        # We use a fixed range in theta, full phi for everyghin
-        # We cou
+        # We cut down to a simple rectangular region for testing.
         pix_full = np.arange(config['npix'])
         ra, dec = pixel_scheme.pix2ang(pix_full)
         region = (dec > config['dec_min']) & (dec < config['dec_max'])
@@ -590,7 +589,7 @@ class TXFakeMaps(TXDiagnosticMaps):
         lens_density = np.array(self.config['lens_counts'])
         lens_counts = lens_density * area_sq_arcmin
 
-        # we uuse a
+        # we make the same outputs that are in the standard mapper.
         group.create_dataset('N_eff', data = N_eff)
         group.create_dataset('lens_counts', data=lens_counts)
         group.create_dataset('sigma_e', data=self.config['sigma_e'])
