@@ -250,3 +250,227 @@ class TXPhotozPlots(PipelineStage):
         plt.legend()
         plt.title("Source n(z)")
         out2.close()
+
+
+class TXTrueNumberDensity(PipelineStage):
+    """
+    Naively stack photo-z PDFs in bins according to previous selections.
+
+    """
+    name='TXTrueNumberDensity'
+    inputs = [
+        ('photometry_catalog', HDFFile),
+        ('tomography_catalog', TomographyCatalog)
+    ]
+    outputs = [
+        ('photoz_stack', NOfZFile),
+
+    ]
+    config_options = {
+        'chunk_rows': 5000,  # number of rows to read at once
+        'zmax': float,
+        'nz': int,
+
+    }
+
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+
+         - Get metadata and allocate space for output
+         - Set up iterators to loop through tomography and PDF input files
+         - Accumulate the PDFs for each object in each bin
+         - Divide by the counts to get the stacked PDF
+        """
+
+        # Set up the array we will stack the PDFs into
+        # first get the sizes from metadata
+        # We also set up accumulators for the combined
+        # total tomographic bin (2d)
+        nbin_source, nbin_lens = self.get_metadata()
+
+        # nz is number of bins in the code, but number of edges
+        # in the input file for consistency with other stages
+        nz = self.config['nz'] - 1
+        zmax = self.config['zmax']
+
+        # Space to accumulate histograms
+        source_pdfs = np.zeros((nbin_source, nz))
+        source_pdfs_2d = np.zeros(nz)
+        lens_pdfs = np.zeros((nbin_lens, nz))
+        source_counts = np.zeros(nbin_source)
+        source_counts_2d = 0
+        lens_counts = np.zeros(nbin_lens)
+
+        
+        # lower edges
+        zedge = np.histogram([], range=(0,zmax), bins=nz)[1][:-1]
+
+        
+        # We use two iterators to loop through the data files.
+        # These load the data chunk by chunk instead of all at once
+        # iterate_hdf is a method that the superclass defines.
+
+        # We are implicitly assuming here that the files are the same
+        # length (that they match up row for row)
+        photo_iterator = self.iterate_hdf(
+            'photometry_catalog', # tag of input file to iterate through
+            'photometry', # data group within file to look at
+            ['redshift_true'], # column(s) to read
+            self.config['chunk_rows']  # number of rows to read at once
+        )
+
+        tomography_iterator = self.iterate_hdf(
+            'tomography_catalog', # tag of input file to iterate through
+            'tomography', # data group within file to look at
+            ['source_bin', 'lens_bin'], # column(s) to read
+            self.config['chunk_rows']  # number of rows to read at once
+        )
+
+        warnings.warn("WEIGHTS/RESPONSE ARE NOT CURRENTLY INCLUDED CORRECTLY in PZ STACKING")
+
+        # So we just do a single loop through the pair of files.
+        for (_, _, pz_data), (s, e, tomo_data) in zip(photo_iterator, tomography_iterator):
+            # pz_data and tomo_data are dictionaries with the keys as column names and the 
+            # values as numpy arrays with a chunk of data (chunk_rows long) in.
+            # Each iteration through the loop we get a new chunk.
+            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
+            # The method also yields the start and end positions in the file.  We don't need those
+            # here because we are just summing them all together.  That's what the underscores
+            # are above.
+
+            z = pz_data['redshift_true']
+
+            # Now for each tomographic bin find all the objects in that bin.
+            # There is probably a better way of doing this.
+            for b in range(nbin_source):
+                w = np.where(tomo_data['source_bin']==b)
+
+                source_pdfs[b] += np.histogram(z[w], bins=nz, range=(0,zmax))[0]
+                source_counts[b] += w[0].size
+
+            for b in range(nbin_lens):
+                w = np.where(tomo_data['lens_bin']==b)
+
+                # Summ all the PDFs from that bin
+                lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
+                lens_counts[b] += w[0].size
+
+            # For the 2D source bin we take every object that is selected
+            # for any tomographic bin (the non-selected objects
+            # have bin=-1)s
+            w = np.where(tomo_data['source_bin']>=0)
+            source_pdfs_2d +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
+            source_counts_2d += w[0].size
+
+        # Collect together the results from the different processors,
+        # if we are running in parallel
+        if self.comm:
+            source_pdfs      = self.reduce(source_pdfs)
+            source_pdfs_2d   = self.reduce(source_pdfs_2d)
+            lens_pdfs        = self.reduce(lens_pdfs)
+            source_counts    = self.reduce(source_counts)
+            source_counts_2d = self.reduce(source_counts_2d)
+            lens_counts      = self.reduce(lens_counts)
+
+        if self.rank==0:
+            # Normalize the stacks
+            for b in range(nbin_source):
+                source_pdfs[b] /= source_counts[b]
+            for b in range(nbin_lens):
+                lens_pdfs[b] /= lens_counts[b]
+            source_pdfs_2d /= source_counts_2d
+
+
+            # And finally save the outputs
+            f = self.open_output("photoz_stack")        
+            self.save_result(f, "source", nbin_source, zedge, source_pdfs, source_counts)
+            self.save_result(f, "source2d", 1, zedge, [source_pdfs_2d], [source_counts_2d])
+            self.save_result(f, "lens", nbin_lens, zedge, lens_pdfs, lens_counts)
+            f.close()
+
+    def reduce(self, x):
+        # For scalars (i.e. just the 2D source count for now)
+        # we just sum over all processors using reduce
+        # For vectors we use Reduce, which applies specifically
+        # to numpy arrays
+        if np.isscalar(x):
+            y = self.comm.reduce(x)
+        else:
+            y = np.zeros_like(x) if self.rank==0 else None
+            self.comm.Reduce(x,y)
+        return y
+
+
+    def get_metadata(self):
+        """
+        Load the z column and the number of bins
+
+        Returns
+        -------
+        z: array
+            Redshift column for photo-z PDFs
+        nbin:
+            Number of different redshift bins
+            to split into.
+
+        """
+
+        # Check we are running on a photo file with redshift_true
+        photo_file = self.open_input('photometry_catalog')
+        has_z = 'redshift_true' in photo_file['photometry'].keys()
+        photo_file.close()
+        if not has_z:
+            msg = ("The photometry_catalog file you supplied does not have a redshift_true column. "
+                   "If you're running on sims you need to make sure to ingest that column from GCR. "
+                   "If you're running on real data then sadly this isn't going to work. "
+                   "Use a different stacking stage."
+                )
+            raise ValueError(msg)
+
+        # Save again but for the number of bins in the tomography
+        # catalog
+        tomo_file = self.open_input('tomography_catalog')
+        nbin_source = tomo_file['tomography'].attrs['nbin_source']
+        nbin_lens = tomo_file['tomography'].attrs['nbin_lens']
+        tomo_file.close()
+
+        return nbin_source, nbin_lens
+
+
+
+    def save_result(self, outfile, name, nbin, z, stacked_pdfs, counts):
+        """
+        Save the computed stacked photo-z bin n(z)
+        
+        Parameters
+        ----------
+
+        nbin: int
+            Number of bins
+
+        z: array of shape (nz,)
+            redshift axis 
+
+        stacked_pdfs: array of shape (nbin,nz)
+            n(z) per bin
+
+        """
+        # This is another parent method.  It will open the result
+        # as an HDF file which we then deal with.
+
+        # Create a group inside for the n_of_z data we made here.
+        group = outfile.create_group(f"n_of_z/{name}")
+
+        # HDF has "attributes" which are for small metadata like this
+        group.attrs["nbin"] = nbin
+        group.attrs["nz"] = len(z)
+
+        # Save the redshift sampling
+        group.create_dataset("z", data=z)
+        
+        # And all the bins separately
+        for b in range(nbin):
+            group.attrs[f"count_{b}"] = counts[b]
+            group.create_dataset(f"bin_{b}", data=stacked_pdfs[b])
