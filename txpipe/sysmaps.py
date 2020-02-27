@@ -491,11 +491,27 @@ class TXFakeMaps(TXDiagnosticMaps):
 
 
     def generate_theory_cl(self, nbin_source, nbin_lens):
+        import scipy.interpolate
         tracers = self.generate_tracers(nbin_source, nbin_lens)
         cosmo_file = self.get_input("fiducial_cosmology")
-        ell_max = 3*self.config['nside'] - 1
-        theory_cl = theory_3x2pt(cosmo_file, tracers, ell_max, nbin_source, nbin_lens)
-        return ell_max, theory_cl
+        theory_cl = theory_3x2pt(cosmo_file, tracers, nbin_source, nbin_lens)
+
+        # This gives us theory with log-spaced ell values, but healpy
+        # wants all the ell values.  So we interpolate.
+        ell_sample = theory_cl['ell']
+        ell_max = min(3*self.config['nside'] - 1, ell_sample[-1])
+        ell_grid = np.arange(1, ell_max+1)
+        theory_full_grid = {'ell': ell_grid}
+        for key, val in theory_cl.items():
+            if key == 'ell':
+                new_val = ell_grid
+            else:
+                s = scipy.interpolate.InterpolatedUnivariateSpline(ell_sample, val)
+                new_val = s(ell_grid)
+
+            theory_full_grid[key] = new_val
+
+        return ell_max, theory_full_grid
 
     def simulate_alm(self, theory_cl, nbin_source, nbin_lens, ell_max):
         import healpy as hp
