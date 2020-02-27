@@ -1,0 +1,52 @@
+launcher: cori-mini
+
+# If the launcher requires it (at the moment that is just for "cori")
+# then this info is used to configure it.  Otherwise it is ignored
+site:
+  shifter: joezuntz/txpipe
+
+modules: txpipe
+
+stages:
+    - name: TXSelector
+      nprocess: 32
+    - name: TXTrueNumberDensity
+    - name: TXPhotozPlots
+    - name: TXDiagnosticMaps
+      nprocess: 4
+      nodes: 1
+    - name: TXTwoPointFourier
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 64
+    - name: TXMapPlots
+    - name: TXRandomCat
+    - name: TXTwoPoint
+      threads_per_process: 64
+      nprocess: 2
+      nodes: 2
+    - name: TXTwoPointPlots
+    - name: TXDiagnosticPlots
+      nprocess: 16
+      nodes: 1
+
+
+output_dir: data/cosmodc2/outputs
+config: examples/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/shear_catalog.hdf5
+    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+
+
+resume: True
+log_dir: data/cosmodc2/logs
+pipeline_log: data/cosmodc2/log.txt
+
