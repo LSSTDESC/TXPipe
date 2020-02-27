@@ -99,7 +99,7 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
 
     theta_min = 1.0 / 60
     theta_max = 3.0
-    theta = np.logspace(np.log(theta_min), np.log(theta_max), 200)
+    theta = np.logspace(np.log10(theta_min), np.log10(theta_max), 200)
 
     theory_xi = {'theta': theta*60} # arcmin
     for key, val in theory_cl.items():
