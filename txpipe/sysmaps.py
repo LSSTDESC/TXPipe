@@ -331,6 +331,8 @@ class TXFakeMaps(TXDiagnosticMaps):
         'lens_counts':[10.0, 10.0],
         'dec_min': -70.,
         'dec_max': -10.,
+        'ra_min': 0.0,
+        'ra_max': 90.,
         'flag_exponent_max': 8,
     }
 
@@ -367,7 +369,13 @@ class TXFakeMaps(TXDiagnosticMaps):
         # We cut down to a simple rectangular region for testing.
         pix_full = np.arange(config['npix'])
         ra, dec = pixel_scheme.pix2ang(pix_full)
-        region = (dec > config['dec_min']) & (dec < config['dec_max'])
+        region = (
+              (dec > config['dec_min']) 
+            & (dec < config['dec_max'])
+            & (ra > config['ra_min'])
+            & (ra < config['ra_max'])
+        )
+
         pix = pix_full[region]
         npix = len(pix)
 
