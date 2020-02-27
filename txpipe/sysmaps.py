@@ -1,6 +1,12 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile
+from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile, YamlFile
 import numpy as np
+from .utils.theory import theory_3x2pt
+
+SHEAR_SHEAR = 0
+SHEAR_POS = 1
+POS_POS = 2
+
 
 class TXDiagnosticMaps(PipelineStage):
     """
@@ -289,6 +295,318 @@ class TXDiagnosticMaps(PipelineStage):
         meta_file.close()
 
 
+class FakeTracer:
+    def __init__(self, mu, sigma):
+        self.z = np.arange(0.0, 3.0, 0.01)
+        self.nz = np.exp(-0.5*(self.z - mu)**2 / sigma**2) / np.sqrt(2*np.pi) / sigma
+        self.nsample = len(self.z)
+
+class TXFakeMaps(TXDiagnosticMaps):
+    """
+    Generate fake maps using flask
+    """
+    name='TXFakeMaps'
+
+    # We have no inputs.  Everything is fake.
+    inputs = [('fiducial_cosmology', YamlFile),]
+
+    # Same outputs as the real map
+    outputs = [
+        ('diagnostic_maps', DiagnosticMaps),
+        ('tracer_metdata', HDFFile),
+        ('photoz_stack', HDFFile),
+    ]
+
+    # Configuration information for this stage
+    config_options = {
+        'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
+        'nside':512,   # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
+        'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
+        'source_bin_centers': [0.5, 0.7, 0.9, 1.1],
+        'source_bin_widths': [0.1, 0.1, 0.1, 0.1],
+        'sigma_e': [0.2, 0.2, 0.2, 0.2],
+        'n_eff': [10.0, 10.0, 10.0, 10.0],
+        'lens_bin_centers': [0.35, 0.55],
+        'lens_bin_widths': [0.1, 0.1],
+        'lens_counts':[10.0, 10.0],
+        'dec_min': -70.,
+        'dec_max': -10.,
+        'flag_exponent_max': 8,
+    }
+
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+
+         - choose the pixelization scheme for the map
+         - loop through chunks of the photometry catalog (in paralllel if enabled)
+         - build up the map gradually
+         - the master process saves the map
+        """
+        from .utils import choose_pixelization
+
+        # Read input configuration informatiomn
+        config = self.config
+
+        # Select a pixelization scheme based in configuration keys.
+        # Looks at "pixelization as the main thing"
+        if config['pixelization']!= 'healpix':
+            raise ValueError("Only writing faker for healpix")
+        pixel_scheme = choose_pixelization(**config)
+        config.update(pixel_scheme.metadata)
+
+
+
+        nbin_source = len(config['source_bin_centers'])
+        nbin_lens = len(config['lens_bin_centers'])
+        source_bins = list(range(nbin_source))
+        lens_bins = list(range(nbin_lens))
+        npix_full = config['npix']
+
+        # We use a fixed range in theta, full phi for everyghin
+        # We cou
+        pix_full = np.arange(config['npix'])
+        ra, dec = pixel_scheme.pix2ang(pix_full)
+        region = (dec > config['dec_min']) & (dec < config['dec_max'])
+        pix = pix_full[region]
+        npix = len(pix)
+
+        
+        depth_pix = pix
+        depth = np.repeat(25.0, npix)
+        depth_count = np.repeat(30, npix)
+        depth_var = np.repeat(0.05**2, npix)
+
+
+        map_pix = pix
+        source_maps, lens_maps = self.simulate_gaussian_maps(nbin_source, nbin_lens)
+        g1 = [s[0][pix] for s in source_maps]
+        g2 = [s[1][pix] for s in source_maps]
+        ngals = [m[pix] for m in lens_maps]
+        var_g1 = [np.zeros_like(g) for g in g1]
+        var_g2 = [np.zeros_like(g) for g in g2]
+
+        map_pix_psf = pix
+        ngals_psf = np.repeat(10.0, npix)
+        zero = np.repeat(0.0, npix)
+        g1_psf = [zero for i in range(nbin_source)]
+        g2_psf = [zero for i in range(nbin_source)]
+        var_g1_psf = [zero for i in range(nbin_source)]
+        var_g2_psf = [zero for i in range(nbin_source)]
+
+        flag_pixs = pix
+        flag_maps = [zero for i in range(config['flag_exponent_max'])]
+
+        print("Saving maps")
+        # Open the HDF5 output file
+        outfile = self.open_output('diagnostic_maps')
+        # Use one global section for all the maps
+        group = outfile.create_group("maps")
+        # Save each of the maps in a separate subsection
+        self.save_map(group, "depth", depth_pix, depth, config)
+        self.save_map(group, "depth_count", depth_pix, depth_count, config)
+        self.save_map(group, "depth_var", depth_pix, depth_var, config)
+
+        # I'm expecting this will one day call off to a 10,000 line
+        # library or something.
+        mask, npix = self.compute_mask(depth_count)
+        self.save_map(group, "mask", depth_pix, mask, config)
+
+        # Save some other handy map info that will be useful later
+        area = pixel_scheme.pixel_area(degrees=True) * npix
+        group.attrs['area'] = area
+        group.attrs['area_unit'] = 'sq deg'
+        group.attrs['nbin_source'] = len(source_bins)
+        group.attrs['nbin_lens'] = len(lens_bins)
+        group.attrs['flag_exponent_max'] = config['flag_exponent_max']
+
+        # Now save all the lens bin galaxy counts, under the
+        # name ngal
+        for b in lens_bins:
+            self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
+            self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
+
+        for b in source_bins:
+            self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
+            self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
+            self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
+            self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
+            # PSF maps
+            self.save_map(group, f"psf_g1_{b}", map_pix_psf, g1_psf[b], config)
+            self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
+            self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
+            self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
+
+        for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
+            f = 2**i
+            t = m.sum()
+            print(f"Map shows total {t} objects with flag {f}")
+            self.save_map(group, f"flag_{f}", p, m, config)
+
+            self.save_metadata_file(area, nbin_source, nbin_lens)
+            self.save_photoz_stack(nbin_source, nbin_lens)
+
+    def generate_tracers(self, nbin_source, nbin_lens):
+        tracers = {}
+        for i in range(nbin_source):
+            mu = self.config['source_bin_centers'][i]
+            sigma = self.config['source_bin_widths'][i]
+            tracers[f'source_{i}'] = FakeTracer(mu, sigma)
+
+        for i in range(nbin_lens):
+            mu = self.config['lens_bin_centers'][i]
+            sigma = self.config['lens_bin_widths'][i]
+            tracers[f'lens_{i}'] = FakeTracer(mu, sigma)
+        return tracers
+
+    def save_photoz_stack(self, nbin_source, nbin_lens):
+        tracers = self.generate_tracers(nbin_source, nbin_lens)
+
+        outfile = self.open_output('photoz_stack')
+
+        for name, n in [('source', nbin_source), ('lens', nbin_lens)]:
+            group = outfile.create_group(f"n_of_z/{name}")
+            group.attrs["nbin"] = n
+        
+            for i in range(n):
+                tracer = tracers[f'source_{i}']
+                group.create_dataset(f"bin_{i}", data=tracer.nz)
+
+                # TODO: make and save counts for each bin
+                # group.attrs["count_{}"] = ...
+
+                if i==0:
+                    group.create_dataset("z", data=tracer.z)
+                    group.attrs["nz"] = len(tracer.z)
+        outfile.close()
+
+
+
+    def generate_theory_cl(self, nbin_source, nbin_lens):
+        tracers = self.generate_tracers(nbin_source, nbin_lens)
+        cosmo_file = self.get_input("fiducial_cosmology")
+        ell_max = 3*self.config['nside'] - 1
+        theory_cl = theory_3x2pt(cosmo_file, tracers, ell_max, nbin_source, nbin_lens)
+        return ell_max, theory_cl
+
+    def simulate_alm(self, theory_cl, nbin_source, nbin_lens, ell_max):
+        import healpy as hp
+        # healpy wants a specific ordering for C_ell, which we re-create here
+        # first, define a function mapping from the healpy ordering
+        # to the dict keys we use in theory_cl
+        def pair_to_key(i, j):
+            i_is_source = i < nbin_source
+            j_is_source = j < nbin_source
+            i1 = i if i_is_source else i - nbin_source
+            j1 = j if j_is_source else j - nbin_source
+            if i_is_source and j_is_source:
+                k = SHEAR_SHEAR
+            elif (not i_is_source) and (not j_is_source):
+                k = POS_POS
+            else:
+                k = SHEAR_POS
+            return (i1, j1, k)
+        
+        # Now put things into this new order
+        ntot = nbin_source + nbin_lens
+        cl = []
+        for i in range(ntot):
+            for j in range(ntot):
+                if j<i:
+                    continue
+                key = pair_to_key(i,j)
+                cl.append(theory_cl[key])
+
+        # And finally simulate alm. new=False refers to the fact
+        # that healpy is going to change the ordering scheme at some point
+        alm = hp.synalm(cl, new=False, lmax=ell_max)
+        return alm
+
+    def simulate_gaussian_maps(self, nbin_source, nbin_lens):
+        import healpy as hp
+        ell_max, theory_cl = self.generate_theory_cl(nbin_source, nbin_lens)
+        alm = self.simulate_alm(theory_cl, nbin_source, nbin_lens, ell_max)
+
+        # For the sources we generate g1 and g2.
+        source_maps = []
+        for i in range(nbin_source):
+            # assume E-mode only
+            ee = alm[i]
+            bb = np.zeros_like(ee)
+            g1, g2 = hp.alm2map_spin([ee,bb], self.config['nside'], spin=2, lmax=ell_max)
+            source_maps.append((g1,g2))
+
+        # For lens maps we just generate the density.
+        # This actually makes maps that go negative, because
+        # we are pretending everything is Gaussian.
+        lens_maps = []
+        for i in range(nbin_lens):
+            cl = alm[nbin_source + i]
+            m = hp.alm2map(cl, nside=self.config['nside'], lmax=ell_max)
+            n_mean = self.config['lens_counts'][i]
+            lens_maps.append((1+m)*n_mean)
+
+        self.add_noise(source_maps, lens_maps)
+
+        return source_maps, lens_maps
+
+    def add_noise(self, source_maps, lens_maps):
+        import healpy as hp
+        pix_area_deg2 = hp.nside2pixarea(self.config['nside'], degrees=True)
+        pix_area_arcmin2 = pix_area_deg2 * 3600
+
+        for i, (g1, g2) in enumerate(source_maps):
+            sigma_e = self.config['sigma_e'][i]
+            n_eff_arcmin2 = self.config['n_eff'][i]
+            n_eff_pixel = n_eff_arcmin2 * pix_area_arcmin2
+            sigma_pixel = sigma_e / np.sqrt(n_eff_pixel)
+            
+            g1 += np.random.normal(size=g1.size) * sigma_pixel
+            g2 += np.random.normal(size=g2.size) * sigma_pixel
+
+
+        for i, m in enumerate(lens_maps):
+            n_arcmin2 = self.config['lens_counts'][i]
+            n_pixel = n_arcmin2 / pix_area_arcmin2
+            sigma_pixel = 1.0 / np.sqrt(n_eff_pixel)
+            print(i, sigma_pixel)   
+            
+            m += np.random.normal(size=m.size) * sigma_pixel
+
+
+
+
+    def save_metadata_file(self, area, nbin_source, nbin_lens):
+        area_sq_arcmin = area * 60**2
+        meta_file = self.open_output('tracer_metdata')
+        group = meta_file.create_group('tracers')
+        group.create_dataset('R_gamma_mean', data = np.zeros((nbin_source, 2, 2)))
+        group.create_dataset('R_S', data = np.zeros((nbin_source, 2, 2)))
+        group.create_dataset('R_total', data = np.zeros((nbin_source, 2, 2)))
+
+        n_eff = np.array(self.config['n_eff'])
+        N_eff = n_eff * area_sq_arcmin
+        lens_density = np.array(self.config['lens_counts'])
+        lens_counts = lens_density * area_sq_arcmin
+
+        # we uuse a
+        group.create_dataset('N_eff', data = N_eff)
+        group.create_dataset('lens_counts', data=lens_counts)
+        group.create_dataset('sigma_e', data=self.config['sigma_e'])
+        group.create_dataset('source_counts', data=np.zeros(nbin_source))
+
+        group.create_dataset('n_eff', data=n_eff)
+        group.create_dataset('lens_density', data=lens_density)
+        group.create_dataset('source_density', data=np.zeros(nbin_source))
+
+
+        group.attrs['area'] = area
+        group.attrs['area_unit'] = 'sq deg'
+        group.attrs['nbin_source'] = nbin_source
+        group.attrs['nbin_lens'] = nbin_lens
+
+        meta_file.close()
 
 
 
