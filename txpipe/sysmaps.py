@@ -175,7 +175,6 @@ class TXDiagnosticMaps(PipelineStage):
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
         import treecorr
         cat = treecorr.Catalog(ra = ra, dec = dec, ra_units='degree', dec_units = 'degree', npatch=self.config['npatch'])
-        cat.patches
         cat.write_patch_centers(self.get_output('patch_centers'))
 
         # Only the root process saves the output

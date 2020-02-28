@@ -636,6 +636,7 @@ class TXTwoPointLensCat(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('lens_catalog', HDFFile),
+        ('patch_centers', HDFFile),
     ]
     def load_lens_catalog(self, data):
         filename = self.get_input('lens_catalog')
@@ -910,6 +911,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('exposures', HDFFile),
+        ('patch_centers', HDFFile),
     ]
     outputs = [
         ('gammat_field_center', SACCFile),
@@ -1055,7 +1057,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile)
+        ('star_catalog', HDFFile),
+        ('patch_centers', HDFFile),
     ]
     outputs = [
         ('gammat_bright_stars', SACCFile),
@@ -1219,7 +1222,8 @@ class TXGammaTDimStars(TXTwoPoint):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile)
+        ('star_catalog', HDFFile),
+        ('patch_centers', HDFFile),
     ]
     outputs = [
         ('gammat_dim_stars', SACCFile),
