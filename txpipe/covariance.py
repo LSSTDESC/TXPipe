@@ -1,4 +1,3 @@
-
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
 from .data_types import DiagnosticMaps
@@ -22,8 +21,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
         ('photoz_stack', HDFFile),           # For the n(z)
         ('twopoint_data_fourier', SACCFile), # For the binning information
-        ('diagnostic_maps', DiagnosticMaps), # For the area
-        ('tomography_catalog', TomographyCatalog),
+        ('tracer_metdata', HDFFile),         # For metadata
+        #('diagnostic_maps', DiagnosticMaps), # For the area
+        #('tomography_catalog', TomographyCatalog),
     ]
 
     outputs = [
@@ -46,7 +46,14 @@ class TXFourierGaussianCovariance(PipelineStage):
             two_point_data = self.read_sacc_real()
 
         # read the n(z) and f_sky from the source summary stats
-        n_eff, n_lens, sigma_e, fsky = self.read_number_statistics()
+        input_data = self.open_input('tracer_metdata')
+        fsky = 0.01 # make something up
+        print("fsky is made up.")
+        sigma_e = meta['tracers/sigma_e'].value
+        n_eff = meta['tracers/N_eff'].value
+        n_lens = meta['tracers/lens_counts'].value
+        
+        #n_eff, n_lens, sigma_e, fsky = self.read_number_statistics()
         
         # the following is a list of things that are somewhat awkwardly passed through the functions... think about how this can be done more elegantly.
         meta = {}
