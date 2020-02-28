@@ -1371,5 +1371,43 @@ class TXGammaTDimStars(TXTwoPoint):
 
         # Also make a plot of the data
 
+class TXSelfCalibrationIA(TXTwoPoint):
+    """
+    This is the subclass of the Twopoint class that will handle calculating the
+    correlations needed for doing the Self-calibration Intrinsic alignment
+    estimation. 
+    """
+    name = 'TXSCIA'
+    inputs = [
+        ('shear_catalog', MetacalCatalog),
+        ('tomography_catalog', TomographyCatalog),
+        ('photoz_stack', HDFFile),
+        ('random_cats', RandomsCatalog),
+        ('patch_centers', HDFFile),
+    ]
+    outputs = [
+        ('twopoint_data', SACCFile),
+    ]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        'calcs':[0,1,2],
+        'min_sep':2.5,
+        'max_sep':250.,
+        'nbins':20,
+        'bin_slop':0.1,
+        'sep_units':'arcmin',
+        'flip_g2':True,
+        'cores_per_task':20,
+        'verbose':1,
+        'source_bins':[-1],
+        'lens_bins':[-1],
+        'reduce_randoms_size':1.0,
+        'var_methods': 'jackknife',
+        }
+
+    def run(self):
+
+        super().run()
+
 if __name__ == '__main__':
     PipelineStage.main()
