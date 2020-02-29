@@ -1,14 +1,14 @@
 # Stages to run
 stages:
-    - name: TXSelector
-    - name: PZPDFMLZ
-    - name: TXPhotozStack
-    - name: TXDiagnosticMaps
-    - name: TXRandomCat
-    - name: TXTwoPointFourier
-    - name: TXFourierGaussianCovariance
+        #- name: TXSelector
+        #- name: PZPDFMLZ
+        #- name: TXPhotozStack
+        #- name: TXDiagnosticMaps
+        #- name: TXRandomCat
+        #- name: TXTwoPointFourier
+        #- name: TXFourierGaussianCovariance
       #- name: TXGaussianCovariance  
-    - name: TXTwoPoint
+      #- name: TXTwoPoint
     - name: TXRealGaussianCovariance
       #- name: TXDiagnosticPlots
       #- name: TXGammaTFieldCenters
@@ -46,6 +46,8 @@ inputs:
     star_catalog: data/example/inputs/star_catalog.hdf5
     photoz_stack: data/example/outputs/photoz_stack.hdf5
     twopoint_data_fourier: data/example/outputs/twopoint_data_fourier.sacc
+    twopoint_data_real: data/example/outputs/twopoint_data_real.sacc
+    tracer_metdata: data/example/outputs/tracer_metdata.hdf5
     diagnostic_maps: data/example/outputs/diagnostic_maps.hdf5
     tomography_catalog: data/example/outputs/tomography_catalog.hdf5
     # This file comes with the code
