@@ -1,20 +1,16 @@
 # Stages to run
 stages:
-        #- name: TXSelector
-        #- name: PZPDFMLZ
-        #- name: TXPhotozStack
-        #- name: TXDiagnosticMaps
-        #- name: TXRandomCat
-        #- name: TXTwoPointFourier
-        #- name: TXFourierGaussianCovariance
-      #- name: TXGaussianCovariance  
-      #- name: TXTwoPoint
-    - name: TXRealGaussianCovariance
-      #- name: TXDiagnosticPlots
-      #- name: TXGammaTFieldCenters
-      #- name: TXGammaTBrightStars
-      #- name: TXGammaTDimStars
-      #- name: TXRoweStatistics
+    - name: TXSelector
+    - name: PZPDFMLZ
+    - name: TXPhotozStack
+    - name: TXDiagnosticMaps
+    - name: TXRandomCat
+    - name: TXTwoPoint
+    - name: TXDiagnosticPlots
+    - name: TXGammaTFieldCenters
+    - name: TXGammaTBrightStars
+    - name: TXGammaTDimStars
+    - name: TXRoweStatistics
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -44,12 +40,6 @@ inputs:
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
-    photoz_stack: data/example/outputs/photoz_stack.hdf5
-    twopoint_data_fourier: data/example/outputs/twopoint_data_fourier.sacc
-    twopoint_data_real: data/example/outputs/twopoint_data_real.sacc
-    tracer_metdata: data/example/outputs/tracer_metdata.hdf5
-    diagnostic_maps: data/example/outputs/diagnostic_maps.hdf5
-    tomography_catalog: data/example/outputs/tomography_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
 
