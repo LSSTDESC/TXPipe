@@ -11,6 +11,7 @@ stages:
     - name: TXGammaTBrightStars
     - name: TXGammaTDimStars
     - name: TXRoweStatistics
+    - name: TXTwoPointPlots
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -46,7 +47,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: False
 # where to put output logs for individual stages
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
