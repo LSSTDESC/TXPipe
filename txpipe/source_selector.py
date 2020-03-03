@@ -1,7 +1,7 @@
 
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
-from .utils import NumberDensityStats
+from .utils import SourceNumberDensityStats, LensNumberDensityStats
 from .utils.metacal import metacal_variants, metacal_band_variants, ParallelCalibrator
 import numpy as np
 import warnings
@@ -24,6 +24,9 @@ class TXSourceSelector(PipelineStage):
     Once these selections are made it constructs
     the quantities needed to calibrate each bin -
     this consists of two shear response quantities.
+
+    TODO: add option to use lensfit catalogs, which 
+    would be much much simpler.
     """
 
     name='TXSourceSelector'
@@ -31,7 +34,7 @@ class TXSourceSelector(PipelineStage):
     inputs = [
         ('shear_catalog', MetacalCatalog),
         ('calibration_table', TextFile),
-        ('photometry_catalog', HDFFile),
+        ('photometry_catalog', HDFFile),  # this is to get the photo-z, does not necessarily need it
     ]
 
     outputs = [
@@ -78,20 +81,15 @@ class TXSourceSelector(PipelineStage):
         chunk_rows = self.config['chunk_rows']
         delta_gamma = self.config['delta_gamma']
 
-        if not self.config['input_pz']:
-            # Build a classifier used to put objects into tomographic bins
-            classifier, features = self.build_tomographic_classifier()        
-
-        # Columns we need from the photometry data.
-        # We use the photometry data to select the lenses.
-        # Although this will be one by redmagic soon.
-        phot_cols = ['g_mag', 'r_mag', 'i_mag']
-
-        # Columns we need from the shear catalog
+        # Columns we need from the shear catalog, will need to modify for lensfit catalogs
         shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
         shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
         shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
-        if self.config['input_pz']:
+
+        if not self.config['input_pz']:
+            # Build a classifier used to put objects into tomographic bins
+            classifier, features = self.build_tomographic_classifier()        
+        else:
             shear_cols += ['mean_z']
             shear_cols += ['mean_z_1p']
             shear_cols += ['mean_z_1m']
@@ -103,21 +101,18 @@ class TXSourceSelector(PipelineStage):
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data 
         iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        iter_phot = self.iterate_hdf('shear_photometry_catalog', 'photometry', phot_cols, chunk_rows)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
         nbin_source = len(self.config['zbins'])
-        nbin_lens = 1
 
         selection_biases = []
-        number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
+        number_density_stats = SourceNumberDensityStats(nbin_source)
         calibrators = [ParallelCalibrator(self.select, delta_gamma) for i in range(nbin_source)]
 
-
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, shear_data), (_, _, phot_data) in zip(iter_shear, iter_phot):
+        for (start, end, shear_data) in iter_shear:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
             if self.config['input_pz']:
@@ -132,11 +127,11 @@ class TXSourceSelector(PipelineStage):
             tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calibrators)
 
             # Save the tomography for this chunk
-            self.write_tomography(output_file, start, end, tomo_bin, lens_gals, R, lens_gals)
+            self.write_tomography(output_file, start, end, tomo_bin, R)
 
             # Accumulate information on the number counts and the selection biases.
             # These will be brought together at the end.
-            number_density_stats.add_data(shear_data, tomo_bin, lens_gals)
+            number_density_stats.add_data(shear_data, tomo_bin)  # check this
 
         # Do the selection bias averaging and output that too.
         self.write_global_values(output_file, calibrators, number_density_stats)
@@ -302,29 +297,26 @@ class TXSourceSelector(PipelineStage):
         Set up the output data file.
 
         Creates the data sets and groups to put module output
-        in the tomography_catalog output file.
+        in the shear_tomography_catalog output file.
         """
         n = self.open_input('shear_catalog')['metacal/ra'].size
         zbins = self.config['zbins']
         nbin_source = len(zbins)
-        nbin_lens = 1
 
-        outfile = self.open_output('tomography_catalog', parallel=True)
+        outfile = self.open_output('shear_tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('source_bin', (n,), dtype='i')
-        group.create_dataset('lens_bin', (n,), dtype='i')
         group.create_dataset('source_counts', (nbin_source,), dtype='i')
-        group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
         group.create_dataset('sigma_e', (nbin_source,), dtype='f')
         group.create_dataset('N_eff', (nbin_source,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
-        group.attrs['nbin_lens'] = nbin_lens
         for i in range(nbin_source):
             group.attrs[f'source_zmin_{i}'] = zbins[i][0]
             group.attrs[f'source_zmax_{i}'] = zbins[i][1]
 
-        group = outfile.create_group('multiplicative_bias')
+        #group = outfile.create_group('multiplicative_bias')  # why is this called "multiplicative_bias"?
+        group = outfile.create_group('metacal_response') 
         group.create_dataset('R_gamma', (n,2,2), dtype='f')
         group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
         group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
@@ -332,7 +324,7 @@ class TXSourceSelector(PipelineStage):
 
         return outfile
 
-    def write_tomography(self, outfile, start, end, source_bin, lens_bin, R, lens_gals):
+    def write_tomography(self, outfile, start, end, source_bin, R):
         """
         Write out a chunk of tomography and response.
 
@@ -358,8 +350,7 @@ class TXSourceSelector(PipelineStage):
         """
         group = outfile['tomography']
         group['source_bin'][start:end] = source_bin
-        group['lens_bin'][start:end] = lens_bin
-        group = outfile['multiplicative_bias']
+        group = outfile['metacal_response']
         group['R_gamma'][start:end,:,:] = R
 
     def write_global_values(self, outfile, calibrators, number_density_stats):
@@ -381,7 +372,8 @@ class TXSourceSelector(PipelineStage):
         N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
 
-        sigma_e, lens_counts = number_density_stats.collect()
+        # this needs fixing
+        sigma_e = number_density_stats.collect()
 
         for i, cal in enumerate(calibrators):
             R[i], S[i], N[i] = cal.collect(self.comm)
@@ -389,12 +381,11 @@ class TXSourceSelector(PipelineStage):
         
 
         if self.rank==0:
-            group = outfile['multiplicative_bias']
+            group = outfile['metacal_response']
             group['R_S'][:,:,:] = S
             group['R_gamma_mean'][:,:,:] = R
             group['R_total'][:,:,:] = R + S
             group = outfile['tomography']
-            group['lens_counts'][:] = lens_counts
             group['sigma_e'][:] = sigma_e
             # These are the same in metacal
             group['source_counts'][:] = N
@@ -409,9 +400,9 @@ class TXSourceSelector(PipelineStage):
         of pairs.
         """
         config = super().read_config(args)
-        zbin_edges = config['zbin_edges']
+        zbin_edges = config['source_zbin_edges']
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
-        config['zbins'] = zbins
+        config['source_zbins'] = zbins
         return config
 
     
