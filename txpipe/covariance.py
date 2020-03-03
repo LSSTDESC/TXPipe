@@ -5,13 +5,12 @@ from .data_types import DiagnosticMaps
 import numpy as np
 import pandas as pd
 import warnings
-import pyccl as ccl
-import sacc
+
 
 # require TJPCov to be in PYTHONPATH
-from wigner_transform import *
-from parser import *
 d2r=np.pi/180
+
+
 
 #Needed changes: 1) area is hard coded to 4sq.deg. as file is buggy. 2) code fixed to equal-spaced ell values in real space. 3)
 
@@ -22,9 +21,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
         ('photoz_stack', HDFFile),           # For the n(z)
         ('twopoint_data_fourier', SACCFile), # For the binning information
-        ('tracer_metdata', HDFFile),         # For metadata
-        #('diagnostic_maps', DiagnosticMaps), # For the area
-        #('tomography_catalog', TomographyCatalog),
+        ('tracer_metadata', HDFFile),         # For metadata
     ]
 
     outputs = [
@@ -36,25 +33,18 @@ class TXFourierGaussianCovariance(PipelineStage):
     }
 
     def run(self):
+        import pyccl as ccl
+        import sacc
+        import wigner_transform
 
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
 
         # read binning
-        if not self.config['do_xi']:
-            two_point_data = self.read_sacc_fourier()
-        else:
-            two_point_data = self.read_sacc_real()
+        two_point_data = self.read_sacc()
 
-        # read the n(z) and f_sky from the source summary stats
-        input_data = self.open_input('tracer_metdata')
-        fsky = 0.01 # make something up
-        print("fsky is made up.")
-        sigma_e = input_data['tracers/sigma_e'].value
-        n_eff = input_data['tracers/N_eff'].value
-        n_lens = input_data['tracers/lens_counts'].value
-        
-        #n_eff, n_lens, sigma_e, fsky = self.read_number_statistics()
+        # read the n(z) and f_sky from the source summary stats        
+        n_eff, n_lens, sigma_e, fsky = self.read_number_statistics()
         
         # the following is a list of things that are somewhat awkwardly passed through the functions... think about how this can be done more elegantly.
         meta = {}
@@ -66,19 +56,18 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta['n_lens'] = n_lens # per radian2
 
         #C_ell covariance
-        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,do_xi=self.config['do_xi'])
+        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,
+            do_xi=self.config['do_xi'])
         
-        if not self.config['do_xi']:
-            self.save_outputs_fourier(two_point_data, cov)
-        else:
-            self.save_outputs_real(two_point_data, cov)
+        self.save_outputs(two_point_data, cov)
 
-    def save_outputs_fourier(self, two_point_data, cov):
+    def save_outputs(self, two_point_data, cov):
         filename = self.get_output('summary_statistics_fourier')
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
 
     def read_cosmology(self):
+        import pyccl as ccl
         filename = self.get_input('fiducial_cosmology')
         cosmo = ccl.Cosmology.read_yaml(filename)
 
@@ -86,7 +75,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         print(cosmo)
         return cosmo
 
-    def read_sacc_fourier(self):
+    def read_sacc(self):
+        import sacc
         f = self.get_input('twopoint_data_fourier')
         two_point_data = sacc.Sacc.load_fits(f)
 
@@ -104,39 +94,16 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         return two_point_data
 
-    def save_outputs_real(self, two_point_data, cov):
-        filename = self.get_output('summary_statistics_real')
-        two_point_data.add_covariance(cov)
-        two_point_data.save_fits(filename, overwrite=True)
-
-    def read_sacc_real(self):
-        f = self.get_input('twopoint_data_real')
-        two_point_data = sacc.Sacc.load_fits(f)
-
-        mask = [
-            two_point_data.indices(sacc.standard_types.galaxy_density_xi),
-            two_point_data.indices(sacc.standard_types.galaxy_shearDensity_xi_t),
-            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_plus),
-            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_minus),
-        ]
-        mask = np.concatenate(mask)
-        two_point_data.keep_indices(mask)
-
-        two_point_data.to_canonical_order()
-
-        return two_point_data
 
     def read_number_statistics(self):
-        input_data = self.open_input('photoz_stack')
-        tomo_file = self.open_input('tomography_catalog')
-        maps_file = self.open_input('diagnostic_maps')
+        input_data = self.open_input('tracer_metadata')
 
-        N_eff = tomo_file['tomography/N_eff']
-        N_lens = tomo_file['tomography/lens_counts']
+        N_eff = input_data['tracers/N_eff']
+        N_lens = input_data['tracers/lens_counts']
 
         # area in sq deg
-        area_deg2 = maps_file['maps'].attrs['area']
-        area_unit = maps_file['maps'].attrs['area_unit']
+        area_deg2 = input_data['tracers'].attrs['area']
+        area_unit = input_data['tracers'].attrs['area_unit']
         if area_unit != 'sq deg':
             raise ValueError("Units of area have changed")
         area = area_deg2 * np.radians(1)**2
@@ -145,24 +112,22 @@ class TXFourierGaussianCovariance(PipelineStage):
         print("NEFF : ", N_eff)
         n_eff = N_eff / area
         print("nEFF : ", n_eff)
-        sigma_e = tomo_file['tomography/sigma_e'][:]
+        sigma_e = input_data['tracers/sigma_e'][:]
 
         n_lens = N_lens / area
         print("lens density : ", n_lens)
 
-        fullsky=4*np.pi #*(180./np.pi)**2 #(FULL SKY IN STERADIANS)
-        fsky=area/fullsky
+        full_sky=4*np.pi #*(180./np.pi)**2 #(FULL SKY IN STERADIANS)
+        fsky=area/full_sky
 
         input_data.close()
-        tomo_file.close()
-        maps_file.close()
 
         print('n_lens, n_eff, sigma_e, fsky: ')
         print(n_lens, n_eff, sigma_e, fsky)
         return n_eff, n_lens, sigma_e, fsky
 
     def get_tracer_info(self, cosmo, meta, two_point_data):
-        
+        import pyccl as ccl
         ccl_tracers={}
         tracer_Noise={}
 
@@ -213,6 +178,8 @@ class TXFourierGaussianCovariance(PipelineStage):
     #compute a single covariance matrix for a given pair of C_ell or xi.  
     def cl_gaussian_cov(self, cosmo, meta, ell_bins, tracer_comb1=None,tracer_comb2=None,ccl_tracers=None,tracer_Noise=None,two_point_data=None,do_xi=False,
                     xi_plus_minus1='plus',xi_plus_minus2='plus'):
+        import pyccl as ccl
+        from wigner_transform import bin_cov, wigner_transform
 
         #tracers 1,2,3,4=tracer_comb1[0],tracer_comb1[1],tracer_comb2[0],tracer_comb2[1]
         ell=meta['ell']
@@ -349,9 +316,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         ('fiducial_cosmology', YamlFile),     # For the cosmological parameters
         ('photoz_stack', HDFFile),            # For the n(z)
         ('twopoint_data_real', SACCFile),     # For the binning information
-        ('tracer_metdata', HDFFile),         # For metadata
-        #('diagnostic_maps', DiagnosticMaps), # For the area
-        #('tomography_catalog', TomographyCatalog),
+        ('tracer_metadata', HDFFile),         # For metadata
 
     ]
 
@@ -369,4 +334,26 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     def run(self):
         super().run()
 
+    def read_sacc(self):
+        import sacc
+        f = self.get_input('twopoint_data_real')
+        two_point_data = sacc.Sacc.load_fits(f)
 
+        mask = [
+            two_point_data.indices(sacc.standard_types.galaxy_density_xi),
+            two_point_data.indices(sacc.standard_types.galaxy_shearDensity_xi_t),
+            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_plus),
+            two_point_data.indices(sacc.standard_types.galaxy_shear_xi_minus),
+        ]
+        mask = np.concatenate(mask)
+        two_point_data.keep_indices(mask)
+
+        two_point_data.to_canonical_order()
+
+        return two_point_data
+
+
+    def save_outputs(self, two_point_data, cov):
+        filename = self.get_output('summary_statistics_real')
+        two_point_data.add_covariance(cov)
+        two_point_data.save_fits(filename, overwrite=True)

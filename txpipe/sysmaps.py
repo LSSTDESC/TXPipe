@@ -29,7 +29,7 @@ class TXDiagnosticMaps(PipelineStage):
     # containing all the maps
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
-        ('tracer_metdata', HDFFile),
+        ('tracer_metadata', HDFFile),
     ]
 
     # Configuration information for this stage
@@ -256,7 +256,7 @@ class TXDiagnosticMaps(PipelineStage):
     def save_metadata_file(self, area):
         area_sq_arcmin = area * 60**2
         tomo_file = self.open_input('tomography_catalog')
-        meta_file = self.open_output('tracer_metdata')
+        meta_file = self.open_output('tracer_metadata')
         def copy(in_section, out_section, name):
             x = tomo_file[f'{in_section}/{name}'][:]
             meta_file.create_dataset(f'{out_section}/{name}', data=x)
