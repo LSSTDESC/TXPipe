@@ -3,9 +3,8 @@ from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
 from .data_types import DiagnosticMaps
 import numpy as np
-import pandas as pd
 import warnings
-
+import os
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
@@ -16,6 +15,7 @@ d2r=np.pi/180
 
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
+    do_xi=False,
 
     inputs = [
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
@@ -29,13 +29,23 @@ class TXFourierGaussianCovariance(PipelineStage):
     ]
 
     config_options = {
-        'do_xi':False,
     }
 
     def run(self):
         import pyccl as ccl
         import sacc
         import wigner_transform
+        # Okay, this is a slightly psychotic hack, and a better way
+        # is to make a bunch of changes to ceci, and if we grow that code
+        # we should do that.  But right now the only things ceci knows
+        # about threads is the OMP_NUM_THREADS variable, so we want to use
+        # that to decide how many processes to us in multiprocessing.
+        # But we don't want to accidentally parallelize twice (e.g. in numpy),
+        # so we're going to set our ncpu from OMP_NUM_THREADS and then override
+        # that variable so OMP isn't actually used.
+        # TODO: make this better
+        num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
+        os.environ['OMP_NUM_THREADS'] = '1'
 
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
@@ -56,8 +66,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta['n_lens'] = n_lens # per radian2
 
         #C_ell covariance
-        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data,
-            do_xi=self.config['do_xi'])
+        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data, num_processes=num_processes)
         
         self.save_outputs(two_point_data, cov)
 
@@ -176,8 +185,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         return WT_factors[tuple(tracers)]
 
     #compute a single covariance matrix for a given pair of C_ell or xi.  
-    def cl_gaussian_cov(self, cosmo, meta, ell_bins, tracer_comb1=None,tracer_comb2=None,ccl_tracers=None,tracer_Noise=None,two_point_data=None,do_xi=False,
-                    xi_plus_minus1='plus',xi_plus_minus2='plus'):
+    def cl_gaussian_cov(self, cosmo, meta, ell_bins, 
+        tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
+        two_point_data=None,
+        xi_plus_minus1='plus', xi_plus_minus2='plus', num_processes=1):
         import pyccl as ccl
         from wigner_transform import bin_cov, wigner_transform
 
@@ -195,7 +206,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
         SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
 
-        if do_xi:
+        if self.do_xi:
             norm=np.pi*4*meta['fsky']
         else: 
             norm=(2*ell+1)*np.gradient(ell)*meta['fsky']
@@ -210,7 +221,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         cov['final']=cov[1423]+cov[1324]
 
-        if do_xi:
+        if self.do_xi:
             s1_s2_1 = self.get_cov_WT_spin(tracer_comb=tracer_comb1)
             s1_s2_2 = self.get_cov_WT_spin(tracer_comb=tracer_comb2)
             if isinstance(s1_s2_1,dict):
@@ -219,15 +230,20 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2=s1_s2_2[xi_plus_minus2]
 
 
-            WT_kwargs = {'l': ell,'theta': meta['th']*d2r,'s1_s2':[(2,2),(2,-2),(0,2),(2,0),(0,0)]}
+            WT_kwargs = {
+                'l': ell,
+                'theta': meta['th']*d2r,
+                's1_s2':[(2,2),(2,-2),(0,2),(2,0),(0,0)],
+                'ncpu': num_processes,
+            }
             WT = wigner_transform(**WT_kwargs)
 
-            th,cov['final']=WT.projected_covariance2(l_cl=ell,s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
+            th, cov['final']=WT.projected_covariance2(l_cl=ell,s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
                                                       cl_cov=cov['final'])
 
         cov['final']/=norm
 
-        if do_xi:
+        if self.do_xi:
             thb,cov['final_b'] = bin_cov(r=th/d2r,r_bins=ell_bins,cov=cov['final'])
         else:
             if ell_bins is not None:
@@ -254,14 +270,14 @@ class TXFourierGaussianCovariance(PipelineStage):
         return th_arcmin/60.0
 
     #compute all the covariances and then combine them into one single giant matrix
-    def get_all_cov(self, cosmo, meta, two_point_data={},do_xi=False):
+    def get_all_cov(self, cosmo, meta, two_point_data={}, num_processes=1):
         #FIXME: Only input needed should be two_point_data, which is the sacc data file. Other parameters should be included within sacc and read from there.
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         tracer_combs = two_point_data.get_tracer_combinations() # we will loop over all these
         N2pt = len(tracer_combs)
         
         N2pt0 = -1
-        if do_xi:
+        if self.do_xi:
             N2pt0 = N2pt*1
             tracer_combs_temp = tracer_combs.copy()
             for combo in tracer_combs:
@@ -270,7 +286,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     tracer_combs_temp+=[combo]
             tracer_combs = tracer_combs_temp.copy()
 
-        if not do_xi:
+        if not self.do_xi:
             ell_bins = self.get_ell_bins(two_point_data)
         else:
             ell_bins = self.get_th_bins(two_point_data)
@@ -294,13 +310,33 @@ class TXFourierGaussianCovariance(PipelineStage):
                 indx_j=j*Nell_bins
                 if j==N2pt0:
                     count_xi_pm2 = 1
-                if do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
-                    cov_ij = self.cl_gaussian_cov(cosmo, meta, ell_bins, tracer_comb1=tracer_comb1,tracer_comb2=tracer_comb2,ccl_tracers=ccl_tracers,
-                                        tracer_Noise=tracer_Noise,do_xi=do_xi,two_point_data=two_point_data,xi_plus_minus1=xi_pm[count_xi_pm1,count_xi_pm2][0],xi_plus_minus2=xi_pm[count_xi_pm1,count_xi_pm2][1])
+                if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
+                    cov_ij = self.cl_gaussian_cov(
+                        cosmo,
+                        meta,
+                        ell_bins, 
+                        tracer_comb1=tracer_comb1,
+                        tracer_comb2=tracer_comb2,
+                        ccl_tracers=ccl_tracers,
+                        tracer_Noise=tracer_Noise,
+                        two_point_data=two_point_data,
+                        xi_plus_minus1=xi_pm[count_xi_pm1,count_xi_pm2][0],
+                        xi_plus_minus2=xi_pm[count_xi_pm1,count_xi_pm2][1],
+                        num_processes=num_processes,
+                    )
 
                 else:
-                    cov_ij = self.cl_gaussian_cov(cosmo, meta, ell_bins, tracer_comb1=tracer_comb1,tracer_comb2=tracer_comb2,ccl_tracers=ccl_tracers,
-                                        tracer_Noise=tracer_Noise,do_xi=do_xi,two_point_data=two_point_data)
+                    cov_ij = self.cl_gaussian_cov(
+                        cosmo,
+                        meta,
+                        ell_bins,
+                        tracer_comb1=tracer_comb1,
+                        tracer_comb2=tracer_comb2,
+                        ccl_tracers=ccl_tracers,
+                        tracer_Noise=tracer_Noise,
+                        two_point_data=two_point_data,
+                        num_processes=num_processes,
+                    )
 
                 cov_ij=cov_ij['final_b']
                 cov_full[indx_i:indx_i+Nell_bins,indx_j:indx_j+Nell_bins]=cov_ij
@@ -311,6 +347,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     name='TXRealGaussianCovariance'
+    do_xi = True
 
     inputs = [
         ('fiducial_cosmology', YamlFile),     # For the cosmological parameters
@@ -325,7 +362,6 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     ]
 
     config_options = {
-        'do_xi':True,
         'min_sep':2.5,  # arcmin
         'max_sep':250,
         'nbins':20,
