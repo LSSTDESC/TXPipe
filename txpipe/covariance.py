@@ -34,7 +34,8 @@ class TXFourierGaussianCovariance(PipelineStage):
     def run(self):
         import pyccl as ccl
         import sacc
-        import wigner_transform
+        import tjpcov
+        import threadpoolctl
         # Okay, this is a slightly psychotic hack, and a better way
         # is to make a bunch of changes to ceci, and if we grow that code
         # we should do that.  But right now the only things ceci knows
@@ -42,10 +43,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         # that to decide how many processes to us in multiprocessing.
         # But we don't want to accidentally parallelize twice (e.g. in numpy),
         # so we're going to set our ncpu from OMP_NUM_THREADS and then override
-        # that variable so OMP isn't actually used.
+        # that variable using the threadpoolctl package so OMP isn't actually used.
         # TODO: make this better
         num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
-        os.environ['OMP_NUM_THREADS'] = '1'
+        # This will last until we delete thread_limits later (or until it
+        # is garbage collected when it drops out of scope).
+        thread_limits = threadpoolctl.threadpool_limits(1)
 
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
@@ -69,6 +72,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data, num_processes=num_processes)
         
         self.save_outputs(two_point_data, cov)
+
+        del thread_limits
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output('summary_statistics_fourier')
@@ -190,7 +195,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         two_point_data=None,
         xi_plus_minus1='plus', xi_plus_minus2='plus', num_processes=1):
         import pyccl as ccl
-        from wigner_transform import bin_cov, wigner_transform
+        from tjpcov import bin_cov, wigner_transform
 
         #tracers 1,2,3,4=tracer_comb1[0],tracer_comb1[1],tracer_comb2[0],tracer_comb2[1]
         ell=meta['ell']
@@ -255,19 +260,14 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         return cov
     
-    def get_ell_bins(self, two_point_data):
+    def get_angular_bins(self, two_point_data):
         X = two_point_data.get_data_points('galaxy_shear_cl_ee',i=0,j=0)
         ell_edges = []
         for i in range(len(X)):
-            ell_edges.append(X[i]['window'].min[0])
-        ell_edges.append(X[-1]['window'].min[-1])
+            ell_edges.append(X[i]['window'].min)
+        ell_edges.append(X[-1]['window'].max)
         ell_edges = np.array(ell_edges)
         return ell_edges
-
-    def get_th_bins(self, two_point_data):
-        # this should be changed to read from sacc file
-        th_arcmin = np.logspace(np.log10(self.config['min_sep']), np.log10(self.config['max_sep']), self.config['nbins']+1)
-        return th_arcmin/60.0
 
     #compute all the covariances and then combine them into one single giant matrix
     def get_all_cov(self, cosmo, meta, two_point_data={}, num_processes=1):
@@ -286,15 +286,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                     tracer_combs_temp+=[combo]
             tracer_combs = tracer_combs_temp.copy()
 
-        if not self.do_xi:
-            ell_bins = self.get_ell_bins(two_point_data)
-        else:
-            ell_bins = self.get_th_bins(two_point_data)
-
-        if ell_bins is not None:
-            Nell_bins = len(ell_bins)-1
-        else: 
-            Nell_bins = len(ell_bins)
+        ell_bins = self.get_angular_bins(two_point_data)
+        Nell_bins = len(ell_bins)-1
 
         cov_full=np.zeros((Nell_bins*N2pt,Nell_bins*N2pt))
         count_xi_pm1 = 0
@@ -369,6 +362,12 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
 
     def run(self):
         super().run()
+
+    def get_angular_bins(self, two_point_data):
+        # this should be changed to read from sacc file
+        th_arcmin = np.logspace(np.log10(self.config['min_sep']), np.log10(self.config['max_sep']), self.config['nbins']+1)
+        return th_arcmin/60.0
+
 
     def read_sacc(self):
         import sacc
