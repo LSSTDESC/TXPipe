@@ -193,17 +193,42 @@ class TXFourierGaussianCovariance(PipelineStage):
     def cl_gaussian_cov(self, cosmo, meta, ell_bins, 
         tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
         two_point_data=None,
-        xi_plus_minus1='plus', xi_plus_minus2='plus', num_processes=1):
+        xi_plus_minus1='plus', xi_plus_minus2='plus', num_processes=1,
+        cache=None, WT=None,
+        ):
         import pyccl as ccl
-        from tjpcov import bin_cov, wigner_transform
+        from tjpcov import bin_cov
 
-        #tracers 1,2,3,4=tracer_comb1[0],tracer_comb1[1],tracer_comb2[0],tracer_comb2[1]
+        cl = {}
+
+        # tracers 1,2,3,4 = tracer_comb1[0], tracer_comb1[1], tracer_comb2[0], tracer_comb2[1]
+        reindex = {
+            (0, 0): 13,
+            (1, 1): 24,
+            (0, 1): 14,
+            (1, 0): 23,
+        }
+
         ell=meta['ell']
-        cl={}
-        cl[13] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[0]], ccl_tracers[tracer_comb2[0]], ell)
-        cl[24] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[1]], ccl_tracers[tracer_comb2[1]], ell)
-        cl[14] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[0]], ccl_tracers[tracer_comb2[1]], ell)
-        cl[23] = ccl.angular_cl(cosmo, ccl_tracers[tracer_comb1[1]], ccl_tracers[tracer_comb2[0]], ell)
+
+        # Getting all the C_ell that we need, saving the results in a cache
+        # for later re-use
+        for i in (0,1):
+            for j in (0,1):
+                local_key = reindex[(i,j)]
+                cache_key = (tracer_comb1[i], tracer_comb2[j])
+                if cache_key in cache:
+                    cl[local_key] = cache[cache_key]
+                    print("Using cached", local_key, cache_key)
+                else:
+                    t1 = tracer_comb1[i]
+                    t2 = tracer_comb2[j]
+                    c = ccl.angular_cl(cosmo, ccl_tracers[t1], ccl_tracers[t2], ell)
+                    print("Computed", local_key, cache_key)
+                    cache[cache_key] = c
+                    cl[local_key] = c
+
+
 
         SN={}
         SN[13]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
@@ -235,16 +260,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2=s1_s2_2[xi_plus_minus2]
 
 
-            WT_kwargs = {
-                'l': ell,
-                'theta': meta['th']*d2r,
-                's1_s2':[(2,2),(2,-2),(0,2),(2,0),(0,0)],
-                'ncpu': num_processes,
-            }
-            WT = wigner_transform(**WT_kwargs)
-
-            th, cov['final']=WT.projected_covariance2(l_cl=ell,s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
-                                                      cl_cov=cov['final'])
+            th, cov['final']=WT.projected_covariance2(
+                l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
 
         cov['final']/=norm
 
@@ -271,6 +288,8 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     #compute all the covariances and then combine them into one single giant matrix
     def get_all_cov(self, cosmo, meta, two_point_data={}, num_processes=1):
+        from tjpcov import bin_cov, wigner_transform
+
         #FIXME: Only input needed should be two_point_data, which is the sacc data file. Other parameters should be included within sacc and read from there.
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         tracer_combs = two_point_data.get_tracer_combinations() # we will loop over all these
@@ -289,9 +308,19 @@ class TXFourierGaussianCovariance(PipelineStage):
         ell_bins = self.get_angular_bins(two_point_data)
         Nell_bins = len(ell_bins)-1
 
+
+        WT = wigner_transform(
+            l = meta['ell'],
+            theta = meta['th']*d2r,
+            s1_s2 = [(2,2),(2,-2),(0,2),(2,0),(0,0)],
+            ncpu = num_processes,
+            )
+        print("Computed Wigner Transformer")
+
         cov_full=np.zeros((Nell_bins*N2pt,Nell_bins*N2pt))
         count_xi_pm1 = 0
         count_xi_pm2 = 0
+        cl_cache = {}
         xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
         for i in np.arange(N2pt):
             tracer_comb1=tracer_combs[i]
@@ -316,6 +345,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                         xi_plus_minus1=xi_pm[count_xi_pm1,count_xi_pm2][0],
                         xi_plus_minus2=xi_pm[count_xi_pm1,count_xi_pm2][1],
                         num_processes=num_processes,
+                        cache=cl_cache,
+                        WT=WT,
                     )
 
                 else:
@@ -329,6 +360,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                         tracer_Noise=tracer_Noise,
                         two_point_data=two_point_data,
                         num_processes=num_processes,
+                        cache=cl_cache,
+                        WT=WT,
                     )
 
                 cov_ij=cov_ij['final_b']
