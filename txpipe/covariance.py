@@ -15,7 +15,7 @@ d2r=np.pi/180
 
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
-    do_xi=False,
+    do_xi=False
 
     inputs = [
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
