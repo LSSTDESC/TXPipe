@@ -36,19 +36,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         import sacc
         import tjpcov
         import threadpoolctl
-        # Okay, this is a slightly psychotic hack, and a better way
-        # is to make a bunch of changes to ceci, and if we grow that code
-        # we should do that.  But right now the only things ceci knows
-        # about threads is the OMP_NUM_THREADS variable, so we want to use
-        # that to decide how many processes to us in multiprocessing.
-        # But we don't want to accidentally parallelize twice (e.g. in numpy),
-        # so we're going to set our ncpu from OMP_NUM_THREADS and then override
-        # that variable using the threadpoolctl package so OMP isn't actually used.
-        # TODO: make this better
-        num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
-        # This will last until we delete thread_limits later (or until it
-        # is garbage collected when it drops out of scope).
-        thread_limits = threadpoolctl.threadpool_limits(1)
 
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
@@ -69,11 +56,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta['n_lens'] = n_lens # per radian2
 
         #C_ell covariance
-        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data, num_processes=num_processes)
+        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data)
         
         self.save_outputs(two_point_data, cov)
-
-        del thread_limits
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output('summary_statistics_fourier')
@@ -101,9 +86,10 @@ class TXFourierGaussianCovariance(PipelineStage):
             two_point_data.indices(sacc.standard_types.galaxy_density_cl),
             # not doing b-modes, do we want to?
         ]
+        print("Length before cuts = ", len(two_point_data))
         mask = np.concatenate(mask)
         two_point_data.keep_indices(mask)
-
+        print("Length after cuts = ", len(two_point_data))
         two_point_data.to_canonical_order()
 
         return two_point_data
@@ -193,7 +179,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     def cl_gaussian_cov(self, cosmo, meta, ell_bins, 
         tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
         two_point_data=None,
-        xi_plus_minus1='plus', xi_plus_minus2='plus', num_processes=1,
+        xi_plus_minus1='plus', xi_plus_minus2='plus',
         cache=None, WT=None,
         ):
         import pyccl as ccl
@@ -216,16 +202,18 @@ class TXFourierGaussianCovariance(PipelineStage):
         for i in (0,1):
             for j in (0,1):
                 local_key = reindex[(i,j)]
-                cache_key = (tracer_comb1[i], tracer_comb2[j])
-                if cache_key in cache:
-                    cl[local_key] = cache[cache_key]
-                    print("Using cached", local_key, cache_key)
+                cache_key1 = (tracer_comb1[i], tracer_comb2[j])
+                cache_key2 = (tracer_comb2[j], tracer_comb1[i])
+                if cache_key1 in cache:
+                    cl[local_key] = cache[cache_key1]
+                elif cache_key2 in cache:
+                    cl[local_key] = cache[cache_key2]
                 else:
                     t1 = tracer_comb1[i]
                     t2 = tracer_comb2[j]
                     c = ccl.angular_cl(cosmo, ccl_tracers[t1], ccl_tracers[t2], ell)
-                    print("Computed", local_key, cache_key)
-                    cache[cache_key] = c
+                    print("Computed C_ell for ", cache_key1)
+                    cache[cache_key1] = c
                     cl[local_key] = c
 
 
@@ -271,9 +259,6 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb,cov['final_b'] = bin_cov(r=ell,r_bins=ell_bins,cov=cov['final'])
 
-        print(cov['final_b'].shape, cov['final'].shape)
-#     cov[1324]=None #if want to save memory
-#     cov[1423]=None #if want to save memory
 
         return cov
     
@@ -287,8 +272,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         return ell_edges
 
     #compute all the covariances and then combine them into one single giant matrix
-    def get_all_cov(self, cosmo, meta, two_point_data={}, num_processes=1):
+    def get_all_cov(self, cosmo, meta, two_point_data={}):
         from tjpcov import bin_cov, wigner_transform
+        import threadpoolctl
 
         #FIXME: Only input needed should be two_point_data, which is the sacc data file. Other parameters should be included within sacc and read from there.
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
@@ -308,14 +294,21 @@ class TXFourierGaussianCovariance(PipelineStage):
         ell_bins = self.get_angular_bins(two_point_data)
         Nell_bins = len(ell_bins)-1
 
-
-        WT = wigner_transform(
-            l = meta['ell'],
-            theta = meta['th']*d2r,
-            s1_s2 = [(2,2),(2,-2),(0,2),(2,0),(0,0)],
-            ncpu = num_processes,
-            )
-        print("Computed Wigner Transformer")
+        # We don't want to use n processes with n threads each by accident,
+        # where n is the number of CPUs we have
+        # so for this bit of the code, which uses python's multiprocessing,
+        # we limit the number of threads that numpy etc can use.
+        # After this is finished this will switch back to allowing all the CPUs
+        # to be used for threading instead.
+        num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
+        with threadpoolctl.threadpool_limits(1):
+            WT = wigner_transform(
+                l = meta['ell'],
+                theta = meta['th']*d2r,
+                s1_s2 = [(2,2),(2,-2),(0,2),(2,0),(0,0)],
+                ncpu = num_processes,
+                )
+            print("Computed Wigner Transformer")
 
         cov_full=np.zeros((Nell_bins*N2pt,Nell_bins*N2pt))
         count_xi_pm1 = 0
@@ -329,6 +322,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 count_xi_pm1 = 1
             for j in np.arange(i,N2pt):
                 tracer_comb2=tracer_combs[j]
+                print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
                 indx_j=j*Nell_bins
                 if j==N2pt0:
                     count_xi_pm2 = 1
@@ -344,7 +338,6 @@ class TXFourierGaussianCovariance(PipelineStage):
                         two_point_data=two_point_data,
                         xi_plus_minus1=xi_pm[count_xi_pm1,count_xi_pm2][0],
                         xi_plus_minus2=xi_pm[count_xi_pm1,count_xi_pm2][1],
-                        num_processes=num_processes,
                         cache=cl_cache,
                         WT=WT,
                     )
@@ -359,7 +352,6 @@ class TXFourierGaussianCovariance(PipelineStage):
                         ccl_tracers=ccl_tracers,
                         tracer_Noise=tracer_Noise,
                         two_point_data=two_point_data,
-                        num_processes=num_processes,
                         cache=cl_cache,
                         WT=WT,
                     )
