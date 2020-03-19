@@ -37,7 +37,6 @@ class NumberDensityStats:
             # as this value is not calibrated
             sigma_e[i] = (0.5 * (variances[0] + variances[1]))**0.5
 
-
         if self.comm is None:
             lens_counts = self.lens_counts
         else:
