@@ -92,8 +92,6 @@ class TXMetacalGCRInput(PipelineStage):
             photo_cols.append(f'{band}_mag_err')
             photo_cols.append(f'snr_{band}')
 
-        col[:-7] if col.endswith('_cModel') else col
-                            for col in photo_cols]
 
         # The star output names are mostly different tot he input names
         star_out_cols = ['id', 'ra', 'dec', 
