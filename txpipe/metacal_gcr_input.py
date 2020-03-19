@@ -62,8 +62,8 @@ class TXMetacalGCRInput(PipelineStage):
 
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
-            photo_cols.append(f'{band}_mag')
-            photo_cols.append(f'{band}_mag_err')
+            photo_cols.append(f'mag_{band}')
+            photo_cols.append(f'magerr_{band}')
             photo_cols.append(f'snr_{band}_cModel')
 
         # Columns we need to load in for the star data - 
@@ -86,7 +86,13 @@ class TXMetacalGCRInput(PipelineStage):
         shear_out_cols = shear_cols + ['weight']
 
         # For the photometry output we strip off the _cModeel suffix.
-        photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
+        photo_out_cols = ['id', 'ra', 'dec']
+        for band in 'ugrizy':
+            photo_cols.append(f'{band}_mag')
+            photo_cols.append(f'{band}_mag_err')
+            photo_cols.append(f'snr_{band}')
+
+        col[:-7] if col.endswith('_cModel') else col
                             for col in photo_cols]
 
         # The star output names are mostly different tot he input names
@@ -141,6 +147,12 @@ class TXMetacalGCRInput(PipelineStage):
 
     def rename_columns(self, data):
         for band in 'ugrizy':
+            data[f'{band}_mag'] = data[f'mag_{band}']
+            del data[f'mag_{band}']
+
+            data[f'{band}_mag_err'] = data[f'magerr_{band}']
+            del data[f'magerr_{band}']
+
             data[f'snr_{band}'] = data[f'snr_{band}_cModel']
             del data[f'snr_{band}_cModel']
 
