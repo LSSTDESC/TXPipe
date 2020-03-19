@@ -9,9 +9,12 @@ TXExposureInfo:
     dc2_name: '1.2p'
 
 
-TXProtoDC2Mock:
+TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
+    visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2
+    flip_g2: True # to match metacal
+
 
 
 PZPDFMLZ:
@@ -78,4 +81,5 @@ TXDiagnosticMaps:
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: False
+    flip_g2: True
+    bandwidth: 100
