@@ -88,7 +88,7 @@ class TXDiagnosticMaps(PipelineStage):
             shear_cols = ['true_g']
         else:
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
-        shear_cols.append('mcal_flags')
+        shear_cols += ['mcal_flags', 'weight']
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -147,17 +147,36 @@ class TXDiagnosticMaps(PipelineStage):
                 'dec': phot_data['dec'],
             }
 
-            # TODO fix iterate_fits so it returns a dict
-            # like iterate_hdf
+
+            # Get either the true shears or the measured ones,
+            # depending on options
             if config['true_shear']:
-                shear_tmp = {'g1': shear_data['true_g1'], 'g2': shear_data['true_g2']}
+                shear_tmp = {
+                    'g1': shear_data['true_g1'],
+                    'g2': shear_data['true_g2']
+            }
             else:
-                shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
-                shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
+                shear_tmp = {
+                    'g1': shear_data['mcal_g1'],
+                    'g2': shear_data['mcal_g2']
+                }
+                
+            # In either case we need the PSF g1 and g2 to map as well
+            shear_psf_tmp = {
+                'g1': shear_data['mcal_psf_g1'],
+                'g2': shear_data['mcal_psf_g2']
+            }
+
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
-            shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
-            shear_psf_tmp['dec'] = phot_data['dec']     # Does it have 'dec' ?
+            shear_tmp['weight'] = shear_data['weight']
+
+            # Should we use weights in the PSF mapping as well?
+            # Yes: the point of these maps is as a diagnostic to compare
+            # with shear maps, and the weighting should be the same.
+            shear_psf_tmp['ra'] = phot_data['ra']
+            shear_psf_tmp['dec'] = phot_data['dec']
+            shear_psf_tmp['weight'] = shear_data['weight']
 
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
@@ -170,7 +189,7 @@ class TXDiagnosticMaps(PipelineStage):
         if self.rank==0:
             print("Finalizing maps")
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
-        map_pix, ngals, g1, g2, var_g1, var_g2, counts_g = mapper.finalize(self.comm)
+        map_pix, ngals, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
         map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf, _ = mapper_psf.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
@@ -210,7 +229,7 @@ class TXDiagnosticMaps(PipelineStage):
                 self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
                 self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
                 self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
-                self.save_map(group, f"lensing_weight_{b}", map_pix, counts_g[b], config)
+                self.save_map(group, f"lensing_weight_{b}", map_pix, weights_g[b], config)
                 # PSF maps
                 self.save_map(group, f"psf_g1_{b}", map_pix_psf, g1_psf[b], config)
                 self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)

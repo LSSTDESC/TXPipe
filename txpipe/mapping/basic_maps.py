@@ -16,6 +16,7 @@ class Mapper:
         for b in self.source_bins:
             for t in [1,2]:
                 self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+            self.stats[(b,'weight')] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
     def add_data(self, shear_data, bin_data, m_data):
         npix = self.pixel_scheme.npix
@@ -25,6 +26,7 @@ class Mapper:
 
         # TODO: change from unit weights for lenses
         lens_weights = np.ones_like(shear_data['ra'])
+        source_weights = np.ones_like(shear_data['weight'])
 
         # In advance make the mask indicating which tomographic bin
         # Each galaxy is in.  Later we will AND this with the selection
@@ -56,9 +58,16 @@ class Mapper:
                     continue
                 # Loop through tomographic source bins
                 for i,b in enumerate(self.source_bins):
-                    mask_bins = masks_source[i]
-                    g = shear_data[f'g{t}']
-                    self.stats[(b,t)].add_data(p, g[mask_pix & mask_bins])
+                    mask = masks_source[i] & mask_pix
+                    g = shear_data[f'g{t}'][mask]
+                    w = source_weights[mask]
+                    self.stats[(b,t)].add_data(p, g*w)
+
+                    # Make sure we don't double-sum the weights by only doing
+                    # it for g1
+                    if t==1:
+                        self.stats[(b,'weight')].add_data(p, w)
+
 
 
     def finalize(self, comm=None):
@@ -68,7 +77,7 @@ class Mapper:
         g2 = {}
         var_g1 = {}
         var_g2 = {}
-        counts_g = {}
+        source_weight = {}
 
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
@@ -109,8 +118,11 @@ class Mapper:
                 print(f"Collating shear map for source bin {b}")
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
+            stats_weight = self.stats[(b, 'weight')]
+
             count_g1, mean_g1, v_g1 = stats_g1.collect(comm)
             count_g2, mean_g2, v_g2 = stats_g2.collect(comm)
+            count_w,  mean_w,  v_w  = stats_weight.collect(comm)
 
             if not is_master:
                 continue
@@ -120,45 +132,42 @@ class Mapper:
             v_g1 /= count_g1
             v_g2 /= count_g2
 
+            # Convert mean weight to total weight
+            weight = mean_w * count_w
+            del mean_w, count_w
+
             # Update the mask
             mask[count_g1>0] = True
             mask[count_g2>0] = True
 
-            # We only need to keep one of these as they should be
-            # the same.
-            counts_g[b] = count_g2.reshape(self.pixel_scheme.shape).flatten()
 
+            # Repalce NaNs with the Healpix unseen sentinel value
+            # -1.63775e30
             mean_g1[np.isnan(mean_g1)] = UNSEEN
             mean_g2[np.isnan(mean_g2)] = UNSEEN
-
+            mean_g2[np.isnan(mean_g2)] = UNSEEN
             v_g1[np.isnan(v_g1)] = UNSEEN
             v_g2[np.isnan(v_g2)] = UNSEEN
+            weight[np.isnan(weight)] = UNSEEN
 
             # I really don't recall why I'm changing the shape
             # back and forth here.  Maybe I had a reason?
-            # TODO: Remove this and see what happens.
-
-            mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
-            mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
-
-            v_g1 = v_g1.reshape(self.pixel_scheme.shape)
-            v_g2 = v_g2.reshape(self.pixel_scheme.shape)
-
-            g1[b] = mean_g1.flatten()
-            g2[b] = mean_g2.flatten()
-
-            var_g1[b] = v_g1.flatten()
-            var_g2[b] = v_g2.flatten()
+            # TODO: Remove the reshape/flatten and see what happens.
+            g1[b] = mean_g1.reshape(self.pixel_scheme.shape).flatten()
+            g2[b] = mean_g2.reshape(self.pixel_scheme.shape).flatten()
+            source_weight[b] = weight.reshape(self.pixel_scheme.shape).flatten()
+            var_g1[b] = v_g1.reshape(self.pixel_scheme.shape).flatten()
+            var_g2[b] = v_g2.reshape(self.pixel_scheme.shape).flatten()
 
 
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2, counts_g]:
+            for d in [ngal, g1, g2, var_g1, var_g2, source_weight]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, g1, g2, var_g1, var_g2, counts_g
+        return pixel, ngal, g1, g2, var_g1, var_g2, source_weight
 
 
 class FlagMapper:
