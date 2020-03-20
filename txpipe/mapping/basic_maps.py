@@ -26,7 +26,6 @@ class Mapper:
 
         # TODO: change from unit weights for lenses
         lens_weights = np.ones_like(shear_data['ra'])
-        source_weights = np.ones_like(shear_data['weight'])
 
         # In advance make the mask indicating which tomographic bin
         # Each galaxy is in.  Later we will AND this with the selection
@@ -46,10 +45,10 @@ class Mapper:
             if t in self.tasks:
                 # Loop through the tomographic lens bins
                 for i,b in enumerate(self.lens_bins):
-                    mask_bins = masks_lens[i]
-                    w = lens_weights
+                    mask = masks_lens[i] & mask_pix
+                    w = lens_weights[mask]
                     # Loop through tasks (number counts, gamma_x)
-                    self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
+                    self.stats[(b,t)].add_data(p, w)
 
             # Shears
             for t in (1,2):
@@ -60,7 +59,7 @@ class Mapper:
                 for i,b in enumerate(self.source_bins):
                     mask = masks_source[i] & mask_pix
                     g = shear_data[f'g{t}'][mask]
-                    w = source_weights[mask]
+                    w = shear_data['weight'][mask]
                     self.stats[(b,t)].add_data(p, g*w)
 
                     # Make sure we don't double-sum the weights by only doing
