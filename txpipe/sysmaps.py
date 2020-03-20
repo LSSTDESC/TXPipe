@@ -156,10 +156,7 @@ class TXDiagnosticMaps(PipelineStage):
                 shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
                 
             # In either case we need the PSF g1 and g2 to map as well
-            shear_psf_tmp = {
-                'g1': shear_data['mcal_psf_g1'],
-                'g2': shear_data['mcal_psf_g2']
-            }
+            shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
 
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
