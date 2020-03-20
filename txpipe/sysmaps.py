@@ -151,15 +151,9 @@ class TXDiagnosticMaps(PipelineStage):
             # Get either the true shears or the measured ones,
             # depending on options
             if config['true_shear']:
-                shear_tmp = {
-                    'g1': shear_data['true_g1'],
-                    'g2': shear_data['true_g2']
-            }
+                shear_tmp = {'g1': shear_data['true_g1'], 'g2': shear_data['true_g2']}
             else:
-                shear_tmp = {
-                    'g1': shear_data['mcal_g1'],
-                    'g2': shear_data['mcal_g2']
-                }
+                shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
                 
             # In either case we need the PSF g1 and g2 to map as well
             shear_psf_tmp = {
@@ -236,11 +230,9 @@ class TXDiagnosticMaps(PipelineStage):
                 self.save_map(group, f"psf_var_g1_{b}", map_pix_psf, var_g1_psf[b], config)
                 self.save_map(group, f"psf_var_g2_{b}", map_pix_psf, var_g2_psf[b], config)
 
-
             for i,(p, m) in enumerate(zip(flag_pixs, flag_maps)):
                 f = 2**i
                 t = m.sum()
-                #TODO: check flag pixels
                 print(f"Map shows total {t} objects with flag {f}")
                 self.save_map(group, f"flag_{f}", p, m, config)
 
