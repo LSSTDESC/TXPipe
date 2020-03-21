@@ -62,6 +62,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
+
+        try:
+            np.linalg.cholesky(cov)
+        except np.linalg.LinAlgError:       
+            print("Covariane not positive definite!")
+
         filename = self.get_output('summary_statistics_fourier')
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
@@ -359,8 +365,13 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cov_ij=cov_ij['final_b']
                 cov_full[indx_i:indx_i+Nell_bins,indx_j:indx_j+Nell_bins]=cov_ij
                 cov_full[indx_j:indx_j+Nell_bins,indx_i:indx_i+Nell_bins]=cov_ij.T
-        return cov_full
 
+        #try:
+        #    np.linalg.cholesky(cov_full)
+        #except np.linalg.LinAlgError:        
+        #    print("Covariane not positive definite!")
+
+        #return cov_full
 
 
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):
