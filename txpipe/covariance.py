@@ -50,9 +50,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta = {}
         meta['fsky'] = fsky
         meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e4), 400)))
-        #np.logspace(np.log10(2), np.log10(6e4), 1000)
-        #np.arange(2,5000) # this needs to be tested
-        #meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e4), 400)))
 
         meta['th'] = np.logspace(np.log10(1/60),np.log10(300./60),3000) # this needs to be tested
         meta['sigma_e'] = sigma_e
@@ -145,20 +142,12 @@ class TXFourierGaussianCovariance(PipelineStage):
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
                 Ngal = meta['n_eff'][nbin]
-                # check that this normalization is correct
-                #Ngal = Ngal*3600/d2r**2
-                #dNdz *= Ngal
-                
-                np.savez('nofz_'+str(tracer)+'.npz', z=z, nz=nz)
                 ccl_tracers[tracer]=ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
                 tracer_Noise[tracer]=sigma_e**2/Ngal
             
             elif 'lens' in tracer:
                 b = 1.0*np.ones(len(z))  # place holder
                 Ngal = meta['n_lens'][nbin]
-                np.savez('nofz_lens.npz', z=z, nz=nz)
-                #Ngal = Ngal*3600/d2r**2
-                #dNdz *= Ngal
                 tracer_Noise[tracer]=1./Ngal
                 ccl_tracers[tracer]=ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
         
@@ -220,9 +209,9 @@ class TXFourierGaussianCovariance(PipelineStage):
                     print("Computed C_ell for ", cache_key1)
                     cache[cache_key1] = c
                     cl[local_key] = c
-                    np.savez('cls'+str(cache_key1)+'.npz',ell=ell, cl=c)
 
-
+        
+        # For xi's there is a factor of 2 for shape noise coming from E and B modes -- this needs to be double checked!
         SN={}
         if ((('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])) or (('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1]))) and self.do_xi:
             SN[13]=2**0.5*tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
