@@ -49,8 +49,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         # the following is a list of things that are somewhat awkwardly passed through the functions... think about how this can be done more elegantly.
         meta = {}
         meta['fsky'] = fsky
-        meta['ell'] = np.arange(2,5000) # this needs to be tested
-        meta['th'] = np.logspace(np.log10(0.1/60),np.log10(600./60),200) # this needs to be tested
+        meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e4), 400)))
+        #np.logspace(np.log10(2), np.log10(6e4), 1000)
+        #np.arange(2,5000) # this needs to be tested
+        #meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e4), 400)))
+
+        meta['th'] = np.logspace(np.log10(1/60),np.log10(300./60),3000) # this needs to be tested
         meta['sigma_e'] = sigma_e
         meta['n_eff'] = n_eff # per radian2
         meta['n_lens'] = n_lens # per radian2
@@ -134,28 +138,29 @@ class TXFourierGaussianCovariance(PipelineStage):
         for tracer in two_point_data.tracers:
             tracer_dat = two_point_data.get_tracer(tracer)
             nbin = int(two_point_data.tracers[tracer].name[-1]) #might be a better way of doing this?
-            z = tracer_dat.z
-            dNdz = tracer_dat.nz
-            dNdz /= (dNdz*np.gradient(z)).sum()
+
+            z = tracer_dat.z.copy().flatten()
+            nz = tracer_dat.nz.copy().flatten()
 
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
-                IA = 1.0*np.ones(len(z)) # place holder
                 Ngal = meta['n_eff'][nbin]
                 # check that this normalization is correct
                 #Ngal = Ngal*3600/d2r**2
                 #dNdz *= Ngal
                 
-                ccl_tracers[tracer]=ccl.WeakLensingTracer(cosmo, dndz=(z, dNdz),ia_bias=(z,IA)) #CCL automatically normalizes dNdz
+                np.savez('nofz_'+str(tracer)+'.npz', z=z, nz=nz)
+                ccl_tracers[tracer]=ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
                 tracer_Noise[tracer]=sigma_e**2/Ngal
             
             elif 'lens' in tracer:
                 b = 1.0*np.ones(len(z))  # place holder
                 Ngal = meta['n_lens'][nbin]
+                np.savez('nofz_lens.npz', z=z, nz=nz)
                 #Ngal = Ngal*3600/d2r**2
                 #dNdz *= Ngal
                 tracer_Noise[tracer]=1./Ngal
-                ccl_tracers[tracer]=ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,dNdz), bias=(z,b))
+                ccl_tracers[tracer]=ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
         
         return ccl_tracers,tracer_Noise
 
@@ -215,14 +220,21 @@ class TXFourierGaussianCovariance(PipelineStage):
                     print("Computed C_ell for ", cache_key1)
                     cache[cache_key1] = c
                     cl[local_key] = c
-
+                    np.savez('cls'+str(cache_key1)+'.npz',ell=ell, cl=c)
 
 
         SN={}
-        SN[13]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
-        SN[24]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
-        SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
-        SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
+        if ((('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])) or (('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1]))) and self.do_xi:
+            SN[13]=2**0.5*tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
+            SN[24]=2**0.5*tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
+            SN[14]=2**0.5*tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
+            SN[23]=2**0.5*tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
+
+        else:
+            SN[13]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
+            SN[24]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
+            SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
+            SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
 
         if self.do_xi:
             norm=np.pi*4*meta['fsky']
@@ -334,7 +346,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                         tracer_comb1=tracer_comb1,
                         tracer_comb2=tracer_comb2,
                         ccl_tracers=ccl_tracers,
-                        tracer_Noise=tracer_Noise,
+                        tracer_Noise=tracer_Noise, 
                         two_point_data=two_point_data,
                         xi_plus_minus1=xi_pm[count_xi_pm1,count_xi_pm2][0],
                         xi_plus_minus2=xi_pm[count_xi_pm1,count_xi_pm2][1],
