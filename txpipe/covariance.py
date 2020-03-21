@@ -271,7 +271,6 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb,cov['final_b'] = bin_cov(r=ell,r_bins=ell_bins,cov=cov['final'])
 
-
         return cov
     
     def get_angular_bins(self, two_point_data):
