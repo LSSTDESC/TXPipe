@@ -64,14 +64,14 @@ TXTwoPoint:
     verbose: 0
 
 TXBlinding:
-    blind_seed: 1972  ## seed uniquely specifies the shift in parameters
-    blind_Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
-    blind_Omega_c: [0.2545, 0.01]
-    blind_w0: [-1.0, 0.1]
-    blind_h: [0.682, 0.02]
-    blind_sigma8: [0.801, 0.01]
-    blind_n_s: [0.971, 0.03]
-    blind_b0: 0.95  ## we use bias of the form b0/g
+    seed: 1972  ## seed uniquely specifies the shift in parameters
+    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
+    Omega_c: [0.2545, 0.01]
+    w0: [-1.0, 0.1]
+    h: [0.682, 0.02]
+    sigma8: [0.801, 0.01]
+    n_s: [0.971, 0.03]
+    b0: 0.95  ## we use bias of the form b0/g
     delete_unblinded: True
 
 
