@@ -4,7 +4,6 @@ import numpy as np
 import random
 import collections
 import sys
-import copy
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -17,6 +16,7 @@ SHEAR_POS = 1
 POS_POS = 2
 
 
+
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
@@ -26,7 +26,7 @@ class TXTwoPoint(PipelineStage):
         ('random_cats', RandomsCatalog),
     ]
     outputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_UNBLINDED_RABID', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -44,8 +44,8 @@ class TXTwoPoint(PipelineStage):
         'reduce_randoms_size':1.0,
         'do_shear_shear': True,
         'do_shear_pos': True,
-        'do_pos_pos': True,
-      }
+        'do_pos_pos': True
+        }
 
     def run(self):
         """
@@ -81,22 +81,13 @@ class TXTwoPoint(PipelineStage):
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
             results += self.call_treecorr(data, i, j, k)
-            
+
         # If we are running in parallel this collects the results together
         results = self.collect_results(results)
 
-        # Blind data vector if neccessary
-        # Some derived classes, such as those cross-correlating with stars
-        # might not have blind in options hence the first check
-
-            # Save the results
+        # Save the results
         if self.rank==0:
-            if 'blind' in self.config and self.config['blind']:
-                sacc = self.write_output(data,meta,results, return_sacc_object=True)
-                blinded_sacc = self.blind_muir(sacc, meta)
-                blinded_sacc.save_fits(self.get_output('twopoint_data'), overwrite=True)
-            else:
-                self.write_output(data, meta, results)
+            self.write_output(data, meta, results)
 
 
     def select_calculations(self, data):
@@ -213,7 +204,7 @@ class TXTwoPoint(PipelineStage):
 
 
 
-    def write_output(self, data, meta, results, return_sacc_object=False):
+    def write_output(self, data, meta, results):
         import sacc
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
@@ -258,13 +249,8 @@ class TXTwoPoint(PipelineStage):
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
-        ## if return_sacc_object is true, we just return the object without
-        ## actually dumping it
-        if return_sacc_object:
-            return S
-
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
+        S.save_fits(self.get_output('twopoint_data_UNBLINDED_RABID'), overwrite=True)
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file

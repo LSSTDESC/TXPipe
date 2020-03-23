@@ -20,7 +20,7 @@ class TXBlinding(PipelineStage):
     """
     name='TXBlinding'
     inputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_UNBLINDED_RABID', SACCFile),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
@@ -47,23 +47,24 @@ class TXBlinding(PipelineStage):
          - Output blinded data
          - Deletete unblinded data
         """
-        import sacc
+        import sacc, sys, os
         sys.stdout.flush()
 
         if self.rank==0:
-            unblinded_fname = self.get_input('twopoint_data')+'.UNBLINDED.RABID'
-            sacc = sacc.load_fits(unblinded_fname)
-            blinded_sacc = self.blind_muir(sacc, meta)
+            unblinded_fname = self.get_input('twopoint_data_UNBLINDED_RABID')
+            sacc = sacc.Sacc.load_fits(unblinded_fname)
+            blinded_sacc = self.blind_muir(sacc)
             blinded_sacc.save_fits(self.get_output('twopoint_data'), overwrite=True)
-            if config['delete_unblinded']:
-                print ("Deleting unblinded file...")
+            if self.config['delete_unblinded']:
+                print ("Deleting %s..."%unblinded_fname)
                 os.remove (unblinded_fname)
 
 
-    def blind_muir(self, sacc, meta):
+    def blind_muir(self, sacc):
         import pyccl as ccl
         import firecrown
         import io
+        import copy
         ## here we actually do blinding
         if self.rank==0:
             print(f"Blinding... ")
