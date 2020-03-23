@@ -14,7 +14,7 @@ from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .input_cats import TXProtoDC2Mock
 from .photoz_mlz import PZPDFMLZ
-from .covariance import TXFourierGaussianCovariance
+from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance
 from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXDiagnosticPlots
 from .exposure_info import TXExposureInfo

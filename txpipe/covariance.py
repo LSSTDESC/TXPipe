@@ -222,9 +222,6 @@ class TXFourierGaussianCovariance(PipelineStage):
                     cache[cache_key1] = c
                     cl[local_key] = c
 
-        
-        # For xi's there is a factor of 2 for shape noise coming from E and B modes
-        # -- this needs to be double checked!
         SN={}
         SN[13] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
         SN[24] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
