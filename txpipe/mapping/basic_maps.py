@@ -106,11 +106,8 @@ class Mapper:
             count[np.isnan(count)] = 0
             mean[np.isnan(mean)] = 0
 
-            count = count.reshape(self.pixel_scheme.shape)
-            mean = mean.reshape(self.pixel_scheme.shape)
-
             ngal[b] = (mean * count).flatten()
-            mask[count>0] = True
+            mask[count.flatten()>0] = True
 
         for b in self.source_bins:
             if rank==0:
@@ -126,37 +123,39 @@ class Mapper:
             if not is_master:
                 continue
 
+            # The counts should be the same - if not, something has
+            # gone wrong.  Check, then delete to save memory
+            assert np.all(count_g1==count_g2)
+            del count_g2
+
             # Convert variance of value to variance of mean,
             # Since that is what we want for noise estimation
             v_g1 /= count_g1
-            v_g2 /= count_g2
+            v_g2 /= count_g1
 
             # Convert mean weight to total weight
             weight = mean_w * count_w
-            del mean_w, count_w
+            del mean_w, count_w, v_w
 
             # Update the mask
             mask[count_g1>0] = True
-            mask[count_g2>0] = True
+            mask[count_g1>0] = True
 
 
             # Repalce NaNs with the Healpix unseen sentinel value
-            # -1.63775e30
+            # -1.6375e30
             mean_g1[np.isnan(mean_g1)] = UNSEEN
-            mean_g2[np.isnan(mean_g2)] = UNSEEN
             mean_g2[np.isnan(mean_g2)] = UNSEEN
             v_g1[np.isnan(v_g1)] = UNSEEN
             v_g2[np.isnan(v_g2)] = UNSEEN
             weight[np.isnan(weight)] = UNSEEN
 
-            # I really don't recall why I'm changing the shape
-            # back and forth here.  Maybe I had a reason?
-            # TODO: Remove the reshape/flatten and see what happens.
-            g1[b] = mean_g1.reshape(self.pixel_scheme.shape).flatten()
-            g2[b] = mean_g2.reshape(self.pixel_scheme.shape).flatten()
-            source_weight[b] = weight.reshape(self.pixel_scheme.shape).flatten()
-            var_g1[b] = v_g1.reshape(self.pixel_scheme.shape).flatten()
-            var_g2[b] = v_g2.reshape(self.pixel_scheme.shape).flatten()
+            # Save the maps for this tomographic bin
+            g1[b] = mean_g1
+            g2[b] = mean_g2
+            source_weight[b] = weight
+            var_g1[b] = v_g1
+            var_g2[b] = v_g2
 
 
         # Remove pixels not detected in anything
