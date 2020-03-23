@@ -201,6 +201,15 @@ class TXDiagnosticMaps(PipelineStage):
             mask, npix = self.compute_mask(depth_count)
             self.save_map(group, "mask", depth_pix, mask, config)
 
+
+            # Do a very simple centroid calculation.
+            # This is not robust, and will not cope with
+            # maps that corss
+            pix_for_centroid = depth_pix[mask>0]
+            ra, dec = pixel_scheme.pix2ang(pix_for_centroid, radians=False, theta=False)
+            ra_centroid = ra.mean()
+            dec_centroid = dec.mean()
+
             # Save some other handy map info that will be useful later
             area = pixel_scheme.pixel_area(degrees=True) * npix
             group.attrs['area'] = area
@@ -208,6 +217,8 @@ class TXDiagnosticMaps(PipelineStage):
             group.attrs['nbin_source'] = len(source_bins)
             group.attrs['nbin_lens'] = len(lens_bins)
             group.attrs['flag_exponent_max'] = config['flag_exponent_max']
+            group.attrs['centroid_ra'] = ra_centroid
+            group.attrs['centroid_dec'] = dec_centroid
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
