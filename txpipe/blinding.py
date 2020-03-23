@@ -1,13 +1,3 @@
-###
-#
-# TO BE DEPRECATED VERY SOON
-# Leaving here to be able to see what is going on
-#
-####
-
-
-
-
 from .base_stage import PipelineStage
 from .data_types import SACCFile
 import numpy as np
@@ -45,7 +35,7 @@ class TXBlinding(PipelineStage):
          - Load two point SACC file
          - Blinding it 
          - Output blinded data
-         - Deletete unblinded data
+         - Optionally deletete unblinded data
         """
         import sacc, sys, os
         sys.stdout.flush()
@@ -95,66 +85,59 @@ class TXBlinding(PipelineStage):
         offset_params = copy.copy(fid_params)
         for par in fid_params.keys():
             offset_params [par] += self.config['blind_'+par][1]*np.random.normal(0.,1.)
-        fc_config = """
-           parameters:
-             ## missing params set in fid_params and offset_params
-             Omega_k: 0.0
-             wa: 0.0
+        fc_config = {
+            'parameters': {
+                'Omega_k': 0.0,
+                'wa': 0.0,
+                'one': 1},
+            'two_point': {
+               'module' : 'firecrown.ccl.two_point',
+               'sacc_data' : sacc,
+               'systematics' : {
+                   'dummy' : {
+                       'kind' : 'PhotoZShiftBias',
+                       'delta_z' : 'one' }},
+                'sources' : {},
+                'statistics' : {}
+                }
+        }
 
-             one: 1
-"""
+
         for k,v in bz.items():
-            fc_config+="             bias_{lens}: {bias}\n".format(lens=k,bias=v)
-        fc_config += """
-           two_point:
-             module: firecrown.ccl.two_point
-           
-             systematics:
-               dummy:
-                  kind: PhotoZShiftBias
-                  delta_z: one
-
-        """
-
-        ### sources
-        fc_config+="     sources: \n"
+            fc_config ['parameters']['bias_%s'%k] = v
+            
         srclist=[]
         lenslist=[]
         for key,tracer in sacc.tracers.items():
             ## This is a hack, need to think how to do this better
             if 'source' in key:
-                fc_config+="""
-                                  {src}:
-                                     kind: WLSource
-                                     sacc_tracer: {src}\n""".format(src=key)
+                fc_config['two_point']['sources'][key] = {
+                                     'kind' : 'WLSource',
+                                     'sacc_tracer' : key}
                 srclist.append(key)
             if 'lens' in key:
-                fc_config+="""
-                                  {lens}:
-                                     kind: NumberCountsSource
-                                     bias: bias_{lens}
-                                     sacc_tracer: {lens}\n""".format(lens=key)
+                fc_config['two_point']['sources'][key] = {
+                                     'kind' : 'NumberCountsSource',
+                                     'bias' : 'bias_%s'%key,
+                                     'sacc_tracer' : key}
                 lenslist.append(key)
-        fc_config+="             statistics: \n"
-        ##
+
         ## list(dict.fromkeys()) gives unique elements while preserving order
         types=list(dict.fromkeys([(p.data_type, p.tracers,
                                    "{dtype}_{tracer1}_{tracer2}".format(dtype=p.data_type,
                                             tracer1=p.tracers[0],tracer2=p.tracers[1]))
                                    for p in sacc.data]))
         for dtype,(tracer1,tracer2),fcname in types:
-            fc_config+="""
-                                 {fcname}:
-                                   sources: ['{tracer1}', '{tracer2}']
-                                   sacc_data_type: {dtype}
-                   """.format(fcname=fcname, dtype=dtype,tracer1=tracer1,tracer2=tracer2)
+            fc_config['two_point']['statistics'][fcname] = {
+                                   'sources' : [tracer1, tracer2],
+                                   'sacc_data_type' : dtype}
+
         ## now try to get predictions
         pred={}
         for name,pars in [('fid',fid_params),('ofs',offset_params)]:
             print ("Calling firecrown : %s"%(name))
-
-            config, data = firecrown.parse(io.StringIO(fc_config),
-               settings={'two_point':{'sacc_data':sacc},'parameters':pars})
+            fc_config['parameters'].update(pars)
+            config, data = firecrown.parse(fc_config)
             cosmo = firecrown.get_ccl_cosmology(config['parameters'])
             firecrown.compute_loglike(cosmo=cosmo, data=data)
             pred[name] = np.hstack([data['two_point']['data']['statistics'][n].predicted_statistic_ for
@@ -168,6 +151,6 @@ class TXBlinding(PipelineStage):
             p.value+=delta
         print ("Blinding done.")
             
-        return  sacc
+        return sacc
 
             
