@@ -72,11 +72,11 @@ TXDiagnosticMaps:
     nside: 1024
     # pixelization: gnomonic
     # # 
-    pixel_size: 0.2
-    ra_cent: 62.
-    dec_cent: -35.
-    npix_x: 60
-    npix_y: 60
+    pixel_size: 0.1
+    ra_cent: 53.1
+    dec_cent: -27.5
+    npix_x: 20
+    npix_y: 20
 
 
 TXTwoPointFourier:

@@ -88,7 +88,7 @@ class TXDiagnosticMaps(PipelineStage):
             shear_cols = ['true_g']
         else:
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
-        shear_cols.append('mcal_flags')
+        shear_cols += ['mcal_flags', 'weight']
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -147,17 +147,27 @@ class TXDiagnosticMaps(PipelineStage):
                 'dec': phot_data['dec'],
             }
 
-            # TODO fix iterate_fits so it returns a dict
-            # like iterate_hdf
+
+            # Get either the true shears or the measured ones,
+            # depending on options
             if config['true_shear']:
                 shear_tmp = {'g1': shear_data['true_g1'], 'g2': shear_data['true_g2']}
             else:
                 shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
-                shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
+                
+            # In either case we need the PSF g1 and g2 to map as well
+            shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
+
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
-            shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
-            shear_psf_tmp['dec'] = phot_data['dec']     # Does it have 'dec' ?
+            shear_tmp['weight'] = shear_data['weight']
+
+            # Should we use weights in the PSF mapping as well?
+            # Yes: the point of these maps is as a diagnostic to compare
+            # with shear maps, and the weighting should be the same.
+            shear_psf_tmp['ra'] = phot_data['ra']
+            shear_psf_tmp['dec'] = phot_data['dec']
+            shear_psf_tmp['weight'] = shear_data['weight']
 
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
@@ -170,8 +180,8 @@ class TXDiagnosticMaps(PipelineStage):
         if self.rank==0:
             print("Finalizing maps")
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
-        map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
-        map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf = mapper_psf.finalize(self.comm)
+        map_pix, ngals, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf, _ = mapper_psf.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
         # Only the root process saves the output
@@ -191,6 +201,15 @@ class TXDiagnosticMaps(PipelineStage):
             mask, npix = self.compute_mask(depth_count)
             self.save_map(group, "mask", depth_pix, mask, config)
 
+
+            # Do a very simple centroid calculation.
+            # This is not robust, and will not cope with
+            # maps that corss
+            pix_for_centroid = depth_pix[mask>0]
+            ra, dec = pixel_scheme.pix2ang(pix_for_centroid, radians=False, theta=False)
+            ra_centroid = ra.mean()
+            dec_centroid = dec.mean()
+
             # Save some other handy map info that will be useful later
             area = pixel_scheme.pixel_area(degrees=True) * npix
             group.attrs['area'] = area
@@ -198,6 +217,8 @@ class TXDiagnosticMaps(PipelineStage):
             group.attrs['nbin_source'] = len(source_bins)
             group.attrs['nbin_lens'] = len(lens_bins)
             group.attrs['flag_exponent_max'] = config['flag_exponent_max']
+            group.attrs['centroid_ra'] = ra_centroid
+            group.attrs['centroid_dec'] = dec_centroid
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
@@ -210,6 +231,7 @@ class TXDiagnosticMaps(PipelineStage):
                 self.save_map(group, f"g2_{b}", map_pix, g2[b], config)
                 self.save_map(group, f"var_g1_{b}", map_pix, var_g1[b], config)
                 self.save_map(group, f"var_g2_{b}", map_pix, var_g2[b], config)
+                self.save_map(group, f"lensing_weight_{b}", map_pix, weights_g[b], config)
                 # PSF maps
                 self.save_map(group, f"psf_g1_{b}", map_pix_psf, g1_psf[b], config)
                 self.save_map(group, f"psf_g2_{b}", map_pix_psf, g2_psf[b], config)
