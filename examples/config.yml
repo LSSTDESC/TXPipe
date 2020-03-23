@@ -46,7 +46,10 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    #blind: True   ## we blind by default
+    flip_g2: True  # use true when using metacal shears
+    verbose: 0
+
+TXBlinding:
     blind_seed: 1972  ## seed uniquely specifies the shift in parameters
     blind_Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
     blind_Omega_c: [0.2545, 0.01]
@@ -55,8 +58,8 @@ TXTwoPoint:
     blind_sigma8: [0.801, 0.01]
     blind_n_s: [0.971, 0.03]
     blind_b0: 0.95  ## we use bias of the form b0/g
-    flip_g2: True  # use true when using metacal shears
-    verbose: 0
+    delete_unblinded: True
+
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once

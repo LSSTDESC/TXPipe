@@ -6,6 +6,8 @@ stages:
     - name: TXDiagnosticMaps
     - name: TXRandomCat
     - name: TXTwoPoint
+    - name: TXBlinding
+    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
     - name: TXGammaTBrightStars
