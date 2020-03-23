@@ -237,7 +237,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov[1324]=np.outer(cl[13]+SN[13],cl[24]+SN[24])*coupling_mat[1324]
         cov[1423]=np.outer(cl[14]+SN[14],cl[23]+SN[23])*coupling_mat[1423]
 
-        ##if ((('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])) or (('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1])))
         if self.do_xi and np.all(np.array(ccl_tracers)=='source'): #this add the B-mode shape noise contribution. We assume B-mode power (C_ell) is 0
             Bmode_F=1
             if xi_plus_minus1!=xi_plus_minus2:
