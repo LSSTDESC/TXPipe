@@ -49,7 +49,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta = {}
         meta['fsky'] = fsky
         meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e5), 500)))
-
         meta['th'] = np.logspace(np.log10(1/60),np.log10(300./60),3000) # this needs to be tested
         meta['sigma_e'] = sigma_e
         meta['n_eff'] = n_eff # per radian2
@@ -61,14 +60,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
-
-        try:
-            np.linalg.cholesky(cov)
-        except np.linalg.LinAlgError:       
-            print("Covariane not positive definite!")
-
         filename = self.get_output('summary_statistics_fourier')
-        print(cov.shape)
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
 
