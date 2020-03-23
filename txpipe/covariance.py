@@ -48,7 +48,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # the following is a list of things that are somewhat awkwardly passed through the functions... think about how this can be done more elegantly.
         meta = {}
         meta['fsky'] = fsky
-        meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e5), 500)))
+        meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e4), 500)))
         meta['th'] = np.logspace(np.log10(1/60),np.log10(300./60),3000) # this needs to be tested
         meta['sigma_e'] = sigma_e
         meta['n_eff'] = n_eff # per radian2
@@ -229,7 +229,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov[1324]=np.outer(cl[13]+SN[13],cl[24]+SN[24])*coupling_mat[1324]
         cov[1423]=np.outer(cl[14]+SN[14],cl[23]+SN[23])*coupling_mat[1423]
 
-        if self.do_xi and np.all(np.array(ccl_tracers)=='source'): #this add the B-mode shape noise contribution. We assume B-mode power (C_ell) is 0
+        if ((('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])) or (('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1]))) and self.do_xi:
+        #this add the B-mode shape noise contribution. We assume B-mode power (C_ell) is 0
             Bmode_F=1
             if xi_plus_minus1!=xi_plus_minus2:
                 Bmode_F=-1 #in the cross term, this contribution is subtracted. eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
