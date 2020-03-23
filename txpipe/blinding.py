@@ -58,7 +58,7 @@ class TXBlinding(PipelineStage):
         ## here we actually do blinding
         if self.rank==0:
             print(f"Blinding... ")
-        np.random.seed(self.config["blind_seed"])
+        np.random.seed(self.config["seed"])
         # blind signature -- this ensures seed is consistent across
         # numpy versions
         blind_sig = ''.join(format(x, '02x') for x in np.random.bytes(4))
@@ -67,12 +67,12 @@ class TXBlinding(PipelineStage):
 
 
         fid_params = {
-            'Omega_b':  self.config['blind_Omega_b'][0],
-            'Omega_c':  self.config['blind_Omega_c'][0],
-            'h': self.config['blind_h'][0],
-            'w0': self.config['blind_w0'][0],
-            'sigma8': self.config['blind_sigma8'][0],
-            'n_s': self.config['blind_n_s'][0],
+            'Omega_b':  self.config['Omega_b'][0],
+            'Omega_c':  self.config['Omega_c'][0],
+            'h': self.config['h'][0],
+            'w0': self.config['w0'][0],
+            'sigma8': self.config['sigma8'][0],
+            'n_s': self.config['n_s'][0],
         }
         ## now get biases
         bz={}
@@ -80,11 +80,11 @@ class TXBlinding(PipelineStage):
         for key,tracer in sacc.tracers.items():
             if 'lens' in key:
                 zeff = (tracer.z*tracer.nz).sum()/tracer.nz.sum()
-                bz[key] = self.config['blind_b0']/ccl.growth_factor(fidCosmo,1/(1+zeff)) 
+                bz[key] = self.config['b0']/ccl.growth_factor(fidCosmo,1/(1+zeff)) 
         
         offset_params = copy.copy(fid_params)
         for par in fid_params.keys():
-            offset_params [par] += self.config['blind_'+par][1]*np.random.normal(0.,1.)
+            offset_params [par] += self.config[par][1]*np.random.normal(0.,1.)
         fc_config = {
             'parameters': {
                 'Omega_k': 0.0,
