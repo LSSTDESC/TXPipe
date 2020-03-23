@@ -9,9 +9,7 @@ import os
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
 
-
-
-#Needed changes: 1) area is hard coded to 4sq.deg. as file is buggy. 2) code fixed to equal-spaced ell values in real space. 3)
+# Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix
 
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
@@ -21,7 +19,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
         ('photoz_stack', HDFFile),           # For the n(z)
         ('twopoint_data_fourier', SACCFile), # For the binning information
-        ('tracer_metadata', HDFFile),         # For metadata
+        ('tracer_metadata', HDFFile),        # For metadata
     ]
 
     outputs = [
@@ -30,6 +28,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     config_options = {
     }
+
 
     def run(self):
         import pyccl as ccl
@@ -49,7 +48,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # the following is a list of things that are somewhat awkwardly passed through the functions... think about how this can be done more elegantly.
         meta = {}
         meta['fsky'] = fsky
-        meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e4), 400)))
+        meta['ell'] = np.concatenate((np.linspace(2, 500-1., 500.-2),np.logspace(np.log10(500), np.log10(6e5), 500)))
 
         meta['th'] = np.logspace(np.log10(1/60),np.log10(300./60),3000) # this needs to be tested
         meta['sigma_e'] = sigma_e
@@ -69,6 +68,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             print("Covariane not positive definite!")
 
         filename = self.get_output('summary_statistics_fourier')
+        print(cov.shape)
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
 
@@ -219,17 +219,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         
         # For xi's there is a factor of 2 for shape noise coming from E and B modes -- this needs to be double checked!
         SN={}
-        if ((('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])) or (('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1]))) and self.do_xi:
-            SN[13]=2**0.5*tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
-            SN[24]=2**0.5*tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
-            SN[14]=2**0.5*tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
-            SN[23]=2**0.5*tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
-
-        else:
-            SN[13]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
-            SN[24]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
-            SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
-            SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
+        SN[13]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[0]  else 0
+        SN[24]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[1]  else 0
+        SN[14]=tracer_Noise[tracer_comb1[0]] if tracer_comb1[0]==tracer_comb2[1]  else 0
+        SN[23]=tracer_Noise[tracer_comb1[1]] if tracer_comb1[1]==tracer_comb2[0]  else 0
 
         if self.do_xi:
             norm=np.pi*4*meta['fsky']
@@ -243,6 +236,14 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov={}
         cov[1324]=np.outer(cl[13]+SN[13],cl[24]+SN[24])*coupling_mat[1324]
         cov[1423]=np.outer(cl[14]+SN[14],cl[23]+SN[23])*coupling_mat[1423]
+
+        ##if ((('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])) or (('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1])))
+        if self.do_xi and np.all(np.array(ccl_tracers)=='source'): #this add the B-mode shape noise contribution. We assume B-mode power (C_ell) is 0
+            Bmode_F=1
+            if xi_plus_minus1!=xi_plus_minus2:
+                Bmode_F=-1 #in the cross term, this contribution is subtracted. eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
+            cov[1324]+=np.outer(cl[13]*0+SN[13],cl[24]*0+SN[24])*coupling_mat[1324]*Bmode_F
+            cov[1423]+=np.outer(cl[14]*0+SN[14],cl[23]*0+SN[23])*coupling_mat[1423]*Bmode_F
 
         cov['final']=cov[1423]+cov[1324]
 
@@ -265,7 +266,6 @@ class TXFourierGaussianCovariance(PipelineStage):
         else:
             if ell_bins is not None:
                 lb,cov['final_b'] = bin_cov(r=ell,r_bins=ell_bins,cov=cov['final'])
-
         return cov
     
     def get_angular_bins(self, two_point_data):
@@ -366,12 +366,12 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cov_full[indx_i:indx_i+Nell_bins,indx_j:indx_j+Nell_bins]=cov_ij
                 cov_full[indx_j:indx_j+Nell_bins,indx_i:indx_i+Nell_bins]=cov_ij.T
 
-        #try:
-        #    np.linalg.cholesky(cov_full)
-        #except np.linalg.LinAlgError:        
-        #    print("Covariane not positive definite!")
+        try:
+            np.linalg.cholesky(cov_full)
+        except:        
+            print("liAnalg.LinAlgError: Covariane not positive definite! Most likely this is a problem in xim. We will continue for now but this needs to be fixed.")
 
-        #return cov_full
+        return cov_full
 
 
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):

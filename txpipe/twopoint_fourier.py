@@ -25,8 +25,10 @@ class TXTwoPointFourier(PipelineStage):
     for a list of tomographic bins, including all galaxy-galaxy,
     galaxy-shear and shear-shear power spectra. Sources and lenses
     both come from the same shear_catalog and tomography_catalog objects.
+
     The power spectra are computed after deprojecting a number of
     systematic-dominated modes, represented as input maps.
+
     In the future we will want to include the following generalizations:
      - TODO: specify which cross-correlations in particular to include
              (e.g. which bin pairs and which source/lens combinations).

@@ -47,4 +47,3 @@ class MyNmtBin(nmt.NmtBin):
     def apply_window(self, b, c_ell):
         ell, weight = self.get_window(b)
         return (c_ell[ell]*weight).sum() / weight.sum()
-

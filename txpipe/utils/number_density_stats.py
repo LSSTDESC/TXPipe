@@ -19,7 +19,7 @@ class NumberDensityStats:
             w = np.where(shear_bin==i)
             self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w])
             self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w])
-        
+
         for i in range(self.nbin_lens):
             n = (lens_bin==i).sum()
             self.lens_counts[i] += n
