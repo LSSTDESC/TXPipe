@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
+from .utils.metacal import apply_metacal_response
 import numpy as np
 import random
 import collections
@@ -316,27 +317,23 @@ class TXTwoPoint(PipelineStage):
     def get_m(self, data, i):
         """
         Calculate the metacal correction factor for this tomographic bin.
-        # TODO: Add the selection bias R_S?  Or check if it is added elsewhere.
         """
 
         mask = (data['source_bin'] == i)
+        
+        # We use S=0 here because we have already included it in R_total
+        g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
 
-        m1 = np.mean(data['r_gamma'][mask][:,0,0]) # R11, taking the mean for the bin, TODO check if that's what we want to do
-        m2 = np.mean(data['r_gamma'][mask][:,1,1]) #R22
-
-        return m1, m2, mask
+        return g1, g2, mask
 
 
     def get_shear_catalog(self, data, i):
         import treecorr
-        m1,m2,mask = self.get_m(data, i)
-
-        g1 = data['mcal_g1'][mask]
-        g2 = data['mcal_g2'][mask]
+        g1,g2,mask = self.get_m(data, i)
 
         cat = treecorr.Catalog(
-            g1 = (g1 - g1.mean()) / m1,
-            g2 = (g2 - g2.mean()) / m2,
+            g1 = g1,
+            g2 = g2,
             ra = data['ra'][mask],
             dec = data['dec'][mask],
             ra_units='degree', dec_units='degree')
@@ -474,12 +471,12 @@ class TXTwoPoint(PipelineStage):
         f.close()
 
         f = self.open_input('tomography_catalog')
-        r_gamma = f['multiplicative_bias/R_gamma'][:]
+        r_total = f['multiplicative_bias/R_total'][:]
         f.close()
 
         data['source_bin']  =  source_bin
         data['lens_bin']  =  lens_bin
-        data['r_gamma']  =  r_gamma
+        data['R_total']  =  r_total
 
     def load_lens_catalog(self, data):
         # Subclasses can load an external lens catalog
@@ -531,48 +528,6 @@ class TXTwoPoint(PipelineStage):
 
         f.close()
 
-
-    def calculate_sigma_e(self, data):
-        """
-        Calculate sigma_e for shape catalog.
-        """
-        sigma_e_list = []
-        mean_g1_list = []
-        mean_g2_list = []
-        for i in data['source_list']:
-            m1, m2, mask = self.get_m(data, i)
-            s = (m1+m2)/2
-            g1 = data['mcal_g1'][mask]
-            g2 = data['mcal_g2'][mask]
-            mean_g1 = g1.mean()
-            mean_g2 = g2.mean()
-            # TODO Placeholder for actual weights we want to use
-            w = np.ones_like(g1)
-            a1 = np.sum(w**2 * (g1-mean_g1)**2)
-            a2 = np.sum(w**2 * (g2-mean_g2)**2)
-            b  = np.sum(w**2)
-            c  = np.sum(w*s)
-            d  = np.sum(w)
-
-            sigma_e = np.sqrt( (a1/c**2 + a2/c**2) * (d**2/b) / 2. )
-
-            sigma_e_list.append(sigma_e)
-            mean_g1_list.append(mean_g1)
-            mean_g2_list.append(mean_g2)
-
-        return sigma_e_list, mean_g1_list, mean_g2_list
-
-    def calculate_neff(self, area, data):
-        neff = []
-        for i in data['source_list']:
-            m1, m2, mask = self.get_m(data, i)
-            w    = np.ones(len(data['ra'][mask]))
-            a    = np.sum(w)**2
-            b    = np.sum(w**2)
-            c    = area
-            neff.append(a/b/c)
-        return neff
-
     def calculate_area(self, data):
         import healpy as hp
         pix=hp.ang2pix(4096, np.pi/2.-np.radians(data['dec']),np.radians(data['ra']), nest=True)
@@ -583,16 +538,26 @@ class TXTwoPoint(PipelineStage):
         return area
 
     def calculate_metadata(self, data):
+        tomo = self.open_input('tomography_catalog')
         area = self.calculate_area(data)
-        neff = self.calculate_neff(area, data)
-        sigma_e, mean_e1, mean_e2 = self.calculate_sigma_e(data)
+        sigma_e = tomo['tomography/sigma_e'][:]
+        N_eff = tomo['tomography/N_eff'][:]
+        
+        mean_g1_list = []
+        mean_g2_list = []
+        for i in data['source_list']:
+            g1, g2, mask = self.get_m(data, i)
+            mean_g1 = g1.mean()
+            mean_g2 = g2.mean()
+            mean_g1_list.append(mean_g1)
+            mean_g2_list.append(mean_g2)
 
         meta = {}
-        meta["neff"] =  neff
+        meta["neff"] =  N_eff
         meta["area"] =  area
         meta["sigma_e"] =  sigma_e
-        meta["mean_e1"] =  mean_e1
-        meta["mean_e2"] =  mean_e2
+        meta["mean_e1"] =  mean_g1
+        meta["mean_e2"] =  mean_g2
 
         return meta
 

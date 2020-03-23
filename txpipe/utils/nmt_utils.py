@@ -8,7 +8,9 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
         self.ell_max = lf
 
     def get_window(self, b):
-        return (self.ell_min[b], self.ell_max[b])
+        ell = np.arange(self.ell_min[b], self.ell_max[b]+1)
+        w = np.ones_like(ell)
+        return (ell, w)
     
     def get_ell_min(self, b):
         return self.ell_min[b]

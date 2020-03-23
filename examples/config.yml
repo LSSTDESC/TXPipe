@@ -1,3 +1,7 @@
+TXGCRTwoCatalogInput:
+    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
+    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
+
 TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
@@ -5,9 +9,12 @@ TXExposureInfo:
     dc2_name: '1.2p'
 
 
-TXProtoDC2Mock:
+TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
+    visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2
+    flip_g2: True # to match metacal
+
 
 
 PZPDFMLZ:
@@ -18,7 +25,14 @@ PZPDFMLZ:
 TXPhotozStack:
     chunk_rows: 100000
 
+# Mock version of stacking:
+TXTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+    chunk_rows: 100000
+
 TXSelector:
+    input_pz: False
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -79,5 +93,5 @@ TXDiagnosticMaps:
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: False
-    
+    flip_g2: True
+    bandwidth: 100
