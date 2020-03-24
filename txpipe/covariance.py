@@ -155,7 +155,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
             # Pull out the integer corresponding to the tracer index
             tracer_dat = two_point_data.get_tracer(tracer)
-            nbin = int(two_point_data.tracers[tracer].name[-1]) #might be a better way of doing this?
+            nbin = int(two_point_data.tracers[tracer].name.split("_")[1])
 
             z = tracer_dat.z.copy().flatten()
             nz = tracer_dat.nz.copy().flatten()
@@ -270,7 +270,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         first_is_shear_shear = ('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])
         second_is_shear_shear = ('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1])
 
-        if (first_is_shear_shear or second_is_shear_shear) and self.do_xi:
+        if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
             # this adds the B-mode shape noise contribution.
             # We assume B-mode power (C_ell) is 0
             Bmode_F = 1
