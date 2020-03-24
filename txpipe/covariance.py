@@ -369,17 +369,21 @@ class TXFourierGaussianCovariance(PipelineStage):
         count_xi_pm2 = 0
         cl_cache = {}
         xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
-        for i in np.arange(N2pt):
-            tracer_comb1=tracer_combs[i]
-            indx_i = i * Nell_bins
+
+        # Look through the chunk of matrix, tracer pair by tracer pair
+        for i in range(N2pt):
+            tracer_comb1 = tracer_combs[i]
+
             if i == N2pt0:
                 count_xi_pm1 = 1
-            for j in np.arange(i,N2pt):
+
+            for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
-                indx_j = j * Nell_bins
+
                 if j == N2pt0:
                     count_xi_pm2 = 1
+
                 if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
                     cov_ij = self.cl_gaussian_cov(
                         cosmo,
@@ -390,8 +394,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                         ccl_tracers=ccl_tracers,
                         tracer_Noise=tracer_Noise, 
                         two_point_data=two_point_data,
-                        xi_plus_minus1=xi_pm[count_xi_pm1,count_xi_pm2][0],
-                        xi_plus_minus2=xi_pm[count_xi_pm1,count_xi_pm2][1],
+                        xi_plus_minus1=xi_pm[count_xi_pm1, count_xi_pm2][0],
+                        xi_plus_minus2=xi_pm[count_xi_pm1, count_xi_pm2][1],
                         cache=cl_cache,
                         WT=WT,
                     )
@@ -410,9 +414,16 @@ class TXFourierGaussianCovariance(PipelineStage):
                         WT=WT,
                     )
 
-                cov_ij=cov_ij['final_b']
-                cov_full[indx_i:indx_i+Nell_bins,indx_j:indx_j+Nell_bins]=cov_ij
-                cov_full[indx_j:indx_j+Nell_bins,indx_i:indx_i+Nell_bins]=cov_ij.T
+                # Fill in this chunk of the matrix
+                cov_ij = cov_ij['final_b']
+                # Find the right location in the matrix
+                start_i = i * Nell_bins
+                start_j = j * Nell_bins
+                end_i = start_i + Nell_bins
+                end_j = start_j + Nell_bins
+                # and fill it in, and the transpose component
+                cov_full[start_i:end_i, start_j:end_j] = cov_ij
+                cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
 
         try:
             np.linalg.cholesky(cov_full)
