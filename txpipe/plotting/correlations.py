@@ -156,9 +156,17 @@ def make_plot(corr, obs_data, theory_data):
                 continue
 
             for obs in obs_data:
-                theta, xi = obs[(corr, i, j)]
-                l, = a.loglog(theta, xi, 'x', label=obs['name'])
-                a.loglog(theta, -xi, 's', color=l.get_color())
+                res = obs[(corr, i, j)]
+                if len(res) == 2:
+                    theta, xi = res
+                    l, = a.loglog(theta, xi, 'x', label=obs['name'])
+                    a.loglog(theta, -xi, 's', color=l.get_color())
+                else:
+                    theta, xi, cov = res
+                    err = cov.diagonal()**0.5
+                    a.errorbar(theta, xi, err, label=obs['name'])
+                    a.set_xscale('log')
+                    a.set_yscale('log')
 
             for theory in theory_data:
                 theta, xi = theory[(corr, i, j)]
@@ -183,6 +191,7 @@ def extract_observables_plot_data(data, label):
     nbin_source = len([t for t in data.tracers if t.startswith('source')])
     nbin_lens   = len([t for t in data.tracers if t.startswith('lens')])
     nbin_max = max(nbin_source, nbin_lens)
+    has_cov = data.has_covariance()
 
     obs['nbin_source'] = nbin_source
     obs['nbin_lens'] = nbin_lens
@@ -202,12 +211,12 @@ def extract_observables_plot_data(data, label):
                 B1 = f"{b1}_{i}"
                 B2 = f"{b2}_{j}"
                 if a == 'theta':
-                    angles, values = data.get_theta_xi(t, B1, B2)
+                    res = data.get_theta_xi(t, B1, B2, return_cov=has_cov)
                 else:
-                    angles, values = data.get_ell_cl(t, B1, B2)
+                    res = data.get_ell_cl(t, B1, B2, return_cov=has_cov)
 
-                if angles.size > 0:
-                    obs[(t, i, j)] = angles, values
+                if res[0].size > 0:
+                    obs[(t, i, j)] = res
     return obs
 
 def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
