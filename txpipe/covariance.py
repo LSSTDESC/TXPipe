@@ -313,12 +313,14 @@ class TXFourierGaussianCovariance(PipelineStage):
         # Assume that the ell binning is the same for each of the bins.
         # This is true in the current pipeline.
         X = two_point_data.get_data_points('galaxy_shear_cl_ee',i=0,j=0)
-        ell_edges = []
-        for i in range(len(X)):
-            ell_edges.append(X[i]['window'].min)
+        # Further assume that the ell ranges are contiguous, so that
+        # the max value of one window is the min value of the next.
+        # So we just need the lower edges of each bin and then the
+        # final maximum value of the last bin
+        ell_edges = [x['window'].min for x in X]
         ell_edges.append(X[-1]['window'].max)
-        ell_edges = np.array(ell_edges)
-        return ell_edges
+
+        return np.array(ell_edges)
 
     #compute all the covariances and then combine them into one single giant matrix
     def get_all_cov(self, cosmo, meta, two_point_data={}):
