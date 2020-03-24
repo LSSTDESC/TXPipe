@@ -56,7 +56,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta['theta'] = np.logspace(np.log10(1/60), np.log10(300./60), 3000) 
 
         #C_ell covariance
-        cov = self.get_all_cov(cosmo, meta, two_point_data=two_point_data)
+        cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
         
         self.save_outputs(two_point_data, cov)
 
@@ -194,8 +194,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                 tracers+=['source']
         return WT_factors[tuple(tracers)]
 
-    #compute a single covariance matrix for a given pair of C_ell or xi.  
-    def cl_gaussian_cov(self, cosmo, meta, ell_bins, 
+    # compute a single covariance matrix for a given pair of C_ell or xi.  
+    def compute_covariance_block(self, cosmo, meta, ell_bins,
         tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
         two_point_data=None,
         xi_plus_minus1='plus', xi_plus_minus2='plus',
@@ -323,7 +323,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         return np.array(ell_edges)
 
     #compute all the covariances and then combine them into one single giant matrix
-    def get_all_cov(self, cosmo, meta, two_point_data={}):
+    def compute_covariance(self, cosmo, meta, two_point_data={}):
         from tjpcov import bin_cov, wigner_transform
         import threadpoolctl
 
@@ -385,7 +385,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     count_xi_pm2 = 1
 
                 if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
-                    cov_ij = self.cl_gaussian_cov(
+                    cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
                         ell_bins, 
@@ -401,7 +401,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     )
 
                 else:
-                    cov_ij = self.cl_gaussian_cov(
+                    cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
                         ell_bins,
