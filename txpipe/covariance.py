@@ -178,7 +178,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         
         return ccl_tracers, tracer_noise
 
-    def get_cov_WT_spin(self, tracer_comb):
+    def get_spins(self, tracer_comb):
         # Get the Wigner Transform factors
         WT_factors={}
         WT_factors['lens','source'] = (0, 2)
@@ -284,8 +284,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov['final']=cov[1423]+cov[1324]
 
         if self.do_xi:
-            s1_s2_1 = self.get_cov_WT_spin(tracer_comb1)
-            s1_s2_2 = self.get_cov_WT_spin(tracer_comb2)
+            s1_s2_1 = self.get_spins(tracer_comb1)
+            s1_s2_2 = self.get_spins(tracer_comb2)
+
+            # For the shear-shear we have two sets of spins, plus and minus,
+            # which are returned as a dict, so we need to pull out the one we need
+            # Otherwise it's just specified as a tuple, e.g. (2,0)
             if isinstance(s1_s2_1, dict):
                 s1_s2_1 = s1_s2_1[xi_plus_minus1]
             if isinstance(s1_s2_2, dict):
