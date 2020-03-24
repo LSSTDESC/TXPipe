@@ -14,14 +14,34 @@ def metacalibration_names(names):
 
 class MetacalCatalog(HDFFile):
     """
-    A metacal output catalog
+    A generic shear catalog 
     """
     # These are columns
-    required_datasets = ['metacal/mcal_g1', 'metacal/mcal_g1_1p', 
-        'metacal/mcal_g2', 'metacal/mcal_flags', 'metacal/ra',
-        'metacal/mcal_T']
+    
+    def read_catalog_info(self):
+        try:
+            group = self.file['shear']
+            info = dict(group.attrs)
+        except:
+            raise ValueError(f"Unable to read shear catalog")
+        shear_catalog_type = info.get('catalog_type')
+        return shear_catalog_type
 
-    # Add methods for handling here ...
+    def validate(self):
+        
+        shear_catalog_type = self.read_catalog_info()
+        
+        if shear_catalog_type=='mcal':
+            required_datasets_mcal = ['shear/mcal_g1', 'shear/mcal_g1_1p', 
+        'shear/mcal_g2', 'shear/mcal_flags', 'shear/ra',
+        'shear/mcal_T']
+        elif shear_catalog_type=='lensfit':
+            required_datasets_lensfit = ['shear/g1', 
+        'shear/g2', 'shear/flags', 'shear/ra',
+        'shear/T']
+        else:
+            raise ValueError(f"Unrecognized shear catalog type {shear_catalog_type}")
+        super().validate()
 
 
 class TomographyCatalog(HDFFile):
