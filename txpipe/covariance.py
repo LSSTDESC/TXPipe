@@ -43,16 +43,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         two_point_data = self.read_sacc()
 
         # read the n(z) and f_sky from the source summary stats        
-        n_eff, n_lens, sigma_e, fsky = self.read_number_statistics()
+        meta = self.read_number_statistics()
         
-        # the following is a list of things that are somewhat awkwardly passed
-        # through the functions... think about how this can be done more elegantly.
-        meta = {}
-        meta['fsky'] = fsky
-        meta['sigma_e'] = sigma_e
-        meta['n_eff'] = n_eff # per radian2
-        meta['n_lens'] = n_lens # per radian2
-
         # Binning choices. The ell binning is a linear piece with all the
         # integer values up to 500 (is this level of accuracy needed?)
         meta['ell'] = np.concatenate(
@@ -106,33 +98,44 @@ class TXFourierGaussianCovariance(PipelineStage):
     def read_number_statistics(self):
         input_data = self.open_input('tracer_metadata')
 
-        N_eff = input_data['tracers/N_eff']
-        N_lens = input_data['tracers/lens_counts']
+        # per-bin quantities
+        N_eff = input_data['tracers/N_eff'][:]
+        N_lens = input_data['tracers/lens_counts'][:]
+        sigma_e = input_data['tracers/sigma_e'][:]
 
         # area in sq deg
         area_deg2 = input_data['tracers'].attrs['area']
         area_unit = input_data['tracers'].attrs['area_unit']
         if area_unit != 'sq deg':
             raise ValueError("Units of area have changed")
-        area = area_deg2 * np.radians(1)**2
-
-        print(f"area = {area_deg2:.1f} deg^2")
-        print("N_eff: ", N_eff)
-        n_eff = N_eff / area
-        print("n_eff: ", n_eff)
-        sigma_e = input_data['tracers/sigma_e'][:]
-
-        n_lens = N_lens / area
-        print("lens density: ", n_lens)
-
-        full_sky=4*np.pi #*(180./np.pi)**2 #(FULL SKY IN STERADIANS)
-        fsky=area/full_sky
 
         input_data.close()
 
-        print('n_lens, n_eff, sigma_e, fsky: ')
-        print(n_lens, n_eff, sigma_e, fsky)
-        return n_eff, n_lens, sigma_e, fsky
+        # area in steradians and sky fraction
+        area = area_deg2 * np.radians(1)**2
+        full_sky = 4*np.pi
+        f_sky = area / full_sky
+
+        # Density information from counts
+        n_eff = N_eff / area
+        n_lens = N_lens / area
+
+        # Feedback
+        print(f"area = {area_deg2:.1f} deg^2")
+        print(f"f_sky: {f_sky}")
+        print(f"N_eff: {N_eff} (totals)")
+        print(f"n_eff: {n_eff} / steradian")
+        print(f"lens density: {n_lens} / steradian")
+
+        # Pass all this back as a dictionary
+        meta = {
+            'f_sky': f_sky,
+            'sigma_e': sigma_e,
+            'n_eff': n_eff,
+            'n_lens': n_lens,
+        }
+
+        return meta
 
     def get_tracer_info(self, cosmo, meta, two_point_data):
         import pyccl as ccl
@@ -229,9 +232,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
 
         if self.do_xi:
-            norm = np.pi * 4 * meta['fsky']
+            norm = np.pi * 4 * meta['f_sky']
         else: 
-            norm = (2*ell + 1) * np.gradient(ell) * meta['fsky']
+            norm = (2*ell + 1) * np.gradient(ell) * meta['f_sky']
 
         coupling_mat = {}
         coupling_mat[1324] = np.eye(len(ell)) #placeholder
