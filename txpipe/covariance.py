@@ -113,6 +113,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # area in steradians and sky fraction
         area = area_deg2 * np.radians(1)**2
+        area_arcmin2 = area_deg2 * 60**2
         full_sky = 4*np.pi
         f_sky = area / full_sky
 
@@ -120,12 +121,19 @@ class TXFourierGaussianCovariance(PipelineStage):
         n_eff = N_eff / area
         n_lens = N_lens / area
 
+        # for printing out only
+        n_eff_arcmin = N_eff / area_arcmin2
+        n_lens_arcmin = N_lens / area_arcmin2
+
         # Feedback
-        print(f"area = {area_deg2:.1f} deg^2")
-        print(f"f_sky: {f_sky}")
-        print(f"N_eff: {N_eff} (totals)")
-        print(f"n_eff: {n_eff} / steradian")
+        print(f"area =  {area_deg2:.1f} deg^2")
+        print(f"f_sky:  {f_sky}")
+        print(f"N_eff:  {N_eff} (totals)")
+        print(f"N_lens: {N_lens} (totals)")
+        print(f"n_eff:  {n_eff} / steradian")
+        print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
         print(f"lens density: {n_lens} / steradian")
+        print(f"            = {n_lens} / arcmiin")
 
         # Pass all this back as a dictionary
         meta = {
