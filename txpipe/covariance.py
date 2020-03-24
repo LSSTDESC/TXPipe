@@ -138,17 +138,22 @@ class TXFourierGaussianCovariance(PipelineStage):
         return meta
 
     def get_tracer_info(self, cosmo, meta, two_point_data):
+        # Generates CCL tracers from n(z) information in the data file
         import pyccl as ccl
         ccl_tracers={}
         tracer_noise={}
 
         for tracer in two_point_data.tracers:
+
+            # Pull out the integer corresponding to the tracer index
             tracer_dat = two_point_data.get_tracer(tracer)
             nbin = int(two_point_data.tracers[tracer].name[-1]) #might be a better way of doing this?
 
             z = tracer_dat.z.copy().flatten()
             nz = tracer_dat.nz.copy().flatten()
 
+            # Identify source tracers and gnerate WeakLensingTracer objects
+            # based on them
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
                 Ngal = meta['n_eff'][nbin]
@@ -163,8 +168,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         
         return ccl_tracers, tracer_noise
 
-    def get_cov_WT_spin(self, tracer_comb=None):
-
+    def get_cov_WT_spin(self, tracer_comb):
+        # Get the Wigner Transform factors
         WT_factors={}
         WT_factors['lens','source'] = (0, 2)
         WT_factors['source','lens'] = (2, 0) #same as (0,2)
@@ -225,25 +230,33 @@ class TXFourierGaussianCovariance(PipelineStage):
                     cache[cache_key1] = c
                     cl[local_key] = c
 
+        # The shape noise C_ell values.
+        # These are zero for cross bins and as computed earlier for auto bins
         SN={}
         SN[13] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
         SN[24] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
         SN[14] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
         SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
 
+
+        # The overall normalization factor at the front of the matrix
         if self.do_xi:
             norm = np.pi * 4 * meta['f_sky']
         else: 
             norm = (2*ell + 1) * np.gradient(ell) * meta['f_sky']
 
+        # The coupling is an identity matrix at least when we neglect
+        # the mask
         coupling_mat = {}
-        coupling_mat[1324] = np.eye(len(ell)) #placeholder
-        coupling_mat[1423] = np.eye(len(ell)) #placeholder
+        coupling_mat[1324] = np.eye(len(ell))
+        coupling_mat[1423] = np.eye(len(ell))
 
+        # Initial covariance of C_ell components
         cov = {}
         cov[1324] = np.outer(cl[13] + SN[13], cl[24] + SN[24]) * coupling_mat[1324]
         cov[1423] = np.outer(cl[14] + SN[14], cl[23] + SN[23]) * coupling_mat[1423]
 
+        # for shear-shear components we also add a B-mode contribution
         first_is_shear_shear = ('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])
         second_is_shear_shear = ('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1])
 
@@ -261,19 +274,24 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov['final']=cov[1423]+cov[1324]
 
         if self.do_xi:
-            s1_s2_1 = self.get_cov_WT_spin(tracer_comb=tracer_comb1)
-            s1_s2_2 = self.get_cov_WT_spin(tracer_comb=tracer_comb2)
+            s1_s2_1 = self.get_cov_WT_spin(tracer_comb1)
+            s1_s2_2 = self.get_cov_WT_spin(tracer_comb2)
             if isinstance(s1_s2_1, dict):
                 s1_s2_1 = s1_s2_1[xi_plus_minus1]
             if isinstance(s1_s2_2, dict):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
-
+            # Use these terms to project the covariance from C_ell to xi(theta)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
 
+        # Normalize
         cov['final'] /= norm
 
+        # Put the covariance into bins. 
+        # This is optional in the case of a C_ell covariance (only if bins in ell are
+        # supplied, otherwise the matrix is for each ell value individually).  It is
+        # required for real-space covariances since these are always binned.
         if self.do_xi:
             thb, cov['final_b'] = bin_cov(r=th/d2r, r_bins=ell_bins, cov=cov['final'])
         else:
@@ -282,6 +300,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         return cov
     
     def get_angular_bins(self, two_point_data):
+        # Assume that the ell binning is the same for each of the bins.
+        # This is true in the current pipeline.
         X = two_point_data.get_data_points('galaxy_shear_cl_ee',i=0,j=0)
         ell_edges = []
         for i in range(len(X)):
@@ -322,6 +342,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # After this is finished this will switch back to allowing all the CPUs
         # to be used for threading instead.
         num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
+        print("Generating Wigner Transform.")
         with threadpoolctl.threadpool_limits(1):
             WT = wigner_transform(
                 l = meta['ell'],
@@ -384,7 +405,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         try:
             np.linalg.cholesky(cov_full)
         except:        
-            print("liAnalg.LinAlgError: Covariane not positive definite! Most likely this is a problem in xim. We will continue for now but this needs to be fixed.")
+            print("liAnalg.LinAlgError: Covariance not positive definite! "
+                "Most likely this is a problem in xim. "
+                "We will continue for now but this needs to be fixed.")
 
         return cov_full
 
