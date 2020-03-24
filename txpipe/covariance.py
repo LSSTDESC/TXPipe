@@ -164,14 +164,16 @@ class TXFourierGaussianCovariance(PipelineStage):
             # based on them
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
-                Ngal = meta['n_eff'][nbin]
+                n_eff = meta['n_eff'][nbin]
                 ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
-                tracer_noise[tracer] = sigma_e**2 / Ngal
-            
+                tracer_noise[tracer] = sigma_e**2 / n_eff
+
+            # or if it is a lens bin then generaete the corresponding
+            # CCL tracer class
             elif 'lens' in tracer:
                 b = 1.0*np.ones(len(z))  # place holder
-                Ngal = meta['n_lens'][nbin]
-                tracer_noise[tracer] = 1./Ngal
+                n_gal = meta['n_lens'][nbin]
+                tracer_noise[tracer] = 1 / n_gal
                 ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
         
         return ccl_tracers, tracer_noise
