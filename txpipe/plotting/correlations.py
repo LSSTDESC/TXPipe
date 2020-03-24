@@ -158,7 +158,7 @@ def make_plot(corr, obs_data, theory_data):
             for obs in obs_data:
                 theta, xi = obs[(corr, i, j)]
                 l, = a.loglog(theta, xi, 'x', label=obs['name'])
-                a.loglog(theta, -xi, 's', color='r', markersize=3)
+                a.loglog(theta, -xi, 's', color=l.get_color())
 
             for theory in theory_data:
                 theta, xi = theory[(corr, i, j)]
