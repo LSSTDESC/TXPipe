@@ -46,7 +46,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta = self.read_number_statistics()
         
         # Binning choices. The ell binning is a linear piece with all the
-        # integer values up to 500 (is this level of accuracy needed?)
+        # integer values up to 500 -- these are from firecrown, might need 
+        # to change later
         meta['ell'] = np.concatenate(
             (np.linspace(2, 500-1, 500-2), 
              np.logspace(np.log10(500), np.log10(6e4), 500))
@@ -278,6 +279,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
                 Bmode_F=-1 
+            # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
+            # B-modes
             cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
             cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
@@ -327,20 +330,20 @@ class TXFourierGaussianCovariance(PipelineStage):
         return np.array(ell_edges)
 
     #compute all the covariances and then combine them into one single giant matrix
-    def compute_covariance(self, cosmo, meta, two_point_data={}):
+    def compute_covariance(self, cosmo, meta, two_point_data):
         from tjpcov import bin_cov, wigner_transform
         import threadpoolctl
 
-        #FIXME: Only input needed should be two_point_data, which is the sacc data file.
-        # Other parameters should be included within sacc and read from there.
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         # we will loop over all these
         tracer_combs = two_point_data.get_tracer_combinations() 
         N2pt = len(tracer_combs)
         
-        N2pt0 = -1
+        # the bit below is just counting the number of 2pt functions, and accounting 
+        # for the fact that xi needs to be double counted
+        N2pt0 = 0
         if self.do_xi:
-            N2pt0 = N2pt*1
+            N2pt0 = N2pt
             tracer_combs_temp = tracer_combs.copy()
             for combo in tracer_combs:
                 if ('source' in combo[0]) and ('source' in combo[1]):
