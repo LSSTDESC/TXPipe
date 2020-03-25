@@ -84,5 +84,5 @@ TXDiagnosticMaps:
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: True
+    flip_g2: False
     bandwidth: 100
