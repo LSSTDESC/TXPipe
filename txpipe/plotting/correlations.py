@@ -164,7 +164,7 @@ def make_plot(corr, obs_data, theory_data):
                 else:
                     theta, xi, cov = res
                     err = cov.diagonal()**0.5
-                    a.errorbar(theta, xi, err, label=obs['name'])
+                    a.errorbar(theta, xi, err, fmt='.', label=obs['name'])
                     a.set_xscale('log')
                     a.set_yscale('log')
 
