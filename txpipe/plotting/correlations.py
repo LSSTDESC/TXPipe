@@ -86,6 +86,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
         a.legend()
     a.set_ylim(ymin, ymax)
 
+
 def make_plot(corr, obs_data, theory_data):
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
@@ -121,7 +122,7 @@ def make_plot(corr, obs_data, theory_data):
     elif corr == EE:
         name = r"C_\ell^{EE}"
         ymin = 1e-12
-        ymax = 1e-4
+        ymax = 1e-7
         auto_only = False
         half_only = True
     elif corr == ED:
@@ -173,6 +174,8 @@ def make_plot(corr, obs_data, theory_data):
                 a.loglog(theta, xi, '-', label=theory['name'])
 
             axis_setup(a, i, j, ny, ymin, ymax, name)
+            if corr in [EE, ED, DD]:
+                a.set_xlim(10, 3200)
 
     f.suptitle(rf"TXPipe ${name}$")
 
