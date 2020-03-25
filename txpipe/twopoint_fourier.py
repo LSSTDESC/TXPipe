@@ -111,20 +111,13 @@ class TXTwoPointFourier(PipelineStage):
                 print(f"    {leff:.0f}    ({lmin:.0f} - {lmax:.0f})")
 
 
-
-
-        # Namaster uses workspaces, which we re-use between
-        # bins
-        w00, w02, w22 = self.setup_workspaces(pixel_scheme, f_d, f_wl, ell_bins)
-        print(f"Rank {self.rank} set up workspaces")
-
         # Run the compute power spectra portion in parallel
         # This splits the calculations among the parallel bins
         # It's not the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in self.split_tasks_by_rank(calcs):
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins, tomo_info, theory_cl)
+                pixel_scheme, i, j, k, f_wl, f_d, ell_bins, tomo_info, theory_cl)
 
         if self.rank==0:
             print(f"Collecting results together")
@@ -160,11 +153,10 @@ class TXTwoPointFourier(PipelineStage):
         # Load the mask. It should automatically be the same shape as the
         # others, based on how it was originally generated.
         # We remove any pixels that are at or below our threshold (default=0)
-        mask = map_file.read_map('mask')
-        mask_threshold = self.config['mask_threshold']
-        mask[mask <= mask_threshold] = 0
-        mask[np.isnan(mask)] = 0
-        mask_sum = mask.sum()
+        clustering_weight = map_file.read_map('mask')
+        clustering_weight[np.isnan(clustering_weight)] = 0
+        clustering_weight[clustering_weight==healpy.UNSEEN] = 0
+
         f_sky = area / 41253.
         if self.rank == 0:
             print(f"Unmasked area = {area}, fsky = {f_sky}")
@@ -175,11 +167,11 @@ class TXTwoPointFourier(PipelineStage):
         g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
         g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
         lensing_weights = [map_file.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
-        depth_map = map_file.read_map(f'depth')
 
         # Mask any pixels which have the healpix bad value
-        for m in g1_maps + g2_maps + ngal_maps:
-            mask[m==healpy.UNSEEN] = 0
+        for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
+            lw[g1 == healpy.UNSEEN] = 0
+            lw[g2 == healpy.UNSEEN] = 0
 
         if self.config['flip_g2']:
             for g2 in g2_maps:
@@ -192,29 +184,6 @@ class TXTwoPointFourier(PipelineStage):
 
         map_file.close()
 
-        # Cut out any pixels below the threshold,
-        # zeroing out any pixels there
-        cut = mask < mask_threshold
-        mask[cut] = 0
-
-        # We also apply this cut to the count maps,
-        # since otherwise the pixels below threshold would contaminate
-        # the mean calculation below.
-        for ng in ngal_maps:
-            ng[cut] = 0
-
-
-        # Convert the number count maps to overdensity maps.
-        # First compute the overall mean object count per bin.
-        # Maybe we should do this in the mapping code itself?
-        n_means = [ng.sum()/mask_sum for ng in ngal_maps]
-        # and then use that to convert to overdensity
-        d_maps = [(ng/mu)-1 for (ng,mu) in zip(ngal_maps, n_means)]
-
-
-        density_fields = []
-        lensing_fields = []
-
         if pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.size_x)
             ly = np.radians(pixel_scheme.size_y)
@@ -224,24 +193,39 @@ class TXTwoPointFourier(PipelineStage):
         # TODO: ask about including the depth map in here
         if apod_size > 0:
             if self.rank==0:
-                print(f"Apodizing mask with size {apod_size} deg and method {apod_type}")
+                print(f"Apodizing clustering weights map with size {apod_size} deg and method {apod_type}")
 
             if pixel_scheme.name == 'gnomonic':
-                    lens_mask = nmt.mask_apodization_flat(mask, lx, ly, apod_size, apotype=apod_type)
+                    clustering_weight = nmt.mask_apodization_flat(clustering_weight, lx, ly, apod_size, apotype=apod_type)
             elif pixel_scheme.name == 'healpix':
-                lens_mask = nmt.mask_apodization(mask, apod_size, apotype=apod_type)
+                clustering_weight = nmt.mask_apodization(clustering_weight, apod_size, apotype=apod_type)
             else:
                 raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
-        else:
-            lens_mask = mask
+
+        d_maps = []
+        for ng in ngal_maps:
+            # Convert the number count maps to overdensity maps.
+            # First compute the overall mean object count per bin.
+            # Maybe we should do this in the mapping code itself?
+            # mean clustering galaxies per pixel in this map
+            mu = ng[clustering_weight>0].mean()
+            # and then use that to convert to overdensity
+            dmap = ng/mu - 1
+            # and re-masking, just in case
+            dmap[~(clustering_weight>0)] = 0
+            d_maps.append(dmap)
 
 
-        # we do apodize the density masks, but not the WL ones
+        density_fields = []
+        lensing_fields = []
+
+        # Now convert these maps and masks into NaMaster field objects
+        # First the over-density maps
         for i,d in enumerate(d_maps):
             if self.rank == 0:
                 print(f"Generating density field {i}")
             if pixel_scheme.name == 'gnomonic':
-                field = nmt.NmtFieldFlat(lx, ly, lens_mask, [d], templates=syst_nc) 
+                field = nmt.NmtFieldFlat(lx, ly, clustering_weight, [d], templates=syst_nc) 
             elif pixel_scheme.name == 'healpix':
                 field = nmt.NmtField(lensing_weights[i], [d], templates=syst_nc)
             else:
@@ -249,15 +233,14 @@ class TXTwoPointFourier(PipelineStage):
             density_fields.append(field)
 
 
-
-        for i,(g1,g2) in enumerate(zip(g1_maps, g2_maps)):
-            # Density for gnomonic maps
+        # And then the lensing maps
+        for i, (g1, g2, lw) in enumerate(zip(g1_maps, g2_maps, lensing_weights)):
             if self.rank == 0:
                 print(f"Generating lensing field {i}")
             if pixel_scheme.name == 'gnomonic':
-                field = nmt.NmtFieldFlat(lx, ly, wmask, [g1,g2], templates=syst_wl) 
+                field = nmt.NmtFieldFlat(lx, ly, lw, [g1,g2], templates=syst_wl) 
             elif pixel_scheme.name == 'healpix':
-                field = nmt.NmtField(mask, [g1, g2], templates=syst_wl) 
+                field = nmt.NmtField(lw, [g1, g2], templates=syst_wl) 
             else:
                 raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
@@ -308,34 +291,6 @@ class TXTwoPointFourier(PipelineStage):
 
         return ell_bins
 
-    def setup_workspaces(self, pixel_scheme, f_d, f_wl, ell_bins):
-        import pymaster as nmt
-        # choose scheme class
-        if pixel_scheme.name == 'healpix':
-            workspace_class = nmt.NmtWorkspace
-        elif pixel_scheme.name == 'gnomonic':
-            workspace_class = nmt.NmtWorkspaceFlat
-        else:
-            raise ValueError(f"No NaMaster workspace for pixel scheme {pixel_scheme.name}")
-
-        # Compute mode-coupling matrix
-        # TODO: mode-coupling could be pre-computed and provided in config.
-        w00 = workspace_class()
-        w00.compute_coupling_matrix(f_d[0], f_d[0], ell_bins)
-        if self.rank==0:
-            print("Computed w00 coupling matrix")
-
-        w02 = workspace_class()
-        w02.compute_coupling_matrix(f_d[0], f_wl[0], ell_bins)
-        if self.rank==0:
-            print("Computed w02 coupling matrix")
-
-        w22 = workspace_class()
-        w22.compute_coupling_matrix(f_wl[0], f_wl[0], ell_bins)
-        if self.rank==0:
-            print("Computed w22 coupling matrix")
-
-        return w00, w02, w22
 
     def select_calculations(self, nbins_source, nbins_lens):
         calcs = []
@@ -360,7 +315,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, f_wl, f_d, w00, w02, w22, ell_bins, tomo_info, cl_theory):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, f_wl, f_d, ell_bins, tomo_info, cl_theory):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -368,7 +323,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # k refers to the type of measurement we are making
         import sacc
-        import pymaster
+        import pymaster as nmt
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
@@ -392,33 +347,43 @@ class TXTwoPointFourier(PipelineStage):
         cl_guess = None
 
         if k == SHEAR_SHEAR:
-            workspace = w22
             field_i = f_wl[i]
             field_j = f_wl[j]
             results_to_use = [(0, CEE), (3, CBB)]
 
         elif k == POS_POS:
-            workspace = w00
             field_i = f_d[i]
             field_j = f_d[j]
             results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
-            workspace = w02
             field_i = f_wl[i]
             field_j = f_d[j]
             results_to_use = [(0, CdE), (1, CdB)]
 
+        if pixel_scheme.name == 'healpix':
+            workspace = nmt.NmtWorkspace()
+        elif pixel_scheme.name == 'gnomonic':
+            workspace = nmt.NmtWorkspaceFlat()
+        else:
+            raise ValueError(f"No NaMaster workspace for pixel scheme {pixel_scheme.name}")
+
+        # Compute mode-coupling matrix
+        workspace.compute_coupling_matrix(field_i, field_j, ell_bins)
+
+        # Get the coupled noise C_ell values to give to the master algorithm
         cl_noise = self.compute_noise(i,j,k,ell_bins,workspace,tomo_info)
 
+        # Run the master algorithm
         if pixel_scheme.name == 'healpix':
-            c = pymaster.compute_full_master(field_i, field_j, ell_bins,
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
                 cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
         elif pixel_scheme.name == 'gnomonic':
-            c = pymaster.compute_full_master_flat(field_i, field_j, ell_bins,
+            c = nmt.compute_full_master_flat(field_i, field_j, ell_bins,
                 cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=ell_guess,
                 workspace=workspace)
 
+        # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
