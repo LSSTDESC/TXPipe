@@ -335,7 +335,7 @@ class TXFakeMaps(TXDiagnosticMaps):
     # Same outputs as the real map
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
-        ('tracer_metdata', HDFFile),
+        ('tracer_metadata', HDFFile),
         ('photoz_stack', HDFFile),
     ]
 
@@ -624,7 +624,7 @@ class TXFakeMaps(TXDiagnosticMaps):
 
     def save_metadata_file(self, area, nbin_source, nbin_lens):
         area_sq_arcmin = area * 60**2
-        meta_file = self.open_output('tracer_metdata')
+        meta_file = self.open_output('tracer_metadata')
         group = meta_file.create_group('tracers')
         group.create_dataset('R_gamma_mean', data = np.zeros((nbin_source, 2, 2)))
         group.create_dataset('R_S', data = np.zeros((nbin_source, 2, 2)))

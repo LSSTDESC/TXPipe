@@ -42,7 +42,7 @@ class TXTwoPointFourier(PipelineStage):
         ('photoz_stack', HDFFile),  # Photoz stack
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
-        ('tracer_metdata', TomographyCatalog),  # For density info
+        ('tracer_metadata', TomographyCatalog),  # For density info
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -196,7 +196,7 @@ class TXTwoPointFourier(PipelineStage):
                 print(f"Apodizing clustering weights map with size {apod_size} deg and method {apod_type}")
 
             if pixel_scheme.name == 'gnomonic':
-                    clustering_weight = nmt.mask_apodization_flat(clustering_weight, lx, ly, apod_size, apotype=apod_type)
+                clustering_weight = nmt.mask_apodization_flat(clustering_weight, lx, ly, apod_size, apotype=apod_type)
             elif pixel_scheme.name == 'healpix':
                 clustering_weight = nmt.mask_apodization(clustering_weight, apod_size, apotype=apod_type)
             else:
@@ -324,6 +324,7 @@ class TXTwoPointFourier(PipelineStage):
         # k refers to the type of measurement we are making
         import sacc
         import pymaster as nmt
+        import healpy
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
@@ -331,7 +332,7 @@ class TXTwoPointFourier(PipelineStage):
         Cdd=sacc.standard_types.galaxy_density_cl
 
         type_name = NAMES[k]
-        print(f"Process {self.rank} calcluating {type_name} spectrum for bin pair {i},{i}")
+        print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
         sys.stdout.flush()
 
 
@@ -339,6 +340,27 @@ class TXTwoPointFourier(PipelineStage):
         # the window information
         ls = ell_bins.get_effective_ells()
         win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
+
+        # The healpix pixel windows.  C_ell estimates on healpix
+        # maps (like all pixelized maps) are modulated by a pixel
+        # window function, which we calculate here so we can remove
+        # it below.  These are trivially fast to compute, so no point
+        # caching.
+        if pixel_scheme.name == 'healpix':
+            # Get the raw pixel window functions
+            pixwin_t = healpy.pixwin(pixel_scheme.nside, False)
+            pixwin_e, pixwin_b = healpy.pixwin(pixel_scheme.nside, True)
+            # Interpolate to our ell values
+            pixwin_ell = np.arange(pixwin_t.size)
+            pixwin_t = np.interp(ls, pixwin_ell, pixwin_t)
+            pixwin_e = np.interp(ls, pixwin_ell, pixwin_e)
+            pixwin_b = np.interp(ls, pixwin_ell, pixwin_b)
+        else:
+            # TODO figure out what these are supposed to be
+            pixwin_t = 1.0
+            pixwin_e = 1.0
+            pixwin_b = 1.0
+
 
         # We need the theory spectrum for this pair
         #TODO: when we have templates to deproject, use this.
@@ -349,17 +371,17 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             field_i = f_wl[i]
             field_j = f_wl[j]
-            results_to_use = [(0, CEE), (3, CBB)]
+            results_to_use = [(0, CEE, pixwin_e**2), (3, CBB, pixwin_b**2)]
 
         elif k == POS_POS:
             field_i = f_d[i]
             field_j = f_d[j]
-            results_to_use = [(0, Cdd)]
+            results_to_use = [(0, Cdd, pixwin_t**2)]
 
         elif k == SHEAR_POS:
             field_i = f_wl[i]
             field_j = f_d[j]
-            results_to_use = [(0, CdE), (1, CdB)]
+            results_to_use = [(0, CdE, pixwin_t*pixwin_e), (1, CdB, pixwin_t*pixwin_b)]
 
         if pixel_scheme.name == 'healpix':
             workspace = nmt.NmtWorkspace()
@@ -384,8 +406,8 @@ class TXTwoPointFourier(PipelineStage):
                 workspace=workspace)
 
         # Save all the results, skipping things we don't want like EB modes
-        for index, name in results_to_use:
-            self.results.append(Measurement(name, ls, c[index], win, i, j))
+        for index, name, pixwin in results_to_use:
+            self.results.append(Measurement(name, ls, c[index] / pixwin, win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, w, tomo_info):
@@ -425,7 +447,7 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
-        metadata = self.open_input('tracer_metdata')
+        metadata = self.open_input('tracer_metadata')
         sigma_e = metadata['tracers/sigma_e'][:]
         mean_R = metadata['tracers/R_gamma_mean'][:]
         N_eff = metadata['tracers/N_eff'][:]
