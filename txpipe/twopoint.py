@@ -592,7 +592,7 @@ class TXTwoPointPlots(PipelineStage):
     """
     name='TXTwoPointPlots'
     inputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_real', SACCFile),
     ]
     outputs = [
         ('shear_xi', PNGFile),
