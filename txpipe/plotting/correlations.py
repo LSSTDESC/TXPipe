@@ -132,8 +132,8 @@ def make_plot(corr, obs_data, theory_data):
         auto_only = False
         half_only = False
     elif corr == DD:
-        ymin = 1e-12
-        ymax = 1e-1
+        ymin = 1e-8
+        ymax = 1e-3
         name = r"C_\ell^{DD}"
         auto_only = True
         half_only = False
