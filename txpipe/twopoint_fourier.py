@@ -153,9 +153,13 @@ class TXTwoPointFourier(PipelineStage):
         # Load the mask. It should automatically be the same shape as the
         # others, based on how it was originally generated.
         # We remove any pixels that are at or below our threshold (default=0)
-        clustering_weight = map_file.read_map('mask')
-        clustering_weight[np.isnan(clustering_weight)] = 0
-        clustering_weight[clustering_weight==healpy.UNSEEN] = 0
+        mask = map_file.read_map('mask')
+        mask[np.isnan(mask)] = 0
+        mask[mask==healpy.UNSEEN] = 0
+
+        # Using a flat mask as the clustering weight for now, since I need to know
+        # how to turn the depth map into a weightm
+        clustering_weight = mask
 
         f_sky = area / 41253.
         if self.rank == 0:
@@ -173,10 +177,15 @@ class TXTwoPointFourier(PipelineStage):
             lw[g1 == healpy.UNSEEN] = 0
             lw[g2 == healpy.UNSEEN] = 0
 
+
         if self.config['flip_g2']:
             for g2 in g2_maps:
                 w = np.where(g2!=healpy.UNSEEN)
                 g2[w]*=-1
+        if self.config['flip_g1']:
+            for g1 in g1_maps:
+                w = np.where(g1!=healpy.UNSEEN)
+                g1[w]*=-1
 
         # TODO: load systematics maps here, once we are making them.
         syst_nc = None
@@ -202,6 +211,9 @@ class TXTwoPointFourier(PipelineStage):
             else:
                 raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
+        for ng in ngal_maps:
+            clustering_weight[ng==healpy.UNSEEN] = 0
+
         d_maps = []
         for ng in ngal_maps:
             # Convert the number count maps to overdensity maps.
@@ -210,7 +222,9 @@ class TXTwoPointFourier(PipelineStage):
             # mean clustering galaxies per pixel in this map
             mu = ng[clustering_weight>0].mean()
             # and then use that to convert to overdensity
-            dmap = ng/mu - 1
+            dmap = ng.copy()
+            dmap[clustering_weight>0] -= mu
+            dmap[clustering_weight>0] /= mu
             # and re-masking, just in case
             dmap[~(clustering_weight>0)] = 0
             d_maps.append(dmap)
@@ -227,7 +241,7 @@ class TXTwoPointFourier(PipelineStage):
             if pixel_scheme.name == 'gnomonic':
                 field = nmt.NmtFieldFlat(lx, ly, clustering_weight, [d], templates=syst_nc) 
             elif pixel_scheme.name == 'healpix':
-                field = nmt.NmtField(lensing_weights[i], [d], templates=syst_nc)
+                field = nmt.NmtField(clustering_weight, [d], templates=syst_nc)
             else:
                 raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
             density_fields.append(field)
@@ -325,6 +339,7 @@ class TXTwoPointFourier(PipelineStage):
         import sacc
         import pymaster as nmt
         import healpy
+
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
