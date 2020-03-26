@@ -24,7 +24,7 @@ class TXLensSelector(PipelineStage):
     ]
 
     config_options = {
-        'input_pz': False,
+        #'input_pz': False, do we need this option here?
         'verbose': False,
         'chunk_rows':10000,
         'lens_zbin_edges':[float],
@@ -65,28 +65,9 @@ class TXLensSelector(PipelineStage):
         output_file = self.setup_output()
 
         # various config options
-        bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
-        delta_gamma = self.config['delta_gamma']
 
-        if not self.config['input_pz']:
-            # Build a classifier used to put objects into tomographic bins
-            classifier, features = self.build_tomographic_classifier()        
-
-        # Columns we need from the photometry data.
-        # We use the photometry data to select the lenses.
-        # Although this will be one by redmagic soon.
-        phot_cols = ['g_mag', 'r_mag', 'i_mag']
-
-        # Columns we need from the shear catalog
-        if self.config['input_pz']:
-            shear_cols += ['mean_z']
-            shear_cols += ['mean_z_1p']
-            shear_cols += ['mean_z_1m']
-            shear_cols += ['mean_z_2p']
-            shear_cols += ['mean_z_2m']
-
-
+        phot_cols = X
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
@@ -96,24 +77,16 @@ class TXLensSelector(PipelineStage):
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config['zbins'])
-        nbin_lens = 1
+        nbin_lens = len(self.config['zbins'])
 
-        selection_biases = []
-        number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
-        calibrators = [ParallelCalibrator(self.select, delta_gamma) for i in range(nbin_source)]
-
+        number_density_stats = NumberDensityStats(nbin_lens, self.comm)
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data), (_, _, phot_data) in zip(iter_shear, iter_phot):
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
-            if self.config['input_pz']:
-                pz_data = self.apply_simple_redshift_cut(shear_data)
-
-            else:
-                # Select most likely tomographic source bin
-                pz_data = self.apply_classifier(classifier, features, shear_data)
+            # Select most likely tomographic source bin
+            pz_data = self.apply_classifier(classifier, features, shear_data)
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
@@ -140,22 +113,20 @@ class TXLensSelector(PipelineStage):
 
     
 
-    def apply_simple_redshift_cut(self, shear_data):
-        variants = ['', '_1p', '_2p', '_1m', '_2m']
+    def apply_simple_redshift_cut(self, phot_data)
 
         pz_data = {}
 
-        for v in variants:
-            zz = shear_data[f'mean_z{v}']
+        zz = shear_data[f'mean_z']
 
-            pz_data_v = np.zeros(len(zz), dtype=int) -1
-            for zi in range(len(self.config['zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
-                pz_data_v[mask_zbin] = zi
+        pz_data_v = np.zeros(len(zz), dtype=int) -1
+        for zi in range(len(self.config['zbin_edges'])-1):
+            mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
+            pz_data_v[mask_zbin] = zi
             
-            pz_data[f'zbin{v}'] = pz_data_v
+        pz_data[f'zbin'] = pz_data_v
 
-        return pz_data
+    return pz_data
 
 
     def setup_output(self):
@@ -165,35 +136,23 @@ class TXLensSelector(PipelineStage):
         Creates the data sets and groups to put module output
         in the tomography_catalog output file.
         """
-        n = self.open_input('shear_catalog')['metacal/ra'].size
+        n = self.open_input('photometry_catalog')['photometry/ra'].size
         zbins = self.config['zbins']
-        nbin_source = len(zbins)
-        nbin_lens = 1
+        nbin_lens = len(zbins)
 
         outfile = self.open_output('tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
-        group.create_dataset('source_bin', (n,), dtype='i')
         group.create_dataset('lens_bin', (n,), dtype='i')
-        group.create_dataset('source_counts', (nbin_source,), dtype='i')
         group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
-        group.create_dataset('sigma_e', (nbin_source,), dtype='f')
-        group.create_dataset('N_eff', (nbin_source,), dtype='f')
 
-        group.attrs['nbin_source'] = nbin_source
         group.attrs['nbin_lens'] = nbin_lens
-        for i in range(nbin_source):
-            group.attrs[f'source_zmin_{i}'] = zbins[i][0]
-            group.attrs[f'source_zmax_{i}'] = zbins[i][1]
-
-        group = outfile.create_group('multiplicative_bias')
-        group.create_dataset('R_gamma', (n,2,2), dtype='f')
-        group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
+        for i in range(nbin_lens):
+            group.attrs[f'lens_zmin_{i}'] = zbins[i][0]
+            group.attrs[f'lens_zmax_{i}'] = zbins[i][1]
 
         return outfile
 
-    def write_tomography(self, outfile, start, end, source_bin, lens_bin, R, lens_gals):
+    def write_tomography(self, outfile, start, end, lens_bin, lens_gals):
         """
         Write out a chunk of tomography and response.
 
@@ -218,11 +177,9 @@ class TXLensSelector(PipelineStage):
 
         """
         group = outfile['tomography']
-        group['source_bin'][start:end] = source_bin
         group['lens_bin'][start:end] = lens_bin
-        group = outfile['multiplicative_bias']
-        group['R_gamma'][start:end,:,:] = R
 
+    # need to figure out what this is doing here... do we still need this?
     def write_global_values(self, outfile, calibrators, number_density_stats):
         """
         Write out overall selection biases
@@ -333,4 +290,5 @@ def flatten_list(lst):
 
 if __name__ == '__main__':
     PipelineStage.main()
+
 
