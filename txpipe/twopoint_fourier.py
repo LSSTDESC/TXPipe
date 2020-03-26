@@ -178,7 +178,9 @@ class TXTwoPointFourier(PipelineStage):
             lw[g1 == healpy.UNSEEN] = 0
             lw[g2 == healpy.UNSEEN] = 0
 
-
+        # When running on the CosmoDC2 mocks I've found I need to flip
+        # both g1 and g2 in order to get both positive galaxy-galaxy lensing
+        # and shear-shear spectra.
         if self.config['flip_g1']:
             for g1 in g1_maps:
                 w = np.where(g1!=healpy.UNSEEN)
@@ -190,22 +192,27 @@ class TXTwoPointFourier(PipelineStage):
                 g2[w]*=-1
 
         # TODO: load systematics maps here, once we are making them.
+        # maybe from Eli or Zilong's code
         syst_nc = None
         syst_wl = None
 
         map_file.close()
 
+        # THe gnomonic (tangent plane) mapping versions need the map width
+        # I'm thinking of deleting support for this since it adds a whole
+        # set of options to maintain.
         if pixel_scheme.name == 'gnomonic':
             lx = np.radians(pixel_scheme.size_x)
             ly = np.radians(pixel_scheme.size_y)
 
-        # For the lensing mask we optionall apodize the binary mask.
+        # For the lensing mask we optionall apodize the mask.
         # TODO: include the masked object fraction in here.
         # TODO: ask about including the depth map in here
         if apod_size > 0:
             if self.rank==0:
                 print(f"Apodizing clustering weights map with size {apod_size} deg and method {apod_type}")
 
+            # NaMaster has different functions for apodizing the two different maps
             if pixel_scheme.name == 'gnomonic':
                 clustering_weight = nmt.mask_apodization_flat(clustering_weight, lx, ly, apod_size, apotype=apod_type)
             elif pixel_scheme.name == 'healpix':
@@ -213,6 +220,7 @@ class TXTwoPointFourier(PipelineStage):
             else:
                 raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
+        # Set any unseen pixels to zero weight.
         for ng in ngal_maps:
             clustering_weight[ng==healpy.UNSEEN] = 0
 
@@ -231,21 +239,25 @@ class TXTwoPointFourier(PipelineStage):
             dmap[~(clustering_weight>0)] = 0
             d_maps.append(dmap)
 
-
+        # We now convert these maps, which are either healpix arrays or 2x2 maps,
+        # to the NaMaster internal type, which also knows about the 
         density_fields = []
         lensing_fields = []
 
-        # Now convert these maps and masks into NaMaster field objects
-        # First the over-density maps
+        # Now convert these maps and masks into NaMaster Field objects.
+        # First the over-density maps.
         for i,d in enumerate(d_maps):
             if self.rank == 0:
                 print(f"Generating density field {i}")
+
+            # There are two classes depending on which pixel scheme we're using.
             if pixel_scheme.name == 'gnomonic':
                 field = nmt.NmtFieldFlat(lx, ly, clustering_weight, [d], templates=syst_nc) 
             elif pixel_scheme.name == 'healpix':
                 field = nmt.NmtField(clustering_weight, [d], templates=syst_nc)
             else:
                 raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+
             density_fields.append(field)
 
 
@@ -253,6 +265,8 @@ class TXTwoPointFourier(PipelineStage):
         for i, (g1, g2, lw) in enumerate(zip(g1_maps, g2_maps, lensing_weights)):
             if self.rank == 0:
                 print(f"Generating lensing field {i}")
+            # Same again.  NaMaster knows whether these are spin 0 or spin 2
+            # from the length of the maps list we pass it (1 or 2).
             if pixel_scheme.name == 'gnomonic':
                 field = nmt.NmtFieldFlat(lx, ly, lw, [g1,g2], templates=syst_wl) 
             elif pixel_scheme.name == 'healpix':
@@ -262,8 +276,6 @@ class TXTwoPointFourier(PipelineStage):
 
             lensing_fields.append(field)
         
-
-
         return pixel_scheme, density_fields, lensing_fields, nbin_source, nbin_lens, f_sky
 
 
@@ -284,34 +296,56 @@ class TXTwoPointFourier(PipelineStage):
         import pymaster as nmt
         from .utils.nmt_utils import MyNmtBinFlat, MyNmtBin
         if pixel_scheme.name == 'healpix':
-            # This is just approximate
+            # This is just approximate.  It will be very wrong
+            # in cases with non-square patches.
             area = f_sky * 4 * np.pi
             width = np.sqrt(area) #radians
             nlb = self.config['bandwidth']
+
+            # user can specify the bandwidth, or we can just use
+            # the maximum sensible value of Delta ell.
             nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
+
+            # The subclass of NmtBin that we use here just adds some
+            # helper methods compared to the default NaMaster one.
+            # Can feed these back upstream if useful.
             ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
         elif pixel_scheme.name == 'gnomonic':
+            # For the flat case we have to specify the complete ell ranges
+            # for each bin.  First convert the overall map widths into radians.
             lx = np.radians(pixel_scheme.nx * pixel_scheme.pixel_size_x)
             ly = np.radians(pixel_scheme.ny * pixel_scheme.pixel_size_y)
+
+            # The overall min and max values for the entire range.
+            # The min comes from the width of the whole map, and the max from
+            # the pixel size.
             ell_min = max(2 * np.pi / lx, 2 * np.pi / ly)
             ell_max = min(pixel_scheme.nx * np.pi / lx, pixel_scheme.ny * np.pi / ly)
+
+            # If the user provided a bandwidth then again, use that.  Otherwise
+            # use 2*ell_min. 
             d_ell = self.config['bandwidth']
             d_ell = d_ell if d_ell>0 else 2 * ell_min
             n_ell = int((ell_max - ell_min) / d_ell) - 1
             l_bpw = np.zeros([2, n_ell])
-            l_bpw[0, :] = ell_min + np.arange(n_ell) * d_ell
-            l_bpw[1, :] = l_bpw[0, :] + d_ell
-            ell_bins = MyNmtBinFlat(l_bpw[0, :], l_bpw[1, :])
-            ell_bins.ell_mins = l_bpw[0, :]
-            ell_bins.ell_maxs = l_bpw[1, :]
+
+            # Turn these into ranges per band
+            band_mins = ell_min + np.arange(n_ell) * d_ell
+            band_maxs = l_bpw[0, :] + d_ell
+
+            # and make the NaMaster object.
+            ell_bins = MyNmtBinFlat(band_mins, band_maxs)
 
         return ell_bins
 
 
     def select_calculations(self, nbins_source, nbins_lens):
+        # Build up a big list of all the calculations we want to
+        # perform.  We should probably expose this in the configuration
+        # file so you can skip some.
         calcs = []
 
-        # For shear-shear we omit pairs with j<i
+        # For shear-shear we omit pairs with j>i
         k = SHEAR_SHEAR
         for i in range(nbins_source):
             for j in range(i + 1):
@@ -323,7 +357,9 @@ class TXTwoPointFourier(PipelineStage):
             for j in range(nbins_lens):
                 calcs.append((i, j, k))
 
-        # For position-position we omit pairs with j<i
+        # For position-position we omit pairs with j>i.
+        # We do keep cross-pairs, since even though we may not want to
+        # do parameter estimation with them they are useful diagnostics.
         k = POS_POS
         for i in range(nbins_lens):
             for j in range(i + 1):
@@ -464,6 +500,8 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
+        # Get lots of bits of metadata from the input file,
+        # per tomographic bin.
         metadata = self.open_input('tracer_metadata')
         sigma_e = metadata['tracers/sigma_e'][:]
         mean_R = metadata['tracers/R_gamma_mean'][:]
@@ -484,7 +522,6 @@ class TXTwoPointFourier(PipelineStage):
             "mean_R": mean_R,
         }
 
-
         warnings.warn("Using unweighted lens samples here")
 
         return tomo_info
@@ -492,6 +529,10 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_tracers(self, nbin_source, nbin_lens):
+        # Load the N(z) and convert to sacc tracers.
+        # We need this both to put it into the output file,
+        # but also potentially to compute the theory guess
+        # for projecting out modes
         import sacc
         f = self.open_input('photoz_stack')
 
@@ -530,6 +571,9 @@ class TXTwoPointFourier(PipelineStage):
         for tracer in tracers.values():
             S.add_tracer_object(tracer)
 
+        # We have saved the results in a big list.  Each entry contains a single
+        # bin pair and spectrum type, but many data points at different angles.
+        # Here we pull them all out to add to sacc
         for d in self.results:
             tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CdE, CdB] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CBB] else f'lens_{d.j}'
@@ -538,7 +582,10 @@ class TXTwoPointFourier(PipelineStage):
             for i in range(n):
                 ell_vals = d.win[i][0]  # second term is weights
                 win = TopHatWindow(ell_vals[0], ell_vals[-1])
-                S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win, i=d.i, j=d.j)
+                # We use optional tags i and j here to record the bin indices, as well
+                # as in the tracer names, in case it helps to select on them later.
+                S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
+                    ell=d.l[i], window=win, i=d.i, j=d.j)
 
         # Save provenance information
         for key, value in self.gather_provenance().items():
@@ -550,7 +597,7 @@ class TXTwoPointFourier(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-
+        # And we're all done!
         output_filename = self.get_output("twopoint_data_fourier")
         S.save_fits(output_filename, overwrite=True)
 
