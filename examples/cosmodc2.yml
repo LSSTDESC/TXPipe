@@ -29,10 +29,14 @@ stages:
     - name: TXDiagnosticPlots
       nprocess: 16
       nodes: 1
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 64
+    - name: TXFourierRealCovariance
+      threads_per_process: 64
 
 
 output_dir: data/cosmodc2/outputs
-config: examples/config.yml
+config: examples/config_dc2.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
