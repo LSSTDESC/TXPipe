@@ -53,6 +53,7 @@ class TXTwoPointFourier(PipelineStage):
         "bandwidth": 0,
         "apodization_size": 3.0,
         "apodization_type": "C1",  #"C1", "C2", or "Smooth"
+        "flip_g1": False,
         "flip_g2": False,
     }
 
@@ -178,14 +179,15 @@ class TXTwoPointFourier(PipelineStage):
             lw[g2 == healpy.UNSEEN] = 0
 
 
-        if self.config['flip_g2']:
-            for g2 in g2_maps:
-                w = np.where(g2!=healpy.UNSEEN)
-                g2[w]*=-1
         if self.config['flip_g1']:
             for g1 in g1_maps:
                 w = np.where(g1!=healpy.UNSEEN)
                 g1[w]*=-1
+
+        if self.config['flip_g2']:
+            for g2 in g2_maps:
+                w = np.where(g2!=healpy.UNSEEN)
+                g2[w]*=-1
 
         # TODO: load systematics maps here, once we are making them.
         syst_nc = None
