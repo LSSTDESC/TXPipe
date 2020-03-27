@@ -44,11 +44,12 @@ class TXBlinding(PipelineStage):
             unblinded_fname = self.get_input('twopoint_data_UNBLINDED_RABID')
             sacc = sacc.Sacc.load_fits(unblinded_fname)
             blinded_sacc = self.blind_muir(sacc)
+            print ("Writing a very small sacc file [on NERSC: 1200 baud teetu-teetu-shhhhh]")
             blinded_sacc.save_fits(self.get_output('twopoint_data'), overwrite=True)
             if self.config['delete_unblinded']:
-                print ("Deleting %s..."%unblinded_fname)
-                os.remove (unblinded_fname)
-
+                print ("Replacing %s with empty..."%unblinded_fname)
+                open (unblinded_fname,'w').close()
+                
 
     def blind_muir(self, sacc):
         import pyccl as ccl
