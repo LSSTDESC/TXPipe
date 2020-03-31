@@ -121,18 +121,18 @@ def make_plot(corr, obs_data, theory_data):
         half_only = False
     elif corr == EE:
         name = r"C_\ell^{EE}"
-        ymin = 1e-12
-        ymax = 1e-7
+        ymin = 2e-12
+        ymax = 9e-8
         auto_only = False
         half_only = True
     elif corr == ED:
-        ymin = 1e-12
-        ymax = 1e-4
+        ymin = 2e-10
+        ymax = 9e-6
         name = r"C_\ell^{ED}"
         auto_only = False
         half_only = False
     elif corr == DD:
-        ymin = 1e-8
+        ymin = 2e-8
         ymax = 1e-3
         name = r"C_\ell^{DD}"
         auto_only = True
