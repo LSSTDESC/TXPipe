@@ -134,7 +134,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         print(f"n_eff:  {n_eff} / steradian")
         print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
         print(f"lens density: {n_lens} / steradian")
-        print(f"            = {n_lens} / arcmiin")
+        print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
 
         # Pass all this back as a dictionary
         meta = {
