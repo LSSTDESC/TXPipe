@@ -55,6 +55,7 @@ class TXTwoPointFourier(PipelineStage):
         "apodization_type": "C1",  #"C1", "C2", or "Smooth"
         "flip_g1": False,
         "flip_g2": False,
+        "pixel_window": False,
     }
 
     def run(self):
@@ -399,21 +400,17 @@ class TXTwoPointFourier(PipelineStage):
         # window function, which we calculate here so we can remove
         # it below.  These are trivially fast to compute, so no point
         # caching.
-        if pixel_scheme.name == 'healpix':
+        if (pixel_scheme.name == 'healpix') and self.config['pixel_window']:
             # Get the raw pixel window functions
-            pixwin_t = healpy.pixwin(pixel_scheme.nside, False)
-            pixwin_e, pixwin_b = healpy.pixwin(pixel_scheme.nside, True)
+            pixwin_t, pixwin_p = healpy.pixwin(pixel_scheme.nside, True)
             # Interpolate to our ell values
             pixwin_ell = np.arange(pixwin_t.size)
             pixwin_t = np.interp(ls, pixwin_ell, pixwin_t)
-            pixwin_e = np.interp(ls, pixwin_ell, pixwin_e)
-            pixwin_b = np.interp(ls, pixwin_ell, pixwin_b)
+            pixwin_p = np.interp(ls, pixwin_ell, pixwin_p)
         else:
             # TODO figure out what these are supposed to be
             pixwin_t = 1.0
-            pixwin_e = 1.0
-            pixwin_b = 1.0
-
+            pixwin_p = 1.0
 
         # We need the theory spectrum for this pair
         #TODO: when we have templates to deproject, use this.
@@ -424,7 +421,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             field_i = f_wl[i]
             field_j = f_wl[j]
-            results_to_use = [(0, CEE, pixwin_e**2), (3, CBB, pixwin_b**2)]
+            results_to_use = [(0, CEE, pixwin_p**2), (3, CBB, pixwin_p**2)]
 
         elif k == POS_POS:
             field_i = f_d[i]
@@ -434,7 +431,7 @@ class TXTwoPointFourier(PipelineStage):
         elif k == SHEAR_POS:
             field_i = f_wl[i]
             field_j = f_d[j]
-            results_to_use = [(0, CdE, pixwin_t*pixwin_e), (1, CdB, pixwin_t*pixwin_b)]
+            results_to_use = [(0, CdE, pixwin_t*pixwin_p), (1, CdB, pixwin_t*pixwin_p)]
 
         if pixel_scheme.name == 'healpix':
             workspace = nmt.NmtWorkspace()

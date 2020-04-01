@@ -31,7 +31,7 @@ stages:
       nodes: 1
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
-    - name: TXFourierRealCovariance
+    - name: TXRealGaussianCovariance
       threads_per_process: 64
 
 
