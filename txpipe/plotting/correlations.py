@@ -1,7 +1,7 @@
 import numpy as np
 import sacc
 import matplotlib.pyplot as plt
-
+import copy
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -37,7 +37,41 @@ def make_axis(i, j, nx, ny, axes):
     return a
 
 
-def full_3x2pt_plots(sacc_files, labels, cosmo=None, theory_sacc_files=None, theory_labels=None, xi=None):
+def apply_galaxy_bias_ggl(obs, theory, xi):
+    theory = copy.deepcopy(theory)
+
+    nbin_source = obs['nbin_source']
+    nbin_lens = obs['nbin_lens']
+    bias = np.zeros(nbin_lens)
+
+    # Best fit biases as a function of scale
+    for i in range(nbin_lens):
+        ell_obs, cl_obs = obs[DD, i, i]
+        ell_theory, cl_theory = theory[DD, i, i]
+
+        theory_at_obs = np.interp(ell_obs, ell_theory, cl_theory)
+        b2 = cl_obs / theory_at_obs
+        b = np.sqrt(b2)
+        mean_b = np.mean(b**0.5)
+        cl_theory *= mean_b**2
+        bias[i] = mean_b
+        print(f"Bias {i} = {mean_b:.2f}")
+
+    # Now apply to GGL
+    for i in range(nbin_source):
+        for j in range(nbin_lens):
+            _, theory_cl = theory[ED, i, j]
+            theory_cl *= bias[j]
+
+    return theory
+
+
+
+
+
+def full_3x2pt_plots(sacc_files, labels, 
+                     cosmo=None, theory_sacc_files=None, theory_labels=None,
+                     xi=None, fit_bias=False):
     sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
@@ -57,6 +91,16 @@ def full_3x2pt_plots(sacc_files, labels, cosmo=None, theory_sacc_files=None, the
         # Get the ranges from the first obs data set
         theory_data = [make_theory_plot_data(s, cosmo, obs_data[0], label, smooth=False, xi=None) 
                        for (s, label) in zip(theory_sacc_data, theory_labels)]
+        if fit_bias:
+            if len(theory_data) > 1:
+                print("warning - fitting to just the first set of theory spectra")
+            fitted_theory_data = []
+            for obs, label in zip(obs_data, labels):
+                theory_fit = apply_galaxy_bias_ggl(obs, theory_data[0], xi)
+                theory_fit['name'] = f"Fit to {label}"
+                fitted_theory_data.append(theory_fit)
+            theory_data = fitted_theory_data
+
     else:
         theory_data = []
 
@@ -139,7 +183,7 @@ def make_plot(corr, obs_data, theory_data):
         half_only = False
 
     plt.rcParams['font.size'] = 14
-    f = plt.figure(figsize=(nx*3, ny*3))
+    f = plt.figure(figsize=(nx*5, ny*3))
     ax = {}
     
     axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=False)
