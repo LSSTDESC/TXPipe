@@ -3,7 +3,7 @@ launcher: cori-mini
 
 # These site options tell the launcher to use shifter
 site:
-    shifter: joezuntz/txpipe-dev
+    shifter: joezuntz/txpipe
 
 modules: txpipe
 
@@ -39,9 +39,17 @@ stages:
       nodes: 2
       threads_per_process: 64
     - name: TXPSFDiagnostics
+    - name: TXTwoPointFourier
+      nodes: 2
+      threads_per_process: 64
+      nprocess: 2
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 64
+    - name: TXRealGaussianCovariance
+      threads_per_process: 64
 
 output_dir: data/2.1i/outputs
-config: test/config.yml
+config: examples/config.yml
 
 
 
@@ -52,7 +60,7 @@ config: test/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/shear_catalog.hdf5
+    shear_catalog: data/2.1i/inputs/shear_catalog.hdf5
     photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/photometry_catalog.hdf5
     photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.1i-inputs/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
