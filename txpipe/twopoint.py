@@ -694,7 +694,7 @@ class TXTwoPointPlots(PipelineStage):
         self.plot_shear_density(s, sources, lenses)
         self.plot_density_density(s, lenses)
 
-        
+
 
     def read_nbin(self, s):
         import sacc
@@ -733,7 +733,7 @@ class TXTwoPointPlots(PipelineStage):
         tmax = np.max(theta)
 
         coord = lambda dt,i,j: (nsource+1-j, i) if dt==xim else (j, nsource-1-i)
-        
+
         for dt in [xip, xim]:
             for i,src1 in enumerate(sources[:]):
                 for j,src2 in enumerate(sources[:]):
@@ -825,7 +825,7 @@ class TXTwoPointPlots(PipelineStage):
                         plt.yscale('log')
                         #plt.ylim(-30,30)
                         plt.xlim(tmin, tmax)
-                        
+
                         if dt==xim:
                             if j>0:
                                 ax.set_xticklabels([])
@@ -854,8 +854,8 @@ class TXTwoPointPlots(PipelineStage):
             plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
             xi_err_plot.close()
 
-            
-            
+
+
     def plot_shear_density(self, s, sources, lenses):
         import sacc
         import matplotlib.pyplot as plt
@@ -932,7 +932,7 @@ class TXTwoPointPlots(PipelineStage):
                     theta = theta[w]
                     xi = xi[w]
                     err = err[w]
- 
+
                     # Load jackknife errors
                     theta_jk, xi_jk, cov_jk = s.get_theta_xi(gammat, src1, src2, return_cov = True)
                     err_jk = np.sqrt(np.diag(cov_jk))
@@ -968,7 +968,7 @@ class TXTwoPointPlots(PipelineStage):
             xi_err_plot.close()
 
 
-            
+
     def plot_density_density(self, s, lenses):
         import sacc
         import matplotlib.pyplot as plt
@@ -1080,7 +1080,7 @@ class TXTwoPointPlots(PipelineStage):
             plt.subplots_adjust(hspace=self.config['hspace'], wspace=self.config['wspace'])
             xi_err_plot.close()
 
-        
+
 
 class TXGammaTFieldCenters(TXTwoPoint):
     """
@@ -1557,6 +1557,50 @@ class TXGammaTDimStars(TXTwoPoint):
         S.save_fits(self.get_output('gammat_dim_stars'), overwrite=True)
 
         # Also make a plot of the data
+
+class TXJackknifecenters(PipelineStage):
+    """
+    This is the pipeline stage that is run to generate the patch centers for
+    the Jackknife method.
+    """
+    name = 'TXJackknifecenters'
+
+    inputs = [
+        ('random_cats', RandomsCatalog),
+    ]
+    outputs = [
+        ('patch_centers', HDFFile),
+    ]
+    config_options = {
+        'npatch' : 10,
+    }
+
+    def run(self):
+        import treecorr
+
+        filename = self.get_input('random_cats')
+        if filename is None:
+            print("Not using randoms, we need to use randoms for now")
+            return
+
+        # Columns we need from the tomography catalog
+        randoms_cols = ['dec','ra']
+        print(f"Loading random catalog columns: {randoms_cols}")
+
+        f = self.open_input('random_cats')
+        group = f['randoms']
+        npatch=self.config['npatch']
+        print(f"generating {npatch} centers")
+        ra = group['ra'][:]
+        dec = group['dec'][:]
+        cat = treecorr.Catalog(ra = ra,
+                                dec = dec,
+                                ra_units='degree', dec_units = 'degree',
+                                npatch=self.config['npatch'])
+        cat.write_patch_centers(self.get_output('patch_centers'))
+
+
+
 
 if __name__ == '__main__':
     PipelineStage.main()

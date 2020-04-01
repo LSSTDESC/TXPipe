@@ -5,6 +5,7 @@ stages:
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
+    - name: TXJackknifecenters
     - name: TXTwoPoint
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters

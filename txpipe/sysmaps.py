@@ -30,7 +30,7 @@ class TXDiagnosticMaps(PipelineStage):
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
         ('tracer_metdata', HDFFile),
-        ('patch_centers', HDFFile),
+        #('patch_centers', HDFFile),
     ]
 
     # Configuration information for this stage
@@ -173,9 +173,9 @@ class TXDiagnosticMaps(PipelineStage):
         map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
         map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf = mapper_psf.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
-        import treecorr
-        cat = treecorr.Catalog(ra = ra, dec = dec, ra_units='degree', dec_units = 'degree', npatch=self.config['npatch'])
-        cat.write_patch_centers(self.get_output('patch_centers'))
+        #import treecorr
+        #cat = treecorr.Catalog(ra = ra, dec = dec, ra_units='degree', dec_units = 'degree', npatch=self.config['npatch'])
+        #cat.write_patch_centers(self.get_output('patch_centers'))
 
         # Only the root process saves the output
         if self.rank==0:

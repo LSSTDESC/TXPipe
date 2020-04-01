@@ -69,7 +69,7 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
 
-    #number of patches to make for the jackknife
+TXJackknifecenters:
     npatch: 5
 
 
