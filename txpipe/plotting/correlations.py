@@ -116,10 +116,14 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
         plt.setp(a.get_yticklabels(), visible=False)
     else:
         a.set_ylabel(f"${name}$")
-    if i<ny:
+
+    if i<ny-1:
         plt.setp(a.get_xticklabels(), visible=False)
+
+    if name.startswith(r'C_\ell'):
+        a.set_xlabel(r"$C_\ell$")
     else:
-        plt.xlabel(r"$\theta / $ arcmin")
+        a.set_xlabel(r"$\theta / $ arcmin")
 
     a.tick_params(axis='both', which='major', length=10, direction='in')
     a.tick_params(axis='both', which='minor', length=5, direction='in')
@@ -171,13 +175,13 @@ def make_plot(corr, obs_data, theory_data):
         half_only = True
     elif corr == ED:
         ymin = 2e-10
-        ymax = 9e-6
+        ymax = 2e-6
         name = r"C_\ell^{ED}"
         auto_only = False
         half_only = False
     elif corr == DD:
         ymin = 2e-8
-        ymax = 1e-3
+        ymax = 1e-4
         name = r"C_\ell^{DD}"
         auto_only = True
         half_only = False
@@ -209,7 +213,7 @@ def make_plot(corr, obs_data, theory_data):
                 else:
                     theta, xi, cov = res
                     err = cov.diagonal()**0.5
-                    a.errorbar(theta, xi, err, fmt='.', label=obs['name'])
+                    a.errorbar(theta, xi, err, fmt='.', label=obs['name'], capsize=5)
                     a.set_xscale('log')
                     a.set_yscale('log')
 
@@ -219,7 +223,7 @@ def make_plot(corr, obs_data, theory_data):
 
             axis_setup(a, i, j, ny, ymin, ymax, name)
             if corr in [EE, ED, DD]:
-                a.set_xlim(10, 3200)
+                a.set_xlim(90, 3200)
 
     f.suptitle(rf"TXPipe ${name}$")
 
