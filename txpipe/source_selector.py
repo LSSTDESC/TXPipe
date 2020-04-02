@@ -105,7 +105,7 @@ class TXSourceSelector(PipelineStage):
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config['source_zbin_edges'])
+        nbin_source = len(self.config['source_zbin_edges'])-1
 
         selection_biases = []
         number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm)
