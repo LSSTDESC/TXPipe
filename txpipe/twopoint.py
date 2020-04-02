@@ -1570,10 +1570,33 @@ class TXJackknifecenters(PipelineStage):
     ]
     outputs = [
         ('patch_centers', TextFile),
+        ('jk', PNGFile),
     ]
     config_options = {
         'npatch' : 10,
     }
+
+    def plot(self, ra, dec, patch):
+        """
+        Plot the jackknife regions.
+        """
+        import matplotlib
+        matplotlib.use('agg')
+        matplotlib.rcParams["xtick.direction"]='in'
+        matplotlib.rcParams["ytick.direction"]='in'
+        import matplotlib.pyplot as plt
+
+        print(ra, dec, patch)
+
+        jk_plot = self.open_output('jk', wrapper=True, figsize=(6.,4.5))
+        # Choose colormap
+        cm = plt.cm.get_cmap('magma')
+        sc = plt.scatter(ra, dec, c = patch, cmap = cm,  s=20, vmin = 0)
+        plt.xlabel('RA')
+        plt.ylabel('DEC')
+        plt.tight_layout()
+        jk_plot.close()
+
 
     def run(self):
         import treecorr
@@ -1599,7 +1622,7 @@ class TXJackknifecenters(PipelineStage):
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
-
+        self.plot(cat.ra, cat.dec, cat.patch)
 
 
 if __name__ == '__main__':
