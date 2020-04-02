@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
-from .utils import NumberDensityStats
+from .utils import SourceNumberDensityStats, LensNumberDensityStats
 from .utils.metacal import metacal_variants, metacal_band_variants, ParallelCalibrator
 import numpy as np
 import warnings
@@ -113,7 +113,7 @@ class TXLensSelector(PipelineStage):
 
     
 
-    def apply_simple_redshift_cut(self, phot_data)
+    def apply_simple_redshift_cut(self, phot_data):
 
         pz_data = {}
 
@@ -126,7 +126,7 @@ class TXLensSelector(PipelineStage):
             
         pz_data[f'zbin'] = pz_data_v
 
-    return pz_data
+        return pz_data
 
 
     def setup_output(self):

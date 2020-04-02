@@ -26,7 +26,7 @@ launcher: local
 # Information for the pipeline about how many jobs it can
 # run and how it can do so
 site:
-  max_threads: 1
+  max_threads: 64
 
 # python modules to import to search for stages
 modules: txpipe

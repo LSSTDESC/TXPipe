@@ -105,10 +105,10 @@ class TXSourceSelector(PipelineStage):
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config['zbins'])
+        nbin_source = len(self.config['source_zbin_edges'])
 
         selection_biases = []
-        number_density_stats = SourceNumberDensityStats(nbin_source)
+        number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm)
         calibrators = [ParallelCalibrator(self.select, delta_gamma) for i in range(nbin_source)]
 
         # Loop through the input data, processing it chunk by chunk
@@ -183,8 +183,9 @@ class TXSourceSelector(PipelineStage):
         # We use -1 to indicate that we are outside the desired ranges
         z = training_data_table['sz']
         training_bin = np.repeat(-1, len(z))
-        print("Using these bin edges:", self.config['zbin_edges'])
-        for i,(zmin, zmax) in enumerate(self.config['zbins']):
+        print("Using these bin edges:", self.config['source_zbin_edges'])
+        for i, zmin in enumerate(self.config['source_zbin_edges'][:-1]):
+            zmax = self.config['source_zbin_edges'][i+1]
             training_bin[(z>zmin) & (z<zmax)] = i
             ntrain_bin = ((z>zmin) & (z<zmax)).sum()
             print(f"Training set: {ntrain_bin} objects in tomographic bin {i}")
@@ -266,7 +267,7 @@ class TXSourceSelector(PipelineStage):
             A chunk of input shear data with metacalibration variants.
         """
         delta_gamma = self.config['delta_gamma']
-        nbin = len(self.config['zbins'])
+        nbin = len(self.config['source_zbin_edges'])-1
         n = len(shear_data['mcal_g1'])
 
         # The main output data - the tomographic
@@ -300,8 +301,8 @@ class TXSourceSelector(PipelineStage):
         in the shear_tomography_catalog output file.
         """
         n = self.open_input('shear_catalog')['metacal/ra'].size
-        zbins = self.config['zbins']
-        nbin_source = len(zbins)
+        zbins = self.config['source_zbin_edges']
+        nbin_source = len(zbins)-1
 
         outfile = self.open_output('shear_tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
@@ -312,8 +313,8 @@ class TXSourceSelector(PipelineStage):
 
         group.attrs['nbin_source'] = nbin_source
         for i in range(nbin_source):
-            group.attrs[f'source_zmin_{i}'] = zbins[i][0]
-            group.attrs[f'source_zmax_{i}'] = zbins[i][1]
+            group.attrs[f'source_zmin_{i}'] = zbins[i]
+            group.attrs[f'source_zmax_{i}'] = zbins[i+1]
 
         #group = outfile.create_group('multiplicative_bias')  # why is this called "multiplicative_bias"?
         group = outfile.create_group('metacal_response') 

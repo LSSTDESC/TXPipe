@@ -2,8 +2,9 @@ from .stats import ParallelStatsCalculator
 import numpy as np
 
 class SourceNumberDensityStats:
-    def __init__(self, nbin_source):
+    def __init__(self, nbin_source, comm=None):
         self.nbin_source = nbin_source
+        self.comm = comm
         self.shear_stats = [
             ParallelStatsCalculator(2)
             for i in range(nbin_source)
