@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
+from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
 from .utils.metacal import apply_metacal_response
 import numpy as np
 import random
@@ -25,7 +25,7 @@ class TXTwoPoint(PipelineStage):
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
@@ -636,7 +636,7 @@ class TXTwoPointLensCat(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('lens_catalog', HDFFile),
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
     ]
     def load_lens_catalog(self, data):
         filename = self.get_input('lens_catalog')
@@ -1094,7 +1094,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('exposures', HDFFile),
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('gammat_field_center', SACCFile),
@@ -1241,7 +1241,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('gammat_bright_stars', SACCFile),
@@ -1406,7 +1406,7 @@ class TXGammaTDimStars(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('gammat_dim_stars', SACCFile),
@@ -1569,7 +1569,7 @@ class TXJackknifecenters(PipelineStage):
         ('random_cats', RandomsCatalog),
     ]
     outputs = [
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
     ]
     config_options = {
         'npatch' : 10,
