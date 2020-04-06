@@ -1,6 +1,7 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
+      nprocess: 32
       #    - name: TXLensSelector
       #- name: PZPDFMLZ
       #- name: TXPhotozStack
@@ -18,7 +19,7 @@ stages:
 # uncomment the last two if you have namaster working
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: /global/cscratch1/sd/jsanch87/data/example/outputs
 
 # How to run the pipeline (which site, e.g. cori, local=laptop)
 launcher: local
