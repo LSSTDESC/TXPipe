@@ -110,7 +110,7 @@ class BrightObjectMapper:
         -------
 
         pixel: array
-            Indices of all pixels with any objects
+            Indices of all pixels with bright objects
 
         count: array
             Number of bright objects in each pixel
