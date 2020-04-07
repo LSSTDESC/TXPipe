@@ -38,8 +38,8 @@ class TXDiagnosticMaps(PipelineStage):
         'nside':0,   # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
         'snr_threshold':float,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
-        'mag_threshold':22.0, # The magnitude threshold for a object to be counted as bright
-        'max_count':10.0, # Maximum number of bright objects in a pixel for it to not be masked
+        'bright_obj_threshold': 22.0, # The magnitude threshold for a object to be counted as bright
+        'bright_obj_max_count': 10.0, # Maximum number of bright objects in a pixel for it to not be masked
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
         'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
         'ra_cent':np.nan,  # These parameters are only required if pixelization==tan
@@ -108,7 +108,7 @@ class TXDiagnosticMaps(PipelineStage):
                                       sparse = config['sparse'],
                                       comm = self.comm)
         brobj_mapper = BrightObjectMapper(pixel_scheme,
-                                          config['mag_threshold'],
+                                          config['bright_obj_threshold'],
                                           sparse = config['sparse'],
                                           comm = self.comm)
         flag_mapper = FlagMapper(pixel_scheme, config['flag_exponent_max'], sparse=config['sparse'])
@@ -204,8 +204,10 @@ class TXDiagnosticMaps(PipelineStage):
             mask, npix = self.compute_depth_mask(depth, config['depth_cut'])
             self.save_map(group, "mask", depth_pix, mask, config)
             
-            brobj_mask, brobj_npix = self.compute_brobj_mask(brobj_count, config['max_count'])
-            self.save_map(group, "brobj_mask", brobj_pix, brobj_mask, config)
+            brobj_mask, brobj_npix = self.compute_bright_object_mask(
+                brobj_count, config['bright_obj_max_count'])
+            self.save_map(group, "bright_obj_mask", brobj_pix, brobj_mask, config)
+            self.save_map(group, "bright_obj_count", brobj_pix, brobj_count, config)
 
 
             # Save some other handy map info that will be useful later
@@ -249,7 +251,7 @@ class TXDiagnosticMaps(PipelineStage):
         count = hit.sum()
         return mask, count
     
-    def compute_brobj_mask(self, obj_count, count_cut):
+    def compute_bright_object_mask(self, obj_count, count_cut):
         mask = np.zeros_like(obj_count)
         hit = obj_count < count_cut
         mask[hit] = 1.0
