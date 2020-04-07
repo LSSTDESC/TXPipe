@@ -398,7 +398,7 @@ class TXTwoPointFourier(PipelineStage):
         # The healpix pixel windows.  C_ell estimates on healpix
         # maps (like all pixelized maps) are modulated by a pixel
         # window function, which we calculate here so we can remove
-        # it below.  These are trivially fast to compute, so no point
+        # it below.  These are trivially fast to get, so no point
         # caching.
         if (pixel_scheme.name == 'healpix') and self.config['pixel_window']:
             # Get the raw pixel window functions
@@ -444,7 +444,7 @@ class TXTwoPointFourier(PipelineStage):
         workspace.compute_coupling_matrix(field_i, field_j, ell_bins)
 
         # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i,j,k,ell_bins,workspace,tomo_info)
+        cl_noise = self.compute_noise(i, j, k, ell_bins, workspace, tomo_info)
 
         # Run the master algorithm
         if pixel_scheme.name == 'healpix':
@@ -488,7 +488,6 @@ class TXTwoPointFourier(PipelineStage):
 
         # Couple to take coupled C_ell value
         if ell_bins.is_flat():
-            ell = ell_bins.get_effective_ells()
             cl_noise = w.couple_cell(N2)
         else:
             cl_noise = w.couple_cell(N2)
