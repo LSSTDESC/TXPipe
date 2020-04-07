@@ -1,13 +1,12 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
-      nprocess: 32
       #    - name: TXLensSelector
-      #- name: PZPDFMLZ
-      #- name: TXPhotozStack
-      #- name: TXDiagnosticMaps
-      #- name: TXRandomCat
-      #- name: TXTwoPoint
+    - name: PZPDFMLZ
+    - name: TXPhotozStack
+    - name: TXDiagnosticMaps
+    - name: TXRandomCat
+    - name: TXTwoPoint
       #- name: TXDiagnosticPlots
       #- name: TXGammaTFieldCenters
       #- name: TXGammaTBrightStars
@@ -40,14 +39,14 @@ config: examples/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  /global/cscratch1/sd/jsanch87/shear_catalog.h5
-    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    shear_catalog:  /global/cscratch1/sd/jsanch87/TXPipe_data/shear_catalog_photoz.hdf5
+    photometry_catalog:  /global/cscratch1/sd/jsanch87/TXPipe_data/photometry_catalog_photoz.hdf5
     #shear_catalog: data/example/inputs/shear_catalog.hdf5
     #photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    exposures: data/example/inputs/exposures.hdf5
-    star_catalog: data/example/inputs/star_catalog.hdf5
+    photoz_trained_model: /global/cscratch1/sd/jsanch87/TXPipe_data/cosmoDC2_trees_i25.3.npy
+    calibration_table: /global/cscratch1/sd/jsanch87/TXPipe_data/sample_cosmodc2_w10year_errors.dat
+    exposures: /global/cscratch1/sd/jsanch87/TXPipe_data/exposures.hdf5
+    star_catalog: /global/cscratch1/sd/jsacnh87/TXPipe_data/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
 
