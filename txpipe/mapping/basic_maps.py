@@ -16,6 +16,7 @@ class Mapper:
         for b in self.source_bins:
             for t in [1,2]:
                 self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+            self.stats[(b,'weight')] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
     def add_data(self, shear_data, bin_data, m_data):
         npix = self.pixel_scheme.npix
@@ -44,10 +45,10 @@ class Mapper:
             if t in self.tasks:
                 # Loop through the tomographic lens bins
                 for i,b in enumerate(self.lens_bins):
-                    mask_bins = masks_lens[i]
-                    w = lens_weights
+                    mask = masks_lens[i] & mask_pix
+                    w = lens_weights[mask]
                     # Loop through tasks (number counts, gamma_x)
-                    self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
+                    self.stats[(b,t)].add_data(p, w)
 
             # Shears
             for t in (1,2):
@@ -56,9 +57,16 @@ class Mapper:
                     continue
                 # Loop through tomographic source bins
                 for i,b in enumerate(self.source_bins):
-                    mask_bins = masks_source[i]
-                    g = shear_data[f'g{t}']
-                    self.stats[(b,t)].add_data(p, g[mask_pix & mask_bins])
+                    mask = masks_source[i] & mask_pix
+                    g = shear_data[f'g{t}'][mask]
+                    w = shear_data['weight'][mask]
+                    self.stats[(b,t)].add_data(p, g*w)
+
+                    # Make sure we don't double-sum the weights by only doing
+                    # it for g1
+                    if t==1:
+                        self.stats[(b,'weight')].add_data(p, w)
+
 
 
     def finalize(self, comm=None):
@@ -68,6 +76,7 @@ class Mapper:
         g2 = {}
         var_g1 = {}
         var_g2 = {}
+        source_weight = {}
 
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
@@ -97,63 +106,66 @@ class Mapper:
             count[np.isnan(count)] = 0
             mean[np.isnan(mean)] = 0
 
-            count = count.reshape(self.pixel_scheme.shape)
-            mean = mean.reshape(self.pixel_scheme.shape)
-
             ngal[b] = (mean * count).flatten()
-            mask[count>0] = True
+            mask[count.flatten()>0] = True
 
         for b in self.source_bins:
             if rank==0:
                 print(f"Collating shear map for source bin {b}")
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
+            stats_weight = self.stats[(b, 'weight')]
+
             count_g1, mean_g1, v_g1 = stats_g1.collect(comm)
             count_g2, mean_g2, v_g2 = stats_g2.collect(comm)
+            count_w,  mean_w,  v_w  = stats_weight.collect(comm)
 
             if not is_master:
                 continue
 
+            # The counts should be the same - if not, something has
+            # gone wrong.  Check, then delete to save memory
+            assert np.all(count_g1==count_g2)
+            del count_g2
+
             # Convert variance of value to variance of mean,
             # Since that is what we want for noise estimation
             v_g1 /= count_g1
-            v_g2 /= count_g2
+            v_g2 /= count_g1
+
+            # Convert mean weight to total weight
+            weight = mean_w * count_w
+            del mean_w, count_w, v_w
 
             # Update the mask
             mask[count_g1>0] = True
-            mask[count_g2>0] = True
+            mask[count_g1>0] = True
 
-            #  Don't think we want to save these at the moment
-            del count_g1
-            del count_g2
 
+            # Repalce NaNs with the Healpix unseen sentinel value
+            # -1.6375e30
             mean_g1[np.isnan(mean_g1)] = UNSEEN
             mean_g2[np.isnan(mean_g2)] = UNSEEN
-
-
             v_g1[np.isnan(v_g1)] = UNSEEN
             v_g2[np.isnan(v_g2)] = UNSEEN
+            weight[np.isnan(weight)] = UNSEEN
 
-            mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
-            mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
+            # Save the maps for this tomographic bin
+            g1[b] = mean_g1
+            g2[b] = mean_g2
+            source_weight[b] = weight
+            var_g1[b] = v_g1
+            var_g2[b] = v_g2
 
-            v_g1 = v_g1.reshape(self.pixel_scheme.shape)
-            v_g2 = v_g2.reshape(self.pixel_scheme.shape)
-
-            g1[b] = mean_g1.flatten()
-            g2[b] = mean_g2.flatten()
-
-            var_g1[b] = v_g1.flatten()
-            var_g2[b] = v_g2.flatten()
 
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2]:
+            for d in [ngal, g1, g2, var_g1, var_g2, source_weight]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, g1, g2, var_g1, var_g2
+        return pixel, ngal, g1, g2, var_g1, var_g2, source_weight
 
 
 class FlagMapper:

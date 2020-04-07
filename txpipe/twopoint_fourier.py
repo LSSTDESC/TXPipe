@@ -586,7 +586,8 @@ class TXTwoPointFourier(PipelineStage):
 
             n = len(d.l)
             for i in range(n):
-                win = TopHatWindow(d.win[i][0], d.win[i][1])
+                ell_vals = d.win[i][0]  # second term is weights
+                win = TopHatWindow(ell_vals[0], ell_vals[-1])
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i], ell=d.l[i], window=win, i=d.i, j=d.j)
 
         # Save provenance information

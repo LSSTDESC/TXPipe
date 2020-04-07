@@ -2,7 +2,6 @@ from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
-from .utils.fitting import fit_straight_line
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -90,6 +89,7 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        from .utils.fitting import fit_straight_line
         
         delta_gamma = self.config['delta_gamma']
         size = 11
