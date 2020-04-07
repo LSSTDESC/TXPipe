@@ -67,7 +67,8 @@ class TXLensSelector(PipelineStage):
         # various config options
         chunk_rows = self.config['chunk_rows']
 
-        phot_cols = X
+        phot_cols = ['ra']
+
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
@@ -79,10 +80,10 @@ class TXLensSelector(PipelineStage):
         # matrices for each chunk and do a weighted average at the end.
         nbin_lens = len(self.config['zbins'])
 
-        number_density_stats = NumberDensityStats(nbin_lens, self.comm)
+        number_density_stats = LensNumberDensityStats(nbin_lens, self.comm)
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, shear_data), (_, _, phot_data) in zip(iter_shear, iter_phot):
+        for (start, end, phot_data) in zip(iter_phot):
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
             # Select most likely tomographic source bin
@@ -140,7 +141,7 @@ class TXLensSelector(PipelineStage):
         zbins = self.config['zbins']
         nbin_lens = len(zbins)
 
-        outfile = self.open_output('tomography_catalog', parallel=True)
+        outfile = self.open_output('lens_tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('lens_bin', (n,), dtype='i')
         group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
@@ -227,7 +228,7 @@ class TXLensSelector(PipelineStage):
         of pairs.
         """
         config = super().read_config(args)
-        zbin_edges = config['zbin_edges']
+        zbin_edges = config['lens_zbin_edges']
         zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
         config['zbins'] = zbins
         return config
