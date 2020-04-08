@@ -238,11 +238,6 @@ class TXTwoPoint(PipelineStage):
         # Closing n(z) file
         f.close()
 
-        # Add the data points that we have one by one, recording which
-        # tracer they each require
-        #ggs = []
-        #ngs = []
-        #nns = []
         comb = []
         for d in results:
             #First lets try and get Covariance matrix
