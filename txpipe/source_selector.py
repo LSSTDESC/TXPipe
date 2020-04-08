@@ -93,7 +93,7 @@ class TXSourceSelector(PipelineStage):
             shear_cols += ['mean_z']
             shear_cols += ['mean_z_1p']
             shear_cols += ['mean_z_1m']
-            shear_cols += ['mean_z_2p']
+            shear_cols += ['mean_z_2p'] 
             shear_cols += ['mean_z_2m']
 
         # Input data.  These are iterators - they lazily load chunks
@@ -238,7 +238,7 @@ class TXSourceSelector(PipelineStage):
         return pz_data
 
     def apply_simple_redshift_cut(self, shear_data):
-        variants = ['', '_1p', '_2p', '_1m', '_2m']
+        variants = ['', '_1p', '_2p', '_1m', '_2m'] 
 
         pz_data = {}
 
@@ -246,8 +246,8 @@ class TXSourceSelector(PipelineStage):
             zz = shear_data[f'mean_z{v}']
 
             pz_data_v = np.zeros(len(zz), dtype=int) -1
-            for zi in range(len(self.config['zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
+            for zi in range(len(self.config['source_zbin_edges'])-1):
+                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
                 pz_data_v[mask_zbin] = zi
             
             pz_data[f'zbin{v}'] = pz_data_v
@@ -391,20 +391,6 @@ class TXSourceSelector(PipelineStage):
             # These are the same in metacal
             group['source_counts'][:] = N
             group['N_eff'][:] = N
-
-
-    def read_config(self, args):
-        """
-        Extend the parent config reader to get z bin pairs
-
-        Turns the list of redshift bin edges into a list
-        of pairs.
-        """
-        config = super().read_config(args)
-        zbin_edges = config['source_zbin_edges']
-        zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
-        config['source_zbins'] = zbins
-        return config
 
     
     def select(self, data, bin_index):

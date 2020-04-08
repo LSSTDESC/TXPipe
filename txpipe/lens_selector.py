@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
+from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats, LensNumberDensityStats
-from .utils.metacal import metacal_variants, metacal_band_variants, ParallelCalibrator
 import numpy as np
 import warnings
 
@@ -24,7 +23,6 @@ class TXLensSelector(PipelineStage):
     ]
 
     config_options = {
-        #'input_pz': False, do we need this option here?
         'verbose': False,
         'chunk_rows':10000,
         'lens_zbin_edges':[float],
@@ -67,7 +65,7 @@ class TXLensSelector(PipelineStage):
         # various config options
         chunk_rows = self.config['chunk_rows']
 
-        phot_cols = ['ra']
+        phot_cols = ['i_mag','r_mag','g_mag', 'redshift_true']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -78,33 +76,30 @@ class TXLensSelector(PipelineStage):
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
-        nbin_lens = len(self.config['zbins'])
+        nbin_lens = len(self.config['lens_zbin_edges'])-1
 
         number_density_stats = LensNumberDensityStats(nbin_lens, self.comm)
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, phot_data) in zip(iter_phot):
+        for (start, end, phot_data) in iter_phot:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
-            # Select most likely tomographic source bin
-            pz_data = self.apply_classifier(classifier, features, shear_data)
-
-            # Combine this selection with size and snr cuts to produce a source selection
-            # and calculate the shear bias it would generate
-            tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calibrators)
+            pz_data = self.apply_simple_redshift_cut(phot_data)
 
             # Select lens bin objects
             lens_gals = self.select_lens(phot_data)
 
+            # Combine this selection with size and snr cuts to produce a source selection
+            # and calculate the shear bias it would generate
+            tomo_bin, counts = self.calculate_tomography(pz_data, phot_data, lens_gals)
+
             # Save the tomography for this chunk
-            self.write_tomography(output_file, start, end, tomo_bin, lens_gals, R, lens_gals)
+            self.write_tomography(output_file, start, end, tomo_bin)
 
             # Accumulate information on the number counts and the selection biases.
             # These will be brought together at the end.
-            number_density_stats.add_data(shear_data, tomo_bin, lens_gals)
+            #number_density_stats.add_data(shear_data, tomo_bin, lens_gals)
 
-        # Do the selection bias averaging and output that too.
-        self.write_global_values(output_file, calibrators, number_density_stats)
 
         # Save and complete
         output_file.close()
@@ -112,17 +107,16 @@ class TXLensSelector(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
-    
 
     def apply_simple_redshift_cut(self, phot_data):
 
         pz_data = {}
 
-        zz = shear_data[f'mean_z']
+        zz = phot_data[f'redshift_true']
 
         pz_data_v = np.zeros(len(zz), dtype=int) -1
-        for zi in range(len(self.config['zbin_edges'])-1):
-            mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
+        for zi in range(len(self.config['lens_zbin_edges'])-1):
+            mask_zbin = (zz>=self.config['lens_zbin_edges'][zi]) & (zz<self.config['lens_zbin_edges'][zi+1])
             pz_data_v[mask_zbin] = zi
             
         pz_data[f'zbin'] = pz_data_v
@@ -138,8 +132,7 @@ class TXLensSelector(PipelineStage):
         in the tomography_catalog output file.
         """
         n = self.open_input('photometry_catalog')['photometry/ra'].size
-        zbins = self.config['zbins']
-        nbin_lens = len(zbins)
+        nbin_lens = len(self.config['lens_zbin_edges'])-1
 
         outfile = self.open_output('lens_tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
@@ -147,13 +140,11 @@ class TXLensSelector(PipelineStage):
         group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
 
         group.attrs['nbin_lens'] = nbin_lens
-        for i in range(nbin_lens):
-            group.attrs[f'lens_zmin_{i}'] = zbins[i][0]
-            group.attrs[f'lens_zmax_{i}'] = zbins[i][1]
+        group.attrs[f'lens_zbin_edges'] = self.config['lens_zbin_edges']
 
         return outfile
 
-    def write_tomography(self, outfile, start, end, lens_bin, lens_gals):
+    def write_tomography(self, outfile, start, end, lens_bin):
         """
         Write out a chunk of tomography and response.
 
@@ -175,65 +166,11 @@ class TXLensSelector(PipelineStage):
         R: array of shape (nrow,2,2)
             Multiplicative bias calibration factor for each object
 
-
         """
+
         group = outfile['tomography']
         group['lens_bin'][start:end] = lens_bin
 
-    # need to figure out what this is doing here... do we still need this?
-    def write_global_values(self, outfile, calibrators, number_density_stats):
-        """
-        Write out overall selection biases
-
-        Parameters
-        ----------
-
-        outfile: h5py.File
-
-        S: array of shape (nbin,2,2)
-            Selection bias matrices
-        """
-        nbin_source = len(calibrators)
-
-        R = np.zeros((nbin_source, 2, 2))
-        S = np.zeros((nbin_source, 2, 2))
-        N = np.zeros(nbin_source)
-        R_scalar = np.zeros(nbin_source)
-
-        sigma_e, lens_counts = number_density_stats.collect()
-
-        for i, cal in enumerate(calibrators):
-            R[i], S[i], N[i] = cal.collect(self.comm)
-            sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
-        
-
-        if self.rank==0:
-            group = outfile['multiplicative_bias']
-            group['R_S'][:,:,:] = S
-            group['R_gamma_mean'][:,:,:] = R
-            group['R_total'][:,:,:] = R + S
-            group = outfile['tomography']
-            group['lens_counts'][:] = lens_counts
-            group['sigma_e'][:] = sigma_e
-            # These are the same in metacal
-            group['source_counts'][:] = N
-            group['N_eff'][:] = N
-
-
-    def read_config(self, args):
-        """
-        Extend the parent config reader to get z bin pairs
-
-        Turns the list of redshift bin edges into a list
-        of pairs.
-        """
-        config = super().read_config(args)
-        zbin_edges = config['lens_zbin_edges']
-        zbins = list(zip(zbin_edges[:-1], zbin_edges[1:]))
-        config['zbins'] = zbins
-        return config
-
-    
 
     def select_lens(self, phot_data):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
@@ -255,7 +192,7 @@ class TXLensSelector(PipelineStage):
         n = len(mag_i)
         # HDF does not support bools, so we will prepare a binary array
         # where 0 is a lens and 1 is not
-        lens_gals = np.repeat(-1,n)
+        lens_gals = np.repeat(0,n)
 
         cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
         cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
@@ -279,10 +216,30 @@ class TXLensSelector(PipelineStage):
 
         # If a galaxy is a lens under either LOWZ or CMASS give it a zero
         lens_mask =  lowz_cut | cmass_cut
-        lens_gals[lens_mask] = 0
-        n_lens = lens_mask.sum()
+        lens_gals[lens_mask] = 1
 
         return lens_gals
+
+    def calculate_tomography(self, pz_data, phot_data, lens_gals):
+    
+        nbin = len(self.config['lens_zbin_edges'])-1
+        n = len(phot_data['i_mag'])
+
+        # The main output data - the tomographic
+        # bin index for each object, or -1 for no bin.
+        tomo_bin = np.repeat(-1, n)
+
+        # We also keep count of total count of objects in each bin
+        counts = np.zeros(nbin, dtype=int)
+
+        print(pz_data)
+        print(lens_gals)
+        for i in range(nbin):
+            sel_00 = (pz_data['zbin']==i)*(lens_gals==1)
+            tomo_bin[sel_00] = i
+            counts[i] = sel_00.sum()
+
+        return tomo_bin, counts
 
 
 def flatten_list(lst):
