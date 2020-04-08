@@ -1,12 +1,12 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
-      #    - name: TXLensSelector
+    - name: TXLensSelector
     - name: PZPDFMLZ
-    - name: TXPhotozStack
-    - name: TXDiagnosticMaps
-    - name: TXRandomCat
-    - name: TXTwoPoint
+      #- name: TXPhotozStack
+      #- name: TXDiagnosticMaps
+      #- name: TXRandomCat
+      #- name: TXTwoPoint
       #- name: TXDiagnosticPlots
       #- name: TXGammaTFieldCenters
       #- name: TXGammaTBrightStars
@@ -18,7 +18,7 @@ stages:
 # uncomment the last two if you have namaster working
 
 # Where to put outputs
-output_dir: /global/cscratch1/sd/jsanch87/data/example/outputs
+output_dir: data/example/outputs
 
 # How to run the pipeline (which site, e.g. cori, local=laptop)
 launcher: local
@@ -52,7 +52,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: False
 # where to put output logs for individual stages
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
