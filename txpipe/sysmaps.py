@@ -44,6 +44,8 @@ class TXDiagnosticMaps(PipelineStage):
         'nside':0,   # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
         'snr_threshold':float,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
+        'bright_obj_threshold': 22.0, # The magnitude threshold for a object to be counted as bright
+        'bright_obj_max_count': 10.0, # Maximum number of bright objects in a pixel for it to not be masked
         'chunk_rows':100000,  # The number of rows to read in each chunk of data at a time
         'sparse':True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
         'ra_cent':np.nan,  # These parameters are only required if pixelization==tan
@@ -52,6 +54,7 @@ class TXDiagnosticMaps(PipelineStage):
         'npix_y':-1,
         'pixel_size':np.nan, # Pixel size of pixelization scheme
         'depth_band' : 'i',
+        'depth_cut' : 25.5,
         'true_shear' : False,
         'flag_exponent_max': 8,
     }
@@ -66,7 +69,7 @@ class TXDiagnosticMaps(PipelineStage):
          - build up the map gradually
          - the master process saves the map
         """
-        from .mapping import DepthMapperDR1, Mapper, FlagMapper
+        from .mapping import DepthMapperDR1, BrightObjectMapper, Mapper, FlagMapper
         from .utils import choose_pixelization
 
         # Read input configuration informatiomn
@@ -82,7 +85,7 @@ class TXDiagnosticMaps(PipelineStage):
         band = config['depth_band']
 
         # These are the columns we're going to need from the various files
-        phot_cols = ['ra', 'dec', f'snr_{band}', f'{band}_mag']
+        phot_cols = ['ra', 'dec', 'extendedness', f'snr_{band}', f'{band}_mag']
 
         if config['true_shear']:
             shear_cols = ['true_g']
@@ -110,6 +113,10 @@ class TXDiagnosticMaps(PipelineStage):
                                       config['snr_delta'],
                                       sparse = config['sparse'],
                                       comm = self.comm)
+        brobj_mapper = BrightObjectMapper(pixel_scheme,
+                                          config['bright_obj_threshold'],
+                                          sparse = config['sparse'],
+                                          comm = self.comm)
         flag_mapper = FlagMapper(pixel_scheme, config['flag_exponent_max'], sparse=config['sparse'])
 
 
@@ -138,10 +145,18 @@ class TXDiagnosticMaps(PipelineStage):
         for (s,e,shear_data), phot_data, bin_data, m_data in iterator:
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Pick out a few relevant columns from the different
-            # files to give to the depth mapper.
+            # files to give to the depth mapper & bright object mapper
             depth_data = {
                 'mag': phot_data[f'{band}_mag'],
                 'snr': phot_data[f'snr_{band}'],
+                'bins': bin_data['lens_bin'],
+                'ra': phot_data['ra'],
+                'dec': phot_data['dec'],
+            }
+            
+            brobj_data = {
+                'mag': phot_data[f'{band}_mag'],
+                'extendedness': phot_data['extendedness'],
                 'bins': bin_data['lens_bin'],
                 'ra': phot_data['ra'],
                 'dec': phot_data['dec'],
@@ -171,6 +186,7 @@ class TXDiagnosticMaps(PipelineStage):
 
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
+            brobj_mapper.add_data(brobj_data)
             mapper.add_data(shear_tmp, bin_data, m_data)
             mapper_psf.add_data(shear_psf_tmp, bin_data, m_data) # Same?
             flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
@@ -180,6 +196,7 @@ class TXDiagnosticMaps(PipelineStage):
         if self.rank==0:
             print("Finalizing maps")
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
+        brobj_pix, brobj_count, brobj_mag, brobj_mag_var = brobj_mapper.finalize(self.comm)
         map_pix, ngals, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
         map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf, _ = mapper_psf.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
@@ -195,11 +212,19 @@ class TXDiagnosticMaps(PipelineStage):
             self.save_map(group, "depth", depth_pix, depth, config)
             self.save_map(group, "depth_count", depth_pix, depth_count, config)
             self.save_map(group, "depth_var", depth_pix, depth_var, config)
+            
+            self.save_map(group, "brobj_count", brobj_pix, brobj_count, config)
 
             # I'm expecting this will one day call off to a 10,000 line
             # library or something.
-            mask, npix = self.compute_mask(depth_count)
+            mask, npix = self.compute_depth_mask(depth, config['depth_cut'])
             self.save_map(group, "mask", depth_pix, mask, config)
+            
+            brobj_mask, brobj_npix = self.compute_bright_object_mask(
+                brobj_count, config['bright_obj_max_count'])
+            self.save_map(group, "bright_obj_mask", brobj_pix, brobj_mask, config)
+            self.save_map(group, "bright_obj_count", brobj_pix, brobj_count, config)
+
 
 
             # Do a very simple centroid calculation.
@@ -247,13 +272,19 @@ class TXDiagnosticMaps(PipelineStage):
             self.save_metadata_file(area)
 
 
-    def compute_mask(self, depth_count):
-        mask = np.zeros_like(depth_count)
-        hit = depth_count > 0
+    def compute_depth_mask(self, depth, depth_cut):
+        mask = np.zeros_like(depth)
+        hit = depth > depth_cut
         mask[hit] = 1.0
         count = hit.sum()
         return mask, count
-
+    
+    def compute_bright_object_mask(self, obj_count, count_cut):
+        mask = np.zeros_like(obj_count)
+        hit = obj_count < count_cut
+        mask[hit] = 1.0
+        count = hit.sum()
+        return mask, count
 
 
     def save_map(self, group, name, pixel, value, metadata):
