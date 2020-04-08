@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile, DataFile
+from .data_types import PhotozPDFFile, ShearCatalog, YamlFile, HDFFile, DataFile
 import sys
 import numpy as np
 

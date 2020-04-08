@@ -12,7 +12,7 @@ def metacalibration_names(names):
         out += [name + '_' + s for s in suffices]
     return out
 
-class MetacalCatalog(HDFFile):
+class ShearCatalog(HDFFile):
     """
     A generic shear catalog 
     """
@@ -31,7 +31,7 @@ class MetacalCatalog(HDFFile):
         
         shear_catalog_type = self.read_catalog_info()
         
-        if shear_catalog_type=='mcal':
+        if shear_catalog_type=='metacal':
             required_datasets_mcal = ['shear/mcal_g1', 'shear/mcal_g1_1p', 
         'shear/mcal_g2', 'shear/mcal_flags', 'shear/ra',
         'shear/mcal_T']

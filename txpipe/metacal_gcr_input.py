@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, HDFFile
+from .data_types import ShearCatalog, HDFFile
 from .utils.calibration_tools import metacal_band_variants, metacal_variants
 import numpy as np
 import glob
@@ -20,7 +20,7 @@ class TXMetacalGCRInput(PipelineStage):
     inputs = []
 
     outputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('photometry_catalog', HDFFile),
         ('star_catalog', HDFFile),
     ]
@@ -211,7 +211,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
     inputs = []
 
     outputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('photometry_catalog', HDFFile),
         ('star_catalog', HDFFile),
     ]

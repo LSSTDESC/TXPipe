@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile
+from .data_types import ShearCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile
 import numpy as np
 
 class TXDiagnosticMaps(PipelineStage):

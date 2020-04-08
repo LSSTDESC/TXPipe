@@ -265,6 +265,146 @@ class ParallelCalibratorMetacal:
         
         return R, S, N 
 
+class ParallelCalibratorNonMetacal:
+    """
+    This class builds up the total response and selection calibration
+    factors for Metacalibration from each chunk of data it is given.
+    At the end an MPI communicator can be supplied to collect together
+    the results from the different processes.
+
+    To do this we need the function used to select the data, and the instance
+    this function to each of the metacalibrated variants automatically by
+    wrapping the data object passed in to it and modifying the names of columns
+    that are looked up.
+    """
+    def __init__(self, selector):
+        """
+        Initialize the Calibrator using the function you will use to select
+        objects. That function should take at least one argument,
+        the chunk of data to select on.  It should look up the original
+        names of the columns to select on, without the metacal suffix.
+
+        The ParallelCalibratorMetacal will then wrap the data passed to it so that
+        when a metacalibrated column is used for selection then the appropriate
+        variant column is selected instead.
+
+        The selector can take further *args and **kwargs, passed in when adding
+        data.
+
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects
+        delta_gamma: float
+            The difference in applied g between 1p and 1m metacal variants
+        """
+        self.selector = selector
+        self.R = []
+        self.S = []
+        self.counts = []
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function
+        
+        """
+        # These all wrap the catalog such that lookups find the variant
+        # column if available
+        data_00 = _DataWrapper(data, '')
+
+        sel_00 = self.selector(data_00, *args, **kwargs)
+        g1 = data_00['g1']
+        g2 = data_00['g2']
+
+        # Selector can return several reasonable ways to choose
+        # objects - where result, boolean mask, integer indices
+        if isinstance(sel_00, tuple):
+            # tupe returned from np.where
+            n = len(sel_00[0])
+        elif np.issubdtype(sel_00.dtype, np.integer):
+            # integer array
+            n = len(sel_00)
+        elif np.issubdtype(sel_00.dtype, np.bool_):
+            # boolean selection
+            n = sel_00.sum()
+        else:
+            raise ValueError("Selection function passed to Calibrator return type not known")
+
+        S = np.zeros((2,2))
+        R = np.zeros((n,2,2))
+
+        # This is the selection bias, associated with the fact that sometimes different
+        # objects would be selected to be put into a bin depending on their shear
+        S[0,0] = 1
+        S[0,1] = 1
+        S[1,0] = 1
+        S[1,1] = 1
+
+        # This is the estimator response, correcting  bias of the shear estimator itself
+        R[:,0,0] = 1
+        R[:,0,1] = 1
+        R[:,1,0] = 1
+        R[:,1,1] = 1
+
+        self.R.append(R.mean(axis=0))
+        self.S.append(S)
+        self.counts.append(n)
+
+        return sel_00
+
+    def collect(self, comm=None):
+        """
+        Finalize and sum up all the response values, returning separate
+        R (estimator response) and S (selection bias) 2x2 matrices
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+
+        Returns
+        -------
+        R: 2x2 array
+            Estimator response matrix
+
+        S: 2x2 array
+            Selection bias matrix
+
+        """
+        # MPI allgather to get full arrays for everyone
+        if comm is not None:
+            self.R = sum(comm.allgather(self.R), [])
+            self.S = sum(comm.allgather(self.S), [])
+            self.counts = sum(comm.allgather(self.counts), [])
+
+        R_sum = np.zeros((2,2))
+        S_sum = np.zeros((2,2))
+        N = 0
+
+        # Find the correctly weighted averages of all the values we have
+        for R, S, n in zip(self.R, self.S, self.counts):
+            # This deals with cases where n is 0 and R/S are NaN
+            if n == 0:
+                continue
+            R_sum += R*n
+            S_sum += S*n
+            N += n
+
+        R = R_sum / N
+        S = S_sum / N
+        
+        return R, S, N
+
 
 class MeanShearInBins:
     def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False):

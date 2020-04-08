@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
+from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
 from .utils.calibration_tools import apply_lensfit_calibration, apply_metacal_response
 import numpy as np
 import random
@@ -21,7 +21,7 @@ POS_POS = 2
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
@@ -594,7 +594,7 @@ class TXTwoPointLensCat(TXTwoPoint):
     """
     name='TXTwoPointLensCat'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
@@ -868,7 +868,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
     """
     name = "TXGammaTFieldCenters"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
@@ -1004,7 +1004,7 @@ class TXGammaTBrightStars(TXTwoPoint):
     """
     name = "TXGammaTBrightStars"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
@@ -1157,7 +1157,7 @@ class TXGammaTDimStars(TXTwoPoint):
     """
     name = "TXGammaTDimStars"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('tomography_catalog', TomographyCatalog),
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),

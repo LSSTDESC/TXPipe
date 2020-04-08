@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
+from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import NumberDensityStats
-from .utils.calibration_tools import metacal_variants, metacal_band_variants, ParallelCalibratorMetacal
+from .utils.calibration_tools import metacal_variants, metacal_band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
 import numpy as np
 import warnings
 
@@ -27,7 +27,7 @@ class TXSelector(PipelineStage):
     name='TXSelector'
 
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('calibration_table', TextFile),
         ('photometry_catalog', HDFFile),
     ]
@@ -96,11 +96,17 @@ class TXSelector(PipelineStage):
         phot_cols = ['g_mag', 'r_mag', 'i_mag']
 
         # Columns we need from the shear catalog
-        shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
-        shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
-        shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+        if self.config['shear_type']=='metacal':
+            shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
+            shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
+            shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+        else:
+            shear_cols = ['flags','psf_T_mean']
+            shear_cols += ['mag_'+band for band in bands]
+            shear_cols += ['T','s2n','g1','g2']
         if self.config['input_pz']:
             shear_cols += ['mean_z']
+        if self.config['shear_type']=='metacal':
             shear_cols += ['mean_z_1p']
             shear_cols += ['mean_z_1m']
             shear_cols += ['mean_z_2p']
@@ -111,7 +117,7 @@ class TXSelector(PipelineStage):
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data 
-        iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+        iter_shear = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
 
         # We will collect the selection biases for each bin
@@ -121,8 +127,11 @@ class TXSelector(PipelineStage):
         nbin_lens = 1
 
         selection_biases = []
-        number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm)
-        calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
+        number_density_stats = NumberDensityStats(nbin_source, nbin_lens, self.comm,shear_type=self.config['shear_type'])
+        if self.config['shear_type']=='metacal':
+            calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
+        else:
+            calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
 
 
         # Loop through the input data, processing it chunk by chunk
@@ -230,18 +239,40 @@ class TXSelector(PipelineStage):
 
         pz_data = {}
         
-        for v in variants:
-            # Pull out the columns that we have trained this bin selection
-            # model on.
+        if self.config['shear_type']=='metacal':
+            for v in variants:
+                # Pull out the columns that we have trained this bin selection
+                # model on.
+                data = []
+                for f in features:
+                    # may be a single band
+                    if len(f) == 1:
+                        col = shear_data[f'mcal_mag_{f}{v}']
+                    # or a colour
+                    else:
+                        b1,b2 = f.split('-')
+                        col = shear_data[f'mcal_mag_{b1}{v}'] - shear_data[f'mcal_mag_{b2}{v}']
+                    if np.all(~np.isfinite(col)):
+                        # entire column is NaN.  Hopefully this will get deselected elsewhere
+                        col[:] = 30.0
+                    else:
+                        ok = np.isfinite(col)
+                        col[~ok] = col[ok].max()
+                    data.append(col)
+                data = np.array(data).T
+
+                # Run the random forest on this data chunk
+                pz_data[f'zbin{v}'] = classifier.predict(data)
+        else:
             data = []
             for f in features:
                 # may be a single band
                 if len(f) == 1:
-                    col = shear_data[f'mcal_mag_{f}{v}']
+                    col = shear_data[f'mag_{f}']
                 # or a colour
                 else:
                     b1,b2 = f.split('-')
-                    col = shear_data[f'mcal_mag_{b1}{v}'] - shear_data[f'mcal_mag_{b2}{v}']
+                    col = shear_data[f'mag_{b1}'] - shear_data[f'mag_{b2}']
                 if np.all(~np.isfinite(col)):
                     # entire column is NaN.  Hopefully this will get deselected elsewhere
                     col[:] = 30.0
@@ -252,23 +283,36 @@ class TXSelector(PipelineStage):
             data = np.array(data).T
 
             # Run the random forest on this data chunk
-            pz_data[f'zbin{v}'] = classifier.predict(data)
+            pz_data[f'zbin'] = classifier.predict(data)
         return pz_data
 
     def apply_simple_redshift_cut(self, shear_data):
-        variants = ['', '_1p', '_2p', '_1m', '_2m']
+        if self.config['shear_type']=='metacal':
+            variants = ['', '_1p', '_2p', '_1m', '_2m']
 
-        pz_data = {}
+            pz_data = {}
 
-        for v in variants:
-            zz = shear_data[f'mean_z{v}']
+            for v in variants:
+                zz = shear_data[f'mean_z{v}']
+
+                pz_data_v = np.zeros(len(zz), dtype=int) -1
+                for zi in range(len(self.config['zbin_edges'])-1):
+                    mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
+                    pz_data_v[mask_zbin] = zi
+
+                pz_data[f'zbin{v}'] = pz_data_v
+        else:
+
+            pz_data = {}
+            
+            zz = shear_data[f'mean_z']
 
             pz_data_v = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['zbin_edges'])-1):
                 mask_zbin = (zz>=self.config['zbin_edges'][zi]) & (zz<self.config['zbin_edges'][zi+1])
                 pz_data_v[mask_zbin] = zi
-            
-            pz_data[f'zbin{v}'] = pz_data_v
+
+            pz_data[f'zbin'] = pz_data_v
 
         return pz_data
 
@@ -286,7 +330,10 @@ class TXSelector(PipelineStage):
         """
         delta_gamma = self.config['delta_gamma']
         nbin = len(self.config['zbins'])
-        n = len(shear_data['mcal_g1'])
+        if self.config['shear_type']=='metacal':
+            n = len(shear_data['mcal_g1'])
+        else:
+            n = len(shear_data['g1'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
@@ -298,10 +345,16 @@ class TXSelector(PipelineStage):
 
         data = {**pz_data, **shear_data}
 
-        R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
-        R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
-        R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
-        R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        if self.config['shear_type']=='metacal':
+            R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
+            R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
+            R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
+            R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        else:
+            R[:,0,0] = 1
+            R[:,0,1] = 1
+            R[:,1,0] = 1
+            R[:,1,1] = 1
 
 
         for i in range(nbin):
@@ -320,7 +373,7 @@ class TXSelector(PipelineStage):
         Creates the data sets and groups to put module output
         in the tomography_catalog output file.
         """
-        n = self.open_input('shear_catalog')['metacal/ra'].size
+        n = self.open_input('shear_catalog')['shear/ra'].size
         zbins = self.config['zbins']
         nbin_source = len(zbins)
         nbin_lens = 1
@@ -485,13 +538,19 @@ class TXSelector(PipelineStage):
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
         verbose = self.config['verbose']
-
-        s2n = data['mcal_s2n']
-        T = data['mcal_T']
+        
+        if self.config['shear_type']=='metacal':
+            s2n = data['mcal_s2n']
+            T = data['mcal_T']
+            Tpsf = data['mcal_psf_T_mean']
+            flag = data['mcal_flags']
+        else:
+            s2n = data['s2n']
+            T = data['T']
+            Tpsf = data['psf_T_mean']
+            flag = data['flags']
         zbin = data['zbin']
 
-        Tpsf = data['mcal_psf_T_mean']
-        flag = data['mcal_flags']
 
         n0 = len(flag)
         sel  = flag==0
