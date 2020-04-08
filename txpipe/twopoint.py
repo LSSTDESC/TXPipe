@@ -638,7 +638,6 @@ class TXTwoPointPlots(PipelineStage):
     ]
 
     config_options = {
-        'plot_compare_errors': True,
         'wspace': 0.1,
         'hspace': 0.1,
     }
