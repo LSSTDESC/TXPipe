@@ -1270,7 +1270,6 @@ class TXGammaTBrightStars(TXTwoPoint):
 
         npoint = data['lens_ra'].size
         data['lens_bin'] = np.zeros(npoint)
-        print('len lens', len(data['lens_ra']))
 
     def load_tomography(self, data):
         # We run the parent class tomography selection but then
