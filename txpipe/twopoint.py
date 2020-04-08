@@ -249,18 +249,18 @@ class TXTwoPoint(PipelineStage):
             tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'
             comb.append(d.object)
+            theta = np.exp(d.object.meanlogr)
+            npair = d.object.npairs
+            weight = d.object.weight
+            if d.i == d.j:
+                npair = npair/2
+                weight = weight/2
             if d.corr_type == XI:
                 #ggs.append(d.object)
-                theta = np.exp(d.object.meanlogr)
                 xip = d.object.xip
                 xim = d.object.xim
                 xiperr = np.sqrt(d.object.varxip)
                 ximerr = np.sqrt(d.object.varxim)
-                npair = d.object.npairs
-                weight = d.object.weight
-                if d.i == d.j:
-                    npair = npair/2
-                    weight = weight/2
                 n = len(xip)
                 for i in range(n):
                     S.add_data_point(XIP, (tracer1,tracer2), xip[i],
@@ -268,45 +268,23 @@ class TXTwoPoint(PipelineStage):
                     S.add_data_point(XIM, (tracer1,tracer2), xim[i],
                         theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
             elif d.corr_type == GAMMAT:
-                #ngs.append(d.object)
-                theta = np.exp(d.object.meanlogr)
                 gammat = d.object.xi
                 gammaterr = np.sqrt(d.object.varxi)
-                npair = d.object.npairs
-                weight = d.object.weight
-                if d.i == d.j:
-                    npair = npair/2
-                    weight = weight/2
                 n = len(gammat)
                 for i in range(n):
                     S.add_data_point(GAMMAT, (tracer1,tracer2), gammat[i],
                         theta=theta[i], error=gammaterr[i], weight=weight[i])
             else:
-                #nns.append(d.object)
-                theta = np.exp(d.object.meanlogr)
                 wtheta = d.object.xi
                 wthetaerr = np.sqrt(d.object.varxi)
-                npair = d.object.npairs
-                weight = d.object.weight
-                if d.i == d.j:
-                    npair = npair/2
-                    weight = weight/2
                 n = len(wtheta)
                 for i in range(n):
                     S.add_data_point(WTHETA, (tracer1,tracer2), wtheta[i],
                         theta=theta[i], error=wthetaerr[i], weight=weight[i])
 
-            # Each of our Measurement objects contains various theta values,
-            # and we loop through and add them all
-            #n = len()
-            #for i in range(n):
-            #    S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i],
-            #        theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
-
         cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
 
         S.add_covariance(cov)
-        #self.write_metadata(S, meta)
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
@@ -379,14 +357,14 @@ class TXTwoPoint(PipelineStage):
         g1,g2,mask = self.get_m(data, i)
 
         if self.config['var_methods']=='jackknife':
-            patchcenters = self.get_input('patch_centers')
+            patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',
-                patch_centers=patchcenters)
+                patch_centers=patch_centers)
                 #npatch=self.config['npatch'])
         else:
             cat = treecorr.Catalog(
@@ -413,13 +391,11 @@ class TXTwoPoint(PipelineStage):
             dec = data['dec'][mask]
 
         if self.config['var_methods']=='jackknife':
-            patchcenters = self.get_input('patch_centers')
+            patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
                 ra_units='degree', dec_units='degree',
-                patch_centers=patchcenters)
-                #npatch=self.config['npatch'])
-            #print ("cat", cat)
+                patch_centers=patch_centers)
         else:
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
@@ -431,7 +407,7 @@ class TXTwoPoint(PipelineStage):
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                     ra_units='degree', dec_units='degree',
-                    patch_centers=patchcenters)
+                    patch_centers=patch_centers)
             else:
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
@@ -1331,8 +1307,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         fig = self.open_output('gammat_bright_stars_plot', wrapper=True)
 
         # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (dvalue - flat1) / derror
+        z = (dvalue) / derror
         chi2 = np.sum(z ** 2)
         chi2dof = chi2 / (len(dtheta) - 1)
         print('error,',derror)
@@ -1558,12 +1533,12 @@ class TXGammaTDimStars(TXTwoPoint):
 
         # Also make a plot of the data
 
-class TXJackknifecenters(PipelineStage):
+class TXJackknifeCenters(PipelineStage):
     """
     This is the pipeline stage that is run to generate the patch centers for
     the Jackknife method.
     """
-    name = 'TXJackknifecenters'
+    name = 'TXJackknifeCenters'
 
     inputs = [
         ('random_cats', RandomsCatalog),

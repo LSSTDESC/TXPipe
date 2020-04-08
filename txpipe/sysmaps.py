@@ -126,10 +126,6 @@ class TXDiagnosticMaps(PipelineStage):
         m_it = self.iterate_hdf('tomography_catalog','multiplicative_bias', m_cols, chunk_rows)
         m_it = (d[2] for d in m_it)
 
-        #Naive attempt at generating the Jackknife centers!
-        ra =[]
-        dec = []
-
         # Now, we actually start loading the data in.
         # This thing below just loops through all the files at once
         iterator = zip(shear_it, phot_it, bin_it, m_it)
@@ -156,8 +152,7 @@ class TXDiagnosticMaps(PipelineStage):
             shear_tmp['dec'] = phot_data['dec']
             shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
             shear_psf_tmp['dec'] = phot_data['dec']     # Does it have 'dec' ?
-            ra.extend(phot_data['ra'])
-            dec.extend(phot_data['dec'])
+            
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
             mapper.add_data(shear_tmp, bin_data, m_data)

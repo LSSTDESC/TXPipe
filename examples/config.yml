@@ -69,7 +69,7 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
 
-TXJackknifecenters:
+TXJackknifeCenters:
     npatch: 5
 
 
