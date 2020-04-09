@@ -238,47 +238,51 @@ class TXTwoPoint(PipelineStage):
         # Closing n(z) file
         f.close()
 
+        # Now build up the collection of data points, adding them all to
+        # the sacc data one by one.
         comb = []
         for d in results:
-            #First lets try and get Covariance matrix
+            # First the tracers and generic tags
             tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
             tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'
+
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
             comb.append(d.object)
+
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
+
+            # account for double-counting
             if d.i == d.j:
                 npair = npair/2
                 weight = weight/2
+            # xip / xim is a special case because it has two observables.
+            # the other two are together below
             if d.corr_type == XI:
-                #ggs.append(d.object)
                 xip = d.object.xip
                 xim = d.object.xim
                 xiperr = np.sqrt(d.object.varxip)
                 ximerr = np.sqrt(d.object.varxim)
                 n = len(xip)
+                # add all the data points to the sacc
                 for i in range(n):
                     S.add_data_point(XIP, (tracer1,tracer2), xip[i],
                         theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
                     S.add_data_point(XIM, (tracer1,tracer2), xim[i],
                         theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
-            elif d.corr_type == GAMMAT:
-                gammat = d.object.xi
-                gammaterr = np.sqrt(d.object.varxi)
-                n = len(gammat)
-                for i in range(n):
-                    S.add_data_point(GAMMAT, (tracer1,tracer2), gammat[i],
-                        theta=theta[i], error=gammaterr[i], weight=weight[i])
             else:
-                wtheta = d.object.xi
-                wthetaerr = np.sqrt(d.object.varxi)
-                n = len(wtheta)
+                xi = d.object.xi
+                err = np.sqrt(d.object.varxi)
+                n = len(xi)
                 for i in range(n):
-                    S.add_data_point(WTHETA, (tracer1,tracer2), wtheta[i],
-                        theta=theta[i], error=wthetaerr[i], weight=weight[i])
+                    S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
+                        theta=theta[i], error=err[i], weight=weight[i])
 
+        # Add the covariance.  There are several different jackknife approaches
+        # available - see the treecorr docs
         cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
-
         S.add_covariance(cov)
 
         # Our data points may currently be in any order depending on which processes
