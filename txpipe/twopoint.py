@@ -739,7 +739,6 @@ class TXTwoPointPlots(PipelineStage):
         xim = sacc.standard_types.galaxy_shear_xi_minus
         nsource = len(sources)
 
-        xi_plot = self.open_output('shear_xi', wrapper=True, figsize=(nsource*3,(nsource)*2))
 
         theta = s.get_tag('theta', xip)
         tmin = np.min(theta)
@@ -747,104 +746,69 @@ class TXTwoPointPlots(PipelineStage):
 
         coord = lambda dt,i,j: (nsource+1-j, i) if dt==xim else (j, nsource-1-i)
 
-        for dt in [xip, xim]:
-            for i,src1 in enumerate(sources[:]):
-                for j,src2 in enumerate(sources[:]):
-                    D = s.get_data_points(dt, (src1,src2))
+        plots = ['xi', 'xi_err']
 
-                    if len(D)==0:
-                        continue
+        for plot in plots:
+            plot_output = self.open_output('shear_%s'%plot, wrapper=True, figsize=(nsource*3,(nsource)*2))
 
-                    ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
+            for dt in [xip, xim]:
+                for i,src1 in enumerate(sources[:]):
+                    for j,src2 in enumerate(sources[:]):
+                        D = s.get_data_points(dt, (src1,src2))
 
-                    theta, xi, err = self.get_theta_xi_err(D)
-                    scale = 1e-4
-                    plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
+                        if len(D)==0:
+                            continue
 
-                    plt.xscale('log')
-                    plt.ylim(-30,30)
-                    plt.xlim(tmin, tmax)
+                        ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
 
-                    if dt==xim:
-                        if j>0:
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        if plot == 'xi':
+                            scale = 1e-4
+                            plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
+                            plt.ylim(-30,30)
+                            ylabel_xim = r'$\sigma(\xi_{-})$'
+                            ylabel_xip = r'$\sigma(\xi_{-})$'
+
+                        if plot == 'xi_err':
+                            theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, dt, src1, src2)
+                            plt.plot(theta, err, label = 'Shape noise')
+                            plt.plot(theta_jk, err_jk, label = 'Jackknife')
+                            ylabel_xim = r'$\theta \cdot \xi_{-} \cdot 10^4$'
+                            ylabel_xip = r'$\theta \cdot \xi_{+} \cdot 10^4$'
+                            
+                        plt.xscale('log')
+                        plt.xlim(tmin, tmax)
+
+                        if dt==xim:
+                            if j>0:
+                                ax.set_xticklabels([])
+                            else:
+                                plt.xlabel(r'$\theta$ (arcmin)')
+
+                            if i==nsource-1:
+                                ax.yaxis.tick_right()
+                                ax.yaxis.set_label_position("right")
+                                ax.set_ylabel(ylabel_xim)
+                            else:
+                                ax.set_yticklabels([])
+                        else:
                             ax.set_xticklabels([])
-                        else:
-                            plt.xlabel(r'$\theta$ (arcmin)')
+                            if i==nsource-1:
+                                ax.set_ylabel(ylabel_xip)
+                            else:
+                                ax.set_yticklabels([])
 
-                        if i==nsource-1:
-                            ax.yaxis.tick_right()
-                            ax.yaxis.set_label_position("right")
-                            ax.set_ylabel(r'$\theta \cdot \xi_{-} \cot 10^4)$')
-                        else:
-                            ax.set_yticklabels([])
-                    else:
-                        ax.set_xticklabels([])
-                        if i==nsource-1:
-                            ax.set_ylabel(r'$\theta \cdot \xi_{+} \cdot 10^4$')
-                        else:
-                            ax.set_yticklabels([])
-
-                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                        fontsize=10, verticalalignment='top', bbox=props)
-
-        plt.tight_layout()
-        plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
-        xi_plot.close()
-
-        # Start plot for comparing errobars
-        xi_err_plot = self.open_output('shear_xi_err', wrapper=True, figsize=(nsource*3,(nsource)*2))
-
-        for dt in [xip, xim]:
-            for i,src1 in enumerate(sources[:]):
-                for j,src2 in enumerate(sources[:]):
-                    D = s.get_data_points(dt, (src1,src2))
-
-                    if len(D)==0:
-                        continue
-
-                    ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
-
-                    theta, xi, err = self.get_theta_xi_err(D)
-                    theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, dt, src1, src2)
-
-                    plt.plot(theta, err, label = 'Shape noise')
-                    plt.plot(theta_jk, err_jk, label = 'Jackknife')
-
-                    plt.xscale('log')
-                    plt.yscale('log')
-                    #plt.ylim(-30,30)
-                    plt.xlim(tmin, tmax)
-
-                    if dt==xim:
-                        if j>0:
-                            ax.set_xticklabels([])
-                        else:
-                            plt.xlabel(r'$\theta$ (arcmin)')
-
-                        if i==nsource-1:
-                            ax.yaxis.tick_right()
-                            ax.yaxis.set_label_position("right")
-                            ax.set_ylabel(r'$\sigma(\xi_{-})$')
-                        else:
-                            ax.set_yticklabels([])
-                    else:
-                        ax.set_xticklabels([])
-                        if i==nsource-1:
-                            ax.set_ylabel(r'$\sigma(\xi_{+})$')
-                        else:
-                            ax.set_yticklabels([])
-
-                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                        fontsize=10, verticalalignment='top', bbox=props)
-
-        plt.legend()
-        plt.tight_layout()
-        plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
-        xi_err_plot.close()
+                        props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                        plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                            fontsize=10, verticalalignment='top', bbox=props)
 
 
+
+            if plot == 'xi_err':
+                plt.legend()
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
+            plot_output.close()
 
     def plot_shear_density(self, s, sources, lenses):
         import sacc
