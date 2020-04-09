@@ -692,6 +692,45 @@ class TXTwoPointPlots(PipelineStage):
         return sources, lenses
 
 
+
+    
+    def get_theta_xi_err(self, D):
+        """
+        For a given datapoint D, returns theta, xi, err,
+        after masking for positive errorbars
+        (sometimes there are NaNs).
+        """
+        theta = np.array([d.get_tag('theta') for d in D])
+        xi    = np.array([d.value for d in D])
+        err   = np.array([d.get_tag('error') for d  in D])
+        w = err>0
+        theta = theta[w]
+        xi = xi[w]
+        err = err[w]
+
+        return theta, xi, err
+
+
+    def get_theta_xi_err_jk(self, s, dt, src1, src2):
+        """
+        In this case we want to get the JK errorbars,
+        which are stored in the covariance, so we want to
+        load a particular covariance block, given a dataype dt.
+        Returns theta, xi, err,
+        after masking for positive errorbars
+        (sometimes there are NaNs).
+        """
+        theta_jk, xi_jk, cov_jk = s.get_theta_xi(dt, src1, src2, return_cov = True)
+        err_jk = np.sqrt(np.diag(cov_jk))
+        w_jk = err_jk>0
+        theta_jk = theta_jk[w_jk]
+        xi_jk = xi_jk[w_jk]
+        err_jk = err_jk[w_jk]
+        
+        return theta_jk, xi_jk, err_jk
+
+
+    
     def plot_shear_shear(self, s, sources):
         import sacc
         import matplotlib.pyplot as plt
@@ -718,16 +757,8 @@ class TXTwoPointPlots(PipelineStage):
 
                     ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
 
+                    theta, xi, err = self.get_theta_xi_err(D)
                     scale = 1e-4
-
-                    theta = np.array([d.get_tag('theta') for d in D])
-                    xi    = np.array([d.value for d in D])
-                    err   = np.array([d.get_tag('error') for d  in D])
-                    w = err>0
-                    theta = theta[w]
-                    xi = xi[w]
-                    err = err[w]
-
                     plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
 
                     plt.xscale('log')
@@ -761,72 +792,57 @@ class TXTwoPointPlots(PipelineStage):
         plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
         xi_plot.close()
 
-        # Make plot comparing the errorbars
-        if self.config['plot_compare_errors']:
+        # Start plot for comparing errobars
+        xi_err_plot = self.open_output('shear_xi_err', wrapper=True, figsize=(nsource*3,(nsource)*2))
 
-            xi_err_plot = self.open_output('shear_xi_err', wrapper=True, figsize=(nsource*3,(nsource)*2))
+        for dt in [xip, xim]:
+            for i,src1 in enumerate(sources[:]):
+                for j,src2 in enumerate(sources[:]):
+                    D = s.get_data_points(dt, (src1,src2))
 
-            for dt in [xip, xim]:
-                for i,src1 in enumerate(sources[:]):
-                    for j,src2 in enumerate(sources[:]):
-                        D = s.get_data_points(dt, (src1,src2))
+                    if len(D)==0:
+                        continue
 
-                        if len(D)==0:
-                            continue
+                    ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
 
-                        ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
+                    theta, xi, err = self.get_theta_xi_err(D)
+                    theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, dt, src1, src2)
 
-                        theta = np.array([d.get_tag('theta') for d in D])
-                        xi    = np.array([d.value for d in D])
-                        err   = np.array([d.get_tag('error') for d  in D])
-                        w = err>0
-                        theta = theta[w]
-                        xi = xi[w]
-                        err = err[w]
+                    plt.plot(theta, err, label = 'Shape noise')
+                    plt.plot(theta_jk, err_jk, label = 'Jackknife')
 
-                        # Load jackknife errors
-                        theta_jk, xi_jk, cov_jk = s.get_theta_xi(dt, src1, src2, return_cov = True)
-                        err_jk = np.sqrt(np.diag(cov_jk))
-                        w_jk = err_jk>0
-                        theta_jk = theta_jk[w_jk]
-                        xi_jk = xi_jk[w_jk]
-                        err_jk = err_jk[w_jk]
+                    plt.xscale('log')
+                    plt.yscale('log')
+                    #plt.ylim(-30,30)
+                    plt.xlim(tmin, tmax)
 
-                        plt.plot(theta, err, label = 'Shape noise')
-                        plt.plot(theta_jk, err_jk, label = 'Jackknife')
-
-                        plt.xscale('log')
-                        plt.yscale('log')
-                        #plt.ylim(-30,30)
-                        plt.xlim(tmin, tmax)
-
-                        if dt==xim:
-                            if j>0:
-                                ax.set_xticklabels([])
-                            else:
-                                plt.xlabel(r'$\theta$ (arcmin)')
-
-                            if i==nsource-1:
-                                ax.yaxis.tick_right()
-                                ax.yaxis.set_label_position("right")
-                                ax.set_ylabel(r'$\sigma(\xi_{-})$')
-                            else:
-                                ax.set_yticklabels([])
-                        else:
+                    if dt==xim:
+                        if j>0:
                             ax.set_xticklabels([])
-                            if i==nsource-1:
-                                ax.set_ylabel(r'$\sigma(\xi_{+})$')
-                            else:
-                                ax.set_yticklabels([])
+                        else:
+                            plt.xlabel(r'$\theta$ (arcmin)')
 
-                        props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                        plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                            fontsize=10, verticalalignment='top', bbox=props)
+                        if i==nsource-1:
+                            ax.yaxis.tick_right()
+                            ax.yaxis.set_label_position("right")
+                            ax.set_ylabel(r'$\sigma(\xi_{-})$')
+                        else:
+                            ax.set_yticklabels([])
+                    else:
+                        ax.set_xticklabels([])
+                        if i==nsource-1:
+                            ax.set_ylabel(r'$\sigma(\xi_{+})$')
+                        else:
+                            ax.set_yticklabels([])
 
-            plt.legend()
-            plt.tight_layout()
-            plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
-            xi_err_plot.close()
+                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                        fontsize=10, verticalalignment='top', bbox=props)
+
+        plt.legend()
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
+        xi_err_plot.close()
 
 
 
@@ -855,13 +871,7 @@ class TXTwoPointPlots(PipelineStage):
 
                 scale = 1e-2
 
-                theta = np.array([d.get_tag('theta') for d in D])
-                xi    = np.array([d.value for d in D])
-                err   = np.array([d.get_tag('error') for d  in D])
-                w = err>0
-                theta = theta[w]
-                xi = xi[w]
-                err = err[w]
+                theta, xi, err = self.get_theta_xi_err(D)
 
                 plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
                 plt.xscale('log')
@@ -885,61 +895,47 @@ class TXTwoPointPlots(PipelineStage):
         plt.tight_layout()
         plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
         xi_plot.close()
+ 
+        # Start plot comparing the errorbars
+        xi_err_plot = self.open_output('shearDensity_xi_err', wrapper=True, figsize=(nlens*3,(nsource)*2))
 
-        # Make plot comparing the errorbars
-        if self.config['plot_compare_errors']:
-            xi_err_plot = self.open_output('shearDensity_xi_err', wrapper=True, figsize=(nlens*3,(nsource)*2))
+        for i,src1 in enumerate(sources):
+            for j,src2 in enumerate(lenses):
+                D = s.get_data_points(gammat, (src1,src2))
 
-            for i,src1 in enumerate(sources):
-                for j,src2 in enumerate(lenses):
-                    D = s.get_data_points(gammat, (src1,src2))
+                if len(D)==0:
+                    continue
 
-                    if len(D)==0:
-                        continue
+                ax = plt.subplot2grid((nsource, nlens), (i,j))
 
-                    ax = plt.subplot2grid((nsource, nlens), (i,j))
+                theta, xi, err = self.get_theta_xi_err(D)
+                theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, gammat, src1, src2)
 
-                    theta = np.array([d.get_tag('theta') for d in D])
-                    xi    = np.array([d.value for d in D])
-                    err   = np.array([d.get_tag('error') for d  in D])
-                    w = err>0
-                    theta = theta[w]
-                    xi = xi[w]
-                    err = err[w]
+                plt.plot(theta, err, label = 'Shape noise')
+                plt.plot(theta_jk, err_jk, label = 'Jackknife')
 
-                    # Load jackknife errors
-                    theta_jk, xi_jk, cov_jk = s.get_theta_xi(gammat, src1, src2, return_cov = True)
-                    err_jk = np.sqrt(np.diag(cov_jk))
-                    w_jk = err_jk>0
-                    theta_jk = theta_jk[w_jk]
-                    xi_jk = xi_jk[w_jk]
-                    err_jk = err_jk[w_jk]
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlim(tmin, tmax)
 
-                    plt.plot(theta, err, label = 'Shape noise')
-                    plt.plot(theta_jk, err_jk, label = 'Jackknife')
+                if i==nsource-1:
+                    plt.xlabel(r'$\theta$ (arcmin)')
+                else:
+                    ax.set_xticklabels([])
 
-                    plt.xscale('log')
-                    plt.yscale('log')
-                    plt.xlim(tmin, tmax)
+                if j==0:
+                    plt.ylabel(r"$\sigma(\gamma_t)$")
+                else:
+                    ax.set_yticklabels([])
 
-                    if i==nsource-1:
-                        plt.xlabel(r'$\theta$ (arcmin)')
-                    else:
-                        ax.set_xticklabels([])
+                props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                    fontsize=10, verticalalignment='top', bbox=props)
 
-                    if j==0:
-                        plt.ylabel(r"$\sigma(\gamma_t)$")
-                    else:
-                        ax.set_yticklabels([])
-
-                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                        fontsize=10, verticalalignment='top', bbox=props)
-
-            plt.legend()
-            plt.tight_layout()
-            plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
-            xi_err_plot.close()
+        plt.legend()
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
+        xi_err_plot.close()
 
 
 
@@ -966,13 +962,7 @@ class TXTwoPointPlots(PipelineStage):
 
                 scale = 1
 
-                theta = np.array([d.get_tag('theta') for d in D])
-                xi    = np.array([d.value for d in D])
-                err   = np.array([d.get_tag('error') for d  in D])
-                w = err>0
-                theta = theta[w]
-                xi = xi[w]
-                err = err[w]
+                theta, xi, err = self.get_theta_xi_err(D)
 
                 plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
                 plt.xscale('log')
@@ -999,60 +989,47 @@ class TXTwoPointPlots(PipelineStage):
 
 
         xi_err_plot = self.open_output('density_xi_err', wrapper=True, figsize=(nlens*3,nlens*2))
-        # Make plot comparing the errorbars
-        if self.config['plot_compare_errors']:
-            for i,src1 in enumerate(lenses[:]):
-                for j,src2 in enumerate(lenses[:]):
-                    D = s.get_data_points(wtheta, (src1,src2))
 
-                    if len(D)==0:
-                        continue
+        # Start plot comparing the errorbars
+        for i,src1 in enumerate(lenses[:]):
+            for j,src2 in enumerate(lenses[:]):
+                D = s.get_data_points(wtheta, (src1,src2))
 
-                    ax = plt.subplot2grid((nlens, nlens), (i,j))
+                if len(D)==0:
+                    continue
 
-                    scale = 1
+                ax = plt.subplot2grid((nlens, nlens), (i,j))
 
-                    theta = np.array([d.get_tag('theta') for d in D])
-                    xi    = np.array([d.value for d in D])
-                    err   = np.array([d.get_tag('error') for d  in D])
-                    w = err>0
-                    theta = theta[w]
-                    xi = xi[w]
-                    err = err[w]
+                scale = 1
 
-                    # Load jackknife errors
-                    theta_jk, xi_jk, cov_jk = s.get_theta_xi(wtheta, src1, src2, return_cov = True)
-                    err_jk = np.sqrt(np.diag(cov_jk))
-                    w_jk = err_jk>0
-                    theta_jk = theta_jk[w_jk]
-                    xi_jk = xi_jk[w_jk]
-                    err_jk = err_jk[w_jk]
+                theta, xi, err = self.get_theta_xi_err(D)
+                theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, wtheta, src1, src2)
 
-                    plt.plot(theta, err, label = 'Shape noise')
-                    plt.plot(theta_jk, err_jk, label = 'Jackknife')
+                plt.plot(theta, err, label = 'Shape noise')
+                plt.plot(theta_jk, err_jk, label = 'Jackknife')
 
-                    plt.xscale('log')
-                    plt.yscale('log')
-                    plt.xlim(tmin, tmax)
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlim(tmin, tmax)
 
-                    if j>0:
-                        ax.set_xticklabels([])
-                    else:
-                        plt.xlabel(r'$\theta$ (arcmin)')
+                if j>0:
+                    ax.set_xticklabels([])
+                else:
+                    plt.xlabel(r'$\theta$ (arcmin)')
 
-                    if i==0:
-                        plt.ylabel(r"$\sigma(w)$")
-                    else:
-                        ax.set_yticklabels([])
+                if i==0:
+                    plt.ylabel(r"$\sigma(w)$")
+                else:
+                    ax.set_yticklabels([])
 
-                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                        fontsize=10, verticalalignment='top', bbox=props)
+                props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                    fontsize=10, verticalalignment='top', bbox=props)
 
-            plt.legend()
-            plt.tight_layout()
-            plt.subplots_adjust(hspace=self.config['hspace'], wspace=self.config['wspace'])
-            xi_err_plot.close()
+        plt.legend()
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=self.config['hspace'], wspace=self.config['wspace'])
+        xi_err_plot.close()
 
 
 
