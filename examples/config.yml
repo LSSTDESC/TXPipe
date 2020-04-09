@@ -62,7 +62,6 @@ TXDiagnosticMaps:
     pixelization: healpix
     nside: 1024
     # pixelization: gnomonic
-    # #
     pixel_size: 0.2
     ra_cent: 62.
     dec_cent: -35.
