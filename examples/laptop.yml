@@ -13,6 +13,10 @@ stages:
     - name: TXGammaTDimStars
     - name: TXRoweStatistics
     - name: TXTwoPointPlots
+    - name: TXRealGaussianCovariance
+#    - name: TXTwoPointFourier
+#    - name: TXFourierGaussianCovariance
+# uncomment the last two if you have namaster working
 
 # Where to put outputs
 output_dir: data/example/outputs
