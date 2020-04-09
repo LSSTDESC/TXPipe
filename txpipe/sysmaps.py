@@ -152,7 +152,6 @@ class TXDiagnosticMaps(PipelineStage):
             shear_tmp['dec'] = phot_data['dec']
             shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
             shear_psf_tmp['dec'] = phot_data['dec']     # Does it have 'dec' ?
-            
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
             mapper.add_data(shear_tmp, bin_data, m_data)
@@ -167,7 +166,6 @@ class TXDiagnosticMaps(PipelineStage):
         map_pix, ngals, g1, g2, var_g1, var_g2 = mapper.finalize(self.comm)
         map_pix_psf, ngals_psf, g1_psf, g2_psf, var_g1_psf, var_g2_psf = mapper_psf.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
-
 
         # Only the root process saves the output
         if self.rank==0:
@@ -359,3 +357,5 @@ class TXMapPlots(PipelineStage):
 
 if __name__ == '__main__':
     PipelineStage.main()
+
+    
