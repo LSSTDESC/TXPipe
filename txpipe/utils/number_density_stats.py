@@ -37,9 +37,11 @@ class NumberDensityStats:
             # as this value is not calibrated
             sigma_e[i] = (0.5 * (variances[0] + variances[1]))**0.5
 
-        lens_counts = np.zeros_like(self.lens_counts)
-        if self.comm is not None:
+        if self.comm is None:
+            lens_counts = self.lens_counts
+        else:
             import mpi4py.MPI
+            lens_counts = np.zeros_like(self.lens_counts)
             self.comm.Reduce(
                 [self.lens_counts, mpi4py.MPI.DOUBLE],
                 [lens_counts, mpi4py.MPI.DOUBLE],

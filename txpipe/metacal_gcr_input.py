@@ -58,7 +58,7 @@ class TXMetacalGCRInput(PipelineStage):
         )
 
         # Input columns for photometry
-        photo_cols = ['id', 'ra', 'dec']
+        photo_cols = ['id', 'ra', 'dec', 'extendedness']
 
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
@@ -82,8 +82,8 @@ class TXMetacalGCRInput(PipelineStage):
             'IyyPSF',
         ]
 
-        # For shear we just copy the input direct to the output
-        shear_out_cols = shear_cols
+        # For shear we just add a weight column
+        shear_out_cols = shear_cols + ['weight']
 
         # For the photometry output we strip off the _cModeel suffix.
         photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
@@ -110,6 +110,7 @@ class TXMetacalGCRInput(PipelineStage):
         for data in cat.get_quantities(cols, return_iterator=True, native_filters='tract != 2897'):
             # Some columns have different names in input than output
             self.rename_columns(data)
+            self.add_weight_column(data)
             # The star ellipticities are derived from the measured moments for now
             star_data = self.compute_star_data(data)
 
@@ -151,6 +152,9 @@ class TXMetacalGCRInput(PipelineStage):
             g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)
         return f
 
+    def add_weight_column(self, data):
+        n = len(data['ra'])
+        data['weight'] = np.ones(n)
 
     def write_output(self, output_file, group_name, cols, start, end, data):
         g = output_file[group_name]
@@ -267,10 +271,11 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         shear_cols = (['id', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
             + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
+            + ['weight']
         )
 
         # Input columns for photometry
-        photo_cols = ['id', 'ra', 'dec']
+        photo_cols = ['id', 'ra', 'dec', 'extendedness']
         photo_out_cols = photo_cols[:]
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
@@ -308,7 +313,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         ]
 
         # For shear we just copy the input direct to the output with the additional psf model columns
-        shear_out_cols = shear_cols + ['ra', 'dec'] + psf_cols
+        shear_out_cols = shear_cols + ['ra', 'dec'] + psf_cols + ['weight']
 
         # The star output names are mostly different tot he input names
         star_out_cols = ['id', 'ra', 'dec', 
@@ -341,6 +346,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             chunk_size = len(data['id'])
             print(f"Loaded chunk of size {chunk_size}")
             self.rename_columns(data)
+            self.add_weight_column(data)
             # The star ellipticities are derived from the measured moments for now
             star_data = self.compute_star_data(data)
 
