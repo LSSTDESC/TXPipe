@@ -80,9 +80,12 @@ class TXDiagnosticMaps(PipelineStage):
 
         if config['true_shear']:
             shear_cols = ['true_g']
-        else:
+        elif config['shear_type']=='metacal':
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
-        shear_cols.append('mcal_flags')
+            shear_cols.append('mcal_flags')
+        else:
+            shear_cols = ['g1', 'g2', 'psf_g1', 'psf_g2']
+            shear_cols.append('flags')
         bin_cols = ['source_bin', 'lens_bin']
         m_cols = ['R_gamma']
 
@@ -115,7 +118,7 @@ class TXDiagnosticMaps(PipelineStage):
         # These methods by default yield trios of (start, end, data),
         # but in this case because we are agregating we don't need the "start" and
         # "end" numbers.  So we re-define to ignore them
-        shear_it = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+        shear_it = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
@@ -145,9 +148,12 @@ class TXDiagnosticMaps(PipelineStage):
             # like iterate_hdf
             if config['true_shear']:
                 shear_tmp = {'g1': shear_data['true_g1'], 'g2': shear_data['true_g2']}
-            else:
+            elif config['shear_type']=='metacal':
                 shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
                 shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
+            else:
+                shear_tmp = {'g1': shear_data['g1'], 'g2': shear_data['g2']}
+                shear_psf_tmp = {'g1': shear_data['psf_g1'], 'g2': shear_data['psf_g2']}
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
             shear_psf_tmp['ra'] = phot_data['ra']       # Does it have 'ra' ?
@@ -157,7 +163,10 @@ class TXDiagnosticMaps(PipelineStage):
             depth_mapper.add_data(depth_data)
             mapper.add_data(shear_tmp, bin_data, m_data)
             mapper_psf.add_data(shear_psf_tmp, bin_data, m_data) # Same?
-            flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
+            if self.config['shear_type']=='metacal':
+                flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
+            else:
+                flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['flags'])
 
         # Collect together the results across all the processors
         # and combine them to get the final results
