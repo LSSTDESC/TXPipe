@@ -657,7 +657,7 @@ class TXTwoPointPlots(PipelineStage):
         gammat = sacc.standard_types.galaxy_shearDensity_xi_t
         wtheta = sacc.standard_types.galaxy_density_xi
 
-        filename = self.get_input('twopoint_data')
+        filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
 
         sources, lenses = self.read_nbin(s)
