@@ -746,7 +746,7 @@ class TXTwoPointPlots(PipelineStage):
         plots = ['xi', 'xi_err']
 
         for plot in plots:
-            plot_output = self.open_output('shear_%s'%plot, wrapper=True, figsize=(2.5*nsource,2*nsource))
+            plot_output = self.open_output(f'shear_{plot}', wrapper=True, figsize=(2.5*nsource,2*nsource))
 
             for dt in [xip, xim]:
                 for i,src1 in enumerate(sources[:]):
@@ -821,7 +821,7 @@ class TXTwoPointPlots(PipelineStage):
 
         plots = ['xi', 'xi_err']
         for plot in plots:
-            plot_output = self.open_output('shearDensity_%s'%plot, wrapper=True, figsize=(3*nlens,2*nsource))
+            plot_output = self.open_output(f'shearDensity_{plot}', wrapper=True, figsize=(3*nlens,2*nsource))
 
             for i,src1 in enumerate(sources):
                 for j,src2 in enumerate(lenses):
@@ -886,7 +886,7 @@ class TXTwoPointPlots(PipelineStage):
 
         plots = ['xi', 'xi_err']
         for plot in plots:
-            plot_output = self.open_output('density_%s'%plot, wrapper=True, figsize=(3*nlens,2*nlens))
+            plot_output = self.open_output(f'density_{plot}', wrapper=True, figsize=(3*nlens,2*nlens))
          
             for i,src1 in enumerate(lenses[:]):
                 for j,src2 in enumerate(lenses[:]):
