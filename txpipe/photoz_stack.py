@@ -11,10 +11,12 @@ class TXPhotozStack(PipelineStage):
     name='TXPhotozStack'
     inputs = [
         ('photoz_pdfs', PhotozPDFFile),
-        ('tomography_catalog', TomographyCatalog)
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog)
     ]
     outputs = [
-        ('photoz_stack', NOfZFile),
+        ('shear_photoz_stack', NOfZFile),
+        ('lens_photoz_stack', NOfZFile)
             
     ]
     config_options = {
@@ -60,10 +62,17 @@ class TXPhotozStack(PipelineStage):
             self.config['chunk_rows']  # number of rows to read at once
         )
 
-        tomography_iterator = self.iterate_hdf(
-            'tomography_catalog', # tag of input file to iterate through
+        shear_tomography_iterator = self.iterate_hdf(
+            'shear_tomography_catalog', # tag of input file to iterate through
             'tomography', # data group within file to look at
-            ['source_bin', 'lens_bin'], # column(s) to read
+            ['source_bin'], # column(s) to read
+            self.config['chunk_rows']  # number of rows to read at once
+        )
+
+        lens_tomography_iterator = self.iterate_hdf(
+            'lens_tomography_catalog', # tag of input file to iterate through
+            'tomography', # data group within file to look at
+            ['lens_bin'], # column(s) to read
             self.config['chunk_rows']  # number of rows to read at once
         )
 
@@ -71,7 +80,7 @@ class TXPhotozStack(PipelineStage):
 
 
         # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, tomography_iterator):
+        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, shear_tomography_iterator):
             # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
@@ -90,13 +99,6 @@ class TXPhotozStack(PipelineStage):
                 source_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
                 source_counts[b] += w[0].size
 
-            for b in range(nbin_lens):
-                w = np.where(tomo_data['lens_bin']==b)
-
-                # Summ all the PDFs from that bin
-                lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
-                lens_counts[b] += w[0].size
-
             # For the 2D source bin we take every object that is selected
             # for any tomographic bin (the non-selected objects
             # have bin=-1)s
@@ -109,26 +111,58 @@ class TXPhotozStack(PipelineStage):
         if self.comm:
             source_pdfs      = self.reduce(source_pdfs)
             source_pdfs_2d   = self.reduce(source_pdfs_2d)
-            lens_pdfs        = self.reduce(lens_pdfs)
             source_counts    = self.reduce(source_counts)
             source_counts_2d = self.reduce(source_counts_2d)
-            lens_counts      = self.reduce(lens_counts)
 
         if self.rank==0:
             # Normalize the stacks
             for b in range(nbin_source):
                 source_pdfs[b] /= source_counts[b]
-            for b in range(nbin_lens):
-                lens_pdfs[b] /= lens_counts[b]
             source_pdfs_2d /= source_counts_2d
 
 
             # And finally save the outputs
-            f = self.open_output("photoz_stack")        
+            f = self.open_output("shear_photoz_stack")        
             self.save_result(f, "source", nbin_source, z, source_pdfs, source_counts)
             self.save_result(f, "source2d", 1, z, [source_pdfs_2d], [source_counts_2d])
+            f.close()
+
+        # So we just do a single loop through the pair of files.
+        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, lens_tomography_iterator):
+            # pz_data and tomo_data are dictionaries with the keys as column names and the 
+            # values as numpy arrays with a chunk of data (chunk_rows long) in.
+            # Each iteration through the loop we get a new chunk.
+            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
+            # The method also yields the start and end positions in the file.  We don't need those
+            # here because we are just summing them all together.  That's what the underscores
+            # are above.
+
+
+            # Now for each tomographic bin find all the objects in that bin.
+            # There is probably a better way of doing this.
+            for b in range(nbin_lens):
+                w = np.where(tomo_data['lens_bin']==b)
+
+                # Summ all the PDFs from that bin
+                lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
+                lens_counts[b] += w[0].size
+
+        # Collect together the results from the different processors,
+        # if we are running in parallel
+        if self.comm:
+            lens_pdfs        = self.reduce(lens_pdfs)
+            lens_counts      = self.reduce(lens_counts)
+
+        if self.rank==0:
+            # Normalize the stacks
+            for b in range(nbin_lens):
+                lens_pdfs[b] /= lens_counts[b]
+
+            # And finally save the outputs
+            f = self.open_output("lens_photoz_stack")
             self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
             f.close()
+
 
     def reduce(self, x):
         # For scalars (i.e. just the 2D source count for now)
@@ -168,12 +202,14 @@ class TXPhotozStack(PipelineStage):
         z = photoz_file['pdf/z'][:]
         photoz_file.close()
 
-        # Save again but for the number of bins in the tomography
-        # catalog
-        tomo_file = self.open_input('tomography_catalog')
-        nbin_source = tomo_file['tomography'].attrs['nbin_source']
-        nbin_lens = tomo_file['tomography'].attrs['nbin_lens']
-        tomo_file.close()
+        # Save again but for the number of bins in the tomography catalog
+        shear_tomo_file = self.open_input('shear_tomography_catalog')
+        nbin_source = shear_tomo_file['tomography'].attrs['nbin_source']
+        shear_tomo_file.close()
+
+        lens_tomo_file = self.open_input('lens_tomography_catalog')
+        nbin_lens = lens_tomo_file['tomography'].attrs['nbin_lens']
+        lens_tomo_file.close()
 
         return z, nbin_source, nbin_lens
 
