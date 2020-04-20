@@ -10,7 +10,7 @@ from .lens_selector import TXLensSelector
 from .photoz import TXRandomPhotozPDF
 from .photoz_stack import TXPhotozStack
 from .random_cats import TXRandomCat
-from .sysmaps import TXDiagnosticMaps
+from .diagnostic_maps import TXDiagnosticMaps
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .input_cats import TXCosmoDC2Mock

@@ -28,7 +28,8 @@ class TXDiagnosticMaps(PipelineStage):
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
-        ('tomography_catalog', TomographyCatalog),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
     ]
 
     # We generate a single HDF file in this stage
@@ -89,16 +90,19 @@ class TXDiagnosticMaps(PipelineStage):
         else:
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
         shear_cols += ['mcal_flags', 'weight']
-        bin_cols = ['source_bin', 'lens_bin']
+        shear_bin_cols = ['source_bin']
+        lens_bin_cols = ['lens_bin']
         m_cols = ['R_gamma']
 
-        T = self.open_input('tomography_catalog')
+        T = self.open_input('shear_tomography_catalog')
         d = dict(T['/tomography'].attrs)
         T.close()
-
         source_bins = list(range(d['nbin_source']))
-        lens_bins = list(range(d['nbin_lens']))
 
+        T = self.open_input('lens_tomography_catalog')
+        d = dict(T['/tomography'].attrs)
+        T.close()
+        lens_bins = list(range(d['nbin_lens']))
 
         # Make three mapper classes, one for the signal itself
         # (shear and galaxy count), another for the depth
@@ -126,6 +130,7 @@ class TXDiagnosticMaps(PipelineStage):
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
 
+        ## CC: change from here
         bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
         bin_it = (d[2] for d in bin_it)
 
