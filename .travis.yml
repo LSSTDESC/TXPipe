@@ -23,4 +23,4 @@ cache:
 
 script:
   - ceci examples/travis/pipeline.yml
-  - cat pipeline.log
+  - cat data/small/log.txt
