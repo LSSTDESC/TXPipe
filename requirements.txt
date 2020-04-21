@@ -1,14 +1,14 @@
--e git://github.com/LSSTDESC/ceci@v0.2#egg=ceci
+git://github.com/LSSTDESC/ceci@v0.2#egg=ceci
 h5py
 pandas
 sacc
 pyccl
 numpy
 matplotlib
--e git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
--e git://github.com/rmjarvis/treecorr@master#egg=treecorr
+git://github.com/rmjarvis/treecorr@master#egg=treecorr
 sklearn
 astropy
 healpy

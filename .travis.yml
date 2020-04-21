@@ -8,7 +8,7 @@ python:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get -y install gfortran-7 swig libgsl-dev libmpich-dev
+  - sudo apt-get -y install gfortran-7 swig libgsl-dev libopenmpi-dev openmpi-bin
 
 install:
   - pip install cffi
