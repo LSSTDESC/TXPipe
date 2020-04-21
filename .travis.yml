@@ -8,11 +8,11 @@ python:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get -y install gfortran-8 swig libgsl-dev libmpich-dev
+  - sudo apt-get -y install gfortran-7 swig libgsl-dev libmpich-dev
   # camb demands that the compiler be called gfortran and
   # does not cope with it being called gfortran-7. There is
   # no way to specify the name of the compiler.
-  - sudo ln -s `which gfortran-8` /usr/bin/gfortran 
+  - sudo ln -s `which gfortran-7` /usr/bin/gfortran
 
 install:
   - pip install cffi
