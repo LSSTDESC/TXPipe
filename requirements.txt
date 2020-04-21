@@ -1,4 +1,4 @@
--e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
+-e git://github.com/LSSTDESC/ceci@v0.2#egg=ceci
 h5py
 pandas
 sacc
@@ -12,4 +12,5 @@ treecorr
 sklearn
 astropy
 healpy
+camb
 #pymaster
