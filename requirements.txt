@@ -13,4 +13,5 @@ sklearn
 astropy
 healpy
 camb
+tjpcov
 #pymaster
