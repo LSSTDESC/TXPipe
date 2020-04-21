@@ -5,9 +5,10 @@ python:
   - "3.8"
 
 before_install:
-  - sudo apt-get -y install gfortran swig
+  - sudo apt-get -y install gfortran swig libgsl-dev
 
 install:
+  - pip install cffi
   - pip install -r requirements.txt
   - wget -O data.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/travis/small.tgz"
   - tar -zxvf data.tar.gz
