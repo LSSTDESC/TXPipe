@@ -1,4 +1,4 @@
-ceci
+-e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
 h5py
 pandas
 sacc

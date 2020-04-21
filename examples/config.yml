@@ -1,3 +1,7 @@
+TXGCRTwoCatalogInput:
+    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
+    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
+
 TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
@@ -5,20 +9,30 @@ TXExposureInfo:
     dc2_name: '1.2p'
 
 
-TXProtoDC2Mock:
+TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
+    visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2
+    flip_g2: True # to match metacal
+
 
 
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 110000
+    chunk_rows: 100000
 
 TXPhotozStack:
     chunk_rows: 100000
 
+# Mock version of stacking:
+TXTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+    chunk_rows: 100000
+
 TXSelector:
+    input_pz: False
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -30,9 +44,9 @@ TXSelector:
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
-    r_hi_cut: 19.6
+    r_hi_cut: 21.6
     i_lo_cut: 17.5
-    i_hi_cut: 19.9
+    i_hi_cut: 21.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
@@ -46,7 +60,10 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    flip_g2: False
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
     verbose: 0
 
 TXDiagnosticMaps:
@@ -57,14 +74,19 @@ TXDiagnosticMaps:
     pixelization: healpix
     nside: 1024
     # pixelization: gnomonic
-    # # 
     pixel_size: 0.2
     ra_cent: 62.
     dec_cent: -35.
     npix_x: 60
     npix_y: 60
+    depth_cut: 23.0
+
+
+TXJackknifeCenters:
+    npatch: 5
 
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: False
+    flip_g2: True
+    bandwidth: 100

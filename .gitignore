@@ -9,3 +9,4 @@ __pycache__/
 runinfo/
 test/logs/
 ipengine.json
+data/example
