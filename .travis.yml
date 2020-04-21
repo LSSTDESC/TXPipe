@@ -5,7 +5,7 @@ python:
   - "3.8"
 
 before_install:
-  - sudo apt-get -y install gfortran swig libgsl-dev
+  - sudo apt-get -y install gfortran-7 swig libgsl-dev
   # camb demands that the compiler be called gfortran and
   # does not cope with it being called gfortran-7. There is
   # no way to specify the name of the compiler.
