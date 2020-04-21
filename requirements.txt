@@ -14,4 +14,5 @@ astropy
 healpy
 camb
 tjpcov
+threadpoolctl
 #pymaster
