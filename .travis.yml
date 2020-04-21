@@ -9,8 +9,8 @@ before_install:
 
 install:
   - pip install -r requirements.txt
-  - wget -O txpipe-example-data.tar.gz  "https://www.dropbox.com/s/401e8ngmb36zr40/txpipe-example-data.tar.gz?dl=1"
-  - tar -zxvf txpipe-example-data.tar.gz
+  - wget -O data.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/travis/small.tgz"
+  - tar -zxvf data.tar.gz
 
 cache:
   - pip: true
@@ -18,5 +18,5 @@ cache:
     - data/example
 
 script:
-  - ceci test/travis.yml
+  - ceci examples/travis/pipeline.yml
   - cat pipeline.log
