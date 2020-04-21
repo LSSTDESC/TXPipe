@@ -8,7 +8,7 @@ python:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get -y install gfortran-8 swig libgsl-dev
+  - sudo apt-get -y install gfortran-8 swig libgsl-dev libmpich-dev
   # camb demands that the compiler be called gfortran and
   # does not cope with it being called gfortran-7. There is
   # no way to specify the name of the compiler.
@@ -16,7 +16,7 @@ before_install:
 
 install:
   - pip install cffi
-  - pip install -r requirements.txt
+  - pip install --no-binary=mpi4py -r requirements.txt
   - wget -O data.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/travis/small.tgz"
   - tar -zxvf data.tar.gz
 
