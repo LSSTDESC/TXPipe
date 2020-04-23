@@ -88,4 +88,5 @@ TXTwoPointFourier:
     flip_g1: True
     bandwidth: 20
     apodization_size: 0.0
+    cache_dir: ./cache
 

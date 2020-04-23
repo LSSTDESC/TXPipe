@@ -33,6 +33,8 @@ stages:
       threads_per_process: 64
     - name: TXRealGaussianCovariance
       threads_per_process: 64
+    - name: TXTwoPointFourier
+      threads_per_process: 64
 
 
 output_dir: data/cosmodc2/outputs
