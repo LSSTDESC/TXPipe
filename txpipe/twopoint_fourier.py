@@ -2,11 +2,13 @@ from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, DiagnosticMaps, HDFFile, PhotozPDFFile
 import numpy as np
 import collections
-from .utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
+from .utils import choose_pixelization, HealpixScheme, \
+                   GnomonicPixelScheme, ParallelStatsCalculator, \
+                   array_hash
 from .utils.theory import theory_3x2pt
 import sys
 import warnings
-
+import pathlib
 
 # Using the same convention as in twopoint.py
 SHEAR_SHEAR = 0
@@ -51,11 +53,11 @@ class TXTwoPointFourier(PipelineStage):
     config_options = {
         "mask_threshold": 0.0,
         "bandwidth": 0,
-        "apodization_size": 3.0,
-        "apodization_type": "C1",  #"C1", "C2", or "Smooth"
         "flip_g1": False,
         "flip_g2": False,
         "pixel_window": False,
+        "cache_dir": '',
+        "n_rotations": 10,
     }
 
     def run(self):
@@ -72,9 +74,12 @@ class TXTwoPointFourier(PipelineStage):
 
 
         # Generate namaster fields
-        pixel_scheme, f_d, f_wl, nbin_source, nbin_lens, f_sky = self.load_maps()
+        pixel_scheme, maps, f_sky = self.load_maps()
         if self.rank==0:
-            print("Loaded maps and converted to NaMaster fields")
+            print("Loaded maps.")
+
+        nbin_source = len(maps['g'])
+        nbin_lens = len(maps['d'])
 
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
@@ -90,6 +95,8 @@ class TXTwoPointFourier(PipelineStage):
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
+
+        workspaces = self.make_workspaces(maps, calcs, ell_bins)
 
         # Load the n(z) values, which are both saved in the output
         # file alongside the spectra, and then used to calcualate the
@@ -119,7 +126,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in self.split_tasks_by_rank(calcs):
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, f_wl, f_d, ell_bins, tomo_info, theory_cl)
+                pixel_scheme, i, j, k, maps, workspaces, ell_bins, tomo_info, theory_cl)
 
         if self.rank==0:
             print(f"Collecting results together")
@@ -136,11 +143,6 @@ class TXTwoPointFourier(PipelineStage):
     def load_maps(self):
         import pymaster as nmt
         import healpy
-        # Parameters that we need at this point
-        apod_size = self.config['apodization_size']
-        apod_type = self.config['apodization_type']
-
-
         # Load the various input maps and their metadata
         map_file = self.open_input('diagnostic_maps', wrapper=True)
         pix_info = map_file.read_map_info('mask')
@@ -199,86 +201,157 @@ class TXTwoPointFourier(PipelineStage):
 
         map_file.close()
 
-        # THe gnomonic (tangent plane) mapping versions need the map width
-        # I'm thinking of deleting support for this since it adds a whole
-        # set of options to maintain.
-        if pixel_scheme.name == 'gnomonic':
-            lx = np.radians(pixel_scheme.size_x)
-            ly = np.radians(pixel_scheme.size_y)
-
-        # For the lensing mask we optionall apodize the mask.
-        # TODO: include the masked object fraction in here.
-        # TODO: ask about including the depth map in here
-        if apod_size > 0:
-            if self.rank==0:
-                print(f"Apodizing clustering weights map with size {apod_size} deg and method {apod_type}")
-
-            # NaMaster has different functions for apodizing the two different maps
-            if pixel_scheme.name == 'gnomonic':
-                clustering_weight = nmt.mask_apodization_flat(clustering_weight, lx, ly, apod_size, apotype=apod_type)
-            elif pixel_scheme.name == 'healpix':
-                clustering_weight = nmt.mask_apodization(clustering_weight, apod_size, apotype=apod_type)
-            else:
-                raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
 
         # Set any unseen pixels to zero weight.
         for ng in ngal_maps:
             clustering_weight[ng==healpy.UNSEEN] = 0
 
+        # Start collecting maps
         d_maps = []
-        for ng in ngal_maps:
+        for i, ng in enumerate(ngal_maps):
             # Convert the number count maps to overdensity maps.
             # First compute the overall mean object count per bin.
             # Maybe we should do this in the mapping code itself?
             # mean clustering galaxies per pixel in this map
             mu = ng[clustering_weight>0].mean()
             # and then use that to convert to overdensity
-            dmap = ng.copy()
-            dmap[clustering_weight>0] -= mu
-            dmap[clustering_weight>0] /= mu
+            d = ng.copy()
+            d[clustering_weight>0] -= mu
+            d[clustering_weight>0] /= mu
             # and re-masking, just in case
-            dmap[~(clustering_weight>0)] = 0
-            d_maps.append(dmap)
+            d[~(clustering_weight>0)] = 0
+            d_maps.append(d)
 
-        # We now convert these maps, which are either healpix arrays or 2x2 maps,
-        # to the NaMaster internal type, which also knows about the 
-        density_fields = []
-        lensing_fields = []
+        lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
+                          for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
+        density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
+                          for d in d_maps]
 
-        # Now convert these maps and masks into NaMaster Field objects.
-        # First the over-density maps.
-        for i,d in enumerate(d_maps):
+        # Collect together all the maps we will output
+        maps = {
+            'dw': clustering_weight,
+            'lw': lensing_weights,
+            'g': list(zip(g1_maps, g2_maps)),
+            'd': d_maps,
+            'lf': lensing_fields,
+            'df': density_fields,
+
+        }
+
+        return pixel_scheme, maps, f_sky
+
+    def load_workspace_cache(self):
+        from .utils.nmt_utils import WorkspaceCache
+        dirname = self.config['cache_dir']
+
+        if not dirname:
             if self.rank == 0:
-                print(f"Generating density field {i}")
+                print("Not using an on-disc cache.  Set cache_dir to use one")
+            return {}
 
-            # There are two classes depending on which pixel scheme we're using.
-            if pixel_scheme.name == 'gnomonic':
-                field = nmt.NmtFieldFlat(lx, ly, clustering_weight, [d], templates=syst_nc) 
-            elif pixel_scheme.name == 'healpix':
-                field = nmt.NmtField(clustering_weight, [d], templates=syst_nc)
+        cache = WorkspaceCache(dirname)
+        return cache
+
+    def save_workspace_cache(self, cache, spaces):
+        if cache is None:
+            return
+
+        for space in spaces.values():
+            cache.put(space)
+
+    def make_workspaces(self, maps, calcs, ell_bins):
+        import pymaster as nmt
+
+        # Make the field object
+        if self.rank == 0:
+            print("Preparing workspaces")
+
+        # load the cache
+        cache = self.load_workspace_cache()
+
+        nbin_source = len(maps['g'])
+        nbin_lens = len(maps['d'])
+
+        # empty workspaces
+        zero = np.zeros_like(maps['dw'])
+
+        lensing_weights = maps['lw']
+        density_weight  = maps['dw']
+        lensing_fields = maps['lf']
+        density_fields  = maps['df']
+
+        ell_hash = array_hash(ell_bins.get_effective_ells())
+        hashes = {id(x):array_hash(x) for x in lensing_weights}
+        hashes[id(density_weight)] = array_hash(density_weight)
+
+
+        # It's an oddity of NaMaster that we
+        # need to supply a field object to the workspace even though the
+        # coupling matrix only depends on the mask and ell binning.
+        # So here we re-use the fields we've made for the actual
+        # analysis, but to save the coupling matrices while being sure
+        # we're using the right ones we derive a key based on the
+        # mask and ell centers.
+
+        # Each lensing field has its own mask
+        lensing_fields = [(lw, lf)
+                          for lw, lf in zip(lensing_weights, lensing_fields)]
+
+        # The density fields share a mask, so just use the field
+        # object for the first one.  
+        density_field = (density_weight, density_fields[0])
+
+        spaces = {}
+
+        def get_workspace(f1, f2):
+            w1, f1 = f1
+            w2, f2 = f2
+
+            # First we derive a hash which will change whenever either
+            # the mask changes or the ell binning.
+            # We combine the hashes of those three objects together
+            # using xor (python  ^ operator), which seems to be standard.
+            h1 = hashes[id(w1)]
+            h2 = hashes[id(w2)]
+            key = h1 ^ ell_hash
+            # ... except that if we are using the same field twice then
+            # x ^ x = 0, which causes problems (all the auto-bins would
+            # have the same key).  So we only combine the hashes if the
+            # fields are different.
+            if h2 != h1:
+                key ^= h2
+            # Check on disc to see if we have one saved already.
+            space = cache.get(key)
+            # If not, compute it.  We will save it later
+            if space is None:
+                print(f'Rank {self.rank} computing coupling matrix '
+                      f"{i}, {j}, {k}")
+                space = nmt.NmtWorkspace()
+                space.compute_coupling_matrix(f1, f2, ell_bins)
             else:
-                raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+                print(f'Rank {self.rank} getting coupling matrix '
+                       f'{i}, {j}, {k} from cache.')
+            # This is a bit awkward - we attach the key to the
+            # object to avoid more book-keeping.  This is used inside
+            # the workspace cache
+            space.txpipe_key = key
+            return space
 
-            density_fields.append(field)
-
-
-        # And then the lensing maps
-        for i, (g1, g2, lw) in enumerate(zip(g1_maps, g2_maps, lensing_weights)):
-            if self.rank == 0:
-                print(f"Generating lensing field {i}")
-            # Same again.  NaMaster knows whether these are spin 0 or spin 2
-            # from the length of the maps list we pass it (1 or 2).
-            if pixel_scheme.name == 'gnomonic':
-                field = nmt.NmtFieldFlat(lx, ly, lw, [g1,g2], templates=syst_wl) 
-            elif pixel_scheme.name == 'healpix':
-                field = nmt.NmtField(lw, [g1, g2], templates=syst_wl) 
+        for (i, j, k) in calcs:
+            if k == SHEAR_SHEAR:
+                f1 = lensing_fields[i]
+                f2 = lensing_fields[j]
+            elif k == SHEAR_POS:
+                f1 = lensing_fields[i]
+                f2 = density_field
             else:
-                raise ValueError(f"Pixelization scheme {pixel_scheme.name} not supported by NaMaster")
+                f1 = density_field
+                f2 = density_field
+            spaces[(i,j,k)] = get_workspace(f1, f2)
 
-            lensing_fields.append(field)
-        
-        return pixel_scheme, density_fields, lensing_fields, nbin_source, nbin_lens, f_sky
-
+        print("Fix this to make it work in parallel!")
+        self.save_workspace_cache(cache, spaces)
+        return spaces
 
     def collect_results(self):
         if self.comm is None:
@@ -368,7 +441,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, f_wl, f_d, ell_bins, tomo_info, cl_theory):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, tomo_info, cl_theory):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -388,7 +461,6 @@ class TXTwoPointFourier(PipelineStage):
         type_name = NAMES[k]
         print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
         sys.stdout.flush()
-
 
         # The binning information - effective (mid) ell values and
         # the window information
@@ -419,32 +491,24 @@ class TXTwoPointFourier(PipelineStage):
         cl_guess = None
 
         if k == SHEAR_SHEAR:
-            field_i = f_wl[i]
-            field_j = f_wl[j]
+            field_i = maps['lf'][i]
+            field_j = maps['lf'][j]
             results_to_use = [(0, CEE, pixwin_p**2), (3, CBB, pixwin_p**2)]
 
         elif k == POS_POS:
-            field_i = f_d[i]
-            field_j = f_d[j]
+            field_i = maps['df'][i]
+            field_j = maps['df'][j]
             results_to_use = [(0, Cdd, pixwin_t**2)]
 
         elif k == SHEAR_POS:
-            field_i = f_wl[i]
-            field_j = f_d[j]
+            field_i = maps['lf'][i]
+            field_j = maps['df'][j]
             results_to_use = [(0, CdE, pixwin_t*pixwin_p), (1, CdB, pixwin_t*pixwin_p)]
 
-        if pixel_scheme.name == 'healpix':
-            workspace = nmt.NmtWorkspace()
-        elif pixel_scheme.name == 'gnomonic':
-            workspace = nmt.NmtWorkspaceFlat()
-        else:
-            raise ValueError(f"No NaMaster workspace for pixel scheme {pixel_scheme.name}")
-
-        # Compute mode-coupling matrix
-        workspace.compute_coupling_matrix(field_i, field_j, ell_bins)
+        workspace = workspaces[(i,j,k)]
 
         # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, workspace, tomo_info)
+        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace, tomo_info)
 
         # Run the master algorithm
         if pixel_scheme.name == 'healpix':
@@ -460,39 +524,35 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement(name, ls, c[index] / pixwin, win, i, j))
 
 
-    def compute_noise(self, i, j, k, ell_bins, w, tomo_info):
+    def compute_noise(self, i, j, k, ell_bins, maps, workspace, tomo_info):
         # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
             return None
 
-        # We loaded in sigma_e and the densities
-        # earlier on, and put them in the tomo_info dictionary
         if k==SHEAR_SHEAR:
-            noise_level = tomo_info['sigma_e'][i]**2 / tomo_info['n_eff_steradian'][i]
+            return self.compute_shear_noise(maps['g'][i], maps['lw'][i], workspace)
         else:
-            noise_level = 1.0 / tomo_info['n_lens_steradian'][i]
+            print("Skipping noise in density")
+            return None
+            return self.compute_density_noise()
 
-        # Number of ell values in the uncoupled C_ell (banded in flat case)
-        if ell_bins.is_flat():
-            n = ell_bins.get_n_bands()
-        else:
-            n = w.wsp.lmax + 1
+    def compute_shear_noise(self, g_maps, lensing_weight, workspace):
+        import pymaster as nmt
+        from .utils.nmt_utils import iterate_randomly_rotated_fields
+        g1, g2 = g_maps
+        n_rot = self.config['n_rotations']
+        # make a bunch of random rotations of the maps
+        # make a new field for each rotation
+        noise_c_ells = []
+        for i, field in enumerate(iterate_randomly_rotated_fields(
+                                  g1, g2, lensing_weight, n_rot)):
+            print(f"Rank {self.rank} Computing noise realisation {i}")
+            cl_coupled = nmt.compute_coupled_cell(field, field)
+            cl_decoupled = workspace.decouple_cell(cl_coupled)
+            noise_c_ells.append(cl_decoupled)
+        mean_noise = np.mean(noise_c_ells, axis=0)
+        return mean_noise
 
-        # Uncoupled noise C_ell value
-        N1 = np.ones(n) * noise_level
-
-        if k==SHEAR_SHEAR:
-            N2 = [N1, N1, N1, N1]
-        else:
-            N2 = [N1]
-
-        # Couple to take coupled C_ell value
-        if ell_bins.is_flat():
-            cl_noise = w.couple_cell(N2)
-        else:
-            cl_noise = w.couple_cell(N2)
-
-        return cl_noise
 
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
