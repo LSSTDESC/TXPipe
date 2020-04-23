@@ -31,7 +31,7 @@ class TXTwoPoint(PipelineStage):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        'calcs':[0,1,2],
+        'calcs':[0,1,2,3,4],
         'min_sep':2.5,
         'max_sep':250,
         'nbins':20,
@@ -46,7 +46,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'shear_catalog_type': 'metacal'
+        'shear_catalog_type': 'lensfit'
         }
 
     def run(self):
@@ -329,7 +329,7 @@ class TXTwoPoint(PipelineStage):
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['mcal_g1'][mask],data['mcal_g2'][mask],data['lensfit_weight'])
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][mask],data['g2'][mask],data['lensfit_weight'])
             return g1, g2, weight, one_plus_K, mask
 
         else:
@@ -352,7 +352,7 @@ class TXTwoPoint(PipelineStage):
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
-                w = weight,
+                w = weight[mask],
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
@@ -509,17 +509,24 @@ class TXTwoPoint(PipelineStage):
     def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
-        cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+        
+        if self.config['shear_catalog_type']=='metacal':
+            cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+        else:
+            cat_cols = ['ra', 'dec', 'g1', 'g2', 'lensfit_weight','flags']
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        g = f['metacal']
+        g = f['shear']
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]
 
         if self.config['flip_g2']:
-            data['mcal_g2'] *= -1
+            if self.config['shear_catalog_type']=='metacal':
+                data['mcal_g2'] *= -1
+            else:
+                data['g2'] *= -1
 
 
     def load_random_catalog(self, data):
@@ -626,6 +633,9 @@ class TXTwoPointPlots(PipelineStage):
     ]
 
     config_options = {
+        'do_shear_shear': True,
+        'do_shear_pos': False,
+        'do_pos_pos': False,
 
     }
 
@@ -646,10 +656,12 @@ class TXTwoPointPlots(PipelineStage):
         sources, lenses = self.read_nbin(s)
         print(f"Plotting xi for {len(sources)} sources and {len(lenses)} lenses")
 
-
-        self.plot_shear_shear(s, sources)
-        self.plot_shear_density(s, sources, lenses)
-        self.plot_density_density(s, lenses)
+        if self.config['do_shear_shear']:
+            self.plot_shear_shear(s, sources)
+        if self.config['do_shear_pos']:
+            self.plot_shear_density(s, sources, lenses)
+        if self.config['do_pos_pos']:
+            self.plot_density_density(s, lenses)
 
 
     def read_nbin(self, s):

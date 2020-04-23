@@ -31,7 +31,7 @@ class TXDiagnosticPlots(PipelineStage):
     config_options = {
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
-        'shear_catalog_type': 'metacal'
+        'shear_catalog_type': 'lensfit'
     }
 
     def run(self):
@@ -44,7 +44,7 @@ class TXDiagnosticPlots(PipelineStage):
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
         
-        plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
+        plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_') and 'histogram' not in f]
 
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
@@ -55,10 +55,13 @@ class TXDiagnosticPlots(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = self.config['chunk_rows']
-        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+        if self.config['shear_catalog_type']=='metacal':
+            shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
-        iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+        else:
+            shear_cols = ['psf_g1', 'psf_g2', 'g1', 'g2', 'psf_T_mean','s2n','T']
+        iter_shear = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
@@ -96,8 +99,12 @@ class TXDiagnosticPlots(PipelineStage):
         size = 11
         psf_g_edges = np.linspace(-0.024, 0.044, size+1)
 
-        p1 = MeanShearInBins('mcal_psf_g1', psf_g_edges, delta_gamma, cut_source_bin=True)
-        p2 = MeanShearInBins('mcal_psf_g2', psf_g_edges, delta_gamma, cut_source_bin=True)
+        if self.config['shear_catalog_type']=='metacal':
+            p1 = MeanShearInBins('mcal_psf_g1', psf_g_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+            p2 = MeanShearInBins('mcal_psf_g2', psf_g_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        else:
+            p1 = MeanShearInBins('psf_g1', psf_g_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+            p2 = MeanShearInBins('psf_g2', psf_g_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
 
@@ -179,8 +186,10 @@ class TXDiagnosticPlots(PipelineStage):
         size = 11
         psf_T_edges = np.linspace(0.2, 0.28, size+1)
 
-
-        binnedShear = MeanShearInBins('mcal_psf_T_mean', psf_T_edges, delta_gamma, cut_source_bin=True)
+        if self.config['shear_catalog_type']=='metacal':
+            binnedShear = MeanShearInBins('mcal_psf_T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        else:
+            binnedShear = MeanShearInBins('psf_T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
             
         while True:
             data = yield
@@ -234,7 +243,10 @@ class TXDiagnosticPlots(PipelineStage):
 
         # This class includes all the cutting and calibration, both for 
         # estimator and selection biases
-        binnedShear = MeanShearInBins('mcal_s2n', snr_edges, delta_gamma, cut_source_bin=True)
+        if self.config['shear_catalog_type']=='metacal':
+            binnedShear = MeanShearInBins('mcal_s2n', snr_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        else:
+            binnedShear = MeanShearInBins('s2n', snr_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         while True:
             # This happens when we have loaded a new data chunk
@@ -288,7 +300,10 @@ class TXDiagnosticPlots(PipelineStage):
         
         size = 10
         T_edges = np.linspace(0.1,2.1,size+1)
-        binnedShear = MeanShearInBins('mcal_T', T_edges, delta_gamma, cut_source_bin=True)
+        if self.config['shear_catalog_type']=='metacal':
+            binnedShear = MeanShearInBins('mcal_T', T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        else:
+            binnedShear = MeanShearInBins('T', T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         while True:
             # This happens when we have loaded a new data chunk
@@ -369,14 +384,13 @@ class TXDiagnosticPlots(PipelineStage):
                 w1_1m = np.where(b1_1m==i)
                 w1_2m = np.where(b1_2m==i)
                 
-                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
-                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                
                 if self.config['shear_catalog_type']=='metacal':
+                    S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
+                    R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
                     g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
                 elif self.config['shear_catalog_type']=='lensfit':
-                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1],data['lensfit_weight'][qual_cut][w1])
+                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['lensfit_weight'][qual_cut][w1])
                 else:
                     raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 # Do more things here to establish
@@ -389,14 +403,13 @@ class TXDiagnosticPlots(PipelineStage):
                 w2_1m = np.where(b2_1m==i)
                 w2_2m = np.where(b2_2m==i)
                 
-                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w2_1p, w2_2p,w2_1m, w2_2m, delta_gamma)
-                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                
                 if self.config['shear_catalog_type']=='metacal':
-                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                    S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
+                    R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
+                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
                 elif self.config['shear_catalog_type']=='lensfit':
-                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['lensfit_weight'][qual_cut][w1])
                 else:
                     raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 calc2.add_data(i, g2)

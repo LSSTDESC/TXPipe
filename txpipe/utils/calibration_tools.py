@@ -407,11 +407,12 @@ class ParallelCalibratorNonMetacal:
 
 
 class MeanShearInBins:
-    def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False):
+    def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type=None):
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma
         self.cut_source_bin = cut_source_bin
+        self.shear_catalog_type = shear_catalog_type
         self.size = len(self.limits) - 1
 
         # We have to work out the mean g1, g2 
@@ -419,7 +420,10 @@ class MeanShearInBins:
         self.g2 = ParallelStatsCalculator(self.size)
         self.x  = ParallelStatsCalculator(self.size)
 
-        self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
+        if shear_catalog_type=='metacal':
+            self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
+        else:
+            self.calibrators = [ParallelCalibratorNonMetacal(self.selector) for i in range(self.size)]
 
 
     def selector(self, data, i):
@@ -433,8 +437,12 @@ class MeanShearInBins:
     def add_data(self, data):
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
-            self.g1.add_data(i, data['mcal_g1'][w])
-            self.g2.add_data(i, data['mcal_g2'][w])
+            if self.shear_catalog_type=='metacal':
+                self.g1.add_data(i, data['mcal_g1'][w])
+                self.g2.add_data(i, data['mcal_g2'][w])
+            else:
+                self.g1.add_data(i, data['g1'][w])
+                self.g2.add_data(i, data['g2'][w])
             self.x.add_data(i, data[self.x_name][w])
 
     def collect(self, comm=None):

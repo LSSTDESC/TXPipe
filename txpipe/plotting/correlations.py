@@ -78,16 +78,16 @@ def make_plot(corr, obs_data, theory_data):
         ny = nbin_source
         nx = nbin_source
         name = r"\xi_+(\theta)"
-        ymin = 5e-7
-        ymax = 9e-5
+        ymin = 5e-9
+        ymax = 9e-4
         auto_only = False
         half_only = True
     elif corr == XIM:
         ny = nbin_source
         nx = nbin_source
         name = r"\xi_-(\theta)"
-        ymin = 5e-7
-        ymax = 9e-5
+        ymin = 5e-9
+        ymax = 9e-4
         auto_only = False
         half_only = True
     elif corr == GAMMA:
