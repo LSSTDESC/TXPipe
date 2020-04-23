@@ -548,8 +548,8 @@ class TXTwoPointFourier(PipelineStage):
                                   g1, g2, lensing_weight, n_rot)):
             print(f"Rank {self.rank} Computing noise realisation {i}")
             cl_coupled = nmt.compute_coupled_cell(field, field)
-            cl_decoupled = workspace.decouple_cell(cl_coupled)
-            noise_c_ells.append(cl_decoupled)
+            #cl_decoupled = workspace.decouple_cell(cl_coupled)
+            noise_c_ells.append(cl_coupled)
         mean_noise = np.mean(noise_c_ells, axis=0)
         return mean_noise
 
