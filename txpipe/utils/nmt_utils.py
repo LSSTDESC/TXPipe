@@ -116,5 +116,5 @@ def iterate_randomly_rotated_maps(g1, g2, n_rot):
 
 def iterate_randomly_rotated_fields(g1, g2, lw, n_rot):
     for g1_rot, g2_rot in iterate_randomly_rotated_maps(g1, g2, n_rot):
-        field = nmt.NmtField(lw, [g1_rot, g2_rot], n_iter=0)
+        field = nmt.NmtField(lw, [g1_rot, g2_rot])
         yield field
