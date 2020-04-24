@@ -228,10 +228,17 @@ class SACCFile(DataFile):
 
 
 class NOfZFile(HDFFile):
-    # Must have at least one bin in
-    required_datasets = ['n_of_z/lens/z', 'n_of_z/source/bin_0']
 
     def validate(self):
+        
+        nsrc = self.get_nbin('source')
+        nlens = self.get_nbin('lens')
+        if nsrc and nlens > 0:
+            required_datasets = ['n_of_z/lens/z', 'n_of_z/source/bin_0']
+        elif nsrc > 0: 
+            required_datasets = ['n_of_z/source/bin_0']
+        else:
+            required_datasets = ['n_of_z/source/bin_0']
         super().validate()
 
         for kind in ('lens', 'source'):

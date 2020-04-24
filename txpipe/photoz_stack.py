@@ -239,14 +239,16 @@ class TXPhotozPlots(PipelineStage):
         import matplotlib.pyplot as plt
         f = self.open_input('photoz_stack', wrapper=True)
 
-        out1 = self.open_output('nz_lens', wrapper=True)
-        f.plot('lens')
-        plt.legend()
-        plt.title("Lens n(z)")
-        out1.close()
+        if self.config['plot_lens']:
+            out1 = self.open_output('nz_lens', wrapper=True)
+            f.plot('lens')
+            plt.legend()
+            plt.title("Lens n(z)")
+            out1.close()
 
-        out2 = self.open_output('nz_source', wrapper=True)
-        f.plot('source')
-        plt.legend()
-        plt.title("Source n(z)")
-        out2.close()
+        if self.config['plot_src']:
+            out2 = self.open_output('nz_source', wrapper=True)
+            f.plot('source')
+            plt.legend()
+            plt.title("Source n(z)")
+            out2.close()
