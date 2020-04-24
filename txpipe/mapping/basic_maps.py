@@ -18,7 +18,7 @@ class Mapper:
                 self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
             self.stats[(b,'weight')] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
-    def add_data(self, shear_data, bin_data, m_data):
+    def add_data(self, shear_data, shear_bin_data, lens_bin_data, m_data):
         npix = self.pixel_scheme.npix
 
         # Get pixel indices
@@ -30,8 +30,8 @@ class Mapper:
         # In advance make the mask indicating which tomographic bin
         # Each galaxy is in.  Later we will AND this with the selection
         # for each pixel.
-        masks_lens = [bin_data['lens_bin'] == b for b in self.lens_bins]
-        masks_source = [bin_data['source_bin'] == b for b in self.source_bins]
+        masks_lens = [lens_bin_data['lens_bin'] == b for b in self.lens_bins]
+        masks_source = [shear_bin_data['source_bin'] == b for b in self.source_bins]
 
         for p in np.unique(pix_nums):  # Loop through pixels
             if p < 0 or p >= npix:
