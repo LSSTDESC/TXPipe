@@ -22,8 +22,10 @@ class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
     ]
     outputs = [
@@ -158,10 +160,13 @@ class TXTwoPoint(PipelineStage):
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        tomo = self.open_input('tomography_catalog')
+        tomo = self.open_input('shear_tomography_catalog')
         d = dict(tomo['tomography'].attrs)
         tomo.close()
         nbin_source = d['nbin_source']
+        tomo = self.open_input('lens_tomography_catalog')
+        d = dict(tomo['tomography'].attrs)
+        tomo.close()
         nbin_lens = d['nbin_lens']
         source_list = range(nbin_source)
         lens_list = range(nbin_lens)
@@ -215,7 +220,7 @@ class TXTwoPoint(PipelineStage):
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
@@ -224,6 +229,7 @@ class TXTwoPoint(PipelineStage):
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
 
+        f = self.open_input('lens_photoz_stack')
         # For both source and lens
         for i in data['lens_list']:
             z = f['n_of_z/lens/z'][:]
@@ -465,13 +471,13 @@ class TXTwoPoint(PipelineStage):
     def load_tomography(self, data):
 
         # Columns we need from the tomography catalog
-        f = self.open_input('tomography_catalog')
+        f = self.open_input('shear_tomography_catalog')
         source_bin = f['tomography/source_bin'][:]
-        lens_bin = f['tomography/lens_bin'][:]
+        r_total = f['metacal_response/R_total'][:]
         f.close()
 
-        f = self.open_input('tomography_catalog')
-        r_total = f['multiplicative_bias/R_total'][:]
+        f = self.open_input('lens_tomography_catalog')
+        lens_bin = f['tomography/lens_bin'][:]
         f.close()
 
         data['source_bin']  =  source_bin
@@ -538,7 +544,7 @@ class TXTwoPoint(PipelineStage):
         return area
 
     def calculate_metadata(self, data):
-        tomo = self.open_input('tomography_catalog')
+        tomo = self.open_input('shear_tomography_catalog')
         area = self.calculate_area(data)
         sigma_e = tomo['tomography/sigma_e'][:]
         N_eff = tomo['tomography/N_eff'][:]
@@ -570,8 +576,10 @@ class TXTwoPointLensCat(TXTwoPoint):
     name='TXTwoPointLensCat'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('lens_catalog', HDFFile),
     ]
@@ -844,8 +852,10 @@ class TXGammaTFieldCenters(TXTwoPoint):
     name = "TXGammaTFieldCenters"
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('exposures', HDFFile),
     ]
@@ -941,7 +951,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
         z = f['n_of_z/source2d/z'][:]
         Nz = f[f'n_of_z/source2d/bin_0'][:]
         f.close()
@@ -980,8 +990,10 @@ class TXGammaTBrightStars(TXTwoPoint):
     name = "TXGammaTBrightStars"
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile)
     ]
@@ -1093,7 +1105,7 @@ class TXGammaTBrightStars(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
         z = f['n_of_z/source2d/z'][:]
         Nz = f[f'n_of_z/source2d/bin_0'][:]
         f.close()
@@ -1133,8 +1145,10 @@ class TXGammaTDimStars(TXTwoPoint):
     name = "TXGammaTDimStars"
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile)
     ]
@@ -1245,7 +1259,7 @@ class TXGammaTDimStars(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
         z = f['n_of_z/source2d/z'][:]
         Nz = f[f'n_of_z/source2d/bin_0'][:]
         f.close()
