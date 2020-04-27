@@ -12,6 +12,7 @@ stages:
     - name: TXGammaTDimStars
     - name: TXRoweStatistics
     - name: TXRealGaussianCovariance
+    - name: TXLensingNoiseMaps
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working
