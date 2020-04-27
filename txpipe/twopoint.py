@@ -27,7 +27,7 @@ class TXTwoPoint(PipelineStage):
         ('random_cats', RandomsCatalog),
     ]
     outputs = [
-        ('twopoint_data_UNBLINDED_RABID', SACCFile),
+        ('twopoint_data_real_raw', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -592,7 +592,7 @@ class TXTwoPointPlots(PipelineStage):
     """
     name='TXTwoPointPlots'
     inputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_real', SACCFile),
     ]
     outputs = [
         ('shear_xi', PNGFile),

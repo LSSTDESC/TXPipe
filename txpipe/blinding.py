@@ -10,10 +10,10 @@ class TXBlinding(PipelineStage):
     """
     name='TXBlinding'
     inputs = [
-        ('twopoint_data_UNBLINDED_RABID', SACCFile),
+        ('twopoint_data_real_raw', SACCFile),
     ]
     outputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_real', SACCFile),
     ]
     config_options = {
         'seed': 1972,  ## seed uniquely specifies the shift in parameters
@@ -24,7 +24,7 @@ class TXBlinding(PipelineStage):
         'sigma8': [0.801, 0.01],
         'n_s': [0.971, 0.03],
         'b0': 0.95,  ### we assume bias to be of the form b0/growth
-        'delete_unblinded': True 
+        'delete_unblinded': False 
     }
 
 
@@ -37,18 +37,17 @@ class TXBlinding(PipelineStage):
          - Output blinded data
          - Optionally deletete unblinded data
         """
-        import sacc, sys, os
+        import sacc, sys, os, shutil
         sys.stdout.flush()
 
-        if self.rank==0:
-            unblinded_fname = self.get_input('twopoint_data_UNBLINDED_RABID')
-            sacc = sacc.Sacc.load_fits(unblinded_fname)
-            blinded_sacc = self.blind_muir(sacc)
-            print ("Writing a very small sacc file [on NERSC: 1200 baud teetu-teetu-shhhhh]")
-            blinded_sacc.save_fits(self.get_output('twopoint_data'), overwrite=True)
-            if self.config['delete_unblinded']:
-                print ("Replacing %s with empty..."%unblinded_fname)
-                open (unblinded_fname,'w').close()
+        unblinded_fname = self.get_input('twopoint_data_real_raw')
+        sacc = sacc.Sacc.load_fits(unblinded_fname)
+        blinded_sacc = self.blind_muir(sacc)
+        print ("Writing a very small sacc file [on NERSC: 1200 baud teetu-teetu-shhhhh]")
+        blinded_sacc.save_fits(self.get_output('twopoint_data_real'), overwrite=True)
+        if self.config['delete_unblinded']:
+            print(f"Replacing {unblinded_fname} with empty...")
+            open (unblinded_fname,'w').close()
                 
 
     def blind_muir(self, sacc):
@@ -57,14 +56,13 @@ class TXBlinding(PipelineStage):
         import io
         import copy
         ## here we actually do blinding
-        if self.rank==0:
-            print(f"Blinding... ")
+        print(f"Blinding... ")
         np.random.seed(self.config["seed"])
         # blind signature -- this ensures seed is consistent across
         # numpy versions
         blind_sig = ''.join(format(x, '02x') for x in np.random.bytes(4))
         if self.rank==0:
-            print ("Blinding signature: %s"%(blind_sig))
+            print(f"Blinding signature: %s"%(blind_sig))
 
 
         fid_params = {
@@ -83,7 +81,7 @@ class TXBlinding(PipelineStage):
                 zeff = (tracer.z*tracer.nz).sum()/tracer.nz.sum()
                 bz[key] = self.config['b0']/ccl.growth_factor(fidCosmo,1/(1+zeff)) 
         
-        offset_params = copy.copy(fid_params)
+        offset_params = fid_params.copy()
         for par in fid_params.keys():
             offset_params [par] += self.config[par][1]*np.random.normal(0.,1.)
         fc_config = {
@@ -150,7 +148,7 @@ class TXBlinding(PipelineStage):
         ## now add offsets
         for p, delta in zip(sacc.data,diffvec):
             p.value+=delta
-        print ("Blinding done.")
+        print(f"Blinding done.")
             
         return sacc
 
