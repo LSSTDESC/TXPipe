@@ -2,16 +2,18 @@ from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, Par
 import numpy as np
 
 class Mapper:
-    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2), sparse=False):
+    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2), sparse=False, compute_lens=True):
         self.pixel_scheme = pixel_scheme
         self.source_bins = source_bins
+        self.compute_lens = compute_lens
         self.lens_bins = lens_bins
         self.tasks = tasks
         self.sparse = sparse
         self.stats = {}
-        for b in self.lens_bins:
-            t = 0
-            self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+        if self.compute_lens:
+            for b in self.lens_bins:
+                t = 0
+                self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
         for b in self.source_bins:
             for t in [1,2]:
@@ -23,13 +25,15 @@ class Mapper:
         # Get pixel indices
         pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
 
-        # TODO: change from unit weights for lenses
-        lens_weights = np.ones_like(shear_data['ra'])
+        if self.compute_lens:
+            # TODO: change from unit weights for lenses
+            lens_weights = np.ones_like(shear_data['ra'])
 
         # In advance make the mask indicating which tomographic bin
         # Each galaxy is in.  Later we will AND this with the selection
         # for each pixel.
-        masks_lens = [bin_data['lens_bin'] == b for b in self.lens_bins]
+        if self.compute_lens:
+            masks_lens = [bin_data['lens_bin'] == b for b in self.lens_bins]
         masks_source = [bin_data['source_bin'] == b for b in self.source_bins]
 
         for p in np.unique(pix_nums):  # Loop through pixels
@@ -38,16 +42,17 @@ class Mapper:
 
             # All the data points that hit this pixel
             mask_pix = (pix_nums == p)
-
-            # Number counts.
-            t = 0
-            if t in self.tasks:
-                # Loop through the tomographic lens bins
-                for i,b in enumerate(self.lens_bins):
-                    mask_bins = masks_lens[i]
-                    w = lens_weights
-                    # Loop through tasks (number counts, gamma_x)
-                    self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
+            
+            if self.compute_lens:
+                # Number counts.
+                t = 0
+                if t in self.tasks:
+                    # Loop through the tomographic lens bins
+                    for i,b in enumerate(self.lens_bins):
+                        mask_bins = masks_lens[i]
+                        w = lens_weights
+                        # Loop through tasks (number counts, gamma_x)
+                        self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
 
             # Shears
             for t in (1,2):
@@ -78,30 +83,32 @@ class Mapper:
         mask = np.zeros(self.pixel_scheme.npix, dtype=np.bool)
 
         is_master = (comm is None) or (comm.Get_rank()==0)
-        for b in self.lens_bins:
-            if rank==0:
-                print(f"Collating density map for lens bin {b}")
-            stats = self.stats[(b,0)]
-            count, mean, _ = stats.collect(comm)
+        
+        if self.compute_lens:
+            for b in self.lens_bins:
+                if rank==0:
+                    print(f"Collating density map for lens bin {b}")
+                stats = self.stats[(b,0)]
+                count, mean, _ = stats.collect(comm)
 
-            if not is_master:
-                continue
+                if not is_master:
+                    continue
 
-            # There's a bit of a difference between the number counts
-            # and the shear in terms of the value to use
-            # when no objects are seen.  For the ngal we will use
-            # zero, because an observed but empty region should indeed
-            # have that. The number density for shear should be much
-            # higher, to the point where we don't have this issue.
-            # So we use UNSEEN for shear and 0 for counts.
-            count[np.isnan(count)] = 0
-            mean[np.isnan(mean)] = 0
+                # There's a bit of a difference between the number counts
+                # and the shear in terms of the value to use
+                # when no objects are seen.  For the ngal we will use
+                # zero, because an observed but empty region should indeed
+                # have that. The number density for shear should be much
+                # higher, to the point where we don't have this issue.
+                # So we use UNSEEN for shear and 0 for counts.
+                count[np.isnan(count)] = 0
+                mean[np.isnan(mean)] = 0
 
-            count = count.reshape(self.pixel_scheme.shape)
-            mean = mean.reshape(self.pixel_scheme.shape)
+                count = count.reshape(self.pixel_scheme.shape)
+                mean = mean.reshape(self.pixel_scheme.shape)
 
-            ngal[b] = (mean * count).flatten()
-            mask[count>0] = True
+                ngal[b] = (mean * count).flatten()
+                mask[count>0] = True
 
         for b in self.source_bins:
             if rank==0:

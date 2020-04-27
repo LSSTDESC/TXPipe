@@ -86,7 +86,10 @@ class TXDiagnosticMaps(PipelineStage):
         else:
             shear_cols = ['g1', 'g2', 'psf_g1', 'psf_g2']
             shear_cols.append('flags')
-        bin_cols = ['source_bin', 'lens_bin']
+        if self.config['compute_lens']:
+            bin_cols = ['source_bin', 'lens_bin']
+        else:
+            bin_cols = ['source_bin']
         m_cols = ['R_gamma']
 
         T = self.open_input('tomography_catalog')
@@ -100,8 +103,8 @@ class TXDiagnosticMaps(PipelineStage):
         # Make three mapper classes, one for the signal itself
         # (shear and galaxy count), another for the depth
         # calculation, and a third one for the PSF
-        mapper = Mapper(pixel_scheme, lens_bins, source_bins, sparse=config['sparse'])
-        mapper_psf = Mapper(pixel_scheme, lens_bins, source_bins, sparse=config['sparse'])
+        mapper = Mapper(pixel_scheme, lens_bins, source_bins, sparse=config['sparse'], compute_lens=self.config['compute_lens'])
+        mapper_psf = Mapper(pixel_scheme, lens_bins, source_bins, sparse=config['sparse'], compute_lens=self.config['compute_lens'])
         depth_mapper = DepthMapperDR1(pixel_scheme,
                                       config['snr_threshold'],
                                       config['snr_delta'],
@@ -136,13 +139,22 @@ class TXDiagnosticMaps(PipelineStage):
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper.
-            depth_data = {
-                'mag': phot_data[f'{band}_mag'],
-                'snr': phot_data[f'snr_{band}'],
-                'bins': bin_data['lens_bin'],
-                'ra': phot_data['ra'],
-                'dec': phot_data['dec'],
-            }
+            if self.config['compute_lens']:
+                depth_data = {
+                    'mag': phot_data[f'{band}_mag'],
+                    'snr': phot_data[f'snr_{band}'],
+                    'bins': bin_data['lens_bin'],
+                    'ra': phot_data['ra'],
+                    'dec': phot_data['dec'],
+                }
+            else:
+                depth_data = {
+                    'mag': phot_data[f'{band}_mag'],
+                    'snr': phot_data[f'snr_{band}'],
+                    'bins': bin_data['source_bin'],
+                    'ra': phot_data['ra'],
+                    'dec': phot_data['dec'],
+                }
 
             # TODO fix iterate_fits so it returns a dict
             # like iterate_hdf
@@ -199,14 +211,16 @@ class TXDiagnosticMaps(PipelineStage):
             group.attrs['area'] = area
             group.attrs['area_unit'] = 'sq deg'
             group.attrs['nbin_source'] = len(source_bins)
-            group.attrs['nbin_lens'] = len(lens_bins)
+            if self.config['compute_lens']:
+                group.attrs['nbin_lens'] = len(lens_bins)
             group.attrs['flag_exponent_max'] = config['flag_exponent_max']
 
             # Now save all the lens bin galaxy counts, under the
             # name ngal
-            for b in lens_bins:
-                self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
-                self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
+            if self.config['compute_lens']:
+                for b in lens_bins:
+                    self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config)
+                    self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
 
             for b in source_bins:
                 self.save_map(group, f"g1_{b}", map_pix, g1[b], config)
@@ -279,17 +293,18 @@ class TXDiagnosticMaps(PipelineStage):
         copy('multiplicative_bias', 'tracers', 'R_S')
         copy('multiplicative_bias', 'tracers', 'R_total')
         copy('tomography', 'tracers', 'N_eff')
-        copy('tomography', 'tracers', 'lens_counts')
         copy('tomography', 'tracers', 'sigma_e')
         copy('tomography', 'tracers', 'source_counts')
         N_eff = tomo_file['tomography/N_eff'][:]
         n_eff = N_eff / area_sq_arcmin
-        lens_counts = tomo_file['tomography/lens_counts'][:]
+        if self.config['compute_lens']:
+            copy('tomography', 'tracers', 'lens_counts')
+            lens_counts = tomo_file['tomography/lens_counts'][:]
+            lens_density = lens_counts / area_sq_arcmin
+            meta_file.create_dataset('tracers/lens_density', data=lens_density)
         source_counts = tomo_file['tomography/source_counts'][:]
-        lens_density = lens_counts / area_sq_arcmin
         source_density = source_counts / area_sq_arcmin
         meta_file.create_dataset('tracers/n_eff', data=n_eff)
-        meta_file.create_dataset('tracers/lens_density', data=lens_density)
         meta_file.create_dataset('tracers/source_density', data=source_density)
         meta_file['tracers'].attrs['area'] = area
         meta_file['tracers'].attrs['area_unit'] = 'sq deg'
@@ -333,11 +348,12 @@ class TXMapPlots(PipelineStage):
         nbin_source, nbin_lens = m.get_nbins()
         flag_exponent_max = m.file['maps'].attrs['flag_exponent_max']
 
-        fig = self.open_output('ngal_lens_map', wrapper=True, figsize=(5*nbin_lens, 5))
-        for i in range(nbin_lens):
-            plt.subplot(1, nbin_lens, i+1)
-            m.plot(f'ngal_{i}', view='cart')
-        fig.close()
+        if self.config['compute_lens']:
+            fig = self.open_output('ngal_lens_map', wrapper=True, figsize=(5*nbin_lens, 5))
+            for i in range(nbin_lens):
+                plt.subplot(1, nbin_lens, i+1)
+                m.plot(f'ngal_{i}', view='cart')
+            fig.close()
 
         fig = self.open_output('g1_map', wrapper=True, figsize=(5*nbin_source, 5))
         for i in range(nbin_source):
