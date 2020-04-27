@@ -150,7 +150,10 @@ class TXTwoPoint(PipelineStage):
             source_list, lens_list = self._read_nbin_from_config()
 
         ns = len(source_list)
-        nl = len(lens_list)
+        if self.config['do_pos_pos']:
+            nl = len(lens_list)
+        else:
+            nl = 0
         print(f'Running with {ns} source bins and {nl} lens bins')
 
         data['source_list']  =  source_list
@@ -163,9 +166,12 @@ class TXTwoPoint(PipelineStage):
         d = dict(tomo['tomography'].attrs)
         tomo.close()
         nbin_source = d['nbin_source']
-        nbin_lens = d['nbin_lens']
+        if self.config['do_pos_pos']:
+            nbin_lens = d['nbin_lens']
+            lens_list = range(nbin_lens)
+        else:
+            lens_list = None
         source_list = range(nbin_source)
-        lens_list = range(nbin_lens)
         return source_list, lens_list
 
     def _read_nbin_from_config(self):
@@ -180,7 +186,10 @@ class TXTwoPoint(PipelineStage):
         tomo_nbin_lens = len(tomo_lens_list)
 
         nbin_source = len(source_list)
-        nbin_lens = len(lens_list)
+        if self.config['do_pos_pos']:
+            nbin_lens = len(lens_list)
+        else:
+            nbin_lens = 0 
 
         if source_list == [-1]:
             source_list = tomo_source_list
@@ -226,10 +235,11 @@ class TXTwoPoint(PipelineStage):
             S.add_tracer('NZ', f'source_{i}', z, Nz)
 
         # For both source and lens
-        for i in data['lens_list']:
-            z = f['n_of_z/lens/z'][:]
-            Nz = f[f'n_of_z/lens/bin_{i}'][:]
-            S.add_tracer('NZ', f'lens_{i}', z, Nz)
+        if self.config['do_pos_pos']:
+            for i in data['lens_list']:
+                z = f['n_of_z/lens/z'][:]
+                Nz = f[f'n_of_z/lens/bin_{i}'][:]
+                S.add_tracer('NZ', f'lens_{i}', z, Nz)
         # Closing n(z) file
         f.close()
 
@@ -488,8 +498,9 @@ class TXTwoPoint(PipelineStage):
 
         # Columns we need from the tomography catalog
         f = self.open_input('tomography_catalog')
+        if self.config['do_pos_pos']:
+            lens_bin = f['tomography/lens_bin'][:]
         source_bin = f['tomography/source_bin'][:]
-        lens_bin = f['tomography/lens_bin'][:]
         f.close()
 
         f = self.open_input('tomography_catalog')
@@ -497,7 +508,8 @@ class TXTwoPoint(PipelineStage):
         f.close()
 
         data['source_bin']  =  source_bin
-        data['lens_bin']  =  lens_bin
+        if self.config['do_pos_pos']:
+            data['lens_bin']  =  lens_bin
         data['R_total']  =  r_total
 
     def load_lens_catalog(self, data):
