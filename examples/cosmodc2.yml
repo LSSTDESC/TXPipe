@@ -35,6 +35,9 @@ stages:
       threads_per_process: 64
     - name: TXTwoPointFourier
       threads_per_process: 64
+    - name: TXLensingNoiseMaps
+      nprocess: 4
+      nodes: 1
 
 
 output_dir: data/cosmodc2/outputs
