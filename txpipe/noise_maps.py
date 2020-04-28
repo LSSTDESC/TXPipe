@@ -29,20 +29,14 @@ class TXLensingNoiseMaps(PipelineStage):
     }        
 
     def run(self):
-        from .mapping import Mapper
+        from .mapping import ShearNoiseMapper
         from .utils import choose_pixelization
+        from healsparse import HealSparseMap
 
         # get the number of bins.
         bins, map_info = self.read_metadata()
         pixel_scheme = choose_pixelization(**map_info)
         n_rotations = self.config['n_rotations']
-
-        # use the same mapper object as the other mapping stage to build the maps
-        mappers = [
-            # No lens bins here, only source
-            Mapper(pixel_scheme, [], bins, sparse=self.config['sparse'])
-            for i in range(n_rotations)
-        ]
 
         # The columns we will need
         shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
@@ -54,29 +48,46 @@ class TXLensingNoiseMaps(PipelineStage):
         bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
         bin_it = (d[2] for d in bin_it)
 
+        npix = pixel_scheme.npix
+
+        G1 = np.zeros((npix, nbin_source, n_rotations))
+        G2 = np.zeros((npix, nbin_source, n_rotations))
+        W = np.zeros((npix, nbin_source))
+
         # Loop through the data
         for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
-            print(f"Process {self.rank} random rotating rows {s:,}-{e:,}")
+            source_bin = bin_data['source_bin']
 
-            n = len(shear_data['ra'])
+            n = s - e
+            w = shear_data['weight']
+            g1 = shear_data['mcal_g1'] * w
+            g2 = shear_data['mcal_g2'] * w
 
-            # make a random rotation for each galaxy
-            for i in range(n_rotations):
-                g1 = shear_data['mcal_g1']
-                g2 = shear_data['mcal_g2']
+            phi = np.random.uniform(0, 2*np.pi, (ngal, n_rotations))
+            c = np.cos(phi)
+            s = np.sin(phi)
+            g1r =  c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
+            g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
 
-                # Generate the rotation values
-                phi = np.random.uniform(0, 2*np.pi, n)
-                s = np.sin(phi)
-                c = np.cos(phi)
+            for i in range(ngal):
+                if source_bin >= 0:
+                    pix = pixels[i]
+                    G1[pix, source_bin, :] += g1r[i] 
+                    G2[pix, source_bin, :] += g2r[i]
+                    W[pix, source_bin] += w[i]
 
-                shear_data['g1'] =  g1 * c + g2 * s
-                shear_data['g2'] = -g1 * s + g2 * c
+        # Sum everything at root
+        if self.comm is not None:
+            from mpi4py.MPI import DOUBLE, SUM
+            if self.comm.Get_rank() == 0:
+                self.comm.Reduce(MPI.IN_PLACE, G1)
+                self.comm.Reduce(MPI.IN_PLACE, G2)
+                self.comm.Reduce(MPI.IN_PLACE, W)
+            else:
+                self.comm.Reduce(G1, None)
+                self.comm.Reduce(G2, None)
+                self.comm.Reduce(W, None)
 
-                # The "None" is for the m values, which are not currently
-                # used but included as a placeholder for when/if we want
-                # to start mapping the response values
-                mappers[i].add_data(shear_data, bin_data, None)
 
         if self.rank==0:
             print("Saving maps")
@@ -89,23 +100,18 @@ class TXLensingNoiseMaps(PipelineStage):
 
             metadata = {**self.config, **map_info}
 
+            for b in range(nbin_source):
+                pixels = np.where(W[:,b]>0)[0]
+                for i in range(n_rotations):
 
-        for i, mapper in enumerate(mappers):
-            if self.rank == 0:
-                print(f"Collating and saving map rotation {i}")
-            # First collate the map info from the other processors,
-            # if we are running in parallel.
-            # We don't need weight maps, because they are the same as
-            # the original one.  We also don't need the density map.
-            map_pix, _, g1, g2, _, _, _ = mapper.finalize(self.comm)
+                    g1 = G1[pixels, b, i] / W[pixels, b]
+                    g2 = G2[pixels, b, i] / W[pixels, b]
 
-            if self.rank == 0:
-                # Save the collated map for this rotation
-                for b in bins:
                     outfile.write_map(f"realization_{i}/g1_{b}", 
-                                  map_pix, g1[b], metadata)
+                        pixels, g1, metadata)
+
                     outfile.write_map(f"realization_{i}/g2_{b}", 
-                                  map_pix, g2[b], metadata)
+                        pixels, g2, metadata)
 
 
 
