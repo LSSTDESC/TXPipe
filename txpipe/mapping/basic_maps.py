@@ -20,24 +20,27 @@ class Mapper:
 
     def add_data(self, shear_data, bin_data, m_data):
         npix = self.pixel_scheme.npix
+        do_lens = 0 in self.tasks
+        do_g = 1 in self.tasks
 
         n = len(shear_data['ra'])
 
         # Get pixel indices
         pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
 
-        # TODO: change from unit weights for lenses
-        source_weights = shear_data['weight']
-        lens_weights = np.ones_like(shear_data['ra'])
 
-        lens_bins = bin_data['lens_bin']
-        source_bins = bin_data['source_bin']
+        if do_g:
+            g1 = shear_data['g1']
+            g2 = shear_data['g2']
+            source_bins = bin_data['source_bin']
+            source_weights = shear_data['weight']
 
-        g1 = shear_data[g1]
-        g2 = shear_data[g2]
+        if do_lens:
+            # TODO: change from unit weights for lenses
+            lens_weights = np.ones_like(shear_data['ra'])
+            lens_bins = bin_data['lens_bin']
 
-        do_lens = 0 in self.tasks
-        do_g = 1 in self.tasks
+
 
         for i in range(n):
             p = pix_nums[i]
@@ -49,12 +52,11 @@ class Mapper:
             source_bin = source_bins[i]
             lw = lens_weights[i]
             sw = source_weights[i]
-            g2_i = g2[i]
 
-            if (lens_bin >= 0) and do_lens:
+            if do_lens and (lens_bin >= 0):
                 self.stats[(lens_bin, 0)].add_data(p, [lw])
 
-            if (source_bin >= 0) and do_g:
+            if do_g and (source_bin >= 0):
                 self.stats[(source_bin, 1)].add_data(p, [g1[i] * sw])
                 self.stats[(source_bin, 2)].add_data(p, [g2[i] * sw])
                 self.stats[(source_bin,'weight')].add_data(p, [sw])
