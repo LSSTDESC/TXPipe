@@ -235,6 +235,7 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
+            print(Nz)
         # Closing n(z) file
         f.close()
 

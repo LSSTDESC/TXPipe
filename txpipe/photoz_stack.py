@@ -62,6 +62,13 @@ class TXPhotozStack(PipelineStage):
             self.config['chunk_rows']  # number of rows to read at once
         )
 
+        photoz_iterator2 = self.iterate_hdf(
+            'photoz_pdfs', # tag of input file to iterate through
+            'pdf', # data group within file to look at
+            ['pdf'], # column(s) to read
+            self.config['chunk_rows']  # number of rows to read at once
+        )
+
         shear_tomography_iterator = self.iterate_hdf(
             'shear_tomography_catalog', # tag of input file to iterate through
             'tomography', # data group within file to look at
@@ -127,8 +134,7 @@ class TXPhotozStack(PipelineStage):
             self.save_result(f, "source2d", 1, z, [source_pdfs_2d], [source_counts_2d])
             f.close()
 
-        # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, lens_tomography_iterator):
+        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator2, lens_tomography_iterator):
             # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
@@ -142,7 +148,6 @@ class TXPhotozStack(PipelineStage):
             # There is probably a better way of doing this.
             for b in range(nbin_lens):
                 w = np.where(tomo_data['lens_bin']==b)
-
                 # Summ all the PDFs from that bin
                 lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
                 lens_counts[b] += w[0].size
@@ -426,6 +431,7 @@ class TXTrueNumberDensity(TXPhotozStack):
             # There is probably a better way of doing this.
             for b in range(nbin_lens):
                 w = np.where(tomo_data['lens_bin']==b)
+                print(z[w])
                 lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 lens_counts[b] += w[0].size
 
@@ -440,6 +446,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         if self.rank==0:
             # Normalize the stacks
             for b in range(nbin_lens):
+                print(b, lens_counts[b])
                 lens_pdfs[b] /= lens_counts[b]
 
             # And finally save the outputs

@@ -1,7 +1,7 @@
 
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
-from .utils import SourceNumberDensityStats, LensNumberDensityStats
+from .utils import SourceNumberDensityStats
 from .utils.metacal import metacal_variants, metacal_band_variants, ParallelCalibrator
 import numpy as np
 import warnings

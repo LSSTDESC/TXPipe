@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile
-from .utils import SourceNumberDensityStats, LensNumberDensityStats
+from .utils import LensNumberDensityStats
 import numpy as np
 import warnings
 
@@ -98,8 +98,10 @@ class TXLensSelector(PipelineStage):
 
             # Accumulate information on the number counts and the selection biases.
             # These will be brought together at the end.
-            #number_density_stats.add_data(shear_data, tomo_bin, lens_gals)
+            number_density_stats.add_data(tomo_bin)
 
+        # Do the selection bias averaging and output that too.
+        self.write_global_values(output_file, number_density_stats)
 
         # Save and complete
         output_file.close()
@@ -170,6 +172,23 @@ class TXLensSelector(PipelineStage):
 
         group = outfile['tomography']
         group['lens_bin'][start:end] = lens_bin
+
+    def write_global_values(self, outfile, number_density_stats):
+        """
+        Write out overall selection biases
+
+        Parameters
+        ----------
+
+        outfile: h5py.File
+
+        """
+        lens_counts = number_density_stats.collect()
+
+
+        if self.rank==0:
+            group = outfile['tomography']
+            group['lens_counts'][:] = lens_counts
 
 
     def select_lens(self, phot_data):
