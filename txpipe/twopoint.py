@@ -61,7 +61,8 @@ class TXTwoPoint(PipelineStage):
         data = {}
         self.load_tomography(data)
         self.load_shear_catalog(data)
-        self.load_random_catalog(data)
+        if self.config['do_shear_pos'] or self.config['do_pos_pos']:
+            self.load_random_catalog(data)
         # This one is optional - this class does nothing with it
         self.load_lens_catalog(data)
         # Binning information
@@ -339,7 +340,7 @@ class TXTwoPoint(PipelineStage):
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][mask],data['g2'][mask],data['lensfit_weight'])
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][mask],data['g2'][mask],data['lensfit_weight'][mask])
             return g1, g2, weight, one_plus_K, mask
 
         else:
@@ -362,7 +363,7 @@ class TXTwoPoint(PipelineStage):
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
-                w = weight[mask],
+                w = weight,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
@@ -737,7 +738,7 @@ class TXTwoPointPlots(PipelineStage):
 
                     plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
                     plt.xscale('log')
-                    plt.ylim(-30,30)
+                    plt.ylim(-1,5)
                     plt.xlim(tmin, tmax)
 
                     if dt==xim:
