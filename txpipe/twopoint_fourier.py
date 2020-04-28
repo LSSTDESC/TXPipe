@@ -48,8 +48,7 @@ class TXTwoPointFourier(PipelineStage):
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
-        ('tracer_metadata', TomographyCatalog),  # For density info
-        ('lensing_noise_maps', NoiseMaps)
+        ('lensing_noise_maps', NoiseMaps),
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
