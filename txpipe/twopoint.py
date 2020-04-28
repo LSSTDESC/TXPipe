@@ -340,7 +340,10 @@ class TXTwoPoint(PipelineStage):
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][mask],data['g2'][mask],data['lensfit_weight'][mask])
+            g1 = data['g1'][mask]
+            g2 = data['g2'][mask]
+            weight = data['lensfit_weight'][mask]
+            one_plus_K = 1
             return g1, g2, weight, one_plus_K, mask
 
         else:
@@ -738,7 +741,7 @@ class TXTwoPointPlots(PipelineStage):
 
                     plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
                     plt.xscale('log')
-                    plt.ylim(-1,5)
+                    plt.ylim(-1,1)
                     plt.xlim(tmin, tmax)
 
                     if dt==xim:
