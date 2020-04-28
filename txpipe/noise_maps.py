@@ -29,7 +29,6 @@ class TXLensingNoiseMaps(PipelineStage):
     }        
 
     def run(self):
-        from .mapping import ShearNoiseMapper
         from .utils import choose_pixelization
         from healsparse import HealSparseMap
 
