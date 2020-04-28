@@ -542,18 +542,20 @@ class TXTwoPointFourier(PipelineStage):
 
     def compute_shear_noise(self, maps, workspace, bin_index):
         import pymaster as nmt
-        noise_maps = self.open_input(lensing_noise_maps, wrapper=True)
+        noise_maps = self.open_input('lensing_noise_maps', wrapper=True)
 
         nreal = noise_maps.number_of_realizations()
 
         noise_c_ells = []
 
+        lw = maps['lw'][bin_index]
+
         for i in range(nreal):
-            print(f"Analyzing noise map {nreal}")
+            print(f"Analyzing noise map {i}")
             # Load the noise map
             g1, g2 = noise_maps.read_realization(i, bin_index)
             # Analyze it with namaster
-            field = nmt.NmtField(lw, [g1, g2])
+            field = nmt.NmtField(lw, [g1, g2], n_iter=0)
             cl_coupled = nmt.compute_coupled_cell(field, field)
 
             # Accumulate
