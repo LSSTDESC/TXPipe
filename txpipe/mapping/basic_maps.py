@@ -2,11 +2,12 @@ from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, Par
 import numpy as np
 
 class Mapper:
-    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2), sparse=False):
+    def __init__(self, pixel_scheme, lens_bins, source_bins, do_g=True, do_lens=True, sparse=False):
         self.pixel_scheme = pixel_scheme
         self.source_bins = source_bins
         self.lens_bins = lens_bins
-        self.tasks = tasks
+        self.do_g = do_g if len(source_bins) else False
+        self.do_lens = do_lens if len(lens_bins) else False
         self.sparse = sparse
         self.stats = {}
         for b in self.lens_bins:
@@ -20,8 +21,8 @@ class Mapper:
 
     def add_data(self, shear_data, bin_data, m_data):
         npix = self.pixel_scheme.npix
-        do_lens = 0 in self.tasks
-        do_g = 1 in self.tasks
+        do_lens = self.do_lens
+        do_g = self.do_g
 
         n = len(shear_data['ra'])
 
@@ -48,18 +49,19 @@ class Mapper:
             if p < 0 or p >= npix:
                 continue
 
-            lens_bin = lens_bins[i]
-            source_bin = source_bins[i]
-            lw = lens_weights[i]
-            sw = source_weights[i]
+            if do_lens:
+                lens_bin = lens_bins[i]
+                if lens_bin >= 0:
+                    lw = lens_weights[i]
+                    self.stats[(lens_bin, 0)].add_data(p, [lw])
 
-            if do_lens and (lens_bin >= 0):
-                self.stats[(lens_bin, 0)].add_data(p, [lw])
-
-            if do_g and (source_bin >= 0):
-                self.stats[(source_bin, 1)].add_data(p, [g1[i] * sw])
-                self.stats[(source_bin, 2)].add_data(p, [g2[i] * sw])
-                self.stats[(source_bin,'weight')].add_data(p, [sw])
+            if do_g:
+                source_bin = source_bins[i]
+                if source_bin >= 0:
+                    sw = source_weights[i]
+                    self.stats[(source_bin, 1)].add_data(p, [g1[i] * sw])
+                    self.stats[(source_bin, 2)].add_data(p, [g2[i] * sw])
+                    self.stats[(source_bin,'weight')].add_data(p, [sw])
 
 
     def finalize(self, comm=None):
