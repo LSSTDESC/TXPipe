@@ -87,34 +87,3 @@ class WorkspaceCache:
 
         print(f"Saving workspace to {p}")
         workspace.write_to(str(p))
-        return True
-
-
-def iterate_randomly_rotated_maps(g1, g2, n_rot):
-    # Mask
-    good = (g1 != healpy.UNSEEN) & (g2 != healpy.UNSEEN)
-    n = good.sum()
-
-    maps = []
-    for i in range(n_rot):
-        # Do the random rotation, just on the good pixels,
-        # since that's faster
-        phi = np.random.uniform(0, 2*np.pi, n)
-        rot = np.exp(1j*phi)
-        g_rot = rot * (g1[good] + g2[good]*1j)
-
-        # Make a map full of UNSEENs to start with
-        g1_rot = np.repeat(healpy.UNSEEN, g1.shape)
-        g2_rot = np.repeat(healpy.UNSEEN, g2.shape)
-
-        # Fill in the rotated pixels
-        g1_rot[good] = g_rot.real
-        g2_rot[good] = g_rot.imag
-        yield g1_rot, g2_rot
-
-#     return maps
-
-def iterate_randomly_rotated_fields(g1, g2, lw, n_rot):
-    for g1_rot, g2_rot in iterate_randomly_rotated_maps(g1, g2, n_rot):
-        field = nmt.NmtField(lw, [g1_rot, g2_rot])
-        yield field

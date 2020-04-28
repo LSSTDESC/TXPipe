@@ -210,6 +210,9 @@ class NoiseMaps(DiagnosticMaps):
 
         return g1, g2
 
+    def number_of_realizations(self):
+        return self.file['maps'].attrs['n_realizations']
+
 
 class PhotozPDFFile(HDFFile):
     required_datasets = []

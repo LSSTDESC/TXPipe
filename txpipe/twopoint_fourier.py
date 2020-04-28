@@ -1,5 +1,8 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, DiagnosticMaps, HDFFile, PhotozPDFFile
+from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, \
+                        YamlFile, SACCFile, DiagnosticMaps, HDFFile, \
+                        PhotozPDFFile, NoiseMaps
+
 import numpy as np
 import collections
 from .utils import choose_pixelization, HealpixScheme, \
@@ -45,6 +48,8 @@ class TXTwoPointFourier(PipelineStage):
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
+        ('tracer_metadata', TomographyCatalog),  # For density info
+        ('lensing_noise_maps', NoiseMaps)
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -530,26 +535,32 @@ class TXTwoPointFourier(PipelineStage):
             return None
 
         if k==SHEAR_SHEAR:
-            return self.compute_shear_noise(maps['g'][i], maps['lw'][i], workspace)
+            return self.compute_shear_noise(maps, workspace, i)
         else:
             print("Skipping noise in density")
             return None
             return self.compute_density_noise()
 
-    def compute_shear_noise(self, g_maps, lensing_weight, workspace):
+    def compute_shear_noise(self, maps, workspace, bin_index):
         import pymaster as nmt
-        from .utils.nmt_utils import iterate_randomly_rotated_fields
-        g1, g2 = g_maps
-        n_rot = self.config['n_rotations']
-        # make a bunch of random rotations of the maps
-        # make a new field for each rotation
+        noise_maps = self.open_input(lensing_noise_maps, wrapper=True)
+
+        nreal = noise_maps.number_of_realizations()
+
         noise_c_ells = []
-        for i, field in enumerate(iterate_randomly_rotated_fields(
-                                  g1, g2, lensing_weight, n_rot)):
-            print(f"Rank {self.rank} Computing noise realisation {i}")
+
+        for i in range(nreal):
+            print(f"Analyzing noise map {nreal}")
+            # Load the noise map
+            g1, g2 = noise_maps.read_realization(i, bin_index)
+            # Analyze it with namaster
+            field = nmt.NmtField(lw, [g1, g2])
             cl_coupled = nmt.compute_coupled_cell(field, field)
-            #cl_decoupled = workspace.decouple_cell(cl_coupled)
+
+            # Accumulate
             noise_c_ells.append(cl_coupled)
+
+        # Use the mean at the end
         mean_noise = np.mean(noise_c_ells, axis=0)
         return mean_noise
 
