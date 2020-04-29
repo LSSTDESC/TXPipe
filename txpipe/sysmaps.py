@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile, YamlFile
 import numpy as np
 from .utils.theory import theory_3x2pt
+from .utils import dilated_healpix_map
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
@@ -54,6 +55,7 @@ class TXDiagnosticMaps(PipelineStage):
         'depth_band' : 'i',
         'true_shear' : False,
         'flag_exponent_max': 8,
+        'dilate': True,
     }
 
 
@@ -198,15 +200,15 @@ class TXDiagnosticMaps(PipelineStage):
 
             # I'm expecting this will one day call off to a 10,000 line
             # library or something.
-            mask, npix = self.compute_mask(depth_count)
-            self.save_map(group, "mask", depth_pix, mask, config)
+            mask_pix, mask = self.compute_mask(pixel_scheme, depth_pix, depth_count)
+            self.save_map(group, "mask", mask_pix, mask, config)
+            npix = len(mask_pix)
 
 
             # Do a very simple centroid calculation.
             # This is not robust, and will not cope with
             # maps that corss
-            pix_for_centroid = depth_pix[mask>0]
-            ra, dec = pixel_scheme.pix2ang(pix_for_centroid, radians=False, theta=False)
+            ra, dec = pixel_scheme.pix2ang(mask_pix, radians=False, theta=False)
             ra_centroid = ra.mean()
             dec_centroid = dec.mean()
 
@@ -247,12 +249,34 @@ class TXDiagnosticMaps(PipelineStage):
             self.save_metadata_file(area)
 
 
-    def compute_mask(self, depth_count):
-        mask = np.zeros_like(depth_count)
-        hit = depth_count > 0
-        mask[hit] = 1.0
-        count = hit.sum()
-        return mask, count
+    def compute_mask(self, pixel_scheme, index, count):
+        import healpy
+
+        # the index and count may be either partial or
+        # full sky.  Make a full-sky map, either way,
+        # with UNSEEN where the pixel has no objects
+        mask = np.repeat(healpy.UNSEEN, pixel_scheme.npix)
+        mask[index] = count
+
+        # Compress down to UNSEEN/1
+        mask[mask <= 0] = healpy.UNSEEN
+        mask[mask > 0] = 1
+
+
+        # optionally expand the UNSEENs by one pixel
+        if self.config['dilate']:
+            print("Dilating mask")
+            mask = dilated_healpix_map(mask)
+
+        # Pull out observed pixels.
+        # This doesn't make that much sense here, because our
+        # mask is just 0/1 so the mask we output is 1 everywhere.
+        # But later our mask will have non-binary values.
+        mask_pix = np.where(mask>0)
+        mask = mask[mask_pix]
+        print(mask_pix)
+        print(mask.max())
+        return mask_pix, mask
 
 
 
@@ -439,8 +463,9 @@ class TXFakeMaps(TXDiagnosticMaps):
 
         # I'm expecting this will one day call off to a 10,000 line
         # library or something.
-        mask, npix = self.compute_mask(depth_count)
-        self.save_map(group, "mask", depth_pix, mask, config)
+        mask_pix, mask = self.compute_mask(pixel_scheme, depth_pix, depth_count)
+        npix = len(mask_pix)
+        self.save_map(group, "mask", mask_pix, mask, config)
 
         # Save some other handy map info that will be useful later
         area = pixel_scheme.pixel_area(degrees=True) * npix
