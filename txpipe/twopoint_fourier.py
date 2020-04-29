@@ -5,9 +5,7 @@ from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, \
 
 import numpy as np
 import collections
-from .utils import choose_pixelization, HealpixScheme, \
-                   GnomonicPixelScheme, ParallelStatsCalculator, \
-                   array_hash
+from .utils import choose_pixelization, array_hash
 from .utils.theory import theory_3x2pt
 import sys
 import warnings
@@ -59,9 +57,7 @@ class TXTwoPointFourier(PipelineStage):
         "bandwidth": 0,
         "flip_g1": False,
         "flip_g2": False,
-        "pixel_window": False,
         "cache_dir": '',
-        "n_rotations": 10,
     }
 
     def run(self):
@@ -157,6 +153,9 @@ class TXTwoPointFourier(PipelineStage):
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**pix_info)
+
+        if pixel_scheme.name != 'healpix':
+            raise ValueError("TXTwoPointFourier can only run on healpix maps")
 
         # Load the mask. It should automatically be the same shape as the
         # others, based on how it was originally generated.
@@ -353,7 +352,6 @@ class TXTwoPointFourier(PipelineStage):
                 f2 = density_field
             spaces[(i,j,k)] = get_workspace(f1, f2)
 
-        print("Fix this to make it work in parallel!")
         self.save_workspace_cache(cache, spaces)
         return spaces
 
@@ -372,48 +370,21 @@ class TXTwoPointFourier(PipelineStage):
 
     def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
-        from .utils.nmt_utils import MyNmtBinFlat, MyNmtBin
-        if pixel_scheme.name == 'healpix':
-            # This is just approximate.  It will be very wrong
-            # in cases with non-square patches.
-            area = f_sky * 4 * np.pi
-            width = np.sqrt(area) #radians
-            nlb = self.config['bandwidth']
+        from .utils.nmt_utils import MyNmtBin
+        # This is just approximate.  It will be very wrong
+        # in cases with non-square patches.
+        area = f_sky * 4 * np.pi
+        width = np.sqrt(area) #radians
+        nlb = self.config['bandwidth']
 
-            # user can specify the bandwidth, or we can just use
-            # the maximum sensible value of Delta ell.
-            nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
+        # user can specify the bandwidth, or we can just use
+        # the maximum sensible value of Delta ell.
+        nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
 
-            # The subclass of NmtBin that we use here just adds some
-            # helper methods compared to the default NaMaster one.
-            # Can feed these back upstream if useful.
-            ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
-        elif pixel_scheme.name == 'gnomonic':
-            # For the flat case we have to specify the complete ell ranges
-            # for each bin.  First convert the overall map widths into radians.
-            lx = np.radians(pixel_scheme.nx * pixel_scheme.pixel_size_x)
-            ly = np.radians(pixel_scheme.ny * pixel_scheme.pixel_size_y)
-
-            # The overall min and max values for the entire range.
-            # The min comes from the width of the whole map, and the max from
-            # the pixel size.
-            ell_min = max(2 * np.pi / lx, 2 * np.pi / ly)
-            ell_max = min(pixel_scheme.nx * np.pi / lx, pixel_scheme.ny * np.pi / ly)
-
-            # If the user provided a bandwidth then again, use that.  Otherwise
-            # use 2*ell_min. 
-            d_ell = self.config['bandwidth']
-            d_ell = d_ell if d_ell>0 else 2 * ell_min
-            n_ell = int((ell_max - ell_min) / d_ell) - 1
-            l_bpw = np.zeros([2, n_ell])
-
-            # Turn these into ranges per band
-            band_mins = ell_min + np.arange(n_ell) * d_ell
-            band_maxs = l_bpw[0, :] + d_ell
-
-            # and make the NaMaster object.
-            ell_bins = MyNmtBinFlat(band_mins, band_maxs)
-
+        # The subclass of NmtBin that we use here just adds some
+        # helper methods compared to the default NaMaster one.
+        # Can feed these back upstream if useful.
+        ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
         return ell_bins
 
 
@@ -449,7 +420,6 @@ class TXTwoPointFourier(PipelineStage):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
-        # TODO: Fix window functions, and how to save them.
 
         # k refers to the type of measurement we are making
         import sacc
@@ -476,17 +446,12 @@ class TXTwoPointFourier(PipelineStage):
         # window function, which we calculate here so we can remove
         # it below.  These are trivially fast to get, so no point
         # caching.
-        if (pixel_scheme.name == 'healpix') and self.config['pixel_window']:
-            # Get the raw pixel window functions
-            pixwin_t, pixwin_p = healpy.pixwin(pixel_scheme.nside, True)
-            # Interpolate to our ell values
-            pixwin_ell = np.arange(pixwin_t.size)
-            pixwin_t = np.interp(ls, pixwin_ell, pixwin_t)
-            pixwin_p = np.interp(ls, pixwin_ell, pixwin_p)
-        else:
-            # TODO figure out what these are supposed to be
-            pixwin_t = 1.0
-            pixwin_p = 1.0
+        # First get the raw pixel window functions
+        pixwin_t, pixwin_p = healpy.pixwin(pixel_scheme.nside, True)
+        # Interpolate to our ell values
+        pixwin_ell = np.arange(pixwin_t.size)
+        pixwin_t = np.interp(ls, pixwin_ell, pixwin_t)
+        pixwin_p = np.interp(ls, pixwin_ell, pixwin_p)
 
         # We need the theory spectrum for this pair
         #TODO: when we have templates to deproject, use this.
@@ -515,13 +480,8 @@ class TXTwoPointFourier(PipelineStage):
         cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace, tomo_info)
 
         # Run the master algorithm
-        if pixel_scheme.name == 'healpix':
-            c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
-        elif pixel_scheme.name == 'gnomonic':
-            c = nmt.compute_full_master_flat(field_i, field_j, ell_bins,
-                cl_noise=cl_noise, cl_guess=cl_guess, ells_guess=ell_guess,
-                workspace=workspace)
+        c = nmt.compute_full_master(field_i, field_j, ell_bins,
+            cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
 
         # Save all the results, skipping things we don't want like EB modes
         for index, name, pixwin in results_to_use:
