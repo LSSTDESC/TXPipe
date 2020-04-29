@@ -51,7 +51,7 @@ class TXLensingNoiseMaps(PipelineStage):
 
         if self.rank == 0:
             nGB = (npix * nbin * n_rotations * 24) / 1024.**3
-            print(f"Allocating maps of size {nGB:.2f}") 
+            print(f"Allocating maps of size {nGB:.2f} GB") 
 
         G1 = np.zeros((npix, nbin, n_rotations))
         G2 = np.zeros((npix, nbin, n_rotations))
@@ -59,33 +59,39 @@ class TXLensingNoiseMaps(PipelineStage):
 
         # Loop through the data
         for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
+            print(f"Rank {self.rank} processing rows {s} - {e}")
             source_bin = bin_data['source_bin']
+            ra = shear_data['ra']
+            dec = shear_data['dec']
+            pixels = pixel_scheme.ang2pix(ra, dec)
 
-            n = s - e
+            n = e - s
+
             w = shear_data['weight']
             g1 = shear_data['mcal_g1'] * w
             g2 = shear_data['mcal_g2'] * w
 
-            phi = np.random.uniform(0, 2*np.pi, (ngal, n_rotations))
+            phi = np.random.uniform(0, 2*np.pi, (n, n_rotations))
             c = np.cos(phi)
             s = np.sin(phi)
             g1r =  c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
             g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
 
-            for i in range(ngal):
-                if source_bin >= 0:
+            for i in range(n):
+                sb = source_bin[i]
+                if sb >= 0:
                     pix = pixels[i]
-                    G1[pix, source_bin, :] += g1r[i] 
-                    G2[pix, source_bin, :] += g2r[i]
-                    W[pix, source_bin] += w[i]
+                    G1[pix, sb, :] += g1r[i] 
+                    G2[pix, sb, :] += g2r[i]
+                    W[pix, sb] += w[i]
 
         # Sum everything at root
         if self.comm is not None:
-            from mpi4py.MPI import DOUBLE, SUM
+            from mpi4py.MPI import DOUBLE, SUM, IN_PLACE
             if self.comm.Get_rank() == 0:
-                self.comm.Reduce(MPI.IN_PLACE, G1)
-                self.comm.Reduce(MPI.IN_PLACE, G2)
-                self.comm.Reduce(MPI.IN_PLACE, W)
+                self.comm.Reduce(IN_PLACE, G1)
+                self.comm.Reduce(IN_PLACE, G2)
+                self.comm.Reduce(IN_PLACE, W)
             else:
                 self.comm.Reduce(G1, None)
                 self.comm.Reduce(G2, None)
@@ -103,7 +109,7 @@ class TXLensingNoiseMaps(PipelineStage):
 
             metadata = {**self.config, **map_info}
 
-            for b in range(nbin_source):
+            for b in range(nbin):
                 pixels = np.where(W[:,b]>0)[0]
                 for i in range(n_rotations):
 
