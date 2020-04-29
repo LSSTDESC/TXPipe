@@ -197,7 +197,7 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
-class NoiseMaps(DiagnosticMaps):
+class LensingNoiseMaps(DiagnosticMaps):
     required_datasets = [
         ]
 
@@ -212,6 +212,17 @@ class NoiseMaps(DiagnosticMaps):
 
     def number_of_realizations(self):
         return self.file['maps'].attrs['n_realizations']
+
+class ClusteringNoiseMaps(DiagnosticMaps):
+    required_datasets = [
+        ]
+
+    def read_realization(self, realization_index, bin_index):
+        delta_name = f'realization_{realization_index}/delta_{bin_index}'
+        delta = self.read_map(delta_name)
+
+        return delta
+
 
 
 class PhotozPDFFile(HDFFile):

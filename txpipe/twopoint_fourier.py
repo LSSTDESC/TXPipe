@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, \
                         YamlFile, SACCFile, DiagnosticMaps, HDFFile, \
-                        PhotozPDFFile, NoiseMaps
+                        PhotozPDFFile, LensingNoiseMaps
 
 import numpy as np
 import collections
@@ -46,7 +46,7 @@ class TXTwoPointFourier(PipelineStage):
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
-        ('lensing_noise_maps', NoiseMaps),
+        ('lensing_noise_maps', LensingNoiseMaps),
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -165,7 +165,7 @@ class TXTwoPointFourier(PipelineStage):
         mask[mask==healpy.UNSEEN] = 0
 
         # Using a flat mask as the clustering weight for now, since I need to know
-        # how to turn the depth map into a weightm
+        # how to turn the depth map into a weight
         clustering_weight = mask
 
         f_sky = area / 41253.

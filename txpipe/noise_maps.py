@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, NoiseMaps, HDFFile
+from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, \
+                        LensingNoiseMaps, ClusteringNoiseMaps, HDFFile
 import numpy as np
 
 class TXLensingNoiseMaps(PipelineStage):
@@ -19,13 +20,12 @@ class TXLensingNoiseMaps(PipelineStage):
     ]
 
     outputs = [
-        ('lensing_noise_maps', NoiseMaps),
+        ('lensing_noise_maps', LensingNoiseMaps),
     ]
 
     config_options = {
         'chunk_rows': 100000,
         'n_rotations': 30,
-        'sparse': True,
     }        
 
     def run(self):
@@ -139,3 +139,90 @@ class TXLensingNoiseMaps(PipelineStage):
         bins = list(range(nbin))
 
         return bins, map_info
+
+
+class TXClusteringNoiseMaps(PipelineStage):
+    name='TXClusteringNoiseMaps'
+    
+    inputs = [
+        ('diagnostic_maps', DiagnosticMaps),
+    ]
+
+    outputs = [
+        ('clustering_noise_maps', ClusteringNoiseMaps),
+    ]
+
+    config_options = {
+        'n_realization': 30,
+    }        
+
+    def run(self):
+        # Input and output file.
+        map_file = self.open_input('diagnostic_maps', wrapper=True)
+        out_file = self.open_output('clustering_noise_maps', wrapper=True)
+        out_file.file.create_group('maps')
+        n_realization = self.config['n_realization']
+
+        # Map info - nside, etc.
+        map_info = map_file.read_map_info('mask')
+        # The mask - as of now this is just binary, but
+        # will be gradually improved
+        mask = map_file.read_map('mask')
+
+        # Count of bins.  We just do lensing in this
+        # one, so ignore the nbin_source
+        _, nbin = map_file.get_nbins()
+
+        # To be saved in the output
+        metadata = {**self.config, **map_info}
+
+        # make a randomizer objects which prepares
+        # the probabilities per pixel
+        randomizer = MapRandomizer(mask)
+        pixel = randomizer.pixel
+
+        for b in range(nbin):
+            print(f"Simulating random clustering for bin {b}")
+            ngal = map_file.read_map(f'ngal_{b}')
+
+            # The mask can be smaller than the ngal map
+            # if we have set some regions as masked, or if
+            # there is a count threshold, for example.  We
+            # don't want to move galaxies from outside the mask
+            # region into it.
+            ngal[mask <= 0] = 0
+
+            ntot = int(ngal[ngal>0].sum())
+
+            # Loop realizations
+            for i in range(n_realization):
+                # Generate a random map with this ngal
+                random_ngal, random_delta = randomizer(ntot)
+
+                # Save the maps
+                out_file.write_map(f'realization_{i}/ngal_{b}', pixel, random_ngal, metadata)
+                out_file.write_map(f'realization_{i}/delta_{b}', pixel, random_delta, metadata)
+
+
+
+        if self.rank == 0:
+            print("NOTE: Using mask from diagnostic_maps.  Just uniform for now.")
+
+
+
+class MapRandomizer:
+    def __init__(self, mask):
+        self.mask = mask
+        self.hit = mask > 0
+        self.mask_hit = mask[self.hit]
+        self.nhit = self.mask_hit.size
+        self.pixel = np.arange(mask.size)[self.hit]
+        self.mask_pix = np.arange(self.nhit, dtype=int)
+        self.pix_prob = self.mask_hit / self.mask_hit.sum()
+
+    def __call__(self, ngal):
+        galpix = np.random.choice(self.mask_pix, size=ngal, p=self.pix_prob)
+        count_map = np.bincount(galpix, minlength=self.nhit)
+        mu = count_map.mean()
+        delta_map = (count_map - mu) / mu
+        return count_map, delta_map
