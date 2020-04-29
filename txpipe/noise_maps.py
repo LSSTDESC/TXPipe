@@ -33,6 +33,7 @@ class TXLensingNoiseMaps(PipelineStage):
 
         # get the number of bins.
         bins, map_info = self.read_metadata()
+        nbin = len(bins)
         pixel_scheme = choose_pixelization(**map_info)
         n_rotations = self.config['n_rotations']
 
@@ -49,13 +50,12 @@ class TXLensingNoiseMaps(PipelineStage):
         npix = pixel_scheme.npix
 
         if self.rank == 0:
-            nGB = (npix * nbin_source * n_rotations * 24) / 1024.**3
+            nGB = (npix * nbin * n_rotations * 24) / 1024.**3
             print(f"Allocating maps of size {nGB:.2f}") 
-        
-        
-        G1 = np.zeros((npix, nbin_source, n_rotations))
-        G2 = np.zeros((npix, nbin_source, n_rotations))
-        W = np.zeros((npix, nbin_source))
+
+        G1 = np.zeros((npix, nbin, n_rotations))
+        G2 = np.zeros((npix, nbin, n_rotations))
+        W = np.zeros((npix, nbin))
 
         # Loop through the data
         for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
@@ -98,7 +98,7 @@ class TXLensingNoiseMaps(PipelineStage):
 
             # The top section has the metadata in
             group = outfile.file.create_group("maps")
-            group.attrs['nbin_source'] = len(bins)
+            group.attrs['nbin_source'] = nbin
             group.attrs['n_realizations'] = n_rotations
 
             metadata = {**self.config, **map_info}
