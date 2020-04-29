@@ -13,6 +13,7 @@ stages:
     - name: TXRoweStatistics
     - name: TXRealGaussianCovariance
     - name: TXLensingNoiseMaps
+    - name: TXClusteringNoiseMaps
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working

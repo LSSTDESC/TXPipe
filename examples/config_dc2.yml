@@ -90,3 +90,9 @@ TXTwoPointFourier:
     apodization_size: 0.0
     cache_dir: ./cache
 
+
+TXClusteringNoiseMaps:
+    n_realization: 30
+
+TXLensingNoiseMaps:
+    n_realization: 30

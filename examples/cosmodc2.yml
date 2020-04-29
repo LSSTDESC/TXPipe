@@ -38,7 +38,10 @@ stages:
     - name: TXLensingNoiseMaps
       nprocess: 4
       nodes: 1
-
+    - name: TXClusteringNoiseMaps
+      nprocess: 1
+      nodes: 1
+      threads_per_process: 1
 
 output_dir: data/cosmodc2/outputs
 config: examples/config_dc2.yml
