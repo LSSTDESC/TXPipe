@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, \
                         YamlFile, SACCFile, DiagnosticMaps, HDFFile, \
-                        PhotozPDFFile, LensingNoiseMaps
+                        PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps
 
 import numpy as np
 import collections
@@ -85,7 +85,7 @@ class TXTwoPointFourier(PipelineStage):
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
-        calcs = self.select_calculations(nbin_source, nbin_lens)
+        calcs = self.select_calculations(nbin_source, nbin_lens)[::-1]
 
 
         # Load in the per-bin auto-correlation noise levels and 
@@ -491,36 +491,28 @@ class TXTwoPointFourier(PipelineStage):
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace, tomo_info):
         # No noise contribution in cross-correlations
+        import pymaster as nmt
+
         if (i!=j) or (k==SHEAR_POS):
             return None
 
-        if k==SHEAR_SHEAR:
-            return self.compute_shear_noise(maps, workspace, i)
-        else:
-            print("Skipping noise in density")
-            return None
-            return self.compute_density_noise()
-
-
-    def compute_shear_noise(self, maps, workspace, k, bin_index):
-        import pymaster as nmt
         if k == SHEAR_SHEAR:
             noise_map_file = 'lensing_noise_maps'
-            weight = maps['lw'][bin_index]
+            weight = maps['lw'][i]
         else:
             noise_map_file = 'clustering_noise_maps'
-            weight = maps['dw'][bin_index]
+            weight = maps['dw']
 
         noise_maps = self.open_input(noise_map_file, wrapper=True)
         nreal = noise_maps.number_of_realizations()
         noise_c_ells = []
 
 
-        for i in range(nreal):
-            print(f"Analyzing noise map {i}")
+        for r in range(nreal):
+            print(f"Analyzing noise map {r}")
             # Load the noise map - may be either (g1, g2)
             # or just density dpendng on what the input is
-            realization = noise_maps.read_realization(i, bin_index)
+            realization = noise_maps.read_realization(r, i)
             # Analyze it with namaster
             field = nmt.NmtField(weight, realization, n_iter=0)
             cl_coupled = nmt.compute_coupled_cell(field, field)

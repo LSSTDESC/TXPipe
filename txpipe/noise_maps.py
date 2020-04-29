@@ -160,7 +160,7 @@ class TXClusteringNoiseMaps(PipelineStage):
         # Input and output file.
         map_file = self.open_input('diagnostic_maps', wrapper=True)
         out_file = self.open_output('clustering_noise_maps', wrapper=True)
-        out_file.file.create_group('maps')
+        group = out_file.file.create_group('maps')
         n_realization = self.config['n_realization']
 
         # Map info - nside, etc.
@@ -172,6 +172,10 @@ class TXClusteringNoiseMaps(PipelineStage):
         # Count of bins.  We just do lensing in this
         # one, so ignore the nbin_source
         _, nbin = map_file.get_nbins()
+
+        
+        group.attrs['nbin_source'] = nbin
+        group.attrs['n_realization'] = n_realization
 
         # To be saved in the output
         metadata = {**self.config, **map_info}

@@ -213,7 +213,7 @@ class LensingNoiseMaps(DiagnosticMaps):
     def number_of_realizations(self):
         return self.file['maps'].attrs['n_realization']
 
-class ClusteringNoiseMaps(DiagnosticMaps):
+class ClusteringNoiseMaps(LensingNoiseMaps):
     required_datasets = [
         ]
 
@@ -221,7 +221,7 @@ class ClusteringNoiseMaps(DiagnosticMaps):
         delta_name = f'realization_{realization_index}/delta_{bin_index}'
         delta = self.read_map(delta_name)
 
-        return delta
+        return [delta]
 
 
 
