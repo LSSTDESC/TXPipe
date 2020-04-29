@@ -30,7 +30,6 @@ class TXLensingNoiseMaps(PipelineStage):
 
     def run(self):
         from .utils import choose_pixelization
-        from healsparse import HealSparseMap
 
         # get the number of bins.
         bins, map_info = self.read_metadata()
@@ -49,6 +48,11 @@ class TXLensingNoiseMaps(PipelineStage):
 
         npix = pixel_scheme.npix
 
+        if self.rank == 0:
+            nGB = (npix * nbin_source * n_rotations * 24) / 1024.**3
+            print(f"Allocating maps of size {nGB:.2f}") 
+        
+        
         G1 = np.zeros((npix, nbin_source, n_rotations))
         G2 = np.zeros((npix, nbin_source, n_rotations))
         W = np.zeros((npix, nbin_source))
