@@ -47,6 +47,7 @@ class TXTwoPointFourier(PipelineStage):
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
         ('lensing_noise_maps', LensingNoiseMaps),
+        ('clustering_noise_maps', ClusteringNoiseMaps),
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -500,22 +501,28 @@ class TXTwoPointFourier(PipelineStage):
             return None
             return self.compute_density_noise()
 
-    def compute_shear_noise(self, maps, workspace, bin_index):
+
+    def compute_shear_noise(self, maps, workspace, k, bin_index):
         import pymaster as nmt
-        noise_maps = self.open_input('lensing_noise_maps', wrapper=True)
+        if k == SHEAR_SHEAR:
+            noise_map_file = 'lensing_noise_maps'
+            weight = maps['lw'][bin_index]
+        else:
+            noise_map_file = 'clustering_noise_maps'
+            weight = maps['dw'][bin_index]
 
+        noise_maps = self.open_input(noise_map_file, wrapper=True)
         nreal = noise_maps.number_of_realizations()
-
         noise_c_ells = []
 
-        lw = maps['lw'][bin_index]
 
         for i in range(nreal):
             print(f"Analyzing noise map {i}")
-            # Load the noise map
-            g1, g2 = noise_maps.read_realization(i, bin_index)
+            # Load the noise map - may be either (g1, g2)
+            # or just density dpendng on what the input is
+            realization = noise_maps.read_realization(i, bin_index)
             # Analyze it with namaster
-            field = nmt.NmtField(lw, [g1, g2], n_iter=0)
+            field = nmt.NmtField(weight, realization, n_iter=0)
             cl_coupled = nmt.compute_coupled_cell(field, field)
 
             # Accumulate
