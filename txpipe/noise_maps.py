@@ -25,7 +25,7 @@ class TXLensingNoiseMaps(PipelineStage):
 
     config_options = {
         'chunk_rows': 100000,
-        'n_rotations': 30,
+        'n_realization': 30,
     }        
 
     def run(self):
@@ -35,7 +35,7 @@ class TXLensingNoiseMaps(PipelineStage):
         bins, map_info = self.read_metadata()
         nbin = len(bins)
         pixel_scheme = choose_pixelization(**map_info)
-        n_rotations = self.config['n_rotations']
+        n_rotations = self.config['n_realization']
 
         # The columns we will need
         shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
@@ -105,7 +105,7 @@ class TXLensingNoiseMaps(PipelineStage):
             # The top section has the metadata in
             group = outfile.file.create_group("maps")
             group.attrs['nbin_source'] = nbin
-            group.attrs['n_realizations'] = n_rotations
+            group.attrs['n_realization'] = n_rotations
 
             metadata = {**self.config, **map_info}
 

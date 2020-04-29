@@ -211,7 +211,7 @@ class LensingNoiseMaps(DiagnosticMaps):
         return g1, g2
 
     def number_of_realizations(self):
-        return self.file['maps'].attrs['n_realizations']
+        return self.file['maps'].attrs['n_realization']
 
 class ClusteringNoiseMaps(DiagnosticMaps):
     required_datasets = [
