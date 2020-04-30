@@ -25,6 +25,7 @@ stages:
     - name: TXMapPlots
     - name: TXRandomCat
     - name: TXTwoPoint
+    - name: TXNullBlinding
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTBrightStars
