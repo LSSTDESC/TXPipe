@@ -37,13 +37,13 @@ class TXBlinding(PipelineStage):
          - Output blinded data
          - Optionally deletete unblinded data
         """
-        import sacc, sys, os, shutil
+        import sacc, sys, os
         sys.stdout.flush()
 
         unblinded_fname = self.get_input('twopoint_data_real_raw')
         sacc = sacc.Sacc.load_fits(unblinded_fname)
         blinded_sacc = self.blind_muir(sacc)
-        print ("Writing a very small sacc file [on NERSC: 1200 baud teetu-teetu-shhhhh]")
+        print("Writing a very small sacc file [on NERSC: 1200 baud teetu-teetu-shhhhh]")
         blinded_sacc.save_fits(self.get_output('twopoint_data_real'), overwrite=True)
         if self.config['delete_unblinded']:
             print(f"Replacing {unblinded_fname} with empty...")
@@ -134,7 +134,7 @@ class TXBlinding(PipelineStage):
         ## now try to get predictions
         pred={}
         for name,pars in [('fid',fid_params),('ofs',offset_params)]:
-            print ("Calling firecrown : %s"%(name))
+            print("Calling firecrown : %s"%(name))
             fc_config['parameters'].update(pars)
             config, data = firecrown.parse(fc_config)
             cosmo = firecrown.get_ccl_cosmology(config['parameters'])
@@ -152,4 +152,32 @@ class TXBlinding(PipelineStage):
             
         return sacc
 
-            
+
+class TXNullBlinding(PipelineStage):
+    """
+    A null stage to trivially copy the real raw data to real without blinding, 
+    for use with simulations data. 
+
+    """
+    name='TXNullBlinding'
+    inputs = [
+            ('twopoint_data_real_raw', SACCFile),
+        ]
+    outputs = [
+            ('twopoint_data_real', SACCFile),
+        ]
+    config_options = { 
+        }
+
+    def run(self):
+        """
+            Run the analysis for this stage.
+
+             - Load two point SACC file
+             - Copy two point SACC file twopoint_data_real_raw to twopoint_data_real
+            """
+        import sys, shutil
+        sys.stdout.flush()
+
+        unblinded_fname = self.get_input('twopoint_data_real_raw')
+        shutil.copyfile(unblinded_fname, self.get_output('twopoint_data_real'))
