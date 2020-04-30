@@ -552,17 +552,25 @@ class TXSelector(PipelineStage):
             flag = data['flags']
         zbin = data['zbin']
 
-
-        n0 = len(flag)
-        sel  = flag==0
-        f1 = sel.sum() / n0
-        sel &= (T/Tpsf)>T_cut
-        f2 = sel.sum() / n0
-        sel &= s2n>s2n_cut
-        f3 = sel.sum() / n0
-        sel &= zbin==bin_index
-        f4 = sel.sum() / n0
-        
+        if self.config['apply_flag_cut']:
+            n0 = len(flag)
+            sel  = flag==0
+            f1 = sel.sum() / n0
+            sel &= (T/Tpsf)>T_cut
+            f2 = sel.sum() / n0
+            sel &= s2n>s2n_cut
+            f3 = sel.sum() / n0
+            sel &= zbin==bin_index
+            f4 = sel.sum() / n0
+        else:
+            n0 = len(flag)
+            sel = (T/Tpsf)>T_cut
+            f1 = sel.sum() / n0
+            f2 = sel.sum() / n0
+            sel &= s2n>s2n_cut
+            f3 = sel.sum() / n0
+            sel &= zbin==bin_index
+            f4 = sel.sum() / n0
         variant = data.suffix
         if verbose:
             print(f"Bin {bin_index} ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} z")
