@@ -35,7 +35,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.713,
         'max_sep':210.27,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
