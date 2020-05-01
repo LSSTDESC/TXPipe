@@ -17,6 +17,7 @@ stages:
     - name: TXRoweStatistics
       threads_per_process: 2
     - name: TXTwoPointPlots
+    - name: TXNullBlinding
     - name: TXRealGaussianCovariance
       threads_per_process: 2
 
