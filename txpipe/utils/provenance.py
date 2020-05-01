@@ -44,17 +44,28 @@ def git_diff():
     """
     dirname = get_caller_directory(grandparent=True)
     if dirname is None:
-        return "ERROR_NO_GIT_DIFF_AVAILABLE"
+        return "ERROR_GIT_NO_DIRECTORY"
     # We use git diff head because it shows all differences,
     # including any that have been staged but not committed.
     try:
         diff = subprocess.run('git diff HEAD'.split(),
                 cwd=dirname, universal_newlines=True, timeout=5,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    # There are lots of different ways this can go wrong.
+    # Here are some - any others it is probably worth knowing
+    # about
+    except subprocess.TimeoutExpired:
+        return "ERROR_GIT_TIMEOUT"
     except UnicodeDecodeError:
-        return "ERROR_NO_GIT_DIFF_AVAILABLE"
-    # You can't interleave stdout and stderr when you do capture_output,
-    # unfortunately.
+        return "ERROR_GIT_DECODING"
+    except subprocess.SubprocessError:
+        return "ERROR_GIT_OTHER"
+    # If for some reason we are running outside the main repo
+    # this will return an error too
+    if diff.returncode:
+        return "ERROR_GIT_FAIL"
+
     return diff.stdout
 
 def git_current_revision():
@@ -62,12 +73,21 @@ def git_current_revision():
     """
     dirname = get_caller_directory(grandparent=True)
     if dirname is None:
-        return "ERROR_NO_GIT_REV_AVAILABLE"
+        return "ERROR_GIT_NO_DIRECTORY"
     try:
         rev = subprocess.run('git rev-parse HEAD'.split(),
             cwd=dirname, universal_newlines=True, timeout=5,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Same as git diff above.
+    except subprocess.TimeoutExpired:
+        return "ERROR_GIT_TIMEOUT"
     except UnicodeDecodeError:
-        return "ERROR_NO_GIT_REV_AVAILABLE"
+        return "ERROR_GIT_DECODING"
+    except subprocess.SubprocessError:
+        return "ERROR_GIT_OTHER"
+    # If for some reason we are running outside the main repo
+    # this will return an error too
+    if rev.returncode:
+        return "ERROR_GIT_FAIL"
     return rev.stdout
 

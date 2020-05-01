@@ -74,7 +74,7 @@ If you want to run pipelines under MPI, you can install a minimal environment on
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install -e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
+pip install -e git://github.com/LSSTDESC/ceci@v0.2
 ```
 
 Then use shifter to run the actual jobs.

@@ -12,6 +12,7 @@ from .random_cats import TXRandomCat
 from .sysmaps import TXDiagnosticMaps
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
+from .blinding import TXBlinding
 from .input_cats import TXCosmoDC2Mock
 from .photoz_mlz import PZPDFMLZ
 from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance

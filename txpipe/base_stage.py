@@ -2,6 +2,7 @@ from ceci import PipelineStage as PipelineStageBase
 from .data_types import HDFFile
 from textwrap import dedent
 from .utils.provenance import find_module_versions, git_diff, git_current_revision
+import sys
 
 class PipelineStage(PipelineStageBase):
     name = "Error"
@@ -19,9 +20,12 @@ class PipelineStage(PipelineStageBase):
             provenance[f"config/{key}"] = str(value)
 
         for name, tag_cls in self.inputs:
-            f = self.open_input(name, wrapper=True)
-            input_id = f.provenance['uuid']
-            provenance[f"input/{name}"] = input_id
+            try:
+                f = self.open_input(name, wrapper=True)
+                input_id = f.provenance['uuid']
+                provenance[f"input/{name}"] = input_id
+            except (OSError, IOError, KeyError):
+                provenance[f"input/{name}"] = "UNKNOWN"
             f.close()
 
         provenance["gitdiff"] = git_diff()
@@ -82,6 +86,7 @@ class PipelineStage(PipelineStageBase):
                 raise RuntimeError("h5py module is not MPI-enabled.")
 
         extra_provenance = self.gather_provenance()
+
         # Return an opened object representing the file
         obj = output_class(path, 'w', extra_provenance=extra_provenance, **kwargs)
 
