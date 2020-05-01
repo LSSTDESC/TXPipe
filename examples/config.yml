@@ -44,9 +44,9 @@ TXSelector:
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
-    r_hi_cut: 19.6
+    r_hi_cut: 21.6
     i_lo_cut: 17.5
-    i_hi_cut: 19.9
+    i_hi_cut: 21.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
@@ -61,6 +61,9 @@ TXTwoPoint:
     do_shear_shear: True
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
     verbose: 0
 
 TXBlinding:
@@ -83,12 +86,16 @@ TXDiagnosticMaps:
     pixelization: healpix
     nside: 1024
     # pixelization: gnomonic
-    # # 
     pixel_size: 0.2
     ra_cent: 62.
     dec_cent: -35.
     npix_x: 60
     npix_y: 60
+    depth_cut: 23.0
+
+
+TXJackknifeCenters:
+    npatch: 5
 
 
 TXTwoPointFourier:

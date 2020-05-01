@@ -225,7 +225,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
     def setup_photometry_output(self, photo_file, target_size):
         # Get a list of all the column names
-        cols = ['ra', 'dec']
+        cols = ['ra', 'dec', 'extendedness']
         for band in self.bands:
             cols.append(f'{band}_mag')
             cols.append(f'{band}_mag_err')
@@ -255,6 +255,7 @@ class TXCosmoDC2Mock(PipelineStage):
             ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
             + metacal_band_variants('riz', 'mcal_mag', 'mcal_mag_err')
+            + ['weight']
         )
 
         cols += ['true_g1', 'true_g2']
@@ -542,6 +543,10 @@ class TXCosmoDC2Mock(PipelineStage):
 
             # Everything that gets this far should be used, so flag=0
             'mcal_flags': np.zeros(nobj, dtype=np.int32),
+            # we use weights of one for everything for metacal
+            # if that ever changes we may also need to add
+            # weight_1p, etc.
+            'weight': np.ones(nobj),
             }
 
         return output
@@ -621,7 +626,7 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
     output['ra'] = data['ra']
     output['dec'] = data['dec']
     output['id'] = data['galaxy_id']
-
+    output['extendedness'] = np.ones(nobj)
 
     # Sky background, seeing FWHM, and system throughput, 
     # all from table 2 of Ivezic, Jones, & Lupton
@@ -699,7 +704,6 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
         m2 = mag_obs - m
         mag_obs_1p = m1
         mag_obs_1m = m2
-
 
         output[f'{band}_mag_1p'] = m1
         output[f'{band}_mag_1m'] = m2
