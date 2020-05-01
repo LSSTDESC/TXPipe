@@ -6,12 +6,16 @@ stages:
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
+    - name: TXJackknifeCenters
     - name: TXTwoPoint
+    - name: TXBlinding
+    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
     - name: TXGammaTBrightStars
     - name: TXGammaTDimStars
     - name: TXRoweStatistics
+    - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
     - name: TXTwoPointFourier
     - name: TXFourierGaussianCovariance
@@ -59,5 +63,3 @@ resume: True
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
-
-
