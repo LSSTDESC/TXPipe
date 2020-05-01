@@ -48,7 +48,7 @@ class TXBlinding(PipelineStage):
         size = os.stat(unblinded_fname).st_size
         if size == 0:
             raise ValueError("The raw 2point file you specified has zero size. "
-                             "Did you already run the blinding stage? "
+                             "Maybe you already run the blinding stage? "
                              "It clears the input file to enforce blindness.")
 
         # Load
@@ -57,6 +57,7 @@ class TXBlinding(PipelineStage):
         # Blind
         blinded_sack = self.blind_muir(sack)
 
+        # Save
         blinded_sack.save_fits(self.get_output('twopoint_data_real'), overwrite=True)
 
         # Optionally make sure we stay blind by deleting the pre-blinding
@@ -105,7 +106,7 @@ class TXBlinding(PipelineStage):
         print(f"Blinding with seed {seed}")
 
         # This is the legacy random number generator
-        # which will always produce the same value
+        # which will always produce the same values
         rng = np.random.RandomState(seed=seed)
 
         # blind signature -- this ensures seed is consistent across
