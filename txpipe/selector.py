@@ -98,7 +98,7 @@ class TXSelector(PipelineStage):
 
         # Columns we need from the shear catalog
         if self.config['shear_catalog_type']=='metacal':
-            shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
+            shear_cols = ['mcal_flags', 'mcal_psf_T_mean','mask']
             shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
             shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
         else:
@@ -538,6 +538,7 @@ class TXSelector(PipelineStage):
     def select(self, data, bin_index):
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
+        mask = data['mask']
         verbose = self.config['verbose']
         
         if self.config['shear_catalog_type']=='metacal':
@@ -555,6 +556,7 @@ class TXSelector(PipelineStage):
         if self.config['apply_flag_cut']:
             n0 = len(flag)
             sel  = flag==0
+            sel&= mask
             f1 = sel.sum() / n0
             sel &= (T/Tpsf)>T_cut
             f2 = sel.sum() / n0
