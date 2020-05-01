@@ -76,7 +76,7 @@ class TXLensSelector(PipelineStage):
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
-        nbin_lens = len(self.config['lens_zbin_edges'])-1
+        nbin_lens = len(self.config['lens_zbin_edges']) - 1
 
         number_density_stats = LensNumberDensityStats(nbin_lens, self.comm)
 
@@ -113,15 +113,19 @@ class TXLensSelector(PipelineStage):
     def apply_simple_redshift_cut(self, phot_data):
 
         pz_data = {}
+        nbin = len(self.config['lens_zbin_edges']) - 1
 
-        zz = phot_data[f'redshift_true']
+        z = phot_data[f'redshift_true']
 
-        pz_data_v = np.zeros(len(zz), dtype=int) -1
-        for zi in range(len(self.config['lens_zbin_edges'])-1):
-            mask_zbin = (zz>=self.config['lens_zbin_edges'][zi]) & (zz<self.config['lens_zbin_edges'][zi+1])
-            pz_data_v[mask_zbin] = zi
+        zbin = np.repeat(-1, len(z))
+        for zi in range(nbin):
+            mask_zbin = (
+                  (z >= self.config['lens_zbin_edges'][zi]) 
+                & (z<self.config['lens_zbin_edges'][zi+1])
+            )
+            zbin[mask_zbin] = zi
             
-        pz_data[f'zbin'] = pz_data_v
+        pz_data[f'zbin'] = zbin
 
         return pz_data
 
@@ -152,8 +156,6 @@ class TXLensSelector(PipelineStage):
 
         Parameters
         ----------
-
-
         outfile: h5py.File
 
         start: int
@@ -167,7 +169,6 @@ class TXLensSelector(PipelineStage):
 
         R: array of shape (nrow,2,2)
             Multiplicative bias calibration factor for each object
-
         """
 
         group = outfile['tomography']
@@ -179,9 +180,7 @@ class TXLensSelector(PipelineStage):
 
         Parameters
         ----------
-
         outfile: h5py.File
-
         """
         lens_counts = number_density_stats.collect()
 
@@ -241,7 +240,7 @@ class TXLensSelector(PipelineStage):
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
     
-        nbin = len(self.config['lens_zbin_edges'])-1
+        nbin = len(self.config['lens_zbin_edges']) - 1
         n = len(phot_data['i_mag'])
 
         # The main output data - the tomographic
@@ -251,10 +250,8 @@ class TXLensSelector(PipelineStage):
         # We also keep count of total count of objects in each bin
         counts = np.zeros(nbin, dtype=int)
 
-        print(pz_data)
-        print(lens_gals)
         for i in range(nbin):
-            sel_00 = (pz_data['zbin']==i)*(lens_gals==1)
+            sel_00 = (pz_data['zbin'] == i) & (lens_gals == 1)
             tomo_bin[sel_00] = i
             counts[i] = sel_00.sum()
 
