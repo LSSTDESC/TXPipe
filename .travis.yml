@@ -21,4 +21,5 @@ cache:
 
 script:
   - ceci examples/travis/pipeline.yml
-  - cat data/small/log.txt
+  - test -f data/small/log.txt
+  - test -f data/small/outputs/summary_statistics_real.sacc
