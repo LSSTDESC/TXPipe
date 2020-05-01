@@ -7,6 +7,8 @@ stages:
     - name: TXRandomCat
     - name: TXJackknifeCenters
     - name: TXTwoPoint
+    - name: TXBlinding
+    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
     - name: TXGammaTBrightStars

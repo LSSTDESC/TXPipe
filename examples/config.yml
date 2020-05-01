@@ -66,6 +66,18 @@ TXTwoPoint:
     nbins: 20
     verbose: 0
 
+TXBlinding:
+    seed: 1972  ## seed uniquely specifies the shift in parameters
+    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
+    Omega_c: [0.2545, 0.01]
+    w0: [-1.0, 0.1]
+    h: [0.682, 0.02]
+    sigma8: [0.801, 0.01]
+    n_s: [0.971, 0.03]
+    b0: 0.95  ## we use bias of the form b0/g
+    delete_unblinded: True
+
+
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once
     sparse: True  # Generate sparse maps - faster if using small areas
