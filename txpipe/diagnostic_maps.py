@@ -98,12 +98,12 @@ class TXDiagnosticMaps(PipelineStage):
         m_cols = ['R_gamma']
 
         T = self.open_input('shear_tomography_catalog')
-        d = dict(T['/tomography'].attrs)
+        d = dict(T['tomography'].attrs)
         T.close()
         source_bins = list(range(d['nbin_source']))
 
         T = self.open_input('lens_tomography_catalog')
-        d = dict(T['/tomography'].attrs)
+        d = dict(T['tomography'].attrs)
         T.close()
         lens_bins = list(range(d['nbin_lens']))
 
@@ -137,7 +137,6 @@ class TXDiagnosticMaps(PipelineStage):
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
 
-        ## CC: change from here
         shear_bin_it = self.iterate_hdf('shear_tomography_catalog','tomography', shear_bin_cols, chunk_rows)
         shear_bin_it = (d[2] for d in shear_bin_it)
 
