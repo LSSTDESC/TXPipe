@@ -32,9 +32,9 @@ class TXTwoPoint(PipelineStage):
     # Add values to the config file that are not previously defined
     config_options = {
         'calcs':[0,1,2,3,4],
-        'min_sep':2.5,
-        'max_sep':250,
-        'nbins':20,
+        'min_sep':0.713,
+        'max_sep':210.27,
+        'nbins':9,
         'bin_slop':0.1,
         'sep_units':'arcmin',
         'flip_g2':True,
@@ -340,7 +340,7 @@ class TXTwoPoint(PipelineStage):
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_k = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['lensfit_weight'][mask])
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['lensfit_weight'][mask])
             return g1, g2, weight, one_plus_K, mask
 
         else:
