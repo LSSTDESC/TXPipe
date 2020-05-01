@@ -251,7 +251,7 @@ class TXTwoPoint(PipelineStage):
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data_UNBLINDED_RABID'), overwrite=True)
+        S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
@@ -615,7 +615,7 @@ class TXTwoPointPlots(PipelineStage):
         gammat = sacc.standard_types.galaxy_shearDensity_xi_t
         wtheta = sacc.standard_types.galaxy_density_xi
 
-        filename = self.get_input('twopoint_data')
+        filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
 
         sources, lenses = self.read_nbin(s)

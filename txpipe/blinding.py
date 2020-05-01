@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import SACCFile
 import numpy as np
 import warnings
+import os
 
 class TXBlinding(PipelineStage):
     """
@@ -24,9 +25,8 @@ class TXBlinding(PipelineStage):
         'sigma8': [0.801, 0.01],
         'n_s': [0.971, 0.03],
         'b0': 0.95,  ### we assume bias to be of the form b0/growth
-        'delete_unblinded': False 
+        'delete_unblinded': False,
     }
-
 
     def run(self):
         """
@@ -37,120 +37,197 @@ class TXBlinding(PipelineStage):
          - Output blinded data
          - Optionally deletete unblinded data
         """
-        import sacc, sys, os
-        sys.stdout.flush()
+        import pyccl
+        import firecrown
+        import sacc
 
         unblinded_fname = self.get_input('twopoint_data_real_raw')
-        sacc = sacc.Sacc.load_fits(unblinded_fname)
-        blinded_sacc = self.blind_muir(sacc)
-        print("Writing a very small sacc file [on NERSC: 1200 baud teetu-teetu-shhhhh]")
-        blinded_sacc.save_fits(self.get_output('twopoint_data_real'), overwrite=True)
+
+        # We may have blinded already. The error message would be quite
+        # obscure, so check here and say something more straightforward.
+        size = os.stat(unblinded_fname).st_size
+        if size == 0:
+            raise ValueError("The raw 2point file you specified has zero size. "
+                             "Did you already run the blinding stage? "
+                             "It clears the input file to enforce blindness.")
+
+        # Load
+        sack = sacc.Sacc.load_fits(unblinded_fname)
+
+        # Blind
+        blinded_sack = self.blind_muir(sack)
+
+        blinded_sack.save_fits(self.get_output('twopoint_data_real'), overwrite=True)
+
+        # Optionally make sure we stay blind by deleting the pre-blinding
+        # file.
         if self.config['delete_unblinded']:
-            print(f"Replacing {unblinded_fname} with empty...")
-            open (unblinded_fname,'w').close()
+            print(f"Replacing {unblinded_fname} with empty file.")
+            open(unblinded_fname,'w').close()
                 
 
-    def blind_muir(self, sacc):
-        import pyccl as ccl
-        import firecrown
-        import io
-        import copy
-        ## here we actually do blinding
-        print(f"Blinding... ")
-        np.random.seed(self.config["seed"])
+    def blind_muir(self, sack):
+        # Get the parameters, fiducial and offset.
+        # The signature is a short sequence that means we can
+        # check that it is unchanged
+        signature, fid_params, offset_params = self.get_parameters()
+
+        # Save the signature into the output
+        sack.metadata['blinding_signature'] = signature
+
+        # Turn the b0 parameter into the b(z) per lens bin.
+        bias = self.compute_bias(sack, fid_params)
+
+        # Get the configuration dictionary
+        firecrown_config, types = self.make_firecrown_config(sack, bias)
+
+        ## now try to get predictions
+        print("Computing fiducial theory")
+        fid_theory = self.compute_theory_vector(firecrown_config,
+                                                fid_params, types)
+        print("Computing offset theory")
+        offset_theory = self.compute_theory_vector(firecrown_config, 
+                                                   offset_params,types)
+
+        # Get the parameter shift vector
+        diff_vec = offset_theory - fid_theory
+
+        # And add this to the original data.
+        for p, delta in zip(sack.data, diff_vec):
+            p.value += delta
+
+        print(f"Congratulations you are now blind.")
+        return sack
+
+
+    def get_parameters(self):
+        seed = self.config["seed"]
+        print(f"Blinding with seed {seed}")
+
+        # This is the legacy random number generator
+        # which will always produce the same value
+        rng = np.random.RandomState(seed=seed)
+
         # blind signature -- this ensures seed is consistent across
-        # numpy versions
-        blind_sig = ''.join(format(x, '02x') for x in np.random.bytes(4))
+        # numpy versions.  We do this before and after
+        signature_bytes = rng.bytes(4)
+        signature = ''.join(format(x, '02x') for x in signature_bytes)
+
         if self.rank==0:
-            print(f"Blinding signature: %s"%(blind_sig))
+            print(f"Blinding signature: {signature}")
 
-
-        fid_params = {
-            'Omega_b':  self.config['Omega_b'][0],
-            'Omega_c':  self.config['Omega_c'][0],
-            'h': self.config['h'][0],
-            'w0': self.config['w0'][0],
-            'sigma8': self.config['sigma8'][0],
-            'n_s': self.config['n_s'][0],
+        # Pull out the fiducial parameters from the config
+        fid_params = {p: self.config[p][0] for p in 
+            ['Omega_b', 'Omega_c', 'h', 'w0', 'sigma8', 'n_s']
         }
-        ## now get biases
-        bz={}
-        fidCosmo=ccl.Cosmology(**fid_params)
-        for key,tracer in sacc.tracers.items():
-            if 'lens' in key:
-                zeff = (tracer.z*tracer.nz).sum()/tracer.nz.sum()
-                bz[key] = self.config['b0']/ccl.growth_factor(fidCosmo,1/(1+zeff)) 
-        
+
+        # Get the parameters in the offset space
         offset_params = fid_params.copy()
+
+        # This should have a standard order since python dictionaries
+        # now maintain their order.
         for par in fid_params.keys():
-            offset_params [par] += self.config[par][1]*np.random.normal(0.,1.)
-        fc_config = {
+            offset_params[par] += self.config[par][1] * rng.normal(0., 1.)
+
+        return signature, fid_params, offset_params
+
+
+    def compute_bias(self, sack, fid_params):
+        import pyccl as ccl
+        print("Computing bias values b(z)")
+        # now get bias as a function of redshift for each lens bin
+        bias = {}
+        fid_cosmo = ccl.Cosmology(**fid_params)
+        b0 = self.config['b0']
+        for key, tracer in sack.tracers.items():
+            if 'lens' in key:
+                z_eff = (tracer.z*tracer.nz).sum() / tracer.nz.sum()
+                a_eff = 1 / (1 + z_eff)
+                bias[key] = b0 / ccl.growth_factor(fid_cosmo, a_eff)
+        return bias        
+
+    def make_firecrown_config(self, sack, bias):
+        from sacc.utils import unique_list
+        # We will run firecrown with the old and new parameters,
+        # but otherwise the same configuration
+        firecrown_config = {
             'parameters': {
                 'Omega_k': 0.0,
                 'wa': 0.0,
-                'one': 1},
+                'one': 1
+            },
             'two_point': {
-               'module' : 'firecrown.ccl.two_point',
-               'sacc_data' : sacc,
-               'systematics' : {
-                   'dummy' : {
-                       'kind' : 'PhotoZShiftBias',
-                       'delta_z' : 'one' }},
-                'sources' : {},
-                'statistics' : {}
+               'module': 'firecrown.ccl.two_point',
+               'sacc_data': sack,
+               'systematics': {
+                   'dummy': {
+                       'kind': 'PhotoZShiftBias',
+                       'delta_z': 'one'
+                    }
+                },
+                'sources': {},
+                'statistics': {}
                 }
         }
 
+        for k, v in bias.items():
+            firecrown_config['parameters'][f'bias_{k}'] = v
 
-        for k,v in bz.items():
-            fc_config ['parameters']['bias_%s'%k] = v
-            
-        srclist=[]
-        lenslist=[]
-        for key,tracer in sacc.tracers.items():
-            ## This is a hack, need to think how to do this better
+        # Tell FireCrown to use the sources we have here, and
+        # their types.
+        firecrown_sources = firecrown_config['two_point']['sources']
+        for key, tracer in sack.tracers.items():
+            # Assume the word source or lens will be in the name.
+            # Bit of a hack.
             if 'source' in key:
-                fc_config['two_point']['sources'][key] = {
-                                     'kind' : 'WLSource',
-                                     'sacc_tracer' : key}
-                srclist.append(key)
+                firecrown_sources[key] = {
+                    'kind' : 'WLSource',
+                    'sacc_tracer' : key
+                }
+
             if 'lens' in key:
-                fc_config['two_point']['sources'][key] = {
-                                     'kind' : 'NumberCountsSource',
-                                     'bias' : 'bias_%s'%key,
-                                     'sacc_tracer' : key}
-                lenslist.append(key)
+                firecrown_sources[key] = {
+                    'kind' : 'NumberCountsSource',
+                    'bias' : f'bias_{key}',
+                    'sacc_tracer' : key
+                }
 
-        ## list(dict.fromkeys()) gives unique elements while preserving order
-        types=list(dict.fromkeys([(p.data_type, p.tracers,
-                                   "{dtype}_{tracer1}_{tracer2}".format(dtype=p.data_type,
-                                            tracer1=p.tracers[0],tracer2=p.tracers[1]))
-                                   for p in sacc.data]))
-        for dtype,(tracer1,tracer2),fcname in types:
-            fc_config['two_point']['statistics'][fcname] = {
-                                   'sources' : [tracer1, tracer2],
-                                   'sacc_data_type' : dtype}
+        ## Make a list of the unique tracer/bin groups
+        types = []
+        for p in sack.data:
+            name = f"{p.data_type}_{p.tracers[0]}_{p.tracers[1]}"
+            types.append((p.data_type, p.tracers, name))
 
-        ## now try to get predictions
-        pred={}
-        for name,pars in [('fid',fid_params),('ofs',offset_params)]:
-            print("Calling firecrown : %s"%(name))
-            fc_config['parameters'].update(pars)
-            config, data = firecrown.parse(fc_config)
-            cosmo = firecrown.get_ccl_cosmology(config['parameters'])
-            firecrown.compute_loglike(cosmo=cosmo, data=data)
-            pred[name] = np.hstack([data['two_point']['data']['statistics'][n].predicted_statistic_ for
-                                  _,_,n in types])
-            ## if there is some sanity this should work
-            assert(len(pred[name])==len(sacc))
-
-        diffvec = pred['ofs']-pred['fid']
-        ## now add offsets
-        for p, delta in zip(sacc.data,diffvec):
-            p.value+=delta
-        print(f"Blinding done.")
+        types = unique_list(types)
             
-        return sacc
+        # Collect together the statistics we will need
+        firecrown_stats = firecrown_config['two_point']['statistics']
+        for dtype, (tracer1,tracer2), name in types:
+            firecrown_stats[name] = {
+                'sources' : [tracer1, tracer2],
+                'sacc_data_type' : dtype
+        }
+
+        return firecrown_config, types
+
+    def compute_theory_vector(self, config, params, types):
+        import firecrown
+
+        # Set up the firecrown configuration
+        config['parameters'].update(params)
+        config2, data = firecrown.parse(config)
+
+        # Run the cosmology.  The loglike also as a by-product
+        # fills in the predictions deep inside the data dictionary.
+        cosmo = firecrown.get_ccl_cosmology(config2['parameters'])
+        firecrown.compute_loglike(cosmo=cosmo, data=data)
+
+        # Pull out and stack the theory predictions at this point
+        results = data['two_point']['data']['statistics']
+        return np.hstack(
+            [results[stat_name].predicted_statistic_ 
+            for (_, _, stat_name) in types]
+        )
 
 
 class TXNullBlinding(PipelineStage):
@@ -176,8 +253,7 @@ class TXNullBlinding(PipelineStage):
              - Load two point SACC file
              - Copy two point SACC file twopoint_data_real_raw to twopoint_data_real
             """
-        import sys, shutil
-        sys.stdout.flush()
+        import shutil
 
         unblinded_fname = self.get_input('twopoint_data_real_raw')
         shutil.copyfile(unblinded_fname, self.get_output('twopoint_data_real'))
