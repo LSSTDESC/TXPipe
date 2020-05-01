@@ -490,7 +490,8 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         'min_sep':2.5,  # arcmin
         'max_sep':250,
         'nbins':20,
-            }
+        'pickled_wigner_transform': '',
+    }
 
     def run(self):
         super().run()
