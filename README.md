@@ -32,7 +32,7 @@ The various stages within it depend on the python packages listed in requirement
 pip install -r requirements.txt
 ```
 
-**NOTE** The current pipeline version needs the *minirunner* branch of *ceci*.  This is installed by requirements.txt
+**NOTE** The current pipeline version needs the *v0.2* branch of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -225,3 +225,9 @@ pip install git+https://github.com/LSSTDESC/ceci@v0.2
 (or a newer version if you're reading this in the future)
 
 Then you're ready.
+
+
+Continuous Integration
+----------------------
+
+Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
