@@ -1,15 +1,18 @@
--e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
+git+git://github.com/LSSTDESC/ceci@v0.2#egg=ceci
 h5py
 pandas
 sacc
 pyccl
 numpy
 matplotlib
--e git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
+git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
-treecorr
+git+git://github.com/rmjarvis/treecorr@master#egg=treecorr
 sklearn
 astropy
 healpy
+camb
+tjpcov
+threadpoolctl
 #pymaster

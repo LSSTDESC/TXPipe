@@ -1,0 +1,26 @@
+dist: bionic
+
+language: python
+
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get -y install gfortran-7 swig libgsl-dev libopenmpi-dev openmpi-bin
+  - sudo ln -s `which gfortran-7` /usr/local/bin/gfortran
+
+install:
+  - pip install cffi
+  - pip install --no-binary=mpi4py -r requirements.txt
+  - wget -O data.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/travis/small.tgz"
+  - tar -zxvf data.tar.gz
+
+cache: pip
+
+script:
+  - ceci examples/travis/pipeline.yml
+  - test -f data/small/log.txt
+  - test -f data/small/outputs/summary_statistics_real.sacc
