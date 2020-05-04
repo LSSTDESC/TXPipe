@@ -16,4 +16,5 @@ camb
 tjpcov
 threadpoolctl
 #pymaster
+cosmosis-standalone
 git+git://github.com/LSSTDESC/firecrown
