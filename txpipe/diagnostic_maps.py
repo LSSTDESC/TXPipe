@@ -164,7 +164,7 @@ class TXDiagnosticMaps(PipelineStage):
             brobj_data = {
                 'mag': phot_data[f'{band}_mag'],
                 'extendedness': phot_data['extendedness'],
-                'bins': bin_data['lens_bin'],
+                'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],
                 'dec': phot_data['dec'],
             }
