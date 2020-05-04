@@ -16,3 +16,4 @@ camb
 tjpcov
 threadpoolctl
 #pymaster
+git+git://github.com/LSSTDESC/firecrown
