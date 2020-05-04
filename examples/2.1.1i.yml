@@ -30,6 +30,7 @@ stages:
     - name: TXRandomCat
     - name: TXTwoPoint
       threads_per_process: 64
+    - name: TXNullBlinding
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
       nprocess: 8

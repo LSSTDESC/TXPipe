@@ -5,15 +5,23 @@ stages:
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
+    - name: TXJackknifeCenters
     - name: TXTwoPoint
+      threads_per_process: 2
+    - name: TXBlinding
+      threads_per_process: 2
+    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
+      threads_per_process: 2
     - name: TXGammaTBrightStars
+      threads_per_process: 2
     - name: TXGammaTDimStars
+      threads_per_process: 2
     - name: TXRoweStatistics
+      threads_per_process: 2
+    - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
-    - name: TXLensingNoiseMaps
-    - name: TXClusteringNoiseMaps
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working
@@ -56,5 +64,3 @@ resume: True
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
-
-

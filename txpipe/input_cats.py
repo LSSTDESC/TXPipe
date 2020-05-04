@@ -225,7 +225,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
     def setup_photometry_output(self, photo_file, target_size):
         # Get a list of all the column names
-        cols = ['ra', 'dec']
+        cols = ['ra', 'dec', 'extendedness']
         for band in self.bands:
             cols.append(f'{band}_mag')
             cols.append(f'{band}_mag_err')
@@ -626,7 +626,7 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
     output['ra'] = data['ra']
     output['dec'] = data['dec']
     output['id'] = data['galaxy_id']
-
+    output['extendedness'] = np.ones(nobj)
 
     # Sky background, seeing FWHM, and system throughput, 
     # all from table 2 of Ivezic, Jones, & Lupton
@@ -704,7 +704,6 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
         m2 = mag_obs - m
         mag_obs_1p = m1
         mag_obs_1m = m2
-
 
         output[f'{band}_mag_1p'] = m1
         output[f'{band}_mag_1m'] = m2

@@ -25,6 +25,7 @@ stages:
       nprocess: 2
       nodes: 2
       threads_per_process: 64
+    - name: TXNullBlinding
     - name: TXTwoPointPlots
     - name: TXMapPlots
     - name: TXDiagnosticPlots

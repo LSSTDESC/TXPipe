@@ -32,7 +32,7 @@ The various stages within it depend on the python packages listed in requirement
 pip install -r requirements.txt
 ```
 
-**NOTE** The current pipeline version needs the *minirunner* branch of *ceci*.  This is installed by requirements.txt
+**NOTE** The current pipeline version needs the *v0.2* branch of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -74,7 +74,7 @@ If you want to run pipelines under MPI, you can install a minimal environment on
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install -e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
+pip install -e git://github.com/LSSTDESC/ceci@v0.2
 ```
 
 Then use shifter to run the actual jobs.
@@ -93,17 +93,8 @@ cd TXPipe
 You can get some input test data like this:
 
 ```bash
-
-mkdir -p data/example/inputs
-cd data/example/inputs
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/exposures.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/star_catalog.hdf5
-
-cd ../../..
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
 ```
 
 
@@ -225,3 +216,9 @@ pip install git+https://github.com/LSSTDESC/ceci@v0.2
 (or a newer version if you're reading this in the future)
 
 Then you're ready.
+
+
+Continuous Integration
+----------------------
+
+Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
