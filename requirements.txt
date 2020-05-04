@@ -17,4 +17,4 @@ tjpcov
 threadpoolctl
 #pymaster
 cosmosis-standalone
-git+git://github.com/LSSTDESC/firecrown
+git+https://github.com/LSSTDESC/firecrown@v0.4
