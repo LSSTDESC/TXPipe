@@ -8,7 +8,7 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
-        ('shear_tomography_catalog', TomographyCatalog),  #WHY?
+        ('tracer_metadata', HDFFile),       
         ('lens_photoz_stack', HDFFile),
     ]
     outputs = [
@@ -151,9 +151,9 @@ class TXRandomCat(PipelineStage):
         output_file.close()
 
     def read_sigma_e(self):
-        tomo = self.open_input('shear_tomography_catalog')
-        d = tomo['/tomography/sigma_e'][:]
-        tomo.close()
+        meta = self.open_input('tracer_metadata')
+        d = meta['tracers/sigma_e'][:]
+        meta.close()
         return d
 
 

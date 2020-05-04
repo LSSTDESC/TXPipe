@@ -65,6 +65,8 @@ class TXLensSelector(PipelineStage):
         # various config options
         chunk_rows = self.config['chunk_rows']
 
+        print(f"Currently we are cheating and using the true redshift, need to change to 
+                other point-estimates when available.")
         phot_cols = ['i_mag','r_mag','g_mag', 'redshift_true']
 
         # Input data.  These are iterators - they lazily load chunks
