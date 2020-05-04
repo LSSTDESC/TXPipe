@@ -7,15 +7,22 @@ stages:
     - name: TXRandomCat
     - name: TXJackknifeCenters
     - name: TXTwoPoint
+      threads_per_process: 2
     - name: TXBlinding
+      threads_per_process: 2
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
+      threads_per_process: 2
     - name: TXGammaTBrightStars
+      threads_per_process: 2
     - name: TXGammaTDimStars
+      threads_per_process: 2
     - name: TXRoweStatistics
+      threads_per_process: 2
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
+      threads_per_process: 2
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working
