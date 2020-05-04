@@ -62,13 +62,6 @@ class TXPhotozStack(PipelineStage):
             self.config['chunk_rows']  # number of rows to read at once
         )
 
-        photoz_iterator2 = self.iterate_hdf(
-            'photoz_pdfs', # tag of input file to iterate through
-            'pdf', # data group within file to look at
-            ['pdf'], # column(s) to read
-            self.config['chunk_rows']  # number of rows to read at once
-        )
-
         shear_tomography_iterator = self.iterate_hdf(
             'shear_tomography_catalog', # tag of input file to iterate through
             'tomography', # data group within file to look at
@@ -87,11 +80,11 @@ class TXPhotozStack(PipelineStage):
 
 
         # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator, shear_tomography_iterator):
+        for (_, _, pz_data), (s1, e1, shear_tomo_data), (s2, e2, lens_tomo_data) in zip(photoz_iterator, shear_tomography_iterator, lens_tomography_iterator):
             # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
-            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
+            print(f"Process {self.rank} read data chunk {s1:,} - {e1:,}")
             # The method also yields the start and end positions in the file.  We don't need those
             # here because we are just summing them all together.  That's what the underscores
             # are above.
@@ -100,7 +93,7 @@ class TXPhotozStack(PipelineStage):
             # Now for each tomographic bin find all the objects in that bin.
             # There is probably a better way of doing this.
             for b in range(nbin_source):
-                w = np.where(tomo_data['source_bin']==b)
+                w = np.where(shear_tomo_data['source_bin']==b)
 
                 # Summ all the PDFs from that bin
                 source_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
@@ -109,9 +102,16 @@ class TXPhotozStack(PipelineStage):
             # For the 2D source bin we take every object that is selected
             # for any tomographic bin (the non-selected objects
             # have bin=-1)s
-            w = np.where(tomo_data['source_bin']>=0)
+            w = np.where(shear_tomo_data['source_bin']>=0)
             source_pdfs_2d += pz_data['pdf'][w].sum(axis=0)
             source_counts_2d += w[0].size
+
+            for b in range(nbin_lens):
+                w = np.where(lens_tomo_data['lens_bin']==b)
+                # Summ all the PDFs from that bin
+                lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
+                lens_counts[b] += w[0].size
+
 
         # Collect together the results from the different processors,
         # if we are running in parallel
@@ -120,6 +120,8 @@ class TXPhotozStack(PipelineStage):
             source_pdfs_2d   = self.reduce(source_pdfs_2d)
             source_counts    = self.reduce(source_counts)
             source_counts_2d = self.reduce(source_counts_2d)
+            lens_pdfs        = self.reduce(lens_pdfs)
+            lens_counts      = self.reduce(lens_counts)
 
         if self.rank==0:
             # Normalize the stacks
@@ -134,32 +136,6 @@ class TXPhotozStack(PipelineStage):
             self.save_result(f, "source2d", 1, z, [source_pdfs_2d], [source_counts_2d])
             f.close()
 
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photoz_iterator2, lens_tomography_iterator):
-            # pz_data and tomo_data are dictionaries with the keys as column names and the 
-            # values as numpy arrays with a chunk of data (chunk_rows long) in.
-            # Each iteration through the loop we get a new chunk.
-            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
-            # The method also yields the start and end positions in the file.  We don't need those
-            # here because we are just summing them all together.  That's what the underscores
-            # are above.
-
-
-            # Now for each tomographic bin find all the objects in that bin.
-            # There is probably a better way of doing this.
-            for b in range(nbin_lens):
-                w = np.where(tomo_data['lens_bin']==b)
-                # Summ all the PDFs from that bin
-                lens_pdfs[b] += pz_data['pdf'][w].sum(axis=0)
-                lens_counts[b] += w[0].size
-
-        # Collect together the results from the different processors,
-        # if we are running in parallel
-        if self.comm:
-            lens_pdfs        = self.reduce(lens_pdfs)
-            lens_counts      = self.reduce(lens_counts)
-
-        if self.rank==0:
-            # Normalize the stacks
             for b in range(nbin_lens):
                 lens_pdfs[b] /= lens_counts[b]
 
@@ -167,7 +143,6 @@ class TXPhotozStack(PipelineStage):
             f = self.open_output("lens_photoz_stack")
             self.save_result(f, "lens", nbin_lens, z, lens_pdfs, lens_counts)
             f.close()
-
 
     def reduce(self, x):
         # For scalars (i.e. just the 2D source count for now)
@@ -365,11 +340,11 @@ class TXTrueNumberDensity(TXPhotozStack):
         warnings.warn("WEIGHTS/RESPONSE ARE NOT CURRENTLY INCLUDED CORRECTLY in PZ STACKING")
 
         # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photo_iterator, shear_tomography_iterator):
+        for (_, _, pz_data), (s1, e1, shear_tomo_data), (s2, e2, lens_tomo_data) in zip(photo_iterator, shear_tomography_iterator, lens_tomography_iterator):
             # pz_data and tomo_data are dictionaries with the keys as column names and the 
             # values as numpy arrays with a chunk of data (chunk_rows long) in.
             # Each iteration through the loop we get a new chunk.
-            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
+            print(f"Process {self.rank} read data chunk {s1:,} - {e1:,}")
             # The method also yields the start and end positions in the file.  We don't need those
             # here because we are just summing them all together.  That's what the underscores
             # are above.
@@ -380,7 +355,7 @@ class TXTrueNumberDensity(TXPhotozStack):
             # There is probably a better way of doing this.
             for b in range(nbin_source):
                 # Locate objects in this bin
-                w = np.where(tomo_data['source_bin']==b)
+                w = np.where(shear_tomo_data['source_bin']==b)
                 # Accumulate the histogram and the count for this bin
                 source_pdfs[b] += np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 source_counts[b] += w[0].size
@@ -388,9 +363,15 @@ class TXTrueNumberDensity(TXPhotozStack):
             # For the 2D source bin we take every object that is selected
             # for any tomographic bin (the non-selected objects
             # have bin=-1)s
-            w = np.where(tomo_data['source_bin']>=0)
+            w = np.where(shear_tomo_data['source_bin']>=0)
             source_pdfs_2d +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
             source_counts_2d += w[0].size
+
+            for b in range(nbin_lens):
+                w = np.where(lens_tomo_data['lens_bin']==b)
+                print(z[w])
+                lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
+                lens_counts[b] += w[0].size
 
         # Collect together the results from the different processors,
         # if we are running in parallel.
@@ -400,6 +381,8 @@ class TXTrueNumberDensity(TXPhotozStack):
             source_pdfs_2d   = self.reduce(source_pdfs_2d)
             source_counts    = self.reduce(source_counts)
             source_counts_2d = self.reduce(source_counts_2d)
+            lens_pdfs        = self.reduce(lens_pdfs)
+            lens_counts      = self.reduce(lens_counts)
 
         # Only the root process saves the data
         if self.rank==0:
@@ -415,35 +398,6 @@ class TXTrueNumberDensity(TXPhotozStack):
             self.save_result(f, "source2d", 1, zedge, [source_pdfs_2d], [source_counts_2d])
             f.close()
 
-        # So we just do a single loop through the pair of files.
-        for (_, _, pz_data), (s, e, tomo_data) in zip(photo_iterator, lens_tomography_iterator):
-            # pz_data and tomo_data are dictionaries with the keys as column names and the
-            # values as numpy arrays with a chunk of data (chunk_rows long) in.
-            # Each iteration through the loop we get a new chunk.
-            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
-            # The method also yields the start and end positions in the file.  We don't need those
-            # here because we are just summing them all together.  That's what the underscores
-            # are above.
-
-            z = pz_data['redshift_true']
-
-            # Now for each tomographic bin find all the objects in that bin.
-            # There is probably a better way of doing this.
-            for b in range(nbin_lens):
-                w = np.where(tomo_data['lens_bin']==b)
-                print(z[w])
-                lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
-                lens_counts[b] += w[0].size
-
-        # Collect together the results from the different processors,
-        # if we are running in parallel.
-        # Though it's barely worth it for this as it's so fast.
-        if self.comm:
-            lens_pdfs        = self.reduce(lens_pdfs)
-            lens_counts      = self.reduce(lens_counts)
-
-        # Only the root process saves the data
-        if self.rank==0:
             # Normalize the stacks
             for b in range(nbin_lens):
                 print(b, lens_counts[b])
@@ -451,10 +405,9 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             # And finally save the outputs
             f = self.open_output("lens_photoz_stack")
-            # These are inherited from the parent class.      
+            # These are inherited from the parent class.
             self.save_result(f, "lens", nbin_lens, zedge, lens_pdfs, lens_counts)
             f.close()
-
 
     def get_metadata(self):
         """
