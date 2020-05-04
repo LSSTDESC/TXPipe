@@ -90,11 +90,14 @@ class TXSourceSelector(PipelineStage):
             # Build a classifier used to put objects into tomographic bins
             classifier, features = self.build_tomographic_classifier()        
         else:
-            shear_cols += ['mean_z']
-            shear_cols += ['mean_z_1p']
-            shear_cols += ['mean_z_1m']
-            shear_cols += ['mean_z_2p'] 
-            shear_cols += ['mean_z_2m']
+            shear_cols += ['redshift_true']
+
+            # this bit is for metacal if we want to use it later
+            #shear_cols += ['mean_z']
+            #shear_cols += ['mean_z_1p']
+            #shear_cols += ['mean_z_1m']
+            #shear_cols += ['mean_z_2p'] 
+            #shear_cols += ['mean_z_2m']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -238,19 +241,29 @@ class TXSourceSelector(PipelineStage):
         return pz_data
 
     def apply_simple_redshift_cut(self, shear_data):
-        variants = ['', '_1p', '_2p', '_1m', '_2m'] 
 
         pz_data = {}
 
-        for v in variants:
-            zz = shear_data[f'mean_z{v}']
+        # this bit is for metacal, if we need it later
+        #variants = ['', '_1p', '_2p', '_1m', '_2m']
+        #for v in variants:
+        #    zz = shear_data[f'mean_z{v}']
 
-            pz_data_v = np.zeros(len(zz), dtype=int) -1
-            for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
-                pz_data_v[mask_zbin] = zi
+        #    pz_data_v = np.zeros(len(zz), dtype=int) -1
+        #    for zi in range(len(self.config['source_zbin_edges'])-1):
+        #        mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+        #        pz_data_v[mask_zbin] = zi
             
-            pz_data[f'zbin{v}'] = pz_data_v
+        #    pz_data[f'zbin{v}'] = pz_data_v
+
+        zz = shear_data[f'redshift_true']
+
+        pz_data = np.zeros(len(zz), dtype=int) -1
+        for zi in range(len(self.config['source_zbin_edges'])-1):
+            mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+            pz_data[mask_zbin] = zi
+
+        pz_data[f'zbin'] = pz_data
 
         return pz_data
 
