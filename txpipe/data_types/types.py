@@ -217,7 +217,7 @@ class NoiseMaps(DiagnosticMaps):
 
     def read_density_split(self, realization_index, bin_index):
         rho1_name = f'split_{realization_index}/rho1_{bin_index}'
-        rho2_name = f'split_{realization_index}/rho1_{bin_index}'
+        rho2_name = f'split_{realization_index}/rho2_{bin_index}'
         rho1 = self.read_map(rho1_name)
         rho2 = self.read_map(rho2_name)
         return rho1, rho2
