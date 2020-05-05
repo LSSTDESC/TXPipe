@@ -625,7 +625,9 @@ class TXTwoPointFourier(PipelineStage):
                     ell=d.l[i], window=win, i=d.i, j=d.j)
 
         # Save provenance information
-        for key, value in self.gather_provenance().items():
+        provenance = self.gather_provenance()
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
             if isinstance(value, str) and '\n' in value:
                 values = value.split("\n")
                 for i,v in enumerate(values):
