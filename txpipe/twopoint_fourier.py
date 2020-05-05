@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, RandomsCatalog, \
                         YamlFile, SACCFile, DiagnosticMaps, HDFFile, \
-                        PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps
+                        PhotozPDFFile, NoiseMaps
 
 import numpy as np
 import collections
@@ -46,8 +46,7 @@ class TXTwoPointFourier(PipelineStage):
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
-        ('lensing_noise_maps', LensingNoiseMaps),
-        ('clustering_noise_maps', ClusteringNoiseMaps),
+        ('noise_maps', NoiseMaps),
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -127,7 +126,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in self.split_tasks_by_rank(calcs):
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspaces, ell_bins, tomo_info, theory_cl)
+                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl)
 
         if self.rank==0:
             print(f"Collecting results together")
@@ -161,7 +160,7 @@ class TXTwoPointFourier(PipelineStage):
         # Load the mask. It should automatically be the same shape as the
         # others, based on how it was originally generated.
         # We remove any pixels that are at or below our threshold (default=0)
-        mask = map_file.read_map('mask')
+        mask = map_file.read_mask()
         mask[np.isnan(mask)] = 0
         mask[mask==healpy.UNSEEN] = 0
 
@@ -210,6 +209,9 @@ class TXTwoPointFourier(PipelineStage):
         for ng in ngal_maps:
             clustering_weight[ng==healpy.UNSEEN] = 0
 
+        clustering_weight[clustering_weight<0] = 0
+        clustering_weight[np.isnan(clustering_weight)] = 0
+
         # Start collecting maps
         d_maps = []
         for i, ng in enumerate(ngal_maps):
@@ -217,13 +219,11 @@ class TXTwoPointFourier(PipelineStage):
             # First compute the overall mean object count per bin.
             # Maybe we should do this in the mapping code itself?
             # mean clustering galaxies per pixel in this map
-            mu = ng[clustering_weight>0].mean()
+            mu = np.average(ng, weights=clustering_weight)
             # and then use that to convert to overdensity
-            d = ng.copy()
-            d[clustering_weight>0] -= mu
-            d[clustering_weight>0] /= mu
-            # and re-masking, just in case
-            d[~(clustering_weight>0)] = 0
+            d = (ng - mu) / mu
+            # remove nans
+            d[clustering_weight==0] = 0
             d_maps.append(d)
 
         lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
@@ -417,7 +417,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, tomo_info, cl_theory):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -478,7 +478,7 @@ class TXTwoPointFourier(PipelineStage):
         workspace = workspaces[(i,j,k)]
 
         # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace, tomo_info)
+        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
@@ -489,30 +489,35 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement(name, ls, c[index] / pixwin, win, i, j))
 
 
-    def compute_noise(self, i, j, k, ell_bins, maps, workspace, tomo_info):
-        # No noise contribution in cross-correlations
+    def compute_noise(self, i, j, k, ell_bins, maps, workspace):
         import pymaster as nmt
 
+        # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
             return None
 
+        noise_maps = self.open_input('noise_maps', wrapper=True)
+
         if k == SHEAR_SHEAR:
-            noise_map_file = 'lensing_noise_maps'
             weight = maps['lw'][i]
+            # this function returns (nreal_source, nreal_lens)
+            nreal = noise_maps.number_of_realizations()[0]
         else:
-            noise_map_file = 'clustering_noise_maps'
             weight = maps['dw']
+            nreal = noise_maps.number_of_realizations()[1]
 
-        noise_maps = self.open_input(noise_map_file, wrapper=True)
-        nreal = noise_maps.number_of_realizations()
         noise_c_ells = []
-
 
         for r in range(nreal):
             print(f"Analyzing noise map {r}")
             # Load the noise map - may be either (g1, g2)
-            # or just density dpendng on what the input is
-            realization = noise_maps.read_realization(r, i)
+            # or rho1 - rho2
+            if k == SHEAR_SHEAR:
+                realization = noise_maps.read_rotation(r, i)
+            else:
+                rho1, rho2 = noise_maps.read_density_split(r, i)
+                realization = [rho1 - rho2]
+
             # Analyze it with namaster
             field = nmt.NmtField(weight, realization, n_iter=0)
             cl_coupled = nmt.compute_coupled_cell(field, field)
@@ -520,8 +525,13 @@ class TXTwoPointFourier(PipelineStage):
             # Accumulate
             noise_c_ells.append(cl_coupled)
 
-        # Use the mean at the end
         mean_noise = np.mean(noise_c_ells, axis=0)
+
+        # Since this is the noise on the half maps the real
+        # noise C_ell will be (0.5)**2 times the size
+        if k == SHEAR_SHEAR:
+            mean_noise /= 4
+
         return mean_noise
 
 
