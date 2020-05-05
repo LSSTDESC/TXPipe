@@ -169,7 +169,7 @@ class TXNoiseMaps(PipelineStage):
                     outfile.write_map(f"split_{i}/rho1_{b}", 
                         pixels, rho1[pixels], metadata)
                     outfile.write_map(f"split_{i}/rho2_{b}", 
-                        pixels, rho1[pixels], metadata)
+                        pixels, rho2[pixels], metadata)
                     # counts
                     outfile.write_map(f"split_{i}/ngal1_{b}", 
                         pixels, half1[pixels], metadata)
