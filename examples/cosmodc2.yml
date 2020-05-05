@@ -19,8 +19,10 @@ stages:
       nprocess: 2
       nodes: 2
       threads_per_process: 64
+    - name: TXJackknifeCenters
     - name: TXMapPlots
     - name: TXRandomCat
+    - name: TXNullBlinding
     - name: TXTwoPoint
       threads_per_process: 64
       nprocess: 2
@@ -35,11 +37,8 @@ stages:
       threads_per_process: 64
     - name: TXTwoPointFourier
       threads_per_process: 64
-    - name: TXLensingNoiseMaps
+    - name: TXNoiseMaps
       nprocess: 4
-      nodes: 1
-    - name: TXClusteringNoiseMaps
-      nprocess: 1
       nodes: 1
       threads_per_process: 1
 

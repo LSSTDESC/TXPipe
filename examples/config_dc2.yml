@@ -86,7 +86,7 @@ TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True
     flip_g1: True
-    bandwidth: 20
+    bandwidth: 200
     apodization_size: 0.0
     cache_dir: ./cache
 
