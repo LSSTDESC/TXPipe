@@ -1,15 +1,15 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, \
-                        LensingNoiseMaps, ClusteringNoiseMaps, HDFFile
+                        NoiseMaps, HDFFile
 import numpy as np
 
-class TXLensingNoiseMaps(PipelineStage):
+class TXNoiseMaps(PipelineStage):
     """
     Generate a suite of random noise maps by randomly
     rotating individual galaxy measurements.
 
     """
-    name='TXLensingNoiseMaps'
+    name='TXNoiseMaps'
 
     
     inputs = [
@@ -20,26 +20,28 @@ class TXLensingNoiseMaps(PipelineStage):
     ]
 
     outputs = [
-        ('lensing_noise_maps', LensingNoiseMaps),
+        ('noise_maps', NoiseMaps),
     ]
 
     config_options = {
         'chunk_rows': 100000,
-        'n_realization': 30,
+        'lensing_realizations': 30,
+        'clustering_realizations': 1,
     }        
 
     def run(self):
         from .utils import choose_pixelization
 
         # get the number of bins.
-        bins, map_info = self.read_metadata()
-        nbin = len(bins)
+        nbin_source, nbin_lens, ngal_maps, mask, map_info = self.read_inputs()
+        
         pixel_scheme = choose_pixelization(**map_info)
-        n_rotations = self.config['n_realization']
+        lensing_realizations = self.config['lensing_realizations']
+        clustering_realizations = self.config['clustering_realizations']
 
         # The columns we will need
         shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
-        bin_cols = ['source_bin']
+        bin_cols = ['source_bin', 'lens_bin']
 
         # Make the iterators
         chunk_rows = self.config['chunk_rows']
@@ -50,17 +52,24 @@ class TXLensingNoiseMaps(PipelineStage):
         npix = pixel_scheme.npix
 
         if self.rank == 0:
-            nGB = (npix * nbin * n_rotations * 24) / 1024.**3
+            nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations
+            nGB = (npix * nmaps * 8) / 1000.**3
             print(f"Allocating maps of size {nGB:.2f} GB") 
 
-        G1 = np.zeros((npix, nbin, n_rotations))
-        G2 = np.zeros((npix, nbin, n_rotations))
-        W = np.zeros((npix, nbin))
+        # lensing g1, g2
+        G1 = np.zeros((npix, nbin_source, lensing_realizations))
+        G2 = np.zeros((npix, nbin_source, lensing_realizations))
+        # lensing weight
+        GW = np.zeros((npix, nbin_source))
+        # clustering map - n_gal to start with
+        ngal_half = np.zeros((npix, nbin_lens, clustering_realizations))
+        # TODO: Clustering weights go here
 
         # Loop through the data
         for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
             print(f"Rank {self.rank} processing rows {s} - {e}")
             source_bin = bin_data['source_bin']
+            lens_bin = bin_data['lens_bin']
             ra = shear_data['ra']
             dec = shear_data['dec']
             pixels = pixel_scheme.ang2pix(ra, dec)
@@ -71,7 +80,11 @@ class TXLensingNoiseMaps(PipelineStage):
             g1 = shear_data['mcal_g1'] * w
             g2 = shear_data['mcal_g2'] * w
 
-            phi = np.random.uniform(0, 2*np.pi, (n, n_rotations))
+            # randomly select a half for each object
+            is_first_half = np.random.binomial(1, 0.5, (n, clustering_realizations))
+
+            # random rotations of the g1, g2 values
+            phi = np.random.uniform(0, 2*np.pi, (n, lensing_realizations))
             c = np.cos(phi)
             s = np.sin(phi)
             g1r =  c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
@@ -79,11 +92,19 @@ class TXLensingNoiseMaps(PipelineStage):
 
             for i in range(n):
                 sb = source_bin[i]
+                lb = lens_bin[i]
+                pix = pixels[i]
+                # build up the rotated map for each bin
                 if sb >= 0:
-                    pix = pixels[i]
                     G1[pix, sb, :] += g1r[i] 
                     G2[pix, sb, :] += g2r[i]
-                    W[pix, sb] += w[i]
+                    GW[pix, sb] += w[i]
+                # Build up the ngal for the random half for each bin
+                for j in range(clustering_realizations):
+                    if lb >= 0 and is_first_half[i, j]==1:
+                        ngal_half[pix, lb, j] += 1
+                    # TODO add to clustering weight too
+
 
         # Sum everything at root
         if self.comm is not None:
@@ -91,142 +112,94 @@ class TXLensingNoiseMaps(PipelineStage):
             if self.comm.Get_rank() == 0:
                 self.comm.Reduce(IN_PLACE, G1)
                 self.comm.Reduce(IN_PLACE, G2)
-                self.comm.Reduce(IN_PLACE, W)
+                self.comm.Reduce(IN_PLACE, GW)
+                self.comm.Reduce(IN_PLACE, ngal_half)
             else:
                 self.comm.Reduce(G1, None)
                 self.comm.Reduce(G2, None)
                 self.comm.Reduce(W, None)
+                self.comm.Reduce(ngal_half, None)
+                del G1, G2, W, ngal_half
 
 
         if self.rank==0:
             print("Saving maps")
-            outfile = self.open_output('lensing_noise_maps', wrapper=True)
+            outfile = self.open_output('noise_maps', wrapper=True)
 
             # The top section has the metadata in
             group = outfile.file.create_group("maps")
-            group.attrs['nbin_source'] = nbin
-            group.attrs['n_realization'] = n_rotations
+            group.attrs['nbin_source'] = nbin_source
+            group.attrs['lensing_realizations'] = lensing_realizations
+            group.attrs['clustering_realizations'] = clustering_realizations
 
             metadata = {**self.config, **map_info}
 
-            for b in range(nbin):
-                pixels = np.where(W[:,b]>0)[0]
-                for i in range(n_rotations):
+            for b in range(nbin_source):
+                pixels = np.where(GW[:,b]>0)[0]
+                for i in range(lensing_realizations):
 
-                    g1 = G1[pixels, b, i] / W[pixels, b]
-                    g2 = G2[pixels, b, i] / W[pixels, b]
+                    g1 = G1[pixels, b, i] / GW[pixels, b]
+                    g2 = G2[pixels, b, i] / GW[pixels, b]
 
-                    outfile.write_map(f"realization_{i}/g1_{b}", 
+                    outfile.write_map(f"rotation_{i}/g1_{b}", 
                         pixels, g1, metadata)
 
-                    outfile.write_map(f"realization_{i}/g2_{b}", 
+                    outfile.write_map(f"rotation_{i}/g2_{b}", 
                         pixels, g2, metadata)
 
+            for b in range(nbin_lens):
+                pixels = np.where(mask>0)[0]
+                for i in range(clustering_realizations):
+                    # We have computed the first half already,
+                    # and we have the total map from an earlier stage
+                    half1 = ngal_half[:, b, i]
+                    half2 = ngal_maps[b] - half1
+
+                    # Convert to overdensity.  I thought about
+                    # using half the mean from the full map to reduce
+                    # noise, but thought that might add covariance
+                    # to the two maps, and this shouldn't be that noisy
+                    mu1 = np.average(half1, weights=mask)
+                    mu2 = np.average(half2, weights=mask)
+                    rho1 = (half1 - mu1) / mu1
+                    rho2 = (half2 - mu2) / mu2
+
+                    # Write both overdensity and count maps
+                    # for each bin for each split
+                    outfile.write_map(f"split_{i}/rho1_{b}", 
+                        pixels, rho1[pixels], metadata)
+                    outfile.write_map(f"split_{i}/rho2_{b}", 
+                        pixels, rho1[pixels], metadata)
+                    # counts
+                    outfile.write_map(f"split_{i}/ngal1_{b}", 
+                        pixels, half1[pixels], metadata)
+                    outfile.write_map(f"split_{i}/ngal2_{b}", 
+                        pixels, half2[pixels], metadata)
+                    
 
 
-    def read_metadata(self):
-        # get pixelization info from the usual maps.
+
+    def read_inputs(self):
+
         map_file = self.open_input('diagnostic_maps', wrapper=True)
-        map_info = map_file.read_map_info('lensing_weight_0')
+
+        # Get the bin counts
+        info = map_file.file['maps'].attrs
+        nbin_source = info['nbin_source']
+        nbin_lens = info['nbin_lens']
+
+        # get pixelization info from the usual maps.
+        map_info = map_file.read_map_info('mask')
+
+        # Get the ngal values, so we can subtract the random
+        # half selection from it to get the other half
+        ngal_maps = [map_file.read_map(f'ngal_{b}') for b in range(nbin_lens)]
+
+        # and the mask, which we will use to decide which pixels to keep
+        mask = map_file.read_mask()
+
         map_file.close()
 
-        # Get the bin count from tomography.
-        tomo_file = self.open_input('tomography_catalog', wrapper=False)
-        info = tomo_file['tomography'].attrs
-        nbin = info['nbin_source']
-        tomo_file.close()
-
-        bins = list(range(nbin))
-
-        return bins, map_info
+        return nbin_source, nbin_lens, ngal_maps, mask, map_info
 
 
-class TXClusteringNoiseMaps(PipelineStage):
-    name='TXClusteringNoiseMaps'
-    
-    inputs = [
-        ('diagnostic_maps', DiagnosticMaps),
-    ]
-
-    outputs = [
-        ('clustering_noise_maps', ClusteringNoiseMaps),
-    ]
-
-    config_options = {
-        'n_realization': 30,
-    }        
-
-    def run(self):
-        # Input and output file.
-        map_file = self.open_input('diagnostic_maps', wrapper=True)
-        out_file = self.open_output('clustering_noise_maps', wrapper=True)
-        group = out_file.file.create_group('maps')
-        n_realization = self.config['n_realization']
-
-        # Map info - nside, etc.
-        map_info = map_file.read_map_info('mask')
-        # The mask - as of now this is just binary, but
-        # will be gradually improved
-        mask = map_file.read_map('mask')
-
-        # Count of bins.  We just do lensing in this
-        # one, so ignore the nbin_source
-        _, nbin = map_file.get_nbins()
-
-        
-        group.attrs['nbin_source'] = nbin
-        group.attrs['n_realization'] = n_realization
-
-        # To be saved in the output
-        metadata = {**self.config, **map_info}
-
-        # make a randomizer objects which prepares
-        # the probabilities per pixel
-        randomizer = MapRandomizer(mask)
-        pixel = randomizer.pixel
-
-        for b in range(nbin):
-            print(f"Simulating random clustering for bin {b}")
-            ngal = map_file.read_map(f'ngal_{b}')
-
-            # The mask can be smaller than the ngal map
-            # if we have set some regions as masked, or if
-            # there is a count threshold, for example.  We
-            # don't want to move galaxies from outside the mask
-            # region into it.
-            ngal[mask <= 0] = 0
-
-            ntot = int(ngal[ngal>0].sum())
-
-            # Loop realizations
-            for i in range(n_realization):
-                # Generate a random map with this ngal
-                random_ngal, random_delta = randomizer(ntot)
-
-                # Save the maps
-                out_file.write_map(f'realization_{i}/ngal_{b}', pixel, random_ngal, metadata)
-                out_file.write_map(f'realization_{i}/delta_{b}', pixel, random_delta, metadata)
-
-
-
-        if self.rank == 0:
-            print("NOTE: Using mask from diagnostic_maps.  Just uniform for now.")
-
-
-
-class MapRandomizer:
-    def __init__(self, mask):
-        self.mask = mask
-        self.hit = mask > 0
-        self.mask_hit = mask[self.hit]
-        self.nhit = self.mask_hit.size
-        self.pixel = np.arange(mask.size)[self.hit]
-        self.mask_pix = np.arange(self.nhit, dtype=int)
-        self.pix_prob = self.mask_hit / self.mask_hit.sum()
-
-    def __call__(self, ngal):
-        galpix = np.random.choice(self.mask_pix, size=ngal, p=self.pix_prob)
-        count_map = np.bincount(galpix, minlength=self.nhit)
-        mu = count_map.mean()
-        delta_map = (count_map - mu) / mu
-        return count_map, delta_map
