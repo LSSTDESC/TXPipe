@@ -117,9 +117,9 @@ class TXNoiseMaps(PipelineStage):
             else:
                 self.comm.Reduce(G1, None)
                 self.comm.Reduce(G2, None)
-                self.comm.Reduce(W, None)
+                self.comm.Reduce(GW, None)
                 self.comm.Reduce(ngal_half, None)
-                del G1, G2, W, ngal_half
+                del G1, G2, GW, ngal_half
 
 
         if self.rank==0:

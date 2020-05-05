@@ -529,7 +529,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Since this is the noise on the half maps the real
         # noise C_ell will be (0.5)**2 times the size
-        if k == SHEAR_SHEAR:
+        if k == POS_POS:
             mean_noise /= 4
 
         return mean_noise
