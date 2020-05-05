@@ -52,7 +52,7 @@ class TXNoiseMaps(PipelineStage):
         npix = pixel_scheme.npix
 
         if self.rank == 0:
-            nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations
+            nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations * 2
             nGB = (npix * nmaps * 8) / 1000.**3
             print(f"Allocating maps of size {nGB:.2f} GB") 
 
@@ -62,7 +62,7 @@ class TXNoiseMaps(PipelineStage):
         # lensing weight
         GW = np.zeros((npix, nbin_source))
         # clustering map - n_gal to start with
-        ngal_half = np.zeros((npix, nbin_lens, clustering_realizations))
+        ngal_split = np.zeros((npix, nbin_lens, clustering_realizations, 2))
         # TODO: Clustering weights go here
 
         # Loop through the data
@@ -81,7 +81,7 @@ class TXNoiseMaps(PipelineStage):
             g2 = shear_data['mcal_g2'] * w
 
             # randomly select a half for each object
-            is_first_half = np.random.binomial(1, 0.5, (n, clustering_realizations))
+            split = np.random.binomial(1, 0.5, (n, clustering_realizations))
 
             # random rotations of the g1, g2 values
             phi = np.random.uniform(0, 2*np.pi, (n, lensing_realizations))
@@ -101,8 +101,8 @@ class TXNoiseMaps(PipelineStage):
                     GW[pix, sb] += w[i]
                 # Build up the ngal for the random half for each bin
                 for j in range(clustering_realizations):
-                    if lb >= 0 and is_first_half[i, j]==1:
-                        ngal_half[pix, lb, j] += 1
+                    if lb >= 0:
+                        ngal_split[pix, lb, j, split[i]] += 1
                     # TODO add to clustering weight too
 
 
@@ -113,13 +113,13 @@ class TXNoiseMaps(PipelineStage):
                 self.comm.Reduce(IN_PLACE, G1)
                 self.comm.Reduce(IN_PLACE, G2)
                 self.comm.Reduce(IN_PLACE, GW)
-                self.comm.Reduce(IN_PLACE, ngal_half)
+                self.comm.Reduce(IN_PLACE, ngal_split)
             else:
                 self.comm.Reduce(G1, None)
                 self.comm.Reduce(G2, None)
                 self.comm.Reduce(GW, None)
-                self.comm.Reduce(ngal_half, None)
-                del G1, G2, GW, ngal_half
+                self.comm.Reduce(ngal_split, None)
+                del G1, G2, GW, ngal_split
 
 
         if self.rank==0:
@@ -152,8 +152,8 @@ class TXNoiseMaps(PipelineStage):
                 for i in range(clustering_realizations):
                     # We have computed the first half already,
                     # and we have the total map from an earlier stage
-                    half1 = ngal_half[:, b, i]
-                    half2 = ngal_maps[b] - half1
+                    half1 = ngal_split[:, b, i, 0]
+                    half2 = ngal_split[:, b, i, 1]
 
                     # Convert to overdensity.  I thought about
                     # using half the mean from the full map to reduce
@@ -161,6 +161,8 @@ class TXNoiseMaps(PipelineStage):
                     # to the two maps, and this shouldn't be that noisy
                     mu1 = np.average(half1, weights=mask)
                     mu2 = np.average(half2, weights=mask)
+                    # This will produce some mangled sentinel values
+                    # but they will be masked out
                     rho1 = (half1 - mu1) / mu1
                     rho2 = (half2 - mu2) / mu2
 
