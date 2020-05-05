@@ -95,6 +95,11 @@ class DiagnosticMaps(HDFFile):
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
 
+    def read_mask(self):
+        mask = self.read_map('mask')
+        mask[mask<0] = 0
+        return mask
+
 
     def write_map(self, map_name, pixel, value, metadata):
         """
@@ -197,31 +202,31 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
-class LensingNoiseMaps(DiagnosticMaps):
+class NoiseMaps(DiagnosticMaps):
     required_datasets = [
         ]
 
-    def read_realization(self, realization_index, bin_index):
-        g1_name = f'realization_{realization_index}/g1_{bin_index}'
-        g2_name = f'realization_{realization_index}/g2_{bin_index}'
+    def read_rotation(self, realization_index, bin_index):
+        g1_name = f'rotation_{realization_index}/g1_{bin_index}'
+        g2_name = f'rotation_{realization_index}/g2_{bin_index}'
 
         g1 = self.read_map(g1_name)
         g2 = self.read_map(g2_name)
 
         return g1, g2
 
+    def read_density_split(self, realization_index, bin_index):
+        rho1_name = f'split_{realization_index}/rho1_{bin_index}'
+        rho2_name = f'split_{realization_index}/rho1_{bin_index}'
+        rho1 = self.read_map(rho1_name)
+        rho2 = self.read_map(rho2_name)
+        return rho1, rho2
+
     def number_of_realizations(self):
-        return self.file['maps'].attrs['n_realization']
-
-class ClusteringNoiseMaps(LensingNoiseMaps):
-    required_datasets = [
-        ]
-
-    def read_realization(self, realization_index, bin_index):
-        delta_name = f'realization_{realization_index}/delta_{bin_index}'
-        delta = self.read_map(delta_name)
-
-        return [delta]
+        info = self.file['maps'].attrs
+        clustering_realizations = info['clustering_realizations']
+        lensing_realizations = info['lensing_realizations']
+        return lensing_realizations, clustering_realizations
 
 
 
