@@ -247,7 +247,7 @@ class TXDiagnosticMaps(PipelineStage):
             # Now save all the lens bin galaxy counts, under the
             # name ngal
             for b in lens_bins:
-                self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config, mask=mask)
+                self.save_map(group, f"ngal_{b}", map_pix, ngals[b], config, mask_pix=mask_pix)
                 self.save_map(group, f"psf_ngal_{b}", map_pix_psf, ngals_psf[b], config)
 
             for b in source_bins:
@@ -306,7 +306,7 @@ class TXDiagnosticMaps(PipelineStage):
         return mask, count
 
 
-    def save_map(self, group, name, pixel, value, metadata, mask=None):
+    def save_map(self, group, name, pixel, value, metadata, mask_pix=None):
         """
         Save an output map to an HDF5 subgroup.
 
@@ -329,13 +329,16 @@ class TXDiagnosticMaps(PipelineStage):
             a healpix map. any pixels with non-zero mask and healpix UNSEEN in the map
             are assigned zero
         """
+        import healpy
 
-        if mask is not None:
-            m2 = np.zeros(healpy.nside2npix(metadata['nside']))
-            m2[pixel] = value
-            m2[mask>0] = 0
-            pixels = np.where(mask>0)[0]
-            value = m2[pixels]
+        if mask_pix is not None:
+            # Unpack the mask
+            npix = healpy.nside2npix(metadata['nside'])
+            tmp = np.repeat(healpy.UNSEEN, npix)
+            tmp[mask_pix] = 0
+            tmp[pixel] = value
+            pixel = np.where(tmp!=healpy.UNSEEN)[0]
+            value = tmp[pixel]
         subgroup = group.create_group(name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
