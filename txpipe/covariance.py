@@ -18,7 +18,6 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     inputs = [
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
-        ('photoz_stack', HDFFile),           # For the n(z)
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata', HDFFile),        # For metadata
     ]
@@ -476,7 +475,6 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
 
     inputs = [
         ('fiducial_cosmology', YamlFile),     # For the cosmological parameters
-        ('photoz_stack', HDFFile),            # For the n(z)
         ('twopoint_data_real', SACCFile),     # For the binning information
         ('tracer_metadata', HDFFile),         # For metadata
 

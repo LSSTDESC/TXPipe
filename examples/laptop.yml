@@ -1,6 +1,8 @@
+
 # Stages to run
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+    - name: TXLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
@@ -65,3 +67,4 @@ resume: True
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
+

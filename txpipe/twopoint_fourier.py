@@ -38,10 +38,12 @@ class TXTwoPointFourier(PipelineStage):
     """
     name = 'TXTwoPointFourier'
     inputs = [
-        ('photoz_stack', HDFFile),  # Photoz stack
+        ('shear_photoz_stack', HDFFile),  # Photoz stack
+        ('lens_photoz_stack', HDFFile),  # Photoz stack
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
-        ('tomography_catalog', TomographyCatalog),  # For density info
+        ('shear_tomography_catalog', TomographyCatalog),  # For density info
+        ('lens_tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -454,12 +456,14 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
-        tomo = self.open_input('tomography_catalog')
-        sigma_e = tomo['tomography/sigma_e'][:]
-        mean_R = tomo['multiplicative_bias/R_gamma_mean'][:]
-        N_eff = tomo['tomography/N_eff'][:]
-        lens_counts = tomo['tomography/lens_counts'][:]
-        tomo.close()
+        tomo_shear = self.open_input('shear_tomography_catalog')
+        sigma_e = tomo_shear['tomography/sigma_e'][:]
+        mean_R = tomo_shear['metacal_response/R_gamma_mean'][:]
+        N_eff = tomo_shear['tomography/N_eff'][:]
+        tomo_lens = self.open_input('lens_tomography_catalog')
+        lens_counts = tomo_lens['tomography/lens_counts'][:]
+        tomo_shear.close()
+        tomo_lens.close()
 
         area = 4*np.pi*f_sky
 
@@ -480,21 +484,22 @@ class TXTwoPointFourier(PipelineStage):
 
     def load_tracers(self, nbin_source, nbin_lens):
         import sacc
-        f = self.open_input('photoz_stack')
+        f_shear = self.open_input('shear_photoz_stack')
+        f_lens = self.open_input('lens_photoz_stack')
 
         tracers = {}
 
         for i in range(nbin_source):
             name = f"source_{i}"
-            z = f['n_of_z/source/z'][:]
-            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            z = f_shear['n_of_z/source/z'][:]
+            Nz = f_shear[f'n_of_z/source/bin_{i}'][:]
             T = sacc.BaseTracer.make("NZ", name, z, Nz)
             tracers[name] = T
 
         for i in range(nbin_lens):
             name = f"lens_{i}"
-            z = f['n_of_z/lens/z'][:]
-            Nz = f[f'n_of_z/lens/bin_{i}'][:]
+            z = f_lens['n_of_z/lens/z'][:]
+            Nz = f_lens[f'n_of_z/lens/bin_{i}'][:]
             T = sacc.BaseTracer.make("NZ", name, z, Nz)
             tracers[name] = T
 

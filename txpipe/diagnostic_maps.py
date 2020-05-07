@@ -28,7 +28,8 @@ class TXDiagnosticMaps(PipelineStage):
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
-        ('tomography_catalog', TomographyCatalog),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
     ]
 
     # We generate a single HDF file in this stage
@@ -92,16 +93,19 @@ class TXDiagnosticMaps(PipelineStage):
         else:
             shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
         shear_cols += ['mcal_flags', 'weight']
-        bin_cols = ['source_bin', 'lens_bin']
+        shear_bin_cols = ['source_bin']
+        lens_bin_cols = ['lens_bin']
         m_cols = ['R_gamma']
 
-        T = self.open_input('tomography_catalog')
-        d = dict(T['/tomography'].attrs)
+        T = self.open_input('shear_tomography_catalog')
+        d = dict(T['tomography'].attrs)
         T.close()
-
         source_bins = list(range(d['nbin_source']))
-        lens_bins = list(range(d['nbin_lens']))
 
+        T = self.open_input('lens_tomography_catalog')
+        d = dict(T['tomography'].attrs)
+        T.close()
+        lens_bins = list(range(d['nbin_lens']))
 
         # Make three mapper classes, one for the signal itself
         # (shear and galaxy count), another for the depth
@@ -133,23 +137,26 @@ class TXDiagnosticMaps(PipelineStage):
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
 
-        bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
-        bin_it = (d[2] for d in bin_it)
+        shear_bin_it = self.iterate_hdf('shear_tomography_catalog','tomography', shear_bin_cols, chunk_rows)
+        shear_bin_it = (d[2] for d in shear_bin_it)
 
-        m_it = self.iterate_hdf('tomography_catalog','multiplicative_bias', m_cols, chunk_rows)
+        lens_bin_it = self.iterate_hdf('lens_tomography_catalog','tomography', lens_bin_cols, chunk_rows)
+        lens_bin_it = (d[2] for d in lens_bin_it)
+
+        m_it = self.iterate_hdf('shear_tomography_catalog','metacal_response', m_cols, chunk_rows)
         m_it = (d[2] for d in m_it)
 
         # Now, we actually start loading the data in.
         # This thing below just loops through all the files at once
-        iterator = zip(shear_it, phot_it, bin_it, m_it)
-        for (s,e,shear_data), phot_data, bin_data, m_data in iterator:
+        iterator = zip(shear_it, phot_it, shear_bin_it,lens_bin_it, m_it)
+        for (s,e,shear_data), phot_data, shear_bin_data, lens_bin_data, m_data in iterator:
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper & bright object mapper
             depth_data = {
                 'mag': phot_data[f'{band}_mag'],
                 'snr': phot_data[f'snr_{band}'],
-                'bins': bin_data['lens_bin'],
+                'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],
                 'dec': phot_data['dec'],
             }
@@ -157,7 +164,7 @@ class TXDiagnosticMaps(PipelineStage):
             brobj_data = {
                 'mag': phot_data[f'{band}_mag'],
                 'extendedness': phot_data['extendedness'],
-                'bins': bin_data['lens_bin'],
+                'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],
                 'dec': phot_data['dec'],
             }
@@ -187,8 +194,8 @@ class TXDiagnosticMaps(PipelineStage):
             # And add these data chunks to our maps
             depth_mapper.add_data(depth_data)
             brobj_mapper.add_data(brobj_data)
-            mapper.add_data(shear_tmp, bin_data, m_data)
-            mapper_psf.add_data(shear_psf_tmp, bin_data, m_data) # Same?
+            mapper.add_data(shear_tmp, shear_bin_data, lens_bin_data, m_data)
+            mapper_psf.add_data(shear_psf_tmp, shear_bin_data, lens_bin_data, m_data)
             flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
 
         # Collect together the results across all the processors
@@ -314,28 +321,31 @@ class TXDiagnosticMaps(PipelineStage):
 
     def save_metadata_file(self, area):
         area_sq_arcmin = area * 60**2
-        tomo_file = self.open_input('tomography_catalog')
+        shear_tomo_file = self.open_input('shear_tomography_catalog')
+        lens_tomo_file = self.open_input('lens_tomography_catalog')
+
         meta_file = self.open_output('tracer_metadata')
-        def copy(in_section, out_section, name):
-            x = tomo_file[f'{in_section}/{name}'][:]
+
+        def copy(tomo, in_section, out_section, name):
+            x = tomo[f'{in_section}/{name}'][:]
             meta_file.create_dataset(f'{out_section}/{name}', data=x)
 
-        def copy_attrs(name, out_name):
-            for k,v in tomo_file[name].attrs.items():
+        def copy_attrs(tomo, name, out_name):
+            for k,v in tomo[name].attrs.items():
                 meta_file[out_name].attrs[k] = v
 
 
-        copy('multiplicative_bias', 'tracers', 'R_gamma_mean')
-        copy('multiplicative_bias', 'tracers', 'R_S')
-        copy('multiplicative_bias', 'tracers', 'R_total')
-        copy('tomography', 'tracers', 'N_eff')
-        copy('tomography', 'tracers', 'lens_counts')
-        copy('tomography', 'tracers', 'sigma_e')
-        copy('tomography', 'tracers', 'source_counts')
-        N_eff = tomo_file['tomography/N_eff'][:]
+        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_gamma_mean')
+        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_S')
+        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_total')
+        copy(shear_tomo_file, 'tomography', 'tracers', 'N_eff')
+        copy(lens_tomo_file, 'tomography', 'tracers', 'lens_counts')
+        copy(shear_tomo_file, 'tomography', 'tracers', 'sigma_e')
+        copy(shear_tomo_file, 'tomography', 'tracers', 'source_counts')
+        N_eff = shear_tomo_file['tomography/N_eff'][:]
         n_eff = N_eff / area_sq_arcmin
-        lens_counts = tomo_file['tomography/lens_counts'][:]
-        source_counts = tomo_file['tomography/source_counts'][:]
+        lens_counts = lens_tomo_file['tomography/lens_counts'][:]
+        source_counts = shear_tomo_file['tomography/source_counts'][:]
         lens_density = lens_counts / area_sq_arcmin
         source_density = source_counts / area_sq_arcmin
         meta_file.create_dataset('tracers/n_eff', data=n_eff)
@@ -343,7 +353,8 @@ class TXDiagnosticMaps(PipelineStage):
         meta_file.create_dataset('tracers/source_density', data=source_density)
         meta_file['tracers'].attrs['area'] = area
         meta_file['tracers'].attrs['area_unit'] = 'sq deg'
-        copy_attrs('tomography', 'tracers')
+        copy_attrs(shear_tomo_file,'tomography', 'tracers')
+        copy_attrs(lens_tomo_file,'tomography', 'tracers')
 
         meta_file.close()
 
