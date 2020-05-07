@@ -1,7 +1,8 @@
 
 # Stages to run
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+    - name: TXLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
