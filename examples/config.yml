@@ -66,8 +66,8 @@ TXTwoPoint:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 250
-    nbins: 20
+    max_sep: 60.0
+    nbins: 10
     verbose: 0
 
 TXBlinding:
@@ -96,6 +96,12 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
+
+TXRealGaussianCovariance:
+    min_sep: 2.5
+    max_sep: 60.
+    nbins: 10
+    pickled_wigner_transform: data/example/inputs/wigner.pkl
 
 
 TXJackknifeCenters:

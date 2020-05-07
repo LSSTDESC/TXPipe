@@ -93,17 +93,8 @@ cd TXPipe
 You can get some input test data like this:
 
 ```bash
-
-mkdir -p data/example/inputs
-cd data/example/inputs
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/exposures.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/star_catalog.hdf5
-
-cd ../../..
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
 ```
 
 
