@@ -1,6 +1,7 @@
 # Stages to run
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+    - name: TXLensSelector
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
