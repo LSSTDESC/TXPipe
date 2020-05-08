@@ -442,18 +442,6 @@ class TXTwoPointFourier(PipelineStage):
         ls = ell_bins.get_effective_ells()
         win = [ell_bins.get_window(b) for b,l  in enumerate(ls)]
 
-        # The healpix pixel windows.  C_ell estimates on healpix
-        # maps (like all pixelized maps) are modulated by a pixel
-        # window function, which we calculate here so we can remove
-        # it below.  These are trivially fast to get, so no point
-        # caching.
-        # First get the raw pixel window functions
-        pixwin_t, pixwin_p = healpy.pixwin(pixel_scheme.nside, True)
-        # Interpolate to our ell values
-        pixwin_ell = np.arange(pixwin_t.size)
-        pixwin_t = np.interp(ls, pixwin_ell, pixwin_t)
-        pixwin_p = np.interp(ls, pixwin_ell, pixwin_p)
-
         # We need the theory spectrum for this pair
         #TODO: when we have templates to deproject, use this.
         theory = cl_theory[(i,j,k)]
@@ -463,17 +451,17 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             field_i = maps['lf'][i]
             field_j = maps['lf'][j]
-            results_to_use = [(0, CEE, pixwin_p**2), (3, CBB, pixwin_p**2)]
+            results_to_use = [(0, CEE, ), (3, CBB, )]
 
         elif k == POS_POS:
             field_i = maps['df'][i]
             field_j = maps['df'][j]
-            results_to_use = [(0, Cdd, pixwin_t**2)]
+            results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
             field_i = maps['lf'][i]
             field_j = maps['df'][j]
-            results_to_use = [(0, CdE, pixwin_t*pixwin_p), (1, CdB, pixwin_t*pixwin_p)]
+            results_to_use = [(0, CdE), (1, CdB)]
 
         workspace = workspaces[(i,j,k)]
 
@@ -485,8 +473,8 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
 
         # Save all the results, skipping things we don't want like EB modes
-        for index, name, pixwin in results_to_use:
-            self.results.append(Measurement(name, ls, c[index] / pixwin, win, i, j))
+        for index, name in results_to_use:
+            self.results.append(Measurement(name, ls, c[index], win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
