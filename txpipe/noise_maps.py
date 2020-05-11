@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, \
                         NoiseMaps, HDFFile
 import numpy as np
+from .utils.mpi_utils import mpi_reduce_large
 
 class TXNoiseMaps(PipelineStage):
     """
@@ -108,17 +109,11 @@ class TXNoiseMaps(PipelineStage):
 
         # Sum everything at root
         if self.comm is not None:
-            from mpi4py.MPI import DOUBLE, SUM, IN_PLACE
-            if self.comm.Get_rank() == 0:
-                self.comm.Reduce(IN_PLACE, G1)
-                self.comm.Reduce(IN_PLACE, G2)
-                self.comm.Reduce(IN_PLACE, GW)
-                self.comm.Reduce(IN_PLACE, ngal_split)
-            else:
-                self.comm.Reduce(G1, None)
-                self.comm.Reduce(G2, None)
-                self.comm.Reduce(GW, None)
-                self.comm.Reduce(ngal_split, None)
+            mpi_reduce_large(G1, comm)
+            mpi_reduce_large(G2, comm)
+            mpi_reduce_large(GW, comm)
+            mpi_reduce_large(ngal_split, comm)
+            if self.rank != 0:
                 del G1, G2, GW, ngal_split
 
 
