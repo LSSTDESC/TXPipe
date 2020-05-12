@@ -109,10 +109,10 @@ class TXNoiseMaps(PipelineStage):
 
         # Sum everything at root
         if self.comm is not None:
-            mpi_reduce_large(G1, comm)
-            mpi_reduce_large(G2, comm)
-            mpi_reduce_large(GW, comm)
-            mpi_reduce_large(ngal_split, comm)
+            mpi_reduce_large(G1, self.comm)
+            mpi_reduce_large(G2, self.comm)
+            mpi_reduce_large(GW, self.comm)
+            mpi_reduce_large(ngal_split, self.comm)
             if self.rank != 0:
                 del G1, G2, GW, ngal_split
 
