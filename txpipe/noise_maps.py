@@ -50,12 +50,24 @@ class TXNoiseMaps(PipelineStage):
         bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
         bin_it = (d[2] for d in bin_it)
 
-        npix = pixel_scheme.npix
+        # Get a mapping from healpix indices to masked pixel indices
+        # This reduces memory usage.  We could use a healsparse array
+        # here, but I'm not sure how to do that best with our
+        # many realizations.  Possiby a recarray?
+        index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
+        c = 0
+        for i in range(pixel_scheme.npix):
+            if mask[i] > 0:
+                index_map[i] = c
+                c += 1
+
+        # Number of unmasked pixels
+        npix = c
 
         if self.rank == 0:
             nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations * 2
             nGB = (npix * nmaps * 8) / 1000.**3
-            print(f"Allocating maps of size {nGB:.2f} GB") 
+            print(f"Allocating maps of size {nGB:.2f} GB")
 
         # lensing g1, g2
         G1 = np.zeros((npix, nbin_source, lensing_realizations))
@@ -63,8 +75,10 @@ class TXNoiseMaps(PipelineStage):
         # lensing weight
         GW = np.zeros((npix, nbin_source))
         # clustering map - n_gal to start with
-        ngal_split = np.zeros((npix, nbin_lens, clustering_realizations, 2))
+        ngal_split = np.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
         # TODO: Clustering weights go here
+
+
 
         # Loop through the data
         for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
@@ -92,12 +106,17 @@ class TXNoiseMaps(PipelineStage):
             g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
 
             for i in range(n):
+                # convert to the index in the partial space
+                pix_orig = pixels[i]
+                pix = index_map[pix_orig]
+                if pix < 0:
+                    continue
+
                 sb = source_bin[i]
                 lb = lens_bin[i]
-                pix = pixels[i]
                 # build up the rotated map for each bin
                 if sb >= 0:
-                    G1[pix, sb, :] += g1r[i] 
+                    G2[pix, sb, :] += g2r[i]
                     G2[pix, sb, :] += g2r[i]
                     GW[pix, sb] += w[i]
                 # Build up the ngal for the random half for each bin
@@ -129,12 +148,13 @@ class TXNoiseMaps(PipelineStage):
 
             metadata = {**self.config, **map_info}
 
+            pixels = np.where(mask>0)[0]
+
             for b in range(nbin_source):
-                pixels = np.where(GW[:,b]>0)[0]
                 for i in range(lensing_realizations):
 
-                    g1 = G1[pixels, b, i] / GW[pixels, b]
-                    g2 = G2[pixels, b, i] / GW[pixels, b]
+                    g1 = G1[:, b, i] / GW[:, b]
+                    g2 = G2[:, b, i] / GW[:, b]
 
                     outfile.write_map(f"rotation_{i}/g1_{b}", 
                         pixels, g1, metadata)
@@ -143,7 +163,6 @@ class TXNoiseMaps(PipelineStage):
                         pixels, g2, metadata)
 
             for b in range(nbin_lens):
-                pixels = np.where(mask>0)[0]
                 for i in range(clustering_realizations):
                     # We have computed the first half already,
                     # and we have the total map from an earlier stage
@@ -154,8 +173,8 @@ class TXNoiseMaps(PipelineStage):
                     # using half the mean from the full map to reduce
                     # noise, but thought that might add covariance
                     # to the two maps, and this shouldn't be that noisy
-                    mu1 = np.average(half1, weights=mask)
-                    mu2 = np.average(half2, weights=mask)
+                    mu1 = np.average(half1, weights=mask[pixels])
+                    mu2 = np.average(half2, weights=mask[pixels])
                     # This will produce some mangled sentinel values
                     # but they will be masked out
                     rho1 = (half1 - mu1) / mu1
@@ -164,14 +183,14 @@ class TXNoiseMaps(PipelineStage):
                     # Write both overdensity and count maps
                     # for each bin for each split
                     outfile.write_map(f"split_{i}/rho1_{b}", 
-                        pixels, rho1[pixels], metadata)
+                        pixels, rho1, metadata)
                     outfile.write_map(f"split_{i}/rho2_{b}", 
-                        pixels, rho2[pixels], metadata)
+                        pixels, rho2, metadata)
                     # counts
                     outfile.write_map(f"split_{i}/ngal1_{b}", 
-                        pixels, half1[pixels], metadata)
+                        pixels, half1, metadata)
                     outfile.write_map(f"split_{i}/ngal2_{b}", 
-                        pixels, half2[pixels], metadata)
+                        pixels, half2, metadata)
                     
 
 
