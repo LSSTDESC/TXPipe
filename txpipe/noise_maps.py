@@ -153,14 +153,16 @@ class TXNoiseMaps(PipelineStage):
             for b in range(nbin_source):
                 for i in range(lensing_realizations):
 
+                    bin_mask = np.where(GW[:, b]>0)
+
                     g1 = G1[:, b, i] / GW[:, b]
                     g2 = G2[:, b, i] / GW[:, b]
 
                     outfile.write_map(f"rotation_{i}/g1_{b}", 
-                        pixels, g1, metadata)
+                        pixels[bin_mask], g1[bin_mask], metadata)
 
                     outfile.write_map(f"rotation_{i}/g2_{b}", 
-                        pixels, g2, metadata)
+                        pixels[bin_mask], g2[bin_mask], metadata)
 
             for b in range(nbin_lens):
                 for i in range(clustering_realizations):
