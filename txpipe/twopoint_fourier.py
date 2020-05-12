@@ -124,7 +124,7 @@ class TXTwoPointFourier(PipelineStage):
         # This splits the calculations among the parallel bins
         # It's not the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment.
-        for i, j, k in self.split_tasks_by_rank(calcs):
+        for i, j, k in calcs:
             self.compute_power_spectra(
                 pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl)
 
@@ -414,6 +414,8 @@ class TXTwoPointFourier(PipelineStage):
         for i in range(nbins_lens):
             for j in range(i + 1):
                 calcs.append((i, j, k))
+
+        calcs = [calc for calc in self.split_tasks_by_rank(calcs)]
 
         return calcs
 
