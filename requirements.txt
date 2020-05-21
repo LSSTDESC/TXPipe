@@ -8,7 +8,7 @@ matplotlib
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
-git+git://github.com/rmjarvis/treecorr@master#egg=treecorr
+treecorr
 sklearn
 astropy
 healpy
