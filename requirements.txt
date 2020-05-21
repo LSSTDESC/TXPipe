@@ -1,4 +1,4 @@
-git+git://github.com/LSSTDESC/ceci@v0.2#egg=ceci
+ceci==1.0.0
 h5py
 pandas
 sacc
