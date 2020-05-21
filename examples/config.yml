@@ -88,7 +88,7 @@ TXDiagnosticMaps:
     snr_threshold: 10.0
     snr_delta: 1.0
     pixelization: healpix
-    nside: 1024
+    nside: 512
     # pixelization: gnomonic
     pixel_size: 0.2
     ra_cent: 62.

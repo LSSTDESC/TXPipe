@@ -22,7 +22,6 @@ stages:
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
-    - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
       threads_per_process: 2
 #    - name: TXTwoPointFourier
@@ -32,13 +31,15 @@ stages:
 # Where to put outputs
 output_dir: data/example/outputs
 
-# How to run the pipeline (which site, e.g. cori, local=laptop)
-launcher: local
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
 
-# Information for the pipeline about how many jobs it can
-# run and how it can do so
+# Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-  max_threads: 1
+    name: local
+    max_threads: 1
 
 # python modules to import to search for stages
 modules: txpipe
