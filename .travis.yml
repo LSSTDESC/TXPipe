@@ -22,5 +22,5 @@ cache: pip
 
 script:
   - ceci examples/laptop.yml
-  - test -f data/example/log.txt
+  - test -f data/example/outputs/summary_statistics_real.sacc
   - test -f data/example/logs/TXRealGaussianCovariance.out
