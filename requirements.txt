@@ -18,3 +18,4 @@ threadpoolctl
 #pymaster
 cosmosis-standalone
 git+https://github.com/LSSTDESC/firecrown@v0.4
+psutil
