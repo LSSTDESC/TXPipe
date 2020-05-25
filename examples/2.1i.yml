@@ -1,9 +1,11 @@
 # This larger run has nearly 79M galaxies in
-launcher: cori-mini
+launcher:
+    name: mini
+    interval: 1.0
 
-# These site options tell the launcher to use shifter
 site:
-    shifter: joezuntz/txpipe
+  name: cori-interactive
+  image: joezuntz/txpipe
 
 modules: txpipe
 

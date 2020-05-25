@@ -1,4 +1,4 @@
-git+git://github.com/LSSTDESC/ceci@v0.2#egg=ceci
+ceci==1.0.0
 h5py
 pandas
 sacc
@@ -8,7 +8,7 @@ matplotlib
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
-git+git://github.com/rmjarvis/treecorr@master#egg=treecorr
+treecorr
 sklearn
 astropy
 healpy
@@ -18,3 +18,4 @@ threadpoolctl
 #pymaster
 cosmosis-standalone
 git+https://github.com/LSSTDESC/firecrown@v0.4
+psutil
