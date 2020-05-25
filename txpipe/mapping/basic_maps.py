@@ -19,7 +19,7 @@ class Mapper:
                 self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
             self.stats[(b,'weight')] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
-    def add_data(self, shear_data, bin_data, m_data):
+    def add_data(self, shear_data, shear_bin_data, lens_bin_data, m_data):
         npix = self.pixel_scheme.npix
         do_lens = self.do_lens
         do_g = self.do_g
@@ -29,18 +29,14 @@ class Mapper:
         # Get pixel indices
         pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
 
-
         if do_g:
-            g1 = shear_data['g1']
-            g2 = shear_data['g2']
-            source_bins = bin_data['source_bin']
-            source_weights = shear_data['weight']
+            source_weights = shear_data['weight'] 
+            source_bins = shear_bin_data['source_bin']
 
         if do_lens:
             # TODO: change from unit weights for lenses
             lens_weights = np.ones_like(shear_data['ra'])
-            lens_bins = bin_data['lens_bin']
-
+            lens_bins = lens_bin_data['lens_bin']
 
 
         for i in range(n):

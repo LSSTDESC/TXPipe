@@ -42,11 +42,14 @@ class TXTwoPointFourier(PipelineStage):
     """
     name = 'TXTwoPointFourier'
     inputs = [
-        ('photoz_stack', HDFFile),  # Photoz stack
+        ('shear_photoz_stack', HDFFile),  # Photoz stack
+        ('lens_photoz_stack', HDFFile),  # Photoz stack
         ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
         ('noise_maps', NoiseMaps),
+        ('shear_tomography_catalog', TomographyCatalog),  # For density info
+        ('lens_tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -561,21 +564,22 @@ class TXTwoPointFourier(PipelineStage):
         # but also potentially to compute the theory guess
         # for projecting out modes
         import sacc
-        f = self.open_input('photoz_stack')
+        f_shear = self.open_input('shear_photoz_stack')
+        f_lens = self.open_input('lens_photoz_stack')
 
         tracers = {}
 
         for i in range(nbin_source):
             name = f"source_{i}"
-            z = f['n_of_z/source/z'][:]
-            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            z = f_shear['n_of_z/source/z'][:]
+            Nz = f_shear[f'n_of_z/source/bin_{i}'][:]
             T = sacc.BaseTracer.make("NZ", name, z, Nz)
             tracers[name] = T
 
         for i in range(nbin_lens):
             name = f"lens_{i}"
-            z = f['n_of_z/lens/z'][:]
-            Nz = f[f'n_of_z/lens/bin_{i}'][:]
+            z = f_lens['n_of_z/lens/z'][:]
+            Nz = f_lens[f'n_of_z/lens/bin_{i}'][:]
             T = sacc.BaseTracer.make("NZ", name, z, Nz)
             tracers[name] = T
 
