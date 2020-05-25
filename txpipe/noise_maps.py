@@ -87,8 +87,8 @@ class TXNoiseMaps(PipelineStage):
             lens_bin = bin_data['lens_bin']
             ra = shear_data['ra']
             dec = shear_data['dec']
-            pixels = pixel_scheme.ang2pix(ra, dec)
-
+            orig_pixels = pixel_scheme.ang2pix(ra, dec)
+            pixels = index_map[orig_pixels]
             n = e - s
 
             w = shear_data['weight']
@@ -107,8 +107,8 @@ class TXNoiseMaps(PipelineStage):
 
             for i in range(n):
                 # convert to the index in the partial space
-                pix_orig = pixels[i]
-                pix = index_map[pix_orig]
+                pix = pixels[i]
+
                 if pix < 0:
                     continue
 
@@ -116,7 +116,7 @@ class TXNoiseMaps(PipelineStage):
                 lb = lens_bin[i]
                 # build up the rotated map for each bin
                 if sb >= 0:
-                    G2[pix, sb, :] += g2r[i]
+                    G1[pix, sb, :] += g1r[i]
                     G2[pix, sb, :] += g2r[i]
                     GW[pix, sb] += w[i]
                 # Build up the ngal for the random half for each bin
