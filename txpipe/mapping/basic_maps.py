@@ -32,6 +32,8 @@ class Mapper:
         if do_g:
             source_weights = shear_data['weight'] 
             source_bins = shear_bin_data['source_bin']
+            g1 = shear_data['g1']
+            g2 = shear_data['g2']
 
         if do_lens:
             # TODO: change from unit weights for lenses
