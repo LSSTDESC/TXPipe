@@ -7,7 +7,7 @@ launcher:
 # These site options tell the launcher to use shifter
 site:
     name: cori-interactive
-    shifter: joezuntz/txpipe
+    image: joezuntz/txpipe
     volume: ${PWD}:/opt/txpipe
 
 modules: txpipe

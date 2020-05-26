@@ -262,7 +262,7 @@ class TXPhotozPlots(PipelineStage):
         plt.title("Lens n(z)")
         out1.close()
 
-        f = self.open_input('source_photoz_stack', wrapper=True)
+        f = self.open_input('shear_photoz_stack', wrapper=True)
         out2 = self.open_output('nz_source', wrapper=True)
         f.plot('source')
         plt.legend()
