@@ -270,7 +270,7 @@ class SACCFile(DataFile):
 
 class NOfZFile(HDFFile):
     # Must have at least one bin in
-    required_datasets = ['n_of_z/lens/z', 'n_of_z/source/bin_0']
+    required_datasets = []
 
     def validate(self):
         super().validate()
