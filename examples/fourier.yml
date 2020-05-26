@@ -1,6 +1,7 @@
 # Stages to run
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+    - name: TXTruthLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
@@ -19,12 +20,15 @@ stages:
 output_dir: data/example-fourier/outputs
 
 # How to run the pipeline (which site, e.g. cori, local=laptop)
-launcher: local
+launcher:
+    name: mini
+    interval: 1.0
 
 # Information for the pipeline about how many jobs it can
 # run and how it can do so
 site:
-  max_threads: 1
+  name: local
+  max_threads: 2
 
 # python modules to import to search for stages
 modules: txpipe

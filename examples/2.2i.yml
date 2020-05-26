@@ -34,6 +34,7 @@ stages:
     - name: TXTwoPoint
       nprocess: 2
       nodes: 2
+    - name: TXNullBlinding
       threads_per_process: 64
     - name: TXTwoPointFourier
       nprocess: 2

@@ -1,5 +1,4 @@
 from ..base_stage import PipelineStage, HDFFile
-from ..utils.it import combined_iterators
 import numpy as np
 
 class Stage(PipelineStage):
@@ -15,12 +14,9 @@ def test_combine():
         'config':'examples/config.yml'
     })
 
-    it = combined_iterators(s, 
-            [
-                ('tag1', 'A', ['a', 'b']),
-                ('tag2', 'B', ['d']),
-            ],
-            10
+    it = s.combined_iterators(10,
+            'tag1', 'A', ['a', 'b'],
+            'tag2', 'B', ['d'],
         )
 
     res = next(it)
