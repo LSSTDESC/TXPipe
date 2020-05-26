@@ -24,7 +24,7 @@ parser.add_argument('extra_config', nargs='*', help='Over-ride the main pipeline
                     'e.g. launcher.name=cwl')
 
 # These args are specific to this script
-parser.add_argument('--www', default="/project/projectdirs/lsst/www/txpipe/runs",
+parser.add_argument('--www', default="/global/cfs/cdirs/lsst/www/txpipe/runs",
                     help='Directory to put results in')
 parser.add_argument('--all', action='store_true', help="Copy large files as well as small")
 parser.add_argument('--group', default='lsst', help="Group to change ownership to")
@@ -72,13 +72,15 @@ class PageMaker:
         files = []
         for stage_name in pipeline.stage_names:
             files += self.find_stage_outputs(pipeline, stage_name)
+        print(files)
         return files
 
     def find_stage_outputs(self, pipeline, stage_name):
         files = []
         stage = ceci.PipelineStage.get_stage(stage_name)
-        outputs = pipeline.find_outputs(stage, self.in_dir)
-        for output in outputs:
+        outputs = pipeline.find_outputs(stage, {'output_dir': self.in_dir})
+
+        for output in outputs.values():
             files.append([stage_name, Path(output)])
         return files
 
@@ -163,9 +165,8 @@ def main():
     args = parser.parse_args()
 
     pipe_config = yaml.safe_load(open(args.pipeline_config))
-    # if args.extra_config:
-    #     override_config(pipe_config, args.extra_config)
 
+    # Import any required modules
     for module in pipe_config['modules'].split():
         __import__(module)
 
@@ -176,12 +177,8 @@ def main():
             copy_all=args.all,
             group=args.group)
 
-
     # need to update this when we merge ceci 1.0 - much cleaner
-    for stage in pipe_config['stages']:
-        stage['site'] = 'local'
-        stage['mpi_command'] = ''
-    pipeline = ceci.Pipeline(pipe_config['stages'])
+    pipeline = ceci.Pipeline(pipe_config['stages'], None)
 
     maker.run(pipeline)
 
