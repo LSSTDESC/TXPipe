@@ -1,4 +1,4 @@
-from txpipe.utils.stats import *
+from ..utils.stats import *
 import numpy as np
 
 def test_stats():

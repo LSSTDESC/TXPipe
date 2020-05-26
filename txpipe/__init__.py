@@ -24,3 +24,4 @@ from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .twopoint import TXGammaTDimStars
 from .twopoint import TXGammaTBrightStars
 from .noise_maps import TXNoiseMaps
+from .test import test_combine

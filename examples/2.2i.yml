@@ -14,6 +14,9 @@ modules: txpipe
 
 
 stages:
+    - name: TXJackknifeCenters
+    - name: TXNoiseMaps
+      nprocess: 32
     - name: TXSourceSelector
       nprocess: 32
     - name: TXMeanLensSelector
