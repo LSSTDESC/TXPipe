@@ -41,7 +41,7 @@ TXSourceSelector:
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     chunk_rows: 100000
 
-TXLensSelector:
+TXTruthLensSelector:
     # Mag cuts
     chunk_rows: 100000
     lens_zbin_edges: [0.0,0.2,0.4]
@@ -53,6 +53,18 @@ TXLensSelector:
     i_hi_cut: 21.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
+
+TXMeanLensSelector:
+    # Mag cuts
+    chunk_rows: 100000
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
 
 TXRandomCat:
     chunk_rows: 100000

@@ -11,6 +11,8 @@ modules: txpipe
 stages:
     - name: TXSourceSelector
       nprocess: 32
+    - name: TXLensSelector
+      nprocess: 32
     - name: PZPDFMLZ
       nprocess: 64
       nodes: 2

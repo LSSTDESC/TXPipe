@@ -2,7 +2,7 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
-    - name: TXLensSelector
+    - name: TXTruthLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
@@ -22,7 +22,7 @@ stages:
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
-    - name: TXRealGaussianCovariance
+    # - name: TXRealGaussianCovariance
     - name: TXPSFDiagnostics
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance
