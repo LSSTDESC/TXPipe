@@ -1,45 +1,30 @@
-
 # Stages to run
 stages:
-    - name: TXSourceSelector
-    - name: TXLensSelector
+    - name: TXSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
     - name: TXJackknifeCenters
-    - name: TXTwoPoint
-      threads_per_process: 2
-    - name: TXBlinding
-      threads_per_process: 2
-    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-    - name: TXGammaTFieldCenters
+    - name: TXNoiseMaps
       threads_per_process: 2
-    - name: TXGammaTBrightStars
+    - name: TXTwoPointFourier
       threads_per_process: 2
-    - name: TXGammaTDimStars
+    - name: TXFourierGaussianCovariance
       threads_per_process: 2
-    - name: TXRoweStatistics
-      threads_per_process: 2
-    - name: TXRealGaussianCovariance
-    - name: TXPSFDiagnostics
-#    - name: TXTwoPointFourier
-#    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example-fourier/outputs
 
-# How to run the pipeline: mini, parsl, or cwl
-launcher:
-    name: mini
-    interval: 1.0
+# How to run the pipeline (which site, e.g. cori, local=laptop)
+launcher: local
 
-# Where to run the pipeline: cori-interactive, cori-batch, or local
+# Information for the pipeline about how many jobs it can
+# run and how it can do so
 site:
-    name: local
-    max_threads: 1
+  max_threads: 1
 
 # python modules to import to search for stages
 modules: txpipe
@@ -68,4 +53,3 @@ resume: True
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
-

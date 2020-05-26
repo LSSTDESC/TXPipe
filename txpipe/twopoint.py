@@ -310,7 +310,9 @@ class TXTwoPoint(PipelineStage):
         # Add provenance metadata.  In managed formats this is done
         # automatically, but because the Sacc library is external
         # we do it manually here.
-        for key, value in self.gather_provenance().items():
+        provenance = self.gather_provenance()
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
             if isinstance(value, str) and '\n' in value:
                 values = value.split("\n")
                 for i,v in enumerate(values):

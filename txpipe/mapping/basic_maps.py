@@ -2,11 +2,12 @@ from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, Par
 import numpy as np
 
 class Mapper:
-    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2), sparse=False):
+    def __init__(self, pixel_scheme, lens_bins, source_bins, do_g=True, do_lens=True, sparse=False):
         self.pixel_scheme = pixel_scheme
         self.source_bins = source_bins
         self.lens_bins = lens_bins
-        self.tasks = tasks
+        self.do_g = do_g if len(source_bins) else False
+        self.do_lens = do_lens if len(lens_bins) else False
         self.sparse = sparse
         self.stats = {}
         for b in self.lens_bins:
@@ -20,53 +21,45 @@ class Mapper:
 
     def add_data(self, shear_data, shear_bin_data, lens_bin_data, m_data):
         npix = self.pixel_scheme.npix
+        do_lens = self.do_lens
+        do_g = self.do_g
+
+        n = len(shear_data['ra'])
 
         # Get pixel indices
         pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
 
-        # TODO: change from unit weights for lenses
-        lens_weights = np.ones_like(shear_data['ra'])
+        if do_g:
+            source_weights = shear_data['weight'] 
+            source_bins = shear_bin_data['source_bin']
+            g1 = shear_data['g1']
+            g2 = shear_data['g2']
 
-        # In advance make the mask indicating which tomographic bin
-        # Each galaxy is in.  Later we will AND this with the selection
-        # for each pixel.
-        masks_lens = [lens_bin_data['lens_bin'] == b for b in self.lens_bins]
-        masks_source = [shear_bin_data['source_bin'] == b for b in self.source_bins]
+        if do_lens:
+            # TODO: change from unit weights for lenses
+            lens_weights = np.ones_like(shear_data['ra'])
+            lens_bins = lens_bin_data['lens_bin']
 
-        for p in np.unique(pix_nums):  # Loop through pixels
+
+        for i in range(n):
+            p = pix_nums[i]
+
             if p < 0 or p >= npix:
                 continue
 
-            # All the data points that hit this pixel
-            mask_pix = (pix_nums == p)
+            if do_lens:
+                lens_bin = lens_bins[i]
+                if lens_bin >= 0:
+                    lw = lens_weights[i]
+                    self.stats[(lens_bin, 0)].add_data(p, [lw])
 
-            # Number counts.
-            t = 0
-            if t in self.tasks:
-                # Loop through the tomographic lens bins
-                for i,b in enumerate(self.lens_bins):
-                    mask = masks_lens[i] & mask_pix
-                    w = lens_weights[mask]
-                    # Loop through tasks (number counts, gamma_x)
-                    self.stats[(b,t)].add_data(p, w)
-
-            # Shears
-            for t in (1,2):
-                # We may be skipping tasks in future
-                if not t in self.tasks:
-                    continue
-                # Loop through tomographic source bins
-                for i,b in enumerate(self.source_bins):
-                    mask = masks_source[i] & mask_pix
-                    g = shear_data[f'g{t}'][mask]
-                    w = shear_data['weight'][mask]
-                    self.stats[(b,t)].add_data(p, g*w)
-
-                    # Make sure we don't double-sum the weights by only doing
-                    # it for g1
-                    if t==1:
-                        self.stats[(b,'weight')].add_data(p, w)
-
+            if do_g:
+                source_bin = source_bins[i]
+                if source_bin >= 0:
+                    sw = source_weights[i]
+                    self.stats[(source_bin, 1)].add_data(p, [g1[i] * sw])
+                    self.stats[(source_bin, 2)].add_data(p, [g2[i] * sw])
+                    self.stats[(source_bin,'weight')].add_data(p, [sw])
 
 
     def finalize(self, comm=None):
