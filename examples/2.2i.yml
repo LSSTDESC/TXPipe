@@ -11,7 +11,7 @@ modules: txpipe
 stages:
     - name: TXSourceSelector
       nprocess: 32
-    - name: TXLensSelector
+    - name: TXMeanLensSelector
       nprocess: 32
     - name: PZPDFMLZ
       nprocess: 64
