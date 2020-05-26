@@ -222,3 +222,72 @@ Continuous Integration
 ----------------------
 
 Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
+
+Site and launcher options
+-------------------------
+
+You now (with ceci 1.0) specify a *launcher*, which is the tool used to run the pipeline, and a *site*, which is where it should be run.
+
+The options are show below
+
+The best-tested launcher is mini, and the best-tested sites are local and cori-interactive.
+
+
+Launchers specify how to run the pipeline.  The options now are *parsl*, *mini*, and *cwl*:
+```yaml
+
+launcher:
+    name: mini
+    # Seconds between updates. Default as shown.
+    interval: 3
+
+# OR
+
+launcher:
+    name: parsl
+
+# OR
+
+launcher:
+    name: cwl
+    # required:
+    dir: ./cwl # dir for cwl files
+    # command used to launch pipeline. Default as shown. Gets some flags added if left as this.
+    launch: cwltool 
+
+```
+
+The site specifies where to run the pipeline.  The options now are *local*, *cori-interactive*, and *cori-batch*
+
+```yaml
+site:
+    name: local
+    # Number of jobs to run at once.  Default as shown.
+    max_threads: 4
+    # These are available for every site.  The default is not to use them:
+    # docker/shifter image
+    image: joezuntz/txpipe
+    #docker/shifter volume mounting
+    volume: ${PWD}:/opt/txpipe 
+
+# OR
+
+site:
+    name: cori-interactive
+    # Number of jobs to run at once.  Default as shown.
+    max_threads: ${SLURM_JOB_NUM_NODES}
+
+# OR
+
+site:
+    name: cori
+    # These are the defaults:
+    mpi_command: srun -un
+    cpu_type: haswell
+    queue: debug
+    max_jobs: 2
+    account: m1727
+    walltime: 00:30:00
+    setup: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
+
+```
