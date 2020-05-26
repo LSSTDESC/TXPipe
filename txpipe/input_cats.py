@@ -252,7 +252,7 @@ class TXCosmoDC2Mock(PipelineStage):
     def setup_metacal_output(self, metacal_file, target_size):
         # Get a list of all the column names
         cols = (
-            ['ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
+            ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
             + metacal_band_variants('riz', 'mcal_mag', 'mcal_mag_err')
             + ['weight']
@@ -539,6 +539,8 @@ class TXCosmoDC2Mock(PipelineStage):
             # Fixed PSF parameters - all round with same size
             'mcal_psf_g1': zero,
             'mcal_psf_g2': zero,
+            'psf_g1': zero,
+            'psf_g2': zero,
             'mcal_psf_T_mean' : np.repeat(psf_T, nobj),
 
             # Everything that gets this far should be used, so flag=0
