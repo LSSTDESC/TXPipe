@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
+from .utils.fitting import fit_straight_line
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -57,28 +58,29 @@ class TXDiagnosticPlots(PipelineStage):
         shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
-        iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
-        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
-
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']
-        iter_tomo_shear = self.iterate_hdf('shear_tomography_catalog','tomography',shear_tomo_cols,chunk_rows)
-        iter_tomo_lens = self.iterate_hdf('lens_tomography_catalog','tomography',lens_tomo_cols,chunk_rows)
+
+        it = self.combined_iterators(chunk_rows,
+                                     'shear_catalog', 'metacal', shear_cols,
+                                     'photometry_catalog', 'photometry', photo_cols,
+                                     'shear_tomography_catalog','tomography',shear_tomo_cols,
+                                     'lens_tomography_catalog','tomography',lens_tomo_cols)
+
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data), (_, _, data2), (_, _, data3), (_, _, data4) in zip(iter_shear, iter_tomo_shear, iter_tomo_lens, iter_phot):
+        for (start, end, data) in it:
             print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
-            data.update(data2)
-            data.update(data3)
-            data.update(data4)
 
             for plotter in plotters:
                 plotter.send(data)
+
+            if end>1e6:
+                break
 
         # Tell all the plotters to finish, collect together results from the different
         # processors, and make their final plots.  Plotters need to respond
@@ -98,7 +100,7 @@ class TXDiagnosticPlots(PipelineStage):
         
         delta_gamma = self.config['delta_gamma']
         size = 11
-        psf_g_edges = np.linspace(-0.024, 0.044, size+1)
+        psf_g_edges = np.linspace(-0.1, 0.1, size+1)
 
         p1 = MeanShearInBins('mcal_psf_g1', psf_g_edges, delta_gamma, cut_source_bin=True)
         p2 = MeanShearInBins('mcal_psf_g2', psf_g_edges, delta_gamma, cut_source_bin=True)
@@ -125,19 +127,19 @@ class TXDiagnosticPlots(PipelineStage):
         dx = 0.1*(mu1[1] - mu1[0])
 
 
-        slope11, intercept11, mc_cov = fit_straight_line(mu1, mean11, y_err=std11, nan_error=True)
+        slope11, intercept11, mc_cov = fit_straight_line(mu1, mean11, y_err=std11, nan_error=True, skip_nan=True)
         std_err11 = mc_cov[0,0]**0.5
         line11 = slope11*(mu1)+intercept11
 
-        slope12, intercept12, mc_cov = fit_straight_line(mu1, mean12, y_err=std12, nan_error=True)
+        slope12, intercept12, mc_cov = fit_straight_line(mu1, mean12, y_err=std12, nan_error=True, skip_nan=True)
         std_err12 = mc_cov[0,0]**0.5
         line12 = slope12*(mu1)+intercept12
 
-        slope21, intercept21, mc_cov = fit_straight_line(mu2, mean21, y_err=std21, nan_error=True)
+        slope21, intercept21, mc_cov = fit_straight_line(mu2, mean21, y_err=std21, nan_error=True, skip_nan=True)
         std_err21 = mc_cov[0,0]**0.5
         line21 = slope21*(mu2)+intercept21
 
-        slope22, intercept22, mc_cov = fit_straight_line(mu2, mean22, y_err=std22, nan_error=True)
+        slope22, intercept22, mc_cov = fit_straight_line(mu2, mean22, y_err=std22, nan_error=True, skip_nan=True)
         std_err22 = mc_cov[0,0]**0.5
         line22 = slope22*(mu2)+intercept22
 
@@ -201,12 +203,21 @@ class TXDiagnosticPlots(PipelineStage):
         if self.rank != 0:
             return
 
-        
+        w = (mu!=0) & np.isfinite(std1)
+        mu = mu[w]
+        mean1 = mean1[w]
+        mean2 = mean2[w]
+        std1 = std1[w]
+        std2 = std2[w]
+
         dx = 0.05*(psf_T_edges[1] - psf_T_edges[0])
-        slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(mu,mean1)
-        line1 = slope1*(mu)+intercept1
-        slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(mu,mean2)
-        line2 = slope2*(mu)+intercept2
+        slope1, intercept1, cov1 = fit_straight_line(mu, mean1, std1, skip_nan=True, nan_error=True)
+        std_err1 = cov1[0,0]**0.5
+        line1 = slope1*mu + intercept1
+        slope2, intercept2, cov2 = fit_straight_line(mu, mean2, std2, skip_nan=True, nan_error=True)
+        std_err2 = cov2[0,0]**0.5
+        line2 = slope2*mu + intercept2
+
 
         fig = self.open_output('g_psf_T', wrapper=True)
 
@@ -518,6 +529,6 @@ def reduce(comm, H):
             hsum = np.zeros_like(h)
         else:
             hsum = None
-            comm.Reduce(h, hsum)
-            H2.append(hsum)
+        comm.Reduce(h, hsum)
+        H2.append(hsum)
     return H2
