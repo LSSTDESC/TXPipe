@@ -474,10 +474,9 @@ class TXDiagnosticPlots(PipelineStage):
         if self.comm:
             import mpi4py.MPI
         size = 20
-        bins = 50
         # This seems to be a reasonable range, though there are samples
         # with extremely high values
-        edges = np.linspace(-3, 3, bins+1)
+        edges = np.linspace(-3, 3, size+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
         # count of objects
