@@ -471,13 +471,14 @@ class TXDiagnosticPlots(PipelineStage):
         fig.close()
 
     def plot_response_histograms(self):
+        import matplotlib.pyplot as plt
         if self.comm:
             import mpi4py.MPI
-        size = 20
+        size = 40
         # This seems to be a reasonable range, though there are samples
         # with extremely high values
         edges = np.linspace(-3, 3, size+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
+        mid = 0.5*(edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
         # count of objects
         counts = np.zeros((2,2,size))
@@ -503,8 +504,8 @@ class TXDiagnosticPlots(PipelineStage):
                         # the nans
                         if (bij >= 0) and (bij < size):
                             counts[i, j, bij] += 1
-                        if s:
-                            counts_s[i, j, bij] += 1
+                            if s:
+                                counts_s[i, j, bij] += 1
 
         # Sum from all processors and then non-root ones return
         if self.comm is not None:
@@ -512,8 +513,8 @@ class TXDiagnosticPlots(PipelineStage):
                 self.comm.Reduce(mpi4py.MPI.IN_PLACE, counts)
                 self.comm.Reduce(mpi4py.MPI.IN_PLACE, counts_s)
             else:
-                self.comm.Reduce(None, counts)
-                self.comm.Reduce(None, counts_s)
+                self.comm.Reduce(counts, None)
+                self.comm.Reduce(counts_s, None)
 
                 # only root process makes plots
                 return
@@ -522,22 +523,24 @@ class TXDiagnosticPlots(PipelineStage):
         fig = self.open_output('response_hist', wrapper=True, figsize=(10, 5))
 
         plt.subplot(1,2,1)
-        plt.bar(mid, counts[0, 0], width=width, fill=False,  label='R00')
-        plt.bar(mid, counts[1, 1], width=width, fill=False,  label='R11')
-        plt.bar(mid, counts[1, 0], width=width, fill=False,  label='R10')
-        plt.bar(mid, counts[0, 1], width=width, fill=False,  label='R01')
+        manual_step_histogram(edges, counts[0, 0], label='R00', color='#1f77b4')
+        manual_step_histogram(edges, counts[1, 1], label='R11', color='#ff7f0e')
+        manual_step_histogram(edges, counts[0, 1], label='R01', color='#2ca02c')
+        manual_step_histogram(edges, counts[1, 0], label='R10', color='#d62728')
+        plt.ylim(0, counts.max()*1.1)
         plt.xlabel("R_gamma")
         plt.ylabel("Count")
-        plt.suptitle("All flag=0")
+        plt.title("All flag=0")
 
         plt.subplot(1,2,2)
-        plt.bar(mid, counts_s[0, 0], width=width, fill=False,  label='R00')
-        plt.bar(mid, counts_s[1, 1], width=width, fill=False,  label='R11')
-        plt.bar(mid, counts_s[1, 0], width=width, fill=False,  label='R10')
-        plt.bar(mid, counts_s[0, 1], width=width, fill=False,  label='R01')
+        manual_step_histogram(edges, counts_s[0, 0], label='R00', color='#1f77b4')
+        manual_step_histogram(edges, counts_s[1, 1], label='R11', color='#ff7f0e')
+        manual_step_histogram(edges, counts_s[0, 1], label='R01', color='#2ca02c')
+        manual_step_histogram(edges, counts_s[1, 0], label='R10', color='#d62728')
+        plt.ylim(0, counts_s.max()*1.1)
         plt.xlabel("R_gamma")
         plt.ylabel("Count")
-        plt.suptitle("Source sample")
+        plt.title("Source sample")
 
         plt.legend()
         plt.tight_layout()
@@ -611,3 +614,25 @@ def reduce(comm, H):
         comm.Reduce(h, hsum)
         H2.append(hsum)
     return H2
+
+
+def manual_step_histogram(edges, counts, ax=None, **kwargs):
+    import matplotlib.pyplot as plt
+    if ax is None:
+        ax=plt.gca()
+
+    x = [edges[0]]
+    y = [0]
+
+    for i, c in enumerate(counts):
+        x.append(edges[i])
+        y.append(c)
+        x.append(edges[i+1])
+        y.append(c)
+    x.append(edges[-1])
+    y.append(0)
+
+    p = plt.Line2D(x, y, **kwargs)
+    ax.add_line(p)
+    ax.autoscale_view()
+    ax.set_ylim(0, None)
