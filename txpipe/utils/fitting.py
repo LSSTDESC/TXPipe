@@ -70,14 +70,14 @@ def fit_straight_line(x, y, x_err=None, y_err=None, m0=1.0, c0=0.0, nan_error=Fa
  
 
     data = RealData(x, y, **kwargs)
-    odr = ODR(data, unilinear, beta0=[m0, c0])
+    odr = ODR(data, unilinear, beta0=[m0, c0], maxit=200)
     results = odr.run()
 
     if results.stopreason != ['Sum of squares convergence']:
         if nan_error:
             return np.nan, np.nan, np.zeros((2,2))*np.nan
         else:
-            raise RuntimeError('Failed to straight line')
+            raise RuntimeError('Failed to straight line' + str(results.stopreason))
 
     m, c = results.beta
     cov = results.cov_beta
