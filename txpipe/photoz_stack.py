@@ -317,7 +317,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         # Data we need - the photometry catalog for DC2 has the true redshift
         # value in, and the tomography catalog has the binning.
         photo_iterator = self.iterate_hdf(
-            'photometry_catalog', # tag of input file to iterate through
+            'shear_photometry_catalog', # tag of input file to iterate through
             'photometry', # data group within file to look at
             ['redshift_true'], # column(s) to read
             self.config['chunk_rows']  # number of rows to read at once
