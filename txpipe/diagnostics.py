@@ -57,7 +57,7 @@ class TXDiagnosticPlots(PipelineStage):
         # so the plotters should handle this.
         chunk_rows = self.config['chunk_rows']
         psf_prefix = self.config['psf_prefix']
-        shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g1','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+        shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
@@ -81,8 +81,6 @@ class TXDiagnosticPlots(PipelineStage):
             for plotter in plotters:
                 plotter.send(data)
 
-            if end>1e6:
-                break
 
         # Tell all the plotters to finish, collect together results from the different
         # processors, and make their final plots.  Plotters need to respond
@@ -101,8 +99,10 @@ class TXDiagnosticPlots(PipelineStage):
         from .utils.fitting import fit_straight_line
         
         delta_gamma = self.config['delta_gamma']
-        size = 11
-        psf_g_edges = np.linspace(-0.1, 0.1, size+1)
+        size = 15
+        gr = np.logspace(-3,-2, size//2)
+        psf_g_edges = np.concatenate([-gr[::-1], gr])
+        print('psf_g_edges', psf_g_edges)
         psf_prefix = self.config['psf_prefix']
 
         p1 = MeanShearInBins(f'{psf_prefix}g1', psf_g_edges, delta_gamma, cut_source_bin=True)
@@ -147,7 +147,6 @@ class TXDiagnosticPlots(PipelineStage):
         line22 = slope22*(mu2)+intercept22
 
         plt.subplot(2,1,1)
-
         
         plt.plot(mu1,line11,color='red',label=r"$m=%.4f \pm %.4f$" %(slope11, std_err11))
         plt.plot(mu1,[0]*len(line11),color='black')
