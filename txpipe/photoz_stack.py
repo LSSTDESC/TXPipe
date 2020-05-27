@@ -439,7 +439,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         nbin_source = shear_tomo_file['tomography'].attrs['nbin_source']
         shear_tomo_file.close()
 
-        shear_tomo_file = self.open_input('lens_tomography_catalog')
+        lens_tomo_file = self.open_input('lens_tomography_catalog')
         nbin_lens = lens_tomo_file['tomography'].attrs['nbin_lens']
         lens_tomo_file.close()
 
