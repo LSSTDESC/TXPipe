@@ -31,7 +31,8 @@ class TXDiagnosticPlots(PipelineStage):
 
     config_options = {
         'chunk_rows': 100000,
-        'delta_gamma': 0.02
+        'delta_gamma': 0.02,
+        'psf_prefix': 'mcal_psf_',
     }
 
     def run(self):
@@ -55,7 +56,8 @@ class TXDiagnosticPlots(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = self.config['chunk_rows']
-        shear_cols = ['mcal_psf_g1', 'mcal_psf_g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+        psf_prefix = self.config['psf_prefix']
+        shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g1','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
@@ -101,9 +103,10 @@ class TXDiagnosticPlots(PipelineStage):
         delta_gamma = self.config['delta_gamma']
         size = 11
         psf_g_edges = np.linspace(-0.1, 0.1, size+1)
+        psf_prefix = self.config['psf_prefix']
 
-        p1 = MeanShearInBins('mcal_psf_g1', psf_g_edges, delta_gamma, cut_source_bin=True)
-        p2 = MeanShearInBins('mcal_psf_g2', psf_g_edges, delta_gamma, cut_source_bin=True)
+        p1 = MeanShearInBins(f'{psf_prefix}g1', psf_g_edges, delta_gamma, cut_source_bin=True)
+        p2 = MeanShearInBins(f'{psf_prefix}g2', psf_g_edges, delta_gamma, cut_source_bin=True)
 
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
 
