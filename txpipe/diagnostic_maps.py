@@ -60,6 +60,7 @@ class TXDiagnosticMaps(PipelineStage):
         'true_shear' : False,
         'flag_exponent_max': 8,
         'dilate': True,
+        'psf_prefix': 'mcal_',
     }
 
 
@@ -90,10 +91,11 @@ class TXDiagnosticMaps(PipelineStage):
         # These are the columns we're going to need from the various files
         phot_cols = ['ra', 'dec', 'extendedness', f'snr_{band}', f'{band}_mag']
 
+        psf_prefix = self.config['psf_prefix']
         if config['true_shear']:
             shear_cols = ['true_g']
         else:
-            shear_cols = ['mcal_g1', 'mcal_g2', 'psf_g1', 'psf_g2']
+            shear_cols = [psf_prefix + 'g1', psf_prefix + 'g2']
         shear_cols += ['mcal_flags', 'weight']
         shear_bin_cols = ['source_bin']
         lens_bin_cols = ['lens_bin']
@@ -180,7 +182,7 @@ class TXDiagnosticMaps(PipelineStage):
                 shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
                 
             # In either case we need the PSF g1 and g2 to map as well
-            shear_psf_tmp = {'g1': shear_data['psf_g1'], 'g2': shear_data['psf_g2']}
+            shear_psf_tmp = {'g1': shear_data[psf_prefix + 'psf_g1'], 'g2': shear_data[psf_prefix + 'psf_g2']}
 
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
