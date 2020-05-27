@@ -423,7 +423,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         """
 
         # Check we are running on a photo file with redshift_true
-        photo_file = self.open_input('photometry_catalog')
+        photo_file = self.open_input('shear_photometry_catalog')
         has_z = 'redshift_true' in photo_file['photometry'].keys()
         photo_file.close()
         if not has_z:
