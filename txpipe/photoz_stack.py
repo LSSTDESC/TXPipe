@@ -369,7 +369,6 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             for b in range(nbin_lens):
                 w = np.where(lens_tomo_data['lens_bin']==b)
-                print(z[w])
                 lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 lens_counts[b] += w[0].size
 
@@ -400,7 +399,6 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             # Normalize the stacks
             for b in range(nbin_lens):
-                print(b, lens_counts[b])
                 lens_pdfs[b] /= lens_counts[b]
 
             # And finally save the outputs
