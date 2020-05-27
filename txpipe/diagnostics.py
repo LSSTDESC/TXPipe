@@ -26,6 +26,7 @@ class TXDiagnosticPlots(PipelineStage):
         ('g_T', PNGFile),
         ('snr_hist', PNGFile),
         ('mag_hist', PNGFile),
+        ('response_hist', PNGFile),
 
     ]
 
@@ -68,6 +69,7 @@ class TXDiagnosticPlots(PipelineStage):
                                      'shear_catalog', 'metacal', shear_cols,
                                      'photometry_catalog', 'photometry', photo_cols,
                                      'shear_tomography_catalog','tomography',shear_tomo_cols,
+                                     'shear_tomography_catalog','metacal_response', ['R_gamma'],
                                      'lens_tomography_catalog','tomography',lens_tomo_cols)
 
 
@@ -467,6 +469,82 @@ class TXDiagnosticPlots(PipelineStage):
         plt.ylabel(r'$N_{galaxies}$')
         plt.ylim(0,1.1*max(count1))
         fig.close()
+
+    def plot_response_histograms(self):
+        if self.comm:
+            import mpi4py.MPI
+        size = 20
+        bins = 50
+        # This seems to be a reasonable range, though there are samples
+        # with extremely high values
+        edges = np.linspace(-3, 3, bins+1)
+        mids = 0.5*(edges[1:] + edges[:-1])
+        width = edges[1] - edges[0]
+        # count of objects
+        counts = np.zeros((2,2,size))
+        # make a separate histogram of the shear-sample-selected
+        # objects
+        counts_s = np.zeros((2,2,size))
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            # check if selected for any source bin
+            in_shear_sample = data['source_bin'] !=-1
+            B = np.digitize(data['R_gamma'], edges) - 1
+            # loop through this chunk of data.
+            for s, b in zip(in_shear_sample, B):
+                # for each element in the 2x2 matrix
+                for i in range(2):
+                    for j in range(2):
+                        b = B[i, j]
+                        # this will naturally filter out
+                        # the nans
+                        if (b >= 0) and (b < size):
+                            counts[i, j, b] += 1
+                        if s:
+                            counts_s[i, j, b] += 1
+
+        # Sum from all processors and then non-root ones return
+        if self.comm is not None:
+            if self.rank == 0:
+                self.comm.Reduce(mpi4py.MPI.IN_PLACE, counts)
+                self.comm.Reduce(mpi4py.MPI.IN_PLACE, counts_s)
+            else:
+                self.comm.Reduce(None, counts)
+                self.comm.Reduce(None, counts_s)
+
+                # only root process makes plots
+                return
+
+
+        fig = self.open_output('response_hist', wrapper=True, figsize=(10, 5))
+
+        plt.subplot(1,2,1)
+        plt.bar(mid, counts[0, 0], width=width, fill=False,  label='R00')
+        plt.bar(mid, counts[1, 1], width=width, fill=False,  label='R11')
+        plt.bar(mid, counts[1, 0], width=width, fill=False,  label='R10')
+        plt.bar(mid, counts[0, 1], width=width, fill=False,  label='R01')
+        plt.xlabel("R_gamma")
+        plt.ylabel("Count")
+        plt.suptitle("All flag=0")
+
+        plt.subplot(1,2,2)
+        plt.bar(mid, counts_s[0, 0], width=width, fill=False,  label='R00')
+        plt.bar(mid, counts_s[1, 1], width=width, fill=False,  label='R11')
+        plt.bar(mid, counts_s[1, 0], width=width, fill=False,  label='R10')
+        plt.bar(mid, counts_s[0, 1], width=width, fill=False,  label='R01')
+        plt.xlabel("R_gamma")
+        plt.ylabel("Count")
+        plt.suptitle("Source sample")
+
+        plt.legend()
+        plt.tight_layout()
+        fig.close()
+
+
 
     def plot_mag_histograms(self):
         if self.comm:
