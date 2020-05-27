@@ -147,7 +147,7 @@ class TXMetacalGCRInput(PipelineStage):
         Ixx = data['IxxPSF']
         Ixy = data['IxyPSF']
         Iyy = data['IyyPSF']
-        data['psf_g1'], data['psf_g2'] = moments_to_shear(Ixx, Ixy, Iyy)
+        data['psf_g1'], data['psf_g2'] = moments_to_shear(Ixx, Iyy, Ixy)
 
     def setup_output(self, name, group, cat, cols, n):
         import h5py
