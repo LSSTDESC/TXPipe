@@ -499,13 +499,13 @@ class TXDiagnosticPlots(PipelineStage):
                 # for each element in the 2x2 matrix
                 for i in range(2):
                     for j in range(2):
-                        b = B[i, j]
+                        bij = b[i, j]
                         # this will naturally filter out
                         # the nans
-                        if (b >= 0) and (b < size):
-                            counts[i, j, b] += 1
+                        if (bij >= 0) and (bij < size):
+                            counts[i, j, bij] += 1
                         if s:
-                            counts_s[i, j, b] += 1
+                            counts_s[i, j, bij] += 1
 
         # Sum from all processors and then non-root ones return
         if self.comm is not None:
