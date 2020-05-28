@@ -63,8 +63,8 @@ class TXMetacalGCRInput(PipelineStage):
 
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
-            photo_cols.append(f'{band}_mag')
-            photo_cols.append(f'{band}_mag_err')
+            photo_cols.append(f'mag_{band}')
+            photo_cols.append(f'magerr_{band}')
             photo_cols.append(f'snr_{band}_cModel')
 
         # Columns we need to load in for the star data - 
@@ -97,7 +97,7 @@ class TXMetacalGCRInput(PipelineStage):
             'measured_e1', 'measured_e2',
             'model_e1', 'model_e2',
             'measured_T', 'model_T',
-            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
+            'mag_r', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
             'calib_psf_used',
             'calib_psf_reserved',
             'extendedness',
@@ -194,10 +194,10 @@ class TXMetacalGCRInput(PipelineStage):
         star_data['dec'] = data['dec'][star]
         star_data['id'] = data['id'][star]
         for band in 'ugrizy':
-            star_data[f'{band}_mag'] = data[f'{band}_mag'][star]
+            star_data[f'mag_{band}'] = data[f'mag_{band}'][star]
 
         for b in 'ugrizy':
-            star_data[f'{b}_mag'] = data[f'{b}_mag'][star]
+            star_data[f'mag_{b}'] = data[f'mag_{b}'][star]
 
         # HSM reports moments.  We convert these into
         # ellipticities.  We do this for both the star shape

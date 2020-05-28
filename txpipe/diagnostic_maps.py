@@ -89,7 +89,7 @@ class TXDiagnosticMaps(PipelineStage):
         band = config['depth_band']
 
         # These are the columns we're going to need from the various files
-        phot_cols = ['ra', 'dec', 'extendedness', f'snr_{band}', f'{band}_mag']
+        phot_cols = ['ra', 'dec', 'extendedness', f'snr_{band}', f'mag_{band}']
 
         psf_prefix = self.config['psf_prefix']
         if config['true_shear']:
@@ -158,7 +158,7 @@ class TXDiagnosticMaps(PipelineStage):
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper & bright object mapper
             depth_data = {
-                'mag': phot_data[f'{band}_mag'],
+                'mag': phot_data[f'mag_{band}'],
                 'snr': phot_data[f'snr_{band}'],
                 'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],
@@ -166,7 +166,7 @@ class TXDiagnosticMaps(PipelineStage):
             }
             
             brobj_data = {
-                'mag': phot_data[f'{band}_mag'],
+                'mag': phot_data[f'mag_{band}'],
                 'extendedness': phot_data['extendedness'],
                 'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],

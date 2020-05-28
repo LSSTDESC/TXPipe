@@ -1160,7 +1160,7 @@ class TXGammaTBrightStars(TXTwoPoint):
 
         f = self.open_input('star_catalog')
 
-        mags = f['stars/r_mag'][:]
+        mags = f['stars/mag_r'][:]
         bright_cut = mags>14
         bright_cut &= mags<18.3
 
@@ -1324,7 +1324,7 @@ class TXGammaTDimStars(TXTwoPoint):
         print(f"Loading lens sample from {filename}")
 
         f = self.open_input('star_catalog')
-        mags = f['stars/r_mag'][:]
+        mags = f['stars/mag_r'][:]
         dim_cut = mags>18.2
         dim_cut &= mags<22
 

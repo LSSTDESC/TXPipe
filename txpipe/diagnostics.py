@@ -61,7 +61,7 @@ class TXDiagnosticPlots(PipelineStage):
         shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
-        photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
+        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']
 
@@ -573,7 +573,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
 
             for (b, h1,h2) in zip(bands, full_hists, source_hists):
-                b1 = np.digitize(data[f'{b}_mag'], edges) - 1
+                b1 = np.digitize(data[f'mag_{b}'], edges) - 1
 
 
                 for i in range(size):

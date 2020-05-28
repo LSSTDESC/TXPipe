@@ -186,9 +186,9 @@ class TXBaseLensSelector(PipelineStage):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
-        mag_i = phot_data['i_mag']
-        mag_r = phot_data['r_mag']
-        mag_g = phot_data['g_mag']
+        mag_i = phot_data['mag_i']
+        mag_r = phot_data['mag_r']
+        mag_g = phot_data['mag_g']
 
         # Mag cuts 
         cperp_cut_val = self.config['cperp_cut']
@@ -233,7 +233,7 @@ class TXBaseLensSelector(PipelineStage):
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
     
         nbin = len(self.config['lens_zbin_edges']) - 1
-        n = len(phot_data['i_mag'])
+        n = len(phot_data['mag_i'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
@@ -261,7 +261,7 @@ class TXTruthLensSelector(TXBaseLensSelector):
         print(f"We are cheating and using the true redshift.")
         chunk_rows = self.config['chunk_rows']
 
-        phot_cols = ['i_mag','r_mag','g_mag', 'redshift_true']
+        phot_cols = ['mag_i','mag_r','mag_g', 'redshift_true']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -283,7 +283,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
 
     def data_iterator(self):
         chunk_rows = self.config['chunk_rows']
-        phot_cols = ['i_mag','r_mag','g_mag']
+        phot_cols = ['mag_i','mag_r','mag_g']
         z_cols = ['mu']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', z_cols, chunk_rows)
