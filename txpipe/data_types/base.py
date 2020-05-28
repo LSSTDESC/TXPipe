@@ -44,7 +44,7 @@ class DataFile:
             self.provenance = self.read_provenance()
 
     @staticmethod
-    def generate_provenance(extra_provenance):
+    def generate_provenance(extra_provenance=None):
         """
         Generate provenance information - a dictionary
         of useful information about the origina 

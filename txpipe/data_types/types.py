@@ -43,6 +43,7 @@ class TomographyCatalog(HDFFile):
 
 
 
+
 class RandomsCatalog(HDFFile):
     required_datasets = ['randoms/ra', 'randoms/dec', 'randoms/e1', 'randoms/e2']
 
@@ -93,6 +94,37 @@ class DiagnosticMaps(HDFFile):
         else:
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
+
+    def read_mask(self):
+        mask = self.read_map('mask')
+        mask[mask<0] = 0
+        return mask
+
+
+    def write_map(self, map_name, pixel, value, metadata):
+        """
+        Save an output map to an HDF5 subgroup.
+
+        The pixel numbering and the metadata are also saved.
+
+        Parameters
+        ----------
+
+        group: H5Group
+            The h5py Group object in which to store maps
+        name: str
+            The name of this map, used as the name of a subgroup in the group where the data is stored.
+        pixel: array
+            Array of indices of observed pixels
+        value: array
+            Array of values of observed pixels
+        metadata: mapping
+            Dict or other mapping of metadata to store along with the map
+        """
+        subgroup = self.file['maps'].create_group(map_name)
+        subgroup.attrs.update(metadata)
+        subgroup.create_dataset("pixel", data=pixel)
+        subgroup.create_dataset("value", data=value)
 
 
     def plot_healpix(self, map_name, view='cart', **kwargs):
@@ -170,6 +202,33 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
+class NoiseMaps(DiagnosticMaps):
+    required_datasets = [
+        ]
+
+    def read_rotation(self, realization_index, bin_index):
+        g1_name = f'rotation_{realization_index}/g1_{bin_index}'
+        g2_name = f'rotation_{realization_index}/g2_{bin_index}'
+
+        g1 = self.read_map(g1_name)
+        g2 = self.read_map(g2_name)
+
+        return g1, g2
+
+    def read_density_split(self, realization_index, bin_index):
+        rho1_name = f'split_{realization_index}/rho1_{bin_index}'
+        rho2_name = f'split_{realization_index}/rho2_{bin_index}'
+        rho1 = self.read_map(rho1_name)
+        rho2 = self.read_map(rho2_name)
+        return rho1, rho2
+
+    def number_of_realizations(self):
+        info = self.file['maps'].attrs
+        clustering_realizations = info['clustering_realizations']
+        lensing_realizations = info['lensing_realizations']
+        return lensing_realizations, clustering_realizations
+
+
 
 class PhotozPDFFile(HDFFile):
     required_datasets = []
@@ -203,6 +262,8 @@ class SACCFile(DataFile):
 
     def close(self):
         pass
+
+
 
 
 

@@ -1,10 +1,12 @@
 # This moderately-sized run has 7M galaxies in
-launcher: local
+launcher:
+    name: mini
+    interval: 1.0
 
-# If the launcher requires it (at the moment that is just for "cori")
-# then this info is used to configure it.  Otherwise it is ignored
 site:
-  shifter: joezuntz/txpipe-dev
+  name: cori-interactive
+  image: joezuntz/txpipe
+
 
 modules: txpipe
 
@@ -25,6 +27,7 @@ stages:
     - name: TXMapPlots
     - name: TXRandomCat
     - name: TXTwoPoint
+    - name: TXNullBlinding
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTBrightStars

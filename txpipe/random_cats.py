@@ -8,8 +8,8 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('diagnostic_maps', DiagnosticMaps),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('tracer_metadata', HDFFile),       
+        ('lens_photoz_stack', HDFFile),
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
@@ -32,7 +32,7 @@ class TXRandomCat(PipelineStage):
         depth = maps_file['maps/depth/value'][:]
         nside = maps_file['maps/depth'].attrs['nside']
         pixelization = maps_file['maps/depth'].attrs['pixelization']
-        pz_stack = self.open_input('photoz_stack')
+        pz_stack = self.open_input('lens_photoz_stack')
 
         # Cut down to pixels that have any objects in
         hit = depth>0
@@ -151,9 +151,9 @@ class TXRandomCat(PipelineStage):
         output_file.close()
 
     def read_sigma_e(self):
-        tomo = self.open_input('tomography_catalog')
-        d = tomo['/tomography/sigma_e'][:]
-        tomo.close()
+        meta = self.open_input('tracer_metadata')
+        d = meta['tracers/sigma_e'][:]
+        meta.close()
         return d
 
 

@@ -2,7 +2,6 @@ from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
-from .utils.fitting import fit_straight_line
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -13,7 +12,8 @@ class TXDiagnosticPlots(PipelineStage):
     inputs = [
         ('photometry_catalog', HDFFile),
         ('shear_catalog', HDFFile),
-        ('tomography_catalog', TomographyCatalog),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
     ]
 
     outputs = [
@@ -62,17 +62,21 @@ class TXDiagnosticPlots(PipelineStage):
         photo_cols = ['u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', photo_cols, chunk_rows)
 
-        tomo_cols = ['source_bin','lens_bin']
-        iter_tomo = self.iterate_hdf('tomography_catalog','tomography',tomo_cols,chunk_rows)
+        shear_tomo_cols = ['source_bin']
+        lens_tomo_cols = ['lens_bin']
+        iter_tomo_shear = self.iterate_hdf('shear_tomography_catalog','tomography',shear_tomo_cols,chunk_rows)
+        iter_tomo_lens = self.iterate_hdf('lens_tomography_catalog','tomography',lens_tomo_cols,chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data), (_, _, data2), (_, _, data3) in zip(iter_shear, iter_tomo, iter_phot):
+        for (start, end, data), (_, _, data2), (_, _, data3), (_, _, data4) in zip(iter_shear, iter_tomo_shear, iter_tomo_lens, iter_phot):
             print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             data.update(data2)
             data.update(data3)
+            data.update(data4)
+
             for plotter in plotters:
                 plotter.send(data)
 
@@ -90,6 +94,7 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        from .utils.fitting import fit_straight_line
         
         delta_gamma = self.config['delta_gamma']
         size = 11

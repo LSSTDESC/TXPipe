@@ -32,7 +32,7 @@ The various stages within it depend on the python packages listed in requirement
 pip install -r requirements.txt
 ```
 
-**NOTE** The current pipeline version needs the *minirunner* branch of *ceci*.  This is installed by requirements.txt
+**NOTE** The current pipeline version needs the *v0.2* branch of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -74,7 +74,7 @@ If you want to run pipelines under MPI, you can install a minimal environment on
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install -e git://github.com/LSSTDESC/ceci@minirunner#egg=ceci
+pip install -e git://github.com/LSSTDESC/ceci@v0.2
 ```
 
 Then use shifter to run the actual jobs.
@@ -93,17 +93,8 @@ cd TXPipe
 You can get some input test data like this:
 
 ```bash
-
-mkdir -p data/example/inputs
-cd data/example/inputs
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/shear_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/photometry_catalog.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/sample_cosmodc2_w10year_errors.dat
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/cosmoDC2_trees_i25.3.npy
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/exposures.hdf5
-curl -O https://portal.nersc.gov/project/lsst/WeakLensing/star_catalog.hdf5
-
-cd ../../..
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
 ```
 
 
@@ -201,14 +192,102 @@ according to MPI rank:
 
 
 
+Setting up stages that need the LSST environment
+--------------------------------------------------
+
+Some ingestion stages may need the LSST environment.
 
 
-Volunteers
-----------
+1. Start the LSST env using `python /global/common/software/lsst/common/miniconda/start-kernel-cli.py desc-stack` (or any new instructions from https://confluence.slac.stanford.edu/display/LSSTDESC/Setting+Up+the+DM+Stack+at+NERSC)
 
-- Chihway C & Emily PL - TXTwoPointReal (WLPipe porting & testing)
-- David A - TXSysMapMaker
-- Anze S - SACC
-- Tim E - TXCov
-- Alex M - TXSourceSummarizer
-- Antonino T & David A - TXTwoPointPower
+2. Create and start a virtual env based on this (first time only)
+
+```
+python -m venv --system-site-packages lsst-env
+. lsst-env/bin/activate
+```
+
+3. Install ceci in that venv
+
+```
+pip install git+https://github.com/LSSTDESC/ceci@v0.2
+```
+
+(or a newer version if you're reading this in the future)
+
+Then you're ready.
+
+
+Continuous Integration
+----------------------
+
+Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
+
+Site and launcher options
+-------------------------
+
+You now (with ceci 1.0) specify a *launcher*, which is the tool used to run the pipeline, and a *site*, which is where it should be run.
+
+The options are show below
+
+The best-tested launcher is mini, and the best-tested sites are local and cori-interactive.
+
+
+Launchers specify how to run the pipeline.  The options now are *parsl*, *mini*, and *cwl*:
+```yaml
+
+launcher:
+    name: mini
+    # Seconds between updates. Default as shown.
+    interval: 3
+
+# OR
+
+launcher:
+    name: parsl
+
+# OR
+
+launcher:
+    name: cwl
+    # required:
+    dir: ./cwl # dir for cwl files
+    # command used to launch pipeline. Default as shown. Gets some flags added if left as this.
+    launch: cwltool 
+
+```
+
+The site specifies where to run the pipeline.  The options now are *local*, *cori-interactive*, and *cori-batch*
+
+```yaml
+site:
+    name: local
+    # Number of jobs to run at once.  Default as shown.
+    max_threads: 4
+    # These are available for every site.  The default is not to use them:
+    # docker/shifter image
+    image: joezuntz/txpipe
+    #docker/shifter volume mounting
+    volume: ${PWD}:/opt/txpipe 
+
+# OR
+
+site:
+    name: cori-interactive
+    # Number of jobs to run at once.  Default as shown.
+    max_threads: ${SLURM_JOB_NUM_NODES}
+
+# OR
+
+site:
+    name: cori
+    # These are the defaults:
+    mpi_command: srun -un
+    cpu_type: haswell
+    queue: debug
+    max_jobs: 2
+    account: m1727
+    walltime: 00:30:00
+    setup: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
+
+```
