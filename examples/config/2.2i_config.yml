@@ -100,6 +100,18 @@ TXClusteringNoiseMaps:
 TXLensingNoiseMaps:
     n_realization: 30
 
+TXMeanLensSelector:
+    # Mag cuts
+    chunk_rows: 100000
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
 TXTruthLensSelector:
     # Mag cuts
     chunk_rows: 100000

@@ -21,6 +21,7 @@ stages:
     - name: TXSourceSelector
     - name: TXMeanLensSelector
     - name: PZPDFMLZ
+    - name: TXJackknifeCenters
     - name: TXPhotozStack
     - name: TXPhotozPlots
     - name: TXDiagnosticMaps
@@ -37,7 +38,7 @@ stages:
     - name: TXPSFDiagnostics
 
 output_dir: data/2.2i-single-tract/outputs
-config: examples/config/cosmodc2_config.yml
+config: examples/config/2.2i_config.yml
 
 
 inputs:

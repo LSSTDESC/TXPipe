@@ -39,12 +39,13 @@ class TXMetacalGCRInput(PipelineStage):
         # not in a TXPipe format.
         cat_name = self.config['cat_name']
         cat = GCRCatalogs.load_catalog(cat_name)
-        cat.master.use_cache = False
 
         # Total size is needed to set up the output file,
         # although in larger files it is a little slow to compute this.
         n = len(cat)
         print(f"Total catalog size = {n}")  
+
+        cat.master.use_cache = False
 
         available = cat.list_all_quantities()
         bands = []
@@ -93,15 +94,18 @@ class TXMetacalGCRInput(PipelineStage):
                             for col in photo_cols]
 
         # The star output names are mostly different to the input names
-        star_out_cols = ['id', 'ra', 'dec', 
-            'measured_e1', 'measured_e2',
-            'model_e1', 'model_e2',
-            'measured_T', 'model_T',
-            'mag_r', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
+        star_out_cols = [
+            # These are read directly
+            'id', 'ra', 'dec', 
             'calib_psf_used',
             'calib_psf_reserved',
             'extendedness',
             'tract',
+            'mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
+            # These are calculated
+            'measured_e1', 'measured_e2',
+            'model_e1', 'model_e2',
+            'measured_T', 'model_T',
             ]
 
         # eliminate duplicates before loading
@@ -189,12 +193,12 @@ class TXMetacalGCRInput(PipelineStage):
                 | (data['extendedness'] == 0)
         )
 
-        # General columns
-        star_data['ra'] = data['ra'][star]
-        star_data['dec'] = data['dec'][star]
-        star_data['id'] = data['id'][star]
-        for band in 'ugrizy':
-            star_data[f'mag_{band}'] = data[f'mag_{band}'][star]
+        for col in ['id', 'ra', 'dec',
+            'calib_psf_used',
+            'calib_psf_reserved',
+            'extendedness',
+            'tract']:
+            star_data[col] = data[col][star]
 
         for b in 'ugrizy':
             star_data[f'mag_{b}'] = data[f'mag_{b}'][star]
