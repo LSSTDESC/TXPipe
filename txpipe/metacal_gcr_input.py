@@ -28,6 +28,7 @@ class TXMetacalGCRInput(PipelineStage):
     config_options = {
         'cat_name': str,
         'single_tract': '',
+        'length': 0,
     }
 
     def run(self):
@@ -42,8 +43,13 @@ class TXMetacalGCRInput(PipelineStage):
 
         # Total size is needed to set up the output file,
         # although in larger files it is a little slow to compute this.
-        n = len(cat)
-        print(f"Total catalog size = {n}")  
+        if self.config['length'] == 0:
+            n = len(cat)
+            print(f"Total catalog size = {n}")  
+        else:
+            n = self.config['length']
+            print(f"Using fixed specified size = {n}")
+
 
         cat.master.use_cache = False
 
