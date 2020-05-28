@@ -27,6 +27,7 @@ class TXMetacalGCRInput(PipelineStage):
 
     config_options = {
         'cat_name': str,
+        'single_tract': '',
     }
 
     def run(self):
@@ -112,7 +113,14 @@ class TXMetacalGCRInput(PipelineStage):
         photo_output = None
 
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in cat.get_quantities(cols, return_iterator=True):
+        single_tract = self.config['single_tract']
+        if single_tract:
+            kwargs = {'native_filters': f'tract == {single_tract}'}
+            print(f"Selecting one tract only: {single_tract}")
+        else:
+            kwargs = {}
+
+        for data in cat.get_quantities(cols, return_iterator=True, **kwargs):
             # Some columns have different names in input than output
             self.rename_columns(data)
             self.add_weight_column(data)
