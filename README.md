@@ -32,7 +32,7 @@ The various stages within it depend on the python packages listed in requirement
 pip install -r requirements.txt
 ```
 
-**NOTE** The current pipeline version needs the *v0.2* branch of *ceci*.  This is installed by requirements.txt
+**NOTE** The current pipeline version needs version 1.0 of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -74,7 +74,7 @@ If you want to run pipelines under MPI, you can install a minimal environment on
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install -e git://github.com/LSSTDESC/ceci@v0.2
+pip install ceci
 ```
 
 Then use shifter to run the actual jobs.
@@ -104,7 +104,7 @@ Running the pipeline
 Once you have installed the dependecies you can run this using the test data you downloaded above
 
 ```bash
-ceci examples/laptop.yml
+ceci examples/laptop_pipeline.yml
 ```
 
 to run the implemented stages.
@@ -112,7 +112,7 @@ to run the implemented stages.
 You can get a list of the individual commands that will be run like this:
 
 ```bash
-ceci --dry-run examples/laptop.yml
+ceci --dry-run examples/laptop_pipeline.yml
 ```
 
 so that you can run and examine them individually.
@@ -128,10 +128,10 @@ Example larger runs, which can be run on NERSC under interactive jobs (for now) 
 # To get an interactive job:
 salloc -N 2  -q interactive -C haswell -t 01:00:00 -A m1727
 # <wait for allocation>
-ceci examples/2.1.1i.yml
+ceci examples/2.2i_pipeline.yml
 ```
 
-A larger run is in `examples/2.1i.yml`.
+A smaller run is in `examples/2.2i_single_tract_pipeline.yml`.
 
 
 

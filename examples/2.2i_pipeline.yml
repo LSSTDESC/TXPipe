@@ -49,14 +49,14 @@ stages:
     - name: TXGammaTDimStars
       threads_per_process: 64
     - name: TXBrighterFatterPlot
-#    - name: TXRoweStatistics
-#      nprocess: 2
-#      nodes: 2
-#      threads_per_process: 64
+   - name: TXRoweStatistics
+     nprocess: 2
+     nodes: 2
+     threads_per_process: 64
     - name: TXPSFDiagnostics
 
 output_dir: data/2.2i/outputs
-config: examples/config.yml
+config: examples/config/cosmodc2_config.yml
 
 
 

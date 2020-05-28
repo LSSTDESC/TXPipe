@@ -1,3 +1,4 @@
+
 # Stages to run
 stages:
     - name: TXSourceSelector
@@ -7,34 +8,48 @@ stages:
     - name: TXDiagnosticMaps
     - name: TXRandomCat
     - name: TXJackknifeCenters
+    - name: TXTwoPoint
+      threads_per_process: 2
+    - name: TXBlinding
+      threads_per_process: 2
+    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
+    - name: TXGammaTFieldCenters
+      threads_per_process: 2
+    - name: TXGammaTBrightStars
+      threads_per_process: 2
+    - name: TXGammaTDimStars
+      threads_per_process: 2
+    - name: TXRoweStatistics
+      threads_per_process: 2
+    - name: TXPSFDiagnostics
+    - name: TXRealGaussianCovariance
+      threads_per_process: 2
     - name: TXNoiseMaps
       threads_per_process: 2
     - name: TXTwoPointFourier
       threads_per_process: 2
     - name: TXFourierGaussianCovariance
       threads_per_process: 2
-# uncomment the last two if you have namaster working
 
 # Where to put outputs
-output_dir: data/example-fourier/outputs
+output_dir: data/example/outputs
 
-# How to run the pipeline (which site, e.g. cori, local=laptop)
+# How to run the pipeline: mini, parsl, or cwl
 launcher:
     name: mini
     interval: 1.0
 
-# Information for the pipeline about how many jobs it can
-# run and how it can do so
+# Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-  name: local
-  max_threads: 2
+    name: local
+    max_threads: 1
 
 # python modules to import to search for stages
 modules: txpipe
 
 # configuration settings
-config: examples/config.yml
+config: examples/config/laptop_config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
@@ -57,3 +72,4 @@ resume: True
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
+

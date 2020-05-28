@@ -94,7 +94,7 @@ TXBlinding:
     delete_unblinded: True
 
 TXDiagnosticPlots:
-    psf_prefix: psf_
+    psf_prefix: mcal_psf_
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once
@@ -110,7 +110,7 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
-    psf_prefix: psf_
+    psf_prefix: mcal_psf_
 
 TXRealGaussianCovariance:
     min_sep: 2.5
