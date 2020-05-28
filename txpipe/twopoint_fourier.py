@@ -181,6 +181,9 @@ class TXTwoPointFourier(PipelineStage):
         g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
         g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
         lensing_weights = [map_file.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
+        gw_squared_maps = [0.5 * (map_file.read_map(f'var_g1_{b}') +
+                                  map_file.read_map(f'var_g2_{b}'))
+                           for b in range(nbin_source)]
 
         # Mask any pixels which have the healpix bad value
         for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
@@ -239,6 +242,7 @@ class TXTwoPointFourier(PipelineStage):
             'dw': clustering_weight,
             'lw': lensing_weights,
             'g': list(zip(g1_maps, g2_maps)),
+            'gw2': gw_squared_maps,
             'd': d_maps,
             'lf': lensing_fields,
             'df': density_fields,
@@ -482,7 +486,17 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
 
-    def compute_noise(self, i, j, k, ell_bins, maps, workspace):
+    def compute_noise(self, i, j, k, ell_bins, maps, workspace, use_analytic=False):
+        if use_analytic:
+            self.compute_noise_analytic(i, j, k, ell_bins, maps, workspace)
+        else:
+            self.compute_noise_from_random(i, j, k, ell_bins, maps, workspace)
+
+    def compute_noise_analytic(self, i, j, k, ell_bins, maps, workspace):
+        import pymaster as nmt
+        raise NotImplementedError("Working on it")
+
+    def compute_noise_from_random(self, i, j, k, ell_bins, maps, workspace):
         import pymaster as nmt
 
         # No noise contribution in cross-correlations
