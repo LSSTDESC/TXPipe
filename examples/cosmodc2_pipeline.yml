@@ -8,7 +8,9 @@ site:
 modules: txpipe
 
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+      nprocess: 32
+    - name: TXMeanLensSelector
       nprocess: 32
     - name: TXTrueNumberDensity
     - name: TXPhotozPlots
