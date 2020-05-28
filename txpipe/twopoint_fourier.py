@@ -475,7 +475,7 @@ class TXTwoPointFourier(PipelineStage):
         workspace = workspaces[(i,j,k)]
 
         # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+        cl_noise = self.compute_noise(pixel_scheme, i, j, k, ell_bins, maps, workspace)
 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
@@ -486,22 +486,32 @@ class TXTwoPointFourier(PipelineStage):
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
 
-    def compute_noise(self, i, j, k, ell_bins, maps, workspace, use_analytic=False):
-        if use_analytic:
-            self.compute_noise_analytic(i, j, k, ell_bins, maps, workspace)
-        else:
-            self.compute_noise_from_random(i, j, k, ell_bins, maps, workspace)
-
-    def compute_noise_analytic(self, i, j, k, ell_bins, maps, workspace):
-        import pymaster as nmt
-        raise NotImplementedError("Working on it")
-
-    def compute_noise_from_random(self, i, j, k, ell_bins, maps, workspace):
-        import pymaster as nmt
-
+    def compute_noise(self, pixel_scheme, i, j, k, ell_bins, maps, workspace, use_analytic=False):
         # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
             return None
+
+        if use_analytic:
+            self._compute_noise_analytic(pixel_scheme, i, j, k, ell_bins, maps, workspace)
+        else:
+            self._compute_noise_from_random(pixel_scheme, i, j, k, ell_bins, maps, workspace)
+
+    def _compute_noise_analytic(self, pixel_scheme, i, j, k, ell_bins, maps, workspace):
+        import pymaster as nmt
+        if k == SHEAR_SHEAR:
+            nl_coupled = np.ones(3*int(pixel_scheme.nside)) * \
+                         np.mean(maps['gw2'] * maps['lw']) * \
+                         pixel_scheme.pixel_area()
+            oo = np.ones(3*int(pixel_scheme.nside))
+            mean_noise = np.array([nl_coupled, oo, oo, nl_coupled])
+
+        if k == POS_POS:
+            raise NotImplementedError("Working on it")
+
+        return mean_noise
+
+    def _compute_noise_from_random(self, pixel_scheme, i, j, k, ell_bins, maps, workspace):
+        import pymaster as nmt
 
         noise_maps = self.open_input('noise_maps', wrapper=True)
 
