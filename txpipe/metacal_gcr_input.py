@@ -58,7 +58,7 @@ class TXMetacalGCRInput(PipelineStage):
         )
 
         # Input columns for photometry
-        photo_cols = ['id', 'ra', 'dec', 'extendedness']
+        photo_cols = ['id', 'ra', 'dec', 'extendedness', 'tract']
 
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
@@ -100,6 +100,7 @@ class TXMetacalGCRInput(PipelineStage):
             'calib_psf_used',
             'calib_psf_reserved',
             'extendedness',
+            'tract',
             ]
 
         # eliminate duplicates before loading
@@ -110,10 +111,8 @@ class TXMetacalGCRInput(PipelineStage):
         shear_output = None
         photo_output = None
 
-        print("Skipping bad tract 2897 - remove this later!")
-
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in cat.get_quantities(cols, return_iterator=True, native_filters='tract != 2897'):
+        for data in cat.get_quantities(cols, return_iterator=True):
             # Some columns have different names in input than output
             self.rename_columns(data)
             self.add_weight_column(data)
