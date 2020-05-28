@@ -74,6 +74,8 @@ class TXMetacalGCRInput(PipelineStage):
             'ra',
             'dec',
             'calib_psf_used',
+            'calib_psf_reserved',
+            'extendedness',
             'Ixx',
             'Ixy',
             'Iyy',
@@ -89,12 +91,16 @@ class TXMetacalGCRInput(PipelineStage):
         photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
                             for col in photo_cols]
 
-        # The star output names are mostly different tot he input names
+        # The star output names are mostly different to the input names
         star_out_cols = ['id', 'ra', 'dec', 
             'measured_e1', 'measured_e2',
             'model_e1', 'model_e2',
             'measured_T', 'model_T',
-            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
+            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag',
+            'calib_psf_used',
+            'calib_psf_reserved',
+            'extendedness',
+            ]
 
         # eliminate duplicates before loading
         cols = list(set(shear_cols + photo_cols + star_cols))
@@ -170,7 +176,11 @@ class TXMetacalGCRInput(PipelineStage):
     def compute_star_data(self, data):
         star_data = {}
         # We specifically use the stars chosen for PSF measurement
-        star = data['calib_psf_used']
+        star = (
+                data['calib_psf_used']
+                | data['calib_psf_reserved']
+                | (data['extendedness'] == 0)
+        )
 
         # General columns
         star_data['ra'] = data['ra'][star]
