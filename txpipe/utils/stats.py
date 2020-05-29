@@ -25,7 +25,6 @@ class ParallelHistogram:
         if comm is None:
             return counts
 
-
         if comm.rank == 0:
             comm.Reduce(mpi4py.MPI.IN_PLACE, counts)
             return counts
