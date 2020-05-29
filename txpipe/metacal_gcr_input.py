@@ -91,6 +91,7 @@ class TXMetacalGCRInput(PipelineStage):
 
         # Loop through the data, as chunke natively by GCRCatalogs
         single_tract = self.config['single_tract']
+        
         if single_tract:
             kwargs = {'native_filters': f'tract == {single_tract}'}
             print(f"Selecting one tract only: {single_tract}")
@@ -151,14 +152,16 @@ class TXMetacalGCRInput(PipelineStage):
 
 
 class TXIngestStars(PipelineStage):
+    name = "TXIngestStars"
     inputs = []
 
     outputs = [
         ('star_catalog', HDFFile),
     ]
-    config = {
+    config_options = {
         'single_tract': '',
         'cat_name': str,
+        'length': 0,
     }
 
 
@@ -172,8 +175,13 @@ class TXIngestStars(PipelineStage):
 
         # This is the max possible length of the stars.
         # Actually much smaller of course
-        n = len(cat)
+        if self.config['length']:
+            n = self.config['length']
+            print(f"Using fixed size {n}")
+        else:
+            n = len(cat)
 
+        print(f"Full catalog size = {n}")
         # Columns we need to load in for the star data - 
         # the measured object moments and the identifier telling us
         # if it was used in PSF measurement
@@ -184,7 +192,7 @@ class TXIngestStars(PipelineStage):
             'calib_psf_used',
             'calib_psf_reserved',
             'extendedness',
-            'tract'
+            'tract',
             'mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
             'Ixx',
             'Ixy',
@@ -210,6 +218,8 @@ class TXIngestStars(PipelineStage):
             'measured_T', 'model_T',
             ]
 
+        single_tract = self.config['single_tract']
+        
         if single_tract:
             kwargs = {'native_filters': f'tract == {single_tract}'}
             print(f"Selecting one tract only: {single_tract}")
@@ -217,13 +227,16 @@ class TXIngestStars(PipelineStage):
             kwargs = {}
 
 
+        cat.master.use_cache = False
+
         start = 0
         star_start = 0
+        star_output = None
         for data in cat.get_quantities(star_cols, return_iterator=True, **kwargs):
             end = start + len(data['ra'])
-            print("Reading data {start:,} - {end:,}")
+            print(f"Reading data {start:,} - {end:,}")
             # Some columns have different names in input than output
-            star_data = compute_star_data(data)
+            star_data = self.compute_star_data(data)
             star_end = star_start + len(star_data['ra'])
             if star_output is None:
                 star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
@@ -247,6 +260,11 @@ class TXIngestStars(PipelineStage):
         for name in cols:
             g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)
         return f
+
+    def write_output(self, output_file, group_name, cols, start, end, data):
+        g = output_file[group_name]
+        for name in cols:
+            g[name][start:end] = data[name]
 
 
     def compute_star_data(self, data):
@@ -296,8 +314,6 @@ def moments_to_shear(Ixx, Iyy, Ixy):
     return e1, e2
 
 
-        
-
 # response to an old Stack Overflow question of mine:
 # https://stackoverflow.com/questions/33529057/indices-that-intersect-and-sort-two-numpy-arrays
 def intersecting_indices(x, y):
@@ -307,7 +323,6 @@ def intersecting_indices(x, y):
     i_idx_x = u_idx_x[np.in1d(u_x, i_xy, assume_unique=True)]
     i_idx_y = u_idx_y[np.in1d(u_y, i_xy, assume_unique=True)]
     return i_idx_x, i_idx_y
-
 
 
 def h5py_shorten(group, name, n):
