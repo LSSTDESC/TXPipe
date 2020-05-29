@@ -298,7 +298,11 @@ class TXBrighterFatterPlot(PipelineStage):
         matplotlib.use('agg')
 
         data = self.load_stars()
-        results = self.compute_binned_stats(data)
+        results = {}
+        for s in STAR_TYPES:
+            w = data['star_type'] == s
+            data_s = {k: v[w] for k, v in data.items()}
+            results[s] = self.compute_binned_stats(data_s)
 
         self.save_stats(results)
         self.save_plots(results)
@@ -360,23 +364,30 @@ class TXBrighterFatterPlot(PipelineStage):
 
     def save_plots(self, results):
         import matplotlib.pyplot as plt
-        m, dT, errT, e1, err1, e2, err2 = results
         band = self.config['band']
-        f = self.open_output('brighter_fatter_plot', wrapper=True, figsize=(6,8))
-        # Top plot - classic BF size plot, the size residual as a function of
-        # magnitude
-        ax = plt.subplot(2,1,1)
-        plt.errorbar(m, dT, errT, fmt='.')
-        plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
-        plt.ylim(-0.025, 0.1)
-        # Lower plot - the e1 and e2 residuals as a function of mag
-        plt.subplot(2,1,2, sharex=ax)
-        plt.errorbar(m, e1, err1, label='$e_1$', fmt='.')
-        plt.errorbar(m, e2, err2, label='$e_2$', fmt='.')
-        plt.ylabel(r"$e_\mathrm{PSF} - e_\mathrm{model}$")
-        plt.xlabel(f"{band}-band magnitude")
-        # May need to adjust this range
-        plt.ylim(-0.02, 0.02)
+        n = len(results)
+        width = n * 6
+        f = self.open_output('brighter_fatter_plot', wrapper=True, figsize=(width,8))
+        for s, res in results.items():
+            m, dT, errT, e1, err1, e2, err2 = res
+
+            # Top plot - classic BF size plot, the size residual as a function of
+            # magnitude
+            ax = plt.subplot(2,n,2*s+1)
+            plt.title(STAR_TYPE_NAMES[s])
+            plt.errorbar(m, dT, errT, fmt='.')
+            plt.xlabel(f"{band}-band magnitude")
+            plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
+            plt.ylim(-0.025, 0.1)
+            # Lower plot - the e1 and e2 residuals as a function of mag
+            plt.subplot(2,n,2*s+2, sharex=ax)
+            plt.title(STAR_TYPE_NAMES[s])
+            plt.errorbar(m, e1, err1, label='$e_1$', fmt='.')
+            plt.errorbar(m, e2, err2, label='$e_2$', fmt='.')
+            plt.ylabel(r"$e_\mathrm{PSF} - e_\mathrm{model}$")
+            plt.xlabel(f"{band}-band magnitude")
+            # May need to adjust this range
+            plt.ylim(-0.02, 0.02)
         plt.legend()
         plt.tight_layout()
         f.close()
@@ -384,17 +395,19 @@ class TXBrighterFatterPlot(PipelineStage):
     def save_stats(self, results):
         # Save all the stats in results for later plotting
         # Save to standard HDF5 format.
-        (m, dT, errT, e1, err1, e2, err2) = results
         f = self.open_output('brighter_fatter_data')
-        g = f.create_group('brighter_fatter')
-        g.attrs['band'] = self.config['band']
-        g.create_dataset('mag', data=m)
-        g.create_dataset('delta_T', data=dT)
-        g.create_dataset('delta_T_error', data=errT)
-        g.create_dataset('delta_e1', data=e1)
-        g.create_dataset('delta_e1_error', data=err1)
-        g.create_dataset('delta_e2', data=e2)
-        g.create_dataset('delta_e2_error', data=err2)
+        g1 = f.create_group('brighter_fatter')
+        g1.attrs['band'] = self.config['band']
+        for s, res in results.items():
+            (m, dT, errT, e1, err1, e2, err2) = res
+            g = g1.create_group(STAR_TYPE_NAMES[s])
+            g.create_dataset('mag', data=m)
+            g.create_dataset('delta_T', data=dT)
+            g.create_dataset('delta_T_error', data=errT)
+            g.create_dataset('delta_e1', data=e1)
+            g.create_dataset('delta_e1_error', data=err1)
+            g.create_dataset('delta_e2', data=e2)
+            g.create_dataset('delta_e2_error', data=err2)
         f.close()
 
 
