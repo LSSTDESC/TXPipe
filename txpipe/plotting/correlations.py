@@ -313,7 +313,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
 
             # Optionally also compute correlation functions
             if xi:
-                theta, _ = obs[(XIP, i, j)]
+                theta, *_ = obs[(XIP, i, j)]
                 theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'L+')
                 theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'L-')
 
@@ -326,7 +326,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
 
         # Optionally also compute correlation functions
         if xi:
-            theta, _ = obs[(W, i, i)]
+            theta, *_ = obs[(W, i, i)]
             theory[W, i, i] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'GG')
 
 
@@ -340,7 +340,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
 
             # Optionally also compute correlation functions
             if xi:
-                theta, _ = obs[(GAMMA, i, j)]
+                theta, *_ = obs[(GAMMA, i, j)]
                 theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'GL')
 
     return theory
