@@ -71,7 +71,7 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 
 def full_3x2pt_plots(sacc_files, labels, 
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
-                     xi=None, fit_bias=False):
+                     xi=None, fit_bias=False, figures=None):
     sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
@@ -82,7 +82,8 @@ def full_3x2pt_plots(sacc_files, labels,
         # Label it "Theory"
         if theory_sacc_files is None:
             theory_sacc_data = sacc_data[:1]
-            theory_labels = ["Theory"]
+            if theory_labels is None:
+                theory_labels = ["Theory"]
         else:
             theory_sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files]
             # But if specified, can provide multiple theory inputs, and then label them
@@ -104,11 +105,19 @@ def full_3x2pt_plots(sacc_files, labels,
     else:
         theory_data = []
 
-    figures = {t: make_plot(t, obs_data, theory_data) 
-                for t in types 
-                if any(obs[t] for obs in obs_data)}
+    for t in types:
+        f = figures.get(t)
 
-    return figures
+    if figures is None:
+        figures = {}
+
+    output_figures = {}
+    for t in types:
+        if any(obs[t] for obs in obs_data):
+            f = figures.get(t)
+            output_figures[t] = make_plot(t, obs_data, theory_data, fig=f)
+
+    return output_figures
     
 
 def axis_setup(a, i, j, ny, ymin, ymax, name):
@@ -135,7 +144,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.set_ylim(ymin, ymax)
 
 
-def make_plot(corr, obs_data, theory_data):
+def make_plot(corr, obs_data, theory_data, fig=None):
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
 
@@ -187,7 +196,7 @@ def make_plot(corr, obs_data, theory_data):
         half_only = False
 
     plt.rcParams['font.size'] = 14
-    f = plt.figure(figsize=(nx*5, ny*3))
+    f = fig if fig is not None else plt.figure(figsize=(nx*5, ny*3))
     ax = {}
     
     axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=False)
