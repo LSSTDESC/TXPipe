@@ -13,8 +13,8 @@ def trim_file(input_file, output_file, group_name, thin):
     file_in = h5py.File(input_file, 'r')
     file_out = h5py.File(output_file, 'w')
 
-    group_in = photo_in[group_name]
-    group_out = photo_out.create_group(group_name)
+    group_in = file_in[group_name]
+    group_out = file_out.create_group(group_name)
 
     file_in.copy('provenance', file_out)
 
@@ -40,4 +40,4 @@ def trim_file(input_file, output_file, group_name, thin):
 if __name__ == '__main__':
     trim_file('photometry_catalog.hdf5', 'example_photometry_catalog.hdf5', 'photometry', 5)
     trim_file('shear_catalog.hdf5', 'example_shear_catalog.hdf5', 'photometry', 5)
-    trim_file('star_catalog.hdf5', 'example_star_catalog.hdf5', 'photometry', 5)
+    trim_file('star_catalog.hdf5', 'example_star_catalog.hdf5', 'stars', 5)
