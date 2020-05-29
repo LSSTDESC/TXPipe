@@ -15,8 +15,8 @@ before_install:
 install:
   - pip install cffi
   - pip install --no-binary=mpi4py -r requirements.txt
-  - wget -O example-ci.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-ci.tar.gz"
-  - tar -zxvf example-ci.tar.gz
+  - wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+  - tar -zxvf example.tar.gz
 
 cache: pip
 
