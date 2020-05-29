@@ -3,6 +3,7 @@ from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFi
 import numpy as np
 from .utils.theory import theory_3x2pt
 from .utils import dilated_healpix_map
+import yaml
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
@@ -38,6 +39,7 @@ class TXDiagnosticMaps(PipelineStage):
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
         ('tracer_metadata', HDFFile),
+        ('tracer_metadata_yml', YamlFile), #human-readable version
     ]
 
     # Configuration information for this stage
@@ -391,6 +393,28 @@ class TXDiagnosticMaps(PipelineStage):
         copy_attrs(lens_tomo_file,'tomography', 'tracers')
 
         meta_file.close()
+
+        # human readable version
+        yaml_out_name = self.get_output('tracer_metadata_yml')
+        metadata = {
+            'lens_density': lens_density.tolist(),
+            'source_density': source_density.tolist(),
+            'sigma_e': shear_tomo_file['tomography/sigma_e'][:].tolist(),
+            'n_eff': n_eff.tolist(),
+            'R_gamma_mean': shear_tomo_file['metacal_response/R_gamma_mean'][:].tolist(),
+            'R_S': shear_tomo_file['metacal_response/R_S'][:].tolist(),
+            'R_total': shear_tomo_file['metacal_response/R_total'][:].tolist(),
+            'lens_counts': lens_counts.tolist(),
+            'source_counts': source_counts.tolist(),
+            'area': float(area),
+        }
+        f = open(yaml_out_name, 'w')
+        yaml.dump(metadata, f)
+        f.close()
+
+        shear_tomo_file.close()
+        lens_tomo_file.close()
+
 
 
 class FakeTracer:
