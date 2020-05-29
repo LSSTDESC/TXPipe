@@ -3,6 +3,7 @@ from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
 from .utils.fitting import fit_straight_line
+from .plotting import manual_step_histogram
 import numpy as np
 
 class TXDiagnosticPlots(PipelineStage):
@@ -616,23 +617,3 @@ def reduce(comm, H):
     return H2
 
 
-def manual_step_histogram(edges, counts, ax=None, **kwargs):
-    import matplotlib.pyplot as plt
-    if ax is None:
-        ax=plt.gca()
-
-    x = [edges[0]]
-    y = [0]
-
-    for i, c in enumerate(counts):
-        x.append(edges[i])
-        y.append(c)
-        x.append(edges[i+1])
-        y.append(c)
-    x.append(edges[-1])
-    y.append(0)
-
-    p = plt.Line2D(x, y, **kwargs)
-    ax.add_line(p)
-    ax.autoscale_view()
-    ax.set_ylim(0, None)
