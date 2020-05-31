@@ -16,11 +16,25 @@ TXCosmoDC2Mock:
     flip_g2: True # to match metacal
 
 
-
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
     chunk_rows: 100000
+
+FlexZPipe:
+    chunk_rows: 1000
+    bands: ["u","g","r","i","z","y"]
+    sigma_intrins: 0.05  #"intrinsic" assumed scatter, used in ODDS                  
+    odds_int: 0.99445    #number of sigma_intrins to integrate +/- around peak         
+                         # note that 1.95993 is the number of sigma you get for old "ODDS" =0.95            
+                         #in old BPZ, 0.68 is 0.99445                                                           
+    has_redshift: True   #does the test file have redshift?
+                         #if so, read in and append to output file.
+    nz: 300              #Number of grid points that FZboost will calculate   
+    model_picklefile: "data/example/inputs/flexcode_model_sqderr.pkl"
+                         #the pickle file containing the trained  flexzbooxt model.
+    metacal_fluxes: False #switch for whether or not to run metacal suffices
+
 
 TXPhotozStack:
     chunk_rows: 100000
