@@ -1741,12 +1741,98 @@ class TXSelfCalibrationIA(TXTwoPoint):
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==SHEAR_POS_SELECT:
             xx = self.calculate_shear_pos_select(data, i, j)
-            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
+            xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
             xx = self.calculate_pos_pos(data, i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
+
+    def write_output(self, data, meta, results):
+        import sacc
+        import treecorr
+        XI = "combined"
+        XIP = sacc.standard_types.galaxy_shear_xi_plus
+        XIM = sacc.standard_types.galaxy_shear_xi_minus
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMATS = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
+        WTHETA = sacc.standard_types.galaxy_density_xi
+
+        S = sacc.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
+        f = self.open_input('shear_photoz_stack')
+
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
+        for i in data['source_list']:
+            z = f['n_of_z/source/z'][:]
+            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            S.add_tracer('NZ', f'source_{i}', z, Nz)
+
+        f = self.open_input('lens_photoz_stack')
+        # For both source and lens
+        for i in data['lens_list']:
+            z = f['n_of_z/lens/z'][:]
+            Nz = f[f'n_of_z/lens/bin_{i}'][:]
+            S.add_tracer('NZ', f'lens_{i}', z, Nz)
+        # Closing n(z) file
+        f.close()
+
+        # Now build up the collection of data points, adding them all to
+        # the sacc data one by one.
+        comb = []
+        for d in results:
+            # First the tracers and generic tags
+            tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT,GAMMATS] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [XI, GAMMAT, GAMMATS] else f'lens_{d.j}'
+
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
+            comb.append(d.object)
+
+            theta = np.exp(d.object.meanlogr)
+            npair = d.object.npairs
+            weight = d.object.weight
+
+            # account for double-counting
+            if d.i == d.j:
+                npair = npair/2
+                weight = weight/2
+            # xip / xim is a special case because it has two observables.
+            # the other two are together below
+            if d.corr_type == XI:
+                xip = d.object.xip
+                xim = d.object.xim
+                xiperr = np.sqrt(d.object.varxip)
+                ximerr = np.sqrt(d.object.varxim)
+                n = len(xip)
+                # add all the data points to the sacc
+                for i in range(n):
+                    S.add_data_point(XIP, (tracer1,tracer2), xip[i],
+                        theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
+                    S.add_data_point(XIM, (tracer1,tracer2), xim[i],
+                        theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
+            else:
+                xi = d.object.xi
+                err = np.sqrt(d.object.varxi)
+                n = len(xi)
+                for i in range(n):
+                    S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
+                        theta=theta[i], error=err[i], weight=weight[i])
+
+        # Add the covariance.  There are several different jackknife approaches
+        # available - see the treecorr docs
+        cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
+        S.add_covariance(cov)
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
 
 
 if __name__ == '__main__':
