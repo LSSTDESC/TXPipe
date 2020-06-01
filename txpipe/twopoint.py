@@ -1543,8 +1543,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
         
         if self.config['do_shear_pos']:
             k = SHEAR_POS
+            l = SHEAR_POS_SELECT
             for i in source_list:
                 calcs.append((i,i,k))
+                calcs.append((i,i,l))
         
         if self.config['do_pos_pos']:
             if not 'random_bin' in data:
@@ -1593,40 +1595,158 @@ class TXSelfCalibrationIA(TXTwoPoint):
             ra = data['ra'][mask]
             dec = data['dec'][mask]
         
-        mu = data['mu'][mask]
-        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
-        r = ccl.background.comoving_radial_distance(cosmo, 1/(1+mu))
+        if self.config['3Dcoords']:
+            mu = data['mu'][mask]
+            cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
+            r = ccl.background.comoving_radial_distance(cosmo, 1/(1+mu))
 
 
-        if self.config['var_methods']=='jackknife':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec, r= r,
-                ra_units='degree', dec_units='degree',
-                patch_centers=patch_centers)
-        else:
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec, r=r,
-                ra_units='degree', dec_units='degree')
-
-        if 'random_bin' in data:
-            random_mask = data['random_bin']==i
-            z_rand = data['random_z'][random_mask]
-            r_rand = ccl.background.comoving_radial_distance(cosmo, 1/(1+z_rand))
             if self.config['var_methods']=='jackknife':
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    r = r_rand, ra_units='degree', dec_units='degree',
+                patch_centers = self.get_input('patch_centers')
+                cat = treecorr.Catalog(
+                    ra=ra, dec=dec, r= r,
+                    ra_units='degree', dec_units='degree',
                     patch_centers=patch_centers)
             else:
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    r = r_rand, ra_units='degree', dec_units='degree')
+                cat = treecorr.Catalog(
+                    ra=ra, dec=dec, r=r,
+                    ra_units='degree', dec_units='degree')
+
+            if 'random_bin' in data:
+                random_mask = data['random_bin']==i
+                z_rand = data['random_z'][random_mask]
+                r_rand = ccl.background.comoving_radial_distance(cosmo, 1/(1+z_rand))
+                if self.config['var_methods']=='jackknife':
+                    rancat  = treecorr.Catalog(
+                        ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                        r = r_rand, ra_units='degree', dec_units='degree',
+                        patch_centers=patch_centers)
+                else:
+                    rancat  = treecorr.Catalog(
+                        ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                        r = r_rand, ra_units='degree', dec_units='degree')
+            else:
+                rancat = None
         else:
-            rancat = None
+            if self.config['var_methods']=='jackknife':
+                patch_centers = self.get_input('patch_centers')
+                cat = treecorr.Catalog(
+                    ra=ra, dec=dec,
+                    ra_units='degree', dec_units='degree',
+                    patch_centers=patch_centers)
+            else:
+                cat = treecorr.Catalog(
+                    ra=ra, dec=dec,
+                    ra_units='degree', dec_units='degree')
+
+            if 'random_bin' in data:
+                random_mask = data['random_bin']==i
+                if self.config['var_methods']=='jackknife':
+                    rancat  = treecorr.Catalog(
+                        ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                        ra_units='degree', dec_units='degree',
+                        patch_centers=patch_centers)
+                else:
+                    rancat  = treecorr.Catalog(
+                        ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                        ra_units='degree', dec_units='degree')
+            else:
+                rancat = None
 
         return cat, rancat
 
+    def get_shear_catalog(self, data, i):
+        import treecorr
+        import pyccl as ccl
+        g1,g2,mask = self.get_m(data, i)
+        
+        if self.config['3Dcoords']:
+            mu = data['mu'][mask]
+            cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
+            r = ccl.background.comoving_radial_distance(cosmo, 1/(1+mu))
+
+            if self.config['var_methods']=='jackknife':
+                patch_centers = self.get_input('patch_centers')
+                cat = treecorr.Catalog(
+                    g1 = g1,
+                    g2 = g2,
+                    r = r,
+                    ra = data['ra'][mask],
+                    dec = data['dec'][mask],
+                    ra_units='degree', dec_units='degree',
+                    patch_centers=patch_centers)
+                    #npatch=self.config['npatch'])
+            else:
+                cat = treecorr.Catalog(
+                    g1 = g1,
+                    g2 = g2,
+                    r = r,
+                    ra = data['ra'][mask],
+                    dec = data['dec'][mask],
+                    ra_units='degree', dec_units='degree')
+        else:
+            if self.config['var_methods']=='jackknife':
+                patch_centers = self.get_input('patch_centers')
+                cat = treecorr.Catalog(
+                    g1 = g1,
+                    g2 = g2,
+                    ra = data['ra'][mask],
+                    dec = data['dec'][mask],
+                    ra_units='degree', dec_units='degree',
+                    patch_centers=patch_centers)
+                    #npatch=self.config['npatch'])
+            else:
+                cat = treecorr.Catalog(
+                    g1 = g1,
+                    g2 = g2,
+                    ra = data['ra'][mask],
+                    dec = data['dec'][mask],
+                    ra_units='degree', dec_units='degree')
+
+        return cat
+
+    def calculate_shear_pos_select(self,data, i, j):
+        import treecorr 
+
+        cat_i = self.get_shear_catalog(data, i)
+        n_i = cat_i.nobj
+
+        cat_j, rancat_j = self.get_lens_catalog(data, j)
+        n_j = cat_j.nobj
+        n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+
+        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+
+        ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+        ng.process(cat_j, cat_i)
+
+        if rancat_j:
+            rg = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+            rg.process(rancat_j, cat_i)
+        else:
+            rg = None
+
+        ng.calculateXi(rg=rg)
+
+        return ng
+
+    def call_treecorr(self, data, i, j, k):
+        import sacc 
+
+        if k==SHEAR_SHEAR:
+            xx = self.calculate_shear_shear(data, i, j)
+            xtype = "combined"
+        elif k==SHEAR_POS:
+            xx = self.calculate_shear_pos(data, i, j)
+            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
+        elif k==SHEAR_POS_SELECT:
+            xx = self.calculate_shear_pos_select(data, i, j)
+            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
+        elif k==POS_POS:
+            xx = self.calculate_pos_pos(data, i, j)
+            xtype = sacc.standard_types.galaxy_density_xi
+        else:
+            raise ValueError(f"Unknown correlation function {k}")
 
 
 if __name__ == '__main__':
