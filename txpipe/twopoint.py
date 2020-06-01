@@ -1509,6 +1509,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('patch_centers', HDFFile),
+        ('photoz_pdfs', PhotozPDFFile),
+        ('fiducial_cosmology', YamlFile),
     ]
     outputs = [
         ('twopoint_data', SACCFile),
@@ -1528,11 +1530,104 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'lens_bins':[-1],
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
+        '3Dcoords': True,
         }
 
     def run(self):
 
         super().run()
+
+    def select_calculations(self, data):
+        source_list = data['source_list']
+        calcs = []
+        
+        if self.config['do_shear_pos']:
+            k = SHEAR_POS
+            for i in source_list:
+                calcs.append((i,i,k))
+        
+        if self.config['do_pos_pos']:
+            if not 'random_bin' in data:
+                raise ValueError('You need to have a random catalog to calculate position-position correlations')
+            k = POS_POS
+            for i in source_list:
+                calcs.append((i,i,k))
+        
+        if self.rank==0:
+            print(f"Running these calculations: {calcs}")
+        
+        return calcs
+
+    def load_shear_catalog(self, data):
+
+        # Columns we need from the shear catalog
+        cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+        print(f"Loading shear catalog columns: {cat_cols}")
+
+        f = self.open_input('shear_catalog')
+        g = f['metacal']
+        for col in cat_cols:
+            print(f"Loading {col}")
+            data[col] = g[col][:]
+
+        if self.config['flip_g2']:
+            data['mcal_g2'] *= -1   
+
+        if self.config['3Dcoords']:
+            h = self.open_input('photoz_pdfs')
+            g = h['pdf']
+            data['mu'] = g['mu'][:]
+
+    def get_lens_catalog(self, data, i):
+        import treecorr
+        import pyccl as ccl
+
+        #Note that we are here actually loading the source bin as the lens bin!
+        mask = data['source_bin'] == i
+
+        
+        if 'lens_ra' in data:
+            ra = data['lens_ra'][mask]
+            dec = data['lens_dec'][mask]
+        else:
+            ra = data['ra'][mask]
+            dec = data['dec'][mask]
+        
+        mu = data['mu'][mask]
+        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
+        r = ccl.background.comoving_radial_distance(cosmo, 1/(1+mu))
+
+
+        if self.config['var_methods']=='jackknife':
+            patch_centers = self.get_input('patch_centers')
+            cat = treecorr.Catalog(
+                ra=ra, dec=dec, r= r,
+                ra_units='degree', dec_units='degree',
+                patch_centers=patch_centers)
+        else:
+            cat = treecorr.Catalog(
+                ra=ra, dec=dec, r=r,
+                ra_units='degree', dec_units='degree')
+
+        if 'random_bin' in data:
+            random_mask = data['random_bin']==i
+            z_rand = data['random_z'][random_mask]
+            r_rand = ccl.background.comoving_radial_distance(cosmo, 1/(1+z_rand))
+            if self.config['var_methods']=='jackknife':
+                rancat  = treecorr.Catalog(
+                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                    r = r_rand, ra_units='degree', dec_units='degree',
+                    patch_centers=patch_centers)
+            else:
+                rancat  = treecorr.Catalog(
+                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                    r = r_rand, ra_units='degree', dec_units='degree')
+        else:
+            rancat = None
+
+        return cat, rancat
+
+
 
 if __name__ == '__main__':
     PipelineStage.main()
