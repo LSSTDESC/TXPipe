@@ -323,8 +323,8 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(XIP, i, j)]
-                theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'L+')
-                theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'L-')
+                theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+')
+                theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-')
 
     for i in range(nbin_lens):
         print(f"Computing theory density-density ({i},{i})")
@@ -336,7 +336,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
         # Optionally also compute correlation functions
         if xi:
             theta, *_ = obs[(W, i, i)]
-            theory[W, i, i] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'GG')
+            theory[W, i, i] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
 
 
     for i in range(nbin_source):
@@ -350,7 +350,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, 'GL')
+                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
 
     return theory
 
