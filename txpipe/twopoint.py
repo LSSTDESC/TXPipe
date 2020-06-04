@@ -1505,10 +1505,12 @@ class TXSelfCalibrationIA(TXTwoPoint):
     name = 'TXSCIA'
     inputs = [
         ('shear_catalog', MetacalCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('patch_centers', HDFFile),
+        ('patch_centers', TextFile),
         ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', YamlFile),
     ]
