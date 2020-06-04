@@ -1534,7 +1534,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'do_pos_pos': True,
         'var_methods': 'jackknife',
         '3Dcoords': True,
-        'metric': Rperp
+        'metric': 'Rperp'
         }
 
     def run(self):
