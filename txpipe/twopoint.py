@@ -1531,6 +1531,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'source_bins':[-1],
         'lens_bins':[-1],
         'reduce_randoms_size':1.0,
+        'do_shear_pos': True,
         'var_methods': 'jackknife',
         '3Dcoords': True,
         }
