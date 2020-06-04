@@ -1618,7 +1618,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import pyccl as ccl
 
         #Note that we are here actually loading the source bin as the lens bin!
-        mask = data['source_bin'] == i
+        #mask = data['source_bin'] == i
+        g1,g2,mask = self.get_m(data, i)
 
         
         if 'lens_ra' in data:
