@@ -1584,6 +1584,35 @@ class TXSelfCalibrationIA(TXTwoPoint):
             g = h['pdf']
             data['mu'] = g['mu'][:]
 
+    def load_random_catalog(self, data):
+        filename = self.get_input('random_cats')
+        if filename is None:
+            print("Not using randoms")
+            return
+
+        # Columns we need from the tomography catalog
+        randoms_cols = ['dec','e1','e2','ra','bin','z']
+        print(f"Loading random catalog columns: {randoms_cols}")
+
+        f = self.open_input('random_cats')
+        group = f['randoms']
+
+        cut = self.config['reduce_randoms_size']
+        if 0.0<cut<1.0:
+            N = group['dec'].size
+            sel = np.random.uniform(size=N) < cut
+        else:
+            sel = slice(None)
+
+        data['random_ra'] =  group['ra'][sel]
+        data['random_dec'] = group['dec'][sel]
+        data['random_e1'] =  group['e1'][sel]
+        data['random_e2'] =  group['e2'][sel]
+        data['random_bin'] = group['bin'][sel]
+        data['random_z'] = group['z'][sel]
+
+        f.close()
+
     def get_lens_catalog(self, data, i):
         import treecorr
         import pyccl as ccl
