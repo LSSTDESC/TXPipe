@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import MetacalCatalog, HDFFile
 from .utils.metacal import metacal_band_variants, metacal_variants
+
 import numpy as np
 import glob
 import re
@@ -169,6 +170,7 @@ class TXIngestStars(PipelineStage):
         import GCRCatalogs
         import GCR
         import h5py
+        from .utils.hdf_tools import repack
 
         cat_name = self.config['cat_name']
         cat = GCRCatalogs.load_catalog(cat_name)
@@ -251,6 +253,8 @@ class TXIngestStars(PipelineStage):
 
         star_output.close()
 
+        # Run h5repack on the file
+        repack(self.get_output('star_catalog'))
 
 
     def setup_output(self, name, group, cat, cols, n):
