@@ -15,7 +15,7 @@ Measurement = collections.namedtuple(
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
-
+SHEAR_POS_SELECT = 3
 
 
 class TXTwoPoint(PipelineStage):
