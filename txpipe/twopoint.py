@@ -1524,7 +1524,6 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'max_sep':250.,
         'nbins':20,
         'bin_slop':0.1,
-        'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
         'verbose':1,
