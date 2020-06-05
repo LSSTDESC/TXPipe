@@ -184,7 +184,7 @@ class TXRandomCat_source(PipelineStage):
         depth = maps_file['maps/depth/value'][:]
         nside = maps_file['maps/depth'].attrs['nside']
         pixelization = maps_file['maps/depth'].attrs['pixelization']
-        pz_stack = self.open_input('source_photoz_stack')
+        pz_stack = self.open_input('shear_photoz_stack')
 
         # Cut down to pixels that have any objects in
         hit = depth>0
