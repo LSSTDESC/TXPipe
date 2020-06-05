@@ -22,4 +22,4 @@ cache: pip
 
 script:
   - ceci examples/laptop_pipeline.yml
-  - test -f data/example/outputs/shear_xi.png
+  - test -f data/example/outputs/shear_xi_plus.png
