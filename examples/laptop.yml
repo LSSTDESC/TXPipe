@@ -11,10 +11,10 @@ stages:
     - name: TXJackknifeCenters
     - name: TXTwoPoint
       threads_per_process: 2
-    - name: TXBlinding
-      threads_per_process: 2
-    - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+#    - name: TXBlinding
+#      threads_per_process: 2
+#    - name: TXTwoPointPlots
+#    - name: TXDiagnosticPlots
 #    - name: TXGammaTFieldCenters
 #      threads_per_process: 2
 #    - name: TXGammaTBrightStars
@@ -25,7 +25,7 @@ stages:
 #      threads_per_process: 2
     - name: TXSCIA
       threads_per_process: 2
-    - name: TXRealGaussianCovariance
+#    - name: TXRealGaussianCovariance
     - name: TXPSFDiagnostics
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance

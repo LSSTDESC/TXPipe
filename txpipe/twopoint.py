@@ -1594,7 +1594,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         randoms_cols = ['dec','e1','e2','ra','bin','z']
         print(f"Loading random catalog columns: {randoms_cols}")
 
-        f = self.open_input('random_cats')
+        f = self.open_input('random_cats_source')
         group = f['randoms']
 
         cut = self.config['reduce_randoms_size']
