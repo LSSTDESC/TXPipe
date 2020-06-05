@@ -20,8 +20,9 @@ class PipelineStage(PipelineStageBase):
             provenance[f"config/{key}"] = str(value)
 
         for name, tag_cls in self.inputs:
+            f = self.open_input(name, wrapper=True)
             try:
-                f = self.open_input(name, wrapper=True)
+                #f = self.open_input(name, wrapper=True)
                 input_id = f.provenance['uuid']
                 provenance[f"input/{name}"] = input_id
             except (OSError, IOError, KeyError):

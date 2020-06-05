@@ -15,7 +15,8 @@ class TXNoiseMaps(PipelineStage):
     
     inputs = [
         ('shear_catalog', HDFFile),
-        ('tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('shear_tomography_catalog', TomographyCatalog),
         # We get the pixelization info from the diagnostic maps
         ('diagnostic_maps', DiagnosticMaps),
     ]
@@ -42,14 +43,15 @@ class TXNoiseMaps(PipelineStage):
 
         # The columns we will need
         shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
-        bin_cols = ['source_bin', 'lens_bin']
-
+        bin_cols_shear = ['source_bin']
+        bin_cols_lens = ['lens_bin']
         # Make the iterators
         chunk_rows = self.config['chunk_rows']
         shear_it = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
-        bin_it = (d[2] for d in bin_it)
-
+        bin_it_shear = self.iterate_hdf('shear_tomography_catalog','tomography', bin_cols_shear, chunk_rows)
+        bin_it_shear = (d[2] for d in bin_it_shear)
+        bin_it_lens = self.iterate_hdf('lens_tomography_catalog', 'tomography', bin_cols_lens, chunk_rows)
+        bin_it_lens = (d[2] for d in bin_it_lens)
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
         # here, but I'm not sure how to do that best with our
@@ -79,33 +81,32 @@ class TXNoiseMaps(PipelineStage):
         # TODO: Clustering weights go here
 
 
-
         # Loop through the data
-        for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
+        for (s, e, shear_data), bin_data_shear, bin_data_lens in zip(shear_it, bin_it_shear, bin_it_lens):
             print(f"Rank {self.rank} processing rows {s} - {e}")
-            source_bin = bin_data['source_bin']
-            lens_bin = bin_data['lens_bin']
+            source_bin = bin_data_shear['source_bin']
+            lens_bin = bin_data_lens['lens_bin']
             ra = shear_data['ra']
             dec = shear_data['dec']
             orig_pixels = pixel_scheme.ang2pix(ra, dec)
             pixels = index_map[orig_pixels]
-            n = e - s
-
+            ns = len(source_bin)
+            nl = len(lens_bin)
             w = shear_data['weight']
             g1 = shear_data['mcal_g1'] * w
             g2 = shear_data['mcal_g2'] * w
 
             # randomly select a half for each object
-            split = np.random.binomial(1, 0.5, (n, clustering_realizations))
+            split = np.random.binomial(1, 0.5, (nl, clustering_realizations))
 
             # random rotations of the g1, g2 values
-            phi = np.random.uniform(0, 2*np.pi, (n, lensing_realizations))
+            phi = np.random.uniform(0, 2*np.pi, (ns, lensing_realizations))
             c = np.cos(phi)
             s = np.sin(phi)
             g1r =  c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
             g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
 
-            for i in range(n):
+            for i in range(ns):
                 # convert to the index in the partial space
                 pix = pixels[i]
 
@@ -113,18 +114,22 @@ class TXNoiseMaps(PipelineStage):
                     continue
 
                 sb = source_bin[i]
-                lb = lens_bin[i]
                 # build up the rotated map for each bin
                 if sb >= 0:
                     G1[pix, sb, :] += g1r[i]
                     G2[pix, sb, :] += g2r[i]
                     GW[pix, sb] += w[i]
-                # Build up the ngal for the random half for each bin
+            
+            # Build up the ngal for the random half for each bin
+            # TODO add to clustering weight too
+            for i in range(nl):
+                pix = pixels[i]
+                if pix < 0:
+                    continue
+                lb = lens_bin[i]
                 for j in range(clustering_realizations):
                     if lb >= 0:
                         ngal_split[pix, lb, j, split[i]] += 1
-                    # TODO add to clustering weight too
-
 
         # Sum everything at root
         if self.comm is not None:
