@@ -15,14 +15,14 @@ stages:
       threads_per_process: 2
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-    - name: TXGammaTFieldCenters
-      threads_per_process: 2
-    - name: TXGammaTBrightStars
-      threads_per_process: 2
-    - name: TXGammaTDimStars
-      threads_per_process: 2
-    - name: TXRoweStatistics
-      threads_per_process: 2
+#    - name: TXGammaTFieldCenters
+#      threads_per_process: 2
+#    - name: TXGammaTBrightStars
+#      threads_per_process: 2
+#    - name: TXGammaTDimStars
+#      threads_per_process: 2
+#    - name: TXRoweStatistics
+#      threads_per_process: 2
     - name: TXSCIA
       threads_per_process: 2
     - name: TXRealGaussianCovariance
