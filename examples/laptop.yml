@@ -7,6 +7,7 @@ stages:
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
+    - name: TXRandomCat_source
     - name: TXJackknifeCenters
     - name: TXTwoPoint
       threads_per_process: 2

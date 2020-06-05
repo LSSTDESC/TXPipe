@@ -1509,7 +1509,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
         ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
+        ('random_cats_source', RandomsCatalog),
         ('patch_centers', TextFile),
         ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', YamlFile),
@@ -1585,7 +1585,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             data['mu'] = g['mu'][:]
 
     def load_random_catalog(self, data):
-        filename = self.get_input('random_cats')
+        filename = self.get_input('random_cats_source')
         if filename is None:
             print("Not using randoms")
             return
