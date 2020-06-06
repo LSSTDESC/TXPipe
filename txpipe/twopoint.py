@@ -1782,6 +1782,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
+        result = Measurement(xtype, xx, i, j)
+
+        sys.stdout.flush()
+        return result
+
     def write_output(self, data, meta, results):
         import sacc
         import treecorr
