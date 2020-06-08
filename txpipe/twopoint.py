@@ -1810,12 +1810,12 @@ class TXSelfCalibrationIA(TXTwoPoint):
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
 
-        f = self.open_input('lens_photoz_stack')
+        # f = self.open_input('lens_photoz_stack')
         # For both source and lens
-        for i in data['lens_list']:
-            z = f['n_of_z/lens/z'][:]
-            Nz = f[f'n_of_z/lens/bin_{i}'][:]
-            S.add_tracer('NZ', f'lens_{i}', z, Nz)
+        # for i in data['lens_list']:
+        #    z = f['n_of_z/lens/z'][:]
+        #    Nz = f[f'n_of_z/lens/bin_{i}'][:]
+        #    S.add_tracer('NZ', f'lens_{i}', z, Nz)
         # Closing n(z) file
         f.close()
 
@@ -1824,8 +1824,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         comb = []
         for d in results:
             # First the tracers and generic tags
-            tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT,GAMMATS] else f'lens_{d.i}'
-            tracer2 = f'source_{d.j}' if d.corr_type in [XI, GAMMAT, GAMMATS] else f'lens_{d.j}'
+            tracer1 = f'source_{d.i}' #if d.corr_type in [XI, GAMMAT,GAMMATS, ] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' #if d.corr_type in [XI, GAMMAT, GAMMATS] else f'lens_{d.j}'
 
             # We build up the comb list to get the covariance of it later
             # in the same order as our data points
