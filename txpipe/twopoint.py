@@ -1515,7 +1515,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('fiducial_cosmology', YamlFile),
     ]
     outputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_SCIA', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -1871,7 +1871,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
+        S.save_fits(self.get_output('twopoint_data_SCIA'), overwrite=True)
 
 
 if __name__ == '__main__':
