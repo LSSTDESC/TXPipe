@@ -51,6 +51,7 @@ class TXIngestRedmagic(PipelineStage):
 
 
 
+
         g = cat.create_group('lens')
         g.create_dataset('ra', (n,), dtype=np.float64)
         g.create_dataset('dec', (n,), dtype=np.float64)
@@ -63,6 +64,11 @@ class TXIngestRedmagic(PipelineStage):
         h = tomo.create_group('tomography')
         h.create_dataset('lens_bin', (n,), dtype=np.int32)
         h.create_dataset('lens_counts', (nbin_lens,), dtype='i')
+        h.attrs['nbin_lens'] = nbin_lens
+        h.attrs[f'lens_zbin_edges'] = zbin_edges
+
+
+
         counts = np.zeros(nbin_lens, dtype=np.int64)
 
         cols = ['ra', 'dec', 'zredmagic', 'mag', 'mag_err', 'chisq']
@@ -125,6 +131,8 @@ class TXIngestRedmagic(PipelineStage):
         for b in range(nbin_lens):
             k.attrs[f"count_{b}"] = counts[b]
             k.create_dataset(f"bin_{b}", data=nz_grid[b])
+
+        stack.close()
 
         # write out photo-z stack
 
