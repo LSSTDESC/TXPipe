@@ -3,11 +3,13 @@
 stages:
     - name: TXSourceSelector
     - name: PZPDFMLZ
-    - name: TXPhotozSourceStack
+    # - name: TXPhotozSourceStack
+    - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
     - name: TXDiagnosticMaps
     - name: TXRandomCat
     - name: TXJackknifeCenters
+    - name: TXPhotozPlots
     - name: TXTwoPointLensCat
       threads_per_process: 2
     - name: TXBlinding
@@ -15,7 +17,7 @@ stages:
     - name: TXTwoPointPlots
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example/outputs_redmagic
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:

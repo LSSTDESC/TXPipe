@@ -16,7 +16,7 @@ TXCosmoDC2Mock:
     flip_g2: True # to match metacal
 
 TXIngestRedmagic:
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.1, 0.3, 0.5]
 
 
 PZPDFMLZ:
@@ -25,6 +25,12 @@ PZPDFMLZ:
     chunk_rows: 100000
 
 TXPhotozStack:
+    chunk_rows: 100000
+
+# Mock version of stacking:
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
     chunk_rows: 100000
 
 # Mock version of stacking:
@@ -46,7 +52,7 @@ TXSourceSelector:
 TXTruthLensSelector:
     # Mag cuts
     chunk_rows: 100000
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.1, 0.3, 0.5]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0

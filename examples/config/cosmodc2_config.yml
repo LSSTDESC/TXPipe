@@ -18,6 +18,10 @@ TXCosmoDC2Mock:
 TXIngestRedmagic:
     lens_zbin_edges: [0.0,0.2,0.4]
 
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+    chunk_rows: 100000
 
 
 PZPDFMLZ:
