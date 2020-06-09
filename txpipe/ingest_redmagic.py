@@ -37,7 +37,7 @@ class TXIngestRedmagic(PipelineStage):
         # mag is hopefully grizy
         bands = self.config['bands']
         zbin_edges = self.config['lens_zbin_edges']
-        nbin_lens = len(zbin_edges)
+        nbin_lens = len(zbin_edges) - 1
 
         cat = self.open_output('lens_catalog')
         tomo = self.open_output('lens_tomography_catalog')

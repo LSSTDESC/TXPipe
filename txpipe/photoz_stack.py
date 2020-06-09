@@ -22,6 +22,7 @@ class Stack:
         self.name = name
         self.z = z
         self.nbin = nbin
+        self.nz = z.size
         self.stack = np.zeros((nbin, z.size))
         self.counts = np.zeros(nbin)
 
@@ -59,7 +60,7 @@ class Stack:
             w = np.where(bins==b)
             stack_bin_b = stack_bin[w]
             for i in stack_bin_b:
-                if 0 <= i < self.nbin:
+                if 0 <= i < self.nz:
                     self.stack[b][i] += 1
                     self.counts[b] += 1
 
