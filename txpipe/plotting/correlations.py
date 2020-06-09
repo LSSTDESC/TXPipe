@@ -1,6 +1,4 @@
 import numpy as np
-import sacc
-import matplotlib.pyplot as plt
 import copy
 
 W = "galaxy_density_xi"
@@ -23,6 +21,7 @@ types = {
 
 
 def make_axis(i, j, nx, ny, axes):
+    import matplotlib.pyplot as plt
     if i==0 and j==0:
         shares = {}
     elif j==0:
@@ -72,6 +71,7 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 def full_3x2pt_plots(sacc_files, labels, 
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
                      xi=None, fit_bias=False, figures=None):
+    import sacc
     sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
@@ -105,11 +105,12 @@ def full_3x2pt_plots(sacc_files, labels,
     else:
         theory_data = []
 
-    for t in types:
-        f = figures.get(t)
 
     if figures is None:
         figures = {}
+
+    for t in types:
+        f = figures.get(t)
 
     output_figures = {}
     for t in types:
@@ -121,6 +122,7 @@ def full_3x2pt_plots(sacc_files, labels,
     
 
 def axis_setup(a, i, j, ny, ymin, ymax, name):
+    import matplotlib.pyplot as plt
     if j>0:
         plt.setp(a.get_yticklabels(), visible=False)
     else:
@@ -145,6 +147,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
 
 
 def make_plot(corr, obs_data, theory_data, fig=None):
+    import matplotlib.pyplot as plt
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
 
