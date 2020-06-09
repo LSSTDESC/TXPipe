@@ -43,7 +43,7 @@ stages:
     #   nodes: 1
     #   threads_per_process: 1
 
-output_dir: data/cosmodc2/outputs
+output_dir: data/cosmodc2/outputs_redmagic
 config: examples/config/cosmodc2_config.yml
 
 # On NERSC, set this before running:
@@ -58,10 +58,10 @@ inputs:
     photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
-    redmagic_catalog: data/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
+    redmagic_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
 
 
 resume: True
-log_dir: data/cosmodc2/logs
+log_dir: data/cosmodc2/logs_redmagic
 pipeline_log: data/cosmodc2/log.txt
 
