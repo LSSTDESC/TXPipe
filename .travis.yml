@@ -23,3 +23,5 @@ cache: pip
 script:
   - ceci examples/laptop_pipeline.yml
   - test -f data/example/outputs/shear_xi_plus.png
+  - ceci examples/laptop_redmagic_pipeline.yml
+  - test -f data/example/outputs_redmagic/shear_xi_plus.png
