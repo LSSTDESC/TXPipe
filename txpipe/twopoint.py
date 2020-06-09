@@ -630,7 +630,11 @@ class TXTwoPointLensCat(TXTwoPoint):
         f = self.open_input('lens_catalog')
         data['lens_ra']  = f['lens/ra'][:]
         data['lens_dec'] = f['lens/dec'][:]
-        data['lens_bin'] = f['lens/bin'][:]
+        f.close()
+
+        f = self.open_input('lens_tomography_catalog')
+        data['lens_bin'] = f['tomography/lens_bin'][:] 
+        f.close()
 
 
 class TXTwoPointPlots(PipelineStage):
