@@ -45,7 +45,7 @@ class TXDiagnosticPlots(PipelineStage):
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
         
-        plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_') and 'histogram' not in f]
+        plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
 
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
