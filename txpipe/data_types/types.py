@@ -27,22 +27,6 @@ class ShearCatalog(HDFFile):
         shear_catalog_type = info.get('catalog_type')
         return shear_catalog_type
 
-    def validate(self):
-        
-        shear_catalog_type = self.read_catalog_info()
-        
-        if shear_catalog_type=='metacal':
-            required_datasets_mcal = ['shear/mcal_g1', 'shear/mcal_g1_1p', 
-        'shear/mcal_g2', 'shear/mcal_flags', 'shear/ra',
-        'shear/mcal_T']
-        elif shear_catalog_type=='lensfit':
-            required_datasets_lensfit = ['shear/g1', 
-        'shear/g2', 'shear/flags', 'shear/ra',
-        'shear/T']
-        else:
-            raise ValueError(f"Unrecognized shear catalog type {shear_catalog_type}")
-        super().validate()
-
 
 class TomographyCatalog(HDFFile):
     required_datasets = []
