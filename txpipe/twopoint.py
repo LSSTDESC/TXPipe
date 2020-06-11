@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile
-from .utils.calibration_tools import apply_lensfit_calibration, apply_metacal_response
+from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
 import numpy as np
 import random
 import collections
@@ -10,7 +10,7 @@ import sys
 # for holding individual measurements
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'theta', 'value', 'error', 'npair', 'weight', 'i', 'j'])
+    ['corr_type', 'object', 'i', 'j'])
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
@@ -22,20 +22,23 @@ class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
         ('shear_catalog', ShearCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
+        ('patch_centers', TextFile),
     ]
     outputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_real_raw', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        'calcs':[0,1,2,3,4],
-        'min_sep':0.713,
-        'max_sep':210.27,
-        'nbins':9,
-        'bin_slop':0,
+        'calcs':[0,1,2],
+        'min_sep':2.5,
+        'max_sep':250.,
+        'nbins':20,
+        'bin_slop':0.1,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -46,7 +49,8 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'shear_catalog_type': 'lensfit'
+        'shear_catalog_type': 'lensfit',
+        'var_methods': 'jackknife',
         }
 
     def run(self):
@@ -76,14 +80,15 @@ class TXTwoPoint(PipelineStage):
         calcs = self.select_calculations(data)
 
         sys.stdout.flush()
-        
+
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment,
         # but for this case I would expect it to be mostly fine
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
-            results += self.call_treecorr(data, i, j, k)
+            result = self.call_treecorr(data, i, j, k)
+            results.append(result)
 
         # If we are running in parallel this collects the results together
         results = self.collect_results(results)
@@ -163,16 +168,16 @@ class TXTwoPoint(PipelineStage):
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        tomo = self.open_input('tomography_catalog')
+        tomo = self.open_input('shear_tomography_catalog')
         d = dict(tomo['tomography'].attrs)
         tomo.close()
         nbin_source = d['nbin_source']
-        if self.config['do_pos_pos']:
-            nbin_lens = d['nbin_lens']
-            lens_list = range(nbin_lens)
-        else:
-            lens_list = None
+        tomo = self.open_input('lens_tomography_catalog')
+        d = dict(tomo['tomography'].attrs)
+        tomo.close()
+        nbin_lens = d['nbin_lens']
         source_list = range(nbin_source)
+        lens_list = range(nbin_lens)
         return source_list, lens_list
 
     def _read_nbin_from_config(self):
@@ -218,15 +223,18 @@ class TXTwoPoint(PipelineStage):
 
     def write_output(self, data, meta, results):
         import sacc
+        import treecorr
+        XI = "combined"
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
@@ -235,6 +243,7 @@ class TXTwoPoint(PipelineStage):
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
 
+        f = self.open_input('lens_photoz_stack')
         # For both source and lens
         if self.config['do_pos_pos']:
             for i in data['lens_list']:
@@ -244,26 +253,59 @@ class TXTwoPoint(PipelineStage):
         # Closing n(z) file
         f.close()
 
-        # Add the data points that we have one by one, recording which
-        # tracer they each require
+        # Now build up the collection of data points, adding them all to
+        # the sacc data one by one.
+        comb = []
         for d in results:
-            tracer1 = f'source_{d.i}' if d.corr_type in [XIP, XIM, GAMMAT] else f'lens_{d.i}'
-            tracer2 = f'source_{d.j}' if d.corr_type in [XIP, XIM] else f'lens_{d.j}'
-            # Each of our Measurement objects contains various theta values,
-            # and we loop through and add them all
-            n = len(d.value)
-            for i in range(n):
-                S.add_data_point(d.corr_type, (tracer1,tracer2), d.value[i],
-                    theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+            # First the tracers and generic tags
+            tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'
 
-        #self.write_metadata(S, meta)
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
+            comb.append(d.object)
+
+            theta = np.exp(d.object.meanlogr)
+            npair = d.object.npairs
+            weight = d.object.weight
+
+            # account for double-counting
+            if d.i == d.j:
+                npair = npair/2
+                weight = weight/2
+            # xip / xim is a special case because it has two observables.
+            # the other two are together below
+            if d.corr_type == XI:
+                xip = d.object.xip
+                xim = d.object.xim
+                xiperr = np.sqrt(d.object.varxip)
+                ximerr = np.sqrt(d.object.varxim)
+                n = len(xip)
+                # add all the data points to the sacc
+                for i in range(n):
+                    S.add_data_point(XIP, (tracer1,tracer2), xip[i],
+                        theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
+                    S.add_data_point(XIM, (tracer1,tracer2), xim[i],
+                        theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
+            else:
+                xi = d.object.xi
+                err = np.sqrt(d.object.varxi)
+                n = len(xi)
+                for i in range(n):
+                    S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
+                        theta=theta[i], error=err[i], weight=weight[i])
+
+        # Add the covariance.  There are several different jackknife approaches
+        # available - see the treecorr docs
+        cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
+        S.add_covariance(cov)
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data'), overwrite=True)
+        S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
@@ -277,7 +319,9 @@ class TXTwoPoint(PipelineStage):
         # Add provenance metadata.  In managed formats this is done
         # automatically, but because the Sacc library is external
         # we do it manually here.
-        for key, value in self.gather_provenance().items():
+        provenance = self.gather_provenance()
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
             if isinstance(value, str) and '\n' in value:
                 values = value.split("\n")
                 for i,v in enumerate(values):
@@ -291,39 +335,24 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
-        XIP = sacc.standard_types.galaxy_shear_xi_plus
-        XIM = sacc.standard_types.galaxy_shear_xi_minus
-        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
-        WTHETA = sacc.standard_types.galaxy_density_xi
 
-        results = []
 
         if k==SHEAR_SHEAR:
-            theta, xip, xim, xiperr, ximerr, npairs, weight = self.calculate_shear_shear(data, i, j)
-            if i==j:
-                npairs/=2
-                weight/=2
-
-            results.append(Measurement(XIP, theta, xip, xiperr, npairs, weight, i, j))
-            results.append(Measurement(XIM, theta, xim, ximerr, npairs, weight, i, j))
-
+            xx = self.calculate_shear_shear(data, i, j)
+            xtype = "combined"
         elif k==SHEAR_POS:
-            theta, val, err, npairs, weight = self.calculate_shear_pos(data, i, j)
-            if i==j:
-                npairs/=2
-                weight/=2
-
-            results.append(Measurement(GAMMAT, theta, val, err, npairs, weight, i, j))
-
+            xx = self.calculate_shear_pos(data, i, j)
+            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            theta, val, err, npairs, weight = self.calculate_pos_pos(data, i, j)
-            if i==j:
-                npairs/=2
-                weight/=2
+            xx = self.calculate_pos_pos(data, i, j)
+            xtype = sacc.standard_types.galaxy_density_xi
+        else:
+            raise ValueError(f"Unknown correlation function {k}")
 
-            results.append(Measurement(WTHETA, theta, val, err, npairs, weight, i, j))
+        result = Measurement(xtype, xx, i, j)
+
         sys.stdout.flush()
-        return results
+        return result
 
 
     def get_m(self, data, i):
@@ -340,8 +369,8 @@ class TXTwoPoint(PipelineStage):
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['lensfit_weight'][mask])
-            return g1, g2, weight, one_plus_K, mask
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['lensfit_weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
+            return g1, g2, mask
 
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
@@ -350,8 +379,9 @@ class TXTwoPoint(PipelineStage):
     def get_shear_catalog(self, data, i):
         import treecorr
 
-        if self.config['shear_catalog_type']=='metacal':
-            g1,g2,mask = self.get_m(data, i)
+        g1,g2,mask = self.get_m(data, i)
+        if self.config['var_methods']=='jackknife':
+            patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -359,17 +389,16 @@ class TXTwoPoint(PipelineStage):
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
         elif self.config['shear_catalog_type']=='lensfit':
-            g1,g2,weight,one_plus_K,mask = self.get_m(data, i)
+            g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
-                w = weight,
+                w = data['lensfit_weight'][mask],
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-
         return cat
 
 
@@ -386,15 +415,28 @@ class TXTwoPoint(PipelineStage):
             ra = data['ra'][mask]
             dec = data['dec'][mask]
 
-        cat = treecorr.Catalog(
-            ra=ra, dec=dec,
-            ra_units='degree', dec_units='degree')
+        if self.config['var_methods']=='jackknife':
+            patch_centers = self.get_input('patch_centers')
+            cat = treecorr.Catalog(
+                ra=ra, dec=dec,
+                ra_units='degree', dec_units='degree',
+                patch_centers=patch_centers)
+        else:
+            cat = treecorr.Catalog(
+                ra=ra, dec=dec,
+                ra_units='degree', dec_units='degree')
 
         if 'random_bin' in data:
             random_mask = data['random_bin']==i
-            rancat  = treecorr.Catalog(
-                ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                ra_units='degree', dec_units='degree')
+            if self.config['var_methods']=='jackknife':
+                rancat  = treecorr.Catalog(
+                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                    ra_units='degree', dec_units='degree',
+                    patch_centers=patch_centers)
+            else:
+                rancat  = treecorr.Catalog(
+                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
+                    ra_units='degree', dec_units='degree')
         else:
             rancat = None
 
@@ -421,13 +463,7 @@ class TXTwoPoint(PipelineStage):
         gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i, cat_j)
 
-        theta=np.exp(gg.meanlogr)
-        xip = gg.xip
-        xim = gg.xim
-        xiperr = np.sqrt(gg.varxip)
-        ximerr = np.sqrt(gg.varxim)
-
-        return theta, xip, xim, xiperr, ximerr, gg.npairs, gg.weight
+        return gg
 
     def calculate_shear_pos(self,data, i, j):
         import treecorr
@@ -450,12 +486,9 @@ class TXTwoPoint(PipelineStage):
         else:
             rg = None
 
-        gammat, gammat_im, gammaterr = ng.calculateXi(rg=rg)
+        ng.calculateXi(rg=rg)
 
-        theta = np.exp(ng.meanlogr)
-        gammaterr = np.sqrt(gammaterr)
-
-        return theta, gammat, gammaterr, ng.npairs, ng.weight
+        return ng
 
 
     def calculate_pos_pos(self, data, i, j):
@@ -489,29 +522,25 @@ class TXTwoPoint(PipelineStage):
         rn.process(rancat_i, cat_j)
         rr.process(rancat_i, rancat_j)
 
-        theta=np.exp(nn.meanlogr)
-        wtheta,wthetaerr=nn.calculateXi(rr, dr=nr, rd=rn)
-        wthetaerr=np.sqrt(wthetaerr)
-
-        return theta, wtheta, wthetaerr, nn.npairs, nn.weight
+        nn.calculateXi(rr, dr=nr, rd=rn)
+        return nn
 
     def load_tomography(self, data):
 
         # Columns we need from the tomography catalog
-        f = self.open_input('tomography_catalog')
-        if self.config['do_pos_pos']:
-            lens_bin = f['tomography/lens_bin'][:]
+        f = self.open_input('shear_tomography_catalog')
         source_bin = f['tomography/source_bin'][:]
+        r_total = f['response/R'][:]
         f.close()
 
-        f = self.open_input('tomography_catalog')
-        r_total = f['multiplicative_bias/R_total'][:]
+        f = self.open_input('lens_tomography_catalog')
+        lens_bin = f['tomography/lens_bin'][:]
         f.close()
 
         data['source_bin']  =  source_bin
         if self.config['do_pos_pos']:
             data['lens_bin']  =  lens_bin
-        data['R_total']  =  r_total
+        data['R']  =  r_total
 
     def load_lens_catalog(self, data):
         # Subclasses can load an external lens catalog
@@ -526,7 +555,7 @@ class TXTwoPoint(PipelineStage):
         if self.config['shear_catalog_type']=='metacal':
             cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
         else:
-            cat_cols = ['ra', 'dec', 'g1', 'g2', 'lensfit_weight','flags']
+            cat_cols = ['ra', 'dec', 'g1', 'g2', 'lensfit_weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
@@ -580,18 +609,15 @@ class TXTwoPoint(PipelineStage):
         return area
 
     def calculate_metadata(self, data):
-        tomo = self.open_input('tomography_catalog')
+        tomo = self.open_input('shear_tomography_catalog')
         area = self.calculate_area(data)
         sigma_e = tomo['tomography/sigma_e'][:]
         N_eff = tomo['tomography/N_eff'][:]
-        
+
         mean_g1_list = []
         mean_g2_list = []
         for i in data['source_list']:
-            if self.config['shear_catalog_type']=='metacal':
-                g1, g2, mask = self.get_m(data, i)
-            elif self.config['shear_catalog_type']=='lensfit':
-                g1, g2, weight, one_plus_K, mask = self.get_m(data, i)
+            g1, g2, mask = self.get_m(data, i)
             mean_g1 = g1.mean()
             mean_g2 = g2.mean()
             mean_g1_list.append(mean_g1)
@@ -615,10 +641,13 @@ class TXTwoPointLensCat(TXTwoPoint):
     name='TXTwoPointLensCat'
     inputs = [
         ('shear_catalog', ShearCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('lens_catalog', HDFFile),
+        ('patch_centers', TextFile),
     ]
     def load_lens_catalog(self, data):
         filename = self.get_input('lens_catalog')
@@ -637,19 +666,23 @@ class TXTwoPointPlots(PipelineStage):
     """
     name='TXTwoPointPlots'
     inputs = [
-        ('twopoint_data', SACCFile),
+        ('twopoint_data_real', SACCFile),
     ]
     outputs = [
         ('shear_xi', PNGFile),
+        ('shear_xi_err', PNGFile),
         ('shearDensity_xi', PNGFile),
+        ('shearDensity_xi_err', PNGFile),
         ('density_xi', PNGFile),
+        ('density_xi_err', PNGFile),
     ]
 
     config_options = {
         'do_shear_shear': True,
         'do_shear_pos': False,
         'do_pos_pos': False,
-
+        'wspace': 0.1,
+        'hspace': 0.1,
     }
 
 
@@ -663,7 +696,7 @@ class TXTwoPointPlots(PipelineStage):
         gammat = sacc.standard_types.galaxy_shearDensity_xi_t
         wtheta = sacc.standard_types.galaxy_density_xi
 
-        filename = self.get_input('twopoint_data')
+        filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
 
         sources, lenses = self.read_nbin(s)
@@ -675,8 +708,12 @@ class TXTwoPointPlots(PipelineStage):
             self.plot_shear_density(s, sources, lenses)
         if self.config['do_pos_pos']:
             self.plot_density_density(s, lenses)
+        self.colors = ['steelblue', 'orange']
+        self.plot_shear_shear(s, sources)
+        self.plot_shear_density(s, sources, lenses)
+        self.plot_density_density(s, lenses)
 
-
+        
     def read_nbin(self, s):
         import sacc
 
@@ -698,7 +735,44 @@ class TXTwoPointPlots(PipelineStage):
 
         return sources, lenses
 
+    
+    def get_theta_xi_err(self, D):
+        """
+        For a given datapoint D, returns theta, xi, err,
+        after masking for positive errorbars
+        (sometimes there are NaNs).
+        """
+        theta = np.array([d.get_tag('theta') for d in D])
+        xi    = np.array([d.value for d in D])
+        err   = np.array([d.get_tag('error') for d  in D])
+        w = err>0
+        theta = theta[w]
+        xi = xi[w]
+        err = err[w]
 
+        return theta, xi, err
+
+
+    def get_theta_xi_err_jk(self, s, dt, src1, src2):
+        """
+        In this case we want to get the JK errorbars,
+        which are stored in the covariance, so we want to
+        load a particular covariance block, given a dataype dt.
+        Returns theta, xi, err,
+        after masking for positive errorbars
+        (sometimes there are NaNs).
+        """
+        theta_jk, xi_jk, cov_jk = s.get_theta_xi(dt, src1, src2, return_cov = True)
+        err_jk = np.sqrt(np.diag(cov_jk))
+        w_jk = err_jk>0
+        theta_jk = theta_jk[w_jk]
+        xi_jk = xi_jk[w_jk]
+        err_jk = err_jk[w_jk]
+        
+        return theta_jk, xi_jk, err_jk
+
+
+    
     def plot_shear_shear(self, s, sources):
         import sacc
         import matplotlib.pyplot as plt
@@ -707,7 +781,6 @@ class TXTwoPointPlots(PipelineStage):
         xim = sacc.standard_types.galaxy_shear_xi_minus
         nsource = len(sources)
 
-        xi_plot = self.open_output('shear_xi', wrapper=True, figsize=(nsource*3,(nsource)*2))
 
         theta = s.get_tag('theta', xip)
         tmin = np.min(theta)
@@ -744,33 +817,70 @@ class TXTwoPointPlots(PipelineStage):
                     if dt==xim:
                         if j>0:
                             ax.set_xticklabels([])
+        plots = ['xi', 'xi_err']
+
+        for plot in plots:
+            plot_output = self.open_output(f'shear_{plot}', wrapper=True, figsize=(2.5*nsource,2*nsource))
+
+            for dt in [xip, xim]:
+                for i,src1 in enumerate(sources[:]):
+                    for j,src2 in enumerate(sources[:]):
+                        D = s.get_data_points(dt, (src1,src2))
+
+                        if len(D)==0:
+                            continue
+
+                        ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
+
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        if plot == 'xi':
+                            scale = 1e-4
+                            plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.',
+                                         capsize=1.5,color = self.colors[0])
+                            plt.ylim(-30,30)
+                            ylabel_xim = r'$\theta \cdot \xi_{-} \cdot 10^4$'
+                            ylabel_xip = r'$\theta \cdot \xi_{+} \cdot 10^4$'
+
+                        if plot == 'xi_err':
+                            theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, dt, src1, src2)
+                            plt.plot(theta, err, label = 'Shape noise', lw = 2., color = self.colors[0])
+                            plt.plot(theta_jk, err_jk, label = 'Jackknife', lw = 2., color = self.colors[1])
+                            ylabel_xim = r'$\sigma\, (\xi_{-})$'
+                            ylabel_xip = r'$\sigma\, (\xi_{-})$'
+                            
+                        plt.xscale('log')
+                        plt.xlim(tmin, tmax)
+
+                        if dt==xim:
+                            if j>0:
+                                ax.set_xticklabels([])
+                            else:
+                                plt.xlabel(r'$\theta$ (arcmin)')
+
+                            if i==nsource-1:
+                                ax.yaxis.tick_right()
+                                ax.yaxis.set_label_position("right")
+                                ax.set_ylabel(ylabel_xim)
+                            else:
+                                ax.set_yticklabels([])
                         else:
-                            plt.xlabel(r'$\theta$ (arcmin)')
+                            ax.set_xticklabels([])
+                            if i==nsource-1:
+                                ax.set_ylabel(ylabel_xip)
+                            else:
+                                ax.set_yticklabels([])
 
-                        if i==nsource-1:
-                            ax.yaxis.tick_right()
-                            ax.yaxis.set_label_position("right")
-                            ax.set_ylabel(r'$\theta \cdot \xi_{-} \cot 10^4)$')
-                        else:
-                            ax.set_yticklabels([])
-                    else:
-                        ax.set_xticklabels([])
-                        if i==nsource-1:
-                            ax.set_ylabel(r'$\theta \cdot \xi_{+} \cdot 10^4$')
-                        else:
-                            ax.set_yticklabels([])
+                        #props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                        plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                            fontsize=10, verticalalignment='top')#, bbox=props)
 
-                    props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                        fontsize=10, verticalalignment='top', bbox=props)
+            if plot == 'xi_err':
+                plt.legend()
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
+            plot_output.close()
 
-        plt.tight_layout()
-        plt.subplots_adjust(hspace=0,wspace=0)
-
-
-        xi_plot.close()
-
-
+            
     def plot_shear_density(self, s, sources, lenses):
         import sacc
         import matplotlib.pyplot as plt
@@ -778,56 +888,64 @@ class TXTwoPointPlots(PipelineStage):
         gammat = sacc.standard_types.galaxy_shearDensity_xi_t
         nsource = len(sources)
         nlens = len(lenses)
-        xi_plot = self.open_output('shearDensity_xi', wrapper=True, figsize=(nlens*3,(nsource)*2))
 
         theta = s.get_tag('theta', gammat)
         tmin = np.min(theta)
         tmax = np.max(theta)
 
+        plots = ['xi', 'xi_err']
+        for plot in plots:
+            plot_output = self.open_output(f'shearDensity_{plot}', wrapper=True, figsize=(3*nlens,2*nsource))
 
-        for i,src1 in enumerate(sources):
-            for j,src2 in enumerate(lenses):
-                D = s.get_data_points(gammat, (src1,src2))
+            for i,src1 in enumerate(sources):
+                for j,src2 in enumerate(lenses):
+                    
+                    D = s.get_data_points(gammat, (src1,src2))
 
-                if len(D)==0:
-                    continue
+                    if len(D)==0:
+                        continue
+                    
+                    ax = plt.subplot2grid((nsource, nlens), (i,j))
 
-                ax = plt.subplot2grid((nsource, nlens), (i,j))
+                    if plot == 'xi':
+                        scale = 1e-2
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.',
+                                     capsize=1.5, color = self.colors[0])
+                        plt.ylim(-2,2)
+                        ylabel = r"$\theta \cdot \gamma_t \cdot 10^2$"
+                            
+                    if plot == 'xi_err':
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, gammat, src1, src2)
+                        plt.plot(theta, err, label = 'Shape noise', lw =2., color = self.colors[0])
+                        plt.plot(theta_jk, err_jk, label = 'Jackknife', lw =2., color = self.colors[1])
+                        ylabel = r"$\sigma\,(\gamma_t)$"
+                    
+                    plt.xscale('log')
+                    plt.xlim(tmin, tmax)
 
-                scale = 1e-2
+                    if i==nsource-1:
+                        plt.xlabel(r'$\theta$ (arcmin)')
+                    else:
+                        ax.set_xticklabels([])
 
-                theta = np.array([d.get_tag('theta') for d in D])
-                xi    = np.array([d.value for d in D])
-                err   = np.array([d.get_tag('error') for d  in D])
-                w = err>0
-                theta = theta[w]
-                xi = xi[w]
-                err = err[w]
+                    if j==0:
+                        plt.ylabel(ylabel)
+                    else:
+                        ax.set_yticklabels([])
 
-                plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
-                plt.xscale('log')
-                plt.ylim(-2,2)
-                plt.xlim(tmin, tmax)
+                    #props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                             fontsize=10, verticalalignment='top')#, bbox=props)
 
-                if i==nsource-1:
-                    plt.xlabel(r'$\theta$ (arcmin)')
-                else:
-                    ax.set_xticklabels([])
-
-                if j==0:
-                    plt.ylabel(r"$\theta \cdot \gamma_t \cdot 10^2$")
-                else:
-                    ax.set_yticklabels([])
-
-                props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                    fontsize=10, verticalalignment='top', bbox=props)
-
-        plt.tight_layout()
-        plt.subplots_adjust(hspace=0,wspace=0)
+            if plot == 'xi_err':
+                plt.legend()
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
+            plot_output.close()
 
 
-        xi_plot.close()
 
     def plot_density_density(self, s, lenses):
         import sacc
@@ -835,54 +953,63 @@ class TXTwoPointPlots(PipelineStage):
 
         wtheta = sacc.standard_types.galaxy_density_xi
         nlens = len(lenses)
-        xi_plot = self.open_output('density_xi', wrapper=True, figsize=(nlens*3,nlens*2))
 
         theta = s.get_tag('theta', wtheta)
         tmin = np.min(theta)
         tmax = np.max(theta)
 
+        plots = ['xi', 'xi_err']
+        for plot in plots:
+            plot_output = self.open_output(f'density_{plot}', wrapper=True, figsize=(3*nlens,2*nlens))
+         
+            for i,src1 in enumerate(lenses[:]):
+                for j,src2 in enumerate(lenses[:]):
 
-        for i,src1 in enumerate(lenses[:]):
-            for j,src2 in enumerate(lenses[:]):
-                D = s.get_data_points(wtheta, (src1,src2))
+                    D = s.get_data_points(wtheta, (src1,src2))
 
-                if len(D)==0:
-                    continue
+                    if len(D)==0:
+                        continue
 
-                ax = plt.subplot2grid((nlens, nlens), (i,j))
+                    ax = plt.subplot2grid((nlens, nlens), (i,j))
 
-                scale = 1
+                    if plot == 'xi':
+                        scale = 1
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.',
+                                     capsize=1.5, color = self.colors[0])
+                        ylabel = r"$\theta \cdot w$"
+                        plt.ylim(-1,1)
+                            
+                    if plot == 'xi_err':
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        theta, xi, err = self.get_theta_xi_err(D)
+                        theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, wtheta, src1, src2)
+                        plt.plot(theta, err, label = 'Shape noise', lw =2., color = self.colors[0])
+                        plt.plot(theta_jk, err_jk, label = 'Jackknife', lw =2., color = self.colors[1])
+                        ylabel = r"$\sigma\,(w)$"
 
-                theta = np.array([d.get_tag('theta') for d in D])
-                xi    = np.array([d.value for d in D])
-                err   = np.array([d.get_tag('error') for d  in D])
-                w = err>0
-                theta = theta[w]
-                xi = xi[w]
-                err = err[w]
+                    plt.xscale('log')
+                    plt.xlim(tmin, tmax)
 
-                plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
-                plt.xscale('log')
-                plt.ylim(-1,1)
-                plt.xlim(tmin, tmax)
+                    if j>0:
+                        ax.set_xticklabels([])
+                    else:
+                        plt.xlabel(r'$\theta$ (arcmin)')
 
-                if j>0:
-                    ax.set_xticklabels([])
-                else:
-                    plt.xlabel(r'$\theta$ (arcmin)')
+                    if i==0:
+                        plt.ylabel(ylabel)
+                    else:
+                        ax.set_yticklabels([])
 
-                if i==0:
-                    plt.ylabel(r"$\theta \cdot w$")
-                else:
-                    ax.set_yticklabels([])
+                    #props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
+                    plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
+                        fontsize=10, verticalalignment='top')#, bbox=props)
 
-                props = dict(boxstyle='square', lw=1.,facecolor='white', alpha=1.)
-                plt.text(0.03, 0.93, f'[{i},{j}]', transform=plt.gca().transAxes,
-                    fontsize=10, verticalalignment='top', bbox=props)
-
-        plt.tight_layout()
-        plt.subplots_adjust(hspace=0,wspace=0)
-        xi_plot.close()
+            if plot == 'xi_err':
+                plt.legend()
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
+            plot_output.close()
 
 
 
@@ -894,10 +1021,13 @@ class TXGammaTFieldCenters(TXTwoPoint):
     name = "TXGammaTFieldCenters"
     inputs = [
         ('shear_catalog', ShearCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('exposures', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('gammat_field_center', SACCFile),
@@ -915,6 +1045,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
+        'var_methods': 'jackknife',
+        'npatch': 5
         }
 
     def run(self):
@@ -970,10 +1102,13 @@ class TXGammaTFieldCenters(TXTwoPoint):
     def write_output_plot(self, results):
         import matplotlib.pyplot as plt
         d = results[0]
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
 
         fig = self.open_output('gammat_field_center_plot', wrapper=True)
 
-        plt.errorbar(d.theta,  d.theta*d.value, d.error, fmt='ro', capsize=3)
+        plt.errorbar(dtheta,  dtheta*dvalue, derror, fmt='ro', capsize=3)
         plt.xscale('log')
 
         plt.xlabel(r"$\theta$ / arcmin")
@@ -991,7 +1126,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
         z = f['n_of_z/source2d/z'][:]
         Nz = f[f'n_of_z/source2d/bin_0'][:]
         f.close()
@@ -1003,13 +1138,18 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         d = results[0]
         assert len(results)==1
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
+        dnpair = d.object.npairs
+        dweight = d.object.weight
 
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
-        n = len(d.value)
+        n = len(dvalue)
         for i in range(n):
-            S.add_data_point(dt, ('source2d', 'fieldcenter'), d.value[i],
-                theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+            S.add_data_point(dt, ('source2d', 'fieldcenter'), dvalue[i],
+                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
 
         #self.write_metadata(S, meta)
 
@@ -1030,10 +1170,13 @@ class TXGammaTBrightStars(TXTwoPoint):
     name = "TXGammaTBrightStars"
     inputs = [
         ('shear_catalog', ShearCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile)
+        ('star_catalog', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('gammat_bright_stars', SACCFile),
@@ -1051,6 +1194,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
+        'var_methods': 'shot',
+        'npatch': 5
         }
 
     def run(self):
@@ -1078,11 +1223,11 @@ class TXGammaTBrightStars(TXTwoPoint):
         print(f"Loading lens sample from {filename}")
 
         f = self.open_input('star_catalog')
-        
+
         mags = f['stars/r_mag'][:]
         bright_cut = mags>14
         bright_cut &= mags<18.3
-        
+
         data['lens_ra']  = f['stars/ra'][:][bright_cut]
         data['lens_dec'] = f['stars/dec'][:][bright_cut]
         f.close()
@@ -1113,17 +1258,19 @@ class TXGammaTBrightStars(TXTwoPoint):
     def write_output_plot(self, results):
         import matplotlib.pyplot as plt
         d = results[0]
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
 
         fig = self.open_output('gammat_bright_stars_plot', wrapper=True)
 
         # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (d.value - flat1) / d.error
+        z = (dvalue) / derror
         chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(d.theta) - 1)
-        print('error,',d.error)
+        chi2dof = chi2 / (len(dtheta) - 1)
+        print('error,',derror)
 
-        plt.errorbar(d.theta,  d.theta*d.value, d.theta*d.error, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
+        plt.errorbar(dtheta,  dtheta*dvalue, dtheta*derror, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
         plt.legend(loc='best')
         plt.xscale('log')
 
@@ -1143,7 +1290,7 @@ class TXGammaTBrightStars(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
         z = f['n_of_z/source2d/z'][:]
         Nz = f[f'n_of_z/source2d/bin_0'][:]
         f.close()
@@ -1155,13 +1302,18 @@ class TXGammaTBrightStars(TXTwoPoint):
 
         d = results[0]
         assert len(results)==1
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
+        dnpair = d.object.npairs
+        dweight = d.object.weight
 
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
-        n = len(d.value)
+        n = len(dvalue)
         for i in range(n):
-            S.add_data_point(dt, ('source2d', 'starcenter'), d.value[i],
-                theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+            S.add_data_point(dt, ('source2d', 'starcenter'), dvalue[i],
+                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
 
         self.write_metadata(S, meta)
 
@@ -1183,10 +1335,13 @@ class TXGammaTDimStars(TXTwoPoint):
     name = "TXGammaTDimStars"
     inputs = [
         ('shear_catalog', ShearCatalog),
-        ('tomography_catalog', TomographyCatalog),
-        ('photoz_stack', HDFFile),
+        ('shear_tomography_catalog', TomographyCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile)
+        ('star_catalog', HDFFile),
+        ('patch_centers', TextFile),
     ]
     outputs = [
         ('gammat_dim_stars', SACCFile),
@@ -1204,6 +1359,8 @@ class TXGammaTDimStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
+        'var_methods': 'jackknife',
+        'npatch': 5
         }
 
     def run(self):
@@ -1234,7 +1391,7 @@ class TXGammaTDimStars(TXTwoPoint):
         mags = f['stars/r_mag'][:]
         dim_cut = mags>18.2
         dim_cut &= mags<22
-        
+
         data['lens_ra']  = f['stars/ra'][:][dim_cut]
         data['lens_dec'] = f['stars/dec'][:][dim_cut]
         f.close()
@@ -1265,17 +1422,20 @@ class TXGammaTDimStars(TXTwoPoint):
     def write_output_plot(self, results):
         import matplotlib.pyplot as plt
         d = results[0]
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
 
         fig = self.open_output('gammat_dim_stars_plot', wrapper=True)
 
         # compute the mean and the chi^2/dof
         flat1 = 0
-        z = (d.value - flat1) / d.error
+        z = (dvalue - flat1) / derror
         chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(d.theta) - 1)
-        print('error,',d.error)
+        chi2dof = chi2 / (len(dtheta) - 1)
+        print('error,',derror)
 
-        plt.errorbar(d.theta,  d.theta*d.value, d.theta*d.error, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
+        plt.errorbar(dtheta,  dtheta*dvalue, dtheta*derror, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
         plt.legend(loc='best')
         plt.xscale('log')
 
@@ -1295,7 +1455,7 @@ class TXGammaTDimStars(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input('photoz_stack')
+        f = self.open_input('shear_photoz_stack')
         z = f['n_of_z/source2d/z'][:]
         Nz = f[f'n_of_z/source2d/bin_0'][:]
         f.close()
@@ -1307,13 +1467,19 @@ class TXGammaTDimStars(TXTwoPoint):
 
         d = results[0]
         assert len(results)==1
+        dvalue = d.object.xi
+        derror = np.sqrt(d.object.varxi)
+        dtheta = np.exp(d.object.meanlogr)
+        dnpair = d.object.npairs
+        dweight = d.object.weight
+
 
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
-        n = len(d.value)
+        n = len(dvalue)
         for i in range(n):
-            S.add_data_point(dt, ('source2d', 'starcenter'), d.value[i],
-                theta=d.theta[i], error=d.error[i], npair=d.npair[i], weight=d.weight[i])
+            S.add_data_point(dt, ('source2d', 'starcenter'), dvalue[i],
+                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
 
         self.write_metadata(S, meta)
 
@@ -1326,6 +1492,73 @@ class TXGammaTDimStars(TXTwoPoint):
         S.save_fits(self.get_output('gammat_dim_stars'), overwrite=True)
 
         # Also make a plot of the data
+
+class TXJackknifeCenters(PipelineStage):
+    """
+    This is the pipeline stage that is run to generate the patch centers for
+    the Jackknife method.
+    """
+    name = 'TXJackknifeCenters'
+
+    inputs = [
+        ('random_cats', RandomsCatalog),
+    ]
+    outputs = [
+        ('patch_centers', TextFile),
+        ('jk', PNGFile),
+    ]
+    config_options = {
+        'npatch' : 10,
+    }
+
+    def plot(self, ra, dec, patch):
+        """
+        Plot the jackknife regions.
+        """
+        import matplotlib
+        matplotlib.use('agg')
+        matplotlib.rcParams["xtick.direction"]='in'
+        matplotlib.rcParams["ytick.direction"]='in'
+        import matplotlib.pyplot as plt
+
+        print(ra, dec, patch)
+
+        jk_plot = self.open_output('jk', wrapper=True, figsize=(6.,4.5))
+        # Choose colormap
+        cm = plt.cm.get_cmap('magma')
+        sc = plt.scatter(ra, dec, c = patch, cmap = cm,  s=20, vmin = 0)
+        plt.xlabel('RA')
+        plt.ylabel('DEC')
+        plt.tight_layout()
+        jk_plot.close()
+
+
+    def run(self):
+        import treecorr
+
+        filename = self.get_input('random_cats')
+        if filename is None:
+            print("Not using randoms, we need to use randoms for now")
+            return
+
+        # Columns we need from the tomography catalog
+        randoms_cols = ['dec','ra']
+        print(f"Loading random catalog columns: {randoms_cols}")
+
+        f = self.open_input('random_cats')
+        group = f['randoms']
+        npatch=self.config['npatch']
+        print(f"generating {npatch} centers")
+        ra = group['ra'][:]
+        dec = group['dec'][:]
+        cat = treecorr.Catalog(ra = ra,
+                                dec = dec,
+                                ra_units='degree', dec_units = 'degree',
+                                npatch=self.config['npatch'])
+        cat.write_patch_centers(self.get_output('patch_centers'))
+
+        self.plot(cat.ra, cat.dec, cat.patch)
+
 
 if __name__ == '__main__':
     PipelineStage.main()

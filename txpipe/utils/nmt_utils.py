@@ -1,5 +1,7 @@
 import pymaster as nmt
 import numpy as np
+import healpy
+import pathlib
 
 class MyNmtBinFlat(nmt.NmtBinFlat):
     def __init__(self, l0, lf):
@@ -8,8 +10,10 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
         self.ell_max = lf
 
     def get_window(self, b):
-        return (self.ell_min[b], self.ell_max[b])
-    
+        ell = np.arange(self.ell_min[b], self.ell_max[b]+1)
+        w = np.ones_like(ell)
+        return (ell, w)
+
     def get_ell_min(self, b):
         return self.ell_min[b]
 
@@ -45,3 +49,41 @@ class MyNmtBin(nmt.NmtBin):
     def apply_window(self, b, c_ell):
         ell, weight = self.get_window(b)
         return (c_ell[ell]*weight).sum() / weight.sum()
+
+
+import healpy
+
+
+
+class WorkspaceCache:
+    def __init__(self, dirname):
+        self.path = pathlib.Path(dirname)
+        self.path.mkdir(exist_ok=True)
+        self._loaded = {}
+
+    def get(self, key):
+        if key in self._loaded:
+            return self._loaded[key]
+
+        p = self.path / f'workspace_{key}.dat'
+
+        if not p.exists():
+            return None
+
+        # Initialize a workspace and populate
+        # it from file
+        workspace = nmt.NmtWorkspace()
+        workspace.read_from(str(p))
+
+        self._loaded[key] = workspace
+
+        return workspace
+
+    def put(self, workspace):
+        key = workspace.txpipe_key
+        p = self.path / f'workspace_{key}.dat'
+        if p.exists():
+            return False
+
+        print(f"Saving workspace to {p}")
+        workspace.write_to(str(p))
