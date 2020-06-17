@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile, YamlFile
+from .data_types import ShearCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile, YamlFile
 import numpy as np
 from .utils.theory import theory_3x2pt
 from .utils import dilated_healpix_map

@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, \
+from .data_types import ShearCatalog, TomographyCatalog, DiagnosticMaps, \
                         NoiseMaps, HDFFile
 import numpy as np
 from .utils.mpi_utils import mpi_reduce_large

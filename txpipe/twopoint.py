@@ -35,9 +35,9 @@ class TXTwoPoint(PipelineStage):
     # Add values to the config file that are not previously defined
     config_options = {
         'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':250.,
-        'nbins':20,
+        'min_sep':0.5,
+        'max_sep':300.,
+        'nbins':9,
         'bin_slop':0.1,
         'sep_units':'arcmin',
         'flip_g2':True,

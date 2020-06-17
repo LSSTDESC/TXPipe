@@ -1,8 +1,8 @@
 
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
+from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
-from .utils.metacal import metacal_variants, metacal_band_variants, ParallelCalibrator
+from .utils.calibration_tools import metacal_variants, metacal_band_variants, ParallelCalibratorNonMetacal
 import numpy as np
 import warnings
 
@@ -32,7 +32,7 @@ class TXSourceSelector(PipelineStage):
     name='TXSourceSelector'
 
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('calibration_table', TextFile),
         ('photometry_catalog', HDFFile),  # this is to get the photo-z, does not necessarily need it
     ]
