@@ -5,7 +5,12 @@ stages:
     - name: TXTruthLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
-    - name: TXDiagnosticMaps
+    - name: TXMainMaps
+    - name: TXAuxiliaryMaps
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXMapPlots
+    - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
     - name: TXTwoPoint
@@ -24,6 +29,8 @@ stages:
       threads_per_process: 2
     - name: TXPSFDiagnostics
     - name: TXBrighterFatterPlot
+    - name: TXPhotozPlots
+    - name: TXTracerMetadata
     # disabling these as they takes too long for a quick test
 #    - name: TXRealGaussianCovariance
 #    - name: TXTwoPointFourier
