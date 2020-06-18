@@ -50,19 +50,8 @@ class RandomsCatalog(HDFFile):
 
 
 
-class DiagnosticMaps(HDFFile):
-    required_datasets = [
-        'maps/depth/value',
-        'maps/depth/pixel',
-        ]
-
-    def get_nbins(self):
-        group = self.file['maps']
-        info = dict(group.attrs)
-        nbin_lens = info.get('nbin_lens', 0)
-        nbin_source = info.get('nbin_source', 0)
-        return nbin_source, nbin_lens
-
+class MapsFile(HDFFile):
+    required_datasets = []
 
     def read_healpix(self, map_name, return_all=False):
         import healpy
@@ -82,6 +71,9 @@ class DiagnosticMaps(HDFFile):
     def read_map_info(self, map_name):
         group = self.file[f'maps/{map_name}']
         info = dict(group.attrs)
+        if not 'pixelization' in info:
+            raise ValueError(f"Map '{map_name}' not found, "
+                             f"or not saved properly in file {self.path}")
         return info
 
     def read_map(self, map_name):
@@ -121,6 +113,8 @@ class DiagnosticMaps(HDFFile):
         metadata: mapping
             Dict or other mapping of metadata to store along with the map
         """
+        if not 'pixelization' in metadata:
+            raise ValueError("Map metadata should include pixelization")
         subgroup = self.file['maps'].create_group(map_name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
@@ -202,7 +196,7 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
-class NoiseMaps(DiagnosticMaps):
+class NoiseMaps(MapsFile):
     required_datasets = [
         ]
 
