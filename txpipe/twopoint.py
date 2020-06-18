@@ -49,7 +49,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'shear_catalog_type': 'lensfit',
+        'shear_catalog_type': 'metacal',
         'var_methods': 'jackknife',
         }
 
@@ -65,8 +65,7 @@ class TXTwoPoint(PipelineStage):
         data = {}
         self.load_tomography(data)
         self.load_shear_catalog(data)
-        if self.config['do_shear_pos'] or self.config['do_pos_pos']:
-            self.load_random_catalog(data)
+        self.load_random_catalog(data)
         # This one is optional - this class does nothing with it
         self.load_lens_catalog(data)
         # Binning information
@@ -156,10 +155,7 @@ class TXTwoPoint(PipelineStage):
             source_list, lens_list = self._read_nbin_from_config()
 
         ns = len(source_list)
-        if self.config['do_pos_pos']:
-            nl = len(lens_list)
-        else:
-            nl = 0
+        nl = len(lens_list)
         print(f'Running with {ns} source bins and {nl} lens bins')
 
         data['source_list']  =  source_list
@@ -192,10 +188,7 @@ class TXTwoPoint(PipelineStage):
         tomo_nbin_lens = len(tomo_lens_list)
 
         nbin_source = len(source_list)
-        if self.config['do_pos_pos']:
-            nbin_lens = len(lens_list)
-        else:
-            nbin_lens = 0 
+        nbin_lens = len(lens_list) 
 
         if source_list == [-1]:
             source_list = tomo_source_list
@@ -245,11 +238,10 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
-        if self.config['do_pos_pos']:
-            for i in data['lens_list']:
-                z = f['n_of_z/lens/z'][:]
-                Nz = f[f'n_of_z/lens/bin_{i}'][:]
-                S.add_tracer('NZ', f'lens_{i}', z, Nz)
+        for i in data['lens_list']:
+            z = f['n_of_z/lens/z'][:]
+            Nz = f[f'n_of_z/lens/bin_{i}'][:]
+            S.add_tracer('NZ', f'lens_{i}', z, Nz)
         # Closing n(z) file
         f.close()
 
@@ -380,15 +372,36 @@ class TXTwoPoint(PipelineStage):
         import treecorr
 
         g1,g2,mask = self.get_m(data, i)
-        if self.config['var_methods']=='jackknife':
+        if self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='metacal':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree',path_centers=patch_centers)
+        elif self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
+            patch_centers = self.get_input('patch_centers')
+            g1,g2,mask = self.get_m(data, i)
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                w = data['lensfit_weight'][mask],
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
+        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
+            patch_centers = self.get_input('patch_centers')
+            g1,g2,mask = self.get_m(data, i)
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                w = data['lensfit_weight'][mask],
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
-        elif self.config['shear_catalog_type']=='lensfit':
+        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
+            patch_centers = self.get_input('patch_centers')
             g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -538,8 +551,7 @@ class TXTwoPoint(PipelineStage):
         f.close()
 
         data['source_bin']  =  source_bin
-        if self.config['do_pos_pos']:
-            data['lens_bin']  =  lens_bin
+        data['lens_bin']  =  lens_bin
         data['R']  =  r_total
 
     def load_lens_catalog(self, data):

@@ -8,13 +8,20 @@ def metacal_variants(*names):
         for suffix in ['', '_1p', '_1m', '_2p', '_2m']
         for name in names
     ]
-def metacal_band_variants(bands, *names):
-    return [
-        name + "_" + band + suffix
-        for suffix in ['', '_1p', '_1m', '_2p', '_2m']
-        for band in bands
-        for name in names
-    ]
+def band_variants(bands, *names, shear_catalog_type='metacal'):
+    if shear_catalog_type=='metacal':
+        return [
+            name + "_" + band + suffix
+            for suffix in ['', '_1p', '_1m', '_2p', '_2m']
+            for band in bands
+            for name in names
+        ]
+    else:
+        return [
+            name + "_" + band
+            for band in bands
+            for name in names
+        ]
 
 def calculate_selection_response(g1, g2, sel_1p, sel_2p, sel_1m, sel_2m, delta_gamma):
     import numpy as np
@@ -113,28 +120,24 @@ class ParallelCalibratorMetacal:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
-    At the end an MPI communicator can be supplied to collect together
+    At the end an MPI communuicator can be supplied to collect together
     the results from the different processes.
-
     To do this we need the function used to select the data, and the instance
     this function to each of the metacalibrated variants automatically by
     wrapping the data object passed in to it and modifying the names of columns
     that are looked up.
     """
-    def __init__(self, selector):
+    def __init__(self, selector, delta_gamma):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
         the chunk of data to select on.  It should look up the original
         names of the columns to select on, without the metacal suffix.
-
-        The ParallelCalibratorMetacal will then wrap the data passed to it so that
+        The ParallelCalibrator will then wrap the data passed to it so that
         when a metacalibrated column is used for selection then the appropriate
         variant column is selected instead.
-
         The selector can take further *args and **kwargs, passed in when adding
         data.
-
         Parameters
         ----------
         selector: function
@@ -146,15 +149,14 @@ class ParallelCalibratorMetacal:
         self.R = []
         self.S = []
         self.counts = []
+        self.delta_gamma = delta_gamma
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
-
         Parameters
         ----------
         data: dict
             Dictionary of data columns to select on and add
-
         *args
             Positional arguments to be passed to the selection function
         **kwargs
@@ -164,10 +166,19 @@ class ParallelCalibratorMetacal:
         # These all wrap the catalog such that lookups find the variant
         # column if available
         data_00 = _DataWrapper(data, '')
+        data_1p = _DataWrapper(data, '_1p')
+        data_1m = _DataWrapper(data, '_1m')
+        data_2p = _DataWrapper(data, '_2p')
+        data_2m = _DataWrapper(data, '_2m')
 
         sel_00 = self.selector(data_00, *args, **kwargs)
-        g1 = data_00['g1']
-        g2 = data_00['g2']
+        sel_1p = self.selector(data_1p, *args, **kwargs)
+        sel_1m = self.selector(data_1m, *args, **kwargs)
+        sel_2p = self.selector(data_2p, *args, **kwargs)
+        sel_2m = self.selector(data_2m, *args, **kwargs)
+
+        g1 = data_00['mcal_g1']
+        g2 = data_00['mcal_g2']
 
         # Selector can return several reasonable ways to choose
         # objects - where result, boolean mask, integer indices
@@ -188,16 +199,16 @@ class ParallelCalibratorMetacal:
 
         # This is the selection bias, associated with the fact that sometimes different
         # objects would be selected to be put into a bin depending on their shear
-        S[0,0] = 1
-        S[0,1] = 1
-        S[1,0] = 1
-        S[1,1] = 1
+        S[0,0] = (g1[sel_1p].mean() - g1[sel_1m].mean()) / self.delta_gamma
+        S[0,1] = (g1[sel_2p].mean() - g1[sel_2m].mean()) / self.delta_gamma
+        S[1,0] = (g2[sel_1p].mean() - g2[sel_1m].mean()) / self.delta_gamma
+        S[1,1] = (g2[sel_2p].mean() - g2[sel_2m].mean()) / self.delta_gamma
 
         # This is the estimator response, correcting  bias of the shear estimator itself
-        R[:,0,0] = 1
-        R[:,0,1] = 1
-        R[:,1,0] = 1
-        R[:,1,1] = 1
+        R[:,0,0] = (data_1p['mcal_g1'][sel_00] - data_1m['mcal_g1'][sel_00]) / self.delta_gamma
+        R[:,0,1] = (data_2p['mcal_g1'][sel_00] - data_2m['mcal_g1'][sel_00]) / self.delta_gamma
+        R[:,1,0] = (data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]) / self.delta_gamma
+        R[:,1,1] = (data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]) / self.delta_gamma
 
         self.R.append(R.mean(axis=0))
         self.S.append(S)
@@ -209,21 +220,17 @@ class ParallelCalibratorMetacal:
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) and S (selection bias) 2x2 matrices
-
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
-
         Returns
         -------
         R: 2x2 array
             Estimator response matrix
-
         S: 2x2 array
             Selection bias matrix
-
         """
         # MPI allgather to get full arrays for everyone
         if comm is not None:
@@ -428,11 +435,19 @@ class MeanShearInBins:
         # Now we have the complete sample we can get the calibration matrix
         # to apply to it.
         R = []
+        K = []
+        C =[]
         for i in range(self.size):
-            # Tell the Calibrators to work out the responses
-            r, s, _ = self.calibrators[i].collect(comm)
-            # and record the total (a 2x2 matrix)
-            R.append(r+s)
+            if self.shear_catalog_type=='metacal':
+                # Tell the Calibrators to work out the responses
+                r, s, _ = self.calibrators[i].collect(comm)
+                # and record the total (a 2x2 matrix)
+                R.append(r+s)
+            else:
+                r, k, c, _ = self.calibrators[i].collect(comm)
+                R.append(r)
+                K.append(k)
+                C.append(c)
 
         # Only the root processor does the rest
         if (comm is not None) and (comm.Get_rank() != 0):
@@ -445,13 +460,19 @@ class MeanShearInBins:
             # Get the shears and the errors on their means
             g = [g1[i], g2[i]]
             sigma = np.sqrt([var1[i]/count1[i], var2[i]/count2[i]])
+            
+            if self.shear_catalog_type=='metacal':
+                # Get the inverse response matrix to apply
+                R_inv = np.linalg.inv(R[i])
 
-            # Get the inverse response matrix to apply
-            R_inv = np.linalg.inv(R[i])
-
-            # Apply the matrix in full to the shears and errors
-            g1[i], g2[i] = R_inv @ g
-            sigma1[i], sigma2[i] = R_inv @ sigma
+                # Apply the matrix in full to the shears and errors
+                g1[i], g2[i] = R_inv @ g
+                sigma1[i], sigma2[i] = R_inv @ sigma
+            else:
+                g1[i] = (1./(one_plus_K))*((g1/R)-C[0])       
+                g2[i] = (1./(one_plus_K))*((g2/R)-C[1])
+                sigma1[i] = (1./(one_plus_K))*((sigma[0]/R)-C[0])       
+                sigma2[i] = (1./(one_plus_K))*((sigma[1]/R)-C[1])
 
 
         return mu, g1, g2, sigma1, sigma2

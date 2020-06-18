@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, HDFFile
-from .utils.calibration_tools import metacal_band_variants, metacal_variants
+from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 from .utils.timer import Timer
 
@@ -254,7 +254,7 @@ class TXCosmoDC2Mock(PipelineStage):
         cols = (
             ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
-            + metacal_band_variants('riz', 'mcal_mag', 'mcal_mag_err')
+            + band_variants('riz', 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
             + ['weight']
         )
 

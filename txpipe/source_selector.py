@@ -2,7 +2,7 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
-from .utils.calibration_tools import metacal_variants, metacal_band_variants, ParallelCalibratorNonMetacal
+from .utils.calibration_tools import metacal_variants, band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
 import numpy as np
 import warnings
 
@@ -80,11 +80,16 @@ class TXSourceSelector(PipelineStage):
         bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
         delta_gamma = self.config['delta_gamma']
+        
+        shear_prefix = self.config['shear_prefix']
 
         # Columns we need from the shear catalog, will need to modify for lensfit catalogs
-        shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
-        shear_cols += metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
-        shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+        shear_cols = [f'{shear_prefix}flags', f'{shear_prefix}psf_T_mean']
+        shear_cols += band_variants(bands, f'{shear_prefix}mag', f'{shear_prefix}mag_err',shear_catalog_type=self.config['shear_catalog_type'])
+        if self.config['shear_catalog_type']=='metacal':
+            shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+        else:
+            shear_cols += ['T', 's2n', 'g1', 'g2','lensfit_weight','m','c1','c2','sigma_e']
 
         if not self.config['input_pz']:
             # Build a classifier used to put objects into tomographic bins
@@ -103,7 +108,7 @@ class TXSourceSelector(PipelineStage):
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data 
-        iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+        iter_shear = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -111,8 +116,11 @@ class TXSourceSelector(PipelineStage):
         nbin_source = len(self.config['source_zbin_edges'])-1
 
         selection_biases = []
-        number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm)
-        calibrators = [ParallelCalibrator(self.select, delta_gamma) for i in range(nbin_source)]
+        number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm,shear_type=self.config['shear_catalog_type'])
+        if self.config['shear_catalog_type']=='metacal':
+            calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
+        else:
+            calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data) in iter_shear:
@@ -222,11 +230,11 @@ class TXSourceSelector(PipelineStage):
             for f in features:
                 # may be a single band
                 if len(f) == 1:
-                    col = shear_data[f'mcal_mag_{f}{v}']
+                    col = shear_data[f'{shear_prefix}mag_{f}{v}']
                 # or a colour
                 else:
                     b1,b2 = f.split('-')
-                    col = shear_data[f'mcal_mag_{b1}{v}'] - shear_data[f'mcal_mag_{b2}{v}']
+                    col = shear_data[f'{shear_prefix}mag_{b1}{v}'] - shear_data[f'{shear_prefix}mag_{b2}{v}']
                 if np.all(~np.isfinite(col)):
                     # entire column is NaN.  Hopefully this will get deselected elsewhere
                     col[:] = 30.0
@@ -258,12 +266,12 @@ class TXSourceSelector(PipelineStage):
 
         zz = shear_data[f'redshift_true']
 
-        pz_data = np.zeros(len(zz), dtype=int) -1
+        pz_data_bin = np.zeros(len(zz), dtype=int) -1
         for zi in range(len(self.config['source_zbin_edges'])-1):
             mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
-            pz_data[mask_zbin] = zi
+            pz_data_bin[mask_zbin] = zi
 
-        pz_data[f'zbin'] = pz_data
+        pz_data[f'zbin'] = pz_data_bin
 
         return pz_data
 
@@ -281,22 +289,30 @@ class TXSourceSelector(PipelineStage):
         """
         delta_gamma = self.config['delta_gamma']
         nbin = len(self.config['source_zbin_edges'])-1
-        n = len(shear_data['mcal_g1'])
+        shear_prefix = self.config['shear_prefix']
+        n = len(shear_data[f'{shear_prefix}g1'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
-        R = np.zeros((n, 2, 2))
+        if self.config['shear_catalog_type']=='metacal':
+            R = np.zeros((n, 2, 2))
+        else:
+            R = np.zeros((nbin,))
 
         # We also keep count of total count of objects in each bin
         counts = np.zeros(nbin, dtype=int)
 
         data = {**pz_data, **shear_data}
-
-        R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
-        R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
-        R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
-        R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        
+        if self.config['shear_catalog_type']=='metacal':
+            R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
+            R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
+            R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
+            R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        else:
+            w_tot = np.sum(data['lensfit_weight'])
+            R[:] =  1. - np.sum(data['lensfit_weight']*data['sigma_e'])/w_tot
 
 
         for i in range(nbin):
@@ -313,7 +329,7 @@ class TXSourceSelector(PipelineStage):
         Creates the data sets and groups to put module output
         in the shear_tomography_catalog output file.
         """
-        n = self.open_input('shear_catalog')['metacal/ra'].size
+        n = self.open_input('shear_catalog')['shear/ra'].size
         zbins = self.config['source_zbin_edges']
         nbin_source = len(zbins)-1
 
@@ -330,11 +346,17 @@ class TXSourceSelector(PipelineStage):
             group.attrs[f'source_zmax_{i}'] = zbins[i+1]
 
         #group = outfile.create_group('multiplicative_bias')  # why is this called "multiplicative_bias"?
-        group = outfile.create_group('metacal_response') 
-        group.create_dataset('R_gamma', (n,2,2), dtype='f')
-        group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
+        if self.config['shear_catalog_type']=='metacal':
+            group = outfile.create_group('metacal_response') 
+            group.create_dataset('R_gamma', (n,2,2), dtype='f')
+            group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
+            group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
+            group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
+        else:
+            group = outfile.create_group('response') 
+            group.create_dataset('R', (nbin_source,), dtype='f')
+            group.create_dataset('K', (nbin_source,), dtype='f')
+            group.create_dataset('C', (nbin_source,1,2), dtype='f')
 
         return outfile
 
@@ -364,8 +386,12 @@ class TXSourceSelector(PipelineStage):
         """
         group = outfile['tomography']
         group['source_bin'][start:end] = source_bin
-        group = outfile['metacal_response']
-        group['R_gamma'][start:end,:,:] = R
+        if self.config['shear_catalog_type']=='metacal':
+            group = outfile['metacal_response']
+            group['R_gamma'][start:end,:,:] = R
+        else:
+            group = outfile['response']
+            group['R'][start:end] = R
 
     def write_global_values(self, outfile, calibrators, number_density_stats):
         """
@@ -383,6 +409,8 @@ class TXSourceSelector(PipelineStage):
 
         R = np.zeros((nbin_source, 2, 2))
         S = np.zeros((nbin_source, 2, 2))
+        K = np.zeros(nbin_source)
+        C = np.zeros((nbin_source,1,2))
         N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
 
@@ -390,33 +418,48 @@ class TXSourceSelector(PipelineStage):
         sigma_e = number_density_stats.collect()
 
         for i, cal in enumerate(calibrators):
-            R[i], S[i], N[i] = cal.collect(self.comm)
-            sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
+            if self.config['shear_catalog_type']=='metacal':
+                R[i], S[i], N[i] = cal.collect(self.comm)
+                sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
+            else:
+                R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
+                sigma_e[i] /= 0.5*(R_scalar[i] + R_scalar[i])
         
 
         if self.rank==0:
-            group = outfile['metacal_response']
-            group['R_S'][:,:,:] = S
-            group['R_gamma_mean'][:,:,:] = R
-            group['R_total'][:,:,:] = R + S
-            group = outfile['tomography']
-            group['sigma_e'][:] = sigma_e
-            # These are the same in metacal
-            group['source_counts'][:] = N
-            group['N_eff'][:] = N
+            if self.config['shear_catalog_type']=='metacal':
+                group = outfile['metacal_response']
+                group['R_S'][:,:,:] = S
+                group['R_gamma_mean'][:,:,:] = R
+                group['R_total'][:,:,:] = R + S
+                group = outfile['tomography']
+                group['sigma_e'][:] = sigma_e
+                # These are the same in metacal
+                group['source_counts'][:] = N
+                group['N_eff'][:] = N
+            else:
+                group = outfile['response']
+                group['R'][:] = R_scalar
+                group['K'][:] = K
+                group = outfile['tomography']
+                group['sigma_e'][:] = sigma_e
+                # These are the same in metacal
+                group['source_counts'][:] = N
+                group['N_eff'][:] = N 
 
     
     def select(self, data, bin_index):
+        shear_prefix = self.config['shear_prefix']
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
         verbose = self.config['verbose']
 
-        s2n = data['mcal_s2n']
-        T = data['mcal_T']
+        s2n = data[f'{shear_prefix}s2n']
+        T = data[f'{shear_prefix}T']
         zbin = data['zbin']
 
-        Tpsf = data['mcal_psf_T_mean']
-        flag = data['mcal_flags']
+        Tpsf = data[f'{shear_prefix}psf_T_mean']
+        flag = data[f'{shear_prefix}flags']
 
         n0 = len(flag)
         sel  = flag==0
