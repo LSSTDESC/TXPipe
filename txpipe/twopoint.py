@@ -679,20 +679,27 @@ class TXTwoPointPlots(PipelineStage):
     name='TXTwoPointPlots'
     inputs = [
         ('twopoint_data_real', SACCFile),
+        ('fiducial_cosmology', YamlFile),  # For example lines
     ]
     outputs = [
+        # original plots, linear
         ('shear_xi', PNGFile),
         ('shear_xi_err', PNGFile),
         ('shearDensity_xi', PNGFile),
         ('shearDensity_xi_err', PNGFile),
         ('density_xi', PNGFile),
         ('density_xi_err', PNGFile),
+        # log plots with theory on
+        ('log_shear_xi_plus', PNGFile),
+        ('log_shear_xi_minus', PNGFile),
+        ('log_shearDensity_xi', PNGFile),
+        ('log_density_xi', PNGFile),
     ]
 
     config_options = {
         'do_shear_shear': True,
-        'do_shear_pos': False,
-        'do_pos_pos': False,
+        'do_shear_pos': True,
+        'do_pos_pos': True,
         'wspace': 0.1,
         'hspace': 0.1,
     }
@@ -701,18 +708,22 @@ class TXTwoPointPlots(PipelineStage):
     def run(self):
         import sacc
         import matplotlib
+        import pyccl
+        from .plotting import full_3x2pt_plots
         matplotlib.use('agg')
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
-        gammat = sacc.standard_types.galaxy_shearDensity_xi_t
-        wtheta = sacc.standard_types.galaxy_density_xi
-
         filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
+        sources, lenses = self.read_bins(s)
+        nbin_source = len(sources)
+        nbin_lens = len(lenses)
 
-        sources, lenses = self.read_nbin(s)
-        print(f"Plotting xi for {len(sources)} sources and {len(lenses)} lenses")
+        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+
+
+        self.colors = ['steelblue', 'orange']
 
         if self.config['do_shear_shear']:
             self.plot_shear_shear(s, sources)
@@ -720,13 +731,31 @@ class TXTwoPointPlots(PipelineStage):
             self.plot_shear_density(s, sources, lenses)
         if self.config['do_pos_pos']:
             self.plot_density_density(s, lenses)
-        self.colors = ['steelblue', 'orange']
-        self.plot_shear_shear(s, sources)
-        self.plot_shear_density(s, sources, lenses)
-        self.plot_density_density(s, lenses)
 
-        
-    def read_nbin(self, s):
+        outputs = {
+            "galaxy_density_xi": self.open_output('log_density_xi',
+                figsize=(nbin_lens*5, nbin_lens*3), wrapper=True),
+
+            "galaxy_shearDensity_xi_t": self.open_output('log_shearDensity_xi',
+                figsize=(5*nbin_lens, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_xi_plus": self.open_output('log_shear_xi_plus',
+                figsize=(5*nbin_source, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_xi_minus": self.open_output('log_shear_xi_minus',
+                figsize=(5*nbin_source, 3*nbin_source), wrapper=True),
+        }
+
+        # Make the log plots separately
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['twopoint_data_real'], 
+            figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+
+        for fig in outputs.values():
+            fig.close()
+
+    def read_bins(self, s):
         import sacc
 
         xip = sacc.standard_types.galaxy_shear_xi_plus
@@ -1022,7 +1051,6 @@ class TXTwoPointPlots(PipelineStage):
             plt.tight_layout()
             plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
             plot_output.close()
-
 
 
 class TXGammaTFieldCenters(TXTwoPoint):

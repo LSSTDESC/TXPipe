@@ -1,7 +1,14 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
-from .utils.stats import ParallelStatsCalculator, combine_variances
+from .utils.stats import ParallelStatsCalculator, ParallelHistogram, combine_variances
 import numpy as np
+from .plotting import manual_step_histogram
+
+STAR_PSF_USED = 0
+STAR_PSF_RESERVED = 1
+STAR_TYPES = [STAR_PSF_USED, STAR_PSF_RESERVED]
+STAR_TYPE_NAMES = ['PSF-used', 'PSF-reserved']
+STAR_COLORS = ['blue', 'orange', 'green']
 
 class TXPSFDiagnostics(PipelineStage):
     """
@@ -24,11 +31,31 @@ class TXPSFDiagnostics(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
 
-        # Collect together all the methods on this class called self.plot_*
-        # They are all expected to be python coroutines - generators that
-        # use the yield feature to pause and wait for more input.
-        # We instantiate them all here
-        plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
+        # Make plotters - in each case we supply the function to make
+        # the thing we want to histogram, the name, label, and range
+        plotters = [
+            self.plot_histogram(
+                lambda d: (d['measured_e1'] - d['model_e1']) / d['measured_e1'],
+                'e1_psf_residual_hist',
+                '$(e_{1}-e_{1,psf})/e_{1,psf}$',
+                np.linspace(-10, 10, 51),
+                ),
+
+            self.plot_histogram(
+                lambda d: (d['measured_e2'] - d['model_e2']) / d['measured_e2'],
+                'e2_psf_residual_hist',
+                '$(e_{2}-e_{2,psf})/e_{2,psf}$',
+                np.linspace(-10, 10, 51),
+                ),
+
+            self.plot_histogram(
+                lambda d: (d['measured_T'] - d['model_T']) / d['measured_T'],
+                'T_psf_residual_hist',
+                '$(T-T{psf})/T{psf}$',
+                np.linspace(-0.1, 0.1, 51),
+                ),
+
+        ]
 
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
@@ -40,13 +67,22 @@ class TXPSFDiagnostics(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = 10000
-        star_cols = ['measured_e1','model_e1','measured_e2','model_e2','measured_T','model_T']
+        star_cols = ['measured_e1',
+                     'model_e1',
+                     'measured_e2',
+                     'model_e2',
+                     'measured_T',
+                     'model_T',
+                     'calib_psf_used',
+                     'calib_psf_reserved',
+                     ]
         iter_star = self.iterate_hdf('star_catalog','stars',star_cols,chunk_rows)
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for (start, end, data), in zip(iter_star):
             print(f"Read data {start} - {end}")
+            data['star_type'] = load_star_type(data)
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
             #data.update(data2)
@@ -62,112 +98,40 @@ class TXPSFDiagnostics(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
-                      
-    def plot_psf_e1_residual_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
-        print('plotting psf e1 residual histogram')
+
+    def plot_histogram(self, function, output_name, xlabel, edges):
         import matplotlib.pyplot as plt
-        bins = 50
-        edges = np.linspace(-10, 10, bins+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
+        print(f"Plotting {output_name}")
+        counters = {s:ParallelHistogram(edges) for s in STAR_TYPES}
+
         while True:
             data = yield
 
             if data is None:
                 break
 
-            b1 = np.digitize((data['measured_e1']-data['model_e1'])/data['measured_e1'], edges) - 1
+            value = function(data)
 
-            for i in range(bins):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, (data['measured_e1'][w]-data['model_e1'][w])/data['measured_e1'][w])
+            for s in STAR_TYPES:
+                r = data['star_type'] == s
+                counters[s].add_data(value[r])
 
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        if self.rank != 0:
-            return
-        fig = self.open_output('e1_psf_residual_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("($e_{1}-e_{1,psf})/e_{1,psf}$")
-        plt.ylabel(r'$N_{stars}$')
-        plt.ylim(0,1.1*max(count1))
+        counts = {}
+        for s in STAR_TYPES:
+            counts[s] = counters[s].collect(self.comm)
+              
+        fig = self.open_output(output_name, wrapper=True, figsize=(6,15))
+        for s in STAR_TYPES:
+            plt.subplot(len(STAR_TYPES), 1, s+1)
+            manual_step_histogram(edges, 
+                                  counts[s],
+                                  color=STAR_COLORS[s],
+                                  label=STAR_TYPE_NAMES[s]
+            )
+            plt.title(STAR_TYPE_NAMES[s])
+            plt.xlabel(xlabel)
+            plt.ylabel(r'$N_{stars}$')
         fig.close()
-
-    def plot_psf_e2_residual_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
-        print('plotting psf e2 residual histogram')
-        import matplotlib.pyplot as plt
-        bins = 50
-        edges = np.linspace(-10, 10, bins+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        while True:
-            data = yield
-
-            if data is None:
-                break
-
-            b1 = np.digitize((data['measured_e2']-data['model_e2'])/data['measured_e2'], edges) - 1
-
-            for i in range(bins):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, (data['measured_e2'][w]-data['model_e2'][w])/data['measured_e2'][w])
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        if self.rank != 0:
-            return
-        fig = self.open_output('e2_psf_residual_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("$(e_{2}-e_{2,psf})/e_{2,psf}$")
-        plt.ylabel(r'$N_{stars}$')
-        plt.ylim(0,1.1*max(count1))
-        fig.close()
-
-    def plot_psf_T_residual_histogram(self):
-        # general plotter for histograms
-        # TODO think about a smart way to define the bin numbers, also
-        # make this more general for all quantities
-        print('plotting psf T residual histogram')
-        import matplotlib.pyplot as plt
-        bins = 50
-        edges = np.linspace(-.1, .1, bins+1)
-        mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        while True:
-            data = yield
-
-            if data is None:
-                break
-
-            b1 = np.digitize((data['measured_T']-data['model_T'])/data['measured_T'], edges) - 1
-
-            for i in range(bins):
-                w = np.where(b1==i)
-                # Do more things here to establish
-                calc1.add_data(i, (data['measured_T'][w]-data['model_T'][w])/data['measured_T'][w])
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        std1 = np.sqrt(var1/count1)
-        if self.rank != 0:
-            return
-        fig = self.open_output('T_psf_residual_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("$(T-T_{psf})/T_{psf}$")
-        plt.ylabel(r'$N_{stars}$')
-        plt.ylim(0,1.1*max(count1))
-        fig.close()
-
 
 
 class TXRoweStatistics(PipelineStage):
@@ -202,14 +166,16 @@ class TXRoweStatistics(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
 
-        ra, dec, e_psf, de_psf, T_frac = self.load_stars()
+        ra, dec, e_psf, de_psf, T_f, star_type = self.load_stars()
 
         rowe_stats = {}
-        rowe_stats[1] = self.compute_statistic(1, ra, dec, de_psf,       de_psf      )
-        rowe_stats[2] = self.compute_statistic(2, ra, dec, e_psf,        de_psf      )
-        rowe_stats[3] = self.compute_statistic(3, ra, dec, e_psf*T_frac, e_psf*T_frac)
-        rowe_stats[4] = self.compute_statistic(4, ra, dec, de_psf,       e_psf*T_frac)
-        rowe_stats[5] = self.compute_statistic(5, ra, dec, e_psf,        e_psf*T_frac)
+        for t in STAR_TYPES:
+            s = star_type == t
+            rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de_psf,       de_psf)
+            rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, e_psf,        de_psf)
+            rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_psf*T_f, e_psf*T_f)
+            rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de_psf,    e_psf*T_f)
+            rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_psf,     e_psf*T_f)
 
         self.save_stats(rowe_stats)
         self.rowe_plots(rowe_stats)
@@ -233,9 +199,16 @@ class TXRoweStatistics(PipelineStage):
         e_psf = np.array((e1, e2))
         de_psf = np.array((de1, de2))
 
-        return ra, dec, e_psf, de_psf, T_frac
+        star_type = load_star_type(g)
 
-    def compute_statistic(self, i, ra, dec, q1, q2):
+        return ra, dec, e_psf, de_psf, T_frac, star_type
+
+    def compute_rowe(self, i, s, ra, dec, q1, q2):
+        # select a subset of the stars
+        ra = ra[s]
+        dec = dec[s]
+        q1 = q1[:, s]
+        q2 = q2[:, s]
         n = len(ra)
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
@@ -248,41 +221,55 @@ class TXRoweStatistics(PipelineStage):
     def rowe_plots(self, rowe_stats):
         # First plot - stats 1,3,4
         import matplotlib.pyplot as plt
-        f = self.open_output('rowe134', wrapper=True)
-        for i in 1,3,4:
-            theta, xi, err = rowe_stats[i]
-            plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3)
-        plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
-        plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
-        plt.xscale('log')
-        plt.yscale('log')
-        plt.xlabel(r"$\theta$")
-        plt.ylabel(r"$\xi_+(\theta)$")
-        plt.legend()
+        import matplotlib.transforms as mtrans
+
+        f = self.open_output('rowe134', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+            
+
+            for j,i in enumerate([1,3,4]):
+                theta, xi, err = rowe_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*(j-1), 0, units='inches')                
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
+            plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
+            plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.xlabel(r"$\theta$")
+            plt.ylabel(r"$\xi_+(\theta)$")
+            plt.legend()
+            plt.title(STAR_TYPE_NAMES[s])
         f.close()
 
-        f = self.open_output('rowe25', wrapper=True)
-        for i in 2,5:
-            theta, xi, err = rowe_stats[i]
-            plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3)
-        plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
-        plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
-        plt.xscale('log')
-        plt.yscale('log')
-        plt.xlabel(r"$\theta$")
-        plt.ylabel(r"$\xi_+(\theta)$")
-        plt.legend()
+        f = self.open_output('rowe25', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+            for j,i in enumerate([2,5]):
+                theta, xi, err = rowe_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')                
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
+                plt.title(STAR_TYPE_NAMES[s])
+                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
+                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\xi_+(\theta)$")
+                plt.legend()
         f.close()
 
     def save_stats(self, rowe_stats):
         f = self.open_output('rowe_stats')
         g = f.create_group("rowe_statistics")
         for i in 1,2,3,4,5:
-            theta, xi, err = rowe_stats[i]
-            h = g.create_group(f'rowe_{i}')
-            h.create_dataset('theta', data=theta)
-            h.create_dataset('xi_plus', data=xi)
-            h.create_dataset('xi_err', data=err)
+            for s in STAR_TYPES:
+                theta, xi, err = rowe_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f'rowe_{i}_{name}')
+                h.create_dataset('theta', data=theta)
+                h.create_dataset('xi_plus', data=xi)
+                h.create_dataset('xi_err', data=err)
         f.close()
 
 
@@ -311,7 +298,11 @@ class TXBrighterFatterPlot(PipelineStage):
         matplotlib.use('agg')
 
         data = self.load_stars()
-        results = self.compute_binned_stats(data)
+        results = {}
+        for s in STAR_TYPES:
+            w = data['star_type'] == s
+            data_s = {k: v[w] for k, v in data.items()}
+            results[s] = self.compute_binned_stats(data_s)
 
         self.save_stats(results)
         self.save_plots(results)
@@ -326,6 +317,7 @@ class TXBrighterFatterPlot(PipelineStage):
         data['delta_e1'] = g['measured_e1'][:] - g['model_e1'][:]
         data['delta_e2'] = g['measured_e2'][:] - g['model_e2'][:]
         data['delta_T'] = g['measured_T'][:] - g['model_T'][:]
+        data['star_type'] = load_star_type(g)
 
         return data
 
@@ -372,23 +364,30 @@ class TXBrighterFatterPlot(PipelineStage):
 
     def save_plots(self, results):
         import matplotlib.pyplot as plt
-        m, dT, errT, e1, err1, e2, err2 = results
         band = self.config['band']
-        f = self.open_output('brighter_fatter_plot', wrapper=True, figsize=(6,8))
-        # Top plot - classic BF size plot, the size residual as a function of
-        # magnitude
-        ax = plt.subplot(2,1,1)
-        plt.errorbar(m, dT, errT, fmt='.')
-        plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
-        plt.ylim(-0.025, 0.1)
-        # Lower plot - the e1 and e2 residuals as a function of mag
-        plt.subplot(2,1,2, sharex=ax)
-        plt.errorbar(m, e1, err1, label='$e_1$', fmt='.')
-        plt.errorbar(m, e2, err2, label='$e_2$', fmt='.')
-        plt.ylabel(r"$e_\mathrm{PSF} - e_\mathrm{model}$")
-        plt.xlabel(f"{band}-band magnitude")
-        # May need to adjust this range
-        plt.ylim(-0.02, 0.02)
+        n = len(results)
+        width = n * 6
+        f = self.open_output('brighter_fatter_plot', wrapper=True, figsize=(width,8))
+        for s, res in results.items():
+            m, dT, errT, e1, err1, e2, err2 = res
+
+            # Top plot - classic BF size plot, the size residual as a function of
+            # magnitude
+            ax = plt.subplot(2,n,2*s+1)
+            plt.title(STAR_TYPE_NAMES[s])
+            plt.errorbar(m, dT, errT, fmt='.')
+            plt.xlabel(f"{band}-band magnitude")
+            plt.ylabel(r"$T_\mathrm{PSF} - T_\mathrm{model}$ ($\mathrm{arcsec}^2$)")
+            plt.ylim(-0.025, 0.1)
+            # Lower plot - the e1 and e2 residuals as a function of mag
+            plt.subplot(2,n,2*s+2, sharex=ax)
+            plt.title(STAR_TYPE_NAMES[s])
+            plt.errorbar(m, e1, err1, label='$e_1$', fmt='.')
+            plt.errorbar(m, e2, err2, label='$e_2$', fmt='.')
+            plt.ylabel(r"$e_\mathrm{PSF} - e_\mathrm{model}$")
+            plt.xlabel(f"{band}-band magnitude")
+            # May need to adjust this range
+            plt.ylim(-0.02, 0.02)
         plt.legend()
         plt.tight_layout()
         f.close()
@@ -396,15 +395,29 @@ class TXBrighterFatterPlot(PipelineStage):
     def save_stats(self, results):
         # Save all the stats in results for later plotting
         # Save to standard HDF5 format.
-        (m, dT, errT, e1, err1, e2, err2) = results
         f = self.open_output('brighter_fatter_data')
-        g = f.create_group('brighter_fatter')
-        g.attrs['band'] = self.config['band']
-        g.create_dataset('mag', data=m)
-        g.create_dataset('delta_T', data=dT)
-        g.create_dataset('delta_T_error', data=errT)
-        g.create_dataset('delta_e1', data=e1)
-        g.create_dataset('delta_e1_error', data=err1)
-        g.create_dataset('delta_e2', data=e2)
-        g.create_dataset('delta_e2_error', data=err2)
+        g1 = f.create_group('brighter_fatter')
+        g1.attrs['band'] = self.config['band']
+        for s, res in results.items():
+            (m, dT, errT, e1, err1, e2, err2) = res
+            g = g1.create_group(STAR_TYPE_NAMES[s])
+            g.create_dataset('mag', data=m)
+            g.create_dataset('delta_T', data=dT)
+            g.create_dataset('delta_T_error', data=errT)
+            g.create_dataset('delta_e1', data=e1)
+            g.create_dataset('delta_e1_error', data=err1)
+            g.create_dataset('delta_e2', data=e2)
+            g.create_dataset('delta_e2_error', data=err2)
         f.close()
+
+
+
+def load_star_type(data):
+    used = data['calib_psf_used'][:]
+    reserved = data['calib_psf_reserved'][:]
+
+    star_type = np.zeros(used.size, dtype=int)
+    star_type[used] = STAR_PSF_USED
+    star_type[reserved] = STAR_PSF_RESERVED
+
+    return star_type

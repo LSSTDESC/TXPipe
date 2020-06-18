@@ -22,8 +22,8 @@ stages:
     - name: TXMeanLensSelector
       nprocess: 32
     - name: PZPDFMLZ
-      nprocess: 64
-      nodes: 2
+      nprocess: 128
+      nodes: 4
     - name: TXPhotozStack
       nprocess: 16
     - name: TXPhotozPlots
@@ -37,26 +37,26 @@ stages:
     - name: TXNullBlinding
       threads_per_process: 64
     - name: TXTwoPointFourier
-      nprocess: 2
-      nodes: 2
+      nprocess: 4
+      nodes: 4
       threads_per_process: 64
     - name: TXTwoPointPlots
     - name: TXMapPlots
     - name: TXDiagnosticPlots
-      nprocess: 8
+      nprocess: 16
     - name: TXGammaTBrightStars
       threads_per_process: 64
     - name: TXGammaTDimStars
       threads_per_process: 64
     - name: TXBrighterFatterPlot
-   - name: TXRoweStatistics
-     nprocess: 2
-     nodes: 2
-     threads_per_process: 64
+#    - name: TXRoweStatistics
+#      nprocess: 2
+#      nodes: 2
+#      threads_per_process: 64
     - name: TXPSFDiagnostics
 
 output_dir: data/2.2i/outputs
-config: examples/config/cosmodc2_config.yml
+config: examples/config/2.2i_config.yml
 
 
 

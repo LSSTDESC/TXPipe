@@ -1,4 +1,15 @@
 import h5py
+import subprocess
+import shutil
+
+def repack(filename):
+    """
+    In-place HDF5 repack operation on file.
+    """
+    tmp_name = f'{filename}.tmp_325467847'
+    subprocess.check_call(f'h5repack {filename} {tmp_name}', shell=True)
+    shutil.move(tmp_name, filename)
+
 def create_dataset_early_allocated(group, name, size, dtype):
     """
     Create an HdF5 dataset, allocating the full space for it at the start of the process.

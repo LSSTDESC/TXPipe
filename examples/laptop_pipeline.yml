@@ -23,6 +23,7 @@ stages:
     - name: TXRoweStatistics
       threads_per_process: 2
     - name: TXPSFDiagnostics
+    - name: TXBrighterFatterPlot
     # disabling these as they takes too long for a quick test
 #    - name: TXRealGaussianCovariance
 #    - name: TXTwoPointFourier

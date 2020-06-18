@@ -6,7 +6,31 @@ A collection of statistical tools that may be useful     across TXPipe.
 import numpy as np
 from .sparse import SparseArray
 
+class ParallelHistogram:
+    def __init__(self, edges):
+        self.edges = edges
+        self.size = len(edges) - 1
+        self.counts = np.zeros(self.size)
 
+    def add_data(self, x):
+        b = np.digitize(x, self.edges) - 1
+        n = self.size
+        for b_i in b:
+            if b_i>=0 and b_i < n:
+                self.counts[b_i] += 1
+
+    def collect(self, comm=None):
+        counts = self.counts.copy()
+
+        if comm is None:
+            return counts
+
+        if comm.rank == 0:
+            comm.Reduce(mpi4py.MPI.IN_PLACE, counts)
+            return counts
+        else:
+            comm.Reduce(counts, None)
+            return None
 
 class ParallelStatsCalculator:
     """ParallelStatsCalculator is a parallel, on-line calculator for mean
