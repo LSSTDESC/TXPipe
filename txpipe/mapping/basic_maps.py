@@ -172,7 +172,7 @@ class FlagMapper:
         pix_nums = self.pixel_scheme.ang2pix(ra, dec)
         for i, m in enumerate(self.maps):
             f = 2**i
-            w = np.where(f & flags > 0)
+            w = np.where(f & (flags > 0))
             for p in pix_nums[w]:
                 m[p] += 1
 
