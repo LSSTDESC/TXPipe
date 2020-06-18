@@ -128,6 +128,12 @@ class DataFile:
         else:
             return tag
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
 class HDFFile(DataFile):
     supports_parallel_write = True
     """
