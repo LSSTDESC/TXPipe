@@ -356,7 +356,7 @@ class TXTwoPoint(PipelineStage):
 
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
-            g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
             return g1, g2, mask
 
         elif self.config['shear_catalog_type']=='lensfit':
@@ -379,7 +379,7 @@ class TXTwoPoint(PipelineStage):
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',path_centers=patch_centers)
+                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
         elif self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
             patch_centers = self.get_input('patch_centers')
             g1,g2,mask = self.get_m(data, i)
@@ -390,18 +390,15 @@ class TXTwoPoint(PipelineStage):
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            patch_centers = self.get_input('patch_centers')
+        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='metacal':
             g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
-                w = data['lensfit_weight'][mask],
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
         elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            patch_centers = self.get_input('patch_centers')
             g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -543,7 +540,10 @@ class TXTwoPoint(PipelineStage):
         # Columns we need from the tomography catalog
         f = self.open_input('shear_tomography_catalog')
         source_bin = f['tomography/source_bin'][:]
-        r_total = f['response/R'][:]
+        if self.config['shear_catalog_type']=='metacal':
+            r_total = f['metacal_response/R_total'][:]
+        else:
+            r_total = f['response/R'][:]
         f.close()
 
         f = self.open_input('lens_tomography_catalog')
@@ -571,7 +571,10 @@ class TXTwoPoint(PipelineStage):
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        g = f['shear']
+        if self.config['shear_catalog_type']=='metacal':
+            g = f['metacal']
+        else:
+            g = f['shear']
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]

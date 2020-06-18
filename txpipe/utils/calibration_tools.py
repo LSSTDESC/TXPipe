@@ -389,7 +389,7 @@ class ParallelCalibratorNonMetacal:
 
 
 class MeanShearInBins:
-    def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type=None):
+    def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type='metacal'):
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma

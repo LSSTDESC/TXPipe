@@ -60,9 +60,16 @@ class TXDiagnosticPlots(PipelineStage):
         # so the plotters should handle this.
         chunk_rows = self.config['chunk_rows']
         psf_prefix = self.config['psf_prefix']
-        shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+        shear_prefix = self.config['shear_prefix']
+        if self.config['shear_catalog_type']=='metacal':
+            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
+        else:
+            shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T']
+        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
+        shear_tomo_cols = ['source_bin']
+        lens_tomo_cols = ['lens_bin']
         photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']
@@ -187,11 +194,13 @@ class TXDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         
+        psf_prefix = self.config['psf_prefix']
+        
         delta_gamma = self.config['delta_gamma']
         size = 11
         psf_T_edges = np.linspace(0.2, 0.28, size+1)
 
-        binnedShear = MeanShearInBins('f{psf_prefix}_T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        binnedShear = MeanShearInBins(f'{psf_prefix}T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
             
         while True:
             data = yield
@@ -250,11 +259,12 @@ class TXDiagnosticPlots(PipelineStage):
         # Parameters of the binning in SNR
         size = 10
         delta_gamma = self.config['delta_gamma']
+        shear_prefix = self.config['shear_prefix']
         snr_edges = np.logspace(.1,2.5,size+1)
 
         # This class includes all the cutting and calibration, both for 
         # estimator and selection biases
-        binnedShear = MeanShearInBins('f{psf_prefix}_s2n', snr_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        binnedShear = MeanShearInBins(f'{shear_prefix}s2n', snr_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         while True:
             # This happens when we have loaded a new data chunk
@@ -305,10 +315,12 @@ class TXDiagnosticPlots(PipelineStage):
         from scipy import stats
         
         delta_gamma = self.config['delta_gamma']
+        psf_prefix = self.config['psf_prefix']
         
         size = 10
         T_edges = np.linspace(0.1,2.1,size+1)
-        binnedShear = MeanShearInBins(f'{psf_prefix}_T', T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        shear_prefix = self.config['shear_prefix']
+        binnedShear = MeanShearInBins(f'{shear_prefix}T', T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         while True:
             # This happens when we have loaded a new data chunk
@@ -445,6 +457,7 @@ class TXDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         
         delta_gamma = self.config['delta_gamma']
+        shear_prefix = self.config['shear_prefix']
         bins = 50
         edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
@@ -459,12 +472,12 @@ class TXDiagnosticPlots(PipelineStage):
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data[f'{psf_prefix}_s2n'][qual_cut], edges) - 1
+            b1 = np.digitize(data[f'{shear_prefix}s2n'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data[f'{psf_prefix}_s2n'][qual_cut][w])
+                calc1.add_data(i, data[f'{shear_prefix}s2n'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         if self.rank != 0:
