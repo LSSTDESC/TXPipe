@@ -262,7 +262,7 @@ class TXPhotozPlots(PipelineStage):
         plt.title("Lens n(z)")
         out1.close()
 
-        f = self.open_input('source_photoz_stack', wrapper=True)
+        f = self.open_input('shear_photoz_stack', wrapper=True)
         out2 = self.open_output('nz_source', wrapper=True)
         f.plot('source')
         plt.legend()
@@ -317,7 +317,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         # Data we need - the photometry catalog for DC2 has the true redshift
         # value in, and the tomography catalog has the binning.
         photo_iterator = self.iterate_hdf(
-            'photometry_catalog', # tag of input file to iterate through
+            'shear_photometry_catalog', # tag of input file to iterate through
             'photometry', # data group within file to look at
             ['redshift_true'], # column(s) to read
             self.config['chunk_rows']  # number of rows to read at once
@@ -369,7 +369,6 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             for b in range(nbin_lens):
                 w = np.where(lens_tomo_data['lens_bin']==b)
-                print(z[w])
                 lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 lens_counts[b] += w[0].size
 
@@ -400,7 +399,6 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             # Normalize the stacks
             for b in range(nbin_lens):
-                print(b, lens_counts[b])
                 lens_pdfs[b] /= lens_counts[b]
 
             # And finally save the outputs
@@ -423,7 +421,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         """
 
         # Check we are running on a photo file with redshift_true
-        photo_file = self.open_input('photometry_catalog')
+        photo_file = self.open_input('shear_photometry_catalog')
         has_z = 'redshift_true' in photo_file['photometry'].keys()
         photo_file.close()
         if not has_z:
@@ -439,7 +437,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         nbin_source = shear_tomo_file['tomography'].attrs['nbin_source']
         shear_tomo_file.close()
 
-        shear_tomo_file = self.open_input('lens_tomography_catalog')
+        lens_tomo_file = self.open_input('lens_tomography_catalog')
         nbin_lens = lens_tomo_file['tomography'].attrs['nbin_lens']
         lens_tomo_file.close()
 

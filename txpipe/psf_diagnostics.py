@@ -322,7 +322,7 @@ class TXBrighterFatterPlot(PipelineStage):
 
         band = self.config['band']
         data = {}
-        data['mag'] = g[f'{band}_mag'][:]
+        data['mag'] = g[f'mag_{band}'][:]
         data['delta_e1'] = g['measured_e1'][:] - g['model_e1'][:]
         data['delta_e2'] = g['measured_e2'][:] - g['model_e2'][:]
         data['delta_T'] = g['measured_T'][:] - g['model_T'][:]

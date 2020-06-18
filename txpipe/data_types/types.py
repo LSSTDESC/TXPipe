@@ -274,24 +274,8 @@ class SACCFile(DataFile):
 
 class NOfZFile(HDFFile):
 
-    def validate(self):
-        
-        nsrc = self.get_nbin('source')
-        nlens = self.get_nbin('lens')
-        if nsrc and nlens > 0:
-            required_datasets = ['n_of_z/lens/z', 'n_of_z/source/bin_0']
-        elif nsrc > 0: 
-            required_datasets = ['n_of_z/source/bin_0']
-        else:
-            required_datasets = ['n_of_z/source/bin_0']
-        super().validate()
-
-        for kind in ('lens', 'source'):
-            nbin = self.get_nbin(kind)
-            for b in range(nbin):
-                col_name = 'bin_{}'.format(b)
-                if not col_name in self.file[f'n_of_z/{kind}']:
-                    raise FileValidationError(f"Expected to find {nbin} bins in NOfZFile but was missing at least {col_name}")
+    # Must have at least one bin in
+    required_datasets = []
 
     def get_nbin(self, kind):
         return self.file['n_of_z'][kind].attrs['nbin']

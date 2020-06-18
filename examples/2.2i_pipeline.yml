@@ -1,0 +1,81 @@
+# This larger run has nearly 79M galaxies in
+launcher:
+    name: mini
+    interval: 1.0
+
+
+# These site options tell the launcher to use shifter
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+    volume: ${PWD}:/opt/txpipe
+
+modules: txpipe
+
+
+stages:
+    - name: TXJackknifeCenters
+    - name: TXNoiseMaps
+      nprocess: 32
+    - name: TXSourceSelector
+      nprocess: 32
+    - name: TXMeanLensSelector
+      nprocess: 32
+    - name: PZPDFMLZ
+      nprocess: 64
+      nodes: 2
+    - name: TXPhotozStack
+      nprocess: 16
+    - name: TXPhotozPlots
+    - name: TXDiagnosticMaps
+      nprocess: 8
+    - name: TXRandomCat
+      nodes: 1
+    - name: TXTwoPoint
+      nprocess: 2
+      nodes: 2
+    - name: TXNullBlinding
+      threads_per_process: 64
+    - name: TXTwoPointFourier
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 64
+    - name: TXTwoPointPlots
+    - name: TXMapPlots
+    - name: TXDiagnosticPlots
+      nprocess: 8
+    - name: TXGammaTBrightStars
+      threads_per_process: 64
+    - name: TXGammaTDimStars
+      threads_per_process: 64
+    - name: TXBrighterFatterPlot
+   - name: TXRoweStatistics
+     nprocess: 2
+     nodes: 2
+     threads_per_process: 64
+    - name: TXPSFDiagnostics
+
+output_dir: data/2.2i/outputs
+config: examples/config/cosmodc2_config.yml
+
+
+
+
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/shear_catalog.hdf5
+    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/photometry_catalog.hdf5
+    photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/cosmoDC2_trees_i25.3.npy
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/sample_cosmodc2_w10year_errors.dat
+    star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/star_catalog.hdf5
+    exposures: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/exposures.hdf5
+
+resume: True
+log_dir: data/2.2i/logs
+pipeline_log: data/2.2i/log.txt
+

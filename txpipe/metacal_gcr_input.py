@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, HDFFile
-from .utils.calibration_tools import metacal_band_variants, metacal_variants
+from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 import glob
 import re
@@ -27,6 +27,8 @@ class TXMetacalGCRInput(PipelineStage):
 
     config_options = {
         'cat_name': str,
+        'single_tract': '',
+        'length': 0,
     }
 
     def run(self):
@@ -38,12 +40,18 @@ class TXMetacalGCRInput(PipelineStage):
         # not in a TXPipe format.
         cat_name = self.config['cat_name']
         cat = GCRCatalogs.load_catalog(cat_name)
-        cat.master.use_cache = False
 
         # Total size is needed to set up the output file,
         # although in larger files it is a little slow to compute this.
-        n = len(cat)
-        print(f"Total catalog size = {n}")  
+        if self.config['length'] == 0:
+            n = len(cat)
+            print(f"Total catalog size = {n}")  
+        else:
+            n = self.config['length']
+            print(f"Using fixed specified size = {n}")
+
+
+        cat.master.use_cache = False
 
         available = cat.list_all_quantities()
         bands = []
@@ -54,16 +62,16 @@ class TXMetacalGCRInput(PipelineStage):
         # Columns that we will need.
         shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
+            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
         )
 
         # Input columns for photometry
-        photo_cols = ['id', 'ra', 'dec', 'extendedness']
+        photo_cols = ['id', 'ra', 'dec', 'extendedness', 'tract']
 
         # Photometry columns (non-metacal)
         for band in 'ugrizy':
-            photo_cols.append(f'{band}_mag')
-            photo_cols.append(f'{band}_mag_err')
+            photo_cols.append(f'mag_{band}')
+            photo_cols.append(f'magerr_{band}')
             photo_cols.append(f'snr_{band}_cModel')
 
         # Columns we need to load in for the star data - 
@@ -74,6 +82,8 @@ class TXMetacalGCRInput(PipelineStage):
             'ra',
             'dec',
             'calib_psf_used',
+            'calib_psf_reserved',
+            'extendedness',
             'Ixx',
             'Ixy',
             'Iyy',
@@ -82,19 +92,27 @@ class TXMetacalGCRInput(PipelineStage):
             'IyyPSF',
         ]
 
-        # For shear we just add a weight column
-        shear_out_cols = shear_cols + ['weight']
+        # For shear we just add a weight column, and the non-rounded PSF estimates
+        shear_out_cols = shear_cols + ['weight',  'psf_g1', 'psf_g2'] 
 
         # For the photometry output we strip off the _cModeel suffix.
         photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
                             for col in photo_cols]
 
-        # The star output names are mostly different tot he input names
-        star_out_cols = ['id', 'ra', 'dec', 
+        # The star output names are mostly different to the input names
+        star_out_cols = [
+            # These are read directly
+            'id', 'ra', 'dec', 
+            'calib_psf_used',
+            'calib_psf_reserved',
+            'extendedness',
+            'tract',
+            'mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
+            # These are calculated
             'measured_e1', 'measured_e2',
             'model_e1', 'model_e2',
             'measured_T', 'model_T',
-            'u_mag', 'g_mag', 'r_mag', 'i_mag', 'z_mag', 'y_mag']
+            ]
 
         # eliminate duplicates before loading
         cols = list(set(shear_cols + photo_cols + star_cols))
@@ -104,10 +122,15 @@ class TXMetacalGCRInput(PipelineStage):
         shear_output = None
         photo_output = None
 
-        print("Skipping bad tract 2897 - remove this later!")
-
         # Loop through the data, as chunke natively by GCRCatalogs
-        for data in cat.get_quantities(cols, return_iterator=True, native_filters='tract != 2897'):
+        single_tract = self.config['single_tract']
+        if single_tract:
+            kwargs = {'native_filters': f'tract == {single_tract}'}
+            print(f"Selecting one tract only: {single_tract}")
+        else:
+            kwargs = {}
+
+        for data in cat.get_quantities(cols, return_iterator=True, **kwargs):
             # Some columns have different names in input than output
             self.rename_columns(data)
             self.add_weight_column(data)
@@ -144,6 +167,11 @@ class TXMetacalGCRInput(PipelineStage):
             data[f'snr_{band}'] = data[f'snr_{band}_cModel']
             del data[f'snr_{band}_cModel']
 
+        Ixx = data['IxxPSF']
+        Ixy = data['IxyPSF']
+        Iyy = data['IyyPSF']
+        data['psf_g1'], data['psf_g2'] = moments_to_shear(Ixx, Iyy, Ixy)
+
     def setup_output(self, name, group, cat, cols, n):
         import h5py
         f = self.open_output(name)
@@ -165,17 +193,21 @@ class TXMetacalGCRInput(PipelineStage):
     def compute_star_data(self, data):
         star_data = {}
         # We specifically use the stars chosen for PSF measurement
-        star = data['calib_psf_used']
+        star = (
+                data['calib_psf_used']
+                | data['calib_psf_reserved']
+                | (data['extendedness'] == 0)
+        )
 
-        # General columns
-        star_data['ra'] = data['ra'][star]
-        star_data['dec'] = data['dec'][star]
-        star_data['id'] = data['id'][star]
-        for band in 'ugrizy':
-            star_data[f'{band}_mag'] = data[f'{band}_mag'][star]
+        for col in ['id', 'ra', 'dec',
+            'calib_psf_used',
+            'calib_psf_reserved',
+            'extendedness',
+            'tract']:
+            star_data[col] = data[col][star]
 
         for b in 'ugrizy':
-            star_data[f'{b}_mag'] = data[f'{b}_mag'][star]
+            star_data[f'mag_{b}'] = data[f'mag_{b}'][star]
 
         # HSM reports moments.  We convert these into
         # ellipticities.  We do this for both the star shape
@@ -193,9 +225,7 @@ class TXMetacalGCRInput(PipelineStage):
 
             # Conversion of moments to e1, e2
             T = Ixx + Iyy
-            e = (Ixx - Iyy + 2j * Ixy) / (Ixx + Iyy)
-            e1 = e.real
-            e2 = e.imag
+            e1, e2 = moments_to_shear(Ixx, Iyy, Ixy)
 
             # save to output
             star_data[f'{out_name}e1'] = e1
@@ -204,6 +234,11 @@ class TXMetacalGCRInput(PipelineStage):
 
         return star_data
 
+def moments_to_shear(Ixx, Iyy, Ixy):
+    b = Ixx + Iyy + 2 * np.sqrt(Ixx * Iyy - Ixy**2)
+    e1 = (Ixx - Iyy) / b
+    e2 = 2 * Ixy / b
+    return e1, e2
 
 
 class TXGCRTwoCatalogInput(TXMetacalGCRInput):
@@ -270,7 +305,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
         # Columns that we will need.
         shear_cols = (['id', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
+            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
             + ['weight']
         )
 
@@ -382,9 +417,7 @@ class TXGCRTwoCatalogInput(TXMetacalGCRInput):
             data[f'snr_{band}'] = data[f'{band}_modelfit_CModel_instFlux'] / data[f'{band}_modelfit_CModel_instFluxErr']
             del data[f'{band}_modelfit_CModel_instFlux']
             del data[f'{band}_modelfit_CModel_instFluxErr']
-
-        
-
+            
 # response to an old Stack Overflow question of mine:
 # https://stackoverflow.com/questions/33529057/indices-that-intersect-and-sort-two-numpy-arrays
 def intersecting_indices(x, y):

@@ -259,7 +259,7 @@ class TXTwoPointFourier(PipelineStage):
         return cache
 
     def save_workspace_cache(self, cache, spaces):
-        if cache is None:
+        if (cache is None) or (cache == {}):
             return
 
         for space in spaces.values():
