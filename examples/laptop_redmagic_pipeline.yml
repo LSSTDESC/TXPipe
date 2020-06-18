@@ -2,19 +2,20 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
-    - name: PZPDFMLZ
+    # - name: PZPDFMLZ
     # - name: TXPhotozSourceStack
     - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
-    - name: TXDiagnosticMaps
-    - name: TXRandomCat
-    - name: TXJackknifeCenters
-    - name: TXPhotozPlots
-    - name: TXTwoPointLensCat
-      threads_per_process: 2
-    - name: TXBlinding
-      threads_per_process: 2
-    - name: TXTwoPointPlots
+    # - name: TXDiagnosticMaps
+    - name: TXSourceMaps
+    # - name: TXRandomCat
+    # - name: TXJackknifeCenters
+    # - name: TXPhotozPlots
+    # - name: TXTwoPointLensCat
+    #   threads_per_process: 2
+    # - name: TXBlinding
+    #   threads_per_process: 2
+    # - name: TXTwoPointPlots
 
 # Where to put outputs
 output_dir: data/example/outputs_redmagic

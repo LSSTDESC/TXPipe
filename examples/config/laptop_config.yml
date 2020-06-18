@@ -120,6 +120,36 @@ TXDiagnosticMaps:
     depth_cut: 23.0
     psf_prefix: mcal_psf_
 
+TXSourceMaps:
+    chunk_rows: 100000  # Number of rows to process at once
+    sparse: True  # Generate sparse maps - faster if using small areas
+    pixelization: healpix
+    nside: 512
+
+TXLensMaps:
+    chunk_rows: 100000  # Number of rows to process at once
+    sparse: True  # Generate sparse maps - faster if using small areas
+    pixelization: healpix
+    nside: 512
+
+
+TXMainMaps:
+    chunk_rows: 100000  # Number of rows to process at once
+    sparse: True  # Generate sparse maps - faster if using small areas
+    pixelization: healpix
+    nside: 512
+    # pixelization: gnomonic
+    # pixel_size: 0.2
+    # ra_cent: 62.
+    # dec_cent: -35.
+    # npix_x: 60
+    # npix_y: 60
+    # depth_cut: 23.0
+    # psf_prefix: mcal_psf_
+    # snr_threshold: 10.0
+    # snr_delta: 1.0
+
+
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 60.
@@ -135,3 +165,7 @@ TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True
     bandwidth: 100
+
+TXSimpleMask:
+    depth_cut : 23.5
+    bright_object_max: 10.0

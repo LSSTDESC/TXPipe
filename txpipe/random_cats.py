@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import DiagnosticMaps, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile
+from .data_types import MapsFile, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile
 from .utils import choose_pixelization
 import numpy as np
 
@@ -7,7 +7,7 @@ import numpy as np
 class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
-        ('diagnostic_maps', DiagnosticMaps),
+        ('aux_maps', MapsFile),
         ('tracer_metadata', HDFFile),       
         ('lens_photoz_stack', HDFFile),
     ]
@@ -27,17 +27,17 @@ class TXRandomCat(PipelineStage):
         import healpy
         from . import randoms
         # Load the input depth map
-        maps_file = self.open_input('diagnostic_maps')
-        pixel = maps_file['maps/depth/pixel'][:]
-        depth = maps_file['maps/depth/value'][:]
-        nside = maps_file['maps/depth'].attrs['nside']
-        pixelization = maps_file['maps/depth'].attrs['pixelization']
+        with self.open_input('aux_maps', wrapper=True) as maps_file:
+            depth = maps_file.read_map('depth/depth')
+            info = maps_file.read_map_info('depth/depth')
+            nside = info['nside']
+            scheme = choose_pixelization(**info)
+
         pz_stack = self.open_input('lens_photoz_stack')
 
         # Cut down to pixels that have any objects in
-        hit = depth>0
-        pixel = pixel[hit]
-        depth = depth[hit]
+        pixel = np.where(depth > 0)[0]
+        depth = depth[pixel]
 
         if len(pixel)==1:
             raise ValueError("Only one pixel in depth map!")
@@ -66,7 +66,6 @@ class TXRandomCat(PipelineStage):
         density = phi_star * scipy.special.gammaincc(alpha15, x)
 
         # Pixel geometry - area in arcmin^2
-        scheme = choose_pixelization(**dict(maps_file['maps/depth'].attrs))
         area = scheme.pixel_area(degrees=True) * 60. * 60.
         vertices = scheme.vertices(pixel)
 
@@ -76,7 +75,7 @@ class TXRandomCat(PipelineStage):
 
         ### The current file in 'pz_stack' only has 1 lens bin, but zbins loads 4 bins!!
         Ntomo = len(pz_stack['n_of_z']['lens'].keys())-1
-        z_photo_arr = pz_stack['n_of_z']['lens']['z'].value
+        z_photo_arr = pz_stack['n_of_z']['lens']['z'][:]
         
         ### Loop over the tomographic bins to find number of galaxies in each pixel/zbin
         ### When the density changes per redshift bin, this can go into the main Ntomo loop
@@ -156,25 +155,6 @@ class TXRandomCat(PipelineStage):
         meta.close()
         return d
 
-
-
-def pixel_boundaries(props, pixel):
-    scheme = choose_pixelization(**dict(props))
-    # area in arcmin^2
-    area = scheme.pixel_area(degrees=True) * 60 * 60
-    boundaries = scheme.pixel_boundaries()
-
-
-    if props['pixelization']=='healpix':
-        boundaries = healpy.boundaries(props['nside'], pixel)
-        area = healpy.nside2pixarea(nside, degrees=True) * 60.*60.
-    elif props['pixelization'] == 'gnomonic':
-        boundaries = pixel_boundaries(maps_file['maps/depth'].attrs)
-        pix_size_deg = maps_file['maps/depth'].attrs['pixel_size']
-        area = (pix_size_deg*60.*60.)**2
-
-    else:
-        raise ValueError(f"Unknown pixelization scheme: {pixelization}")
 
 
 

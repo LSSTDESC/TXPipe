@@ -10,7 +10,6 @@ from .lens_selector import TXMeanLensSelector
 from .photoz import TXRandomPhotozPDF
 from .photoz_stack import TXPhotozStack
 from .random_cats import TXRandomCat
-from .diagnostic_maps import TXDiagnosticMaps
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .blinding import TXBlinding
@@ -26,3 +25,8 @@ from .twopoint import TXGammaTBrightStars
 from .noise_maps import TXNoiseMaps
 from .test import test_combine
 from .ingest_redmagic import TXIngestRedmagic
+from .maps import TXMainMaps
+from .auxiliary_maps import TXAuxiliaryMaps
+from .map_plots import TXMapPlots
+from .masks import TXSimpleMask
+from .metadata import TXTracerMetadata

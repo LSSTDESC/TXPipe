@@ -19,26 +19,26 @@ class Mapper:
                 self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
             self.stats[(b,'weight')] = ParallelStatsCalculator(self.pixel_scheme.npix)
 
-    def add_data(self, shear_data, shear_bin_data, lens_bin_data, m_data):
+    def add_data(self, data):
         npix = self.pixel_scheme.npix
         do_lens = self.do_lens
         do_g = self.do_g
 
-        n = len(shear_data['ra'])
+        n = len(data['ra'])
 
         # Get pixel indices
-        pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
+        pix_nums = self.pixel_scheme.ang2pix(data['ra'], data['dec'])
 
         if do_g:
-            source_weights = shear_data['weight'] 
-            source_bins = shear_bin_data['source_bin']
-            g1 = shear_data['g1']
-            g2 = shear_data['g2']
+            source_weights = data['weight'] 
+            source_bins = data['source_bin']
+            g1 = data['g1']
+            g2 = data['g2']
 
         if do_lens:
             # TODO: change from unit weights for lenses
-            lens_weights = np.ones_like(shear_data['ra'])
-            lens_bins = lens_bin_data['lens_bin']
+            lens_weights = np.ones_like(data['ra'])
+            lens_bins = data['lens_bin']
 
 
         for i in range(n):
@@ -168,7 +168,10 @@ class FlagMapper:
         self.maps = [np.zeros(self.pixel_scheme.npix, dtype=np.int32) for i in range(flag_exponent_max)]
         self.flag_exponent_max = flag_exponent_max
 
-    def add_data(self, ra, dec, flags):
+    def add_data(self, data):
+        ra = data['ra']
+        dec = data['dec']
+        flags = data['flags']
         pix_nums = self.pixel_scheme.ang2pix(ra, dec)
         for i, m in enumerate(self.maps):
             f = 2**i

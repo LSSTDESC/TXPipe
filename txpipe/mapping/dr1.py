@@ -55,7 +55,6 @@ class DepthMapperDR1:
         dec = data['dec']
         snr = data['snr']
         mags = data['mag']
-        bins = data['bins']
         # Get healpix pixels
         pix_nums = self.pixel_scheme.ang2pix(ra, dec)
 
