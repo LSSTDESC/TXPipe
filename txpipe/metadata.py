@@ -63,7 +63,8 @@ class TXTracerMetadata(PipelineStage):
         meta_file.create_dataset('tracers/lens_density', data=lens_density)
         meta_file.create_dataset('tracers/source_density', data=source_density)
         meta_file['tracers'].attrs['area'] = area
-        meta_file['tracers'].attrs['area_unit'] = 'sq deg'
+        meta_file['tracers'].attrs['area_unit'] = 'deg^2'
+        meta_file['tracers'].attrs['density_unit'] = 'arcmin^{-2}'
         copy_attrs(shear_tomo_file,'tomography', 'tracers')
         copy_attrs(lens_tomo_file,'tomography', 'tracers')
 
@@ -82,6 +83,8 @@ class TXTracerMetadata(PipelineStage):
             'lens_counts': lens_counts.tolist(),
             'source_counts': source_counts.tolist(),
             'area': float(area),
+            'area_unit': 'deg^2',
+            'density_unit': 'arcmin^{-2}',
         }
         f = open(yaml_out_name, 'w')
         yaml.dump(metadata, f)

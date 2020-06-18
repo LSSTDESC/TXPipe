@@ -108,7 +108,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # area in sq deg
         area_deg2 = input_data['tracers'].attrs['area']
         area_unit = input_data['tracers'].attrs['area_unit']
-        if area_unit != 'sq deg':
+        if area_unit != 'deg^2':
             raise ValueError("Units of area have changed")
 
         input_data.close()
