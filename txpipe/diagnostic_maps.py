@@ -304,7 +304,7 @@ class TXDiagnosticMaps(PipelineStage):
         # This doesn't make that much sense here, because our
         # mask is just 0/1 so the mask we output is 1 everywhere.
         # But later our mask will have non-binary values.
-        mask_pix = np.where(mask>0)
+        mask_pix = np.where(mask>0)[0]
         mask = mask[mask_pix]
         return mask_pix, mask
 
