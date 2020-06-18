@@ -276,6 +276,7 @@ class TXTwoPoint(PipelineStage):
                 for i in range(n):
                     S.add_data_point(XIP, (tracer1,tracer2), xip[i],
                         theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
+                for i in range(n):                    
                     S.add_data_point(XIM, (tracer1,tracer2), xim[i],
                         theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
             else:
@@ -1257,7 +1258,7 @@ class TXJackknifeCenters(PipelineStage):
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
-        self.plot(cat.ra, cat.dec, cat.patch)
+        self.plot(ra, dec, cat.patch)
 
 
 if __name__ == '__main__':
