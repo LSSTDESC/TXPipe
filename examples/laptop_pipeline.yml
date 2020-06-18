@@ -30,7 +30,6 @@ stages:
     - name: TXPSFDiagnostics
     - name: TXBrighterFatterPlot
     - name: TXPhotozPlots
-    - name: TXTracerMetadata
     # disabling these as they takes too long for a quick test
 #    - name: TXRealGaussianCovariance
 #    - name: TXTwoPointFourier
