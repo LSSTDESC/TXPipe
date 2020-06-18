@@ -43,7 +43,12 @@ class HealpixScheme:
         self.nest = nest
         self.npix = self.healpy.nside2npix(self.nside)
 
-        self.metadata = {'nside':self.nside, 'npix':self.npix, 'nest':self.nest}
+        self.metadata = {
+            'nside':self.nside,
+            'npix':self.npix,
+            'nest':self.nest,
+            'pixelization': 'healpix',
+        }
         self.shape = (self.npix)
 
     def ang2pix(self, ra, dec, radians=False, theta=False):
@@ -246,14 +251,20 @@ class GnomonicPixelScheme:
 
 
         self.metadata = {
-            'ra_cent':self.ra_cent, 'dec_cent':self.dec_cent, 
-            'pixel_size_x':pixel_size, 'pixel_size_y':pixel_size_y,
-            'nx': self.nx, 'ny':self.ny, 'npix': self.npix,'pad': self.pad,
+            'ra_cent':self.ra_cent,
+            'dec_cent':self.dec_cent, 
+            'pixel_size_x':pixel_size,
+            'pixel_size_y':pixel_size_y,
+            'nx': self.nx,
+            'ny':self.ny,
+            'npix': self.npix,
+            'pad': self.pad,
             'pixel_size': self.pixel_size,
             'ra_min': self.ra_min,
             'ra_max': self.ra_max,
             'dec_min': self.dec_min,
             'dec_max': self.dec_max,
+            'pixelization': 'gnomonic',
             }
 
         self.shape = (self.ny, self.nx)
@@ -491,7 +502,7 @@ def choose_pixelization(**config):
         import healpy
         nside = config['nside']
         if not healpy.isnsideok(nside):
-            raise ValueError("nside pixelization parameter must be set to a power of two (used value {nside})")
+            raise ValueError(f"nside pixelization parameter must be set to a power of two (used value {nside})")
         nest = config.get('nest', False)
         if nest:
             raise ValueError("Please do not attempt to use the NEST pixelization.  It will only end badly for you.")
