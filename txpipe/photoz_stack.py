@@ -400,7 +400,6 @@ class TXTrueNumberDensity(TXPhotozStack):
             )
 
     def stack_data(self, data, outputs):
-        
         source_stack, source2d_stack, lens_stack = outputs
         source_stack.add_delta_function(data['source_bin'], data['redshift_true'])
         bin2d = data['source_bin'].clip(-1, 0)
