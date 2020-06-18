@@ -93,7 +93,7 @@ class TXSelector(PipelineStage):
         # Columns we need from the photometry data.
         # We use the photometry data to select the lenses.
         # Although this will be one by redmagic soon.
-        phot_cols = ['g_mag', 'r_mag', 'i_mag']
+        phot_cols = ['mag_g', 'mag_r', 'mag_i']
 
         # Columns we need from the shear catalog
         shear_cols = ['mcal_flags', 'mcal_psf_T_mean']
@@ -436,9 +436,9 @@ class TXSelector(PipelineStage):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
-        mag_i = phot_data['i_mag']
-        mag_r = phot_data['r_mag']
-        mag_g = phot_data['g_mag']
+        mag_i = phot_data['mag_i']
+        mag_r = phot_data['mag_r']
+        mag_g = phot_data['mag_g']
 
         # Mag cuts 
         cperp_cut_val = self.config['cperp_cut']

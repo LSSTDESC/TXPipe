@@ -51,7 +51,7 @@ class PZPDFMLZ(PipelineStage):
         bands = self.config['bands']
         # The columns we need to calculate the photo-z.
         # Note that we need all the metacalibrated variants too.
-        cols = [f'{band}_mag' for band in bands]
+        cols = [f'mag_{band}' for band in bands]
 
         # Loop through chunks of the data.
         # Parallelism is handled in the iterate_input function - 
@@ -122,7 +122,7 @@ class PZPDFMLZ(PipelineStage):
 
         # Number of z points we will be using
         nbin = len(z) - 1
-        nrow = len(data['i_mag'])
+        nrow = len(data['mag_i'])
 
 
         # These are the old names for the features
@@ -138,13 +138,13 @@ class PZPDFMLZ(PipelineStage):
             'mag_r_lsst-mag_i_lsst',
             'mag_i_lsst-mag_z_lsst',
             'mag_z_lsst-mag_y_lsst']:
-            x =  [data[f'{b}_mag'] for b in 'ugrizy']
+            x =  [data[f'mag_{b}'] for b in 'ugrizy']
 
-            ug = data['u_mag'] - data['g_mag']
-            gr = data['g_mag'] - data['r_mag']
-            ri = data['r_mag'] - data['i_mag']
-            iz = data['i_mag'] - data['z_mag']
-            zy = data['z_mag'] - data['y_mag']
+            ug = data['mag_u'] - data['mag_g']
+            gr = data['mag_g'] - data['mag_r']
+            ri = data['mag_r'] - data['mag_i']
+            iz = data['mag_i'] - data['mag_z']
+            zy = data['mag_z'] - data['mag_y']
             x += [ug, gr, ri, iz, zy]
 
         elif features == [
@@ -157,12 +157,12 @@ class PZPDFMLZ(PipelineStage):
          'mag_r_lsst-mag_i_lsst',
          'mag_i_lsst-mag_z_lsst',
          'mag_z_lsst-mag_y_lsst']:
-            x =  [data[f'{b}_mag'] for b in 'ugriz']
-            ug = data['u_mag'] - data['g_mag']
-            gr = data['g_mag'] - data['r_mag']
-            ri = data['r_mag'] - data['i_mag']
-            iz = data['i_mag'] - data['z_mag']
-            zy = data['z_mag'] - data['y_mag']
+            x =  [data[f'mag_{b}'] for b in 'ugriz']
+            ug = data['mag_u'] - data['mag_g']
+            gr = data['mag_g'] - data['mag_r']
+            ri = data['mag_r'] - data['mag_i']
+            iz = data['mag_i'] - data['mag_z']
+            zy = data['mag_z'] - data['mag_y']
             x += [ug, gr, ri, iz, zy]
         else:
             raise ValueError("Need to re-code for the features you used")

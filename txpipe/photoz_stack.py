@@ -262,7 +262,7 @@ class TXPhotozPlots(PipelineStage):
         plt.title("Lens n(z)")
         out1.close()
 
-        f = self.open_input('source_photoz_stack', wrapper=True)
+        f = self.open_input('shear_photoz_stack', wrapper=True)
         out2 = self.open_output('nz_source', wrapper=True)
         f.plot('source')
         plt.legend()
@@ -276,9 +276,8 @@ class TXTrueNumberDensity(TXPhotozStack):
     """
     name='TXTrueNumberDensity'
     inputs = [
-        ('shear_photometry_catalog', HDFFile),
+        ('photometry_catalog', HDFFile),
         ('shear_tomography_catalog', TomographyCatalog),
-        ('lens_photometry_catalog', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog)
     ]
     outputs = [
@@ -369,7 +368,6 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             for b in range(nbin_lens):
                 w = np.where(lens_tomo_data['lens_bin']==b)
-                print(z[w])
                 lens_pdfs[b] +=  np.histogram(z[w], bins=nz, range=(0,zmax))[0]
                 lens_counts[b] += w[0].size
 
@@ -400,7 +398,6 @@ class TXTrueNumberDensity(TXPhotozStack):
 
             # Normalize the stacks
             for b in range(nbin_lens):
-                print(b, lens_counts[b])
                 lens_pdfs[b] /= lens_counts[b]
 
             # And finally save the outputs
@@ -439,7 +436,7 @@ class TXTrueNumberDensity(TXPhotozStack):
         nbin_source = shear_tomo_file['tomography'].attrs['nbin_source']
         shear_tomo_file.close()
 
-        shear_tomo_file = self.open_input('lens_tomography_catalog')
+        lens_tomo_file = self.open_input('lens_tomography_catalog')
         nbin_lens = lens_tomo_file['tomography'].attrs['nbin_lens']
         lens_tomo_file.close()
 
