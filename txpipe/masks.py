@@ -20,11 +20,19 @@ class TXSimpleMask(PipelineStage):
             bright_obj = f.read_map('bright_objects/count')
             depth = f.read_map('depth/depth')
 
-        mask = (
-            (depth > self.config['depth_cut']) 
-            & 
-            (bright_obj < self.config['bright_object_max'])
-        )
+
+        masks = [
+            ('depth', depth > self.config['depth_cut']) ,
+            ('bright_obj', bright_obj < self.config['bright_object_max'])
+        ]
+
+        for name, m in masks:
+            frac = 1 - m.sum() / hit.sum()
+            print(f"Mask '{name}' removes fraction {frac:.2f} of hit pixels")
+
+        # Overall mask
+        mask = np.logical_and([mask for _, mask in masks])
+
         f_sky = (mask.sum() * 1.0) / mask.size
         area = f_sky * 41252.96125
         print(f"f_sky = {f_sky}")
