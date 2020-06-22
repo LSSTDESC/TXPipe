@@ -89,7 +89,7 @@ class TXSourceSelector(PipelineStage):
         if self.config['shear_catalog_type']=='metacal':
             shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
         else:
-            shear_cols += ['T', 's2n', 'g1', 'g2','lensfit_weight','m','c1','c2','sigma_e']
+            shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
 
         if not self.config['input_pz']:
             # Build a classifier used to put objects into tomographic bins
@@ -302,7 +302,7 @@ class TXSourceSelector(PipelineStage):
         if self.config['shear_catalog_type']=='metacal':
             R = np.zeros((n, 2, 2))
         else:
-            R = np.zeros((nbin,))
+            R = np.zeros((n,))
 
         # We also keep count of total count of objects in each bin
         counts = np.zeros(nbin, dtype=int)
@@ -315,8 +315,8 @@ class TXSourceSelector(PipelineStage):
             R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
             R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
         else:
-            w_tot = np.sum(data['lensfit_weight'])
-            R[:] =  1. - np.sum(data['lensfit_weight']*data['sigma_e'])/w_tot
+            w_tot = np.sum(data['weight'])
+            R[:] =  np.array([1. - np.sum(data['weight']*data['sigma_e'])/w_tot]*len(data['weight']))
 
 
         for i in range(nbin):
@@ -361,9 +361,10 @@ class TXSourceSelector(PipelineStage):
             group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
         else:
             group = outfile.create_group('response') 
-            group.create_dataset('R', (nbin_source,), dtype='f')
+            group.create_dataset('R', (n,), dtype='f')
             group.create_dataset('K', (nbin_source,), dtype='f')
             group.create_dataset('C', (nbin_source,1,2), dtype='f')
+            group.create_dataset('R_mean', (nbin_source,), dtype='f')
 
         return outfile
 
@@ -446,7 +447,8 @@ class TXSourceSelector(PipelineStage):
                 group['N_eff'][:] = N
             else:
                 group = outfile['response']
-                group['R'][:] = R_scalar
+                group['R_mean'][:] = R_scalar
+                group['C'][:] = C
                 group['K'][:] = K
                 group = outfile['tomography']
                 group['sigma_e'][:] = sigma_e

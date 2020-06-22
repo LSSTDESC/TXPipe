@@ -361,7 +361,7 @@ class TXTwoPoint(PipelineStage):
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['lensfit_weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
             return g1, g2, mask
 
         else:
@@ -386,7 +386,7 @@ class TXTwoPoint(PipelineStage):
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
-                w = data['lensfit_weight'][mask],
+                w = data['weight'][mask],
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
@@ -403,7 +403,7 @@ class TXTwoPoint(PipelineStage):
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
-                w = data['lensfit_weight'][mask],
+                w = data['weight'][mask],
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
@@ -567,7 +567,7 @@ class TXTwoPoint(PipelineStage):
         if self.config['shear_catalog_type']=='metacal':
             cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
         else:
-            cat_cols = ['ra', 'dec', 'g1', 'g2', 'lensfit_weight','flags','sigma_e','m']
+            cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')

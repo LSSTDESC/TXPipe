@@ -325,11 +325,10 @@ class ParallelCalibratorNonMetacal:
             n = sel_00.sum()
         else:
             raise ValueError("Selection function passed to Calibrator return type not known")
-        
-        w_tot = np.sum(data_00['lensfit_weight'])
-        m = np.sum(data_00['lensfit_weight']*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
+        w_tot = np.sum(data_00['weight'])
+        m = np.sum(data_00['weight']*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
         K = 1.+m
-        R = 1. - np.sum(data_00['lensfit_weight']*data_00['sigma_e'])/w_tot
+        R = 1. - np.sum(data_00['weight']*data_00['sigma_e'])/w_tot
         C = np.stack([data_00['c1'],data_00['c2']],axis=1)
 
         self.R.append(R)
@@ -469,10 +468,10 @@ class MeanShearInBins:
                 g1[i], g2[i] = R_inv @ g
                 sigma1[i], sigma2[i] = R_inv @ sigma
             else:
-                g1[i] = (1./(one_plus_K))*((g1/R)-C[0])       
-                g2[i] = (1./(one_plus_K))*((g2/R)-C[1])
-                sigma1[i] = (1./(one_plus_K))*((sigma[0]/R)-C[0])       
-                sigma2[i] = (1./(one_plus_K))*((sigma[1]/R)-C[1])
+                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0][0])       
+                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][0][1])
+                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0][0])       
+                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][0][1])
 
 
         return mu, g1, g2, sigma1, sigma2
