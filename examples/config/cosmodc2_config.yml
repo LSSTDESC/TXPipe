@@ -38,19 +38,15 @@ TXSourceSelector:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
     chunk_rows: 100000
-
-TXLensSelector:
     # Mag cuts
-    chunk_rows: 100000
-    lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
-    r_hi_cut: 21.6
+    r_hi_cut: 19.6
     i_lo_cut: 17.5
-    i_hi_cut: 21.9
+    i_hi_cut: 19.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
@@ -66,21 +62,9 @@ TXTwoPoint:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 60.0
-    nbins: 10
+    max_sep: 250
+    nbins: 20
     verbose: 0
-
-TXBlinding:
-    seed: 1972  ## seed uniquely specifies the shift in parameters
-    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
-    Omega_c: [0.2545, 0.01]
-    w0: [-1.0, 0.1]
-    h: [0.682, 0.02]
-    sigma8: [0.801, 0.01]
-    n_s: [0.971, 0.03]
-    b0: 0.95  ## we use bias of the form b0/g
-    delete_unblinded: True
-
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once
@@ -88,27 +72,40 @@ TXDiagnosticMaps:
     snr_threshold: 10.0
     snr_delta: 1.0
     pixelization: healpix
-    nside: 512
+    nside: 1024
     # pixelization: gnomonic
-    pixel_size: 0.2
-    ra_cent: 62.
-    dec_cent: -35.
-    npix_x: 60
-    npix_y: 60
-    depth_cut: 23.0
-
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 60.
-    nbins: 10
-    pickled_wigner_transform: data/example/inputs/wigner.pkl
-
-
-TXJackknifeCenters:
-    npatch: 5
+    # # 
+    pixel_size: 0.1
+    ra_cent: 53.1
+    dec_cent: -27.5
+    npix_x: 20
+    npix_y: 20
+    psf_prefix: mcal_psf_
 
 
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True
-    bandwidth: 100
+    flip_g1: True
+    bandwidth: 200
+    apodization_size: 0.0
+    cache_dir: ./cache
+
+
+TXClusteringNoiseMaps:
+    n_realization: 30
+
+TXLensingNoiseMaps:
+    n_realization: 30
+
+TXTruthLensSelector:
+    # Mag cuts
+    chunk_rows: 100000
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0

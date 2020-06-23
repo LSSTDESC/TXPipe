@@ -1,36 +1,66 @@
+
 # Stages to run
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+    - name: TXTruthLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
+    - name: TXRandomCat_source
     - name: TXJackknifeCenters
+    - name: TXTwoPoint
+      threads_per_process: 2
+#    - name: TXBlinding
+#      threads_per_process: 2
+#    - name: TXTwoPointPlots
+#    - name: TXDiagnosticPlots
+#    - name: TXGammaTFieldCenters
+#      threads_per_process: 2
+#    - name: TXGammaTBrightStars
+#      threads_per_process: 2
+#    - name: TXGammaTDimStars
+#      threads_per_process: 2
+#    - name: TXRoweStatistics
+#      threads_per_process: 2
+    - name: TXSCIA
+      threads_per_process: 2
+    - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-    - name: TXNoiseMaps
+    - name: TXGammaTFieldCenters
       threads_per_process: 2
-    - name: TXTwoPointFourier
+    - name: TXGammaTBrightStars
       threads_per_process: 2
-    - name: TXFourierGaussianCovariance
+    - name: TXGammaTDimStars
       threads_per_process: 2
+    - name: TXRoweStatistics
+      threads_per_process: 2
+    - name: TXPSFDiagnostics
+    - name: TXBrighterFatterPlot
+    # disabling these as they takes too long for a quick test
+#    - name: TXRealGaussianCovariance
+#    - name: TXTwoPointFourier
+#    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working
 
 # Where to put outputs
-output_dir: data/example-fourier/outputs
+output_dir: data/example/outputs
 
-# How to run the pipeline (which site, e.g. cori, local=laptop)
-launcher: local
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
 
-# Information for the pipeline about how many jobs it can
-# run and how it can do so
+# Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-  max_threads: 1
+    name: local
+    max_threads: 1
 
 # python modules to import to search for stages
 modules: txpipe
 
 # configuration settings
-config: examples/config.yml
+config: examples/config/laptop_config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
@@ -48,8 +78,9 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: False
 # where to put output logs for individual stages
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
+

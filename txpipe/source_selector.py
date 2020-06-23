@@ -258,12 +258,12 @@ class TXSourceSelector(PipelineStage):
 
         zz = shear_data[f'redshift_true']
 
-        pz_data = np.zeros(len(zz), dtype=int) -1
+        _pz_data = np.zeros(len(zz), dtype=int) -1
         for zi in range(len(self.config['source_zbin_edges'])-1):
             mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
-            pz_data[mask_zbin] = zi
+            _pz_data[mask_zbin] = zi
 
-        pz_data[f'zbin'] = pz_data
+        pz_data[f'zbin'] = _pz_data
 
         return pz_data
 

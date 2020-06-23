@@ -1,27 +1,31 @@
-launcher: cori-mini
+launcher:
+    name: mini
+    interval: 3.0
 
-# If the launcher requires it (at the moment that is just for "cori")
-# then this info is used to configure it.  Otherwise it is ignored
 site:
-  shifter: joezuntz/txpipe
+    name: cori-interactive
+    image: joezuntz/txpipe
 
 modules: txpipe
 
 stages:
-    - name: TXSelector
+    - name: TXRandomCat
+    - name: TXSourceSelector
+      nprocess: 32
+    - name: TXTruthLensSelector
       nprocess: 32
     - name: TXTrueNumberDensity
     - name: TXPhotozPlots
-    - name: TXDiagnosticMaps
-      nprocess: 4
-      nodes: 1
     - name: TXTwoPointFourier
       nprocess: 2
       nodes: 2
       threads_per_process: 64
     - name: TXJackknifeCenters
     - name: TXMapPlots
-    - name: TXRandomCat
+    - name: TXDiagnosticMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
     - name: TXNullBlinding
     - name: TXTwoPoint
       threads_per_process: 64
@@ -35,15 +39,13 @@ stages:
       threads_per_process: 64
     - name: TXRealGaussianCovariance
       threads_per_process: 64
-    - name: TXTwoPointFourier
-      threads_per_process: 64
     - name: TXNoiseMaps
       nprocess: 4
       nodes: 1
       threads_per_process: 1
 
 output_dir: data/cosmodc2/outputs
-config: examples/config_dc2.yml
+config: examples/config/cosmodc2_config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
