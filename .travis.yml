@@ -21,5 +21,6 @@ install:
 cache: pip
 
 script:
-  - ceci examples/laptop_pipeline.yml
+  - pytest
+  # one of the tests runs the main example yaml, generating this
   - test -f data/example/outputs/shear_xi_plus.png
