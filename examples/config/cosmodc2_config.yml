@@ -16,6 +16,22 @@ TXCosmoDC2Mock:
     flip_g2: True # to match metacal
 
 
+TXMainMaps:
+    chunk_rows:  100000
+    pixelization: healpix, # The pixelization scheme to use, currently just healpix
+    nside: 512
+    sparse: True
+
+TXAuxiliaryMaps:
+    chunk_rows:  100000
+    sparse:  True
+    psf_prefix:  psf_
+    bright_obj_threshold:  22.0
+
+TXSimpleMask:
+    depth_cut: 23.5
+    bright_object_max: 10.0        
+
 
 PZPDFMLZ:
     nz: 301
@@ -65,22 +81,6 @@ TXTwoPoint:
     max_sep: 250
     nbins: 20
     verbose: 0
-
-TXDiagnosticMaps:
-    chunk_rows: 100000  # Number of rows to process at once
-    sparse: True  # Generate sparse maps - faster if using small areas
-    snr_threshold: 10.0
-    snr_delta: 1.0
-    pixelization: healpix
-    nside: 1024
-    # pixelization: gnomonic
-    # # 
-    pixel_size: 0.1
-    ra_cent: 53.1
-    dec_cent: -27.5
-    npix_x: 20
-    npix_y: 20
-    psf_prefix: mcal_psf_
 
 
 TXTwoPointFourier:
