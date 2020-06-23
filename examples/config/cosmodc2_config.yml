@@ -18,7 +18,7 @@ TXCosmoDC2Mock:
 
 TXMainMaps:
     chunk_rows:  100000
-    pixelization: healpix, # The pixelization scheme to use, currently just healpix
+    pixelization: healpix
     nside: 512
     sparse: True
 
@@ -29,7 +29,7 @@ TXAuxiliaryMaps:
     bright_obj_threshold:  22.0
 
 TXSimpleMask:
-    depth_cut: 23.5
+    depth_cut: 23.0
     bright_object_max: 10.0        
 
 
