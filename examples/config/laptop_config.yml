@@ -40,6 +40,8 @@ TXSourceSelector:
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     chunk_rows: 100000
+    shear_catalog_type: metacal
+    shear_prefix: mcal_
 
 TXTruthLensSelector:
     # Mag cuts
@@ -81,6 +83,16 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
+    shear_catalog_type: metacal
+
+TXGammaTBrightStars:
+    shear_catalog_type: metacal
+    
+TXGammaTDimStars:
+    shear_catalog_type: metacal
+
+TXGammaTFieldCenters:
+    shear_catalog_type: metacal
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
@@ -95,6 +107,7 @@ TXBlinding:
 
 TXDiagnosticPlots:
     psf_prefix: mcal_psf_
+    shear_prefix: mcal_
 
 TXDiagnosticMaps:
     chunk_rows: 100000  # Number of rows to process at once
