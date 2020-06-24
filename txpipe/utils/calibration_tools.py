@@ -122,6 +122,7 @@ class ParallelCalibratorMetacal:
     factors for Metacalibration from each chunk of data it is given.
     At the end an MPI communuicator can be supplied to collect together
     the results from the different processes.
+
     To do this we need the function used to select the data, and the instance
     this function to each of the metacalibrated variants automatically by
     wrapping the data object passed in to it and modifying the names of columns
@@ -133,11 +134,14 @@ class ParallelCalibratorMetacal:
         objects. That function should take at least one argument,
         the chunk of data to select on.  It should look up the original
         names of the columns to select on, without the metacal suffix.
+
         The ParallelCalibrator will then wrap the data passed to it so that
         when a metacalibrated column is used for selection then the appropriate
         variant column is selected instead.
+
         The selector can take further *args and **kwargs, passed in when adding
         data.
+
         Parameters
         ----------
         selector: function
@@ -153,6 +157,7 @@ class ParallelCalibratorMetacal:
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
+
         Parameters
         ----------
         data: dict
