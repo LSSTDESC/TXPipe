@@ -51,6 +51,8 @@ class TXSourceSelector(PipelineStage):
         'chunk_rows':10000,
         'source_zbin_edges':[float],
         'random_seed': 42,
+        'shear_catalog_type': 'metacal',
+        'shear_prefix': 'mcal_',
     }
 
     def run(self):
