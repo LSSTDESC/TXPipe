@@ -76,7 +76,7 @@ class TXDiagnosticPlots(PipelineStage):
 
         if self.config['shear_catalog_type']=='metacal':
             it = self.combined_iterators(chunk_rows,
-                                         'shear_catalog', 'metacal', shear_cols,
+                                         'shear_catalog', 'shear', shear_cols,
                                          'photometry_catalog', 'photometry', photo_cols,
                                          'shear_tomography_catalog','tomography',shear_tomo_cols,
                                          'shear_tomography_catalog','metacal_response', ['R_gamma'],

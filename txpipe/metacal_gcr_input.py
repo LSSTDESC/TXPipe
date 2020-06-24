@@ -107,14 +107,14 @@ class TXMetacalGCRInput(PipelineStage):
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
-                shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
+                shear_output = self.setup_output('shear_catalog', 'shear', data, shear_out_cols, n)
                 photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
 
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
             print(f"    Saving {start} - {end}")
-            self.write_output(shear_output, 'metacal', shear_out_cols, start, end, data)
+            self.write_output(shear_output, 'shear', shear_out_cols, start, end, data)
             self.write_output(photo_output, 'photometry', photo_out_cols, start, end, data)
             start = end
 

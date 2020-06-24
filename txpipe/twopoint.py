@@ -571,10 +571,7 @@ class TXTwoPoint(PipelineStage):
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        if self.config['shear_catalog_type']=='metacal':
-            g = f['metacal']
-        else:
-            g = f['shear']
+        g = f['shear']
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]

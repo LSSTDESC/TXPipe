@@ -144,10 +144,7 @@ class TXDiagnosticMaps(PipelineStage):
         # These methods by default yield trios of (start, end, data),
         # but in this case because we are agregating we don't need the "start" and
         # "end" numbers.  So we re-define to ignore them
-        if self.config['shear_catalog_type']=='metacal':
-            shear_it = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        else:
-            shear_it = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
+        shear_it = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
