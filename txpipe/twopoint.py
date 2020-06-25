@@ -1582,6 +1582,13 @@ class TXGammaTRandoms(TXTwoPoint):
         data['source_list'] = [0]
         data['lens_list'] = [0]
 
+    def load_random_catalog(self, data):
+        # override the parent method
+        # so that we don't load the randoms here,
+        # because if we subtract randoms from randoms
+        # we get nothing.
+        pass
+
     def load_lens_catalog(self, data):
         # We load the randoms to use as lenses
         f = self.open_input('random_cats')
