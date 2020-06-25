@@ -1535,7 +1535,7 @@ class TXGammaTRandoms(TXTwoPoint):
     """
     name = "TXGammaTRandoms"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -1561,7 +1561,8 @@ class TXGammaTRandoms(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 5
+        'npatch': 5,
+        'shear_catalog_type': 'metacal',
         }
 
     def run(self):
