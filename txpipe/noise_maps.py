@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, \
+from .data_types import ShearCatalog, TomographyCatalog, DiagnosticMaps, \
                         NoiseMaps, HDFFile
 import numpy as np
 from .utils.mpi_utils import mpi_reduce_large
@@ -15,7 +15,8 @@ class TXNoiseMaps(PipelineStage):
     
     inputs = [
         ('shear_catalog', HDFFile),
-        ('tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('shear_tomography_catalog', TomographyCatalog),
         # We get the pixelization info from the diagnostic maps
         ('diagnostic_maps', DiagnosticMaps),
     ]
@@ -42,13 +43,15 @@ class TXNoiseMaps(PipelineStage):
 
         # The columns we will need
         shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
-        bin_cols = ['source_bin', 'lens_bin']
 
         # Make the iterators
         chunk_rows = self.config['chunk_rows']
-        shear_it = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        bin_it = self.iterate_hdf('tomography_catalog','tomography', bin_cols, chunk_rows)
-        bin_it = (d[2] for d in bin_it)
+
+        it = self.combined_iterators(chunk_rows,
+                'shear_catalog', 'shear', shear_cols,
+                'shear_tomography_catalog','tomography', ['source_bin'],
+                'lens_tomography_catalog','tomography', ['lens_bin'],
+            )
 
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
@@ -81,19 +84,19 @@ class TXNoiseMaps(PipelineStage):
 
 
         # Loop through the data
-        for (s, e, shear_data), bin_data in zip(shear_it, bin_it):
+        for (s, e, data) in it:
             print(f"Rank {self.rank} processing rows {s} - {e}")
-            source_bin = bin_data['source_bin']
-            lens_bin = bin_data['lens_bin']
-            ra = shear_data['ra']
-            dec = shear_data['dec']
+            source_bin = data['source_bin']
+            lens_bin = data['lens_bin']
+            ra = data['ra']
+            dec = data['dec']
             orig_pixels = pixel_scheme.ang2pix(ra, dec)
             pixels = index_map[orig_pixels]
             n = e - s
 
-            w = shear_data['weight']
-            g1 = shear_data['mcal_g1'] * w
-            g2 = shear_data['mcal_g2'] * w
+            w = data['weight']
+            g1 = data['mcal_g1'] * w
+            g2 = data['mcal_g2'] * w
 
             # randomly select a half for each object
             split = np.random.binomial(1, 0.5, (n, clustering_realizations))

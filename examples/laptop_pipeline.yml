@@ -2,7 +2,7 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
-    - name: TXLensSelector
+    - name: TXTruthLensSelector
     - name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
@@ -24,8 +24,10 @@ stages:
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
-    - name: TXRealGaussianCovariance
     - name: TXPSFDiagnostics
+    - name: TXBrighterFatterPlot
+    # disabling these as they takes too long for a quick test
+#    - name: TXRealGaussianCovariance
 #    - name: TXTwoPointFourier
 #    - name: TXFourierGaussianCovariance
 # uncomment the last two if you have namaster working
@@ -47,7 +49,7 @@ site:
 modules: txpipe
 
 # configuration settings
-config: examples/config.yml
+config: examples/config/laptop_config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

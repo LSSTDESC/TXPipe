@@ -17,10 +17,11 @@ modules: txpipe
 # we want to use fewer processes but keep them on that one node.
 # Sometimes for slower codes we want to use lots of proceses on multiple nodes
 # and sometimes we have thread-enabled codes that want fewer processes but lots of threads.
-# Setting nodes to any value (even 1) enables using srun on cori, as does using multiple threads.
 stages:
-    - name: TXSelector
+    - name: TXSourceSelector
+    - name: TXMeanLensSelector
     - name: PZPDFMLZ
+    - name: TXJackknifeCenters
     - name: TXPhotozStack
     - name: TXPhotozPlots
     - name: TXDiagnosticMaps
@@ -36,14 +37,11 @@ stages:
     - name: TXRoweStatistics
     - name: TXPSFDiagnostics
 
-output_dir: data/2.2i-t3828/outputs
-config: examples/config.yml
+output_dir: data/2.2i-single-tract/outputs
+config: examples/config/2.2i_config.yml
 
-# On NERSC, set this before running:
-# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
-    # See README for paths to download these files
     shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/shear_catalog.hdf5
     photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/photometry_catalog.hdf5
     photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/cosmoDC2_trees_i25.3.npy
@@ -52,6 +50,6 @@ inputs:
     star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/star_catalog.hdf5
 
 resume: True
-log_dir: data/2.2i-t3828/logs
-pipeline_log: data/2.2i-t3828/log.txt
+log_dir: data/2.2i-single-tract/logs
+pipeline_log: data/2.2i-single-tract/log.txt
 

@@ -1,8 +1,5 @@
-B1;95;0cB1;95;0c*/__pycache__
+*/__pycache__
 log.txt
-outputs/*.hdf
-outputs/*.sacc
-outputs/*.fits
 .ropeproject
 __pycache__/
 .ipengine_logs/
@@ -10,3 +7,17 @@ runinfo/
 test/logs/
 ipengine.json
 data/example
+www/
+htmlcov/
+txpipe.sublime*
+env/
+*.ipynb_checkpoints*
+.coverage
+data/*.png
+data/*.sacc
+data/2.2i-t3828/
+data/2.2i/
+data/cosmodc2/
+
+
+

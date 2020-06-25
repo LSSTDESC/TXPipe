@@ -4,19 +4,17 @@ from .utils import LensNumberDensityStats
 import numpy as np
 import warnings
 
-class TXLensSelector(PipelineStage):
+
+
+
+class TXBaseLensSelector(PipelineStage):
     """
     This pipeline stage selects objects to be used
     as the lens sample for the galaxy clustering and
     shear-position calibrations.
     """
 
-    name='TXLensSelector'
-
-    inputs = [
-        ('calibration_table', TextFile),
-        ('photometry_catalog', HDFFile),
-    ]
+    name='TXBaseLensSelector'
 
     outputs = [
         ('lens_tomography_catalog', TomographyCatalog)
@@ -55,6 +53,9 @@ class TXLensSelector(PipelineStage):
         import astropy.table
         import sklearn.ensemble
 
+        if self.name == "TXBaseLensSelector":
+            raise ValueError("Do not run TXBaseLensSelector - run a sub-class")
+
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all='ignore')  
 
@@ -62,17 +63,7 @@ class TXLensSelector(PipelineStage):
         # information into
         output_file = self.setup_output()
 
-        # various config options
-        chunk_rows = self.config['chunk_rows']
-
-        print(f"Currently we are cheating and using the true redshift, need to change to other point-estimates when available.")
-        phot_cols = ['i_mag','r_mag','g_mag', 'redshift_true']
-
-        # Input data.  These are iterators - they lazily load chunks
-        # of the data one by one later when we do the for loop.
-        # This code can be run in parallel, and different processes will
-        # each get different chunks of the data 
-        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
+        iterator = self.data_iterator()
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -82,10 +73,10 @@ class TXLensSelector(PipelineStage):
         number_density_stats = LensNumberDensityStats(nbin_lens, self.comm)
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, phot_data) in iter_phot:
+        for (start, end, phot_data) in iterator:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
-            pz_data = self.apply_simple_redshift_cut(phot_data)
+            pz_data = self.apply_redshift_cut(phot_data)
 
             # Select lens bin objects
             lens_gals = self.select_lens(phot_data)
@@ -111,12 +102,12 @@ class TXLensSelector(PipelineStage):
         np.seterr(**original_warning_settings)
 
 
-    def apply_simple_redshift_cut(self, phot_data):
+    def apply_redshift_cut(self, phot_data):
 
         pz_data = {}
         nbin = len(self.config['lens_zbin_edges']) - 1
 
-        z = phot_data[f'redshift_true']
+        z = phot_data[f'z']
 
         zbin = np.repeat(-1, len(z))
         for zi in range(nbin):
@@ -195,9 +186,9 @@ class TXLensSelector(PipelineStage):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
-        mag_i = phot_data['i_mag']
-        mag_r = phot_data['r_mag']
-        mag_g = phot_data['g_mag']
+        mag_i = phot_data['mag_i']
+        mag_r = phot_data['mag_r']
+        mag_g = phot_data['mag_g']
 
         # Mag cuts 
         cperp_cut_val = self.config['cperp_cut']
@@ -242,7 +233,7 @@ class TXLensSelector(PipelineStage):
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
     
         nbin = len(self.config['lens_zbin_edges']) - 1
-        n = len(phot_data['i_mag'])
+        n = len(phot_data['mag_i'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
@@ -259,8 +250,52 @@ class TXLensSelector(PipelineStage):
         return tomo_bin, counts
 
 
+class TXTruthLensSelector(TXBaseLensSelector):
+    name = "TXTruthLensSelector"
+
+    inputs = [
+        ('photometry_catalog', HDFFile),
+    ]
+
+    def data_iterator(self):
+        print(f"We are cheating and using the true redshift.")
+        chunk_rows = self.config['chunk_rows']
+
+        phot_cols = ['mag_i','mag_r','mag_g', 'redshift_true']
+
+        # Input data.  These are iterators - they lazily load chunks
+        # of the data one by one later when we do the for loop.
+        # This code can be run in parallel, and different processes will
+        # each get different chunks of the data 
+        for s, e, data in self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows):
+            data['z'] = data['redshift_true']
+            yield s, e, data
+
+
+
+class TXMeanLensSelector(TXBaseLensSelector):
+    name = "TXMeanLensSelector"
+    inputs = [
+        ('photometry_catalog', HDFFile),
+        ('photoz_pdfs', HDFFile),
+    ]
+
+
+    def data_iterator(self):
+        chunk_rows = self.config['chunk_rows']
+        phot_cols = ['mag_i','mag_r','mag_g']
+        z_cols = ['mu']
+        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
+        iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', z_cols, chunk_rows)
+        for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
+            data['z'] = z_data['mu']
+            yield s, e, data
+
+
+
 def flatten_list(lst):
     return [item for sublist in lst for item in sublist]
+
 
 
 if __name__ == '__main__':

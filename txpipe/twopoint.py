@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, MetacalCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
-from .utils.metacal import apply_metacal_response
+from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
 import numpy as np
 import random
 import collections
@@ -21,7 +21,7 @@ POS_POS = 2
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -35,9 +35,9 @@ class TXTwoPoint(PipelineStage):
     # Add values to the config file that are not previously defined
     config_options = {
         'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':250.,
-        'nbins':20,
+        'min_sep':0.5,
+        'max_sep':300.,
+        'nbins':9,
         'bin_slop':0.1,
         'sep_units':'arcmin',
         'flip_g2':True,
@@ -49,6 +49,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
+        'shear_catalog_type': 'metacal',
         'var_methods': 'jackknife',
         }
 
@@ -187,7 +188,7 @@ class TXTwoPoint(PipelineStage):
         tomo_nbin_lens = len(tomo_lens_list)
 
         nbin_source = len(source_list)
-        nbin_lens = len(lens_list)
+        nbin_lens = len(lens_list) 
 
         if source_list == [-1]:
             source_list = tomo_source_list
@@ -276,6 +277,7 @@ class TXTwoPoint(PipelineStage):
                 for i in range(n):
                     S.add_data_point(XIP, (tracer1,tracer2), xip[i],
                         theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
+                for i in range(n):                    
                     S.add_data_point(XIM, (tracer1,tracer2), xim[i],
                         theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
             else:
@@ -354,33 +356,60 @@ class TXTwoPoint(PipelineStage):
         mask = (data['source_bin'] == i)
 
         # We use S=0 here because we have already included it in R_total
-        g1, g2 = apply_metacal_response(data['R_total'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+        if self.config['shear_catalog_type']=='metacal':
+            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+            return g1, g2, mask
 
-        return g1, g2, mask
+        elif self.config['shear_catalog_type']=='lensfit':
+            #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
+            return g1, g2, mask
+
+        else:
+            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
 
 
     def get_shear_catalog(self, data, i):
         import treecorr
-        g1,g2,mask = self.get_m(data, i)
 
-        if self.config['var_methods']=='jackknife':
+        g1,g2,mask = self.get_m(data, i)
+        if self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='metacal':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',
-                patch_centers=patch_centers)
-                #npatch=self.config['npatch'])
-        else:
+                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
+        elif self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
+            patch_centers = self.get_input('patch_centers')
+            g1,g2,mask = self.get_m(data, i)
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                w = data['weight'][mask],
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
+        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='metacal':
+            g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
-
+        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
+            g1,g2,mask = self.get_m(data, i)
+            cat = treecorr.Catalog(
+                g1 = g1,
+                g2 = g2,
+                w = data['weight'][mask],
+                ra = data['ra'][mask],
+                dec = data['dec'][mask],
+                ra_units='degree', dec_units='degree')
+        else:
+            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
         return cat
 
 
@@ -512,7 +541,10 @@ class TXTwoPoint(PipelineStage):
         # Columns we need from the tomography catalog
         f = self.open_input('shear_tomography_catalog')
         source_bin = f['tomography/source_bin'][:]
-        r_total = f['metacal_response/R_total'][:]
+        if self.config['shear_catalog_type']=='metacal':
+            r_total = f['metacal_response/R_total'][:]
+        else:
+            r_total = f['response/R'][:]
         f.close()
 
         f = self.open_input('lens_tomography_catalog')
@@ -521,7 +553,7 @@ class TXTwoPoint(PipelineStage):
 
         data['source_bin']  =  source_bin
         data['lens_bin']  =  lens_bin
-        data['R_total']  =  r_total
+        data['R']  =  r_total
 
     def load_lens_catalog(self, data):
         # Subclasses can load an external lens catalog
@@ -532,17 +564,24 @@ class TXTwoPoint(PipelineStage):
     def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
-        cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+        
+        if self.config['shear_catalog_type']=='metacal':
+            cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+        else:
+            cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        g = f['metacal']
+        g = f['shear']
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]
 
         if self.config['flip_g2']:
-            data['mcal_g2'] *= -1
+            if self.config['shear_catalog_type']=='metacal':
+                data['mcal_g2'] *= -1
+            else:
+                data['g2'] *= -1
 
 
     def load_random_catalog(self, data):
@@ -614,7 +653,7 @@ class TXTwoPointLensCat(TXTwoPoint):
     """
     name='TXTwoPointLensCat'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -636,19 +675,17 @@ class TXTwoPointLensCat(TXTwoPoint):
 class TXTwoPointPlots(PipelineStage):
     """
     Make n(z) plots
-
     """
     name='TXTwoPointPlots'
     inputs = [
         ('twopoint_data_real', SACCFile),
+        ('fiducial_cosmology', YamlFile),  # For example lines
     ]
     outputs = [
-        ('shear_xi', PNGFile),
-        ('shear_xi_err', PNGFile),
+        ('shear_xi_plus', PNGFile),
+        ('shear_xi_minus', PNGFile),
         ('shearDensity_xi', PNGFile),
-        ('shearDensity_xi_err', PNGFile),
         ('density_xi', PNGFile),
-        ('density_xi_err', PNGFile),
     ]
 
     config_options = {
@@ -660,26 +697,60 @@ class TXTwoPointPlots(PipelineStage):
     def run(self):
         import sacc
         import matplotlib
+        import pyccl
+        from .plotting import full_3x2pt_plots
         matplotlib.use('agg')
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
-        gammat = sacc.standard_types.galaxy_shearDensity_xi_t
-        wtheta = sacc.standard_types.galaxy_density_xi
-
         filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
+        nbin_source, nbin_lens = self.read_nbin(s)
 
-        sources, lenses = self.read_nbin(s)
-        print(f"Plotting xi for {len(sources)} sources and {len(lenses)} lenses")
+        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
 
-        self.colors = ['steelblue', 'orange']
-        self.plot_shear_shear(s, sources)
-        self.plot_shear_density(s, sources, lenses)
-        self.plot_density_density(s, lenses)
+        outputs = {
+            "galaxy_density_xi": self.open_output('density_xi',
+                figsize=(nbin_lens*5, nbin_lens*3), wrapper=True),
 
-        
+            "galaxy_shearDensity_xi_t": self.open_output('shearDensity_xi',
+                figsize=(5*nbin_lens, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_xi_plus": self.open_output('shear_xi_plus',
+                figsize=(5*nbin_source, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_xi_minus": self.open_output('shear_xi_minus',
+                figsize=(5*nbin_source, 3*nbin_source), wrapper=True),
+        }
+
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['twopoint_data_real'], 
+            figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+
+        for fig in outputs.values():
+            fig.close()
+
     def read_nbin(self, s):
+        import sacc
+
+        xip = sacc.standard_types.galaxy_shear_xi_plus
+        wtheta = sacc.standard_types.galaxy_density_xi
+
+        source_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(xip):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        lens_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(wtheta):
+            lens_tracers.add(b1)
+            lens_tracers.add(b2)
+
+
+        return len(source_tracers), len(lens_tracers)
+
+    def read_bins(self, s):
         import sacc
 
         xip = sacc.standard_types.galaxy_shear_xi_plus
@@ -753,6 +824,35 @@ class TXTwoPointPlots(PipelineStage):
 
         coord = lambda dt,i,j: (nsource+1-j, i) if dt==xim else (j, nsource-1-i)
 
+        for dt in [xip, xim]:
+            for i,src1 in enumerate(sources[:]):
+                for j,src2 in enumerate(sources[:]):
+                    D = s.get_data_points(dt, (src1,src2))
+
+
+                    if len(D)==0:
+                        continue
+
+                    ax = plt.subplot2grid((nsource+2, nsource), coord(dt,i,j))
+
+                    scale = 1e-4
+
+                    theta = np.array([d.get_tag('theta') for d in D])
+                    xi    = np.array([d.value for d in D])
+                    err   = np.array([d.get_tag('error') for d  in D])
+                    w = err>0
+                    theta = theta[w]
+                    xi = xi[w]
+                    err = err[w]
+
+                    plt.errorbar(theta, xi*theta / scale, err*theta / scale, fmt='.')
+                    plt.xscale('log')
+                    plt.ylim(-1,1)
+                    plt.xlim(tmin, tmax)
+
+                    if dt==xim:
+                        if j>0:
+                            ax.set_xticklabels([])
         plots = ['xi', 'xi_err']
 
         for plot in plots:
@@ -948,7 +1048,6 @@ class TXTwoPointPlots(PipelineStage):
             plot_output.close()
 
 
-
 class TXGammaTFieldCenters(TXTwoPoint):
     """
     This subclass of the standard TXTwoPoint uses the centers
@@ -956,7 +1055,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
     """
     name = "TXGammaTFieldCenters"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -1105,7 +1204,7 @@ class TXGammaTBrightStars(TXTwoPoint):
     """
     name = "TXGammaTBrightStars"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -1270,7 +1369,7 @@ class TXGammaTDimStars(TXTwoPoint):
     """
     name = "TXGammaTDimStars"
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -1651,7 +1750,7 @@ class TXJackknifeCenters(PipelineStage):
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
-        self.plot(cat.ra, cat.dec, cat.patch)
+        self.plot(ra, dec, cat.patch)
 
 
 if __name__ == '__main__':

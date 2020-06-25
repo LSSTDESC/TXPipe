@@ -40,7 +40,6 @@ class Mapper:
             lens_weights = np.ones_like(shear_data['ra'])
             lens_bins = lens_bin_data['lens_bin']
 
-
         for i in range(n):
             p = pix_nums[i]
 
@@ -80,6 +79,7 @@ class Mapper:
         mask = np.zeros(self.pixel_scheme.npix, dtype=np.bool)
 
         is_master = (comm is None) or (comm.Get_rank()==0)
+        
         for b in self.lens_bins:
             if rank==0:
                 print(f"Collating density map for lens bin {b}")
@@ -172,7 +172,7 @@ class FlagMapper:
         pix_nums = self.pixel_scheme.ang2pix(ra, dec)
         for i, m in enumerate(self.maps):
             f = 2**i
-            w = np.where(f & flags > 0)
+            w = np.where(f & (flags > 0))
             for p in pix_nums[w]:
                 m[p] += 1
 

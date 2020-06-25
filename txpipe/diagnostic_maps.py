@@ -1,8 +1,9 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile, YamlFile
+from .data_types import ShearCatalog, TomographyCatalog, DiagnosticMaps, HDFFile, PNGFile, YamlFile
 import numpy as np
 from .utils.theory import theory_3x2pt
 from .utils import dilated_healpix_map
+import yaml
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
@@ -38,6 +39,7 @@ class TXDiagnosticMaps(PipelineStage):
     outputs = [
         ('diagnostic_maps', DiagnosticMaps),
         ('tracer_metadata', HDFFile),
+        ('tracer_metadata_yml', YamlFile), #human-readable version
     ]
 
     # Configuration information for this stage
@@ -60,6 +62,9 @@ class TXDiagnosticMaps(PipelineStage):
         'true_shear' : False,
         'flag_exponent_max': 8,
         'dilate': True,
+        'psf_prefix': 'psf_',
+        'shear_prefix':'mcal_',
+        'shear_catalog_type':'metacal'
     }
 
 
@@ -77,6 +82,7 @@ class TXDiagnosticMaps(PipelineStage):
 
         # Read input configuration informatiomn
         config = self.config
+        shear_prefix = self.config['shear_prefix']
 
 
         # Select a pixelization scheme based in configuration keys.
@@ -88,16 +94,20 @@ class TXDiagnosticMaps(PipelineStage):
         band = config['depth_band']
 
         # These are the columns we're going to need from the various files
-        phot_cols = ['ra', 'dec', 'extendedness', f'snr_{band}', f'{band}_mag']
+        phot_cols = ['ra', 'dec', 'extendedness', f'snr_{band}', f'mag_{band}']
 
+        psf_prefix = self.config['psf_prefix']
         if config['true_shear']:
             shear_cols = ['true_g']
         else:
-            shear_cols = ['mcal_g1', 'mcal_g2', 'mcal_psf_g1', 'mcal_psf_g2']
-        shear_cols += ['mcal_flags', 'weight']
+            shear_cols = [f'{shear_prefix}g1', f'{shear_prefix}g2', f'{psf_prefix}g1', f'{psf_prefix}g2']
+        shear_cols += [f'{shear_prefix}flags', 'weight']
         shear_bin_cols = ['source_bin']
         lens_bin_cols = ['lens_bin']
-        m_cols = ['R_gamma']
+        if self.config['shear_catalog_type']=='metacal':
+            m_cols = ['R_gamma']
+        else:
+            m_cols = ['R']
 
         T = self.open_input('shear_tomography_catalog')
         d = dict(T['tomography'].attrs)
@@ -134,7 +144,7 @@ class TXDiagnosticMaps(PipelineStage):
         # These methods by default yield trios of (start, end, data),
         # but in this case because we are agregating we don't need the "start" and
         # "end" numbers.  So we re-define to ignore them
-        shear_it = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
+        shear_it = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
         phot_it = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
         phot_it = (d[2] for d in phot_it)
@@ -145,7 +155,10 @@ class TXDiagnosticMaps(PipelineStage):
         lens_bin_it = self.iterate_hdf('lens_tomography_catalog','tomography', lens_bin_cols, chunk_rows)
         lens_bin_it = (d[2] for d in lens_bin_it)
 
-        m_it = self.iterate_hdf('shear_tomography_catalog','metacal_response', m_cols, chunk_rows)
+        if self.config['shear_catalog_type']=='metacal':
+            m_it = self.iterate_hdf('shear_tomography_catalog','metacal_response', m_cols, chunk_rows)
+        else:
+            m_it = self.iterate_hdf('shear_tomography_catalog','response', m_cols, chunk_rows)
         m_it = (d[2] for d in m_it)
 
         # Now, we actually start loading the data in.
@@ -156,7 +169,7 @@ class TXDiagnosticMaps(PipelineStage):
             # Pick out a few relevant columns from the different
             # files to give to the depth mapper & bright object mapper
             depth_data = {
-                'mag': phot_data[f'{band}_mag'],
+                'mag': phot_data[f'mag_{band}'],
                 'snr': phot_data[f'snr_{band}'],
                 'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],
@@ -164,7 +177,7 @@ class TXDiagnosticMaps(PipelineStage):
             }
             
             brobj_data = {
-                'mag': phot_data[f'{band}_mag'],
+                'mag': phot_data[f'mag_{band}'],
                 'extendedness': phot_data['extendedness'],
                 'bins': lens_bin_data['lens_bin'],
                 'ra': phot_data['ra'],
@@ -177,10 +190,10 @@ class TXDiagnosticMaps(PipelineStage):
             if config['true_shear']:
                 shear_tmp = {'g1': shear_data['true_g1'], 'g2': shear_data['true_g2']}
             else:
-                shear_tmp = {'g1': shear_data['mcal_g1'], 'g2': shear_data['mcal_g2']}
+                shear_tmp = {'g1': shear_data[f'{shear_prefix}g1'], 'g2': shear_data[f'{shear_prefix}g2']}
                 
             # In either case we need the PSF g1 and g2 to map as well
-            shear_psf_tmp = {'g1': shear_data['mcal_psf_g1'], 'g2': shear_data['mcal_psf_g2']}
+            shear_psf_tmp = {'g1': shear_data[f'{psf_prefix}g1'], 'g2': shear_data[f'{psf_prefix}g2']}
 
             shear_tmp['ra'] = phot_data['ra']
             shear_tmp['dec'] = phot_data['dec']
@@ -198,7 +211,7 @@ class TXDiagnosticMaps(PipelineStage):
             brobj_mapper.add_data(brobj_data)
             mapper.add_data(shear_tmp, shear_bin_data, lens_bin_data, m_data)
             mapper_psf.add_data(shear_psf_tmp, shear_bin_data, lens_bin_data, m_data)
-            flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data['mcal_flags'])
+            flag_mapper.add_data(phot_data['ra'], phot_data['dec'], shear_data[f'{shear_prefix}flags'])
 
         # Collect together the results across all the processors
         # and combine them to get the final results
@@ -243,6 +256,7 @@ class TXDiagnosticMaps(PipelineStage):
 
             # Save some other handy map info that will be useful later
             area = pixel_scheme.pixel_area(degrees=True) * npix
+            print('area in degrees: ',area)
             group.attrs['area'] = area
             group.attrs['area_unit'] = 'sq deg'
             group.attrs['nbin_source'] = len(source_bins)
@@ -300,7 +314,7 @@ class TXDiagnosticMaps(PipelineStage):
         # This doesn't make that much sense here, because our
         # mask is just 0/1 so the mask we output is 1 everywhere.
         # But later our mask will have non-binary values.
-        mask_pix = np.where(mask>0)
+        mask_pix = np.where(mask>0)[0]
         mask = mask[mask_pix]
         return mask_pix, mask
 
@@ -366,10 +380,14 @@ class TXDiagnosticMaps(PipelineStage):
             for k,v in tomo[name].attrs.items():
                 meta_file[out_name].attrs[k] = v
 
-
-        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_gamma_mean')
-        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_S')
-        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_total')
+        if self.config['shear_catalog_type']=='metacal':
+            copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_gamma_mean')
+            copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_S')
+            copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_total')
+        else:
+            copy(shear_tomo_file, 'response', 'tracers', 'R')
+            copy(shear_tomo_file, 'response', 'tracers', 'K')
+            copy(shear_tomo_file, 'response', 'tracers', 'C')
         copy(shear_tomo_file, 'tomography', 'tracers', 'N_eff')
         copy(lens_tomo_file, 'tomography', 'tracers', 'lens_counts')
         copy(shear_tomo_file, 'tomography', 'tracers', 'sigma_e')
@@ -389,6 +407,42 @@ class TXDiagnosticMaps(PipelineStage):
         copy_attrs(lens_tomo_file,'tomography', 'tracers')
 
         meta_file.close()
+
+        # human readable version
+        yaml_out_name = self.get_output('tracer_metadata_yml')
+        if self.config['shear_catalog_type']=='metacal':
+            metadata = {
+                'lens_density': lens_density.tolist(),
+                'source_density': source_density.tolist(),
+                'sigma_e': shear_tomo_file['tomography/sigma_e'][:].tolist(),
+                'n_eff': n_eff.tolist(),
+                'R_gamma_mean': shear_tomo_file['metacal_response/R_gamma_mean'][:].tolist(),
+                'R_S': shear_tomo_file['metacal_response/R_S'][:].tolist(),
+                'R_total': shear_tomo_file['metacal_response/R_total'][:].tolist(),
+                'lens_counts': lens_counts.tolist(),
+                'source_counts': source_counts.tolist(),
+                'area': float(area),
+            }
+        else:
+            metadata = {
+                'lens_density': lens_density.tolist(),
+                'source_density': source_density.tolist(),
+                'sigma_e': shear_tomo_file['tomography/sigma_e'][:].tolist(),
+                'n_eff': n_eff.tolist(),
+                'R': shear_tomo_file['response/R'][:].tolist(),
+                'K': shear_tomo_file['response/K'][:].tolist(),
+                'C': shear_tomo_file['response/C'][:].tolist(),
+                'lens_counts': lens_counts.tolist(),
+                'source_counts': source_counts.tolist(),
+                'area': float(area),
+            }
+        f = open(yaml_out_name, 'w')
+        yaml.dump(metadata, f)
+        f.close()
+
+        shear_tomo_file.close()
+        lens_tomo_file.close()
+
 
 
 class FakeTracer:
