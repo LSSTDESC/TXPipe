@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, HDFFile
-from .utils.metacal import metacal_band_variants, metacal_variants
+from .data_types import ShearCatalog, HDFFile
+from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 from .utils.timer import Timer
 
@@ -21,7 +21,7 @@ class TXCosmoDC2Mock(PipelineStage):
     ]
 
     outputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('photometry_catalog', HDFFile),
     ]
 
@@ -201,7 +201,7 @@ class TXCosmoDC2Mock(PipelineStage):
             f.close()
 
             f = h5py.File(self.get_output('shear_catalog'))
-            g = f['metacal']
+            g = f['shear']
             for col in g.keys():
                 g[col].resize((n,))
 
@@ -254,14 +254,14 @@ class TXCosmoDC2Mock(PipelineStage):
         cols = (
             ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
-            + metacal_band_variants('riz', 'mcal_mag', 'mcal_mag_err')
+            + band_variants('riz', 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
             + ['weight']
         )
 
         cols += ['true_g1', 'true_g2']
 
         # Make group for all the photometry
-        group = metacal_file.create_group('metacal')
+        group = metacal_file.create_group('shear')
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -339,7 +339,7 @@ class TXCosmoDC2Mock(PipelineStage):
             photo_file[f'photometry/{name}'][start:end] = photo_data[name]
 
         for name in metacal_cols:
-            metacal_file[f'metacal/{name}'][start:end] = metacal_data[name]
+            metacal_file[f'shear/{name}'][start:end] = metacal_data[name]
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels

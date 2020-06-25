@@ -2,9 +2,10 @@ from .stats import ParallelStatsCalculator
 import numpy as np
 
 class SourceNumberDensityStats:
-    def __init__(self, nbin_source, comm=None):
+    def __init__(self, nbin_source, shear_type, comm=None):
         self.nbin_source = nbin_source
         self.comm = comm
+        self.shear_type=shear_type
         self.shear_stats = [
             ParallelStatsCalculator(2)
             for i in range(nbin_source)
@@ -13,8 +14,12 @@ class SourceNumberDensityStats:
     def add_data(self, shear_data, shear_bin):
         for i in range(self.nbin_source):
             w = np.where(shear_bin==i)
-            self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w])
-            self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w])
+            if self.shear_type=='metacal':
+                self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w])
+                self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w])
+            else:
+                self.shear_stats[i].add_data(0, shear_data['g1'][w])
+                self.shear_stats[i].add_data(1, shear_data['g2'][w])
 
 
     def collect(self):

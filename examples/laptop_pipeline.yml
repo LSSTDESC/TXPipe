@@ -23,6 +23,8 @@ stages:
       threads_per_process: 2
     - name: TXGammaTBrightStars
       threads_per_process: 2
+    - name: TXGammaTRandoms
+      threads_per_process: 2
     - name: TXGammaTDimStars
       threads_per_process: 2
     - name: TXRoweStatistics

@@ -61,6 +61,10 @@ def git_diff():
         return "ERROR_GIT_DECODING"
     except subprocess.SubprocessError:
         return "ERROR_GIT_OTHER"
+    except FileNotFoundError:
+        return "ERROR_GIT_NOT_RUNNABLE"
+    except OSError:
+        return "ERROR_GIT_OTHER_OSERROR"
     # If for some reason we are running outside the main repo
     # this will return an error too
     if diff.returncode:
@@ -85,6 +89,10 @@ def git_current_revision():
         return "ERROR_GIT_DECODING"
     except subprocess.SubprocessError:
         return "ERROR_GIT_OTHER"
+    except FileNotFoundError:
+        return "ERROR_GIT_NOT_RUNNABLE"
+    except OSError:
+        return "ERROR_GIT_OTHER_OSERROR"
     # If for some reason we are running outside the main repo
     # this will return an error too
     if rev.returncode:

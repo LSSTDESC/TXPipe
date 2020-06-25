@@ -1,6 +1,5 @@
-
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
+from .data_types import ShearCatalog, HDFFile, YamlFile, SACCFile
 import numpy as np
 import warnings
 import os
