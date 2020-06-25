@@ -137,6 +137,8 @@ class TXRandomCat(PipelineStage):
                 ### Interpolate those random values to a redshift value given by the cdf
                 # z_photo_rand = np.interp(cdf_rand_val,z_cdf_norm,z_photo_arr)
                 z_interp_func = scipy.interpolate.interp1d(z_cdf_norm,z_photo_arr)
+                # Sometimes we don't quite go down to z - deal with that
+                cdf_rand_val = cdf_rand_val.clip(z_cdf_norm.min(), z_cdf_norm.max())
                 z_photo_rand = z_interp_func(cdf_rand_val)
                 
                 # Save output
