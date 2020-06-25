@@ -3,7 +3,8 @@
 stages:
     - name: TXSourceSelector
     - name: TXTruthLensSelector
-    - name: PZPDFMLZ
+    - name: FlexZPipe
+      #- name: PZPDFMLZ
     - name: TXPhotozStack
     - name: TXDiagnosticMaps
     - name: TXRandomCat
@@ -46,7 +47,7 @@ site:
     max_threads: 1
 
 # python modules to import to search for stages
-modules: txpipe
+modules: txpipe flexzpipe
 
 # configuration settings
 config: examples/config/laptop_config.yml
