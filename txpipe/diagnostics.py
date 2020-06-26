@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
 from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins
 from .utils.fitting import fit_straight_line
@@ -13,7 +13,7 @@ class TXDiagnosticPlots(PipelineStage):
 
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('lens_tomography_catalog', TomographyCatalog),
     ]
@@ -34,14 +34,18 @@ class TXDiagnosticPlots(PipelineStage):
     config_options = {
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
-        'shear_catalog_type': 'metacal',
         'psf_prefix': 'mcal_psf_',
+        'T_min': 0.2,
+        'T_max': 0.28,
     }
 
     def run(self):
         # PSF tests
         import matplotlib
         matplotlib.use('agg')
+
+        with self.open_input('shear_catalog', wrapper=True) as f:
+            self.config['shear_catalog_type'] = f.catalog_type
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -206,7 +210,9 @@ class TXDiagnosticPlots(PipelineStage):
         
         delta_gamma = self.config['delta_gamma']
         size = 5
-        psf_T_edges = np.linspace(0.2, 0.28, size+1)
+        T_min = self.config['T_min']
+        T_max = self.config['T_max']
+        psf_T_edges = np.linspace(T_min, T_max, size+1)
 
         binnedShear = MeanShearInBins(f'{psf_prefix}T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
             

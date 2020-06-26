@@ -2,8 +2,9 @@ from .maps import TXBaseMaps
 import numpy as np
 from .base_stage import PipelineStage
 from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
-from .data_types import MetacalCatalog, TomographyCatalog, MapsFile, HDFFile
+from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization
+from .utils.calibration_tools import read_shear_catalog_type
 
 
 class TXAuxiliaryMaps(TXBaseMaps):
@@ -17,7 +18,7 @@ class TXAuxiliaryMaps(TXBaseMaps):
     """
     inputs = [
             ('photometry_catalog', HDFFile), # for mags etc
-            ('shear_catalog', HDFFile), # for psfs
+            ('shear_catalog', ShearCatalog), # for psfs
             ('shear_tomography_catalog', HDFFile), # for per-bin psf maps
             ('source_maps', MapsFile), # we copy the pixel scheme from here
     ]
@@ -83,6 +84,15 @@ class TXAuxiliaryMaps(TXBaseMaps):
     def data_iterator(self):
         band = self.config['depth_band']
         psf_prefix = self.config['psf_prefix']
+
+        shear_catalog_type = read_shear_catalog_type(self)
+
+        if shear_catalog_type == 'metacal':
+            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', 'mcal_flags', 'weight']
+        else:
+            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', 'flags', 'weight']
+
+
         return self.combined_iterators(
             self.config['chunk_rows'],
             # first file
@@ -91,8 +101,8 @@ class TXAuxiliaryMaps(TXBaseMaps):
             ['ra', 'dec', 'extendedness', f'snr_{band}', f'mag_{band}'],
             # next file
             'shear_catalog', # tag of input file to iterate through
-            'metacal', # data group within file to look at
-            [f'{psf_prefix}g1', f'{psf_prefix}g2', 'mcal_flags', 'weight'], # column(s) to read
+            'shear', # data group within file to look at
+            shear_cols,
             # same file,different section
             'shear_tomography_catalog', # tag of input file to iterate through
             'tomography', # data group within file to look at
@@ -134,8 +144,13 @@ class TXAuxiliaryMaps(TXBaseMaps):
         flag_data = {
             'ra': data['ra'],
             'dec': data['dec'],
-            'flags': data['mcal_flags'],
         }
+
+        if self.config['shear_catalog_type'] == 'metacal':
+            flag_data['flags'] = data['mcal_flags']
+        else:
+            flag_data['flags'] = data['flags']
+
 
         psf_mapper.add_data(psf_data)
         depth_mapper.add_data(depth_data)

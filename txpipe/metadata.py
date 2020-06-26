@@ -1,7 +1,8 @@
 import numpy as np
 import yaml
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, MapsFile, HDFFile, YamlFile
+from .data_types import TomographyCatalog, MapsFile, HDFFile, YamlFile, ShearCatalog
+from .utils.calibration_tools import read_shear_catalog_type
 
 
 class TXTracerMetadata(PipelineStage):
@@ -13,6 +14,7 @@ class TXTracerMetadata(PipelineStage):
     name = "TXTracerMetadata"
 
     inputs = [
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('lens_tomography_catalog', TomographyCatalog),
         ('mask', MapsFile),
@@ -26,6 +28,8 @@ class TXTracerMetadata(PipelineStage):
     def run(self):
         # Read the area
         area = self.read_area()
+
+        shear_catalog_type = read_shear_catalog_type(self)
 
         area_sq_arcmin = area * 60**2
         shear_tomo_file = self.open_input('shear_tomography_catalog')
@@ -42,11 +46,17 @@ class TXTracerMetadata(PipelineStage):
                 meta_file[out_name].attrs[k] = v
 
 
-        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_gamma_mean')
-        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_S')
-        copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_total')
+        if shear_catalog_type == 'metacal':
+            copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_gamma_mean')
+            copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_S')
+            copy(shear_tomo_file, 'metacal_response', 'tracers', 'R_total')
+        else:
+            copy(shear_tomo_file, 'response', 'tracers', 'R')
+            copy(shear_tomo_file, 'response', 'tracers', 'K')
+            copy(shear_tomo_file, 'response', 'tracers', 'C')
+
         copy(shear_tomo_file, 'tomography', 'tracers', 'N_eff')
-        copy(lens_tomo_file, 'tomography', 'tracers', 'lens_counts')
+        copy(lens_tomo_file,  'tomography', 'tracers', 'lens_counts')
         copy(shear_tomo_file, 'tomography', 'tracers', 'sigma_e')
         copy(shear_tomo_file, 'tomography', 'tracers', 'source_counts')
 
@@ -77,15 +87,23 @@ class TXTracerMetadata(PipelineStage):
             'source_density': source_density.tolist(),
             'sigma_e': shear_tomo_file['tomography/sigma_e'][:].tolist(),
             'n_eff': n_eff.tolist(),
-            'R_gamma_mean': shear_tomo_file['metacal_response/R_gamma_mean'][:].tolist(),
-            'R_S': shear_tomo_file['metacal_response/R_S'][:].tolist(),
-            'R_total': shear_tomo_file['metacal_response/R_total'][:].tolist(),
             'lens_counts': lens_counts.tolist(),
             'source_counts': source_counts.tolist(),
             'area': float(area),
             'area_unit': 'deg^2',
             'density_unit': 'arcmin^{-2}',
         }
+
+        if shear_catalog_type == 'metacal':
+            metadata['R_gamma_mean'] = shear_tomo_file['metacal_response/R_gamma_mean'][:].tolist(),
+            metadata['R_S'] = shear_tomo_file['metacal_response/R_S'][:].tolist(),
+            metadata['R_total'] = shear_tomo_file['metacal_response/R_total'][:].tolist(),
+        else:
+            metadata['R'] = shear_tomo_file['response/R'][:].tolist(),
+            metadata['K'] = shear_tomo_file['response/K'][:].tolist(),
+            metadata['C'] = shear_tomo_file['response/C'][:].tolist(),
+
+
         f = open(yaml_out_name, 'w')
         yaml.dump(metadata, f)
         f.close()

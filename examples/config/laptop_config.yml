@@ -168,6 +168,15 @@ TXMainMaps:
     # snr_threshold: 10.0
     # snr_delta: 1.0
 
+TXAuxiliaryMaps:
+    flag_exponent_max: 8
+    dilate: True
+    psf_prefix: psf_
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+    depth_band : i
+    snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+    snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+
 
 TXRealGaussianCovariance:
     min_sep: 2.5

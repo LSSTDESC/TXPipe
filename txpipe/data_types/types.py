@@ -17,6 +17,10 @@ class ShearCatalog(HDFFile):
     A generic shear catalog 
     """
     # These are columns
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._catalog_type = None
     
     def read_catalog_info(self):
         try:
@@ -26,6 +30,23 @@ class ShearCatalog(HDFFile):
             raise ValueError(f"Unable to read shear catalog")
         shear_catalog_type = info.get('catalog_type')
         return shear_catalog_type
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is not None:
+            return self._catalog_type
+
+        if 'catalog_type' in self.file['shear'].attrs:
+            t = self.file['shear'].attrs['catalog_type']
+        elif 'mcal_g1' in self.file['shear'].keys():
+            t = 'metacal'
+        elif 'c1' in self.file['shear'].keys():
+            t = 'lensfit'
+        else:
+            raise ValueError("Could not figure out catalog format")
+
+        self._catalog_type = t
+        return t
 
 
 class TomographyCatalog(HDFFile):

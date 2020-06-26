@@ -1,6 +1,11 @@
 import numpy as np
 from .stats import ParallelStatsCalculator
 
+def read_shear_catalog_type(stage):
+    with stage.open_input('shear_catalog', wrapper=True) as f:
+        shear_catalog_type = f.catalog_type
+        stage.config['shear_catalog_type'] = shear_catalog_type
+    return shear_catalog_type
 
 def metacal_variants(*names):
     return [
@@ -385,8 +390,13 @@ class ParallelCalibratorNonMetacal:
             C_sum += C*n
             N += n
 
-        R = R_sum / N
-        K = K_sum / N
+        if N == 0:
+            R = np.nan
+            K = np.nan
+        else:
+            R = R_sum / N
+            K = K_sum / N
+
         C = C_sum / N
         
         return R, K, C, N 

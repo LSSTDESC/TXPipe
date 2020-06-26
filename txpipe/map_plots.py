@@ -23,7 +23,10 @@ class TXMapPlots(PipelineStage):
         ('mask_map', PNGFile),
         ('bright_object_map', PNGFile),
     ]
-    config = {}
+    config_options = {
+        'projection': 'cart',
+
+    }
 
     def run(self):
         # PSF tests
@@ -38,6 +41,7 @@ class TXMapPlots(PipelineStage):
     def aux_plots(self):
         import matplotlib.pyplot as plt
 
+
         m = self.open_input("aux_maps", wrapper=True)
 
         nbin_source = m.file['maps'].attrs['nbin_source']
@@ -45,12 +49,12 @@ class TXMapPlots(PipelineStage):
 
         # Depth plots
         fig = self.open_output('depth_map', wrapper=True, figsize=(5,5))
-        m.plot('depth/depth', view='cart')
+        m.plot('depth/depth', view=self.config['projection'])
         fig.close()
 
         # Bright objects
         fig = self.open_output('bright_object_map', wrapper=True, figsize=(5,5))
-        m.plot('bright_objects/count', view='cart')
+        m.plot('bright_objects/count', view=self.config['projection'])
         fig.close()
 
         # Flag count plots
@@ -58,7 +62,7 @@ class TXMapPlots(PipelineStage):
         for i in range(flag_max):
             plt.subplot(1, flag_max, i+1)
             f = 2**i
-            m.plot(f'flags/flag_{f}', view='cart')
+            m.plot(f'flags/flag_{f}', view=self.config['projection'])
         fig.close()
 
         # PSF plots
@@ -66,9 +70,9 @@ class TXMapPlots(PipelineStage):
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
         for i in range(nbin_source):
             plt.sca(axes[0, i])
-            m.plot(f'psf/g1_{i}', view='cart')
+            m.plot(f'psf/g1_{i}', view=self.config['projection'])
             plt.sca(axes[1, i])
-            m.plot(f'psf/g2_{i}', view='cart')
+            m.plot(f'psf/g2_{i}', view=self.config['projection'])
         fig.close()
 
     def source_plots(self):
@@ -82,9 +86,9 @@ class TXMapPlots(PipelineStage):
 
         for i in range(nbin_source):
             plt.sca(axes[0, i])
-            m.plot(f'g1_{i}', view='cart')
+            m.plot(f'g1_{i}', view=self.config['projection'])
             plt.sca(axes[1, i])
-            m.plot(f'g2_{i}', view='cart')
+            m.plot(f'g2_{i}', view=self.config['projection'])
         fig.close()
 
 
@@ -100,9 +104,9 @@ class TXMapPlots(PipelineStage):
 
         for i in range(nbin_lens):
             plt.sca(axes[0, i])            
-            m.plot(f'ngal_{i}', view='cart')
+            m.plot(f'ngal_{i}', view=self.config['projection'])
             plt.sca(axes[1, i])            
-            rho.plot(f'delta_{i}', view='cart')
+            rho.plot(f'delta_{i}', view=self.config['projection'])
         fig.close()
 
     def mask_plots(self):
@@ -110,5 +114,5 @@ class TXMapPlots(PipelineStage):
         m = self.open_input("mask", wrapper=True)
 
         fig = self.open_output('mask_map', wrapper=True, figsize=(5,5))
-        m.plot('mask', view='cart')
+        m.plot('mask', view=self.config['projection'])
         fig.close()

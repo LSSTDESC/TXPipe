@@ -1,12 +1,27 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, MapsFile, HDFFile
+from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization
+from .utils.calibration_tools import read_shear_catalog_type
 from .mapping import Mapper, FlagMapper
+
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
+
+map_config_options = {
+        'chunk_rows': 100000,  # The number of rows to read in each chunk of data at a time
+        'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
+        'nside': 0,   # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
+        'sparse': True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
+        'ra_cent': np.nan,  # These parameters are only required if pixelization==tan
+        'dec_cent': np.nan,
+        'npix_x':-1,
+        'npix_y':-1,
+        'pixel_size': np.nan, # Pixel size of pixelization scheme
+}
+        # 'true_shear' : False,    
 
 class TXBaseMaps(PipelineStage):
     """
@@ -23,16 +38,6 @@ class TXBaseMaps(PipelineStage):
     inputs = []
     outputs = []
     config_options = {
-        'chunk_rows': 100000,  # The number of rows to read in each chunk of data at a time
-        'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
-        'nside': 0,   # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
-        'sparse': True,   # Whether to generate sparse maps - faster and less memory for small sky areas,
-        'ra_cent': np.nan,  # These parameters are only required if pixelization==tan
-        'dec_cent': np.nan,
-        'npix_x':-1,
-        'npix_y':-1,
-        'pixel_size': np.nan, # Pixel size of pixelization scheme
-        'true_shear' : False,
     }
 
     def run(self):
@@ -114,12 +119,17 @@ class TXBaseMaps(PipelineStage):
 class TXSourceMaps(TXBaseMaps):
     name = "TXSourceMaps"
     inputs = [
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
     ]
     outputs = [
         ('source_maps', MapsFile),
     ]
+
+    config_options = {
+        'true_shear': False,
+        **map_config_options
+    }
 
     def prepare_mappers(self, pixel_scheme):
         # open and return a single mapper
@@ -142,13 +152,16 @@ class TXSourceMaps(TXBaseMaps):
         return [mapper]
 
     def data_iterator(self):
-        # read shear cols and 
+        # read shear cols and
+        shear_catalog_type = read_shear_catalog_type(self)
 
         # can optionally read truth values
         if self.config['true_shear']:
             shear_cols = ['true_g1', 'true_g1', 'ra', 'dec', 'weight']
-        else:
+        elif shear_catalog_type == 'metacal':
             shear_cols = ['mcal_g1', 'mcal_g2', 'ra', 'dec', 'weight']
+        else:
+            shear_cols = ['g1', 'g2', 'ra', 'dec', 'weight']
 
         # use utility function that combines data chunks
         # from different files
@@ -156,7 +169,7 @@ class TXSourceMaps(TXBaseMaps):
             self.config['chunk_rows'],
             # first file
             'shear_catalog', # tag of input file to iterate through
-            'metacal', # data group within file to look at
+            'shear', # data group within file to look at
             shear_cols, # column(s) to read
             # next file
             'shear_tomography_catalog', # tag of input file to iterate through
@@ -169,9 +182,11 @@ class TXSourceMaps(TXBaseMaps):
         if self.config['true_shear']:
             data['g1'] = data['true_g1']
             data['g2'] = data['true_g2']
-        else:
+        elif self.config['shear_catalog_type'] == 'metacal':
             data['g1'] = data['mcal_g1']
             data['g2'] = data['mcal_g2']
+        # for other catalogs they're just called g1, g2 aready
+
         # send data to map
         mapper = mappers[0]
         mapper.add_data(data)
@@ -208,6 +223,10 @@ class TXLensMaps(TXBaseMaps):
     outputs = [
         ('lens_maps', MapsFile),
     ]
+
+    config_options = {
+        **map_config_options
+    }
     def prepare_mappers(self, pixel_scheme):
         # read nbin_lens and save
         with self.open_input('lens_tomography_catalog') as f:
@@ -275,6 +294,10 @@ class TXExternalLensMaps(TXLensMaps):
         ('lens_tomography_catalog', TomographyCatalog),
     ]
 
+    config_options = {
+        **map_config_options
+    }
+
     def data_iterator(self):
         print("TODO: no lens weights here")
         return self.combined_iterators(
@@ -304,12 +327,18 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         ('photometry_catalog', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', ShearCatalog),
 ]
     outputs = [
         ('lens_maps', MapsFile),
         ('source_maps', MapsFile),
     ]
+
+    config_options = {
+        'true_shear': False,
+        **map_config_options
+    }
+
 
     def data_iterator(self):
         # This is just the combination of
@@ -317,10 +346,16 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         print("TODO: no lens weights here")
 
         # 
+        # read shear cols and
+        shear_catalog_type = read_shear_catalog_type(self)
+
+        # can optionally read truth values
         if self.config['true_shear']:
-            shear_cols = ['true_g1', 'true_g2', 'ra', 'dec', 'weight']
-        else:
+            shear_cols = ['true_g1', 'true_g1', 'ra', 'dec', 'weight']
+        elif shear_catalog_type == 'metacal':
             shear_cols = ['mcal_g1', 'mcal_g2', 'ra', 'dec', 'weight']
+        else:
+            shear_cols = ['g1', 'g2', 'ra', 'dec', 'weight']
 
         return self.combined_iterators(
             self.config['chunk_rows'],
@@ -330,7 +365,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             ['ra', 'dec'], # column(s) to read
             # next file
             'shear_catalog', # tag of input file to iterate through
-            'metacal', # data group within file to look at
+            'shear', # data group within file to look at
             shear_cols, # column(s) to read
             # next file
             'lens_tomography_catalog', # tag of input file to iterate through
