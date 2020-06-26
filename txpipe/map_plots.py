@@ -4,6 +4,7 @@ from .base_stage import PipelineStage
 
 class TXMapPlots(PipelineStage):
     """
+    Make plots of all the available maps.
     """
     name='TXMapPlots'
 
@@ -14,6 +15,7 @@ class TXMapPlots(PipelineStage):
         ('mask', MapsFile),
         ('aux_maps', MapsFile),
     ]
+
     outputs = [
         ('depth_map', PNGFile),
         ('lens_map', PNGFile),
@@ -24,6 +26,7 @@ class TXMapPlots(PipelineStage):
         ('bright_object_map', PNGFile),
     ]
     config_options = {
+        # can also set Moll
         'projection': 'cart',
 
     }
@@ -33,6 +36,9 @@ class TXMapPlots(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
         import matplotlib.pyplot as plt
+
+        # Plot from each file separately, just
+        # to organize this file a bit
         self.aux_plots()
         self.source_plots()
         self.lens_plots()
@@ -41,9 +47,10 @@ class TXMapPlots(PipelineStage):
     def aux_plots(self):
         import matplotlib.pyplot as plt
 
-
         m = self.open_input("aux_maps", wrapper=True)
 
+        # Get these two config options from the maps where
+        # they were originally saved
         nbin_source = m.file['maps'].attrs['nbin_source']
         flag_max = m.file['maps'].attrs['flag_exponent_max']
 
@@ -57,7 +64,8 @@ class TXMapPlots(PipelineStage):
         m.plot('bright_objects/count', view=self.config['projection'])
         fig.close()
 
-        # Flag count plots
+        # Flag count plots - flags are assumed to be bitsets, so 
+        # we make maps of 1, 2, 4, 8, 16, ...
         fig = self.open_output('flag_map', wrapper=True, figsize=(5*flag_max, 5))
         for i in range(flag_max):
             plt.subplot(1, flag_max, i+1)
@@ -65,7 +73,7 @@ class TXMapPlots(PipelineStage):
             m.plot(f'flags/flag_{f}', view=self.config['projection'])
         fig.close()
 
-        # PSF plots
+        # PSF plots - 2 x n, for g1 and g2
         fig = self.open_output('psf_map', wrapper=True, figsize=(5*nbin_source, 10))
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
         for i in range(nbin_source):
@@ -82,11 +90,16 @@ class TXMapPlots(PipelineStage):
         nbin_source = m.file['maps'].attrs['nbin_source']
 
         fig = self.open_output('shear_map', wrapper=True, figsize=(5*nbin_source, 10))
+
+        # Plot 2 x nbin, g1 and g2
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
 
         for i in range(nbin_source):
+            # g1
             plt.sca(axes[0, i])
             m.plot(f'g1_{i}', view=self.config['projection'])
+
+            # g2
             plt.sca(axes[1, i])
             m.plot(f'g2_{i}', view=self.config['projection'])
         fig.close()
@@ -99,6 +112,7 @@ class TXMapPlots(PipelineStage):
         rho = self.open_input("density_maps", wrapper=True)
         nbin_lens = m.file['maps'].attrs['nbin_lens']
 
+        # Plot both density and ngal as 2 x n
         fig = self.open_output('lens_map', wrapper=True, figsize=(5*nbin_lens, 5))
         _, axes = plt.subplots(2, nbin_lens, squeeze=False, num=fig.file.number)
 

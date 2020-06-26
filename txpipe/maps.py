@@ -10,6 +10,10 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
+# These generic mapping options are used by multiple different
+# map types.
+# TODO: consider dropping support for gnomonic maps.
+# Also consider adding support for pixell
 map_config_options = {
         'chunk_rows': 100000,  # The number of rows to read in each chunk of data at a time
         'pixelization': 'healpix', # The pixelization scheme to use, currently just healpix
@@ -21,7 +25,6 @@ map_config_options = {
         'npix_y':-1,
         'pixel_size': np.nan, # Pixel size of pixelization scheme
 }
-        # 'true_shear' : False,    
 
 class TXBaseMaps(PipelineStage):
     """
@@ -117,15 +120,23 @@ class TXBaseMaps(PipelineStage):
 
 
 class TXSourceMaps(TXBaseMaps):
+    """
+    Make g1, g2, var(g1), var(g2), and lensing weight maps
+    from shear catalogs and tomography
+    """
     name = "TXSourceMaps"
+
     inputs = [
         ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
     ]
+
     outputs = [
         ('source_maps', MapsFile),
     ]
 
+    # Generic mapping options + one option
+    # to use the truth shear columns
     config_options = {
         'true_shear': False,
         **map_config_options
@@ -136,6 +147,7 @@ class TXSourceMaps(TXBaseMaps):
         # read nbin_source
         with self.open_input('shear_tomography_catalog') as f:
             nbin_source = f['tomography'].attrs['nbin_source']
+
         # store in config so it is saved later
         self.config['nbin_source'] = nbin_source
 
@@ -164,10 +176,11 @@ class TXSourceMaps(TXBaseMaps):
             shear_cols = ['g1', 'g2', 'ra', 'dec', 'weight']
 
         # use utility function that combines data chunks
-        # from different files
+        # from different files. Reading from n file sections
+        # takes 3n+1 arguments
         return self.combined_iterators(
-            self.config['chunk_rows'],
-            # first file
+            self.config['chunk_rows'],  # number of rows to iterate at once
+            # first file info
             'shear_catalog', # tag of input file to iterate through
             'shear', # data group within file to look at
             shear_cols, # column(s) to read
@@ -178,7 +191,7 @@ class TXSourceMaps(TXBaseMaps):
         )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
-        # rename columns
+        # rename columns, if needed
         if self.config['true_shear']:
             data['g1'] = data['true_g1']
             data['g2'] = data['true_g2']
@@ -215,11 +228,19 @@ class TXSourceMaps(TXBaseMaps):
         return maps
 
 class TXLensMaps(TXBaseMaps):
+    """
+    Make galaxy number count maps from photometry
+    and lens tomography.
+
+    Density maps are made later once masks are generated.
+    """
     name = "TXLensMaps"
+
     inputs = [
         ('photometry_catalog', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
     ]
+
     outputs = [
         ('lens_maps', MapsFile),
     ]
@@ -227,6 +248,7 @@ class TXLensMaps(TXBaseMaps):
     config_options = {
         **map_config_options
     }
+
     def prepare_mappers(self, pixel_scheme):
         # read nbin_lens and save
         with self.open_input('lens_tomography_catalog') as f:
@@ -247,18 +269,17 @@ class TXLensMaps(TXBaseMaps):
 
     def data_iterator(self):
         print("TODO: no lens weights here")
-        # iterate through tomography and photometry
+        # see TXSourceMaps abov for info on this
         return self.combined_iterators(
             self.config['chunk_rows'],
             # first file
-            'photometry_catalog', # tag of input file to iterate through
-            'photometry', # data group within file to look at
-            ['ra', 'dec'], # column(s) to read
+            'photometry_catalog',
+            'photometry',
+            ['ra', 'dec'],
             # next file
-            'lens_tomography_catalog', # tag of input file to iterate through
-            'tomography', # data group within file to look at
-            ['lens_bin'], # column(s) to read
-            # another section in the same file
+            'lens_tomography_catalog',
+            'tomography',
+            ['lens_bin'],
         )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
@@ -269,6 +290,7 @@ class TXLensMaps(TXBaseMaps):
     def finalize_mappers(self, pixel_scheme, mappers):
         # Again just the one mapper
         mapper = mappers[0]
+        # Ignored return values are empty dicts for shear
         pix, ngal, _, _, _, _, _ = mapper.finalize(self.comm)
         maps = {}
 
@@ -300,16 +322,17 @@ class TXExternalLensMaps(TXLensMaps):
 
     def data_iterator(self):
         print("TODO: no lens weights here")
+        # See TXSourceMaps for an explanation of thsis
         return self.combined_iterators(
             self.config['chunk_rows'],
             # first file
-            'lens_catalog', # tag of input file to iterate through
-            'photometry', # data group within file to look at
-            ['ra', 'dec'], # column(s) to read
+            'lens_catalog',
+            'photometry',
+            ['ra', 'dec'],
             # next file
-            'lens_tomography_catalog', # tag of input file to iterate through
-            'tomography', # data group within file to look at
-            ['lens_bin'], # column(s) to read
+            'lens_tomography_catalog',
+            'tomography',
+            ['lens_bin'],
             # another section in the same file
         )
 
@@ -319,7 +342,8 @@ class TXExternalLensMaps(TXLensMaps):
 class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
     Combined source and photometric lens maps, from the
-    same photometry catalog
+    same photometry catalog.  Same as running TXSourceMaps
+    and then TXLensMaps but faster as we only do the I/O once.
     """
     name = "TXMainMaps"
 
@@ -345,11 +369,11 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # the source and lens map columns
         print("TODO: no lens weights here")
 
-        # 
-        # read shear cols and
+        # metacal, lensfit, etc.
         shear_catalog_type = read_shear_catalog_type(self)
 
-        # can optionally read truth values
+        # can optionally read truth values, or otherwise will look for
+        # lensfit or metacal col names
         if self.config['true_shear']:
             shear_cols = ['true_g1', 'true_g1', 'ra', 'dec', 'weight']
         elif shear_catalog_type == 'metacal':
@@ -360,21 +384,21 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         return self.combined_iterators(
             self.config['chunk_rows'],
             # first file
-            'photometry_catalog', # tag of input file to iterate through
-            'photometry', # data group within file to look at
-            ['ra', 'dec'], # column(s) to read
+            'photometry_catalog',
+            'photometry',
+            ['ra', 'dec'],
             # next file
-            'shear_catalog', # tag of input file to iterate through
-            'shear', # data group within file to look at
-            shear_cols, # column(s) to read
+            'shear_catalog',
+            'shear',
+            shear_cols,
             # next file
-            'lens_tomography_catalog', # tag of input file to iterate through
-            'tomography', # data group within file to look at
-            ['lens_bin'], # column(s) to read
-            # same file,different section
-            'shear_tomography_catalog', # tag of input file to iterate through
-            'tomography', # data group within file to look at
-            ['source_bin'], # column(s) to read
+            'lens_tomography_catalog',
+            'tomography',
+            ['lens_bin'],
+            # next file
+            'shear_tomography_catalog',
+            'tomography',
+            ['source_bin'],
         )
 
     def prepare_mappers(self, pixel_scheme):
@@ -400,9 +424,11 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         return [mapper]
 
     # accumulate_maps is inherited from TXSourceMaps because
-    # that appears first in the list above
+    # that appears first in the parent classes
 
     def finalize_mappers(self, pixel_scheme, mappers):
+        # Still one mapper, but now we read both source and
+        # lens maps from it.
         mapper = mappers[0]
         pix, ngal, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
         maps = {}
@@ -415,7 +441,6 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps['lens_maps', f'ngal_{b}'] = (pix, ngal[b])
 
         for b in mapper.source_bins:
-            # keys are the output tag and the map name
             maps['source_maps', f'g1_{b}'] = (pix, g1[b])
             maps['source_maps', f'g2_{b}'] = (pix, g2[b])
             maps['source_maps', f'var_g1_{b}'] = (pix, var_g1[b])

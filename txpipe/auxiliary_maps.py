@@ -29,12 +29,10 @@ class TXAuxiliaryMaps(TXBaseMaps):
     config_options = {
         'chunk_rows': 100_000,
         'sparse': True,
-        'psf_prefix': '',
-        'flag_exponent_max': 8,
-        'dilate': True,
-        'psf_prefix': 'psf_',
+        'flag_exponent_max': 8, # flag bits go up to 2**8 by default
+        'psf_prefix': 'psf_',  # prefix name for columns
         'bright_obj_threshold': 22.0, # The magnitude threshold for a object to be counted as bright
-        'depth_band' : 'i',
+        'depth_band' : 'i', # Make depth maps for this band
         'snr_threshold': 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         'snr_delta':1.0,  # The range threshold +/- delta is used for finding objects at the boundary
     }
@@ -48,6 +46,9 @@ class TXAuxiliaryMaps(TXBaseMaps):
 
 
     def prepare_mappers(self, pixel_scheme):
+        # We make a suite of mappers here.
+
+        # We read nbin_source because we want PSF maps per-bin
         with self.open_input('shear_tomography_catalog') as f:
             nbin_source = f['tomography'].attrs['nbin_source']
         self.config['nbin_source'] = nbin_source # so it gets saved later
@@ -84,32 +85,29 @@ class TXAuxiliaryMaps(TXBaseMaps):
     def data_iterator(self):
         band = self.config['depth_band']
         psf_prefix = self.config['psf_prefix']
-
         shear_catalog_type = read_shear_catalog_type(self)
 
+        # Flag column name depends on catalog type
         if shear_catalog_type == 'metacal':
             shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', 'mcal_flags', 'weight']
         else:
             shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', 'flags', 'weight']
 
-
+        # See maps.py for an explanation of this
         return self.combined_iterators(
             self.config['chunk_rows'],
             # first file
-            'photometry_catalog', # tag of input file to iterate through
-            'photometry', # data group within file to look at
+            'photometry_catalog',
+            'photometry',
             ['ra', 'dec', 'extendedness', f'snr_{band}', f'mag_{band}'],
             # next file
-            'shear_catalog', # tag of input file to iterate through
-            'shear', # data group within file to look at
+            'shear_catalog',
+            'shear',
             shear_cols,
-            # same file,different section
-            'shear_tomography_catalog', # tag of input file to iterate through
-            'tomography', # data group within file to look at
-            ['source_bin'], # column(s) to read
-            # 'lens_tomography_catalog', # tag of input file to iterate through
-            # 'tomography', # data group within file to look at
-            # ['lens_bin'], # column(s) to read
+            # next file
+            'shear_tomography_catalog',
+            'tomography',
+            ['source_bin'],
         )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
@@ -118,6 +116,8 @@ class TXAuxiliaryMaps(TXBaseMaps):
         band = self.config['depth_band']
         psf_prefix = self.config['psf_prefix']
 
+        # Our different mappers want different data columns.
+        # We pull out the bits they need and give them just those.
         brobj_data = {
             'mag': data[f'mag_{band}'],
             'extendedness': data['extendedness'],
@@ -146,6 +146,7 @@ class TXAuxiliaryMaps(TXBaseMaps):
             'dec': data['dec'],
         }
 
+        # Flag column names depends on catalog type.
         if self.config['shear_catalog_type'] == 'metacal':
             flag_data['flags'] = data['mcal_flags']
         else:
@@ -173,9 +174,7 @@ class TXAuxiliaryMaps(TXBaseMaps):
         if self.rank != 0:
             return maps
 
-
-        # TODO: Could add density maps here, but need a clustering weight
-        # mask to get an appropriate mean
+        # Save PSF maps
         for b in psf_mapper.source_bins:
             maps['aux_maps', f'psf/g1_{b}'] = (pix, g1[b])
             maps['aux_maps', f'psf/g2_{b}'] = (pix, g1[b])
@@ -183,13 +182,15 @@ class TXAuxiliaryMaps(TXBaseMaps):
             maps['aux_maps', f'psf/var_g2_{b}'] = (pix, var_g1[b])
             maps['aux_maps', f'psf/lensing_weight_{b}'] = (pix, weight[b])
 
-
+        # Save depth maps
         maps['aux_maps', 'depth/depth'] = (depth_pix, depth)
         maps['aux_maps', 'depth/depth_count'] = (depth_pix, depth_count)
         maps['aux_maps', 'depth/depth_var'] = (depth_pix, depth_var)
 
+        # Save bright object counts
         maps['aux_maps', "bright_objects/count"] =  (brobj_pix, brobj_count)
 
+        # Save flag maps
         for i, (p, m) in enumerate(zip(flag_pixs, flag_maps)):
             f = 2**i
             maps['aux_maps', f'flags/flag_{f}'] = (p, m)
