@@ -105,7 +105,6 @@ def full_3x2pt_plots(sacc_files, labels,
     else:
         theory_data = []
 
-
     if figures is None:
         figures = {}
 

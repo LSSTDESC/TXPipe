@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile, DataFile
+from .data_types import PhotozPDFFile, ShearCatalog, YamlFile, HDFFile, DataFile
 import sys
 import numpy as np
 
@@ -205,13 +205,10 @@ class PZPDFMLZ(PipelineStage):
             Point-estimated photo-zs for each of the 5 metacalibrated variants
 
         """
-        group = output_file['pdf']
-        group['pdf'][start:end] = pdfs
-        group['mu'][start:end] = point_estimates
-
-
-
-
+        group1 = output_file['pdf']
+        group1['pdf'][start:end] = pdfs
+        group2 = output_file['point_estimates']
+        group2['z_mean'][start:end] = point_estimates
 
     def prepare_output(self, nobj, z):
         """
@@ -243,14 +240,15 @@ class PZPDFMLZ(PipelineStage):
         z_mid = 0.5*(z[1:] + z[:-1])
         # Create the space for output data
         nz = len(z_mid)
-        group = f.create_group('pdf')
-        group.create_dataset("z", (nz,), dtype='f4')
-        group.create_dataset("pdf", (nobj,nz), dtype='f4')
-        group.create_dataset("mu", (nobj,), dtype='f4')
+        group1 = f.create_group('pdf')
+        group1.create_dataset("zgrid", (nz,), dtype='f4')
+        group1.create_dataset("pdf", (nobj,nz), dtype='f4')
+        group2 = f.create_group('point_estimates')
+        group2.create_dataset("z_mean", (nobj,), dtype='f4')
 
         # One processor writes the redshift axis to output.
         if self.rank==0:
-            group['z'][:] = z_mid
+            group1['zgrid'][:] = z_mid
 
         return f
 

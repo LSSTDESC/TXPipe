@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
 from .utils.stats import ParallelStatsCalculator
-from .utils.metacal import calculate_selection_response, calculate_shear_response, apply_metacal_response, MeanShearInBins
+from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
@@ -13,7 +13,7 @@ class TXDiagnosticPlots(PipelineStage):
 
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('lens_tomography_catalog', TomographyCatalog),
     ]
@@ -35,12 +35,17 @@ class TXDiagnosticPlots(PipelineStage):
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
         'psf_prefix': 'mcal_psf_',
+        'T_min': 0.2,
+        'T_max': 0.28,
     }
 
     def run(self):
         # PSF tests
         import matplotlib
         matplotlib.use('agg')
+
+        with self.open_input('shear_catalog', wrapper=True) as f:
+            self.config['shear_catalog_type'] = f.catalog_type
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -59,19 +64,34 @@ class TXDiagnosticPlots(PipelineStage):
         # so the plotters should handle this.
         chunk_rows = self.config['chunk_rows']
         psf_prefix = self.config['psf_prefix']
-        shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+        shear_prefix = self.config['shear_prefix']
+        if self.config['shear_catalog_type']=='metacal':
+            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m']
+        else:
+            shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2']
+        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
+        shear_tomo_cols = ['source_bin']
+        lens_tomo_cols = ['lens_bin']
         photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']
 
-        it = self.combined_iterators(chunk_rows,
-                                     'shear_catalog', 'metacal', shear_cols,
-                                     'photometry_catalog', 'photometry', photo_cols,
-                                     'shear_tomography_catalog','tomography',shear_tomo_cols,
-                                     'shear_tomography_catalog','metacal_response', ['R_gamma'],
-                                     'lens_tomography_catalog','tomography',lens_tomo_cols)
+        if self.config['shear_catalog_type']=='metacal':
+            it = self.combined_iterators(chunk_rows,
+                                         'shear_catalog', 'shear', shear_cols,
+                                         'photometry_catalog', 'photometry', photo_cols,
+                                         'shear_tomography_catalog','tomography',shear_tomo_cols,
+                                         'shear_tomography_catalog','metacal_response', ['R_gamma'],
+                                         'lens_tomography_catalog','tomography',lens_tomo_cols)
+        else:
+            it = self.combined_iterators(chunk_rows,
+                                         'shear_catalog', 'shear', shear_cols,
+                                         'photometry_catalog', 'photometry', photo_cols,
+                                         'shear_tomography_catalog','tomography',shear_tomo_cols,
+                                         'shear_tomography_catalog','response', ['R'],
+                                         'lens_tomography_catalog','tomography',lens_tomo_cols)
 
 
         # Now loop through each chunk of input data, one at a time.
@@ -102,14 +122,14 @@ class TXDiagnosticPlots(PipelineStage):
         from .utils.fitting import fit_straight_line
         
         delta_gamma = self.config['delta_gamma']
-        size = 15
+        size = 5
         gr = np.logspace(-3,-2, size//2)
         psf_g_edges = np.concatenate([-gr[::-1], gr])
         print('psf_g_edges', psf_g_edges)
         psf_prefix = self.config['psf_prefix']
 
-        p1 = MeanShearInBins(f'{psf_prefix}g1', psf_g_edges, delta_gamma, cut_source_bin=True)
-        p2 = MeanShearInBins(f'{psf_prefix}g2', psf_g_edges, delta_gamma, cut_source_bin=True)
+        p1 = MeanShearInBins(f'{psf_prefix}g1', psf_g_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
+        p2 = MeanShearInBins(f'{psf_prefix}g2', psf_g_edges, delta_gamma, cut_source_bin=True,shear_catalog_type=self.config['shear_catalog_type'])
 
         psf_g_mid = 0.5*(psf_g_edges[1:] + psf_g_edges[:-1])
 
@@ -186,12 +206,15 @@ class TXDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         
+        psf_prefix = self.config['psf_prefix']
+        
         delta_gamma = self.config['delta_gamma']
-        size = 11
-        psf_T_edges = np.linspace(0.2, 0.28, size+1)
+        size = 5
+        T_min = self.config['T_min']
+        T_max = self.config['T_max']
+        psf_T_edges = np.linspace(T_min, T_max, size+1)
 
-
-        binnedShear = MeanShearInBins('mcal_psf_T_mean', psf_T_edges, delta_gamma, cut_source_bin=True)
+        binnedShear = MeanShearInBins(f'{psf_prefix}T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
             
         while True:
             data = yield
@@ -248,13 +271,14 @@ class TXDiagnosticPlots(PipelineStage):
         from scipy import stats
         
         # Parameters of the binning in SNR
-        size = 10
+        size = 5
         delta_gamma = self.config['delta_gamma']
+        shear_prefix = self.config['shear_prefix']
         snr_edges = np.logspace(.1,2.5,size+1)
 
         # This class includes all the cutting and calibration, both for 
         # estimator and selection biases
-        binnedShear = MeanShearInBins('mcal_s2n', snr_edges, delta_gamma, cut_source_bin=True)
+        binnedShear = MeanShearInBins(f'{shear_prefix}s2n', snr_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         while True:
             # This happens when we have loaded a new data chunk
@@ -305,10 +329,13 @@ class TXDiagnosticPlots(PipelineStage):
         from scipy import stats
         
         delta_gamma = self.config['delta_gamma']
+        psf_prefix = self.config['psf_prefix']
         
-        size = 10
+        size = 5
+        
         T_edges = np.linspace(0.1,2.1,size+1)
-        binnedShear = MeanShearInBins('mcal_T', T_edges, delta_gamma, cut_source_bin=True)
+        shear_prefix = self.config['shear_prefix']
+        binnedShear = MeanShearInBins(f'{shear_prefix}T', T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
         while True:
             # This happens when we have loaded a new data chunk
@@ -355,7 +382,7 @@ class TXDiagnosticPlots(PipelineStage):
         from scipy import stats
         
         delta_gamma = self.config['delta_gamma']
-        bins = 50
+        bins = 10
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
@@ -370,45 +397,59 @@ class TXDiagnosticPlots(PipelineStage):
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
         
-            b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
-            b1_1p = np.digitize(data['mcal_g1_1p'][qual_cut], edges) - 1 
-            b1_2p = np.digitize(data['mcal_g1_2p'][qual_cut], edges) - 1
-            b1_1m = np.digitize(data['mcal_g1_1m'][qual_cut], edges) - 1 
-            b1_2m = np.digitize(data['mcal_g1_2m'][qual_cut], edges) - 1
+            if self.config['shear_catalog_type']=='metacal':
+                b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
+                b1_1p = np.digitize(data['mcal_g1_1p'][qual_cut], edges) - 1 
+                b1_2p = np.digitize(data['mcal_g1_2p'][qual_cut], edges) - 1
+                b1_1m = np.digitize(data['mcal_g1_1m'][qual_cut], edges) - 1 
+                b1_2m = np.digitize(data['mcal_g1_2m'][qual_cut], edges) - 1
+            else:
+                b1 = np.digitize(data['g1'][qual_cut], edges) - 1 
             
-            b2 = np.digitize(data['mcal_g2'][qual_cut], edges) - 1
-            b2_1p = np.digitize(data['mcal_g2_1p'][qual_cut], edges) - 1 
-            b2_2p = np.digitize(data['mcal_g2_2p'][qual_cut], edges) - 1
-            b2_1m = np.digitize(data['mcal_g2_1m'][qual_cut], edges) - 1 
-            b2_2m = np.digitize(data['mcal_g2_2m'][qual_cut], edges) - 1
+            if self.config['shear_catalog_type']=='metacal':
+                b2 = np.digitize(data['mcal_g2'][qual_cut], edges) - 1
+                b2_1p = np.digitize(data['mcal_g2_1p'][qual_cut], edges) - 1 
+                b2_2p = np.digitize(data['mcal_g2_2p'][qual_cut], edges) - 1
+                b2_1m = np.digitize(data['mcal_g2_1m'][qual_cut], edges) - 1 
+                b2_2m = np.digitize(data['mcal_g2_2m'][qual_cut], edges) - 1
+            else:
+                b2 = np.digitize(data['g2'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w1 = np.where(b1==i)
-                w1_1p = np.where(b1_1p==i)
-                w1_2p = np.where(b1_2p==i)
-                w1_1m = np.where(b1_1m==i)
-                w1_2m = np.where(b1_2m==i)
                 
-                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
-                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                if self.config['shear_catalog_type']=='metacal':
+                    w1_1p = np.where(b1_1p==i)
+                    w1_2p = np.where(b1_2p==i)
+                    w1_1m = np.where(b1_1m==i)
+                    w1_2m = np.where(b1_2m==i)
+                    S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
+                    R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
                                                   data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                
-                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                elif self.config['shear_catalog_type']=='lensfit':
+                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
+                else:
+                    raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 # Do more things here to establish
                 calc1.add_data(i, g1)
                 
                 
                 w2 = np.where(b2==i)
-                w2_1p = np.where(b2_1p==i)
-                w2_2p = np.where(b2_2p==i)
-                w2_1m = np.where(b2_1m==i)
-                w2_2m = np.where(b2_2m==i)
                 
-                S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w2_1p, w2_2p,w2_1m, w2_2m, delta_gamma)
-                R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
+                if self.config['shear_catalog_type']=='metacal':
+                    w2_1p = np.where(b2_1p==i)
+                    w2_2p = np.where(b2_2p==i)
+                    w2_1m = np.where(b2_1m==i)
+                    w2_2m = np.where(b2_2m==i)
+                    S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
+                    R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
                                                   data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                
-                g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w2], data['mcal_g2'][qual_cut][w2])
+                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
+                elif self.config['shear_catalog_type']=='lensfit':
+                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
+                else:
+                    raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 calc2.add_data(i, g2)
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -437,7 +478,8 @@ class TXDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         
         delta_gamma = self.config['delta_gamma']
-        bins = 50
+        shear_prefix = self.config['shear_prefix']
+        bins = 10
         edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelStatsCalculator(bins)
@@ -451,12 +493,12 @@ class TXDiagnosticPlots(PipelineStage):
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
 
-            b1 = np.digitize(data['mcal_s2n'][qual_cut], edges) - 1
+            b1 = np.digitize(data[f'{shear_prefix}s2n'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1==i)
                 # Do more things here to establish
-                calc1.add_data(i, data['mcal_s2n'][qual_cut][w])
+                calc1.add_data(i, data[f'{shear_prefix}s2n'][qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
         if self.rank != 0:
@@ -475,17 +517,24 @@ class TXDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         if self.comm:
             import mpi4py.MPI
-        size = 40
+        size = 10
         # This seems to be a reasonable range, though there are samples
         # with extremely high values
         edges = np.linspace(-3, 3, size+1)
         mid = 0.5*(edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
-        # count of objects
-        counts = np.zeros((2,2,size))
-        # make a separate histogram of the shear-sample-selected
-        # objects
-        counts_s = np.zeros((2,2,size))
+        if self.config['shear_catalog_type']=='metacal':
+            # count of objects
+            counts = np.zeros((2,2,size))
+            # make a separate histogram of the shear-sample-selected
+            # objects
+            counts_s = np.zeros((2,2,size))
+        else:
+            # count of objects
+            counts = np.zeros((size))
+            # make a separate histogram of the shear-sample-selected
+            # objects
+            counts_s = np.zeros((size))
         while True:
             data = yield
 
@@ -494,19 +543,28 @@ class TXDiagnosticPlots(PipelineStage):
 
             # check if selected for any source bin
             in_shear_sample = data['source_bin'] !=-1
-            B = np.digitize(data['R_gamma'], edges) - 1
-            # loop through this chunk of data.
-            for s, b in zip(in_shear_sample, B):
-                # for each element in the 2x2 matrix
-                for i in range(2):
-                    for j in range(2):
-                        bij = b[i, j]
-                        # this will naturally filter out
-                        # the nans
-                        if (bij >= 0) and (bij < size):
-                            counts[i, j, bij] += 1
-                            if s:
-                                counts_s[i, j, bij] += 1
+            if self.config['shear_catalog_type']=='metacal':
+                B = np.digitize(data['R_gamma'], edges) - 1
+                # loop through this chunk of data.
+                for s, b in zip(in_shear_sample, B):
+                    # for each element in the 2x2 matrix
+                    for i in range(2):
+                        for j in range(2):
+                            bij = b[i, j]
+                            # this will naturally filter out
+                            # the nans
+                            if (bij >= 0) and (bij < size):
+                                counts[i, j, bij] += 1
+                                if s:
+                                    counts_s[i, j, bij] += 1
+            else:
+                B = np.digitize(data['R'], edges) - 1
+                # loop through this chunk of data.
+                for s, b in zip(in_shear_sample, B):
+                    if (b >= 0) and (b < size):
+                        counts[b] +=1
+                        if s:
+                            counts_s[b] += 1
 
         # Sum from all processors and then non-root ones return
         if self.comm is not None:
@@ -524,20 +582,26 @@ class TXDiagnosticPlots(PipelineStage):
         fig = self.open_output('response_hist', wrapper=True, figsize=(10, 5))
 
         plt.subplot(1,2,1)
-        manual_step_histogram(edges, counts[0, 0], label='R00', color='#1f77b4')
-        manual_step_histogram(edges, counts[1, 1], label='R11', color='#ff7f0e')
-        manual_step_histogram(edges, counts[0, 1], label='R01', color='#2ca02c')
-        manual_step_histogram(edges, counts[1, 0], label='R10', color='#d62728')
+        if self.config['shear_catalog_type']=='metacal':
+            manual_step_histogram(edges, counts[0, 0], label='R00', color='#1f77b4')
+            manual_step_histogram(edges, counts[1, 1], label='R11', color='#ff7f0e')
+            manual_step_histogram(edges, counts[0, 1], label='R01', color='#2ca02c')
+            manual_step_histogram(edges, counts[1, 0], label='R10', color='#d62728')
+        else:
+            manual_step_histogram(edges, counts, label='R', color='#1f77b4')
         plt.ylim(0, counts.max()*1.1)
         plt.xlabel("R_gamma")
         plt.ylabel("Count")
         plt.title("All flag=0")
 
         plt.subplot(1,2,2)
-        manual_step_histogram(edges, counts_s[0, 0], label='R00', color='#1f77b4')
-        manual_step_histogram(edges, counts_s[1, 1], label='R11', color='#ff7f0e')
-        manual_step_histogram(edges, counts_s[0, 1], label='R01', color='#2ca02c')
-        manual_step_histogram(edges, counts_s[1, 0], label='R10', color='#d62728')
+        if self.config['shear_catalog_type']=='metacal':
+            manual_step_histogram(edges, counts_s[0, 0], label='R00', color='#1f77b4')
+            manual_step_histogram(edges, counts_s[1, 1], label='R11', color='#ff7f0e')
+            manual_step_histogram(edges, counts_s[0, 1], label='R01', color='#2ca02c')
+            manual_step_histogram(edges, counts_s[1, 0], label='R10', color='#d62728')
+        else:
+            manual_step_histogram(edges, counts_s, label='R', color='#1f77b4')
         plt.ylim(0, counts_s.max()*1.1)
         plt.xlabel("R_gamma")
         plt.ylabel("Count")
@@ -555,7 +619,7 @@ class TXDiagnosticPlots(PipelineStage):
         # mean shear in bins of PSF
         print("Making mag histogram")
         import matplotlib.pyplot as plt
-        size = 20
+        size = 10
         mag_min = 20
         mag_max = 30
         edges = np.linspace(mag_min, mag_max, size+1)

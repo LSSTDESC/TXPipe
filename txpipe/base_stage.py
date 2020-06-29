@@ -44,10 +44,11 @@ class PipelineStage(PipelineStageBase):
             try:
                 f = self.open_input(name, wrapper=True)
                 input_id = f.provenance['uuid']
-                provenance[f"input/{name}"] = input_id
+                f.close()
             except (OSError, IOError, KeyError):
-                provenance[f"input/{name}"] = "UNKNOWN"
-            f.close()
+                input_id = "UNKNOWN"
+
+            provenance[f"input/{name}"] = input_id
 
         provenance["gitdiff"] = git_diff()
         provenance['githead'] = git_current_revision()

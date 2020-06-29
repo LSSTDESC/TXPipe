@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile
+from .data_types import PhotozPDFFile, ShearCatalog, YamlFile, HDFFile
 import numpy as np
 
 class TXRandomPhotozPDF(PipelineStage):

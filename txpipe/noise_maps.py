@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, MapsFile, \
+from .data_types import ShearCatalog, TomographyCatalog, MapsFile, \
                         NoiseMaps, HDFFile
 import numpy as np
 from .utils.mpi_utils import mpi_reduce_large
@@ -14,7 +14,7 @@ class TXNoiseMaps(PipelineStage):
 
     
     inputs = [
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', ShearCatalog),
         ('lens_tomography_catalog', TomographyCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         # We get the pixelization info from the diagnostic maps
@@ -49,7 +49,7 @@ class TXNoiseMaps(PipelineStage):
         chunk_rows = self.config['chunk_rows']
 
         it = self.combined_iterators(chunk_rows,
-                'shear_catalog', 'metacal', shear_cols,
+                'shear_catalog', 'shear', shear_cols,
                 'shear_tomography_catalog','tomography', ['source_bin'],
                 'lens_tomography_catalog','tomography', ['lens_bin'],
             )

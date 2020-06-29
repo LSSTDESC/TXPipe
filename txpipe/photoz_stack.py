@@ -229,7 +229,7 @@ class TXPhotozSourceStack(PipelineStage):
         photoz_file = self.open_input('photoz_pdfs')
 
         # This is the syntax for reading a complete HDF column
-        z = photoz_file['pdf/z'][:]
+        z = photoz_file['pdf/zgrid'][:]
         photoz_file.close()
 
         # Save again but for the number of bins in the tomography catalog
@@ -345,7 +345,7 @@ class TXPhotozPlots(PipelineStage):
         matplotlib.use('agg')
         import matplotlib.pyplot as plt
         f = self.open_input('lens_photoz_stack', wrapper=True)
-
+        
         out1 = self.open_output('nz_lens', wrapper=True)
         f.plot('lens')
         plt.legend()
@@ -497,5 +497,3 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
         shear_tomo_file.close()
 
         return z, nbin_source
-
-

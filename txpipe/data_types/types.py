@@ -12,16 +12,41 @@ def metacalibration_names(names):
         out += [name + '_' + s for s in suffices]
     return out
 
-class MetacalCatalog(HDFFile):
+class ShearCatalog(HDFFile):
     """
-    A metacal output catalog
+    A generic shear catalog 
     """
     # These are columns
-    required_datasets = ['metacal/mcal_g1', 'metacal/mcal_g1_1p', 
-        'metacal/mcal_g2', 'metacal/mcal_flags', 'metacal/ra',
-        'metacal/mcal_T']
 
-    # Add methods for handling here ...
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._catalog_type = None
+    
+    def read_catalog_info(self):
+        try:
+            group = self.file['shear']
+            info = dict(group.attrs)
+        except:
+            raise ValueError(f"Unable to read shear catalog")
+        shear_catalog_type = info.get('catalog_type')
+        return shear_catalog_type
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is not None:
+            return self._catalog_type
+
+        if 'catalog_type' in self.file['shear'].attrs:
+            t = self.file['shear'].attrs['catalog_type']
+        elif 'mcal_g1' in self.file['shear'].keys():
+            t = 'metacal'
+        elif 'c1' in self.file['shear'].keys():
+            t = 'lensfit'
+        else:
+            raise ValueError("Could not figure out catalog format")
+
+        self._catalog_type = t
+        return t
 
 
 class TomographyCatalog(HDFFile):
@@ -263,6 +288,7 @@ class SACCFile(DataFile):
 
 
 class NOfZFile(HDFFile):
+
     # Must have at least one bin in
     required_datasets = []
 
