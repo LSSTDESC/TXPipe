@@ -28,5 +28,5 @@ script:
   - test -f data/example/outputs_redmagic/shear_xi_plus.png
 
 after_failure:
-  - tail -n +1 data/example/outputs/*
-  - tail -n +1 data/example/outputs_redmagic/*
+  - tail -n +1 data/example/logs/*
+  - tail -n +1 data/example/logs_redmagic/*
