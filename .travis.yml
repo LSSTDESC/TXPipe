@@ -26,3 +26,7 @@ script:
   - test -f data/example/outputs/shear_xi_plus.png
   - ceci examples/laptop_redmagic_pipeline.yml
   - test -f data/example/outputs_redmagic/shear_xi_plus.png
+
+after_failure:
+  - tail -n +1 data/example/outputs/*
+  - tail -n +1 data/example/outputs_redmagic/*
