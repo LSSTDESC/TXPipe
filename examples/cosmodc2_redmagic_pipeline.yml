@@ -17,19 +17,27 @@ stages:
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXMapPlots
-    - name: TXDiagnosticMaps
+    - name: TXTracerMetadata
+    - name: TXSourceMaps
       nprocess: 8
       threads_per_process: 1
       nodes: 1
+    - name: TXExternalLensMaps
+    - name: TXAuxiliaryMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
+    - name: TXSimpleMask
+    - name: TXDensityMaps
     - name: TXNullBlinding
     - name: TXTwoPointLensCat
       threads_per_process: 64
       nprocess: 2
       nodes: 2
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
-      nprocess: 16
-      nodes: 1
+    # - name: TXDiagnosticPlots
+    #   nprocess: 16
+    #   nodes: 1
     - name: TXRealGaussianCovariance
       threads_per_process: 64
     # - name: TXTwoPointFourier
@@ -38,10 +46,14 @@ stages:
     #   threads_per_process: 64
     # - name: TXFourierGaussianCovariance
     #   threads_per_process: 64
-    # - name: TXNoiseMaps
-    #   nprocess: 4
-    #   nodes: 1
-    #   threads_per_process: 1
+    - name: TXSourceNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
+    - name: TXExternalLensNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
 
 output_dir: data/cosmodc2/outputs_redmagic
 config: examples/config/cosmodc2_config.yml
