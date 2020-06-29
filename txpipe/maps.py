@@ -299,7 +299,7 @@ class TXLensMaps(TXBaseMaps):
         if self.rank != 0:
             return maps
 
-        for b in mapper.source_bins:
+        for b in mapper.lens_bins:
             # keys are the output tag and the map name
             maps["lens_maps", f"ngal_{b}"] = (pix, ngal[b])
 
@@ -328,7 +328,7 @@ class TXExternalLensMaps(TXLensMaps):
             self.config["chunk_rows"],
             # first file
             "lens_catalog",
-            "photometry",
+            "lens",
             ["ra", "dec"],
             # next file
             "lens_tomography_catalog",
