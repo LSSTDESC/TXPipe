@@ -355,6 +355,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
         # only one mapper here - we call its finalize method
         # to collect everything
         npix, G1, G2, GW, index_map, reverse_map, nbin_source = mappers
+        lensing_realizations =  self.config["lensing_realizations"]
 
         # Sum everything at root
         if self.comm is not None:
