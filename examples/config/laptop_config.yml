@@ -1,3 +1,15 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 512
+    sparse: True  # Generate sparse maps - faster if using small areas
+
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
@@ -19,7 +31,6 @@ TXCosmoDC2Mock:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 FlexZPipe:
     chunk_rows: 1000
@@ -36,14 +47,10 @@ FlexZPipe:
     metacal_fluxes: False #switch for whether or not to run metacal suffices
 
 
-TXPhotozStack:
-    chunk_rows: 100000
-
 # Mock version of stacking:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXSourceSelector:
     input_pz: False
@@ -53,13 +60,10 @@ TXSourceSelector:
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-    chunk_rows: 100000
-    shear_catalog_type: metacal
     shear_prefix: mcal_
 
 TXTruthLensSelector:
     # Mag cuts
-    chunk_rows: 100000
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -72,7 +76,6 @@ TXTruthLensSelector:
 
 TXMeanLensSelector:
     # Mag cuts
-    chunk_rows: 100000
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -83,7 +86,6 @@ TXMeanLensSelector:
     r_i_cut: 2.0
 
 TXRandomCat:
-    chunk_rows: 100000
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
@@ -97,16 +99,13 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
-    shear_catalog_type: metacal
 
-TXGammaTBrightStars:
-    shear_catalog_type: metacal
+
+TXGammaTBrightStars: {}
     
-TXGammaTDimStars:
-    shear_catalog_type: metacal
+TXGammaTDimStars: {}
 
-TXGammaTFieldCenters:
-    shear_catalog_type: metacal
+TXGammaTFieldCenters: {}
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
@@ -124,12 +123,9 @@ TXDiagnosticPlots:
     shear_prefix: mcal_
 
 TXDiagnosticMaps:
-    chunk_rows: 100000  # Number of rows to process at once
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
-    pixelization: healpix
-    nside: 512
     # pixelization: gnomonic
     pixel_size: 0.2
     ra_cent: 62.
@@ -140,33 +136,13 @@ TXDiagnosticMaps:
     psf_prefix: mcal_psf_
 
 TXSourceMaps:
-    chunk_rows: 100000  # Number of rows to process at once
     sparse: True  # Generate sparse maps - faster if using small areas
-    pixelization: healpix
-    nside: 512
 
 TXLensMaps:
-    chunk_rows: 100000  # Number of rows to process at once
     sparse: True  # Generate sparse maps - faster if using small areas
-    pixelization: healpix
-    nside: 512
 
 
-TXMainMaps:
-    chunk_rows: 100000  # Number of rows to process at once
-    sparse: True  # Generate sparse maps - faster if using small areas
-    pixelization: healpix
-    nside: 512
-    # pixelization: gnomonic
-    # pixel_size: 0.2
-    # ra_cent: 62.
-    # dec_cent: -35.
-    # npix_x: 60
-    # npix_y: 60
-    # depth_cut: 23.0
-    # psf_prefix: mcal_psf_
-    # snr_threshold: 10.0
-    # snr_delta: 1.0
+TXMainMaps: {}
 
 TXAuxiliaryMaps:
     flag_exponent_max: 8
@@ -190,7 +166,6 @@ TXJackknifeCenters:
 
 
 TXTwoPointFourier:
-    chunk_rows: 100000
     flip_g2: True
     bandwidth: 100
 

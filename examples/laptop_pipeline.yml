@@ -49,7 +49,7 @@ launcher:
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
-    max_threads: 1
+    max_threads: 2
 
 # python modules to import to search for stages
 modules: txpipe
