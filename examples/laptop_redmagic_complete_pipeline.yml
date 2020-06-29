@@ -5,7 +5,8 @@ stages:
     - name: TXSourceSelector
     - name: TXPhotozSourceStack
     - name: TXIngestRedmagic
-    - name: TXMainMaps
+    - name: TXSourceMaps
+    - name: TXExternalLensMaps
     - name: TXAuxiliaryMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
@@ -13,7 +14,7 @@ stages:
     - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
-    - name: TXTwoPoint
+    - name: TXTwoPointLensCat
       threads_per_process: 2
     - name: TXBlinding
       threads_per_process: 2
@@ -30,7 +31,9 @@ stages:
     - name: TXPSFDiagnostics
     - name: TXRealGaussianCovariance
       threads_per_process: 2
-    - name: TXNoiseMaps
+    - name: TXSourceNoiseMaps
+      threads_per_process: 2
+    - name: TXExternalLensNoiseMaps
       threads_per_process: 2
     - name: TXTwoPointFourier
       threads_per_process: 2
