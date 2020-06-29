@@ -5,6 +5,7 @@ sacc
 pyccl
 numpy
 matplotlib
+fitsio
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
