@@ -115,7 +115,7 @@ class TXIngestRedmagic(PipelineStage):
 
             h['lens_bin'][s:e] = zbin
 
-        h["lens_counts"] = counts
+        h["lens_counts"][:] = counts
 
         stack = self.open_output('lens_photoz_stack')
         # Finally save the n(z) values we have built up
