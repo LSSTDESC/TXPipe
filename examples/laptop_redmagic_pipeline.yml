@@ -2,8 +2,6 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
-    # - name: PZPDFMLZ
-    # - name: TXPhotozSourceStack
     - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
     - name: TXTracerMetadata
@@ -17,13 +15,8 @@ stages:
     - name: TXJackknifeCenters
     - name: TXPhotozPlots
     - name: TXTwoPointLensCat
-    - name: TXSourceNoiseMaps
-    - name: TXExternalLensNoiseMaps
-    - name: TXTwoPointFourier
-      # threads_per_process: 2
-    # - name: TXBlinding
-    #   threads_per_process: 2
-    # - name: TXTwoPointPlots
+    - name: TXTwoPoint
+      threads_per_process: 2
 
 # Where to put outputs
 output_dir: data/example/outputs_redmagic
