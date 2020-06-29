@@ -159,6 +159,13 @@ TXLensMaps:
     pixelization: healpix
     nside: 512
 
+# For redmagic mapping
+TXExternalLensMaps:
+    chunk_rows: 100000
+    sparse: True
+    pixelization: healpix
+    nside: 512
+
 
 TXMainMaps:
     chunk_rows: 100000  # Number of rows to process at once

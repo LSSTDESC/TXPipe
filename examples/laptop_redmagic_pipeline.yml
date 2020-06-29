@@ -6,13 +6,21 @@ stages:
     # - name: TXPhotozSourceStack
     - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
-    # - name: TXDiagnosticMaps
+    - name: TXTracerMetadata
     - name: TXSourceMaps
-    # - name: TXRandomCat
-    # - name: TXJackknifeCenters
-    # - name: TXPhotozPlots
-    # - name: TXTwoPointLensCat
-    #   threads_per_process: 2
+    - name: TXExternalLensMaps
+    - name: TXAuxiliaryMaps
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXMapPlots
+    - name: TXRandomCat
+    - name: TXJackknifeCenters
+    - name: TXPhotozPlots
+    - name: TXTwoPointLensCat
+    - name: TXSourceNoiseMaps
+    - name: TXExternalLensNoiseMaps
+    - name: TXTwoPointFourier
+      # threads_per_process: 2
     # - name: TXBlinding
     #   threads_per_process: 2
     # - name: TXTwoPointPlots
