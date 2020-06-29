@@ -168,13 +168,13 @@ def make_plot(corr, obs_data, theory_data, fig=None):
         half_only = True
     elif corr == GAMMA:
         ymin = 5e-7
-        ymax = 2e-3
+        ymax = 2e-2
         name = r'\gamma_T(\theta)'
         auto_only = False
         half_only = False
     elif corr == W:
         ymin = 2e-4
-        ymax = 1e-1
+        ymax = 1e-0
         name = r'w(\theta)'
         auto_only = True
         half_only = False
