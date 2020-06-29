@@ -29,6 +29,19 @@ TXMainMaps:
     nside: 512
     sparse: True
 
+TXSourceMaps:
+    nside: 512
+    sparse: True
+    chunk_rows:  100000
+    pixelization: healpix
+
+TXExternalLensMaps:
+    nside: 512
+    sparse: True
+    chunk_rows:  100000
+    pixelization: healpix
+
+
 TXAuxiliaryMaps:
     chunk_rows:  100000
     sparse:  True
