@@ -1,25 +1,44 @@
 
 # Stages to run
 stages:
+    - name: FlexZPipe
     - name: TXSourceSelector
-    - name: TXSourceTrueNumberDensity
+    - name: TXPhotozSourceStack
     - name: TXIngestRedmagic
-    - name: TXTracerMetadata
-    - name: TXSourceMaps
-    - name: TXExternalLensMaps
+    - name: TXMainMaps
     - name: TXAuxiliaryMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXMapPlots
+    - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
-    - name: TXPhotozPlots
-    - name: TXTwoPointLensCat
     - name: TXTwoPoint
+      threads_per_process: 2
+    - name: TXBlinding
+      threads_per_process: 2
+    - name: TXTwoPointPlots
+    - name: TXDiagnosticPlots
+    - name: TXGammaTFieldCenters
+      threads_per_process: 2
+    - name: TXGammaTBrightStars
+      threads_per_process: 2
+    - name: TXGammaTDimStars
+      threads_per_process: 2
+    - name: TXRoweStatistics
+      threads_per_process: 2
+    - name: TXPSFDiagnostics
+    - name: TXRealGaussianCovariance
+      threads_per_process: 2
+    - name: TXNoiseMaps
+      threads_per_process: 2
+    - name: TXTwoPointFourier
+      threads_per_process: 2
+    - name: TXFourierGaussianCovariance
       threads_per_process: 2
 
 # Where to put outputs
-output_dir: data/example/outputs_redmagic
+output_dir: data/example/outputs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -32,7 +51,7 @@ site:
     max_threads: 2
 
 # python modules to import to search for stages
-modules: txpipe
+modules: txpipe flexzpipe
 
 # configuration settings
 config: examples/config/laptop_config.yml
@@ -48,15 +67,15 @@ inputs:
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
-    redmagic_catalog: data/example/inputs/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
+    redmagic_catalog: data/example/inputs/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs_redmagic
+log_dir: data/example/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
 
