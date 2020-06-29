@@ -115,6 +115,7 @@ class TXIngestRedmagic(PipelineStage):
 
             h['lens_bin'][s:e] = zbin
 
+        h["lens_counts"] = counts
 
         stack = self.open_output('lens_photoz_stack')
         # Finally save the n(z) values we have built up
@@ -123,6 +124,7 @@ class TXIngestRedmagic(PipelineStage):
         # HDF has "attributes" which are for small metadata like this
         k.attrs["nbin"] = nbin_lens
         k.attrs["nz"] = nz_grid
+
 
         # Save the redshift sampling
         k.create_dataset("z", data=z_grid)
