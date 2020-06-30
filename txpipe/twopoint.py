@@ -38,7 +38,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.5,
         'max_sep':300.,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -51,6 +51,7 @@ class TXTwoPoint(PipelineStage):
         'do_pos_pos': True,
         'shear_catalog_type': 'metacal',
         'var_methods': 'jackknife',
+        'subtract_mean_shear': False,
         }
 
     def run(self):
@@ -354,10 +355,18 @@ class TXTwoPoint(PipelineStage):
         """
 
         mask = (data['source_bin'] == i)
+        
+        print('number of galaxies before cut',len(data['mcal_g1'][mask]))
+        
+        mask2 = data['mask']
+        
+        mask = mask&mask2
+        
+        print('number of galaxies after cut',len(data['mcal_g1'][mask]))
 
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask],self.config['subtract_mean_shear'])
             return g1, g2, mask
 
         elif self.config['shear_catalog_type']=='lensfit':
@@ -566,13 +575,16 @@ class TXTwoPoint(PipelineStage):
         # Columns we need from the shear catalog
         
         if self.config['shear_catalog_type']=='metacal':
-            cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+            cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags','mask']
         else:
             cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        g = f['shear']
+        if self.config['shear_catalog_type']=='metacal':
+            g = f['metacal']
+        else:
+            g = f['shear']
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]

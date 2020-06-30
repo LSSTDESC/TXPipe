@@ -58,7 +58,7 @@ def calculate_shear_response(g1_1p,g1_2p,g1_1m,g1_2m,g2_1p,g2_2p,g2_1m,g2_2m,del
     R = np.mean(R, axis=0)
     return R
 
-def apply_metacal_response(R, S, g1, g2):
+def apply_metacal_response(R, S, g1, g2, subtract_mean_shear=False):
     from numpy.linalg import pinv
     import numpy as np
     
@@ -71,16 +71,25 @@ def apply_metacal_response(R, S, g1, g2):
     
     mcal_g = np.dot(Rinv, np.array(mcal_g).T).T
     
-    return mcal_g[:,0], mcal_g[:,1]
+    if subtract_mean_shear:
+        g1 = mcal_g[:,0]-np.mean(mcal_g[:,0])
+        g2 = mcal_g[:,1]-np.mean(mcal_g[:,1])
+    else:
+        g1 = mcal_g[:,0]
+        g2 = mcal_g[:,1]
+    return g1, g2
 
 
-def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
+def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0, subtract_mean_shear=False):
     w_tot = np.sum(weight)
     m = np.sum(weight*m)/w_tot        #if m not provided, default is m=0, so one_plus_K=1
     one_plus_K = 1.+m
     R = 1. - np.sum(weight*sigma_e)/w_tot
     g1 = (1./(one_plus_K))*((g1/R)-c1)       
     g2 = (1./(one_plus_K))*((g2/R)-c2)
+    if subtract_mean_shear:
+        g1 = np.mean(weight*g1)/w_tot
+        g2 = np.mean(weight*g2)/w_tot
     return g1, g2, weight, one_plus_K
 
 
