@@ -592,7 +592,7 @@ class TXTwoPoint(PipelineStage):
             return
 
         # Columns we need from the tomography catalog
-        randoms_cols = ['dec','e1','e2','ra','bin']
+        randoms_cols = ['dec','ra','bin']
         print(f"Loading random catalog columns: {randoms_cols}")
 
         f = self.open_input('random_cats')
@@ -607,8 +607,6 @@ class TXTwoPoint(PipelineStage):
 
         data['random_ra'] =  group['ra'][sel]
         data['random_dec'] = group['dec'][sel]
-        data['random_e1'] =  group['e1'][sel]
-        data['random_e2'] =  group['e2'][sel]
         data['random_bin'] = group['bin'][sel]
 
         f.close()
