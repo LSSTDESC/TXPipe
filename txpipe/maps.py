@@ -472,17 +472,20 @@ class TXDensityMaps(PipelineStage):
 
         # set unseen pixels to weight zero
         mask[mask == healpy.UNSEEN] = 0
+        mask[np.isnan(mask)] = 0
+        mask = mask.flatten()
         pix = np.where(mask > 0)[0]
 
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
             nbin_lens = meta["nbin_lens"]
-            ngal_maps = [f.read_map(f"ngal_{b}") for b in range(nbin_lens)]
+            ngal_maps = [f.read_map(f"ngal_{b}").flatten() for b in range(nbin_lens)]
 
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
+            ng[np.isnan(ng)] = 0.0
             # Convert the number count maps to overdensity maps.
             # First compute the overall mean object count per bin.
             # mean clustering galaxies per pixel in this map

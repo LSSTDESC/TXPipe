@@ -1,5 +1,5 @@
 import numpy as np
-
+from .utils import choose_pixelization
 from .base_stage import PipelineStage
 from .data_types import MapsFile
 
@@ -21,11 +21,12 @@ class TXSimpleMask(PipelineStage):
             metadata = dict(f.file["maps"].attrs)
             bright_obj = f.read_map("bright_objects/count")
             depth = f.read_map("depth/depth")
+            pixel_scheme = choose_pixelization(**metadata)
 
-        hit = depth != healpy.UNSEEN
+        hit = depth > healpy.UNSEEN
         masks = [
             ("depth", depth > self.config["depth_cut"]),
-            ("bright_obj", bright_obj < self.config["bright_object_max"]),
+            ("bright_obj", ~(bright_obj > self.config["bright_object_max"])),
         ]
 
         for name, m in masks:
@@ -35,19 +36,23 @@ class TXSimpleMask(PipelineStage):
         # Overall mask
         mask = np.logical_and.reduce([mask for _, mask in masks])
 
-        f_sky = (mask.sum() * 1.0) / mask.size
-        area = f_sky * 41252.96125
+        num_hit = (mask.sum() * 1.0)
+        area = pixel_scheme.pixel_area(degrees=True) * num_hit
+        f_sky = area / 41252.96125
         print(f"f_sky = {f_sky}")
-        print(f"area = {area:.1f} sq deg")
+        print(f"area = {area:.2f} sq deg")
         metadata["area"] = area
         metadata["f_sky"] = f_sky
 
-        # Pull out unmasked pixels and their values
-        pix = np.where(mask)[0]
-        mask = mask[pix].astype(float)
-
         mask[np.isnan(mask)] = 0.0
         mask[mask < 0] = 0
+
+        # Pull out unmasked pixels and their values.
+        # The flatten only affects gnomonic maps; the
+        # healpix maps are already flat
+        mask = mask.flatten()
+        pix = np.where(mask)[0]
+        mask = mask[pix].astype(float)
 
         with self.open_output("mask", wrapper=True) as f:
 

@@ -3,6 +3,7 @@ import yaml
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, YamlFile, ShearCatalog
 from .utils.calibration_tools import read_shear_catalog_type
+from .utils import choose_pixelization
 
 
 class TXTracerMetadata(PipelineStage):
@@ -117,8 +118,10 @@ class TXTracerMetadata(PipelineStage):
     def read_area(self):
         with self.open_input("mask", wrapper=True) as f:
             m = f.read_map("mask")
-        print(m.max())
-        f_sky = (m > 0).sum() / m.size
-        area_sq_deg = f_sky * 41252.96125
-        print(area_sq_deg)
+            pixel_scheme = choose_pixelization(**f.read_map_info("mask"))
+
+        num_hit = (m > 0).sum()
+        area_sq_deg = pixel_scheme.pixel_area(degrees=True) * num_hit
+        f_sky = area_sq_deg / 41252.96125
+        print(f"Area = {area_sq_deg:.2f} deg^2")
         return area_sq_deg
