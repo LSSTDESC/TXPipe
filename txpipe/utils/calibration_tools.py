@@ -398,8 +398,12 @@ class ParallelCalibratorNonMetacal:
             C_sum += C*n
             N += n
 
-        R = R_sum / N
-        K = K_sum / N
+        if N == 0:
+            R = np.nan
+            K = np.nan
+        else:
+            R = R_sum / N
+            K = K_sum / N
 
         C = C_sum / N
         

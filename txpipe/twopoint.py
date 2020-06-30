@@ -565,6 +565,7 @@ class TXTwoPoint(PipelineStage):
     def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
+        read_shear_catalog_type(self)
 
         if self.config['shear_catalog_type']=='metacal':
             cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
