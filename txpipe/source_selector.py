@@ -114,10 +114,7 @@ class TXSourceSelector(PipelineStage):
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data
-        if self.config['shear_catalog_type']=='metacal':
-            iter_shear = self.iterate_hdf('shear_catalog', 'metacal', shear_cols, chunk_rows)
-        else:
-            iter_shear = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
+        iter_shear = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -358,10 +355,7 @@ class TXSourceSelector(PipelineStage):
         Creates the data sets and groups to put module output
         in the shear_tomography_catalog output file.
         """
-        if self.config['shear_catalog_type']=='metacal':
-            n = self.open_input('shear_catalog')['metacal/ra'].size
-        else:
-            n = self.open_input('shear_catalog')['shear/ra'].size
+        n = self.open_input('shear_catalog')['shear/ra'].size
         zbins = self.config['source_zbin_edges']
         nbin_source = len(zbins)-1
 
