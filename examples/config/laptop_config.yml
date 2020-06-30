@@ -53,8 +53,8 @@ TXTrueNumberDensity:
     zmax: 3.0
 
 TXSourceSelector:
-    input_pz: True
-    true_z: False
+    input_pz: False
+    true_z: True
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -66,8 +66,8 @@ TXSourceSelector:
 TXTruthLensSelector:
     # Mag cuts
     chunk_rows: 100000
-    input_pz: True
-    true_z: False
+    input_pz: False
+    true_z: True
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -103,13 +103,20 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
+    shear_catalog_type: 'metacal'
 
 
-TXGammaTBrightStars: {}
+TXGammaTBrightStars:
+    shear_catalog_type: 'metacal'
     
-TXGammaTDimStars: {}
+TXGammaTDimStars:
+    shear_catalog_type: 'metacal'
 
-TXGammaTFieldCenters: {}
+TXGammaTRandoms: 
+    shear_catalog_type: 'metacal'
+
+TXGammaTFieldCenters:
+    shear_catalog_type: 'metacal'
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
