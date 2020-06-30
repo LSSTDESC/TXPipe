@@ -21,11 +21,18 @@ stages:
       nodes: 2
       threads_per_process: 64
     - name: TXJackknifeCenters
-    - name: TXMapPlots
-    - name: TXDiagnosticMaps
+    - name: TXMainMaps
       nprocess: 8
-      threads_per_process: 1
+    - name: TXAuxiliaryMaps
+      nprocess: 8
+    - name: TXDensityMaps
+    - name: TXNoiseMaps
+      nprocess: 4
       nodes: 1
+      threads_per_process: 1
+    - name: TXSimpleMask
+    - name: TXMapPlots
+    - name: TXTracerMetadata
     - name: TXNullBlinding
     - name: TXTwoPoint
       threads_per_process: 64
@@ -39,10 +46,6 @@ stages:
       threads_per_process: 64
     - name: TXRealGaussianCovariance
       threads_per_process: 64
-    - name: TXNoiseMaps
-      nprocess: 4
-      nodes: 1
-      threads_per_process: 1
 
 output_dir: data/cosmodc2/outputs
 config: examples/config/cosmodc2_config.yml

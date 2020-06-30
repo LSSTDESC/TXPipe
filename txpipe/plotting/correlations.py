@@ -105,11 +105,11 @@ def full_3x2pt_plots(sacc_files, labels,
     else:
         theory_data = []
 
-    for t in types:
-        f = figures.get(t)
-
     if figures is None:
         figures = {}
+
+    for t in types:
+        f = figures.get(t)
 
     output_figures = {}
     for t in types:

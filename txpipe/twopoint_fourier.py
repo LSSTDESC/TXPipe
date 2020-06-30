@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, TomographyCatalog, RandomsCatalog, \
-                        YamlFile, SACCFile, DiagnosticMaps, HDFFile, \
+from .data_types import TomographyCatalog, \
+                        YamlFile, SACCFile, MapsFile, HDFFile, \
                         PhotozPDFFile, NoiseMaps
 import numpy as np
 import collections
@@ -43,9 +43,12 @@ class TXTwoPointFourier(PipelineStage):
     inputs = [
         ('shear_photoz_stack', HDFFile),  # Photoz stack
         ('lens_photoz_stack', HDFFile),  # Photoz stack
-        ('diagnostic_maps', DiagnosticMaps),
         ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
+        ('source_maps', MapsFile),
+        ('density_maps', MapsFile),
+        ('aux_maps', MapsFile),
+        ('mask', MapsFile),
         ('noise_maps', NoiseMaps),
         ('shear_tomography_catalog', TomographyCatalog),  # For density info
         ('lens_tomography_catalog', TomographyCatalog),  # For density info
@@ -145,41 +148,51 @@ class TXTwoPointFourier(PipelineStage):
     def load_maps(self):
         import pymaster as nmt
         import healpy
-        # Load the various input maps and their metadata
-        map_file = self.open_input('diagnostic_maps', wrapper=True)
-        pix_info = map_file.read_map_info('mask')
-        area = map_file.file['maps'].attrs["area"]
 
-        nbin_source = map_file.file['maps'].attrs['nbin_source']
-        nbin_lens = map_file.file['maps'].attrs['nbin_lens']
+        # Load the maps from their files.
+        # First the mask
+        with self.open_input('mask', wrapper=True) as f:
+            info = f.read_map_info('mask')
+            area = info['area']
+            f_sky = info['f_sky']
+            mask = f.read_map('mask')
+            print("Loaded mask")
+        # Then the shear maps and weights
+        with self.open_input('source_maps', wrapper=True) as f:
+            nbin_source = f.file['maps'].attrs['nbin_source']
+            g1_maps = [f.read_map(f'g1_{b}') for b in range(nbin_source)]
+            g2_maps = [f.read_map(f'g2_{b}') for b in range(nbin_source)]
+            lensing_weights = [f.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
+            print("Loaded 2 x {nbin_source} shear maps}")
+            print("Loaded {nbin_source} lensing weight maps}")
+
+        # And finally the density maps
+        with self.open_input('density_maps', wrapper=True) as f:
+            nbin_lens = f.file['maps'].attrs['nbin_lens']
+            d_maps = [f.read_map(f'delta_{b}') for b in range(nbin_lens)]
+            print("Loaded {nbin_lens} overdensity maps}")
+
+
 
         # Choose pixelization and read mask and systematics maps
-        pixel_scheme = choose_pixelization(**pix_info)
+        pixel_scheme = choose_pixelization(**info)
+
+        if self.rank == 0:
+            print(f"Unmasked area = {area:.2f}, fsky = {f_sky:.2e}")
 
         if pixel_scheme.name != 'healpix':
             raise ValueError("TXTwoPointFourier can only run on healpix maps")
 
-        # Load the mask. It should automatically be the same shape as the
-        # others, based on how it was originally generated.
-        # We remove any pixels that are at or below our threshold (default=0)
-        mask = map_file.read_mask()
-        mask[np.isnan(mask)] = 0
-        mask[mask==healpy.UNSEEN] = 0
 
         # Using a flat mask as the clustering weight for now, since I need to know
         # how to turn the depth map into a weight
         clustering_weight = mask
 
-        f_sky = area / 41253.
-        if self.rank == 0:
-            print(f"Unmasked area = {area}, fsky = {f_sky}")
 
-        # Load all the maps in.
-        # TODO: make it possible to just do a subset of these
-        ngal_maps = [map_file.read_map(f'ngal_{b}') for b in range(nbin_lens)]
-        g1_maps = [map_file.read_map(f'g1_{b}') for b in range(nbin_source)]
-        g2_maps = [map_file.read_map(f'g2_{b}') for b in range(nbin_source)]
-        lensing_weights = [map_file.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
+        # Set any unseen pixels to zero weight.
+        for d in d_maps:
+            clustering_weight[clustering_weight==healpy.UNSEEN] = 0
+            clustering_weight[d==healpy.UNSEEN] = 0
 
         # Mask any pixels which have the healpix bad value
         for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
@@ -204,29 +217,6 @@ class TXTwoPointFourier(PipelineStage):
         syst_nc = None
         syst_wl = None
 
-        map_file.close()
-
-
-        # Set any unseen pixels to zero weight.
-        for ng in ngal_maps:
-            clustering_weight[ng==healpy.UNSEEN] = 0
-
-        clustering_weight[clustering_weight<0] = 0
-        clustering_weight[np.isnan(clustering_weight)] = 0
-
-        # Start collecting maps
-        d_maps = []
-        for i, ng in enumerate(ngal_maps):
-            # Convert the number count maps to overdensity maps.
-            # First compute the overall mean object count per bin.
-            # Maybe we should do this in the mapping code itself?
-            # mean clustering galaxies per pixel in this map
-            mu = np.average(ng, weights=clustering_weight)
-            # and then use that to convert to overdensity
-            d = (ng - mu) / mu
-            # remove nans
-            d[clustering_weight==0] = 0
-            d_maps.append(d)
 
         lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
                           for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]

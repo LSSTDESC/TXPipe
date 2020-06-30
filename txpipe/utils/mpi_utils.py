@@ -70,6 +70,14 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
         start = end
 
 
+def in_place_reduce(data, comm):
+    import mpi4py.MPI
+    if comm.Get_rank() == 0:
+        comm.Reduce(mpi4py.MPI.IN_PLACE, data)
+    else:
+        comm.Reduce(counts, None)
+
+
 def test_reduce():
     from mpi4py.MPI import COMM_WORLD as comm
     data = np.zeros((100,200)) + comm.rank + 1

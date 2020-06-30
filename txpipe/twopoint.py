@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
+from .utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
 import collections
@@ -34,6 +35,7 @@ class TXTwoPoint(PipelineStage):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
+        # TODO: Allow more fine-grained selection of 2pt subsets to compute
         'calcs':[0,1,2],
         'min_sep':0.5,
         'max_sep':300.,
@@ -49,7 +51,6 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'shear_catalog_type': 'metacal',
         'var_methods': 'jackknife',
         }
 
@@ -63,8 +64,8 @@ class TXTwoPoint(PipelineStage):
         # Load the different pieces of data we need into
         # one large dictionary which we accumulate
         data = {}
-        self.load_tomography(data)
         self.load_shear_catalog(data)
+        self.load_tomography(data)
         self.load_random_catalog(data)
         # This one is optional - this class does nothing with it
         self.load_lens_catalog(data)
@@ -564,7 +565,8 @@ class TXTwoPoint(PipelineStage):
     def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
-        
+        read_shear_catalog_type(self)
+
         if self.config['shear_catalog_type']=='metacal':
             cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
         else:
@@ -591,7 +593,7 @@ class TXTwoPoint(PipelineStage):
             return
 
         # Columns we need from the tomography catalog
-        randoms_cols = ['dec','e1','e2','ra','bin']
+        randoms_cols = ['dec','ra','bin']
         print(f"Loading random catalog columns: {randoms_cols}")
 
         f = self.open_input('random_cats')
@@ -606,8 +608,6 @@ class TXTwoPoint(PipelineStage):
 
         data['random_ra'] =  group['ra'][sel]
         data['random_dec'] = group['dec'][sel]
-        data['random_e1'] =  group['e1'][sel]
-        data['random_e2'] =  group['e2'][sel]
         data['random_bin'] = group['bin'][sel]
 
         f.close()
@@ -1562,7 +1562,6 @@ class TXGammaTRandoms(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'shear_catalog_type': 'metacal',
         }
 
     def run(self):

@@ -27,8 +27,15 @@ stages:
     - name: TXPhotozStack
       nprocess: 16
     - name: TXPhotozPlots
-    - name: TXDiagnosticMaps
       nprocess: 8
+    - name: TXMainMaps
+      nprocess: 8
+    - name: TXAuxiliaryMaps
+      nprocess: 8
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXMapPlots
+    - name: TXTracerMetadata
     - name: TXRandomCat
       nodes: 1
     - name: TXTwoPoint
@@ -41,7 +48,6 @@ stages:
       nodes: 4
       threads_per_process: 64
     - name: TXTwoPointPlots
-    - name: TXMapPlots
     - name: TXDiagnosticPlots
       nprocess: 16
     - name: TXGammaTBrightStars
