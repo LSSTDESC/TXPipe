@@ -179,7 +179,7 @@ class TXPhotozStack(PipelineStage):
         photoz_file = self.open_input('photoz_pdfs')
 
         # This is the syntax for reading a complete HDF column
-        z = photoz_file['pdf/z'][:]
+        z = photoz_file['pdf/zgrid'][:]
         photoz_file.close()
 
         # Save again but for the number of bins in the tomography catalog
@@ -255,7 +255,7 @@ class TXPhotozPlots(PipelineStage):
         matplotlib.use('agg')
         import matplotlib.pyplot as plt
         f = self.open_input('lens_photoz_stack', wrapper=True)
-
+        
         out1 = self.open_output('nz_lens', wrapper=True)
         f.plot('lens')
         plt.legend()
@@ -475,6 +475,3 @@ class TXTrueNumberDensity(TXPhotozStack):
         for b in range(nbin):
             group.attrs[f"count_{b}"] = counts[b]
             group.create_dataset(f"bin_{b}", data=stacked_pdfs[b])
-
-
-

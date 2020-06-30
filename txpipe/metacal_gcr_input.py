@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, HDFFile
-from .utils.metacal import metacal_band_variants, metacal_variants
-
+from .data_types import ShearCatalog, HDFFile
+from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 import glob
 import re
@@ -21,7 +20,7 @@ class TXMetacalGCRInput(PipelineStage):
     inputs = []
 
     outputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('photometry_catalog', HDFFile),
     ]
 
@@ -62,7 +61,7 @@ class TXMetacalGCRInput(PipelineStage):
         # Columns that we will need.
         shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err')
+            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
         )
 
         # Input columns for photometry
@@ -108,14 +107,14 @@ class TXMetacalGCRInput(PipelineStage):
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
-                shear_output = self.setup_output('shear_catalog', 'metacal', data, shear_out_cols, n)
+                shear_output = self.setup_output('shear_catalog', 'shear', data, shear_out_cols, n)
                 photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
 
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
             print(f"    Saving {start} - {end}")
-            self.write_output(shear_output, 'metacal', shear_out_cols, start, end, data)
+            self.write_output(shear_output, 'shear', shear_out_cols, start, end, data)
             self.write_output(photo_output, 'photometry', photo_out_cols, start, end, data)
             start = end
 
@@ -316,6 +315,7 @@ def moments_to_shear(Ixx, Iyy, Ixy):
     e1 = (Ixx - Iyy) / b
     e2 = 2 * Ixy / b
     return e1, e2
+
 
 
 # response to an old Stack Overflow question of mine:

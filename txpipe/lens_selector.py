@@ -284,11 +284,11 @@ class TXMeanLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         chunk_rows = self.config['chunk_rows']
         phot_cols = ['mag_i','mag_r','mag_g']
-        z_cols = ['mu']
+        z_cols = ['z_mean']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-        iter_pz = self.iterate_hdf('photoz_pdfs', 'pdf', z_cols, chunk_rows)
+        iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data['z'] = z_data['mu']
+            data['z'] = z_data['z_mean']
             yield s, e, data
 
 

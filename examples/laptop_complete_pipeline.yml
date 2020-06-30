@@ -1,11 +1,15 @@
-
 # Stages to run
 stages:
     - name: TXSourceSelector
     - name: TXTruthLensSelector
-    - name: PZPDFMLZ
+    - name: FlexZPipe
     - name: TXPhotozStack
-    - name: TXDiagnosticMaps
+    - name: TXMainMaps
+    - name: TXAuxiliaryMaps
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXMapPlots
+    - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
     - name: TXTwoPoint
@@ -46,7 +50,7 @@ site:
     max_threads: 1
 
 # python modules to import to search for stages
-modules: txpipe
+modules: txpipe flexzpipe
 
 # configuration settings
 config: examples/config/laptop_config.yml

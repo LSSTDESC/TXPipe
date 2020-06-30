@@ -25,23 +25,26 @@ stages:
 #      threads_per_process: 2
     - name: TXSCIA
       threads_per_process: 2
-    - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
-    - name: TXGammaTFieldCenters
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
       threads_per_process: 2
-    - name: TXGammaTBrightStars
+    - name: TXGammaTBrightStars  # Compute and plot gamma_t around bright stars
       threads_per_process: 2
-    - name: TXGammaTDimStars
+    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       threads_per_process: 2
-    - name: TXRoweStatistics
+    - name: TXGammaTDimStars     # Compute and plot gamma_t around dim stars
       threads_per_process: 2
-    - name: TXPSFDiagnostics
-    - name: TXBrighterFatterPlot
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+      threads_per_process: 2
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    - name: TXPhotozPlots        # Plot the bin n(z)
     # disabling these as they takes too long for a quick test
-#    - name: TXRealGaussianCovariance
-#    - name: TXTwoPointFourier
-#    - name: TXFourierGaussianCovariance
-# uncomment the last two if you have namaster working
+#    - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+#    - name: TXTwoPointFourier          # Compute power spectra C_ell
+#    - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+# these last two also require namaster
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -54,7 +57,7 @@ launcher:
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
-    max_threads: 1
+    max_threads: 2
 
 # python modules to import to search for stages
 modules: txpipe

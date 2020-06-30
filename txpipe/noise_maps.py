@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, TomographyCatalog, DiagnosticMaps, \
+from .data_types import ShearCatalog, TomographyCatalog, MapsFile, \
                         NoiseMaps, HDFFile
 import numpy as np
 from .utils.mpi_utils import mpi_reduce_large
@@ -14,11 +14,12 @@ class TXNoiseMaps(PipelineStage):
 
     
     inputs = [
-        ('shear_catalog', HDFFile),
+        ('shear_catalog', ShearCatalog),
         ('lens_tomography_catalog', TomographyCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         # We get the pixelization info from the diagnostic maps
-        ('diagnostic_maps', DiagnosticMaps),
+        ('mask', MapsFile),
+        ('lens_maps', MapsFile),
     ]
 
     outputs = [
@@ -48,7 +49,7 @@ class TXNoiseMaps(PipelineStage):
         chunk_rows = self.config['chunk_rows']
 
         it = self.combined_iterators(chunk_rows,
-                'shear_catalog', 'metacal', shear_cols,
+                'shear_catalog', 'shear', shear_cols,
                 'shear_tomography_catalog','tomography', ['source_bin'],
                 'lens_tomography_catalog','tomography', ['lens_bin'],
             )
@@ -202,24 +203,18 @@ class TXNoiseMaps(PipelineStage):
 
     def read_inputs(self):
 
-        map_file = self.open_input('diagnostic_maps', wrapper=True)
+        with self.open_input('mask', wrapper=True) as f:
+            mask = f.read_map('mask')
+            # pixelization etc
+            map_info = f.read_map_info('mask')
 
-        # Get the bin counts
-        info = map_file.file['maps'].attrs
-        nbin_source = info['nbin_source']
-        nbin_lens = info['nbin_lens']
+        with self.open_input('lens_maps', wrapper=True) as f:
+            nbin_lens = f.file['maps'].attrs['nbin_lens']
+            ngal_maps = [f.read_map(f'ngal_{b}') for b in range(nbin_lens)]
 
-        # get pixelization info from the usual maps.
-        map_info = map_file.read_map_info('mask')
+        with self.open_input('shear_tomography_catalog', wrapper=True) as f:
+            nbin_source = f.file['tomography'].attrs['nbin_source']
 
-        # Get the ngal values, so we can subtract the random
-        # half selection from it to get the other half
-        ngal_maps = [map_file.read_map(f'ngal_{b}') for b in range(nbin_lens)]
-
-        # and the mask, which we will use to decide which pixels to keep
-        mask = map_file.read_mask()
-
-        map_file.close()
 
         return nbin_source, nbin_lens, ngal_maps, mask, map_info
 
