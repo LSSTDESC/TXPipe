@@ -260,15 +260,20 @@ class TXTruthLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         print(f"We are cheating and using the true redshift.")
         chunk_rows = self.config['chunk_rows']
-
-        phot_cols = ['mag_i','mag_r','mag_g', 'redshift_true']
+        if self.config['true_z']:
+            phot_cols = ['mag_i','mag_r','mag_g', 'redshift_true']
+        else:
+            phot_cols = ['mag_i','mag_r','mag_g', 'mean_z']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data 
         for s, e, data in self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows):
-            data['z'] = data['redshift_true']
+            if self.config['true_z']:
+                data['z'] = data['redshift_true']
+            elif self.config['input_pz']:
+                data['z'] = data['mean_z']
             yield s, e, data
 
 

@@ -32,7 +32,8 @@ TXTrueNumberDensity:
     chunk_rows: 100000
 
 TXSourceSelector:
-    input_pz: False
+    input_pz: True
+    true_z: False
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -46,6 +47,8 @@ TXSourceSelector:
 TXTruthLensSelector:
     # Mag cuts
     chunk_rows: 100000
+    input_pz: True
+    true_z: False
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
