@@ -1,18 +1,6 @@
 import numpy as np
 from .stats import ParallelStatsCalculator
 
-def read_shear_catalog_type(stage):
-    """
-    Determine the type of shear catalog a stage is using as input.
-    Returns a string, e.g. metacal, lensfit.
-    Also sets shear_catalog_type in the stage's configuration
-    so that it is available later and is saved in output.
-    """
-    with stage.open_input('shear_catalog', wrapper=True) as f:
-        shear_catalog_type = f.catalog_type
-        stage.config['shear_catalog_type'] = shear_catalog_type
-    return shear_catalog_type
-
 def metacal_variants(*names):
     return [
         name + suffix
@@ -397,12 +385,8 @@ class ParallelCalibratorNonMetacal:
             C_sum += C*n
             N += n
 
-        if N == 0:
-            R = np.nan
-            K = np.nan
-        else:
-            R = R_sum / N
-            K = K_sum / N
+        R = R_sum / N
+        K = K_sum / N
 
         C = C_sum / N
         
