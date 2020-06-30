@@ -15,8 +15,24 @@ stages:
     - name: TXJackknifeCenters
     - name: TXPhotozPlots
     - name: TXTwoPointLensCat
-    - name: TXTwoPoint
       threads_per_process: 2
+    - name: TXBlinding           # Blind the data following Muir et al
+      threads_per_process: 2
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
+      threads_per_process: 2
+    - name: TXGammaTBrightStars  # Compute and plot gamma_t around bright stars
+      threads_per_process: 2
+    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
+      threads_per_process: 2
+    - name: TXGammaTDimStars     # Compute and plot gamma_t around dim stars
+      threads_per_process: 2
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+      threads_per_process: 2
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
 
 # Where to put outputs
 output_dir: data/example/outputs_redmagic
