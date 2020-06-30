@@ -18,7 +18,6 @@ class TXRandomCat(PipelineStage):
         'density': 100.,  # number per square arcmin at median depth depth.  Not sure if this is right.
         'Mstar': 23.0,  # Schecther distribution Mstar parameter
         'alpha': -1.25,  # Schecther distribution alpha parameter
-        'sigma_e': 0.27,
     }
 
     def run(self):
@@ -51,8 +50,6 @@ class TXRandomCat(PipelineStage):
         Mstar = self.config['Mstar']
         alpha15 = 1.5 + self.config['alpha']
         density_at_median = self.config['density']
-
-        sigma_e = self.read_sigma_e()
 
         # Work out the normalization of a Schechter distribution
         # with the given median depth
@@ -93,8 +90,6 @@ class TXRandomCat(PipelineStage):
         group = output_file.create_group('randoms')
         ra_out = group.create_dataset('ra', (n_total,), dtype=np.float64)
         dec_out = group.create_dataset('dec', (n_total,), dtype=np.float64)
-        e1_out = group.create_dataset('e1', (n_total,), dtype=np.float64)
-        e2_out = group.create_dataset('e2', (n_total,), dtype=np.float64)
         z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
         bin_out = group.create_dataset('bin', (n_total,), dtype=np.float64)
 
@@ -111,14 +106,6 @@ class TXRandomCat(PipelineStage):
 
             # Generate the random points in each pixel
             for i,(vertices_i,N) in enumerate(zip(vertices,numbers[j])):
-                # First generate some random ellipticities.
-                # This theta is not the orientation angle, it is the 
-                # angle in the e1,e2 plane
-                e = np.random.normal(scale=sigma_e[j], size=N)
-                theta = np.random.uniform(0,2*np.pi,size=N)
-                e1 = e * np.cos(theta)
-                e2 = e * np.sin(theta)
-
                 # Use the pixel vertices to generate the points
                 ### This likely wont work for curved sky maps since healpy pixels aren't 
                 ### fully quadrilateral... not sure how big of a difference (if any) this
@@ -143,19 +130,11 @@ class TXRandomCat(PipelineStage):
                 # Save output
                 ra_out[index:index+N] = ra
                 dec_out[index:index+N] = dec
-                e1_out[index:index+N] = e1
-                e2_out[index:index+N] = e2
                 z_out[index:index+N] = z_photo_rand
                 bin_out[index:index+N] = bin_index
                 index += N
 
         output_file.close()
-
-    def read_sigma_e(self):
-        meta = self.open_input('tracer_metadata')
-        d = meta['tracers/sigma_e'][:]
-        meta.close()
-        return d
 
 
 

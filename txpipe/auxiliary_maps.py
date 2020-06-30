@@ -1,4 +1,4 @@
-from .maps import TXBaseMaps
+from .maps import TXBaseMaps, map_config_options
 import numpy as np
 from .base_stage import PipelineStage
 from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
@@ -198,3 +198,34 @@ class TXAuxiliaryMaps(TXBaseMaps):
             print(f"Map shows total {t} objects with flag {f}")
 
         return maps
+
+
+class TXStandaloneAuxiliaryMaps(TXAuxiliaryMaps):
+    name = "TXStandaloneAuxiliaryMaps"
+    """
+    This class generates:
+        - depth maps
+        - psf maps
+        - bright object maps
+        - flag maps
+
+    but unlike its parent class does not require an input
+    source map to choose a pixelization scheme; instead
+    you specify one in the configuration.
+    """
+    inputs = [
+        ("photometry_catalog", HDFFile),  # for mags etc
+        ("shear_catalog", ShearCatalog),  # for psfs
+        ("shear_tomography_catalog", HDFFile),  # for per-bin psf maps
+    ]
+    outputs = [
+        ("aux_maps", MapsFile),
+    ]
+
+    config_options = {
+        ** TXAuxiliaryMaps.config_options,
+        ** map_config_options,
+    }
+    # instead of reading from config we match the basic maps
+    def choose_pixel_scheme(self):
+        return choose_pixelization(**self.config)

@@ -6,9 +6,13 @@ global:
     # at once
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
-    pixelization: healpix
-    nside: 512
+    pixelization: gnomonic
     sparse: True  # Generate sparse maps - faster if using small areas
+    pixel_size: 0.04
+    ra_cent: 60.5
+    dec_cent: -30.5
+    npix_x: 25
+    npix_y: 25
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -27,8 +31,6 @@ TXCosmoDC2Mock:
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
 
-TXIngestRedmagic:
-    lens_zbin_edges: [0.1, 0.3, 0.5]
 
 PZPDFMLZ:
     nz: 301
@@ -50,12 +52,6 @@ FlexZPipe:
 
 
 # Mock version of stacking:
-TXSourceTrueNumberDensity:
-    nz: 301
-    zmax: 3.0
-    chunk_rows: 100000
-
-# Mock version of stacking:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
@@ -72,7 +68,7 @@ TXSourceSelector:
 
 TXTruthLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.1, 0.3, 0.5]
+    lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -130,31 +126,12 @@ TXDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
 
-TXDiagnosticMaps:
-    sparse: True  # Generate sparse maps - faster if using small areas
-    snr_threshold: 10.0
-    snr_delta: 1.0
-    # pixelization: gnomonic
-    pixel_size: 0.2
-    ra_cent: 62.
-    dec_cent: -35.
-    npix_x: 60
-    npix_y: 60
-    depth_cut: 23.0
-    psf_prefix: mcal_psf_
 
 TXSourceMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
-
-# For redmagic mapping
-TXExternalLensMaps:
-    chunk_rows: 100000
-    sparse: True
-    pixelization: healpix
-    nside: 512
 
 
 TXMainMaps: {}
@@ -167,6 +144,7 @@ TXAuxiliaryMaps:
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+
 
 TXRealGaussianCovariance:
     min_sep: 2.5

@@ -1,42 +1,42 @@
 
 # Stages to run
 stages:
-    - name: TXSourceSelector
-    - name: TXTruthLensSelector
-    - name: PZPDFMLZ
-    - name: TXPhotozStack
-    - name: TXMainMaps
-    - name: TXAuxiliaryMaps
-    - name: TXSimpleMask
-    - name: TXDensityMaps
-    - name: TXMapPlots
-    - name: TXTracerMetadata
-    - name: TXRandomCat
-    - name: TXJackknifeCenters
-    - name: TXTwoPoint
+    - name: TXSourceSelector     # select and split objects into source bins
+    - name: TXTruthLensSelector  # select objects for lens bins
+    - name: PZPDFMLZ             # compute p(z) per galaxy using MLZ
+    - name: TXPhotozStack        # stack p(z) into n(z)
+    - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
+    - name: TXAuxiliaryMaps      # make PSF, depth, flag, and other maps
+    - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    - name: TXMapPlots           # make pictures of all the maps
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXRandomCat          # generate lens bin random catalogs
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
       threads_per_process: 2
-    - name: TXBlinding
+    - name: TXBlinding           # Blind the data following Muir et al
       threads_per_process: 2
-    - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
-    - name: TXGammaTFieldCenters
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
       threads_per_process: 2
-    - name: TXGammaTBrightStars
+    - name: TXGammaTBrightStars  # Compute and plot gamma_t around bright stars
       threads_per_process: 2
-    - name: TXGammaTRandoms
+    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       threads_per_process: 2
-    - name: TXGammaTDimStars
+    - name: TXGammaTDimStars     # Compute and plot gamma_t around dim stars
       threads_per_process: 2
-    - name: TXRoweStatistics
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
-    - name: TXPSFDiagnostics
-    - name: TXBrighterFatterPlot
-    - name: TXPhotozPlots
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    - name: TXPhotozPlots        # Plot the bin n(z)
     # disabling these as they takes too long for a quick test
-#    - name: TXRealGaussianCovariance
-#    - name: TXTwoPointFourier
-#    - name: TXFourierGaussianCovariance
-# uncomment the last two if you have namaster working
+#    - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+#    - name: TXTwoPointFourier          # Compute power spectra C_ell
+#    - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+# these last two also require namaster
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -49,7 +49,7 @@ launcher:
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
-    max_threads: 1
+    max_threads: 2
 
 # python modules to import to search for stages
 modules: txpipe

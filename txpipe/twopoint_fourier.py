@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import TomographyCatalog, RandomsCatalog, \
+from .data_types import TomographyCatalog, \
                         YamlFile, SACCFile, MapsFile, HDFFile, \
                         PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps
 import numpy as np

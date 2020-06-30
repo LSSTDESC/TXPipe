@@ -70,7 +70,7 @@ class TomographyCatalog(HDFFile):
 
 
 class RandomsCatalog(HDFFile):
-    required_datasets = ['randoms/ra', 'randoms/dec', 'randoms/e1', 'randoms/e2']
+    required_datasets = ['randoms/ra', 'randoms/dec']
 
 
 
