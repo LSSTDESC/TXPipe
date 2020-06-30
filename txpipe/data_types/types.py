@@ -17,6 +17,10 @@ class ShearCatalog(HDFFile):
     A generic shear catalog 
     """
     # These are columns
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._catalog_type = None
     
     def read_catalog_info(self):
         try:
@@ -26,6 +30,23 @@ class ShearCatalog(HDFFile):
             raise ValueError(f"Unable to read shear catalog")
         shear_catalog_type = info.get('catalog_type')
         return shear_catalog_type
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is not None:
+            return self._catalog_type
+
+        if 'catalog_type' in self.file['shear'].attrs:
+            t = self.file['shear'].attrs['catalog_type']
+        elif 'mcal_g1' in self.file['shear'].keys():
+            t = 'metacal'
+        elif 'c1' in self.file['shear'].keys():
+            t = 'lensfit'
+        else:
+            raise ValueError("Could not figure out catalog format")
+
+        self._catalog_type = t
+        return t
 
 
 class TomographyCatalog(HDFFile):
@@ -49,24 +70,13 @@ class TomographyCatalog(HDFFile):
 
 
 class RandomsCatalog(HDFFile):
-    required_datasets = ['randoms/ra', 'randoms/dec', 'randoms/e1', 'randoms/e2']
+    required_datasets = ['randoms/ra', 'randoms/dec']
 
 
 
 
-class DiagnosticMaps(HDFFile):
-    required_datasets = [
-        'maps/depth/value',
-        'maps/depth/pixel',
-        ]
-
-    def get_nbins(self):
-        group = self.file['maps']
-        info = dict(group.attrs)
-        nbin_lens = info.get('nbin_lens', 0)
-        nbin_source = info.get('nbin_source', 0)
-        return nbin_source, nbin_lens
-
+class MapsFile(HDFFile):
+    required_datasets = []
 
     def read_healpix(self, map_name, return_all=False):
         import healpy
@@ -86,6 +96,9 @@ class DiagnosticMaps(HDFFile):
     def read_map_info(self, map_name):
         group = self.file[f'maps/{map_name}']
         info = dict(group.attrs)
+        if not 'pixelization' in info:
+            raise ValueError(f"Map '{map_name}' not found, "
+                             f"or not saved properly in file {self.path}")
         return info
 
     def read_map(self, map_name):
@@ -125,6 +138,8 @@ class DiagnosticMaps(HDFFile):
         metadata: mapping
             Dict or other mapping of metadata to store along with the map
         """
+        if not 'pixelization' in metadata:
+            raise ValueError("Map metadata should include pixelization")
         subgroup = self.file['maps'].create_group(map_name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
@@ -206,7 +221,7 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
-class NoiseMaps(DiagnosticMaps):
+class NoiseMaps(MapsFile):
     required_datasets = [
         ]
 

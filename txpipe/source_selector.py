@@ -1,7 +1,7 @@
-
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
+from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import metacal_variants, band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
 import numpy as np
 import warnings
@@ -51,7 +51,6 @@ class TXSourceSelector(PipelineStage):
         'chunk_rows':10000,
         'source_zbin_edges':[float],
         'random_seed': 42,
-        'shear_catalog_type': 'metacal',
         'shear_prefix': 'mcal_',
     }
 
@@ -74,6 +73,9 @@ class TXSourceSelector(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all='ignore')  
 
+        # Are we using a metacal or lensfit catalog?
+        shear_catalog_type = read_shear_catalog_type(self)
+
         # The output file we will put the tomographic
         # information into
         output_file = self.setup_output()
@@ -85,10 +87,15 @@ class TXSourceSelector(PipelineStage):
         
         shear_prefix = self.config['shear_prefix']
 
+
         # Columns we need from the shear catalog, will need to modify for lensfit catalogs
         shear_cols = [f'{shear_prefix}flags', f'{shear_prefix}psf_T_mean']
-        shear_cols += band_variants(bands, f'{shear_prefix}mag', f'{shear_prefix}mag_err',shear_catalog_type=self.config['shear_catalog_type'])
-        if self.config['shear_catalog_type']=='metacal':
+        shear_cols += band_variants(bands,
+                                    f'{shear_prefix}mag',
+                                    f'{shear_prefix}mag_err',
+                                    shear_catalog_type=shear_catalog_type)
+
+        if shear_catalog_type == 'metacal':
             shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
         else:
             shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
@@ -123,7 +130,8 @@ class TXSourceSelector(PipelineStage):
 
         selection_biases = []
         number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm,shear_type=self.config['shear_catalog_type'])
-        if self.config['shear_catalog_type']=='metacal':
+
+        if shear_catalog_type == 'metacal':
             calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
         else:
             calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
@@ -226,7 +234,11 @@ class TXSourceSelector(PipelineStage):
         """
         bands = self.config['bands']
         shear_prefix = self.config['shear_prefix']
-        variants = ['', '_1p', '_2p', '_1m', '_2m']
+
+        if self.config['shear_catalog_type'] == 'metacal':
+            variants = ['', '_1p', '_2p', '_1m', '_2m']
+        else:
+            variants = ['']
 
         pz_data = {}
         

@@ -118,7 +118,13 @@ ceci --dry-run examples/laptop_pipeline.yml
 so that you can run and examine them individually.
 
 
+Flat-sky maps
+-------------
+To generate flat-sky maps for nicer visualizaton of small patches you can also do this, which will override some options in the pipeline YML file:
 
+```bash
+ceci examples/laptop_pipeline.yml config=examples/config/laptop_flat_sky_maps.yml output_dir=data/example/flat_sky
+```
 
 Larger runs
 -----------
