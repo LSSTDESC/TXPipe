@@ -270,7 +270,7 @@ class TXLensMaps(TXBaseMaps):
         return [mapper]
 
     def data_iterator(self):
-        print("TODO: no lens weights here")
+        print("TODO: add use of lens weights here")
         # see TXSourceMaps abov for info on this
         return self.combined_iterators(
             self.config["chunk_rows"],
