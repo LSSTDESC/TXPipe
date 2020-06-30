@@ -35,6 +35,7 @@ class TXTwoPoint(PipelineStage):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
+        # TODO: Allow more fine-grained selection of 2pt subsets to compute
         'calcs':[0,1,2],
         'min_sep':0.5,
         'max_sep':300.,
