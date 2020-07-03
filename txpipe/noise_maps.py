@@ -229,7 +229,6 @@ class TXNoiseMaps(PipelineStage):
 
 
 
-
 class TXSourceNoiseMaps(TXBaseMaps):
     name='TXSourceNoiseMaps'
     
@@ -265,7 +264,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
         with self.open_input('shear_tomography_catalog', wrapper=True) as f:
             nbin_source = f.file['tomography'].attrs['nbin_source']
 
-        # Mapping from 0 .. nhit to 
+        # Mapping from 0 .. nhit - 1 to healpix indices
         reverse_map = np.where(mask>0)[0]
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
@@ -390,7 +389,6 @@ class TXSourceNoiseMaps(TXBaseMaps):
         return maps
 
 
-
 class TXExternalLensNoiseMaps(TXBaseMaps):
     name='TXExternalLensNoiseMaps'
     
@@ -424,7 +422,7 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
         with self.open_input('lens_tomography_catalog', wrapper=True) as f:
             nbin_lens = f.file['tomography'].attrs['nbin_lens']
 
-        # Mapping from 0 .. nhit to 
+        # Mapping from 0 .. nhit - 1  to healpix indices
         reverse_map = np.where(mask>0)[0]
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
@@ -462,8 +460,6 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
         dec = data['dec']
         orig_pixels = pixel_scheme.ang2pix(ra, dec)
         pixels = index_map[orig_pixels]
-
-        # Pull out some columns we need
         n = len(ra)
 
         # randomly select a half for each object
@@ -532,6 +528,5 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                     reverse_map, half1)
                 maps['lens_noise_maps', f"split_{i}/ngal2_{b}"] = (
                     reverse_map, half2)
-
 
         return maps

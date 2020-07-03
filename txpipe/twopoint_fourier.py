@@ -174,7 +174,6 @@ class TXTwoPointFourier(PipelineStage):
             print(f"Loaded {nbin_lens} overdensity maps")
 
 
-
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
 

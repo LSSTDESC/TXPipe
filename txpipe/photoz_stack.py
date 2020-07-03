@@ -53,7 +53,6 @@ class Stack:
             The tomographic bin for each object
         z: array[float]
             The redshift per object
-
         """
         stack_bin = np.digitize(z, self.z)
         for b in range(self.nbin):
@@ -76,9 +75,7 @@ class Stack:
 
         comm: mpi4py communicator
             Optional, default=0
-
         """
-
         # stack the results from different comms
         if comm is not None:
             in_place_reduce(self.stack, comm)
@@ -110,16 +107,12 @@ class Stack:
 
 
 
-
-
-
 class TXPhotozSourceStack(PipelineStage):
     pass
     """
     Naively stack photo-z PDFs in bins according to previous selections.
 
     This parent class does only the source bins.
-
     """
     name='TXPhotozSourceStack'
     inputs = [
@@ -132,7 +125,6 @@ class TXPhotozSourceStack(PipelineStage):
     config_options = {
         'chunk_rows': 5000,  # number of rows to read at once
     }
-
 
     def run(self):
         """
