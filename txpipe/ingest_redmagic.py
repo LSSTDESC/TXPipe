@@ -26,15 +26,12 @@ class TXIngestRedmagic(PipelineStage):
     }
 
     def run(self):
-
-
         # Count number of objects
         f = self.open_input('redmagic_catalog')
         n = f[1].get_nrows()
         f.close()
 
         chunk_rows = self.config['chunk_rows']
-        # mag is hopefully grizy
         bands = self.config['bands']
         zbin_edges = self.config['lens_zbin_edges']
         nbin_lens = len(zbin_edges) - 1
@@ -42,6 +39,7 @@ class TXIngestRedmagic(PipelineStage):
         cat = self.open_output('lens_catalog')
         tomo = self.open_output('lens_tomography_catalog')
 
+        # redshift grid
         zmin = self.config['zmin']
         zmax = self.config['zmax']
         dz = self.config['dz']
@@ -49,9 +47,7 @@ class TXIngestRedmagic(PipelineStage):
         nz_grid = np.zeros((nbin_lens, z_grid.size))
         nz = len(z_grid)
 
-
-
-
+        # Create space in outputs
         g = cat.create_group('lens')
         g.create_dataset('ra', (n,), dtype=np.float64)
         g.create_dataset('dec', (n,), dtype=np.float64)
@@ -67,17 +63,16 @@ class TXIngestRedmagic(PipelineStage):
         h.attrs['nbin_lens'] = nbin_lens
         h.attrs[f'lens_zbin_edges'] = zbin_edges
 
-
-
+        # we keep track of the counts per-bin also
         counts = np.zeros(nbin_lens, dtype=np.int64)
 
+        # all cols that might be useful
         cols = ['ra', 'dec', 'zredmagic', 'mag', 'mag_err', 'chisq']
 
-
         for (s, e, data) in self.iterate_fits('redmagic_catalog', 1, cols, chunk_rows):
-
             n = data['ra'].size
             z = data['zredmagic']
+            # Unit weight still
             weight = np.repeat(1.0, n)
 
             # work out the redshift bin for each object, if any.
@@ -91,8 +86,6 @@ class TXIngestRedmagic(PipelineStage):
             # deselect these objects
             zbin[~sel] = -1
 
-
-
             # Build up the count of the n(z) histograms per-bin
             z_grid_index = np.floor((z - zmin) / dz).astype(int)
             for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
@@ -103,28 +96,29 @@ class TXIngestRedmagic(PipelineStage):
             any_bin = zbin >= 0
             counts += np.bincount(zbin[any_bin], minlength=nbin_lens)
 
-
+            # save data
             g['ra'][s:e] = data['ra']
             g['dec'][s:e] = data['dec']
             g['chisq'][s:e] = data['chisq']
             g['zredmagic'][s:e] = data['zredmagic']
 
+            # including mags
             for i, b in enumerate(bands):
                 g[f'mag_{b}'][s:e] = data['mag'][:, i]
                 g[f'mag_err_{b}'][s:e] = data['mag_err'][:, i]
 
             h['lens_bin'][s:e] = zbin
 
+        # this is an overall count
         h["lens_counts"][:] = counts
 
-        stack = self.open_output('lens_photoz_stack')
         # Finally save the n(z) values we have built up
+        stack = self.open_output('lens_photoz_stack')
         k = stack.create_group(f"n_of_z/lens")
 
         # HDF has "attributes" which are for small metadata like this
         k.attrs["nbin"] = nbin_lens
         k.attrs["nz"] = nz_grid
-
 
         # Save the redshift sampling
         k.create_dataset("z", data=z_grid)
@@ -135,6 +129,3 @@ class TXIngestRedmagic(PipelineStage):
             k.create_dataset(f"bin_{b}", data=nz_grid[b])
 
         stack.close()
-
-        # write out photo-z stack
-

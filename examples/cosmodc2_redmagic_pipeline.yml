@@ -35,17 +35,8 @@ stages:
       nprocess: 2
       nodes: 2
     - name: TXTwoPointPlots
-    # - name: TXDiagnosticPlots
-    #   nprocess: 16
-    #   nodes: 1
     - name: TXRealGaussianCovariance
       threads_per_process: 64
-    # - name: TXTwoPointFourier
-    #   nprocess: 2
-    #   nodes: 2
-    #   threads_per_process: 64
-    # - name: TXFourierGaussianCovariance
-    #   threads_per_process: 64
     - name: TXSourceNoiseMaps
       nprocess: 4
       nodes: 1
@@ -54,6 +45,12 @@ stages:
       nprocess: 4
       nodes: 1
       threads_per_process: 1
+    - name: TXTwoPointFourier
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 64
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 64
 
 output_dir: data/cosmodc2/outputs_redmagic
 config: examples/config/cosmodc2_config.yml
