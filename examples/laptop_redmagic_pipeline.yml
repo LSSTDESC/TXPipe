@@ -34,8 +34,8 @@ stages:
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXSourceNoiseMaps
     - name: TXExternalLensNoiseMaps
-    - name: TXTwoPointFourier
-      threads_per_process: 2
+    # - name: TXTwoPointFourier
+      # threads_per_process: 2
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
 
 # Where to put outputs
