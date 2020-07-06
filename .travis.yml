@@ -11,7 +11,7 @@ python:
 before_install:
   - sudo apt-get update
   - sudo apt-get -y install gfortran-7 swig libgsl-dev libopenmpi-dev openmpi-bin libopenblas-dev
-  - sudo apt-get -y install libfftw3-bin libfftw3-dev libfftw3-3 autotools-dev  autoconf libcfitsio3-dev
+  - sudo apt-get -y install libfftw3-bin libfftw3-dev libfftw3-3 autotools-dev  autoconf libcfitsio-dev
   - sudo ln -s `which gfortran-7` /usr/local/bin/gfortran
   - wget ftp://ftp.gnu.org/gnu/gsl/gsl-2.5.tar.gz --passive-ftp && tar xzf gsl-2.5.tar.gz && cd gsl-2.5 &&  ./configure --enable-shared && make && sudo make install && cd ..
 
