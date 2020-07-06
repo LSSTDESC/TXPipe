@@ -7,14 +7,18 @@ python:
   - "3.7"
   - "3.8"
 
+
 before_install:
   - sudo apt-get update
   - sudo apt-get -y install gfortran-7 swig libgsl-dev libopenmpi-dev openmpi-bin libopenblas-dev
+  - sudo apt-get -y install libfftw3-bin libfftw3-dev libfftw3-3 autotools-dev  autoconf libcfitsio3-dev
   - sudo ln -s `which gfortran-7` /usr/local/bin/gfortran
+  - wget ftp://ftp.gnu.org/gnu/gsl/gsl-2.5.tar.gz --passive-ftp && tar xzf gsl-2.5.tar.gz && cd gsl-2.5 &&  ./configure --enable-shared && make && sudo make install && cd ..
 
 install:
   - pip install cffi
   - pip install --no-binary=mpi4py -r requirements.txt
+  - pip install --no-binary=pymaster pymaster
   - wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
   - tar -zxvf example.tar.gz
 
