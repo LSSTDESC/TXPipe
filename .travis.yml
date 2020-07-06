@@ -17,6 +17,7 @@ before_install:
 
 install:
   - pip install cffi
+  - pip install git+git://github.com/LSSTDESC/CCL@a9c23144727768a91af76da0c727830e6f0ed784
   - pip install --no-binary=mpi4py -r requirements.txt
   - pip install --no-binary=pymaster pymaster
   - wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
