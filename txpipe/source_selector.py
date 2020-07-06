@@ -101,11 +101,10 @@ class TXSourceSelector(PipelineStage):
             shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
 
         if self.config['input_pz'] and self.config['shear_catalog_type']=='metacal':
-            shear_cols += ['mean_z'] 
             shear_cols += ['mean_z']
             shear_cols += ['mean_z_1p']
             shear_cols += ['mean_z_1m']
-            shear_cols += ['mean_z_2p'] 
+            shear_cols += ['mean_z_2p']
             shear_cols += ['mean_z_2m']
         elif self.config['input_pz'] and self.config['shear_catalog_type']!='metacal':
             shear_cols += ['mean_z']
@@ -113,7 +112,7 @@ class TXSourceSelector(PipelineStage):
             shear_cols += ['redshift_true']
         else:
             # Build a classifier used to put objects into tomographic bins
-            classifier, features = self.build_tomographic_classifier() 
+            classifier, features = self.build_tomographic_classifier()
 
             # this bit is for metacal if we want to use it later
 

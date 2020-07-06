@@ -109,20 +109,14 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
-    shear_catalog_type: 'metacal'
 
+TXGammaTBrightStars: {}
 
-TXGammaTBrightStars:
-    shear_catalog_type: 'metacal'
-    
-TXGammaTDimStars:
-    shear_catalog_type: 'metacal'
+TXGammaTDimStars: {}
 
-TXGammaTRandoms: 
-    shear_catalog_type: 'metacal'
+TXGammaTRandoms: {}
 
-TXGammaTFieldCenters:
-    shear_catalog_type: 'metacal'
+TXGammaTFieldCenters: {}
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
