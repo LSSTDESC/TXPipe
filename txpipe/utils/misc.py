@@ -1,6 +1,5 @@
 import hashlib
 
-
 def array_hash(x):
     b = x.tobytes()
     # We do not need a cryptographic hash here

@@ -669,7 +669,11 @@ class TXTwoPointLensCat(TXTwoPoint):
         f = self.open_input('lens_catalog')
         data['lens_ra']  = f['lens/ra'][:]
         data['lens_dec'] = f['lens/dec'][:]
-        data['lens_bin'] = f['lens/bin'][:]
+        f.close()
+
+        f = self.open_input('lens_tomography_catalog')
+        data['lens_bin'] = f['tomography/lens_bin'][:] 
+        f.close()
 
 
 class TXTwoPointPlots(PipelineStage):
@@ -1716,12 +1720,10 @@ class TXJackknifeCenters(PipelineStage):
         Plot the jackknife regions.
         """
         import matplotlib
-        matplotlib.use('agg')
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
         import matplotlib.pyplot as plt
 
-        print(ra, dec, patch)
 
         jk_plot = self.open_output('jk', wrapper=True, figsize=(6.,4.5))
         # Choose colormap
@@ -1735,11 +1737,10 @@ class TXJackknifeCenters(PipelineStage):
 
     def run(self):
         import treecorr
+        import matplotlib
+        matplotlib.use('agg')
 
         filename = self.get_input('random_cats')
-        if filename is None:
-            print("Not using randoms, we need to use randoms for now")
-            return
 
         # Columns we need from the tomography catalog
         randoms_cols = ['dec','ra']

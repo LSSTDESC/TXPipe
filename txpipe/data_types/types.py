@@ -221,7 +221,7 @@ class MapsFile(HDFFile):
         return m
 
 
-class NoiseMaps(MapsFile):
+class LensingNoiseMaps(MapsFile):
     required_datasets = [
         ]
 
@@ -234,6 +234,12 @@ class NoiseMaps(MapsFile):
 
         return g1, g2
 
+    def number_of_realizations(self):
+        info = self.file['maps'].attrs
+        lensing_realizations = info['lensing_realizations']
+        return lensing_realizations
+
+class ClusteringNoiseMaps(MapsFile):
     def read_density_split(self, realization_index, bin_index):
         rho1_name = f'split_{realization_index}/rho1_{bin_index}'
         rho2_name = f'split_{realization_index}/rho2_{bin_index}'
@@ -244,9 +250,7 @@ class NoiseMaps(MapsFile):
     def number_of_realizations(self):
         info = self.file['maps'].attrs
         clustering_realizations = info['clustering_realizations']
-        lensing_realizations = info['lensing_realizations']
-        return lensing_realizations, clustering_realizations
-
+        return clustering_realizations
 
 
 class PhotozPDFFile(HDFFile):

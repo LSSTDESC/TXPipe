@@ -12,7 +12,6 @@ class TXTracerMetadata(PipelineStage):
     collates together metadata about our sources, so that we
     don't need to pass around catalog sized objects as much.
     """
-
     name = "TXTracerMetadata"
 
     inputs = [

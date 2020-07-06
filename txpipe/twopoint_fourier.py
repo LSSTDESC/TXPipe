@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, \
                         YamlFile, SACCFile, MapsFile, HDFFile, \
-                        PhotozPDFFile, NoiseMaps
+                        PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps
 import numpy as np
 import collections
 from .utils import choose_pixelization, array_hash
@@ -49,7 +49,8 @@ class TXTwoPointFourier(PipelineStage):
         ('density_maps', MapsFile),
         ('aux_maps', MapsFile),
         ('mask', MapsFile),
-        ('noise_maps', NoiseMaps),
+        ('source_noise_maps', LensingNoiseMaps),
+        ('lens_noise_maps', ClusteringNoiseMaps),
         ('shear_tomography_catalog', TomographyCatalog),  # For density info
         ('lens_tomography_catalog', TomographyCatalog),  # For density info
     ]
@@ -163,22 +164,21 @@ class TXTwoPointFourier(PipelineStage):
             g1_maps = [f.read_map(f'g1_{b}') for b in range(nbin_source)]
             g2_maps = [f.read_map(f'g2_{b}') for b in range(nbin_source)]
             lensing_weights = [f.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
-            print("Loaded 2 x {nbin_source} shear maps}")
-            print("Loaded {nbin_source} lensing weight maps}")
+            print(f"Loaded 2 x {nbin_source} shear maps")
+            print(f"Loaded {nbin_source} lensing weight maps")
 
         # And finally the density maps
         with self.open_input('density_maps', wrapper=True) as f:
             nbin_lens = f.file['maps'].attrs['nbin_lens']
             d_maps = [f.read_map(f'delta_{b}') for b in range(nbin_lens)]
-            print("Loaded {nbin_lens} overdensity maps}")
-
+            print(f"Loaded {nbin_lens} overdensity maps")
 
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
 
         if self.rank == 0:
-            print(f"Unmasked area = {area:.2f}, fsky = {f_sky:.2e}")
+            print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
 
         if pixel_scheme.name != 'healpix':
             raise ValueError("TXTwoPointFourier can only run on healpix maps")
@@ -478,16 +478,16 @@ class TXTwoPointFourier(PipelineStage):
         if (i!=j) or (k==SHEAR_POS):
             return None
 
-        noise_maps = self.open_input('noise_maps', wrapper=True)
 
         if k == SHEAR_SHEAR:
+            noise_maps = self.open_input('source_noise_maps', wrapper=True)
             weight = maps['lw'][i]
-            # this function returns (nreal_source, nreal_lens)
-            nreal = noise_maps.number_of_realizations()[0]
-        else:
-            weight = maps['dw']
-            nreal = noise_maps.number_of_realizations()[1]
 
+        else:
+            noise_maps = self.open_input('lens_noise_maps', wrapper=True)
+            weight = maps['dw']
+        
+        nreal = noise_maps.number_of_realizations()
         noise_c_ells = []
 
         for r in range(nreal):

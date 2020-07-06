@@ -27,6 +27,8 @@ TXCosmoDC2Mock:
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
 
+TXIngestRedmagic:
+    lens_zbin_edges: [0.1, 0.3, 0.5]
 
 PZPDFMLZ:
     nz: 301
@@ -48,6 +50,12 @@ FlexZPipe:
 
 
 # Mock version of stacking:
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+    chunk_rows: 100000
+
+# Mock version of stacking:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
@@ -64,7 +72,7 @@ TXSourceSelector:
 
 TXTruthLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.1, 0.3, 0.5]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -141,6 +149,13 @@ TXSourceMaps:
 TXLensMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
 
+# For redmagic mapping
+TXExternalLensMaps:
+    chunk_rows: 100000
+    sparse: True
+    pixelization: healpix
+    nside: 512
+
 
 TXMainMaps: {}
 
@@ -152,7 +167,6 @@ TXAuxiliaryMaps:
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
-
 
 TXRealGaussianCovariance:
     min_sep: 2.5
