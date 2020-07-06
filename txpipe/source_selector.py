@@ -268,8 +268,9 @@ class TXSourceSelector(PipelineStage):
 
     def apply_simple_redshift_cut(self, shear_data):
 
+        pz_data = {}
+
         if self.config['input_pz'] and self.config['shear_catalog_type']=='metacal':
-            pz_data = {}
 
             # this bit is for metacal, if we need it later
             variants = ['', '_1p', '_2p', '_1m', '_2m']
@@ -282,32 +283,20 @@ class TXSourceSelector(PipelineStage):
                     pz_data_v[mask_zbin] = zi
 
                 pz_data[f'zbin{v}'] = pz_data_v
-                
-        elif self.config['input_pz'] and self.config['shear_catalog_type']!='metacal':
+        else:
+
+            if self.config['input_pz']:
+                zz = shear_data['mean_z']
+            else:
+                zz = shear_data['redshift_true']
         
-            pz_data = {}
-
-            zz = shear_data[f'mean_z']
-
             pz_data_bin = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['source_zbin_edges'])-1):
                 mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
                 pz_data_bin[mask_zbin] = zi
 
             pz_data[f'zbin'] = pz_data_bin
-            
-        elif self.config['true_z']:
-            
-            pz_data = {}
 
-            zz = shear_data[f'redshift_true']
-
-            pz_data_bin = np.zeros(len(zz), dtype=int) -1
-            for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
-                pz_data_bin[mask_zbin] = zi
-
-            pz_data[f'zbin'] = pz_data_bin
             
 
         return pz_data
