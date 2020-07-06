@@ -15,12 +15,32 @@ TXCosmoDC2Mock:
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
 
+TXIngestRedmagic:
+    lens_zbin_edges: [0.0,0.2,0.4]
+
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+    chunk_rows: 100000
 
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
     nside: 512
     sparse: True
+
+TXSourceMaps:
+    nside: 512
+    sparse: True
+    chunk_rows:  100000
+    pixelization: healpix
+
+TXExternalLensMaps:
+    nside: 512
+    sparse: True
+    chunk_rows:  100000
+    pixelization: healpix
+
 
 TXAuxiliaryMaps:
     chunk_rows:  100000

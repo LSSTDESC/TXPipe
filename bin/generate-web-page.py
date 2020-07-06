@@ -8,6 +8,9 @@ import yaml
 import os
 import argparse
 import ceci
+import os
+
+on_nersc = os.environ.get('NERSC_HOST') is not None
 
 # # If we have v1 of ceci use that
 # try:
@@ -101,7 +104,8 @@ class PageMaker:
             if exists and self.should_copy_file(size):
                 out_path = self.out_dir / path.name
                 shutil.copy(path, self.out_dir)
-                os.system(f"chgrp {self.group} {out_path}")
+                if on_nersc:
+                    os.system(f"chgrp {self.group} {out_path}")
                 os.system(f"chmod g+rw {out_path}")
                 os.system(f"chmod o+r {out_path}")
                 files2.append([stage_name, path, out_path, size_txt, 'copied'])
