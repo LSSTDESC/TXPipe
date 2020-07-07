@@ -1,6 +1,7 @@
 import numpy as np
 from .stats import ParallelStatsCalculator
 
+
 def read_shear_catalog_type(stage):
     """
     Determine the type of shear catalog a stage is using as input.

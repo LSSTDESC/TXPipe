@@ -53,7 +53,6 @@ FlexZPipe:
 TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 # Mock version of stacking:
 TXTrueNumberDensity:
@@ -62,6 +61,7 @@ TXTrueNumberDensity:
 
 TXSourceSelector:
     input_pz: False
+    true_z: True
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -72,6 +72,8 @@ TXSourceSelector:
 
 TXTruthLensSelector:
     # Mag cuts
+    input_pz: False
+    true_z: True
     lens_zbin_edges: [0.1, 0.3, 0.5]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -108,10 +110,11 @@ TXTwoPoint:
     nbins: 10
     verbose: 0
 
-
 TXGammaTBrightStars: {}
-    
+
 TXGammaTDimStars: {}
+
+TXGammaTRandoms: {}
 
 TXGammaTFieldCenters: {}
 

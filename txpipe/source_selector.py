@@ -100,18 +100,21 @@ class TXSourceSelector(PipelineStage):
         else:
             shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
 
-        if not self.config['input_pz']:
-            # Build a classifier used to put objects into tomographic bins
-            classifier, features = self.build_tomographic_classifier()        
-        else:
+        if self.config['input_pz'] and self.config['shear_catalog_type']=='metacal':
+            shear_cols += ['mean_z']
+            shear_cols += ['mean_z_1p']
+            shear_cols += ['mean_z_1m']
+            shear_cols += ['mean_z_2p']
+            shear_cols += ['mean_z_2m']
+        elif self.config['input_pz'] and self.config['shear_catalog_type']!='metacal':
+            shear_cols += ['mean_z']
+        elif self.config['true_z']:
             shear_cols += ['redshift_true']
+        else:
+            # Build a classifier used to put objects into tomographic bins
+            classifier, features = self.build_tomographic_classifier()
 
             # this bit is for metacal if we want to use it later
-            #shear_cols += ['mean_z']
-            #shear_cols += ['mean_z_1p']
-            #shear_cols += ['mean_z_1m']
-            #shear_cols += ['mean_z_2p'] 
-            #shear_cols += ['mean_z_2m']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
@@ -136,7 +139,7 @@ class TXSourceSelector(PipelineStage):
         for (start, end, shear_data) in iter_shear:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
-            if self.config['input_pz']:
+            if self.config['true_z'] or self.config['input_pz']:
                 pz_data = self.apply_simple_redshift_cut(shear_data)
 
             else:
@@ -267,26 +270,34 @@ class TXSourceSelector(PipelineStage):
 
         pz_data = {}
 
-        # this bit is for metacal, if we need it later
-        #variants = ['', '_1p', '_2p', '_1m', '_2m']
-        #for v in variants:
-        #    zz = shear_data[f'mean_z{v}']
+        if self.config['input_pz'] and self.config['shear_catalog_type']=='metacal':
 
-        #    pz_data_v = np.zeros(len(zz), dtype=int) -1
-        #    for zi in range(len(self.config['source_zbin_edges'])-1):
-        #        mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
-        #        pz_data_v[mask_zbin] = zi
+            # this bit is for metacal, if we need it later
+            variants = ['', '_1p', '_2p', '_1m', '_2m']
+            for v in variants:
+                zz = shear_data[f'mean_z{v}']
+
+                pz_data_v = np.zeros(len(zz), dtype=int) -1
+                for zi in range(len(self.config['source_zbin_edges'])-1):
+                    mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+                    pz_data_v[mask_zbin] = zi
+
+                pz_data[f'zbin{v}'] = pz_data_v
+        else:
+
+            if self.config['input_pz']:
+                zz = shear_data['mean_z']
+            else:
+                zz = shear_data['redshift_true']
+        
+            pz_data_bin = np.zeros(len(zz), dtype=int) -1
+            for zi in range(len(self.config['source_zbin_edges'])-1):
+                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+                pz_data_bin[mask_zbin] = zi
+
+            pz_data[f'zbin'] = pz_data_bin
+
             
-        #    pz_data[f'zbin{v}'] = pz_data_v
-
-        zz = shear_data[f'redshift_true']
-
-        pz_data_bin = np.zeros(len(zz), dtype=int) -1
-        for zi in range(len(self.config['source_zbin_edges'])-1):
-            mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
-            pz_data_bin[mask_zbin] = zi
-
-        pz_data[f'zbin'] = pz_data_bin
 
         return pz_data
 
