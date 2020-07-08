@@ -4,17 +4,18 @@ import inspect
 import pathlib
 import subprocess
 
+
 def find_module_versions():
     """
     Generate a dictionary of versions of all imported modules
     by looking for __version__ or version attributes on them.
     """
     versions = {}
-    for name, module in sys.modules.items(): 
-        if hasattr(module, 'version'): 
-            v = module.version 
-        elif hasattr(module, '__version__'): 
-            v = module.__version__ 
+    for name, module in sys.modules.items():
+        if hasattr(module, 'version'):
+            v = module.version
+        elif hasattr(module, '__version__'):
+            v = module.__version__
         else:
             continue
         if isinstance(v, str) or isinstance(v, distutils.version.Version):
@@ -39,6 +40,7 @@ def get_caller_directory(grandparent=False):
         return None
     return str(p.parent)
 
+
 def git_diff():
     """Run git diff in the caller's directory, and return stdout+stderr
     """
@@ -48,9 +50,14 @@ def git_diff():
     # We use git diff head because it shows all differences,
     # including any that have been staged but not committed.
     try:
-        diff = subprocess.run('git diff HEAD'.split(),
-                cwd=dirname, universal_newlines=True, timeout=5,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        diff = subprocess.run(
+            'git diff HEAD'.split(),
+            cwd=dirname,
+            universal_newlines=True,
+            timeout=5,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
 
     # There are lots of different ways this can go wrong.
     # Here are some - any others it is probably worth knowing
@@ -72,6 +79,7 @@ def git_diff():
 
     return diff.stdout
 
+
 def git_current_revision():
     """Run git diff in the caller's directory, and return stdout+stderr
     """
@@ -79,9 +87,14 @@ def git_current_revision():
     if dirname is None:
         return "ERROR_GIT_NO_DIRECTORY"
     try:
-        rev = subprocess.run('git rev-parse HEAD'.split(),
-            cwd=dirname, universal_newlines=True, timeout=5,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        rev = subprocess.run(
+            'git rev-parse HEAD'.split(),
+            cwd=dirname,
+            universal_newlines=True,
+            timeout=5,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
     # Same as git diff above.
     except subprocess.TimeoutExpired:
         return "ERROR_GIT_TIMEOUT"
@@ -98,4 +111,3 @@ def git_current_revision():
     if rev.returncode:
         return "ERROR_GIT_FAIL"
     return rev.stdout
-

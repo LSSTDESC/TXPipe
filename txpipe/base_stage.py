@@ -4,6 +4,7 @@ from textwrap import dedent
 from .utils.provenance import find_module_versions, git_diff, git_current_revision
 import sys
 
+
 class PipelineStage(PipelineStageBase):
     name = "Error"
     inputs = []
@@ -13,10 +14,10 @@ class PipelineStage(PipelineStageBase):
     def run(self):
         print("Please do not execute this stage again.")
 
-
     def combined_iterators(self, rows, *inputs):
         if not len(inputs) % 3 == 0:
-            raise ValueError("Arguments to combined_iterators should be in threes: "
+            raise ValueError(
+                "Arguments to combined_iterators should be in threes: "
                 "tag, group, value"
             )
         n = len(inputs) // 3
@@ -84,10 +85,11 @@ class PipelineStage(PipelineStageBase):
         run_parallel = kwargs.pop('parallel', False) and self.is_mpi()
         if run_parallel:
             if not output_class.supports_parallel_write:
-                raise ValueError(f"Tried to open file for parallel output, but not"
+                raise ValueError(
+                    f"Tried to open file for parallel output, but not"
                     f" supported for type {output_class}.  Tag was {tag} and"
                     f" path was {path}"
-                    )
+                )
             kwargs['driver'] = 'mpio'
             kwargs['comm'] = self.comm
 
@@ -95,8 +97,11 @@ class PipelineStage(PipelineStageBase):
             #      Or even better would be to make it a dependency of descformats where it
             #      is actually used.
             import h5py
+
             if not h5py.get_config().mpi:
-                print(dedent("""\
+                print(
+                    dedent(
+                        """\
                 Your h5py installation is not MPI-enabled.
                 Options include:
                   1) Set nprocess to 1 for all stages
@@ -104,14 +109,15 @@ class PipelineStage(PipelineStageBase):
                      http://docs.h5py.org/en/latest/build.html#custom-installation
                 Note: If using conda, the most straightforward way is to enable it is
                     conda install -c spectraldns h5py-parallel
-                """))
+                """
+                    )
+                )
                 raise RuntimeError("h5py module is not MPI-enabled.")
 
         extra_provenance = self.gather_provenance()
 
         # Return an opened object representing the file
         obj = output_class(path, 'w', extra_provenance=extra_provenance, **kwargs)
-
 
         if wrapper:
             return obj

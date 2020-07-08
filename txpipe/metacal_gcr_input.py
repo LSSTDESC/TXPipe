@@ -5,6 +5,7 @@ import numpy as np
 import glob
 import re
 
+
 class TXMetacalGCRInput(PipelineStage):
     """
     This stage simulates metacal data and metacalibrated
@@ -15,7 +16,8 @@ class TXMetacalGCRInput(PipelineStage):
     of the DC2 catalogs being available, but might also be handy
     for starting from a purer simulation.
     """
-    name='TXMetacalGCRInput'
+
+    name = 'TXMetacalGCRInput'
 
     inputs = []
 
@@ -34,6 +36,7 @@ class TXMetacalGCRInput(PipelineStage):
         import GCRCatalogs
         import GCR
         import h5py
+
         # Open input data.  We do not treat this as a formal "input"
         # since it's the starting point of the whol pipeline and so is
         # not in a TXPipe format.
@@ -44,11 +47,10 @@ class TXMetacalGCRInput(PipelineStage):
         # although in larger files it is a little slow to compute this.
         if self.config['length'] == 0:
             n = len(cat)
-            print(f"Total catalog size = {n}")  
+            print(f"Total catalog size = {n}")
         else:
             n = self.config['length']
             print(f"Using fixed specified size = {n}")
-
 
         cat.master.use_cache = False
 
@@ -59,9 +61,20 @@ class TXMetacalGCRInput(PipelineStage):
                 bands.append(b)
 
         # Columns that we will need.
-        shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
+        shear_cols = (
+            [
+                'id',
+                'ra',
+                'dec',
+                'mcal_psf_g1',
+                'mcal_psf_g2',
+                'mcal_psf_T_mean',
+                'mcal_flags',
+            ]
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
+            + metacal_band_variants(
+                bands, 'mcal_mag', 'mcal_mag_err', shear_catalog_type='metacal'
+            )
         )
 
         # Input columns for photometry
@@ -73,14 +86,13 @@ class TXMetacalGCRInput(PipelineStage):
             photo_cols.append(f'magerr_{band}')
             photo_cols.append(f'snr_{band}_cModel')
 
-
         # For shear we just add a weight column, and the non-rounded PSF estimates
-        shear_out_cols = shear_cols + ['weight',  'psf_g1', 'psf_g2'] 
+        shear_out_cols = shear_cols + ['weight', 'psf_g1', 'psf_g2']
 
         # For the photometry output we strip off the _cModeel suffix.
-        photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
-                            for col in photo_cols]
-
+        photo_out_cols = [
+            col[:-7] if col.endswith('_cModel') else col for col in photo_cols
+        ]
 
         # eliminate duplicates before loading
         cols = list(set(shear_cols + photo_cols))
@@ -91,7 +103,7 @@ class TXMetacalGCRInput(PipelineStage):
 
         # Loop through the data, as chunke natively by GCRCatalogs
         single_tract = self.config['single_tract']
-        
+
         if single_tract:
             kwargs = {'native_filters': f'tract == {single_tract}'}
             print(f"Selecting one tract only: {single_tract}")
@@ -107,15 +119,20 @@ class TXMetacalGCRInput(PipelineStage):
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
-                shear_output = self.setup_output('shear_catalog', 'shear', data, shear_out_cols, n)
-                photo_output = self.setup_output('photometry_catalog', 'photometry', data, photo_out_cols, n)
-
+                shear_output = self.setup_output(
+                    'shear_catalog', 'shear', data, shear_out_cols, n
+                )
+                photo_output = self.setup_output(
+                    'photometry_catalog', 'photometry', data, photo_out_cols, n
+                )
 
             # Write out this chunk of data to HDF
             end = start + len(data['ra'])
             print(f"    Saving {start} - {end}")
             self.write_output(shear_output, 'shear', shear_out_cols, start, end, data)
-            self.write_output(photo_output, 'photometry', photo_out_cols, start, end, data)
+            self.write_output(
+                photo_output, 'photometry', photo_out_cols, start, end, data
+            )
             start = end
 
         # All done!
@@ -134,6 +151,7 @@ class TXMetacalGCRInput(PipelineStage):
 
     def setup_output(self, name, group, cat, cols, n):
         import h5py
+
         f = self.open_output(name)
         g = f.create_group(group)
         for name in cols:
@@ -150,7 +168,6 @@ class TXMetacalGCRInput(PipelineStage):
             g[name][start:end] = data[name]
 
 
-
 class TXIngestStars(PipelineStage):
     name = "TXIngestStars"
     inputs = []
@@ -163,7 +180,6 @@ class TXIngestStars(PipelineStage):
         'cat_name': str,
         'length': 0,
     }
-
 
     def run(self):
         import GCRCatalogs
@@ -183,7 +199,7 @@ class TXIngestStars(PipelineStage):
             n = len(cat)
 
         print(f"Full catalog size = {n}")
-        # Columns we need to load in for the star data - 
+        # Columns we need to load in for the star data -
         # the measured object moments and the identifier telling us
         # if it was used in PSF measurement
         star_cols = [
@@ -194,7 +210,12 @@ class TXIngestStars(PipelineStage):
             'calib_psf_reserved',
             'extendedness',
             'tract',
-            'mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
+            'mag_u',
+            'mag_g',
+            'mag_r',
+            'mag_i',
+            'mag_z',
+            'mag_y',
             'Ixx',
             'Ixy',
             'Iyy',
@@ -203,30 +224,38 @@ class TXIngestStars(PipelineStage):
             'IyyPSF',
         ]
 
-
         # The star output names are mostly different to the input names
         star_out_cols = [
             # These are read directly
-            'id', 'ra', 'dec', 
+            'id',
+            'ra',
+            'dec',
             'calib_psf_used',
             'calib_psf_reserved',
             'extendedness',
             'tract',
-            'mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y',
+            'mag_u',
+            'mag_g',
+            'mag_r',
+            'mag_i',
+            'mag_z',
+            'mag_y',
             # These are calculated
-            'measured_e1', 'measured_e2',
-            'model_e1', 'model_e2',
-            'measured_T', 'model_T',
-            ]
+            'measured_e1',
+            'measured_e2',
+            'model_e1',
+            'model_e2',
+            'measured_T',
+            'model_T',
+        ]
 
         single_tract = self.config['single_tract']
-        
+
         if single_tract:
             kwargs = {'native_filters': f'tract == {single_tract}'}
             print(f"Selecting one tract only: {single_tract}")
         else:
             kwargs = {}
-
 
         cat.master.use_cache = False
 
@@ -240,8 +269,12 @@ class TXIngestStars(PipelineStage):
             star_data = self.compute_star_data(data)
             star_end = star_start + len(star_data['ra'])
             if star_output is None:
-                star_output  = self.setup_output('star_catalog', 'stars', star_data, star_out_cols, n)
-            self.write_output(star_output,  'stars', star_out_cols,  star_start, star_end, star_data)
+                star_output = self.setup_output(
+                    'star_catalog', 'stars', star_data, star_out_cols, n
+                )
+            self.write_output(
+                star_output, 'stars', star_out_cols, star_start, star_end, star_data
+            )
 
             start = end
             star_start = star_end
@@ -255,9 +288,9 @@ class TXIngestStars(PipelineStage):
         # Run h5repack on the file
         repack(self.get_output('star_catalog'))
 
-
     def setup_output(self, name, group, cat, cols, n):
         import h5py
+
         f = self.open_output(name)
         g = f.create_group(group)
         for name in cols:
@@ -269,17 +302,20 @@ class TXIngestStars(PipelineStage):
         for name in cols:
             g[name][start:end] = data[name]
 
-
     def compute_star_data(self, data):
         star_data = {}
         # We specifically use the stars chosen for PSF measurement
         star = data['calib_psf_used'] | data['calib_psf_reserved']
 
-        for col in ['id', 'ra', 'dec',
+        for col in [
+            'id',
+            'ra',
+            'dec',
             'calib_psf_used',
             'calib_psf_reserved',
             'extendedness',
-            'tract']:
+            'tract',
+        ]:
             star_data[col] = data[col][star]
 
         for b in 'ugrizy':
@@ -288,10 +324,7 @@ class TXIngestStars(PipelineStage):
         # HSM reports moments.  We convert these into
         # ellipticities.  We do this for both the star shape
         # itself and the PSF model.
-        kinds = [
-            ('', 'measured_'),
-            ('PSF', 'model_')
-        ]
+        kinds = [('', 'measured_'), ('PSF', 'model_')]
 
         for in_name, out_name in kinds:
             # Pulling out the correct moment columns
@@ -310,12 +343,12 @@ class TXIngestStars(PipelineStage):
 
         return star_data
 
+
 def moments_to_shear(Ixx, Iyy, Ixy):
-    b = Ixx + Iyy + 2 * np.sqrt(Ixx * Iyy - Ixy**2)
+    b = Ixx + Iyy + 2 * np.sqrt(Ixx * Iyy - Ixy ** 2)
     e1 = (Ixx - Iyy) / b
     e2 = 2 * Ixy / b
     return e1, e2
-
 
 
 # response to an old Stack Overflow question of mine:

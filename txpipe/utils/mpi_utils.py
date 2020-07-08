@@ -1,6 +1,7 @@
 import numpy as np
 
-def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=False):
+
+def mpi_reduce_large(data, comm, max_chunk_count=2 ** 30, root=0, op=None, debug=False):
     """Use MPI reduce in-place on an array, even a very large one.
 
     MPI Reduce is a reduction operation that will, (e.g.) sum arrays
@@ -52,9 +53,11 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
     size = data.size
 
     if not data.flags['C_CONTIGUOUS']:
-        raise RuntimeError("It seems numpy has changed its semantics and "
-                           "has returned a non-contiguous array from reshape. "
-                           "You will have to rewrite the mpi_utils code.")
+        raise RuntimeError(
+            "It seems numpy has changed its semantics and "
+            "has returned a non-contiguous array from reshape. "
+            "You will have to rewrite the mpi_utils code."
+        )
 
     start = 0
     while start < size:
@@ -72,6 +75,7 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
 
 def in_place_reduce(data, comm):
     import mpi4py.MPI
+
     if comm.Get_rank() == 0:
         comm.Reduce(mpi4py.MPI.IN_PLACE, data)
     else:
@@ -80,11 +84,13 @@ def in_place_reduce(data, comm):
 
 def test_reduce():
     from mpi4py.MPI import COMM_WORLD as comm
-    data = np.zeros((100,200)) + comm.rank + 1
+
+    data = np.zeros((100, 200)) + comm.rank + 1
     mpi_reduce_large(data, comm, max_chunk_count=4500, debug=True)
     if comm.rank == 0:
         expected = (comm.size * (comm.size + 1)) // 2
         assert np.allclose(data, expected)
+
 
 if __name__ == '__main__':
     test_reduce()

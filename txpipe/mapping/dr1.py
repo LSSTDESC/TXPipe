@@ -1,6 +1,7 @@
 import numpy as np
 from ..utils.stats import ParallelStatsCalculator
 
+
 class DepthMapperDR1:
     def __init__(self, pixel_scheme, snr_threshold, snr_delta, sparse=False, comm=None):
         """Class to build up depth maps iteratively as we cycle through a data set.
@@ -61,14 +62,14 @@ class DepthMapperDR1:
         # For each found pixel find all values hitting that pixel
         # and yield the index and their magnitudes
         for p in np.unique(pix_nums):
-            mask = (pix_nums==p) & (abs(snr-self.snr_threshold)<self.snr_delta)
+            mask = (pix_nums == p) & (abs(snr - self.snr_threshold) < self.snr_delta)
             self.stats.add_data(p, mags[mask])
 
     def finalize(self, comm=None):
 
         count, depth, depth_var = self.stats.collect(comm)
 
-        # Generate the pixel indexing (if parallel and the master process) and 
+        # Generate the pixel indexing (if parallel and the master process) and
         # convert from sparse arrays to pixel, index arrays.if sparse
         if count is None:
             pixel = None
@@ -81,7 +82,7 @@ class DepthMapperDR1:
 
         return pixel, count, depth, depth_var
 
-    
+
 class BrightObjectMapper:
     def __init__(self, pixel_scheme, mag_threshold, sparse=False, comm=None):
         """Class to build up bright object maps iteratively as we cycle through a data set.
@@ -138,14 +139,14 @@ class BrightObjectMapper:
         # For each found pixel find all values hitting that pixel
         # and yield the index and their magnitudes
         for p in np.unique(pix_nums):
-            mask = (pix_nums==p) & (ext==0) & (mags<self.mag_threshold)
+            mask = (pix_nums == p) & (ext == 0) & (mags < self.mag_threshold)
             self.stats.add_data(p, mags[mask])
 
     def finalize(self, comm=None):
 
         count, brmag, brmag_var = self.stats.collect(comm)
 
-        # Generate the pixel indexing (if parallel and the master process) and 
+        # Generate the pixel indexing (if parallel and the master process) and
         # convert from sparse arrays to pixel, index arrays.if sparse
         if count is None:
             pixel = None

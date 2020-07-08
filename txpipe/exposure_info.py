@@ -2,13 +2,14 @@ from .base_stage import PipelineStage
 from .data_types import HDFFile
 import numpy as np
 
+
 class TXExposureInfo(PipelineStage):
     """
     """
-    name='TXExposureInfo'
 
-    inputs = [
-    ]
+    name = 'TXExposureInfo'
+
+    inputs = []
     outputs = [
         ('exposures', HDFFile),
     ]
@@ -16,7 +17,7 @@ class TXExposureInfo(PipelineStage):
         'dc2_name': '1.2p',
         'opsim_db': "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db",
         'propId': 54,
-        }
+    }
 
     def run(self):
         from astropy.io import fits
@@ -26,7 +27,7 @@ class TXExposureInfo(PipelineStage):
         # change later to general repo path.
         from desc_dc2_dm_data import get_butler
         from lsst.daf.persistence import NoResults
-        
+
         run = self.config['dc2_name']
         propId = self.config['propId']
 
@@ -43,7 +44,7 @@ class TXExposureInfo(PipelineStage):
         nmatch = len(matching_visits)
         print(f"Found list of {nmatch} visits with propId=={propId}")
 
-        float_params =[
+        float_params = [
             "mjd-obs",
             "bore-ra",
             "bore-dec",
@@ -60,7 +61,6 @@ class TXExposureInfo(PipelineStage):
             "colorterm3",
             "exptime",
             "darktime",
-            
         ]
 
         int_params = [
@@ -71,7 +71,7 @@ class TXExposureInfo(PipelineStage):
             "skywcs_id",
         ]
 
-        str_params  = [
+        str_params = [
             "date-avg",
             "timesys",
             "rottype",
@@ -84,13 +84,13 @@ class TXExposureInfo(PipelineStage):
 
         params = float_params + int_params + str_params
         # Spaces for output columns
-        data = {p:list() for p in params}
+        data = {p: list() for p in params}
 
         num_params = float_params + int_params
         # Loop through the images and get their metadata
-        for i,ref in enumerate(refs):
+        for i, ref in enumerate(refs):
             # Progress update
-            if i%100==0:
+            if i % 100 == 0:
                 print(f'Reading metadata for exposure {i+1} / {n}')
 
             # Read the metadata for this exposure reference
@@ -107,7 +107,7 @@ class TXExposureInfo(PipelineStage):
                 data[p].append(metadata[p.upper()])
 
         m = len(data['bore-ra'])
-        f = 100. * m / n
+        f = 100.0 * m / n
         print(f"{m} / {n} visits match propId={propId} ({f:.2f}%)")
 
         # Save output
@@ -126,12 +126,13 @@ class TXExposureInfo(PipelineStage):
 
     def find_matching_opsim_visits(self):
         import sqlite3
+
         db = self.config['opsim_db']
         propId = self.config['propId']
         connection = sqlite3.connect(db)
         cursor = connection.cursor()
-        cursor.execute('select obsHistID from summary where propId=:propId', {'propId':propId})
+        cursor.execute(
+            'select obsHistID from summary where propId=:propId', {'propId': propId}
+        )
         obsHistID = {Id[0] for Id in cursor.fetchall()}
         return obsHistID
-
-

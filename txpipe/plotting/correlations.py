@@ -10,29 +10,30 @@ DD = "galaxy_density_cl"
 ED = "galaxy_shearDensity_cl_e"
 
 types = {
-    W: ('theta','lens','lens'),
-    GAMMA: ('theta','source','lens'),
-    XIP: ('theta','source','source'),
-    XIM: ('theta','source','source'),
-    EE: ('ell', 'source','source'),
-    DD: ('ell', 'lens','lens'),
-    ED: ('ell', 'source','lens'),
+    W: ('theta', 'lens', 'lens'),
+    GAMMA: ('theta', 'source', 'lens'),
+    XIP: ('theta', 'source', 'source'),
+    XIM: ('theta', 'source', 'source'),
+    EE: ('ell', 'source', 'source'),
+    DD: ('ell', 'lens', 'lens'),
+    ED: ('ell', 'source', 'lens'),
 }
 
 
 def make_axis(i, j, nx, ny, axes):
     import matplotlib.pyplot as plt
-    if i==0 and j==0:
-        shares = {}
-    elif j==0:
-        shares = {'sharex': axes[0,0]}
-    elif i==j:
-        shares = {'sharey': axes[i,0]}
-    else:
-        shares = {'sharey': axes[i,0], 'sharey': axes[j,j]}
 
-    a = plt.subplot(ny, nx, i*ny+j+1, **shares)
-    axes[i,j] = a
+    if i == 0 and j == 0:
+        shares = {}
+    elif j == 0:
+        shares = {'sharex': axes[0, 0]}
+    elif i == j:
+        shares = {'sharey': axes[i, 0]}
+    else:
+        shares = {'sharey': axes[i, 0], 'sharey': axes[j, j]}
+
+    a = plt.subplot(ny, nx, i * ny + j + 1, **shares)
+    axes[i, j] = a
     return a
 
 
@@ -51,8 +52,8 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
         theory_at_obs = np.interp(ell_obs, ell_theory, cl_theory)
         b2 = cl_obs / theory_at_obs
         b = np.sqrt(b2)
-        mean_b = np.mean(b**0.5)
-        cl_theory *= mean_b**2
+        mean_b = np.mean(b ** 0.5)
+        cl_theory *= mean_b ** 2
         bias[i] = mean_b
         print(f"Bias {i} = {mean_b:.2f}")
 
@@ -65,17 +66,23 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
     return theory
 
 
-
-
-
-def full_3x2pt_plots(sacc_files, labels, 
-                     cosmo=None, theory_sacc_files=None, theory_labels=None,
-                     xi=None, fit_bias=False, figures=None):
+def full_3x2pt_plots(
+    sacc_files,
+    labels,
+    cosmo=None,
+    theory_sacc_files=None,
+    theory_labels=None,
+    xi=None,
+    fit_bias=False,
+    figures=None,
+):
     import sacc
-    sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
-    obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
-    plot_theory = (cosmo is not None)
 
+    sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
+    obs_data = [
+        extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)
+    ]
+    plot_theory = cosmo is not None
 
     if plot_theory:
         # By default, just plot a single theory line, not one per observable line
@@ -85,13 +92,19 @@ def full_3x2pt_plots(sacc_files, labels,
             if theory_labels is None:
                 theory_labels = ["Theory"]
         else:
-            theory_sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files]
+            theory_sacc_data = [
+                sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files
+            ]
             # But if specified, can provide multiple theory inputs, and then label them
             if theory_labels is None:
-                raise ValueError("Must provide theory names if you provide theory sacc files")
+                raise ValueError(
+                    "Must provide theory names if you provide theory sacc files"
+                )
         # Get the ranges from the first obs data set
-        theory_data = [make_theory_plot_data(s, cosmo, obs_data[0], label, smooth=False, xi=None) 
-                       for (s, label) in zip(theory_sacc_data, theory_labels)]
+        theory_data = [
+            make_theory_plot_data(s, cosmo, obs_data[0], label, smooth=False, xi=None)
+            for (s, label) in zip(theory_sacc_data, theory_labels)
+        ]
         if fit_bias:
             if len(theory_data) > 1:
                 print("warning - fitting to just the first set of theory spectra")
@@ -118,16 +131,17 @@ def full_3x2pt_plots(sacc_files, labels,
             output_figures[t] = make_plot(t, obs_data, theory_data, fig=f)
 
     return output_figures
-    
+
 
 def axis_setup(a, i, j, ny, ymin, ymax, name):
     import matplotlib.pyplot as plt
-    if j>0:
+
+    if j > 0:
         plt.setp(a.get_yticklabels(), visible=False)
     else:
         a.set_ylabel(f"${name}$")
 
-    if i<ny-1:
+    if i < ny - 1:
         plt.setp(a.get_xticklabels(), visible=False)
 
     if name.startswith(r'C_\ell'):
@@ -140,19 +154,19 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
 
     # Fix
     a.text(0.1, 0.1, f"Bin {i}-{j}", transform=a.transAxes)
-    if i==j==0:
+    if i == j == 0:
         a.legend()
     a.set_ylim(ymin, ymax)
 
 
 def make_plot(corr, obs_data, theory_data, fig=None):
     import matplotlib.pyplot as plt
+
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
 
     ny = nbin_source if types[corr][1] == 'source' else nbin_lens
     nx = nbin_source if types[corr][2] == 'source' else nbin_lens
-
 
     if corr == XIP:
         name = r"\xi_+(\theta)"
@@ -198,19 +212,19 @@ def make_plot(corr, obs_data, theory_data, fig=None):
         half_only = False
 
     plt.rcParams['font.size'] = 14
-    f = fig if fig is not None else plt.figure(figsize=(nx*5, ny*3))
+    f = fig if fig is not None else plt.figure(figsize=(nx * 5, ny * 3))
     ax = {}
-    
+
     axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=False)
     for i in range(ny):
         if auto_only:
             J = [i]
         elif half_only:
-            J = range(i+1)
+            J = range(i + 1)
         else:
             J = range(nx)
         for j in range(nx):
-            a = axes[i,j]
+            a = axes[i, j]
             if j not in J:
                 f.delaxes(a)
                 continue
@@ -219,11 +233,11 @@ def make_plot(corr, obs_data, theory_data, fig=None):
                 res = obs[(corr, i, j)]
                 if len(res) == 2:
                     theta, xi = res
-                    l, = a.loglog(theta, xi, 'x', label=obs['name'])
+                    (l,) = a.loglog(theta, xi, 'x', label=obs['name'])
                     a.loglog(theta, -xi, 's', color=l.get_color())
                 else:
                     theta, xi, cov = res
-                    err = cov.diagonal()**0.5
+                    err = cov.diagonal() ** 0.5
                     a.errorbar(theta, xi, err, fmt='.', label=obs['name'], capsize=5)
                     a.set_xscale('log')
                     a.set_yscale('log')
@@ -243,15 +257,16 @@ def make_plot(corr, obs_data, theory_data, fig=None):
     plt.subplots_adjust(wspace=0.0, hspace=0.0)
     return plt.gcf()
 
+
 def smooth_nz(nz):
-    return np.convolve(nz, np.exp(-0.5*np.arange(-4,5)**2)/2**2, mode='same')
+    return np.convolve(nz, np.exp(-0.5 * np.arange(-4, 5) ** 2) / 2 ** 2, mode='same')
 
 
 def extract_observables_plot_data(data, label):
     obs = {'name': label}
 
     nbin_source = len([t for t in data.tracers if t.startswith('source')])
-    nbin_lens   = len([t for t in data.tracers if t.startswith('lens')])
+    nbin_lens = len([t for t in data.tracers if t.startswith('lens')])
     nbin_max = max(nbin_source, nbin_lens)
     has_cov = data.has_covariance()
 
@@ -267,7 +282,6 @@ def extract_observables_plot_data(data, label):
         obs[t] = True
         a, b1, b2 = types[t]
 
-
         for i in range(nbin_max):
             for j in range(nbin_max):
                 B1 = f"{b1}_{i}"
@@ -281,6 +295,7 @@ def extract_observables_plot_data(data, label):
                     obs[(t, i, j)] = res
     return obs
 
+
 def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
     import pyccl
 
@@ -288,9 +303,9 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
     xi = ('galaxy_density_xi' in data.get_data_types()) if xi is None else xi
 
     nbin_source = obs['nbin_source']
-    nbin_lens   = obs['nbin_lens']
+    nbin_lens = obs['nbin_lens']
 
-    ell = np.unique(np.logspace(np.log10(2),5,400).astype(int))
+    ell = np.unique(np.logspace(np.log10(2), 5, 400).astype(int))
 
     tracers = {}
 
@@ -310,23 +325,31 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
         nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
         # Convert to CCL form
-        tracers[name] = pyccl.NumberCountsTracer(cosmo, has_rsd=False, 
-            dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z)))
-
+        tracers[name] = pyccl.NumberCountsTracer(
+            cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z))
+        )
 
     for i in range(nbin_source):
-        for j in range(i+1):
+        for j in range(i + 1):
             print(f"Computing theory lensing-lensing ({i},{j})")
 
             # compute power spectra
-            cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
+            cl = pyccl.angular_cl(
+                cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell
+            )
             theory[(EE, i, j)] = ell, cl
 
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(XIP, i, j)]
-                theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+')
-                theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-')
+                theory[(XIP, i, j)] = (
+                    theta,
+                    pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type='L+'),
+                )
+                theory[(XIM, i, j)] = (
+                    theta,
+                    pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type='L-'),
+                )
 
     for i in range(nbin_lens):
         print(f"Computing theory density-density ({i},{i})")
@@ -338,21 +361,27 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
         # Optionally also compute correlation functions
         if xi:
             theta, *_ = obs[(W, i, i)]
-            theory[W, i, i] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
-
+            theory[W, i, i] = (
+                theta,
+                pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type='GG'),
+            )
 
     for i in range(nbin_source):
         for j in range(nbin_lens):
             print(f"Computing theory lensing-density ({i},{j})")
 
             # compute power spectra
-            cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
+            cl = pyccl.angular_cl(
+                cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell
+            )
             theory[(ED, i, j)] = ell, cl
 
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                theory[GAMMA, i, j] = (
+                    theta,
+                    pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type='GL'),
+                )
 
     return theory
-

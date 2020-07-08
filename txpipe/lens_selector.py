@@ -5,8 +5,6 @@ import numpy as np
 import warnings
 
 
-
-
 class TXBaseLensSelector(PipelineStage):
     """
     This pipeline stage selects objects to be used
@@ -14,26 +12,24 @@ class TXBaseLensSelector(PipelineStage):
     shear-position calibrations.
     """
 
-    name='TXBaseLensSelector'
+    name = 'TXBaseLensSelector'
 
-    outputs = [
-        ('lens_tomography_catalog', TomographyCatalog)
-    ]
+    outputs = [('lens_tomography_catalog', TomographyCatalog)]
 
     config_options = {
         'verbose': False,
-        'chunk_rows':10000,
-        'lens_zbin_edges':[float],
+        'chunk_rows': 10000,
+        'lens_zbin_edges': [float],
         # Mag cuts
-        # Default photometry cuts based on the BOSS Galaxy Target Selection:                                                     
-        # http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php                                           
-        'cperp_cut':0.2,
-        'r_cpar_cut':13.5,
-        'r_lo_cut':16.0,
-        'r_hi_cut':19.6,
-        'i_lo_cut':17.5,
-        'i_hi_cut':19.9,
-        'r_i_cut':2.0,
+        # Default photometry cuts based on the BOSS Galaxy Target Selection:
+        # http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
+        'cperp_cut': 0.2,
+        'r_cpar_cut': 13.5,
+        'r_lo_cut': 16.0,
+        'r_hi_cut': 19.6,
+        'i_lo_cut': 17.5,
+        'i_hi_cut': 19.9,
+        'r_i_cut': 2.0,
         'random_seed': 42,
     }
 
@@ -57,7 +53,7 @@ class TXBaseLensSelector(PipelineStage):
             raise ValueError("Do not run TXBaseLensSelector - run a sub-class")
 
         # Suppress some warnings from numpy that are not relevant
-        original_warning_settings = np.seterr(all='ignore')  
+        original_warning_settings = np.seterr(all='ignore')
 
         # The output file we will put the tomographic
         # information into
@@ -101,7 +97,6 @@ class TXBaseLensSelector(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
-
     def apply_redshift_cut(self, phot_data):
 
         pz_data = {}
@@ -111,16 +106,14 @@ class TXBaseLensSelector(PipelineStage):
 
         zbin = np.repeat(-1, len(z))
         for zi in range(nbin):
-            mask_zbin = (
-                  (z >= self.config['lens_zbin_edges'][zi]) 
-                & (z<self.config['lens_zbin_edges'][zi+1])
+            mask_zbin = (z >= self.config['lens_zbin_edges'][zi]) & (
+                z < self.config['lens_zbin_edges'][zi + 1]
             )
             zbin[mask_zbin] = zi
-            
+
         pz_data[f'zbin'] = zbin
 
         return pz_data
-
 
     def setup_output(self):
         """
@@ -130,7 +123,7 @@ class TXBaseLensSelector(PipelineStage):
         in the tomography_catalog output file.
         """
         n = self.open_input('photometry_catalog')['photometry/ra'].size
-        nbin_lens = len(self.config['lens_zbin_edges'])-1
+        nbin_lens = len(self.config['lens_zbin_edges']) - 1
 
         outfile = self.open_output('lens_tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
@@ -176,11 +169,9 @@ class TXBaseLensSelector(PipelineStage):
         """
         lens_counts = number_density_stats.collect()
 
-
-        if self.rank==0:
+        if self.rank == 0:
             group = outfile['tomography']
             group['lens_counts'][:] = lens_counts
-
 
     def select_lens(self, phot_data):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
@@ -190,7 +181,7 @@ class TXBaseLensSelector(PipelineStage):
         mag_r = phot_data['mag_r']
         mag_g = phot_data['mag_g']
 
-        # Mag cuts 
+        # Mag cuts
         cperp_cut_val = self.config['cperp_cut']
         r_cpar_cut_val = self.config['r_cpar_cut']
         r_lo_cut_val = self.config['r_lo_cut']
@@ -202,36 +193,36 @@ class TXBaseLensSelector(PipelineStage):
         n = len(mag_i)
         # HDF does not support bools, so we will prepare a binary array
         # where 0 is a lens and 1 is not
-        lens_gals = np.repeat(0,n)
+        lens_gals = np.repeat(0, n)
 
         cpar = 0.7 * (mag_g - mag_r) + 1.2 * ((mag_r - mag_i) - 0.18)
         cperp = (mag_r - mag_i) - ((mag_g - mag_r) / 4.0) - 0.18
         dperp = (mag_r - mag_i) - ((mag_g - mag_r) / 8.0)
 
         # LOWZ
-        cperp_cut = np.abs(cperp) < cperp_cut_val #0.2
+        cperp_cut = np.abs(cperp) < cperp_cut_val  # 0.2
         r_cpar_cut = mag_r < r_cpar_cut_val + cpar / 0.3
-        r_lo_cut = mag_r > r_lo_cut_val #16.0
-        r_hi_cut = mag_r < r_hi_cut_val #19.6
+        r_lo_cut = mag_r > r_lo_cut_val  # 16.0
+        r_hi_cut = mag_r < r_hi_cut_val  # 19.6
 
         lowz_cut = (cperp_cut) & (r_cpar_cut) & (r_lo_cut) & (r_hi_cut)
 
         # CMASS
-        i_lo_cut = mag_i > i_lo_cut_val #17.5
-        i_hi_cut = mag_i < i_hi_cut_val #19.9
-        r_i_cut = (mag_r - mag_i) < r_i_cut_val #2.0
-        #dperp_cut = dperp > 0.55 # this cut did not return any sources...
+        i_lo_cut = mag_i > i_lo_cut_val  # 17.5
+        i_hi_cut = mag_i < i_hi_cut_val  # 19.9
+        r_i_cut = (mag_r - mag_i) < r_i_cut_val  # 2.0
+        # dperp_cut = dperp > 0.55 # this cut did not return any sources...
 
         cmass_cut = (i_lo_cut) & (i_hi_cut) & (r_i_cut)
 
         # If a galaxy is a lens under either LOWZ or CMASS give it a zero
-        lens_mask =  lowz_cut | cmass_cut
+        lens_mask = lowz_cut | cmass_cut
         lens_gals[lens_mask] = 1
 
         return lens_gals
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
-    
+
         nbin = len(self.config['lens_zbin_edges']) - 1
         n = len(phot_data['mag_i'])
 
@@ -261,21 +252,22 @@ class TXTruthLensSelector(TXBaseLensSelector):
         print(f"We are cheating and using the true redshift.")
         chunk_rows = self.config['chunk_rows']
         if self.config['true_z']:
-            phot_cols = ['mag_i','mag_r','mag_g', 'redshift_true']
+            phot_cols = ['mag_i', 'mag_r', 'mag_g', 'redshift_true']
         else:
-            phot_cols = ['mag_i','mag_r','mag_g', 'mean_z']
+            phot_cols = ['mag_i', 'mag_r', 'mag_g', 'mean_z']
 
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
-        # each get different chunks of the data 
-        for s, e, data in self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows):
+        # each get different chunks of the data
+        for s, e, data in self.iterate_hdf(
+            'photometry_catalog', 'photometry', phot_cols, chunk_rows
+        ):
             if self.config['true_z']:
                 data['z'] = data['redshift_true']
             elif self.config['input_pz']:
                 data['z'] = data['mean_z']
             yield s, e, data
-
 
 
 class TXMeanLensSelector(TXBaseLensSelector):
@@ -285,25 +277,22 @@ class TXMeanLensSelector(TXBaseLensSelector):
         ('photoz_pdfs', HDFFile),
     ]
 
-
     def data_iterator(self):
         chunk_rows = self.config['chunk_rows']
-        phot_cols = ['mag_i','mag_r','mag_g']
+        phot_cols = ['mag_i', 'mag_r', 'mag_g']
         z_cols = ['z_mean']
-        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
+        iter_phot = self.iterate_hdf(
+            'photometry_catalog', 'photometry', phot_cols, chunk_rows
+        )
         iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
             data['z'] = z_data['z_mean']
             yield s, e, data
 
 
-
 def flatten_list(lst):
     return [item for sublist in lst for item in sublist]
 
 
-
 if __name__ == '__main__':
     PipelineStage.main()
-
-

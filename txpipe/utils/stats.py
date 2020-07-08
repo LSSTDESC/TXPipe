@@ -1,10 +1,11 @@
-#coding: utf-8
+# coding: utf-8
 """
 A collection of statistical tools that may be useful     across TXPipe.
 
 """
 import numpy as np
 from .sparse import SparseArray
+
 
 class ParallelHistogram:
     def __init__(self, edges):
@@ -16,7 +17,7 @@ class ParallelHistogram:
         b = np.digitize(x, self.edges) - 1
         n = self.size
         for b_i in b:
-            if b_i>=0 and b_i < n:
+            if b_i >= 0 and b_i < n:
                 self.counts[b_i] += 1
 
     def collect(self, comm=None):
@@ -31,6 +32,7 @@ class ParallelHistogram:
         else:
             comm.Reduce(counts, None)
             return None
+
 
 class ParallelStatsCalculator:
     """ParallelStatsCalculator is a parallel, on-line calculator for mean
@@ -71,6 +73,7 @@ class ParallelStatsCalculator:
         For manual usage - combine sequences of the statistics from different processors
 
     """
+
     def __init__(self, size, sparse=False):
         """Create a statistics calcuator.
         
@@ -85,6 +88,7 @@ class ParallelStatsCalculator:
         self.sparse = sparse
         if sparse:
             import scipy.sparse
+
             self._mean = SparseArray()
             self._count = SparseArray()
             self._M2 = SparseArray()
@@ -92,7 +96,6 @@ class ParallelStatsCalculator:
             self._mean = np.zeros(size)
             self._count = np.zeros(size)
             self._M2 = np.zeros(size)
-
 
     def calculate(self, values_iterator, comm=None, mode='gather'):
         """ Calculate statistics of an input data set.
@@ -124,14 +127,15 @@ class ParallelStatsCalculator:
 
         """
 
-        with np.errstate(divide='ignore',invalid='ignore'):
+        with np.errstate(divide='ignore', invalid='ignore'):
             if comm is None:
                 count, mean, variance = self._calculate_serial(values_iterator)
                 return count, mean, variance
             else:
-                count, mean, variance = self._calculate_parallel(values_iterator, comm, mode)
+                count, mean, variance = self._calculate_parallel(
+                    values_iterator, comm, mode
+                )
                 return count, mean, variance
-
 
     def add_data(self, pixel, values):
         """Designed for manual use - in general prefer the calculate method.
@@ -148,7 +152,7 @@ class ParallelStatsCalculator:
         for value in values:
             self._count[pixel] += 1
             delta = value - self._mean[pixel]
-            self._mean[pixel] += delta/self._count[pixel]
+            self._mean[pixel] += delta / self._count[pixel]
             delta2 = value - self._mean[pixel]
             self._M2[pixel] += delta * delta2
 
@@ -167,13 +171,12 @@ class ParallelStatsCalculator:
             An array of the computed variance for each bin
 
         """
-        self._variance = self._M2/ self._count
+        self._variance = self._M2 / self._count
         if not self.sparse:
-            bad = self._count<2
+            bad = self._count < 2
             self._variance[bad] = np.nan
         del self._M2
-        return self._count, self._mean, self._variance        
-
+        return self._count, self._mean, self._variance
 
     def collect(self, comm, mode='gather'):
         """Designed for manual use - in general prefer the calculate method.
@@ -201,21 +204,22 @@ class ParallelStatsCalculator:
 
         if comm is None:
             return self._count, self._mean, self._variance
-        
+
         rank = comm.Get_rank()
         size = comm.Get_size()
 
         if mode not in ['gather', 'allgather']:
-            raise ValueError("mode for ParallelStatsCalculator.collect must be"
-                             "'gather' or 'allgather'")
-
+            raise ValueError(
+                "mode for ParallelStatsCalculator.collect must be"
+                "'gather' or 'allgather'"
+            )
 
         if self.sparse:
             send = lambda x: comm.send(x, dest=0)
         else:
             send = lambda x: comm.Send(x, dest=0)
 
-        if rank==0:            
+        if rank == 0:
             self._S0 = self._variance * self._count
             self._T0 = self._mean * self._count
             self._C0 = self._count
@@ -227,14 +231,14 @@ class ParallelStatsCalculator:
                 v1 = np.empty(self.size)
 
         for i in range(1, size):
-            if rank==i:
+            if rank == i:
                 send(self._count)
                 send(self._mean)
                 send(self._variance)
                 del self._count
                 del self._mean
                 del self._variance
-            elif rank==0:
+            elif rank == 0:
                 if self.sparse:
                     c1 = comm.recv(source=i)
                     m1 = comm.recv(source=i)
@@ -246,11 +250,11 @@ class ParallelStatsCalculator:
                 self._accumulate(c1, m1, v1)
                 print(f"Done rank {i}")
         if rank == 0:
-            count, mean, variance = self._C0, self._T0/self._C0, self._S0/self._C0
+            count, mean, variance = self._C0, self._T0 / self._C0, self._S0 / self._C0
             del self._S0, self._C0, self._T0
             if not self.sparse:
-                mean[count<1] = np.nan
-                variance[count<2] = np.nan
+                mean[count < 1] = np.nan
+                variance[count < 2] = np.nan
         else:
             count, mean, variance = None, None, None
 
@@ -270,36 +274,40 @@ class ParallelStatsCalculator:
 
     def _accumulate(self, c1, m1, v1):
         if not self.sparse:
-            m1[c1<1] = 0
-            v1[c1<2] = 0
+            m1[c1 < 1] = 0
+            v1[c1 < 2] = 0
 
         Cold = self._C0
         Told = self._T0
 
-        Tnext = m1*c1
+        Tnext = m1 * c1
         C = Cold + c1
         T = Told + Tnext
 
         if self.sparse:
-            self._S0 = self._S0 + v1*c1 + Cold / (Cold*C) * (Told*c1/Cold - Tnext)**2
+            self._S0 = (
+                self._S0 + v1 * c1 + Cold / (Cold * C) * (Told * c1 / Cold - Tnext) ** 2
+            )
         else:
-            w = np.where(c1>0)
-            self._S0[w] = self._S0[w] + v1[w]*c1[w] \
-                 + Cold[w] / (Cold[w]*C[w]) * (Told[w]*c1[w]/Cold[w] - Tnext[w])**2
+            w = np.where(c1 > 0)
+            self._S0[w] = (
+                self._S0[w]
+                + v1[w] * c1[w]
+                + Cold[w]
+                / (Cold[w] * C[w])
+                * (Told[w] * c1[w] / Cold[w] - Tnext[w]) ** 2
+            )
 
-            w = np.where(Cold==0)
-            self._S0[w] = v1[w]*c1[w]
+            w = np.where(Cold == 0)
+            self._S0[w] = v1[w] * c1[w]
         self._C0 = C
         self._T0 = T
-
-
 
     def _calculate_serial(self, values_iterator):
         for pixel, values in values_iterator:
             self.add_data(pixel, values)
 
         return self._finalize()
-
 
     def _calculate_parallel(self, parallel_values_iterator, comm, mode):
         # Each processor calculates the values for its bits of data
@@ -308,34 +316,40 @@ class ParallelStatsCalculator:
 
 
 def combine_variances(counts, means, variances, sparse=False):
-# eq 3.1b of Chan, Golub, & LeVeque 1979
+    # eq 3.1b of Chan, Golub, & LeVeque 1979
     S = variances[0] * counts[0]
     T = means[0] * counts[0]
     C = counts[0]
     N = len(counts)
-    
-    for i in range(1,N):
+
+    for i in range(1, N):
         Told = T
 
-        Tnext = means[i]*counts[i]
+        Tnext = means[i] * counts[i]
         Cold = C
         C = Cold + counts[i]
         T = Told + Tnext
 
         if sparse:
-            S = S + variances[i]*counts[i] \
-            + Cold / (Cold*C) * (Told*counts[i]/Cold - Tnext)**2
+            S = (
+                S
+                + variances[i] * counts[i]
+                + Cold / (Cold * C) * (Told * counts[i] / Cold - Tnext) ** 2
+            )
         else:
-            w = np.where(counts[i]>0)
-            S[w] = S[w] + variances[i][w]*counts[i][w] \
-            + Cold[w] / (Cold[w]*C[w]) * (Told[w]*counts[i][w]/Cold[w] - Tnext[w])**2
+            w = np.where(counts[i] > 0)
+            S[w] = (
+                S[w]
+                + variances[i][w] * counts[i][w]
+                + Cold[w]
+                / (Cold[w] * C[w])
+                * (Told[w] * counts[i][w] / Cold[w] - Tnext[w]) ** 2
+            )
 
-            w = np.where(Cold==0)
-            S[w] = variances[i][w]*counts[i][w]
-
+            w = np.where(Cold == 0)
+            S[w] = variances[i][w] * counts[i][w]
 
     mu = T / C
     sigma2 = S / C
 
     return C, mu, sigma2
-

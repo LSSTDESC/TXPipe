@@ -3,6 +3,7 @@ import numpy as np
 import healpy
 import pathlib
 
+
 class MyNmtBinFlat(nmt.NmtBinFlat):
     def __init__(self, l0, lf):
         super().__init__(l0, lf)
@@ -10,7 +11,7 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
         self.ell_max = lf
 
     def get_window(self, b):
-        ell = np.arange(self.ell_min[b], self.ell_max[b]+1)
+        ell = np.arange(self.ell_min[b], self.ell_max[b] + 1)
         w = np.ones_like(ell)
         return (ell, w)
 
@@ -25,11 +26,14 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
 
     def apply_window(self, b, c_ell):
         b0, b1 = self.get_window(b)
-        return c_ell[b0:b1+1].mean()
+        return c_ell[b0 : b1 + 1].mean()
+
 
 class MyNmtBin(nmt.NmtBin):
     def __init__(self, nside, bpws=None, ells=None, weights=None, nlb=None, lmax=None):
-        super().__init__(nside, bpws=bpws, ells=ells, weights=weights, nlb=nlb, lmax=lmax)
+        super().__init__(
+            nside, bpws=bpws, ells=ells, weights=weights, nlb=nlb, lmax=lmax
+        )
         self.ell_max = self.lmax
 
     def get_window(self, b):
@@ -48,11 +52,10 @@ class MyNmtBin(nmt.NmtBin):
 
     def apply_window(self, b, c_ell):
         ell, weight = self.get_window(b)
-        return (c_ell[ell]*weight).sum() / weight.sum()
+        return (c_ell[ell] * weight).sum() / weight.sum()
 
 
 import healpy
-
 
 
 class WorkspaceCache:

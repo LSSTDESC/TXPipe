@@ -16,7 +16,7 @@ class TXIngestRedmagic(PipelineStage):
     ]
 
     config_options = {
-        'lens_zbin_edges':[float],
+        'lens_zbin_edges': [float],
         'chunk_rows': 100_000,
         'zmin': 0.0,
         'zmax': 3.0,
@@ -88,7 +88,7 @@ class TXIngestRedmagic(PipelineStage):
             # Build up the count of the n(z) histograms per-bin
             z_grid_index = np.floor((z - zmin) / dz).astype(int)
             for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
-                if (b >= 0):
+                if b >= 0:
                     nz_grid[b][i_z] += weight[i]
 
             # Build up the counts
@@ -121,7 +121,7 @@ class TXIngestRedmagic(PipelineStage):
 
         # Save the redshift sampling
         k.create_dataset("z", data=z_grid)
-        
+
         # And all the bins separately
         for b in range(nbin_lens):
             k.attrs[f"count_{b}"] = counts[b]

@@ -41,7 +41,6 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     ell = np.logspace(1, np.log10(ell_max), n_ell).astype(int)
     ell = np.unique(ell)
 
-
     # Convert from SACC tracers (which just store N(z))
     # to CCL tracers (which also have cosmology info in them).
     CTracers = {}
@@ -59,40 +58,40 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
 
     for i in range(nbin_lens):
         x = tracers[f'lens_{i}']
-        tag = ('P', i) 
+        tag = ('P', i)
         b = np.ones_like(x.z)
-        CTracers[tag] = ccl.NumberCountsTracer(cosmo, dndz=(x.z, x.nz),
-                                    has_rsd=False, bias=(x.z,b))
+        CTracers[tag] = ccl.NumberCountsTracer(
+            cosmo, dndz=(x.z, x.nz), has_rsd=False, bias=(x.z, b)
+        )
 
     # Use CCL to actually calculate the C_ell values for the different cases
     theory_cl = {}
     theory_cl['ell'] = ell
     k = SHEAR_SHEAR
     for i in range(nbin_source):
-        for j in range(i+1):
-            Ti = CTracers[('S',i)]
-            Tj = CTracers[('S',j)]
+        for j in range(i + 1):
+            Ti = CTracers[('S', i)]
+            Tj = CTracers[('S', j)]
             # The full theory C_ell over the range 0..ellmax
-            theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-            theory_cl [(j,i,k)] = theory_cl [(i,j,k)]
-            
+            theory_cl[(i, j, k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+            theory_cl[(j, i, k)] = theory_cl[(i, j, k)]
 
     # The same for the galaxy galaxy-lensing cross-correlation
     k = SHEAR_POS
     for i in range(nbin_source):
         for j in range(nbin_lens):
-            Ti = CTracers[('S',i)]
-            Tj = CTracers[('P',j)]
-            theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+            Ti = CTracers[('S', i)]
+            Tj = CTracers[('P', j)]
+            theory_cl[(i, j, k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
 
     # And finally for the density correlations
     k = POS_POS
     for i in range(nbin_lens):
-        for j in range(i+1):
-            Ti = CTracers[('P',i)]
-            Tj = CTracers[('P',j)]
-            theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
-            theory_cl [(j,i,k)] = theory_cl [(i,j,k)]
+        for j in range(i + 1):
+            Ti = CTracers[('P', i)]
+            Tj = CTracers[('P', j)]
+            theory_cl[(i, j, k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
+            theory_cl[(j, i, k)] = theory_cl[(i, j, k)]
 
     if fourier:
         return theory_cl
@@ -101,17 +100,17 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     theta_max = 3.0
     theta = np.logspace(np.log10(theta_min), np.log10(theta_max), 200)
 
-    theory_xi = {'theta': theta*60} # arcmin
+    theory_xi = {'theta': theta * 60}  # arcmin
     for key, val in theory_cl.items():
         if key == 'ell':
             continue
-        i,j,k = key
+        i, j, k = key
         corr_type = {SHEAR_SHEAR: 'L+', POS_POS: 'GG', SHEAR_POS: 'GL'}[k]
         xi = ccl.correlation(cosmo, ell, val, theta, corr_type=corr_type)
         if k == SHEAR_SHEAR:
             xim = ccl.correlation(cosmo, ell, val, theta, corr_type='L-')
-            theory_xi[(i,j,k)] = [xi,xim]
+            theory_xi[(i, j, k)] = [xi, xim]
         else:
-            theory_xi[(i,j,k)] = xi
+            theory_xi[(i, j, k)] = xi
 
     return theory_cl, theory_xi

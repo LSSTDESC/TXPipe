@@ -20,7 +20,9 @@ class PipelineMonitor:
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             key_filename = os.path.expanduser(key_filename)
-            client.connect('cori.nersc.gov', username=username, key_filename=key_filename)
+            client.connect(
+                'cori.nersc.gov', username=username, key_filename=key_filename
+            )
             config_remote_path = os.path.join(remote_dir, config_file)
 
             cmd = f"cat {config_remote_path}"
@@ -28,23 +30,27 @@ class PipelineMonitor:
             stdin, stdout, stderr = client.exec_command(cmd)
             err = stderr.read()
         if err:
-            raise ValueError(f"Remote config file {config_file} not found on NERSC: {err}")
+            raise ValueError(
+                f"Remote config file {config_file} not found on NERSC: {err}"
+            )
         config_data = stdout.read()
 
         config = yaml.safe_load(config_data)
         # d/l file
 
         # Info we need from the pipeline
-        self.stages = [ceci.PipelineStage.get_stage(stage['name']) for stage in config['stages']]
+        self.stages = [
+            ceci.PipelineStage.get_stage(stage['name']) for stage in config['stages']
+        ]
         self.inputs = config['inputs']
 
         # determine which directories to watch - log dir and output dir
         log_dir = os.path.join(remote_dir, config['log_dir'])
         output_dir = os.path.join(remote_dir, config['output_dir'])
-        
+
         # start monitor watching them
         self.monitor = NerscMonitor([log_dir, output_dir], client=client)
-        
+
         # build initial dag - no files completed yet
         self.dag = self.build_dag([], [], [], [])
 
@@ -75,13 +81,16 @@ class PipelineMonitor:
         complete_files, running_files = self.check_file_statuses(output_files)
 
         # check stage statuses
-        complete_stages, running_stages = self.check_stage_statuses(complete_files, log_files)
+        complete_stages, running_stages = self.check_stage_statuses(
+            complete_files, log_files
+        )
 
         # Build the dag
-        self.dag = self.build_dag(running_stages, complete_stages, running_files, complete_files)
+        self.dag = self.build_dag(
+            running_stages, complete_stages, running_files, complete_files
+        )
 
         return True
-
 
     def main_loop(self, interval, count=1000000000):
         for i in range(count):
@@ -97,10 +106,10 @@ class PipelineMonitor:
         mark = 'inprogress_'
         for filename in output_files:
             if filename.startswith(mark):
-                running_files.add(filename[len(mark):])
+                running_files.add(filename[len(mark) :])
             else:
                 complete_files.add(filename)
-                
+
         return complete_files, running_files
 
     def check_stage_statuses(self, complete_files, log_files):
@@ -111,7 +120,7 @@ class PipelineMonitor:
             # If so, stage is complete
             for tag, ftype in stage.outputs:
                 name = ftype.make_name(tag)
-                if name not in complete_files:                    
+                if name not in complete_files:
                     break
             else:
                 # this happens if we never "break" above, i.e. if all output
@@ -125,12 +134,18 @@ class PipelineMonitor:
                 running_stages.add(stage.name)
 
         return complete_stages, running_stages
-            
-                
 
     def build_dag(self, running_stages, complete_stages, running_files, complete_files):
 
-        G = pygraphviz.AGraph(directed=True, rankdir='LR', nodesep=0.1, len=0.2, minlen=0.01, mindist=0.1, ranksep=0.01)
+        G = pygraphviz.AGraph(
+            directed=True,
+            rankdir='LR',
+            nodesep=0.1,
+            len=0.2,
+            minlen=0.01,
+            mindist=0.1,
+            ranksep=0.01,
+        )
         names = {}
 
         # Draw overall inputst as plum boxes

@@ -7,8 +7,10 @@ import pathlib
 import yaml
 import shutil
 
+
 class FileValidationError(Exception):
     pass
+
 
 class DataFile:
     """
@@ -27,8 +29,10 @@ class DataFile:
     named by a tag.
 
     """
+
     supports_parallel_write = False
     suffix = None
+
     def __init__(self, path, mode, extra_provenance=None, validate=True, **kwargs):
         self.path = path
         self.mode = mode
@@ -54,13 +58,13 @@ class DataFile:
         domain = socket.getfqdn()
         username = getpass.getuser()
 
-        # Add other provenance and related 
+        # Add other provenance and related
         provenance = {
             'uuid': UUID,
             'creation': creation,
             'domain': domain,
             'username': username,
-            }
+        }
 
         if extra_provenance:
             provenance.update(extra_provenance)
@@ -80,7 +84,6 @@ class DataFile:
         """
         pass
 
-
     def read_provenance(self):
         """
         Concrete subclasses for which it is possible should override
@@ -89,14 +92,13 @@ class DataFile:
         Other classes will return this dictionary of UNKNOWNs
         """
         provenance = {
-            'uuid':     "UNKNOWN",
+            'uuid': "UNKNOWN",
             'creation': "UNKNOWN",
-            'domain':   "UNKNOWN",
+            'domain': "UNKNOWN",
             'username': "UNKNOWN",
         }
 
         return provenance
-
 
     def validate(self):
         """
@@ -134,6 +136,7 @@ class DataFile:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
+
 class HDFFile(DataFile):
     supports_parallel_write = True
     """
@@ -161,10 +164,12 @@ class HDFFile(DataFile):
         called 'provenance'
         """
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read-only mode")
+            raise ValueError(
+                "Cannot write provenance to a file opened in read-only mode"
+            )
 
         # This method *must* be called by all the processes in a parallel
-        # run.  
+        # run.
         self._provenance_group = self.file.create_group('provenance')
 
         # Call the sub-method to do each item
@@ -178,11 +183,11 @@ class HDFFile(DataFile):
         except KeyError:
             group = None
             attrs = {}
-        
+
         provenance = {
-            'uuid':     attrs.get('uuid', "UNKNOWN"),
+            'uuid': attrs.get('uuid', "UNKNOWN"),
             'creation': attrs.get('creation', "UNKNOWN"),
-            'domain':   attrs.get('domain', "UNKNOWN"),
+            'domain': attrs.get('domain', "UNKNOWN"),
             'username': attrs.get('username', "UNKNOWN"),
         }
 
@@ -190,17 +195,16 @@ class HDFFile(DataFile):
 
         return provenance
 
-
-
     def validate(self):
         missing = [name for name in self.required_datasets if name not in self.file]
         if missing:
             text = "\n".join(missing)
-            raise FileValidationError(f"These data sets are missing from HDF file {self.path}:\n{text}")
+            raise FileValidationError(
+                f"These data sets are missing from HDF file {self.path}:\n{text}"
+            )
 
     def close(self):
         self.file.close()
-
 
 
 class FitsFile(DataFile):
@@ -208,12 +212,14 @@ class FitsFile(DataFile):
     A data file in the FITS format.
     Using these files requires the fitsio package.
     """
+
     suffix = 'fits'
     required_columns = []
 
     @classmethod
     def open(cls, path, mode, **kwargs):
         import fitsio
+
         # Fitsio doesn't have pure 'w' modes, just 'rw'.
         # Maybe we should check if the file already exists here?
         if mode == 'w':
@@ -230,7 +236,6 @@ class FitsFile(DataFile):
         missing_columns = [col for col in columns if col not in found_cols]
         return missing_columns
 
-
     def write_provenance(self):
         """
         Write provenance information to a new group,
@@ -243,23 +248,20 @@ class FitsFile(DataFile):
         for key, value in self.provenance.items():
             if isinstance(value, str) and '\n' in value:
                 values = value.split("\n")
-                for i,v in enumerate(values):
-                    self.file[0].write_key(key+f"_{i}", v)
+                for i, v in enumerate(values):
+                    self.file[0].write_key(key + f"_{i}", v)
             else:
                 self.file[0].write_key(key, value)
-
 
     def read_provenance(self):
         header = self.file[0].read_header()
         provenance = {
-            'uuid':     header.get('uuid', 'UNKNOWN'),
+            'uuid': header.get('uuid', 'UNKNOWN'),
             'creation': header.get('creation', 'UNKNOWN'),
-            'domain':   header.get('domain', 'UNKNOWN'),
+            'domain': header.get('domain', 'UNKNOWN'),
             'username': header.get('username', 'UNKNOWN'),
         }
         return provenance
-
-
 
     def validate(self):
         """Check that the catalog has all the required columns and complain otherwise"""
@@ -269,7 +271,9 @@ class FitsFile(DataFile):
         # If there are any, raise an exception that lists them explicitly
         if missing:
             text = "\n".join(missing)
-            raise FileValidationError(f"These columns are missing from FITS file {self.path}:\n{text}")
+            raise FileValidationError(
+                f"These columns are missing from FITS file {self.path}:\n{text}"
+            )
 
     def close(self):
         self.file.close()
@@ -279,13 +283,17 @@ class TextFile(DataFile):
     """
     A data file in plain text format.
     """
+
     suffix = 'txt'
+
 
 class YamlFile(DataFile):
     """
     A data file in yaml format.
     """
+
     suffix = 'yml'
+
 
 class Directory(DataFile):
     suffix = ''
@@ -309,16 +317,17 @@ class Directory(DataFile):
         called 'provenance'
         """
         # This method *must* be called by all the processes in a parallel
-        # run.  
+        # run.
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a directory opened in read-only mode")
+            raise ValueError(
+                "Cannot write provenance to a directory opened in read-only mode"
+            )
 
         self._provenance_file = open(self.file / 'provenance.yml', 'w')
 
         # Call the sub-method to do each item
         yaml.dump(self.provenance, self._provenance_file)
         self._provenance_file.flush()
-
 
     def read_provenance(self):
         try:
@@ -330,16 +339,15 @@ class Directory(DataFile):
             attrs = {}
 
         self._provenance_file = f
-        
+
         provenance = {
-            'uuid':     attrs.get('uuid', "UNKNOWN"),
+            'uuid': attrs.get('uuid', "UNKNOWN"),
             'creation': attrs.get('creation', "UNKNOWN"),
-            'domain':   attrs.get('domain', "UNKNOWN"),
+            'domain': attrs.get('domain', "UNKNOWN"),
             'username': attrs.get('username', "UNKNOWN"),
         }
 
         return provenance
-
 
 
 class PNGFile(DataFile):
@@ -349,13 +357,14 @@ class PNGFile(DataFile):
     def open(self, path, mode, **kwargs):
         import matplotlib
         import matplotlib.pyplot as plt
+
         if mode != "w":
             raise ValueError("Reading existing PNG files is not supported")
         return plt.figure(**kwargs)
 
-
     def close(self):
         import matplotlib.pyplot as plt
+
         self.file.savefig(self.path, metadata=self.provenance)
         plt.close(self.file)
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SparseArray:
     """
     A sparse 1D array class.
@@ -19,6 +20,7 @@ class SparseArray:
     to_arrays()
         Return index and value arrays
     """
+
     def __init__(self, size=None, dtype=np.float64):
         """Create a sparse array.
 
@@ -35,15 +37,15 @@ class SparseArray:
         -------
         SparseArray
         """
-        self.d={}
-        self.size=size
-        self.dtype=dtype
+        self.d = {}
+        self.size = size
+        self.dtype = dtype
 
     def count_nonzero(self):
         return len(self.d)
 
     def __setitem__(self, index, value):
-        if self.size is not None and index>=self.size:
+        if self.size is not None and index >= self.size:
             raise IndexError("")
         self.d[index] = self.dtype(value)
 
@@ -57,13 +59,13 @@ class SparseArray:
 
     def __mul__(self, other):
         x = SparseArray()
-        for k,v in self.d.items():
+        for k, v in self.d.items():
             x[k] = v * other[k]
         return x
 
     def __truediv__(self, other):
         x = SparseArray()
-        for k,v in self.d.items():
+        for k, v in self.d.items():
             x[k] = v / other[k]
         return x
 
@@ -76,7 +78,7 @@ class SparseArray:
         return x
 
     def __iadd__(self, other):
-        for k,v in other.d.items():
+        for k, v in other.d.items():
             self[k] += v
         return self
 
@@ -91,9 +93,8 @@ class SparseArray:
     def __pow__(self, y):
         x = SparseArray()
         for k in self.d.keys():
-            x[k] = self[k]**y
+            x[k] = self[k] ** y
         return x
-
 
     def to_dense(self):
         """
@@ -110,7 +111,7 @@ class SparseArray:
         else:
             size = self.size
         dense = np.zeros(size)
-        for k,v in self.d.items():
+        for k, v in self.d.items():
             dense[k] = v
         return dense
 
@@ -130,17 +131,17 @@ class SparseArray:
         sparse: SparseArray
             
             
-        """        
+        """
         dense = np.atleast_1d(dense)
-        if dense.ndim>1:
+        if dense.ndim > 1:
             raise ValueError("Only 1D arrays can be made sparse")
 
         sparse = cls(size=dense.size, dtype=dense.dtype)
 
-        for k,v in enumerate(dense):
+        for k, v in enumerate(dense):
             # bypasses the checks in __setitem__
-            if v!=0:
-                sparse._set_direct(k,v)
+            if v != 0:
+                sparse._set_direct(k, v)
         return sparse
 
     def to_arrays(self):
@@ -162,5 +163,3 @@ class SparseArray:
         indices = indices[order]
         values = values[order]
         return indices, values
-
-

@@ -2,6 +2,7 @@ import h5py
 import subprocess
 import shutil
 
+
 def repack(filename):
     """
     In-place HDF5 repack operation on file.
@@ -9,6 +10,7 @@ def repack(filename):
     tmp_name = f'{filename}.tmp_325467847'
     subprocess.check_call(f'h5repack {filename} {tmp_name}', shell=True)
     shutil.move(tmp_name, filename)
+
 
 def create_dataset_early_allocated(group, name, size, dtype):
     """
@@ -40,7 +42,6 @@ def create_dataset_early_allocated(group, name, size, dtype):
     plist.set_fill_time(h5py.h5d.FILL_TIME_NEVER)
     plist.set_alloc_time(h5py.h5d.ALLOC_TIME_EARLY)
 
-    
     dtype = {
         'f8': h5py.h5t.NATIVE_DOUBLE,
         'f4': h5py.h5t.NATIVE_FLOAT,

@@ -1,11 +1,18 @@
 from .base_stage import PipelineStage
 from .maps import TXBaseMaps
-from .data_types import ShearCatalog, TomographyCatalog, MapsFile, \
-                        LensingNoiseMaps, ClusteringNoiseMaps, HDFFile
+from .data_types import (
+    ShearCatalog,
+    TomographyCatalog,
+    MapsFile,
+    LensingNoiseMaps,
+    ClusteringNoiseMaps,
+    HDFFile,
+)
 import numpy as np
 from .utils.mpi_utils import mpi_reduce_large
 from .utils import choose_pixelization
 from .utils.calibration_tools import read_shear_catalog_type
+
 
 class TXNoiseMaps(PipelineStage):
     """
@@ -13,10 +20,11 @@ class TXNoiseMaps(PipelineStage):
     rotating individual galaxy measurements.
 
     """
+
     # TODO rewrite this as a TXBaseMaps subclass
-    # like the two below    
-    name='TXNoiseMaps'
-    
+    # like the two below
+    name = 'TXNoiseMaps'
+
     inputs = [
         ('shear_catalog', ShearCatalog),
         ('lens_tomography_catalog', TomographyCatalog),
@@ -35,14 +43,14 @@ class TXNoiseMaps(PipelineStage):
         'chunk_rows': 100000,
         'lensing_realizations': 30,
         'clustering_realizations': 1,
-    }        
+    }
 
     def run(self):
         from .utils import choose_pixelization
 
         # get the number of bins.
         nbin_source, nbin_lens, ngal_maps, mask, map_info = self.read_inputs()
-        
+
         pixel_scheme = choose_pixelization(**map_info)
         lensing_realizations = self.config['lensing_realizations']
         clustering_realizations = self.config['clustering_realizations']
@@ -53,11 +61,18 @@ class TXNoiseMaps(PipelineStage):
         # Make the iterators
         chunk_rows = self.config['chunk_rows']
 
-        it = self.combined_iterators(chunk_rows,
-                'shear_catalog', 'shear', shear_cols,
-                'shear_tomography_catalog','tomography', ['source_bin'],
-                'lens_tomography_catalog','tomography', ['lens_bin'],
-            )
+        it = self.combined_iterators(
+            chunk_rows,
+            'shear_catalog',
+            'shear',
+            shear_cols,
+            'shear_tomography_catalog',
+            'tomography',
+            ['source_bin'],
+            'lens_tomography_catalog',
+            'tomography',
+            ['lens_bin'],
+        )
 
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
@@ -74,8 +89,11 @@ class TXNoiseMaps(PipelineStage):
         npix = c
 
         if self.rank == 0:
-            nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations * 2
-            nGB = (npix * nmaps * 8) / 1000.**3
+            nmaps = (
+                nbin_source * (2 * lensing_realizations + 1)
+                + nbin_lens * clustering_realizations * 2
+            )
+            nGB = (npix * nmaps * 8) / 1000.0 ** 3
             print(f"Allocating maps of size {nGB:.2f} GB")
 
         # lensing g1, g2
@@ -84,10 +102,10 @@ class TXNoiseMaps(PipelineStage):
         # lensing weight
         GW = np.zeros((npix, nbin_source))
         # clustering map - n_gal to start with
-        ngal_split = np.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
+        ngal_split = np.zeros(
+            (npix, nbin_lens, clustering_realizations, 2), dtype=np.int32
+        )
         # TODO: Clustering weights go here
-
-
 
         # Loop through the data
         for (s, e, data) in it:
@@ -108,10 +126,10 @@ class TXNoiseMaps(PipelineStage):
             split = np.random.binomial(1, 0.5, (n, clustering_realizations))
 
             # random rotations of the g1, g2 values
-            phi = np.random.uniform(0, 2*np.pi, (n, lensing_realizations))
+            phi = np.random.uniform(0, 2 * np.pi, (n, lensing_realizations))
             c = np.cos(phi)
             s = np.sin(phi)
-            g1r =  c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
+            g1r = c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
             g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
 
             for i in range(n):
@@ -134,7 +152,6 @@ class TXNoiseMaps(PipelineStage):
                         ngal_split[pix, lb, j, split[i]] += 1
                     # TODO add to clustering weight too
 
-
         # Sum everything at root
         if self.comm is not None:
             mpi_reduce_large(G1, self.comm)
@@ -144,8 +161,7 @@ class TXNoiseMaps(PipelineStage):
             if self.rank != 0:
                 del G1, G2, GW, ngal_split
 
-
-        if self.rank==0:
+        if self.rank == 0:
             print("Saving maps")
             outfile = self.open_output('source_noise_maps', wrapper=True)
 
@@ -156,21 +172,23 @@ class TXNoiseMaps(PipelineStage):
 
             metadata = {**self.config, **map_info}
 
-            pixels = np.where(mask>0)[0]
+            pixels = np.where(mask > 0)[0]
 
             for b in range(nbin_source):
                 for i in range(lensing_realizations):
 
-                    bin_mask = np.where(GW[:, b]>0)
+                    bin_mask = np.where(GW[:, b] > 0)
 
                     g1 = G1[:, b, i] / GW[:, b]
                     g2 = G2[:, b, i] / GW[:, b]
 
-                    outfile.write_map(f"rotation_{i}/g1_{b}", 
-                        pixels[bin_mask], g1[bin_mask], metadata)
+                    outfile.write_map(
+                        f"rotation_{i}/g1_{b}", pixels[bin_mask], g1[bin_mask], metadata
+                    )
 
-                    outfile.write_map(f"rotation_{i}/g2_{b}", 
-                        pixels[bin_mask], g2[bin_mask], metadata)
+                    outfile.write_map(
+                        f"rotation_{i}/g2_{b}", pixels[bin_mask], g2[bin_mask], metadata
+                    )
 
             outfile = self.open_output('lens_noise_maps', wrapper=True)
             group = outfile.file.create_group("maps")
@@ -197,18 +215,11 @@ class TXNoiseMaps(PipelineStage):
 
                     # Write both overdensity and count maps
                     # for each bin for each split
-                    outfile.write_map(f"split_{i}/rho1_{b}", 
-                        pixels, rho1, metadata)
-                    outfile.write_map(f"split_{i}/rho2_{b}", 
-                        pixels, rho2, metadata)
+                    outfile.write_map(f"split_{i}/rho1_{b}", pixels, rho1, metadata)
+                    outfile.write_map(f"split_{i}/rho2_{b}", pixels, rho2, metadata)
                     # counts
-                    outfile.write_map(f"split_{i}/ngal1_{b}", 
-                        pixels, half1, metadata)
-                    outfile.write_map(f"split_{i}/ngal2_{b}", 
-                        pixels, half2, metadata)
-                    
-
-
+                    outfile.write_map(f"split_{i}/ngal1_{b}", pixels, half1, metadata)
+                    outfile.write_map(f"split_{i}/ngal2_{b}", pixels, half2, metadata)
 
     def read_inputs(self):
 
@@ -224,14 +235,12 @@ class TXNoiseMaps(PipelineStage):
         with self.open_input('shear_tomography_catalog', wrapper=True) as f:
             nbin_source = f.file['tomography'].attrs['nbin_source']
 
-
         return nbin_source, nbin_lens, ngal_maps, mask, map_info
 
 
-
 class TXSourceNoiseMaps(TXBaseMaps):
-    name='TXSourceNoiseMaps'
-    
+    name = 'TXSourceNoiseMaps'
+
     inputs = [
         ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
@@ -265,7 +274,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
             nbin_source = f.file['tomography'].attrs['nbin_source']
 
         # Mapping from 0 .. nhit - 1 to healpix indices
-        reverse_map = np.where(mask>0)[0]
+        reverse_map = np.where(mask > 0)[0]
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
         # here, but I'm not sure how to do that best with our
@@ -292,10 +301,15 @@ class TXSourceNoiseMaps(TXBaseMaps):
         else:
             shear_cols = ['ra', 'dec', 'weight', 'g1', 'g2']
 
-        it = self.combined_iterators(self.config["chunk_rows"],
-                'shear_catalog', 'shear', shear_cols,
-                'shear_tomography_catalog','tomography', ['source_bin'],
-            )
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            'shear_catalog',
+            'shear',
+            shear_cols,
+            'shear_tomography_catalog',
+            'tomography',
+            ['source_bin'],
+        )
         return it
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
@@ -324,10 +338,10 @@ class TXSourceNoiseMaps(TXBaseMaps):
         g2 = data['g2'] * w
 
         # random rotations of the g1, g2 values
-        phi = np.random.uniform(0, 2*np.pi, (n, lensing_realizations))
+        phi = np.random.uniform(0, 2 * np.pi, (n, lensing_realizations))
         c = np.cos(phi)
         s = np.sin(phi)
-        g1r =  c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
+        g1r = c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
         g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
 
         for i in range(n):
@@ -349,12 +363,11 @@ class TXSourceNoiseMaps(TXBaseMaps):
             G2[pix, sb, :] += g2r[i]
             GW[pix, sb] += w[i]
 
-
     def finalize_mappers(self, pixel_scheme, mappers):
         # only one mapper here - we call its finalize method
         # to collect everything
         npix, G1, G2, GW, index_map, reverse_map, nbin_source = mappers
-        lensing_realizations =  self.config["lensing_realizations"]
+        lensing_realizations = self.config["lensing_realizations"]
 
         # Sum everything at root
         if self.comm is not None:
@@ -374,24 +387,26 @@ class TXSourceNoiseMaps(TXBaseMaps):
         for b in range(nbin_source):
             for i in range(lensing_realizations):
 
-                bin_mask = np.where(GW[:, b]>0)
+                bin_mask = np.where(GW[:, b] > 0)
 
                 g1 = G1[:, b, i] / GW[:, b]
                 g2 = G2[:, b, i] / GW[:, b]
 
                 maps["source_noise_maps", f"rotation_{i}/g1_{b}"] = (
-                    reverse_map[bin_mask], g1[bin_mask]
+                    reverse_map[bin_mask],
+                    g1[bin_mask],
                 )
 
                 maps["source_noise_maps", f"rotation_{i}/g2_{b}"] = (
-                    reverse_map[bin_mask], g2[bin_mask]
+                    reverse_map[bin_mask],
+                    g2[bin_mask],
                 )
         return maps
 
 
 class TXExternalLensNoiseMaps(TXBaseMaps):
-    name='TXExternalLensNoiseMaps'
-    
+    name = 'TXExternalLensNoiseMaps'
+
     inputs = [
         ('lens_tomography_catalog', TomographyCatalog),
         ('lens_catalog', HDFFile),
@@ -423,7 +438,7 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
             nbin_lens = f.file['tomography'].attrs['nbin_lens']
 
         # Mapping from 0 .. nhit - 1  to healpix indices
-        reverse_map = np.where(mask>0)[0]
+        reverse_map = np.where(mask > 0)[0]
         # Get a mapping from healpix indices to masked pixel indices
         # This reduces memory usage.  We could use a healsparse array
         # here, but I'm not sure how to do that best with our
@@ -435,16 +450,23 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
         npix = reverse_map.size
         clustering_realizations = self.config["clustering_realizations"]
 
-        ngal_split = np.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
+        ngal_split = np.zeros(
+            (npix, nbin_lens, clustering_realizations, 2), dtype=np.int32
+        )
         # TODO: Clustering weights go here
 
         return (npix, ngal_split, index_map, reverse_map, mask, nbin_lens)
 
     def data_iterator(self):
-        it = self.combined_iterators(self.config["chunk_rows"],
-                'lens_catalog','lens', ['ra', 'dec'],
-                'lens_tomography_catalog','tomography', ['lens_bin'],
-            )
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            'lens_catalog',
+            'lens',
+            ['ra', 'dec'],
+            'lens_tomography_catalog',
+            'tomography',
+            ['lens_bin'],
+        )
         return it
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
@@ -481,7 +503,6 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
 
             for j in range(clustering_realizations):
                 ngal_split[pix, lb, j, split[i]] += 1
-
 
     def finalize_mappers(self, pixel_scheme, mappers):
         # only one mapper here - we call its finalize method
@@ -520,13 +541,9 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                 rho2 = (half2 - mu2) / mu2
 
                 # Save four maps - density splits and ngal splits
-                maps['lens_noise_maps', f"split_{i}/rho1_{b}"] = (
-                    reverse_map, rho1)
-                maps['lens_noise_maps', f"split_{i}/rho2_{b}"] = (
-                    reverse_map, rho2)
-                maps['lens_noise_maps', f"split_{i}/ngal1_{b}"] = (
-                    reverse_map, half1)
-                maps['lens_noise_maps', f"split_{i}/ngal2_{b}"] = (
-                    reverse_map, half2)
+                maps['lens_noise_maps', f"split_{i}/rho1_{b}"] = (reverse_map, rho1)
+                maps['lens_noise_maps', f"split_{i}/rho2_{b}"] = (reverse_map, rho2)
+                maps['lens_noise_maps', f"split_{i}/ngal1_{b}"] = (reverse_map, half1)
+                maps['lens_noise_maps', f"split_{i}/ngal2_{b}"] = (reverse_map, half2)
 
         return maps

@@ -3,6 +3,7 @@ from ..mapping import Mapper
 from ..utils import choose_pixelization
 import healpy
 
+
 def test_mapper():
     # 12 pixels
     nside = 1
@@ -22,7 +23,6 @@ def test_mapper():
             'lens_bin': np.zeros(npix, dtype=float),
             'g1': pix.astype(float) * 2,
             'g2': np.ones(npix) * i,
-
         }
         # same data multiple times so we can
         # get variances
@@ -32,20 +32,19 @@ def test_mapper():
 
     mu_2 = (N - 1) / 2
     # variance
-    var_2 = (N - 1) * (2 * N - 1) / 6 - mu_2**2
+    var_2 = (N - 1) * (2 * N - 1) / 6 - mu_2 ** 2
     # variance on mean
     var_2 /= N
 
     # should see all pixels
     assert np.allclose(pixel, pix)
     # all lens pixels hit once
-    assert np.all(ngal[0]==5)
+    assert np.all(ngal[0] == 5)
     # averaged down
-    assert np.allclose(g1[0], pix*2)
+    assert np.allclose(g1[0], pix * 2)
     assert np.allclose(g2[0], mu_2)
     # no variance for g1, since constant
     # for
     assert np.allclose(var_g1[0], 0.0)
     assert np.allclose(var_g2[0], var_2)
     assert np.allclose(source_weight[0], 5)
-

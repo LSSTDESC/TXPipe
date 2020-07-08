@@ -223,8 +223,8 @@ class TXStandaloneAuxiliaryMaps(TXAuxiliaryMaps):
     ]
 
     config_options = {
-        ** TXAuxiliaryMaps.config_options,
-        ** map_config_options,
+        **TXAuxiliaryMaps.config_options,
+        **map_config_options,
     }
     # instead of reading from config we match the basic maps
     def choose_pixel_scheme(self):

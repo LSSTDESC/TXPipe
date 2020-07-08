@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, ShearCatalog, YamlFile, HDFFile
 import numpy as np
 
+
 class TXRandomPhotozPDF(PipelineStage):
     """
     This is a placeholder for an actual photoz pipeline!
@@ -19,7 +20,8 @@ class TXRandomPhotozPDF(PipelineStage):
     into a general parent class.
 
     """
-    name='TXRandomPhotozPDF'
+
+    name = 'TXRandomPhotozPDF'
 
     inputs = [
         ('photometry_catalog', HDFFile),
@@ -33,13 +35,7 @@ class TXRandomPhotozPDF(PipelineStage):
     # means there is no default value for that parameter and the
     # user must include the parameter in the config file, of that type.
     # Otherwise the entry lists the default value for the parameter.
-    config_options = {
-        'zmax': float,
-        'nz': int,
-        'chunk_rows': 10000,
-        'bands':'ugriz'
-    }
-
+    config_options = {'zmax': float, 'nz': int, 'chunk_rows': 10000, 'bands': 'ugriz'}
 
     def run(self):
         """
@@ -57,13 +53,13 @@ class TXRandomPhotozPDF(PipelineStage):
         zmax = self.config['zmax']
         nz = self.config['nz']
         z = np.linspace(0.0, zmax, nz)
-        
+
         # Open the input catalog and check how many objects
         # we will be running on.
         cat = self.open_input("photometry_catalog")
         nobj = cat['photometry/id'].size
         cat.close()
-        
+
         # Prepare the output HDF5 file
         output_file = self.prepare_output(nobj, z)
 
@@ -74,12 +70,14 @@ class TXRandomPhotozPDF(PipelineStage):
         cols = [f'mag_{band}_lsst{suffix}' for band in bands for suffix in suffices]
 
         # Loop through chunks of the data.
-        # Parallelism is handled in the iterate_input function - 
-        # each processor will only be given the sub-set of data it is 
+        # Parallelism is handled in the iterate_input function -
+        # each processor will only be given the sub-set of data it is
         # responsible for.  The HDF5 parallel output mode means they can
         # all write to the file at once too.
         chunk_rows = self.config['chunk_rows']
-        for start, end, data in self.iterate_hdf('photometry_catalog', "photometry", cols, chunk_rows):
+        for start, end, data in self.iterate_hdf(
+            'photometry_catalog', "photometry", cols, chunk_rows
+        ):
             print(f"Process {self.rank} running photo-z for rows {start}-{end}")
 
             # Compute some mock photo-z PDFs and point estimates
@@ -139,22 +137,22 @@ class TXRandomPhotozPDF(PipelineStage):
 
         # Generate some random median redshifts between 0.2 and 1.0
         medians = np.random.uniform(0.2, 1.0, size=nobj)
-        sigmas = 0.05 * (1+medians)
+        sigmas = 0.05 * (1 + medians)
 
         # Make the array which will contain this chunk of PDFs
-        pdfs = np.empty((nobj,nz), dtype='f4')
+        pdfs = np.empty((nobj, nz), dtype='f4')
 
         # Note that we need metacalibrated versions of
         # the point estimates.  That's why the 5 is there.
-        point_estimates = np.empty((5,nobj), dtype='f4')
+        point_estimates = np.empty((5, nobj), dtype='f4')
 
         # Loop through each object and make a fake PDF
         # for it, saving it to the output space
-        for i,(mu,sigma) in enumerate(zip(medians,sigmas)):
+        for i, (mu, sigma) in enumerate(zip(medians, sigmas)):
             pdf = scipy.stats.lognorm.pdf(z, s=sigma, scale=mu)
             pdfs[i] = pdf
-            point_estimates[:,i] = mu
-        
+            point_estimates[:, i] = mu
+
         return pdfs, point_estimates
 
     def write_output(self, output_file, start, end, pdfs, point_estimates):
@@ -188,10 +186,6 @@ class TXRandomPhotozPDF(PipelineStage):
         group['mu_2p'][start:end] = point_estimates[3]
         group['mu_2m'][start:end] = point_estimates[4]
 
-
-
-
-
     def prepare_output(self, nobj, z):
         """
         Prepare the output HDF5 file for writing.
@@ -215,15 +209,15 @@ class TXRandomPhotozPDF(PipelineStage):
 
         """
         # Open the output file.
-        # This will automatically open using the HDF5 mpi-io driver 
+        # This will automatically open using the HDF5 mpi-io driver
         # if we are running under MPI and the output type is parallel
         f = self.open_output('photoz_pdfs', parallel=True)
-            
+
         # Create the space for output data
         nz = len(z)
         group = f.create_group('pdf')
         group.create_dataset("z", (nz,), dtype='f4')
-        group.create_dataset("pdf", (nobj,nz), dtype='f4')
+        group.create_dataset("pdf", (nobj, nz), dtype='f4')
         group.create_dataset("mu", (nobj,), dtype='f4')
         group.create_dataset("mu_1p", (nobj,), dtype='f4')
         group.create_dataset("mu_1m", (nobj,), dtype='f4')
@@ -231,7 +225,7 @@ class TXRandomPhotozPDF(PipelineStage):
         group.create_dataset("mu_2m", (nobj,), dtype='f4')
 
         # One processor writes the redshift axis to output.
-        if self.rank==0:
+        if self.rank == 0:
             group['z'][:] = z
 
         return f

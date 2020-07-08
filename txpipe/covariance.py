@@ -6,18 +6,19 @@ import os
 import pickle
 
 # require TJPCov to be in PYTHONPATH
-d2r=np.pi/180
+d2r = np.pi / 180
 
 # Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix
 
+
 class TXFourierGaussianCovariance(PipelineStage):
-    name='TXFourierGaussianCovariance'
-    do_xi=False
+    name = 'TXFourierGaussianCovariance'
+    do_xi = False
 
     inputs = [
-        ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
-        ('twopoint_data_fourier', SACCFile), # For the binning information
-        ('tracer_metadata', HDFFile),        # For metadata
+        ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
+        ('twopoint_data_fourier', SACCFile),  # For the binning information
+        ('tracer_metadata', HDFFile),  # For metadata
     ]
 
     outputs = [
@@ -27,7 +28,6 @@ class TXFourierGaussianCovariance(PipelineStage):
     config_options = {
         'pickled_wigner_transform': '',
     }
-
 
     def run(self):
         import pyccl as ccl
@@ -41,23 +41,25 @@ class TXFourierGaussianCovariance(PipelineStage):
         # read binning
         two_point_data = self.read_sacc()
 
-        # read the n(z) and f_sky from the source summary stats        
+        # read the n(z) and f_sky from the source summary stats
         meta = self.read_number_statistics()
-        
+
         # Binning choices. The ell binning is a linear piece with all the
-        # integer values up to 500 -- these are from firecrown, might need 
+        # integer values up to 500 -- these are from firecrown, might need
         # to change later
         meta['ell'] = np.concatenate(
-            (np.linspace(2, 500-1, 500-2), 
-             np.logspace(np.log10(500), np.log10(6e4), 500))
+            (
+                np.linspace(2, 500 - 1, 500 - 2),
+                np.logspace(np.log10(500), np.log10(6e4), 500),
             )
+        )
 
         # Theta binning - log spaced between 1 .. 300 arcmin.
-        meta['theta'] = np.logspace(np.log10(1/60), np.log10(300./60), 3000) 
+        meta['theta'] = np.logspace(np.log10(1 / 60), np.log10(300.0 / 60), 3000)
 
-        #C_ell covariance
+        # C_ell covariance
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
-        
+
         self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
@@ -65,9 +67,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
 
-
     def read_cosmology(self):
         import pyccl as ccl
+
         filename = self.get_input('fiducial_cosmology')
         cosmo = ccl.Cosmology.read_yaml(filename)
 
@@ -77,6 +79,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def read_sacc(self):
         import sacc
+
         f = self.get_input('twopoint_data_fourier')
         two_point_data = sacc.Sacc.load_fits(f)
 
@@ -95,7 +98,6 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         return two_point_data
 
-
     def read_number_statistics(self):
         input_data = self.open_input('tracer_metadata')
 
@@ -113,9 +115,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         input_data.close()
 
         # area in steradians and sky fraction
-        area = area_deg2 * np.radians(1)**2
-        area_arcmin2 = area_deg2 * 60**2
-        full_sky = 4*np.pi
+        area = area_deg2 * np.radians(1) ** 2
+        area_arcmin2 = area_deg2 * 60 ** 2
+        full_sky = 4 * np.pi
         f_sky = area / full_sky
 
         # Density information from counts
@@ -149,8 +151,9 @@ class TXFourierGaussianCovariance(PipelineStage):
     def get_tracer_info(self, cosmo, meta, two_point_data):
         # Generates CCL tracers from n(z) information in the data file
         import pyccl as ccl
-        ccl_tracers={}
-        tracer_noise={}
+
+        ccl_tracers = {}
+        tracer_noise = {}
 
         for tracer in two_point_data.tracers:
 
@@ -166,42 +169,55 @@ class TXFourierGaussianCovariance(PipelineStage):
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
                 n_eff = meta['n_eff'][nbin]
-                ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
-                tracer_noise[tracer] = sigma_e**2 / n_eff
+                ccl_tracers[tracer] = ccl.WeakLensingTracer(
+                    cosmo, dndz=(z, nz)
+                )  # CCL automatically normalizes dNdz
+                tracer_noise[tracer] = sigma_e ** 2 / n_eff
 
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
             elif 'lens' in tracer:
-                b = 1.0*np.ones(len(z))  # place holder
+                b = 1.0 * np.ones(len(z))  # place holder
                 n_gal = meta['n_lens'][nbin]
                 tracer_noise[tracer] = 1 / n_gal
-                ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
-        
+                ccl_tracers[tracer] = ccl.NumberCountsTracer(
+                    cosmo, has_rsd=False, dndz=(z, nz), bias=(z, b)
+                )
+
         return ccl_tracers, tracer_noise
 
     def get_spins(self, tracer_comb):
         # Get the Wigner Transform factors
-        WT_factors={}
-        WT_factors['lens','source'] = (0, 2)
-        WT_factors['source','lens'] = (2, 0) #same as (0,2)
-        WT_factors['source','source'] = {'plus':(2,2), 'minus':(2, -2)}
-        WT_factors['lens','lens'] = (0, 0)
+        WT_factors = {}
+        WT_factors['lens', 'source'] = (0, 2)
+        WT_factors['source', 'lens'] = (2, 0)  # same as (0,2)
+        WT_factors['source', 'source'] = {'plus': (2, 2), 'minus': (2, -2)}
+        WT_factors['lens', 'lens'] = (0, 0)
 
-        tracers=[]
+        tracers = []
         for i in tracer_comb:
             if 'lens' in i:
-                tracers+=['lens']
+                tracers += ['lens']
             if 'source' in i:
-                tracers+=['source']
+                tracers += ['source']
         return WT_factors[tuple(tracers)]
 
-    # compute a single covariance matrix for a given pair of C_ell or xi.  
-    def compute_covariance_block(self, cosmo, meta, ell_bins,
-        tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
+    # compute a single covariance matrix for a given pair of C_ell or xi.
+    def compute_covariance_block(
+        self,
+        cosmo,
+        meta,
+        ell_bins,
+        tracer_comb1=None,
+        tracer_comb2=None,
+        ccl_tracers=None,
+        tracer_Noise=None,
         two_point_data=None,
-        xi_plus_minus1='plus', xi_plus_minus2='plus',
-        cache=None, WT=None,
-        ):
+        xi_plus_minus1='plus',
+        xi_plus_minus2='plus',
+        cache=None,
+        WT=None,
+    ):
         import pyccl as ccl
         from tjpcov import bin_cov
 
@@ -221,9 +237,9 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # Getting all the C_ell that we need, saving the results in a cache
         # for later re-use
-        for i in (0,1):
-            for j in (0,1):
-                local_key = reindex[(i,j)]
+        for i in (0, 1):
+            for j in (0, 1):
+                local_key = reindex[(i, j)]
                 # For symmetric pairs we may have saved the C_ell the other
                 # way around, so try both keys
                 cache_key1 = (tracer_comb1[i], tracer_comb2[j])
@@ -243,18 +259,25 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # The shape noise C_ell values.
         # These are zero for cross bins and as computed earlier for auto bins
-        SN={}
-        SN[13] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
-        SN[24] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
-        SN[14] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
-        SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
-
+        SN = {}
+        SN[13] = (
+            tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
+        )
+        SN[24] = (
+            tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
+        )
+        SN[14] = (
+            tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
+        )
+        SN[23] = (
+            tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
+        )
 
         # The overall normalization factor at the front of the matrix
         if self.do_xi:
             norm = np.pi * 4 * meta['f_sky']
-        else: 
-            norm = (2*ell + 1) * np.gradient(ell) * meta['f_sky']
+        else:
+            norm = (2 * ell + 1) * np.gradient(ell) * meta['f_sky']
 
         # The coupling is an identity matrix at least when we neglect
         # the mask
@@ -268,8 +291,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov[1423] = np.outer(cl[14] + SN[14], cl[23] + SN[23]) * coupling_mat[1423]
 
         # for shear-shear components we also add a B-mode contribution
-        first_is_shear_shear = ('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])
-        second_is_shear_shear = ('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1])
+        first_is_shear_shear = ('source' in tracer_comb1[0]) and (
+            'source' in tracer_comb1[1]
+        )
+        second_is_shear_shear = ('source' in tracer_comb2[0]) and (
+            'source' in tracer_comb2[1]
+        )
 
         if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
             # this adds the B-mode shape noise contribution.
@@ -278,13 +305,21 @@ class TXFourierGaussianCovariance(PipelineStage):
             if xi_plus_minus1 != xi_plus_minus2:
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
-                Bmode_F=-1 
-            # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
+                Bmode_F = -1
+            # below the we multiply zero to maintain the shape of the Cl array, these are effectively
             # B-modes
-            cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
-            cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
+            cov[1324] += (
+                np.outer(cl[13] * 0 + SN[13], cl[24] * 0 + SN[24])
+                * coupling_mat[1324]
+                * Bmode_F
+            )
+            cov[1423] += (
+                np.outer(cl[14] * 0 + SN[14], cl[23] * 0 + SN[23])
+                * coupling_mat[1423]
+                * Bmode_F
+            )
 
-        cov['final']=cov[1423]+cov[1324]
+        cov['final'] = cov[1423] + cov[1324]
 
         if self.do_xi:
             s1_s2_1 = self.get_spins(tracer_comb1)
@@ -299,27 +334,28 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
             # Use these terms to project the covariance from C_ell to xi(theta)
-            th, cov['final']=WT.projected_covariance2(
-                l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
+            th, cov['final'] = WT.projected_covariance2(
+                l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final']
+            )
 
         # Normalize
         cov['final'] /= norm
 
-        # Put the covariance into bins. 
+        # Put the covariance into bins.
         # This is optional in the case of a C_ell covariance (only if bins in ell are
         # supplied, otherwise the matrix is for each ell value individually).  It is
         # required for real-space covariances since these are always binned.
         if self.do_xi:
-            thb, cov['final_b'] = bin_cov(r=th/d2r, r_bins=ell_bins, cov=cov['final'])
+            thb, cov['final_b'] = bin_cov(r=th / d2r, r_bins=ell_bins, cov=cov['final'])
         else:
             if ell_bins is not None:
                 lb, cov['final_b'] = bin_cov(r=ell, r_bins=ell_bins, cov=cov['final'])
         return cov
-    
+
     def get_angular_bins(self, two_point_data):
         # Assume that the ell binning is the same for each of the bins.
         # This is true in the current pipeline.
-        X = two_point_data.get_data_points('galaxy_shear_cl_ee',i=0,j=0)
+        X = two_point_data.get_data_points('galaxy_shear_cl_ee', i=0, j=0)
         # Further assume that the ell ranges are contiguous, so that
         # the max value of one window is the min value of the next.
         # So we just need the lower edges of each bin and then the
@@ -353,11 +389,11 @@ class TXFourierGaussianCovariance(PipelineStage):
         print("Generating Wigner Transform.")
         with threadpoolctl.threadpool_limits(1):
             WT = wigner_transform(
-                l = meta['ell'],
-                theta = meta['theta'] * d2r,
-                s1_s2 = [(2,2), (2,-2), (0,2), (2,0), (0,0)],
-                ncpu = num_processes,
-                )
+                l=meta['ell'],
+                theta=meta['theta'] * d2r,
+                s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
+                ncpu=num_processes,
+            )
             print("Computed Wigner Transform.")
 
         if path:
@@ -367,20 +403,20 @@ class TXFourierGaussianCovariance(PipelineStage):
                 sys.stderr.write(f"Could not save wigner transform to {path}")
         return WT
 
-
-    #compute all the covariances and then combine them into one single giant matrix
+    # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data):
         from tjpcov import bin_cov
 
-        ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
+        ccl_tracers, tracer_Noise = self.get_tracer_info(
+            cosmo, meta, two_point_data=two_point_data
+        )
         # we will loop over all these
-        tracer_combs = two_point_data.get_tracer_combinations() 
+        tracer_combs = two_point_data.get_tracer_combinations()
         N2pt = len(tracer_combs)
 
-
         WT = self.make_wigner_transform(meta)
-        
-        # the bit below is just counting the number of 2pt functions, and accounting 
+
+        # the bit below is just counting the number of 2pt functions, and accounting
         # for the fact that xi needs to be double counted
         N2pt0 = 0
         if self.do_xi:
@@ -395,12 +431,14 @@ class TXFourierGaussianCovariance(PipelineStage):
         ell_bins = self.get_angular_bins(two_point_data)
         Nell_bins = len(ell_bins) - 1
 
-
-        cov_full=np.zeros((Nell_bins*N2pt, Nell_bins*N2pt))
+        cov_full = np.zeros((Nell_bins * N2pt, Nell_bins * N2pt))
         count_xi_pm1 = 0
         count_xi_pm2 = 0
         cl_cache = {}
-        xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
+        xi_pm = [
+            [('plus', 'plus'), ('plus', 'minus')],
+            [('minus', 'plus'), ('minus', 'minus')],
+        ]
 
         # Look through the chunk of matrix, tracer pair by tracer pair
         for i in range(N2pt):
@@ -411,20 +449,26 @@ class TXFourierGaussianCovariance(PipelineStage):
 
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
-                print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
+                print(
+                    f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})"
+                )
 
                 if j == N2pt0:
                     count_xi_pm2 = 1
 
-                if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
+                if (
+                    self.do_xi
+                    and ('source' in tracer_comb1)
+                    and ('source' in tracer_comb2)
+                ):
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
-                        ell_bins, 
+                        ell_bins,
                         tracer_comb1=tracer_comb1,
                         tracer_comb2=tracer_comb2,
                         ccl_tracers=ccl_tracers,
-                        tracer_Noise=tracer_Noise, 
+                        tracer_Noise=tracer_Noise,
                         two_point_data=two_point_data,
                         xi_plus_minus1=xi_pm[count_xi_pm1, count_xi_pm2][0],
                         xi_plus_minus2=xi_pm[count_xi_pm1, count_xi_pm2][1],
@@ -459,23 +503,24 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         try:
             np.linalg.cholesky(cov_full)
-        except:        
-            print("liAnalg.LinAlgError: Covariance not positive definite! "
+        except:
+            print(
+                "liAnalg.LinAlgError: Covariance not positive definite! "
                 "Most likely this is a problem in xim. "
-                "We will continue for now but this needs to be fixed.")
+                "We will continue for now but this needs to be fixed."
+            )
 
         return cov_full
 
 
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):
-    name='TXRealGaussianCovariance'
+    name = 'TXRealGaussianCovariance'
     do_xi = True
 
     inputs = [
-        ('fiducial_cosmology', YamlFile),     # For the cosmological parameters
-        ('twopoint_data_real', SACCFile),     # For the binning information
-        ('tracer_metadata', HDFFile),         # For metadata
-
+        ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
+        ('twopoint_data_real', SACCFile),  # For the binning information
+        ('tracer_metadata', HDFFile),  # For metadata
     ]
 
     outputs = [
@@ -483,9 +528,9 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     ]
 
     config_options = {
-        'min_sep':2.5,  # arcmin
-        'max_sep':250,
-        'nbins':20,
+        'min_sep': 2.5,  # arcmin
+        'max_sep': 250,
+        'nbins': 20,
         'pickled_wigner_transform': '',
     }
 
@@ -494,12 +539,16 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
 
     def get_angular_bins(self, two_point_data):
         # this should be changed to read from sacc file
-        th_arcmin = np.logspace(np.log10(self.config['min_sep']), np.log10(self.config['max_sep']), self.config['nbins']+1)
-        return th_arcmin/60.0
-
+        th_arcmin = np.logspace(
+            np.log10(self.config['min_sep']),
+            np.log10(self.config['max_sep']),
+            self.config['nbins'] + 1,
+        )
+        return th_arcmin / 60.0
 
     def read_sacc(self):
         import sacc
+
         f = self.get_input('twopoint_data_real')
         two_point_data = sacc.Sacc.load_fits(f)
 
@@ -515,7 +564,6 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         two_point_data.to_canonical_order()
 
         return two_point_data
-
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output('summary_statistics_real')

@@ -36,7 +36,7 @@ class TXSimpleMask(PipelineStage):
         # Overall mask
         mask = np.logical_and.reduce([mask for _, mask in masks])
 
-        num_hit = (mask.sum() * 1.0)
+        num_hit = mask.sum() * 1.0
         area = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = area / 41252.96125
         print(f"f_sky = {f_sky}")
