@@ -1,6 +1,4 @@
 import numpy as np
-import sacc
-import matplotlib.pyplot as plt
 import copy
 
 W = "galaxy_density_xi"
@@ -23,6 +21,7 @@ types = {
 
 
 def make_axis(i, j, nx, ny, axes):
+    import matplotlib.pyplot as plt
     if i==0 and j==0:
         shares = {}
     elif j==0:
@@ -72,6 +71,7 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 def full_3x2pt_plots(sacc_files, labels, 
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
                      xi=None, fit_bias=False, figures=None):
+    import sacc
     sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
@@ -121,6 +121,7 @@ def full_3x2pt_plots(sacc_files, labels,
     
 
 def axis_setup(a, i, j, ny, ymin, ymax, name):
+    import matplotlib.pyplot as plt
     if j>0:
         plt.setp(a.get_yticklabels(), visible=False)
     else:
@@ -145,6 +146,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
 
 
 def make_plot(corr, obs_data, theory_data, fig=None):
+    import matplotlib.pyplot as plt
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
 
@@ -166,13 +168,13 @@ def make_plot(corr, obs_data, theory_data, fig=None):
         half_only = True
     elif corr == GAMMA:
         ymin = 5e-7
-        ymax = 2e-3
+        ymax = 2e-2
         name = r'\gamma_T(\theta)'
         auto_only = False
         half_only = False
     elif corr == W:
         ymin = 2e-4
-        ymax = 1e-1
+        ymax = 1e-0
         name = r'w(\theta)'
         auto_only = True
         half_only = False

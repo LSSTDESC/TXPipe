@@ -23,7 +23,7 @@ from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .twopoint import TXGammaTDimStars
 from .twopoint import TXGammaTBrightStars
 from .noise_maps import TXNoiseMaps
-from .test import test_combine
+from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
 from .auxiliary_maps import TXAuxiliaryMaps
 from .map_plots import TXMapPlots
