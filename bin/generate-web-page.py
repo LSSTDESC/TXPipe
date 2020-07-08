@@ -22,28 +22,38 @@ on_nersc = os.environ.get('NERSC_HOST') is not None
 parser = argparse.ArgumentParser("Make a nice web page from outputs")
 # These two args ar ethe same as ceci
 parser.add_argument('name', help='A name for this run')
-parser.add_argument('pipeline_config', help='Pipeline configuration file in YAML format.')
-parser.add_argument('extra_config', nargs='*', help='Over-ride the main pipeline yaml file '
-                    'e.g. launcher.name=cwl')
+parser.add_argument(
+    'pipeline_config', help='Pipeline configuration file in YAML format.'
+)
+parser.add_argument(
+    'extra_config',
+    nargs='*',
+    help='Over-ride the main pipeline yaml file ' 'e.g. launcher.name=cwl',
+)
 
 # These args are specific to this script
-parser.add_argument('--www', default="/global/cfs/cdirs/lsst/www/txpipe/runs",
-                    help='Directory to put results in')
-parser.add_argument('--all', action='store_true', help="Copy large files as well as small")
+parser.add_argument(
+    '--www',
+    default="/global/cfs/cdirs/lsst/www/txpipe/runs",
+    help='Directory to put results in',
+)
+parser.add_argument(
+    '--all', action='store_true', help="Copy large files as well as small"
+)
 parser.add_argument('--group', default='lsst', help="Group to change ownership to")
-
 
 
 class PageMaker:
     def __init__(self, run_name, run_dir, www_base_dir, copy_all=False, group='lsst'):
-        self.run_name = run_name.replace('/','_').replace('\\', '_')
+        self.run_name = run_name.replace('/', '_').replace('\\', '_')
         self.in_dir = Path(run_dir)
         self.out_dir = Path(www_base_dir) / run_name
         self.copy_all = copy_all
         self.group = group
 
     def header(self):
-        return dedent(f"""\
+        return dedent(
+            f"""\
             <HEAD>
                 <TITLE>TXPipe Output {self.run_name}</TITLE>
                 <style>
@@ -69,7 +79,8 @@ class PageMaker:
             <BODY>
                 <H1>
                     <CENTER>TXPipe Output {self.run_name}</CENTER>
-                </H1>""")
+                </H1>"""
+        )
 
     def find_pipeline_outputs(self, pipeline):
         files = []
@@ -87,10 +98,8 @@ class PageMaker:
             files.append([stage_name, Path(output)])
         return files
 
-
     def should_copy_file(self, size):
         return self.copy_all or (size < 1_000_000_000)
-
 
     def assemble(self, files):
         files2 = []
@@ -124,36 +133,36 @@ class PageMaker:
             link = f'{name} [too large to copy here]'
         else:
             link = f'{name} [missing]'
-        return dedent(f"""\
+        return dedent(
+            f"""\
 
             <tr>
                 <th>{link}</th>
                 <th>{stage_name}</th>
                 <th>{size}</th>
-            </tr>""")
-
+            </tr>"""
+        )
 
     def body(self, files):
         lines = [
             "<TABLE>",
-            "<TR>"
-            "<TH>File</TH>",
+            "<TR>" "<TH>File</TH>",
             "<TH>Stage</TH>",
             "<TH>Size / MB</TH>",
             "</TR>",
-            ]
+        ]
         for info in files:
             lines.append(self.row(info))
         lines.append("</TABLE>")
         return '\n'.join(lines)
 
-
-
     def tail(self):
-        return dedent("""
+        return dedent(
+            """
             </BODY>
             </HTML>
-            """)
+            """
+        )
 
     def run(self, pipeline):
         self.out_dir.mkdir(exist_ok=True)
@@ -175,11 +184,12 @@ def main():
         __import__(module)
 
     maker = PageMaker(
-            args.name,
-            pipe_config['output_dir'],
-            args.www,
-            copy_all=args.all,
-            group=args.group)
+        args.name,
+        pipe_config['output_dir'],
+        args.www,
+        copy_all=args.all,
+        group=args.group,
+    )
 
     # need to update this when we merge ceci 1.0 - much cleaner
     pipeline = ceci.Pipeline(pipe_config['stages'], None)

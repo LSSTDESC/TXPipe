@@ -21,7 +21,7 @@ example_tracer = S.get_tracer_combinations()[0][0]
 zmin = 0
 zmax = 4.0
 nz = 400
-dz = zmax/nz
+dz = zmax / nz
 z = np.arange(zmin, zmax, dz)
 
 
@@ -42,17 +42,17 @@ chunk_size = 1_000_000
 s = 0
 while True:
     e = s + chunk_size
-    print(s,e)
+    print(s, e)
     zt = photo['photometry/redshift_true'][s:e]
     source_bin = tomo['tomography/source_bin'][s:e]
     lens_bin = tomo['tomography/lens_bin'][s:e]
 
     for i in range(nbin_source):
-        w = np.where(source_bin==i)
+        w = np.where(source_bin == i)
         count, _ = np.histogram(zt[w], bins=nz, range=(zmin, zmax))
         nz_source[i] += count
     for i in range(nbin_lens):
-        w = np.where(lens_bin==i)
+        w = np.where(lens_bin == i)
         count, _ = np.histogram(zt[w], bins=nz, range=(zmin, zmax))
         nz_lens[i] += count
     s = e

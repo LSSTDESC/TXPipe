@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 import argparse
+
 parser = argparse.ArgumentParser(description='Cut out a subset')
 
 ra_min = 60
@@ -22,7 +23,7 @@ def trim_file(input_file, output_file, group_name, thin):
     print("read RA", ra.size)
     dec = group_in['dec'][:]
     print("read dec")
-    w  = ra > ra_min
+    w = ra > ra_min
     w &= ra < ra_max
     w &= dec > dec_min
     w &= dec < dec_max
@@ -38,6 +39,8 @@ def trim_file(input_file, output_file, group_name, thin):
 
 
 if __name__ == '__main__':
-    trim_file('photometry_catalog.hdf5', 'example_photometry_catalog.hdf5', 'photometry', 5)
+    trim_file(
+        'photometry_catalog.hdf5', 'example_photometry_catalog.hdf5', 'photometry', 5
+    )
     trim_file('shear_catalog.hdf5', 'example_shear_catalog.hdf5', 'photometry', 5)
     trim_file('star_catalog.hdf5', 'example_star_catalog.hdf5', 'stars', 5)

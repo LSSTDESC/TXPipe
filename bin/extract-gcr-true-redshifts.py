@@ -1,6 +1,6 @@
 # Modify these to use different data sets:
-cat_name='cosmoDC2_v1.0'
-shear_name='/global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/inputs-cosmoDC2/shear_catalog.fits'
+cat_name = 'cosmoDC2_v1.0'
+shear_name = '/global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/inputs-cosmoDC2/shear_catalog.fits'
 z_name = 'Z.npy'
 
 import GCRCatalogs
@@ -50,13 +50,13 @@ n = 100000
 
 max_size = ext.get_nrows()
 Z = np.zeros(max_size)
-cur=0
+cur = 0
 print(f"max size = {max_size}")
 
-while (pos < max_size):
+while pos < max_size:
     # load a chunk of galaxy IDs
     print(f"Loading from {pos}")
-    ids = ext['id'][pos:pos+n]
+    ids = ext['id'][pos : pos + n]
     pos += n
 
     # Lookup the z for each one.  If we have reached the end of our
@@ -72,5 +72,5 @@ while (pos < max_size):
             x += 1
         Z[cur] = z
         cur += 1
-        
+
 np.save(z_name, Z)
