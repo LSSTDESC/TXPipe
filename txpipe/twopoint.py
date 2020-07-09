@@ -1769,7 +1769,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
     """
     name = 'TXSCIA'
     inputs = [
-        ('shear_catalog', MetacalCatalog),
+        ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('lens_tomography_catalog', TomographyCatalog),
