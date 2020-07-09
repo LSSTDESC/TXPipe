@@ -140,7 +140,7 @@ class TXRandomCat(PipelineStage):
 class TXRandomCat_source(PipelineStage):
     name='TXRandomCat_source'
     inputs = [
-        ('diagnostic_maps', DiagnosticMaps),
+        ('aux_maps', MapsFile),
         ('tracer_metadata', HDFFile),       
         ('shear_photoz_stack', HDFFile),
     ]
