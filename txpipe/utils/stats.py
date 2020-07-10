@@ -80,6 +80,8 @@ class ParallelStatsCalculator:
             The number of bins (or pixels) in which statistics will be calculated
         sparse: bool, optional
             Whether to use a sparse representation of the arrays, internally and returned.
+        weighted: bool, optional
+            Whether to expect weights along with the data and produce weighted stats
         """
         self.size = size
         self.sparse = sparse
@@ -87,13 +89,14 @@ class ParallelStatsCalculator:
         if sparse:
             import scipy.sparse
             self._mean = SparseArray()
-            self._count = SparseArray()
+            self._weight = SparseArray()
             self._M2 = SparseArray()
+
             if self.weighted:
                 self._W2 = SparseArray()
         else:
             self._mean = np.zeros(size)
-            self._count = np.zeros(size)
+            self._weight = np.zeros(size)
             self._M2 = np.zeros(size)
             if self.weighted:
                 self._W2 = np.zeros(size)
@@ -122,10 +125,6 @@ class ParallelStatsCalculator:
             An array of the computed mean for each bin
         variance: array or SparseArray
             An array of the computed variance for each bin
-
-            
-
-
         """
 
         with np.errstate(divide='ignore',invalid='ignore'):
@@ -156,9 +155,9 @@ class ParallelStatsCalculator:
             for value, w in zip(values, weights):
                 if w == 0:
                     continue
-                self._count[pixel] += w
+                self._weight[pixel] += w
                 delta = value - self._mean[pixel]
-                self._mean[pixel] += (w / self._count[pixel]) * delta
+                self._mean[pixel] += (w / self._weight[pixel]) * delta
                 delta2 = value - self._mean[pixel]
                 self._M2[pixel] += w * delta * delta2
                 self._W2[pixel] += w*w
@@ -166,9 +165,9 @@ class ParallelStatsCalculator:
             if weights is not None:
                 raise ValueError("No weights expected n ParallelStatsCalculator")
             for value in values:
-                self._count[pixel] += 1
+                self._weight[pixel] += 1
                 delta = value - self._mean[pixel]
-                self._mean[pixel] += delta / self._count[pixel]
+                self._mean[pixel] += delta / self._weight[pixel]
                 delta2 = value - self._mean[pixel]
                 self._M2[pixel] += delta * delta2
 
@@ -189,13 +188,13 @@ class ParallelStatsCalculator:
             An array of the computed variance for each bin
 
         """
-        variance = self._M2 / self._count
+        variance = self._M2 / self._weight
         if not self.sparse:
             if self.weighted:
-                neff = self._count**2 / self._W2
+                neff = self._weight**2 / self._W2
                 bad = neff <= 1.000001
             else:
-                bad = self._count < 2
+                bad = self._weight < 2
             variance[bad] = np.nan
 
         return variance
@@ -224,8 +223,8 @@ class ParallelStatsCalculator:
 
         """
         if comm is None:
-            results = self._count, self._mean, self._get_variance()
-            self._mean[self._count == 0] = np.nan        
+            results = self._weight, self._mean, self._get_variance()
+            self._mean[self._weight == 0] = np.nan
             del self._M2
             return results
         
@@ -243,8 +242,8 @@ class ParallelStatsCalculator:
 
 
         if rank > 0:
-            send(self._count)
-            del self._count
+            send(self._weight)
+            del self._weight
             send(self._mean)
             del self._mean
             send(self._M2)
@@ -258,7 +257,7 @@ class ParallelStatsCalculator:
                 mean = None
                 variance = None
         else:
-            weight = self._count
+            weight = self._weight
             mean = self._mean
             sq = self._M2
             if not self.sparse:
@@ -281,7 +280,7 @@ class ParallelStatsCalculator:
                 print(f"Done rank {i}")
 
             variance = sq / weight
-            mean[weight == 0] = np.nan        
+            mean[weight == 0] = np.nan
 
         if mode == 'allgather':
             if self.sparse:
@@ -304,13 +303,12 @@ class ParallelStatsCalculator:
         return weight, mean, sq
 
 
-
     def _calculate_serial(self, values_iterator):
         for pixel, values in values_iterator:
             self.add_data(pixel, values)
 
         variance = self._get_variance()
-        return self._count, self._mean, variance
+        return self._weight, self._mean, variance
 
 
     def _calculate_parallel(self, parallel_values_iterator, comm, mode):
