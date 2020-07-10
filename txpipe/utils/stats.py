@@ -1,10 +1,11 @@
-#coding: utf-8
+# coding: utf-8
 """
 A collection of statistical tools that may be useful     across TXPipe.
 
 """
 import numpy as np
 from .sparse import SparseArray
+
 
 class ParallelHistogram:
     def __init__(self, edges):
@@ -16,7 +17,7 @@ class ParallelHistogram:
         b = np.digitize(x, self.edges) - 1
         n = self.size
         for b_i in b:
-            if b_i>=0 and b_i < n:
+            if b_i >= 0 and b_i < n:
                 self.counts[b_i] += 1
 
     def collect(self, comm=None):
@@ -31,6 +32,7 @@ class ParallelHistogram:
         else:
             comm.Reduce(counts, None)
             return None
+
 
 class ParallelStatsCalculator:
     """ParallelStatsCalculator is a parallel, on-line calculator for mean
@@ -71,6 +73,7 @@ class ParallelStatsCalculator:
         For manual usage - combine sequences of the statistics from different processors
 
     """
+
     def __init__(self, size, sparse=False, weighted=False):
         """Create a statistics calcuator.
         
@@ -88,6 +91,7 @@ class ParallelStatsCalculator:
         self.weighted = weighted
         if sparse:
             import scipy.sparse
+
             self._mean = SparseArray()
             self._weight = SparseArray()
             self._M2 = SparseArray()
@@ -101,7 +105,7 @@ class ParallelStatsCalculator:
             if self.weighted:
                 self._W2 = np.zeros(size)
 
-    def calculate(self, values_iterator, comm=None, mode='gather'):
+    def calculate(self, values_iterator, comm=None, mode="gather"):
         """ Calculate statistics of an input data set.
 
         Operates on an iterator, which is expected to repeatedly yield
@@ -127,14 +131,15 @@ class ParallelStatsCalculator:
             An array of the computed variance for each bin
         """
 
-        with np.errstate(divide='ignore',invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             if comm is None:
                 count, mean, variance = self._calculate_serial(values_iterator)
                 return count, mean, variance
             else:
-                count, mean, variance = self._calculate_parallel(values_iterator, comm, mode)
+                count, mean, variance = self._calculate_parallel(
+                    values_iterator, comm, mode
+                )
                 return count, mean, variance
-
 
     def add_data(self, pixel, values, weights=None):
         """Designed for manual use - in general prefer the calculate method.
@@ -160,7 +165,7 @@ class ParallelStatsCalculator:
                 self._mean[pixel] += (w / self._weight[pixel]) * delta
                 delta2 = value - self._mean[pixel]
                 self._M2[pixel] += w * delta * delta2
-                self._W2[pixel] += w*w
+                self._W2[pixel] += w * w
         else:
             if weights is not None:
                 raise ValueError("No weights expected n ParallelStatsCalculator")
@@ -170,8 +175,6 @@ class ParallelStatsCalculator:
                 self._mean[pixel] += delta / self._weight[pixel]
                 delta2 = value - self._mean[pixel]
                 self._M2[pixel] += delta * delta2
-
-
 
     def _get_variance(self):
         """Designed for manual use - in general prefer the calculate method.
@@ -191,7 +194,7 @@ class ParallelStatsCalculator:
         variance = self._M2 / self._weight
         if not self.sparse:
             if self.weighted:
-                neff = self._weight**2 / self._W2
+                neff = self._weight ** 2 / self._W2
                 bad = neff <= 1.000001
             else:
                 bad = self._weight < 2
@@ -199,8 +202,7 @@ class ParallelStatsCalculator:
 
         return variance
 
-
-    def collect(self, comm, mode='gather'):
+    def collect(self, comm, mode="gather"):
         """Designed for manual use - in general prefer the calculate method.
         
         Combine together statistics from different processors into one.
@@ -227,19 +229,20 @@ class ParallelStatsCalculator:
             self._mean[self._weight == 0] = np.nan
             del self._M2
             return results
-        
+
         rank = comm.Get_rank()
         size = comm.Get_size()
 
-        if mode not in ['gather', 'allgather']:
-            raise ValueError("mode for ParallelStatsCalculator.collect must be"
-                             "'gather' or 'allgather'")
+        if mode not in ["gather", "allgather"]:
+            raise ValueError(
+                "mode for ParallelStatsCalculator.collect must be"
+                "'gather' or 'allgather'"
+            )
 
         if self.sparse:
             send = lambda x: comm.send(x, dest=0)
         else:
             send = lambda x: comm.Send(x, dest=0)
-
 
         if rank > 0:
             send(self._weight)
@@ -248,7 +251,7 @@ class ParallelStatsCalculator:
             del self._mean
             send(self._M2)
             del self._M2
-            if mode == 'allgather' and not self.sparse:
+            if mode == "allgather" and not self.sparse:
                 weight = np.empty(self.size)
                 mean = np.empty(self.size)
                 variance = np.empty(self.size)
@@ -282,7 +285,7 @@ class ParallelStatsCalculator:
             variance = sq / weight
             mean[weight == 0] = np.nan
 
-        if mode == 'allgather':
+        if mode == "allgather":
             if self.sparse:
                 weight, mean, variance = comm.bcast([weight, mean, variance])
             else:
@@ -302,14 +305,12 @@ class ParallelStatsCalculator:
 
         return weight, mean, sq
 
-
     def _calculate_serial(self, values_iterator):
         for pixel, values in values_iterator:
             self.add_data(pixel, values)
 
         variance = self._get_variance()
         return self._weight, self._mean, variance
-
 
     def _calculate_parallel(self, parallel_values_iterator, comm, mode):
         # Each processor calculates the values for its bits of data
@@ -325,6 +326,7 @@ class ParallelSum:
 
         if sparse:
             import scipy.sparse
+
             self._sum = SparseArray()
             self._count = SparseArray()
         else:
@@ -336,18 +338,18 @@ class ParallelSum:
             self._count[pixel] += 1
             self._sum[pixel] += value
 
-    def collect(self, comm, mode='gather'):
+    def collect(self, comm, mode="gather"):
         if comm is None:
             return self._count, self._sum
 
         if self.sparse:
-            if mode == 'allgather':
+            if mode == "allgather":
                 self._count = comm.allreduce(self._count)
                 self._sum = comm.allreduce(self._count)
             else:
                 self._count = comm.reduce(self._count)
                 self._sum = comm.reduce(self._count)
         else:
-            in_place_reduce(self._count, comm, allreduce=(mode == 'allgather'))
+            in_place_reduce(self._count, comm, allreduce=(mode == "allgather"))
 
         return self._count, self._sum
