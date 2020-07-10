@@ -166,7 +166,6 @@ class ParallelCalibratorMetacal:
         self.R = []
         self.S = []
         self.counts = []
-        self.weights = []
         self.delta_gamma = delta_gamma
 
     def add_data(self, data, *args, **kwargs):
@@ -198,7 +197,6 @@ class ParallelCalibratorMetacal:
 
         g1 = data_00['mcal_g1']
         g2 = data_00['mcal_g2']
-        weight = data_00['weight']
 
         # Selector can return several reasonable ways to choose
         # objects - where result, boolean mask, integer indices
@@ -230,10 +228,9 @@ class ParallelCalibratorMetacal:
         R[:,1,0] = (data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]) / self.delta_gamma
         R[:,1,1] = (data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]) / self.delta_gamma
 
-        self.R.append(np.average(R,axis=0, weights=weight[sel_00]))
+        self.R.append(R.mean(axis=0))
         self.S.append(S)
         self.counts.append(n)
-        self.weights.append(weight.sum())
 
         return sel_00
 
@@ -257,28 +254,25 @@ class ParallelCalibratorMetacal:
         if comm is not None:
             self.R = sum(comm.allgather(self.R), [])
             self.S = sum(comm.allgather(self.S), [])
-            self.weights = sum(comm.allgather(self.weights), [])
             self.counts = sum(comm.allgather(self.counts), [])
 
         R_sum = np.zeros((2,2))
         S_sum = np.zeros((2,2))
         N = 0
-        W = 0.0
 
-        # Find the correctly weighted averages of all the values we have.
-        for R, S, w, n in zip(self.R, self.S, self.weights, self.counts):
+        # Find the correctly weighted averages of all the values we have
+        for R, S, n in zip(self.R, self.S, self.counts):
             # This deals with cases where n is 0 and R/S are NaN
-            N += n
-            if w == 0:
+            if n == 0:
                 continue
-            R_sum += R*w
-            S_sum += S*w
-            W += w
+            R_sum += R*n
+            S_sum += S*n
+            N += n
 
-        R = R_sum / W
-        S = S_sum / W
+        R = R_sum / N
+        S = S_sum / N
         
-        return R, S, W, N
+        return R, S, N
 
 
 class ParallelCalibratorNonMetacal:
@@ -312,7 +306,6 @@ class ParallelCalibratorNonMetacal:
         self.K = []
         self.C = []
         self.counts = []
-        self.weights = []
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -336,7 +329,6 @@ class ParallelCalibratorNonMetacal:
 
         g1 = data_00['g1']
         g2 = data_00['g2']
-        w = data['weight']
 
         # Selector can return several reasonable ways to choose
         # objects - where result, boolean mask, integer indices
@@ -352,16 +344,15 @@ class ParallelCalibratorNonMetacal:
         else:
             raise ValueError("Selection function passed to Calibrator return type not known")
         w_tot = np.sum(data_00['weight'])
-        m = np.sum(w*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
+        m = np.sum(data_00['weight']*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
         K = 1.+m
-        R = 1. - np.sum(w*data_00['sigma_e'])/w_tot
+        R = 1. - np.sum(data_00['weight']*data_00['sigma_e'])/w_tot
         C = np.stack([data_00['c1'],data_00['c2']],axis=1)
 
         self.R.append(R)
         self.K.append(K)
         self.C.append(C.mean(axis=0))
         self.counts.append(n)
-        self.weights.append(w.sum())
 
         return sel_00
 
@@ -391,37 +382,32 @@ class ParallelCalibratorNonMetacal:
             self.K = sum(comm.allgather(self.K), [])
             self.C = sum(comm.allgather(self.C), [])
             self.counts = sum(comm.allgather(self.counts), [])
-            self.weights = sum(comm.allgather(self.weights), [])
 
         R_sum = 0
         K_sum = 0
         C_sum = np.zeros((1,2))
         N = 0
-        W = 0.0
 
         # Find the correctly weighted averages of all the values we have
-        for R, K, C, w, n in zip(self.R, self.K, self.C, self.weights, self.counts):
+        for R, K, C, n in zip(self.R, self.K, self.C, self.counts):
             # This deals with cases where n is 0 and R/S are NaN
-            N += n
-            if w == 0:
-                continue
             if n == 0:
                 continue
-            R_sum += R*w
-            K_sum += K*w
-            C_sum += C*w
-            W += w
+            R_sum += R*n
+            K_sum += K*n
+            C_sum += C*n
+            N += n
 
-        if W == 0:
+        if N == 0:
             R = np.nan
             K = np.nan
         else:
-            R = R_sum / W
-            K = K_sum / W
+            R = R_sum / N
+            K = K_sum / N
 
-        C = C_sum / W
+        C = C_sum / N
         
-        return R, K, C, W, N
+        return R, K, C, N 
 
 
 class MeanShearInBins:
