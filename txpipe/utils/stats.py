@@ -71,7 +71,7 @@ class ParallelStatsCalculator:
         For manual usage - combine sequences of the statistics from different processors
 
     """
-    def __init__(self, size, sparse=False):
+    def __init__(self, size, sparse=False, weighted=False):
         """Create a statistics calcuator.
         
         Parameters
@@ -83,16 +83,20 @@ class ParallelStatsCalculator:
         """
         self.size = size
         self.sparse = sparse
+        self.weighted = weighted
         if sparse:
             import scipy.sparse
             self._mean = SparseArray()
             self._count = SparseArray()
             self._M2 = SparseArray()
+            if self.weighted:
+                self._W2 = SparseArray()
         else:
             self._mean = np.zeros(size)
             self._count = np.zeros(size)
             self._M2 = np.zeros(size)
-
+            if self.weighted:
+                self._W2 = np.zeros(size)
 
     def calculate(self, values_iterator, comm=None, mode='gather'):
         """ Calculate statistics of an input data set.
@@ -133,7 +137,7 @@ class ParallelStatsCalculator:
                 return count, mean, variance
 
 
-    def add_data(self, pixel, values):
+    def add_data(self, pixel, values, weights=None):
         """Designed for manual use - in general prefer the calculate method.
 
         Add a set of values assinged to a given bin or pixel.
@@ -145,14 +149,32 @@ class ParallelStatsCalculator:
         values: sequence
             A sequence (e.g. array or list) of values assigned to this pixel
         """
-        for value in values:
-            self._count[pixel] += 1
-            delta = value - self._mean[pixel]
-            self._mean[pixel] += delta/self._count[pixel]
-            delta2 = value - self._mean[pixel]
-            self._M2[pixel] += delta * delta2
+        if self.weighted:
+            if weights is None:
+                raise ValueError("Weights expected in ParallelStatsCalculator")
 
-    def _finalize(self):
+            for value, w in zip(values, weights):
+                if w == 0:
+                    continue
+                self._count[pixel] += w
+                delta = value - self._mean[pixel]
+                self._mean[pixel] += (w / self._count[pixel]) * delta
+                delta2 = value - self._mean[pixel]
+                self._M2[pixel] += w * delta * delta2
+                self._W2[pixel] += w*w
+        else:
+            if weights is not None:
+                raise ValueError("No weights expected n ParallelStatsCalculator")
+            for value in values:
+                self._count[pixel] += 1
+                delta = value - self._mean[pixel]
+                self._mean[pixel] += delta / self._count[pixel]
+                delta2 = value - self._mean[pixel]
+                self._M2[pixel] += delta * delta2
+
+
+
+    def _get_variance(self):
         """Designed for manual use - in general prefer the calculate method.
 
         Add a set of values assinged to a given bin or pixel.
@@ -167,12 +189,16 @@ class ParallelStatsCalculator:
             An array of the computed variance for each bin
 
         """
-        self._variance = self._M2/ self._count
+        variance = self._M2 / self._count
         if not self.sparse:
-            bad = self._count<2
-            self._variance[bad] = np.nan
-        del self._M2
-        return self._count, self._mean, self._variance        
+            if self.weighted:
+                neff = self._count**2 / self._W2
+                bad = neff < 2
+            else:
+                bad = self._count < 2
+            variance[bad] = np.nan
+
+        return variance
 
 
     def collect(self, comm, mode='gather'):
@@ -197,10 +223,11 @@ class ParallelStatsCalculator:
             An array of the computed variance for each bin
 
         """
-        self._finalize()
-
         if comm is None:
-            return self._count, self._mean, self._variance
+            results = self._count, self._mean, self._get_variance()
+            self._mean[self._count == 0] = np.nan        
+            del self._M2
+            return results
         
         rank = comm.Get_rank()
         size = comm.Get_size()
@@ -209,88 +236,72 @@ class ParallelStatsCalculator:
             raise ValueError("mode for ParallelStatsCalculator.collect must be"
                              "'gather' or 'allgather'")
 
-
         if self.sparse:
             send = lambda x: comm.send(x, dest=0)
         else:
             send = lambda x: comm.Send(x, dest=0)
 
-        if rank==0:            
-            self._S0 = self._variance * self._count
-            self._T0 = self._mean * self._count
-            self._C0 = self._count
+
+        if rank > 0:
+            send(self._count)
+            del self._count
+            send(self._mean)
+            del self._mean
+            send(self._M2)
+            del self._M2
+            if mode == 'allgather' and not self.sparse:
+                weight = np.empty(self.size)
+                mean = np.empty(self.size)
+                variance = np.empty(self.size)
+            else:
+                weight = None
+                mean = None
+                variance = None
+        else:
+            weight = self._count
+            mean = self._mean
+            sq = self._M2
             if not self.sparse:
                 # Buffers for the pieces from the other
                 # processors
-                c1 = np.empty(self.size)
-                m1 = np.empty(self.size)
-                v1 = np.empty(self.size)
-
-        for i in range(1, size):
-            if rank==i:
-                send(self._count)
-                send(self._mean)
-                send(self._variance)
-                del self._count
-                del self._mean
-                del self._variance
-            elif rank==0:
+                w = np.empty(self.size)
+                m = np.empty(self.size)
+                s = np.empty(self.size)
+            for i in range(1, size):
                 if self.sparse:
-                    c1 = comm.recv(source=i)
-                    m1 = comm.recv(source=i)
-                    v1 = comm.recv(source=i)
+                    w = comm.recv(source=i)
+                    m = comm.recv(source=i)
+                    s = comm.recv(source=i)
                 else:
-                    comm.Recv(c1, source=i)
-                    comm.Recv(m1, source=i)
-                    comm.Recv(v1, source=i)
-                self._accumulate(c1, m1, v1)
+                    comm.Recv(w, source=i)
+                    comm.Recv(m, source=i)
+                    comm.Recv(s, source=i)
+
+                weight, mean, sq = self._accumulate(weight, mean, sq, w, m, s)
                 print(f"Done rank {i}")
-        if rank == 0:
-            count, mean, variance = self._C0, self._T0/self._C0, self._S0/self._C0
-            del self._S0, self._C0, self._T0
-            if not self.sparse:
-                mean[count<1] = np.nan
-                variance[count<2] = np.nan
-        else:
-            count, mean, variance = None, None, None
+
+            variance = sq / weight
+            mean[weight == 0] = np.nan        
 
         if mode == 'allgather':
             if self.sparse:
-                count, mean, variance = comm.bcast([count, mean, variance])
+                weight, mean, variance = comm.bcast([weight, mean, variance])
             else:
-                if rank != 0:
-                    count = np.zeros(self.size)
-                    mean = np.zeros(self.size)
-                    variance = np.zeros(self.size)
-                comm.Bcast(count)
+                comm.Bcast(weight)
                 comm.Bcast(mean)
                 comm.Bcast(variance)
 
-        return count, mean, variance
+        return weight, mean, variance
 
-    def _accumulate(self, c1, m1, v1):
-        if not self.sparse:
-            m1[c1<1] = 0
-            v1[c1<2] = 0
+    def _accumulate(self, weight, mean, sq, w, m, s):
+        weight = weight + w
 
-        Cold = self._C0
-        Told = self._T0
+        delta = m - mean
+        mean = mean + (w / weight) * delta
+        delta2 = m - mean
+        sq = sq + s + w * delta * delta2
 
-        Tnext = m1*c1
-        C = Cold + c1
-        T = Told + Tnext
-
-        if self.sparse:
-            self._S0 = self._S0 + v1*c1 + Cold / (Cold*C) * (Told*c1/Cold - Tnext)**2
-        else:
-            w = np.where(c1>0)
-            self._S0[w] = self._S0[w] + v1[w]*c1[w] \
-                 + Cold[w] / (Cold[w]*C[w]) * (Told[w]*c1[w]/Cold[w] - Tnext[w])**2
-
-            w = np.where(Cold==0)
-            self._S0[w] = v1[w]*c1[w]
-        self._C0 = C
-        self._T0 = T
+        return weight, mean, sq
 
 
 
@@ -298,12 +309,14 @@ class ParallelStatsCalculator:
         for pixel, values in values_iterator:
             self.add_data(pixel, values)
 
-        return self._finalize()
+        variance = self._get_variance()
+        return self._count, self._mean, variance
 
 
     def _calculate_parallel(self, parallel_values_iterator, comm, mode):
         # Each processor calculates the values for its bits of data
-        self._calculate_serial(parallel_values_iterator)
+        for pixel, values in parallel_values_iterator:
+            self.add_data(pixel, values)
         return self.collect(comm, mode=mode)
 
 
