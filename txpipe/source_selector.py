@@ -363,7 +363,6 @@ class TXSourceSelector(PipelineStage):
         group = outfile.create_group('tomography')
         group.create_dataset('source_bin', (n,), dtype='i')
         group.create_dataset('source_counts', (nbin_source,), dtype='i')
-        group.create_dataset('source_weights', (nbin_source,), dtype='f')
         group.create_dataset('sigma_e', (nbin_source,), dtype='f')
         group.create_dataset('N_eff', (nbin_source,), dtype='f')
 
@@ -439,8 +438,7 @@ class TXSourceSelector(PipelineStage):
         S = np.zeros((nbin_source, 2, 2))
         K = np.zeros(nbin_source)
         C = np.zeros((nbin_source,1,2))
-        N = np.zeros(nbin_source, dtype=np.int64)
-        W = np.zeros(nbin_source)
+        N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
 
         # this needs fixing
@@ -448,10 +446,10 @@ class TXSourceSelector(PipelineStage):
 
         for i, cal in enumerate(calibrators):
             if self.config['shear_catalog_type']=='metacal':
-                R[i], S[i], W[i], N[i] = cal.collect(self.comm)
+                R[i], S[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
             else:
-                R_scalar[i], K[i], W[i], N[i] = cal.collect(self.comm)
+                R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5*(R_scalar[i] + R_scalar[i])
         
 
@@ -465,7 +463,6 @@ class TXSourceSelector(PipelineStage):
                 group['sigma_e'][:] = sigma_e
                 # These are the same in metacal
                 group['source_counts'][:] = N
-                group['source_weights'][:] = W
                 group['N_eff'][:] = N
             else:
                 group = outfile['response']
@@ -476,7 +473,6 @@ class TXSourceSelector(PipelineStage):
                 group['sigma_e'][:] = sigma_e
                 # These are the same in metacal
                 group['source_counts'][:] = N
-                group['source_weights'][:] = W
                 group['N_eff'][:] = N 
 
     
