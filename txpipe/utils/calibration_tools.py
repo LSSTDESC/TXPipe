@@ -72,6 +72,8 @@ def calculate_shear_response(g1_1p,g1_2p,g1_1m,g1_2m,g2_1p,g2_2p,g2_1m,g2_2m,del
     return R
 
 def apply_metacal_response(R, S, g1, g2):
+    # The values of R are assumed to already
+    # have had appropriate weights included
     from numpy.linalg import pinv
     import numpy as np
     
@@ -81,10 +83,9 @@ def apply_metacal_response(R, S, g1, g2):
     
     # Invert the responsivity matrix
     Rinv = pinv(R_total)
+    mcal_g = (Rinv @ mcal_g.T)
     
-    mcal_g = np.dot(Rinv, np.array(mcal_g).T).T
-    
-    return mcal_g[:,0], mcal_g[:,1]
+    return mcal_g[0], mcal_g[1]
 
 
 def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
@@ -230,7 +231,11 @@ class ParallelCalibratorMetacal:
         R[:,1,0] = (data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]) / self.delta_gamma
         R[:,1,1] = (data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]) / self.delta_gamma
 
-        self.R.append(np.average(R,axis=0, weights=weight[sel_00]))
+        if n:
+            R_mean = np.average(R,axis=0, weights=weight[sel_00])
+        else:
+            R_mean = 0.0
+        self.R.append(R_mean)
         self.S.append(S)
         self.counts.append(n)
         self.weights.append(weight.sum())
@@ -434,9 +439,9 @@ class MeanShearInBins:
         self.size = len(self.limits) - 1
 
         # We have to work out the mean g1, g2 
-        self.g1 = ParallelStatsCalculator(self.size)
-        self.g2 = ParallelStatsCalculator(self.size)
-        self.x  = ParallelStatsCalculator(self.size)
+        self.g1 = ParallelStatsCalculator(self.size, weighted=True)
+        self.g2 = ParallelStatsCalculator(self.size, weighted=True)
+        self.x  = ParallelStatsCalculator(self.size, weighted=True)
 
         if shear_catalog_type=='metacal':
             self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
@@ -455,13 +460,14 @@ class MeanShearInBins:
     def add_data(self, data):
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
+            weight = data['weight'][w]
             if self.shear_catalog_type=='metacal':
-                self.g1.add_data(i, data['mcal_g1'][w])
-                self.g2.add_data(i, data['mcal_g2'][w])
+                self.g1.add_data(i, data['mcal_g1'][w], weight)
+                self.g2.add_data(i, data['mcal_g2'][w], weight)
             else:
-                self.g1.add_data(i, data['g1'][w])
-                self.g2.add_data(i, data['g2'][w])
-            self.x.add_data(i, data[self.x_name][w])
+                self.g1.add_data(i, data['g1'][w], weight)
+                self.g2.add_data(i, data['g2'][w], weight)
+            self.x.add_data(i, data[self.x_name][w], weight)
 
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode='gather')
@@ -476,11 +482,11 @@ class MeanShearInBins:
         for i in range(self.size):
             if self.shear_catalog_type=='metacal':
                 # Tell the Calibrators to work out the responses
-                r, s, _ = self.calibrators[i].collect(comm)
+                r, s, _, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r+s)
             else:
-                r, k, c, _ = self.calibrators[i].collect(comm)
+                r, k, c, _, _ = self.calibrators[i].collect(comm)
                 R.append(r)
                 K.append(k)
                 C.append(c)
