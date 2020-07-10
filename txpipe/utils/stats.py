@@ -193,7 +193,7 @@ class ParallelStatsCalculator:
         if not self.sparse:
             if self.weighted:
                 neff = self._count**2 / self._W2
-                bad = neff < 2
+                bad = neff <= 1.000001
             else:
                 bad = self._count < 2
             variance[bad] = np.nan
@@ -320,35 +320,36 @@ class ParallelStatsCalculator:
         return self.collect(comm, mode=mode)
 
 
-def combine_variances(counts, means, variances, sparse=False):
-# eq 3.1b of Chan, Golub, & LeVeque 1979
-    S = variances[0] * counts[0]
-    T = means[0] * counts[0]
-    C = counts[0]
-    N = len(counts)
-    
-    for i in range(1,N):
-        Told = T
-
-        Tnext = means[i]*counts[i]
-        Cold = C
-        C = Cold + counts[i]
-        T = Told + Tnext
+class ParallelSum:
+    def __init__(self, size, sparse=False):
+        self.size = size
+        self.sparse = sparse
 
         if sparse:
-            S = S + variances[i]*counts[i] \
-            + Cold / (Cold*C) * (Told*counts[i]/Cold - Tnext)**2
+            import scipy.sparse
+            self._sum = SparseArray()
+            self._count = SparseArray()
         else:
-            w = np.where(counts[i]>0)
-            S[w] = S[w] + variances[i][w]*counts[i][w] \
-            + Cold[w] / (Cold[w]*C[w]) * (Told[w]*counts[i][w]/Cold[w] - Tnext[w])**2
+            self._sum = np.zeros(size)
+            self._count = np.zeros(size)
 
-            w = np.where(Cold==0)
-            S[w] = variances[i][w]*counts[i][w]
+    def add_data(self, pixel, values):
+        for value in values:
+            self._count[pixel] += 1
+            self._sum[pixel] += value
 
+    def collect(self, comm, mode='gather'):
+        if comm is None:
+            return self._count, self._sum
 
-    mu = T / C
-    sigma2 = S / C
+        if self.sparse:
+            if mode == 'allgather':
+                self._count = comm.allreduce(self._count)
+                self._sum = comm.allreduce(self._count)
+            else:
+                self._count = comm.reduce(self._count)
+                self._sum = comm.reduce(self._count)
+        else:
+            in_place_reduce(self._count, comm, allreduce=(mode == 'allgather'))
 
-    return C, mu, sigma2
-
+        return self._count, self._sum
