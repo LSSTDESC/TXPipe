@@ -10,13 +10,38 @@ from .mpi_utils import in_place_reduce
 class ParallelHistogram:
     """Make a histogram in parallel.
 
+    Bin edges must be pre-defined and values
+    outside them will be ignored.
+
+    The usual life-cycle of this class is to create it,
+    repeatedly call add_data on chunks, and then call
+    collect to finalize. You can also call the calculate
+    method with an iterator to combine these.
     """
     def __init__(self, edges):
+        """Create the histogram.
+        
+        Parameters
+        ----------
+        edges: sequence
+            histogram bin edges
+        """
         self.edges = edges
         self.size = len(edges) - 1
         self.counts = np.zeros(self.size)
 
     def add_data(self, x, weights=None):
+        """Add a chunk of data to the histogram.
+
+        Weights can optionally be supplied.
+        
+        Parameters
+        ----------
+        x: sequence
+            Values to be histogrammed
+        weights: sequence, optional
+            Weights per value.
+        """
         b = np.digitize(x, self.edges) - 1
         if weights is None:
             weights = np.ones(x.size)
@@ -26,6 +51,18 @@ class ParallelHistogram:
                 self.counts[b_i] += w_i
 
     def collect(self, comm=None):
+        """Finalize and collect together histogram values
+
+        Parameters
+        ----------
+        comm: MPI comm or None
+            The comm, or None for serial
+
+        Returns
+        -------
+        counts: array
+            Total counts/weights per bin
+        """
         counts = self.counts.copy()
 
         if comm is None:
@@ -39,6 +76,27 @@ class ParallelHistogram:
             comm.Reduce(counts, None)
             return None
 
+    def calculate(self, iterator, comm=None):
+        """Run the whole life cycle on an iterator returning data chunks.
+
+        This is equivalent to calling add_data repeatedly and then collect.
+
+        Parameters
+        ----------
+        iterator: iterator
+            Iterator yieding values or (values, weights) pairs
+        comm: MPI comm or None
+            The comm, or None for serial
+
+        Returns
+        --------
+        counts: array
+            Total counts/weights per bin
+        """
+        for values in iterator:
+            self.add_data(*values)
+        return self.collect(comm)
+
 
 class ParallelStatsCalculator:
     """ParallelStatsCalculator is a parallel, on-line calculator for mean
@@ -49,6 +107,11 @@ class ParallelStatsCalculator:
     The calculator is designed for maps and similar systems, so 
     assumes that it is calculating statistics in a number of different bins
     (e.g. pixels).
+
+    The usual life-cycle of this class is to create it,
+    repeatedly call add_data on chunks, and then call
+    collect to finalize. You can also call the calculate
+    method with an iterator to combine these.
 
     If only a few indices in the data are expected to be used, the sparse
     option can be set to change how data is represented and returned to 
@@ -149,7 +212,7 @@ class ParallelStatsCalculator:
                 delta2 = value - self._mean[pixel]
                 self._M2[pixel] += delta * delta2
 
-    def collect(self, comm, mode="gather"):
+    def collect(self, comm=None, mode="gather"):
         """Finalize the statistics calculation, collecting togther results
         from multiple processes.
 
@@ -276,6 +339,33 @@ class ParallelStatsCalculator:
 
         return weight, mean, variance
 
+    def calculate(self, iterator, comm=None, mode="gather"):
+        """Run the whole life cycle on an iterator returning data chunks.
+
+        This is equivalent to calling add_data repeatedly and then collect.
+
+        Parameters
+        ----------
+        iterator: iterator
+            Iterator yieding (pixel, values) or (pixel, values, weights)
+        comm: MPI comm or None
+            The comm, or None for serial
+        mode: str
+            "gather" or "allgather"
+
+        Returns
+        -------
+        weight: array or SparseArray
+            The total weight or count in each bin
+        mean: array or SparseArray
+            An array of the computed mean for each bin
+        variance: array or SparseArray
+            An array of the computed variance for each bin
+        """
+        for values in iterator:
+            self.add_data(*values)
+        return self.collect(comm=comm, mode=mode)
+
     def _get_variance(self):
         # Compute the variance from the previously
         # computed squared deviations. 
@@ -308,6 +398,11 @@ class ParallelSum:
     See ParallelStatsCalculator for details of the motivation.
     Like that code you can specify sparse if only a few pixels
     will be hit.
+
+    The usual life-cycle of this class is to create it,
+    repeatedly call add_data on chunks, and then call
+    collect to finalize. You can also call the calculate
+    method with an iterator to combine these.
 
     Unlike that class you cannot yet supply weights here, since
     we have not yet needed that use case.
@@ -346,7 +441,7 @@ class ParallelSum:
             self._count[pixel] += 1
             self._sum[pixel] += value
 
-    def collect(self, comm, mode="gather"):
+    def collect(self, comm=None, mode="gather"):
         """Finalize the sum and return the counts and the sums.
 
         The "mode" decides whether all processes receive the results
@@ -380,3 +475,26 @@ class ParallelSum:
             in_place_reduce(self._count, comm, allreduce=(mode == "allgather"))
 
         return self._count, self._sum
+
+    def calculate(self, iterator, comm=None, mode="gather"):
+        """Run the whole life cycle on an iterator returning data chunks.
+
+        This is equivalent to calling add_data repeatedly and then collect.
+
+        Parameters
+        ----------
+        iterator: iterator
+            Iterator yielding (pixel, values) pairs
+        comm: MPI comm or None
+            The comm, or None for serial
+
+        Returns
+        -------
+        count: array or SparseArray
+            The number of values hitting each pixel
+        sum: array or SparseArray
+            The total of values hitting each pixel
+        """        
+        for values in iterator:
+            self.add_data(*values)
+        return self.collect(comm=comm, mode=mode)

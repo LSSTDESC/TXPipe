@@ -135,6 +135,7 @@ class TXBaseLensSelector(PipelineStage):
         outfile = self.open_output('lens_tomography_catalog', parallel=True)
         group = outfile.create_group('tomography')
         group.create_dataset('lens_bin', (n,), dtype='i')
+        group.create_dataset('lens_weight', (n,), dtype='f')
         group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
 
         group.attrs['nbin_lens'] = nbin_lens
@@ -165,6 +166,7 @@ class TXBaseLensSelector(PipelineStage):
 
         group = outfile['tomography']
         group['lens_bin'][start:end] = lens_bin
+        group['lens_weight'][start:end] = 1.0
 
     def write_global_values(self, outfile, number_density_stats):
         """

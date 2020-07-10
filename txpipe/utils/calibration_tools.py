@@ -472,11 +472,11 @@ class MeanShearInBins:
         for i in range(self.size):
             if self.shear_catalog_type=='metacal':
                 # Tell the Calibrators to work out the responses
-                r, s, _, _ = self.calibrators[i].collect(comm)
+                r, s, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r+s)
             else:
-                r, k, c, _, _ = self.calibrators[i].collect(comm)
+                r, k, c, _ = self.calibrators[i].collect(comm)
                 R.append(r)
                 K.append(k)
                 C.append(c)
