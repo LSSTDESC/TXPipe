@@ -16,7 +16,7 @@ TXCosmoDC2Mock:
     flip_g2: True # to match metacal
 
 TXIngestRedmagic:
-    lens_zbin_edges: [0.0, 0.2, 0.4]
+    lens_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9]
 
 TXSourceTrueNumberDensity:
     nz: 301
@@ -105,7 +105,7 @@ TXRealGaussianCovariance:
     nbins: 20
 
 TXTwoPoint:
-    binslop: 0.1
+    binslop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -118,7 +118,7 @@ TXTwoPoint:
     shape_noise: True
 
 TXTwoPointLensCat:
-    binslop: 0.1
+    binslop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -128,7 +128,7 @@ TXTwoPointLensCat:
     max_sep: 250
     nbins: 20
     verbose: 0
-    shape_noise: False
+    shape_noise: True
     
 TXTwoPointFourier:
     chunk_rows: 100000
