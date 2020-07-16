@@ -133,13 +133,13 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     if name.startswith(r'C_\ell'):
         a.set_xlabel(r"$C_\ell$")
     else:
-        a.set_xlabel(r"$\theta / $ arcmin")
+        a.set_xlabel(r"$\theta$ [arcmin]")
 
     a.tick_params(axis='both', which='major', length=10, direction='in')
     a.tick_params(axis='both', which='minor', length=5, direction='in')
 
     # Fix
-    a.text(0.1, 0.1, f"Bin {i}-{j}", transform=a.transAxes)
+    a.text(0.1, 0.1, f"{i} - {j}", transform=a.transAxes)
     if i==j==0:
         a.legend()
     a.set_ylim(ymin, ymax)

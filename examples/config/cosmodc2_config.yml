@@ -16,7 +16,7 @@ TXCosmoDC2Mock:
     flip_g2: True # to match metacal
 
 TXIngestRedmagic:
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4]
 
 TXSourceTrueNumberDensity:
     nz: 301
@@ -85,10 +85,24 @@ TXSourceSelector:
     i_hi_cut: 19.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
+    true_z: True
+    shear_prefix: mcal_
 
 TXRandomCat:
     chunk_rows: 100000
     density: 10 # gals per sq arcmin
+
+TXJackknifeCenters:
+    npatch: 40
+
+TXDiagnosticPlots:
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
+
+TXRealGaussianCovariance:
+    min_sep: 2.5
+    max_sep: 250.
+    nbins: 20
 
 TXTwoPoint:
     binslop: 0.1
@@ -101,8 +115,21 @@ TXTwoPoint:
     max_sep: 250
     nbins: 20
     verbose: 0
+    shape_noise: True
 
-
+TXTwoPointLensCat:
+    binslop: 0.1
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    shape_noise: False
+    
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True
