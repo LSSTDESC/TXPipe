@@ -1760,7 +1760,7 @@ class TXJackknifeCenters(PipelineStage):
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
-        self.plot(ra, dec, cat.patch)
+        self.plot(cat.ra, cat.dec, cat.patch)
 
 
 if __name__ == '__main__':
