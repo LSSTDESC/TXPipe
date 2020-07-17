@@ -1713,6 +1713,7 @@ class TXJackknifeCenters(PipelineStage):
     ]
     config_options = {
         'npatch' : 10,
+        'every_nth' : 25,
     }
 
     def plot(self, ra, dec, patch):
@@ -1749,12 +1750,14 @@ class TXJackknifeCenters(PipelineStage):
         f = self.open_input('random_cats')
         group = f['randoms']
         npatch=self.config['npatch']
+        
         print(f"generating {npatch} centers")
         ra = group['ra'][:]
         dec = group['dec'][:]
         cat = treecorr.Catalog(ra = ra,
                                 dec = dec,
                                 ra_units='degree', dec_units = 'degree',
+                                every_nth = self.config['every_nth'],
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
@@ -1776,7 +1779,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('lens_photoz_stack', HDFFile),
         ('random_cats_source', RandomsCatalog),
         ('patch_centers', TextFile),
-        ('photoz_pdfs', PhotozPDFFile),
+        #('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', YamlFile),
     ]
     outputs = [
@@ -1845,9 +1848,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
             data['mcal_g2'] *= -1   
 
         if self.config['3Dcoords']:
-            h = self.open_input('photoz_pdfs')
-            g = h['pdf']
-            data['mu'] = g['mu'][:]
+            #h = self.open_input('photoz_pdfs')
+            #g = h['pdf']
+            #data['mu'] = g['mu'][:]
+            #Temporary fix for not running PDF's on DES
+            data['mu'] = g['meanz']
 
     def load_random_catalog(self, data):
         filename = self.get_input('random_cats_source')
