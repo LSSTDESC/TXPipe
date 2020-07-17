@@ -1713,6 +1713,7 @@ class TXJackknifeCenters(PipelineStage):
     ]
     config_options = {
         'npatch' : 10,
+        'every_nth': 25,
     }
 
     def plot(self, ra, dec, patch):
@@ -1755,6 +1756,7 @@ class TXJackknifeCenters(PipelineStage):
         cat = treecorr.Catalog(ra = ra,
                                 dec = dec,
                                 ra_units='degree', dec_units = 'degree',
+                                every_nth = self.config['every_nth'],
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
