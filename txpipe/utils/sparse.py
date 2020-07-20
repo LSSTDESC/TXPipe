@@ -99,7 +99,7 @@ class SparseArray:
             inds = [k for k,v in self.d.items() if v == val]
             return np.array(inds)
         elif isinstance(val, SparseArray):
-            if val.keys() != self.keys():
+            if set(val.d.keys()) != set(self.d.keys()):
                 raise ValueError("Cannot compare two sparse arrays with different hit indices")
             inds = [k for k,v in self.d.items() if v == val[k]]
             return np.array(inds)

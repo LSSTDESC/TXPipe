@@ -1,4 +1,4 @@
-from ..utils.stats import ParallelStatsCalculator, ParallelSum
+from ..utils.stats import ParallelStatsCalculator, ParallelSum, SparseArray
 from .mock_mpi import mock_mpiexec
 import numpy as np
 
@@ -69,7 +69,7 @@ def run_stats_sparse(comm):
     # instsead, and three pixels.
     # The last pixel will not be set, so should come back with
     # NaNs
-    p = ParallelStatsCalculator(3, weighted=True, sparse=True)
+    p = ParallelStatsCalculator(4, weighted=True, sparse=True)
     pixel = 0
     values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     weights = np.array([0.0, 0.0, 1.0, 1.0, 1.0])
@@ -77,6 +77,10 @@ def run_stats_sparse(comm):
     pixel = 1
     values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     weights = np.array([0.0, 0.0, 0.5, 0.5, 0.5])
+    p.add_data(pixel, values, weights=weights)
+    pixel = 3
+    values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    weights = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
     p.add_data(pixel, values, weights=weights)
 
     # Expected results for pixels 0, 1
@@ -89,15 +93,29 @@ def run_stats_sparse(comm):
         expected_weight *= comm.size
 
     if comm is None or comm.rank == 0:
+        # objects hit but with zero weight are not
+        # set
+        w_pix, w_vals = w.to_arrays()
+        mu_pix, mu_vals = mu.to_arrays()
+        sigma2_pix, sigma2_vals = sigma2.to_arrays()
+        assert np.allclose(w_pix, [0, 1])
+        assert np.allclose(mu_pix, [0, 1])
+        assert np.allclose(sigma2_pix, [0, 1])
+
         # first two pix should be as above
         for i in range(2):
             assert np.allclose(w[i], expected_weight[i])
             assert np.allclose(mu[i], expected_mu[i])
             assert np.allclose(sigma2[i], expected_sigma2)
-        # last should be 0 and NaN
-        assert w[2] == 0.0
-        assert np.isnan(mu[2])
-        assert np.isnan(sigma2[2])
+        # the sparse array sets things to zero if they are not found,
+        # so we do not test this directly
+        assert w[2] == 0
+        assert mu[2] == 0
+        assert sigma2[2] == 0
+        assert w[3] == 0
+        assert mu[3] == 0
+        assert sigma2[3] == 0
+
 
 
 def run_stats_missing(comm):
@@ -260,6 +278,19 @@ def test_sparse_sums():
     mock_mpiexec(2, run_sums_sparse)
     mock_mpiexec(3, run_sums_sparse)
 
+def test_sparse_array():
+    # TODO loads more tests
+    s=txpipe.utils.sparse.SparseArray(10)
+    t=txpipe.utils.sparse.SparseArray(10)
+
+    s[2] = 3
+    s[1] = 3
+    t[1] = 3
+    t[2] = 4
+
+    assert np.allclose(s == t, np.array([1]))
+    assert np.allclose(s == 3, np.array([2, 1]))
+    assert np.allclose(t == 3, np.array([1]))
 
 if __name__ == "__main__":
-    test_stats()
+    test_stats_sparse()
