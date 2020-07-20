@@ -208,8 +208,13 @@ def run_sums(comm):
 
     count, sums = s.collect(comm)
 
-    assert np.allclose(count, comm.size - 1)
-    assert np.allclose(sums, 2 * comm.size - 1)
+    if comm is None or comm.rank == 0:
+        if comm is not None:
+            print("size = ", comm.size)
+        print("count = ", count)
+        print("sums = ", sums)
+        assert np.allclose(count, comm.size - 1)
+        assert np.allclose(sums, 2 * (comm.size - 1))
 
 
 def run_sums_sparse(comm):
@@ -281,8 +286,8 @@ def test_sparse_sums():
 
 def test_sparse_array():
     # TODO loads more tests
-    s=txpipe.utils.sparse.SparseArray(10)
-    t=txpipe.utils.sparse.SparseArray(10)
+    s = SparseArray(10)
+    t = SparseArray(10)
 
     s[2] = 3
     s[1] = 3

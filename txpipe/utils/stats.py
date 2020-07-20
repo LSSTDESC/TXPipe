@@ -480,6 +480,7 @@ class ParallelSum:
                 self._sum = comm.reduce(self._sum)
         else:
             in_place_reduce(self._count, comm, allreduce=(mode == "allgather"))
+            in_place_reduce(self._sum, comm, allreduce=(mode == "allgather"))
 
         return self._count, self._sum
 
