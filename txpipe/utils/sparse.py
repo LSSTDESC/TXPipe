@@ -94,6 +94,16 @@ class SparseArray:
             x[k] = self[k]**y
         return x
 
+    def __eq__(self, val):
+        if np.isscalar(val):
+            inds = [k for k,v in self.d.items() if v == val]
+            return np.array(inds)
+        elif isinstance(val, SparseArray):
+            if val.keys() != self.keys():
+                raise ValueError("Cannot compare two sparse arrays with different hit indices")
+            inds = [k for k,v in self.d.items() if v == val[k]]
+            return np.array(inds)
+
 
     def to_dense(self):
         """
