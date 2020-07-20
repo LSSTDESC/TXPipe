@@ -1713,7 +1713,7 @@ class TXJackknifeCenters(PipelineStage):
     ]
     config_options = {
         'npatch' : 10,
-        'every_nth': 25,
+        'every_nth': 1,
     }
 
     def plot(self, ra, dec, patch):
