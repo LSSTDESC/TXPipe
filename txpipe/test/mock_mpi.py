@@ -11,8 +11,8 @@
 #    this list of conditions, and the disclaimer given in the documentation
 #    and/or other materials provided with the distribution.
 
-from __future__ import print_function
 import numpy as np
+import multiprocessing as mp
 
 # This file builds a framework for testing code that is designed to work in an
 # mpi4py MPI session, but without requiring MPI.  It uses multiprocessing to
@@ -51,6 +51,34 @@ import numpy as np
 #      The documentation of mpi4py is pretty terrible, so while I tried to
 #      identify the main functionality, it's very likely I missed some things.
 #   5. It doesn't work on python 2.
+
+# JAZ:
+# - Added numpy Send and Recv methods.
+# - Added exception propagation
+# Exceptions in processes were not previously
+# passed up to the root.  I've used this helpful recipe
+# from  https://stackoverflow.com/a/33599967/989692
+# and modified mpi_session below to make this happen.
+
+class Process(mp.Process):
+    def __init__(self, *args, **kwargs):
+        mp.Process.__init__(self, *args, **kwargs)
+        self._pconn, self._cconn = mp.Pipe()
+        self._exception = None
+
+    def run(self):
+        try:
+            mp.Process.run(self)
+            self._cconn.send(None)
+        except Exception as e:
+            self._cconn.send(e)
+            raise e
+
+    @property
+    def exception(self):
+        if self._pconn.poll():
+            self._exception = self._pconn.recv()
+        return self._exception
 
 
 class MockComm(object):
@@ -140,19 +168,18 @@ def mock_mpiexec(nproc, target):
     """Run a function, given as target, as though it were an MPI session using mpiexec -n nproc
     but using multiprocessing instead of mpi.
     """
-    from multiprocessing import Pipe, Process, Barrier, set_start_method
-    set_start_method('spawn', force=True)
+    mp.set_start_method('spawn', force=True)
 
     # Make the message passing pipes
     all_pipes = [ {} for p in range(nproc) ]
     for i in range(nproc):
         for j in range(i+1,nproc):
-            p1, p2 = Pipe()
+            p1, p2 = mp.Pipe()
             all_pipes[i][j] = p1
             all_pipes[j][i] = p2
 
     # Make a barrier
-    barrier = Barrier(nproc)
+    barrier = mp.Barrier(nproc)
 
     # Make fake MPI-like comm object
     comms = [ MockComm(rank, nproc, pipes, barrier) for rank,pipes in enumerate(all_pipes) ]
@@ -164,7 +191,11 @@ def mock_mpiexec(nproc, target):
         p.start()
     
     for p in procs:
-        p.join()
+        d = p.join()
+        if p.exception:
+            raise p.exception.__class__ from p.exception
+
+
 
 def test_mpi_session(comm):
     """A simple MPI session we want to run in mock MPI mode.
