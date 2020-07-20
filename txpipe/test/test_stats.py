@@ -225,14 +225,15 @@ def run_sums_sparse(comm):
 
     count, sums = s.collect(comm)
 
-    assert count[0] == comm.size
-    assert count[1] == comm.size
-    assert count[2] == comm.size
-    assert count[3] == 0
-    assert sums[0] == comm.size
-    assert sums[1] == 2.0 * comm.size
-    assert sums[2] == 3.0 * comm.size
-    assert sums[3] == 0.0
+    if comm is None or comm.rank == 0:
+        assert count[0] == comm.size
+        assert count[1] == comm.size
+        assert count[2] == comm.size
+        assert count[3] == 0
+        assert sums[0] == comm.size
+        assert sums[1] == 2.0 * comm.size
+        assert sums[2] == 3.0 * comm.size
+        assert sums[3] == 0.0
 
 
 # run all the tests above in both serial
@@ -274,7 +275,7 @@ def test_sums():
 
 
 def test_sparse_sums():
-    run_sums(None)
+    run_sums_sparse(None)
     mock_mpiexec(2, run_sums_sparse)
     mock_mpiexec(3, run_sums_sparse)
 

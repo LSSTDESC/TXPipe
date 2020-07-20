@@ -474,10 +474,10 @@ class ParallelSum:
         if self.sparse:
             if mode == "allgather":
                 self._count = comm.allreduce(self._count)
-                self._sum = comm.allreduce(self._count)
+                self._sum = comm.allreduce(self._sum)
             else:
                 self._count = comm.reduce(self._count)
-                self._sum = comm.reduce(self._count)
+                self._sum = comm.reduce(self._sum)
         else:
             in_place_reduce(self._count, comm, allreduce=(mode == "allgather"))
 
