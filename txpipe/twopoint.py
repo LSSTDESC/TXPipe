@@ -1713,7 +1713,7 @@ class TXJackknifeCenters(PipelineStage):
     ]
     config_options = {
         'npatch' : 10,
-        'every_nth' : 5,
+        'every_nth' : 1,
     }
 
     def plot(self, ra, dec, patch):
@@ -1761,7 +1761,7 @@ class TXJackknifeCenters(PipelineStage):
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
-        self.plot(cat.ra, cat.dec, cat.patch)
+        self.plot(np.degrees(cat.ra), np.degrees(cat.dec), cat.patch)
 
 
 class TXSelfCalibrationIA(TXTwoPoint):
