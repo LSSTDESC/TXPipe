@@ -140,6 +140,9 @@ class MapsFile(HDFFile):
         """
         if not 'pixelization' in metadata:
             raise ValueError("Map metadata should include pixelization")
+        if not pixel.shape == value.shape:
+            raise ValueError(f"Map pixels and values should be same shape "
+                             f"but are {pixel.shape} vs {value.shape}")
         subgroup = self.file['maps'].create_group(map_name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
