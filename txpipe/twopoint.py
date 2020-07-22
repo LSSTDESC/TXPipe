@@ -1096,7 +1096,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 5
+        'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
@@ -1245,7 +1246,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'shot',
-        'npatch': 5
+        'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
@@ -1410,7 +1412,8 @@ class TXGammaTDimStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 5
+        'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
@@ -1577,6 +1580,7 @@ class TXGammaTRandoms(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
