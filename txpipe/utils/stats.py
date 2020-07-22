@@ -244,7 +244,15 @@ class ParallelStatsCalculator:
         # set the values where the weight is zero, and return
         if comm is None:
             results = self._weight, self._mean, self._get_variance()
-            self._mean[self._weight == 0] = np.nan
+            very_bad = self._weight == 0
+            # Deal with pixels that have been hit, but only with
+            # zero weight
+            if self.sparse:
+                for i in very_bad:
+                    self._mean[i] = np.nan
+            else:
+                self._mean[very_bad] = np.nan
+
             del self._M2
             del self._weight
             del self._mean
@@ -327,7 +335,6 @@ class ParallelStatsCalculator:
             # get the population variance from the squared deviations
             # and set the mean to nan where we can't estimate it.
             variance = sq / weight
-            mean[weight == 0] = np.nan
 
         if mode == "allgather":
             if self.sparse:
@@ -467,12 +474,13 @@ class ParallelSum:
         if self.sparse:
             if mode == "allgather":
                 self._count = comm.allreduce(self._count)
-                self._sum = comm.allreduce(self._count)
+                self._sum = comm.allreduce(self._sum)
             else:
                 self._count = comm.reduce(self._count)
-                self._sum = comm.reduce(self._count)
+                self._sum = comm.reduce(self._sum)
         else:
             in_place_reduce(self._count, comm, allreduce=(mode == "allgather"))
+            in_place_reduce(self._sum, comm, allreduce=(mode == "allgather"))
 
         return self._count, self._sum
 
