@@ -96,7 +96,6 @@ TXJackknifeCenters:
     npatch: 40
 
 TXDiagnosticPlots:
-    psf_prefix: mcal_psf_
     shear_prefix: mcal_
 
 TXRealGaussianCovariance:
@@ -115,7 +114,7 @@ TXTwoPoint:
     max_sep: 250
     nbins: 20
     verbose: 0
-    shape_noise: True
+    use_true_shear: True
 
 TXTwoPointLensCat:
     binslop: 0.0
@@ -128,7 +127,7 @@ TXTwoPointLensCat:
     max_sep: 250
     nbins: 20
     verbose: 0
-    shape_noise: True
+    use_true_shear: True
     
 TXTwoPointFourier:
     chunk_rows: 100000

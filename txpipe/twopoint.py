@@ -52,7 +52,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_methods': 'jackknife',
-        'shape_noise': True,
+        'use_true_shear': False,
         }
 
     def run(self):
@@ -359,7 +359,7 @@ class TXTwoPoint(PipelineStage):
 
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
-            if self.config['shape_noise']:            
+            if self.config['use_true_shear']:            
                 g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
             else:
                 g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['true_g1'][mask],data['true_g2'][mask])
@@ -572,10 +572,10 @@ class TXTwoPoint(PipelineStage):
         read_shear_catalog_type(self)
 
         if self.config['shear_catalog_type']=='metacal':
-            if self.config['shape_noise']:
-                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
-            else:
+            if self.config['use_true_shear']:
                 cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
+            else:
+                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
                 
         else:
             cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
@@ -589,10 +589,10 @@ class TXTwoPoint(PipelineStage):
 
         if self.config['flip_g2']:
             if self.config['shear_catalog_type']=='metacal':
-                if self.config['shape_noise']:
-                    data['mcal_g2'] *= -1
-                else:
+                if self.config['use_true_shear']:
                     data['true_g2'] *= -1
+                else:
+                    data['mcal_g2'] *= -1
             else:
                 data['g2'] *= -1
 
