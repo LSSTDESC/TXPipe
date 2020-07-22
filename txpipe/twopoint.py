@@ -52,6 +52,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_methods': 'jackknife',
+        'use_true_shear': False,
         }
 
     def run(self):
@@ -358,7 +359,10 @@ class TXTwoPoint(PipelineStage):
 
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
+            if self.config['use_true_shear']:            
+                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['true_g1'][mask],data['true_g2'][mask])
+            else:
+                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
             return g1, g2, mask
 
         elif self.config['shear_catalog_type']=='lensfit':
@@ -568,7 +572,11 @@ class TXTwoPoint(PipelineStage):
         read_shear_catalog_type(self)
 
         if self.config['shear_catalog_type']=='metacal':
-            cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+            if self.config['use_true_shear']:
+                cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
+            else:
+                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+                
         else:
             cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
@@ -581,7 +589,10 @@ class TXTwoPoint(PipelineStage):
 
         if self.config['flip_g2']:
             if self.config['shear_catalog_type']=='metacal':
-                data['mcal_g2'] *= -1
+                if self.config['use_true_shear']:
+                    data['true_g2'] *= -1
+                else:
+                    data['mcal_g2'] *= -1
             else:
                 data['g2'] *= -1
 
@@ -693,8 +704,8 @@ class TXTwoPointPlots(PipelineStage):
     ]
 
     config_options = {
-        'wspace': 0.1,
-        'hspace': 0.1,
+        'wspace': 0.05,
+        'hspace': 0.05,
     }
 
 
@@ -715,16 +726,16 @@ class TXTwoPointPlots(PipelineStage):
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',
-                figsize=(nbin_lens*5, nbin_lens*3), wrapper=True),
+                figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
 
             "galaxy_shearDensity_xi_t": self.open_output('shearDensity_xi',
-                figsize=(5*nbin_lens, 3*nbin_source), wrapper=True),
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
 
             "galaxy_shear_xi_plus": self.open_output('shear_xi_plus',
-                figsize=(5*nbin_source, 3*nbin_source), wrapper=True),
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
 
             "galaxy_shear_xi_minus": self.open_output('shear_xi_minus',
-                figsize=(5*nbin_source, 3*nbin_source), wrapper=True),
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
         }
 
         figures = {key: val.file for key, val in outputs.items()}
@@ -1085,7 +1096,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 5
+        'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
@@ -1234,7 +1246,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'shot',
-        'npatch': 5
+        'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
@@ -1399,7 +1412,8 @@ class TXGammaTDimStars(TXTwoPoint):
         'verbose':1,
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
-        'npatch': 5
+        'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):
@@ -1566,6 +1580,7 @@ class TXGammaTRandoms(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
+        'use_true_shear': False
         }
 
     def run(self):

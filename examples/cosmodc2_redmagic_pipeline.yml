@@ -52,7 +52,8 @@ stages:
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
 
-output_dir: data/cosmodc2/outputs_redmagic
+output_dir: data/cosmodc2/outputs_redmagic/
+# output_dir: data/cosmodc2/outputs_redmagic/no_shape_noise/
 config: examples/config/cosmodc2_config.yml
 
 # On NERSC, set this before running:
