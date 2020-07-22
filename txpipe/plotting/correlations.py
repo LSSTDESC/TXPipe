@@ -139,7 +139,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.tick_params(axis='both', which='minor', length=5, direction='in')
 
     # Fix
-    a.text(0.1, 0.1, f"{j+1} - {i+1}", transform=a.transAxes)
+    a.text(0.1, 0.1, f"{j} - {i}", transform=a.transAxes)
     if i==j==0:
         a.legend()
     a.set_ylim(ymin, ymax)
@@ -353,13 +353,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                if (i==0) & (j==3):
-                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
-                    # double free or corruption (!prev)
-                    # Since there is no lensing for this one, set the prediction to zero.
-                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
-                else:
-                    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
 
     return theory
 
