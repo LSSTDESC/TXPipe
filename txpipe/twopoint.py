@@ -360,9 +360,9 @@ class TXTwoPoint(PipelineStage):
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
             if self.config['use_true_shear']:            
-                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
-            else:
                 g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['true_g1'][mask],data['true_g2'][mask])
+            else:
+                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
             return g1, g2, mask
 
         elif self.config['shear_catalog_type']=='lensfit':
