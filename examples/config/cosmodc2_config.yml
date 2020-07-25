@@ -136,7 +136,9 @@ TXTwoPointFourier:
     bandwidth: 200
     apodization_size: 0.0
     cache_dir: ./cache
-
+    
+TXRealGaussianCovariance:
+    use_true_shear: True
 
 TXClusteringNoiseMaps:
     n_realization: 30
