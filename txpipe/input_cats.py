@@ -71,11 +71,18 @@ class TXCosmoDC2Mock(PipelineStage):
             # Load the input catalog (this is lazy)
             # For testing we may want to cut down to a smaller number of pixels.
             # This is separate from the split by processor later on
-            all_healpix_pixels = GCRCatalogs.get_available_catalogs()[cat_name]['healpix_pixels']
+            if 'cosmoDC2' in cat_name:
+                all_healpix_pixels = GCRCatalogs.get_available_catalogs()[cat_name]['healpix_pixels']
+            elif 'buzzard' in cat_name:
+                all_healpix_pixels = GCRCatalogs.load_catalog(cat_name).healpix_pixels
+            else:
+                raise NotImplementedError
+
             max_npix = self.config['max_npix']
             if max_npix != 99999999999999:
                 print(f"Cutting down initial catalog to {max_npix} healpix pixels")
                 all_healpix_pixels = all_healpix_pixels[:max_npix]
+
             # complete_cat = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
             # print(f"Loaded overall catalog {cat_name}")
 
@@ -332,7 +339,7 @@ class TXCosmoDC2Mock(PipelineStage):
         n = len(photo_data['id'])
         end = min(start + n, target_size)
 
-        assert photo_data['id'].min()>0
+        #assert photo_data['id'].min()>0
 
         # Save each column
         for name in photo_cols:
@@ -610,7 +617,37 @@ class TXCosmoDC2Mock(PipelineStage):
         for key in list(data.keys()):
             data[key] = data[key][detected]
 
+class TXBuzzardMock(TXCosmoDC2Mock):
+    """
+    This stage simulates metacal data and metacalibrated
+    photometry measurements, starting from a cosmology catalogs
+    of the kind used as an input to DC2 image and obs-catalog simulations.
 
+    This is mainly useful for testing infrastructure in advance
+    of the DC2 catalogs being available, but might also be handy
+    for starting from a purer simulation.
+    """
+    name='TXBuzzardMock'
+
+    inputs = [
+        ('response_model', HDFFile)
+    ]
+
+    outputs = [
+        ('shear_catalog', ShearCatalog),
+        ('photometry_catalog', HDFFile),
+    ]
+
+    config_options = {
+        'cat_name':'buzzard',
+        'visits_per_band':165,  # used in the noise simulation
+        'snr_limit':4.0,  # used to decide what objects to cut out
+        'max_size': 99999999999999,  #for testing on smaller catalogs
+        'extra_cols': "", # string-separated list of columns to include
+        'max_npix':99999999999999,
+        'unit_response': False,
+        'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
+        }
 
 
 def make_mock_photometry(n_visit, bands, data, unit_response):
