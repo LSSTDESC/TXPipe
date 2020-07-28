@@ -13,7 +13,7 @@ d2r=np.pi/180
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
     do_xi=False
-
+    
     inputs = [
         ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
         ('twopoint_data_fourier', SACCFile), # For the binning information
@@ -26,6 +26,8 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     config_options = {
         'pickled_wigner_transform': '',
+        'use_true_shear': False,
+        
     }
 
 
@@ -102,7 +104,11 @@ class TXFourierGaussianCovariance(PipelineStage):
         # per-bin quantities
         N_eff = input_data['tracers/N_eff'][:]
         N_lens = input_data['tracers/lens_counts'][:]
-        sigma_e = input_data['tracers/sigma_e'][:]
+        if self.config['use_true_shear']:
+            nbins = len(input_data['tracers/sigma_e'][:])
+            sigma_e = np.array([0. for i in range(nbins)])
+        else:
+            sigma_e = input_data['tracers/sigma_e'][:]
 
         # area in sq deg
         area_deg2 = input_data['tracers'].attrs['area']
