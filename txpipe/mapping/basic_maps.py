@@ -1,5 +1,6 @@
 from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme
-from parallel_statistics import ParallelMeanVariance
+from parallel_statistics import ParallelMeanVariance, ParallelSum
+
 import numpy as np
 
 class Mapper:
@@ -10,15 +11,16 @@ class Mapper:
         self.do_g = do_g if len(source_bins) else False
         self.do_lens = do_lens if len(lens_bins) else False
         self.sparse = sparse
+        # TODO - replace this with arrays for faster lookup
         self.stats = {}
         for b in self.lens_bins:
             t = 0
-            self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
+            self.stats[(b,t)] = ParallelSum(self.pixel_scheme.npix)
 
         for b in self.source_bins:
             for t in [1,2]:
-                self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
-            self.stats[(b,'weight')] = ParallelMeanVariance(self.pixel_scheme.npix)
+                self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix, weighted=True)
+            self.stats[(b,'weight')] = ParallelSum(self.pixel_scheme.npix)
 
     def add_data(self, data):
         npix = self.pixel_scheme.npix
@@ -37,9 +39,9 @@ class Mapper:
             g2 = data['g2']
 
         if do_lens:
-            # TODO: change from unit weights for lenses
-            lens_weights = np.ones_like(data['ra'])
+            lens_weights = data['lens_weight']
             lens_bins = data['lens_bin']
+
 
         for i in range(n):
             p = pix_nums[i]
@@ -51,15 +53,15 @@ class Mapper:
                 lens_bin = lens_bins[i]
                 if lens_bin >= 0:
                     lw = lens_weights[i]
-                    self.stats[(lens_bin, 0)].add_data(p, [lw])
+                    self.stats[(lens_bin, 0)].add_datum(p, lw)
 
             if do_g:
                 source_bin = source_bins[i]
                 if source_bin >= 0:
                     sw = source_weights[i]
-                    self.stats[(source_bin, 1)].add_data(p, [g1[i] * sw])
-                    self.stats[(source_bin, 2)].add_data(p, [g2[i] * sw])
-                    self.stats[(source_bin,'weight')].add_data(p, [sw])
+                    self.stats[(source_bin, 1)].add_datum(p, g1[i], sw)
+                    self.stats[(source_bin, 2)].add_datum(p, g2[i], sw)
+                    self.stats[(source_bin,'weight')].add_datum(p, sw)
 
 
     def finalize(self, comm=None):
@@ -70,6 +72,7 @@ class Mapper:
         var_g1 = {}
         var_g2 = {}
         source_weight = {}
+        lens_weight = {}
 
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
@@ -84,8 +87,8 @@ class Mapper:
         for b in self.lens_bins:
             if rank==0:
                 print(f"Collating density map for lens bin {b}")
-            stats = self.stats[(b,0)]
-            count, mean, _ = stats.collect(comm)
+            lens_stats = self.stats[(b,0)]
+            count, weight = lens_stats.collect(comm)
 
             if not is_master:
                 continue
@@ -98,10 +101,11 @@ class Mapper:
             # higher, to the point where we don't have this issue.
             # So we use UNSEEN for shear and 0 for counts.
             count[np.isnan(count)] = 0
-            mean[np.isnan(mean)] = 0
+            weight[np.isnan(weight)] = 0
 
-            ngal[b] = (mean * count).flatten()
-            mask[count.flatten()>0] = True
+            ngal[b] = count.flatten()
+            lens_weight[b] = weight.flatten()
+            mask[lens_weight[b] > 0] = True
 
         for b in self.source_bins:
             if rank==0:
@@ -112,7 +116,7 @@ class Mapper:
 
             count_g1, mean_g1, v_g1 = stats_g1.collect(comm)
             count_g2, mean_g2, v_g2 = stats_g2.collect(comm)
-            count_w,  mean_w,  v_w  = stats_weight.collect(comm)
+            _, weight  = stats_weight.collect(comm)
 
             if not is_master:
                 continue
@@ -127,13 +131,8 @@ class Mapper:
             v_g1 /= count_g1
             v_g2 /= count_g1
 
-            # Convert mean weight to total weight
-            weight = mean_w * count_w
-            del mean_w, count_w, v_w
-
             # Update the mask
-            mask[count_g1>0] = True
-            mask[count_g1>0] = True
+            mask[weight>0] = True
 
 
             # Repalce NaNs with the Healpix unseen sentinel value
@@ -155,11 +154,11 @@ class Mapper:
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2, source_weight]:
+            for d in [ngal, g1, g2, var_g1, var_g2, source_weight, lens_weight]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, g1, g2, var_g1, var_g2, source_weight
+        return pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight
 
 
 class FlagMapper:

@@ -2,7 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
 from .mapping import Mapper, FlagMapper
 
 
@@ -145,10 +145,23 @@ class TXSourceMaps(TXBaseMaps):
     config_options = {"true_shear": False, **map_config_options}
 
     def prepare_mappers(self, pixel_scheme):
+        # read shear cols and
+        shear_catalog_type = read_shear_catalog_type(self)
         # open and return a single mapper
         # read nbin_source
         with self.open_input("shear_tomography_catalog") as f:
             nbin_source = f["tomography"].attrs["nbin_source"]
+
+            if shear_catalog_type == "metacal":
+                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
+                cal = [R]
+            elif shear_catalog_type == "lensfit":
+                R = f['/metacal_response/R_mean'][:]
+                K = f['/metacal_response/K'][:]
+                c = f['/metacal_response/C'][:]
+                cal = (R, K, c)
+            else:
+                raise ValueError("Unknown calibration")
 
         # store in config so it is saved later
         self.config["nbin_source"] = nbin_source
@@ -163,11 +176,12 @@ class TXSourceMaps(TXBaseMaps):
             do_lens=False,
             sparse=self.config["sparse"],
         )
-        return [mapper]
+
+
+
+        return [mapper, cal]
 
     def data_iterator(self):
-        # read shear cols and
-        shear_catalog_type = read_shear_catalog_type(self)
 
         # can optionally read truth values
         if self.config["true_shear"]:
@@ -206,11 +220,72 @@ class TXSourceMaps(TXBaseMaps):
         mapper = mappers[0]
         mapper.add_data(data)
 
+    def calibrate_map_metacal(self, g1, g2, var_g1, var_g2, cal):
+        R, = cal
+
+        g1, g2 = apply_metacal_response(R, 0, g1, g2)
+
+        std_g1 = np.sqrt(var_g1)
+        std_g2 = np.sqrt(var_g2)
+        std_g1, std_g2 = apply_metacal_response(R, 0, std_g1, std_g2)
+
+        var_g1 = std_g1 ** 2
+        var_g2 = std_g2 ** 2
+
+        return g1, g2, var_g1, var_g2
+
+
+    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, cal):
+        R, K, c = cal
+
+        c1 = c[:, 0]
+        c2 = c[:, 1]
+        one_plus_K = 1 + K
+
+
+        g1 = (1. / one_plus_K) * ((g1 / R) - c1)
+        g2 = (1. / one_plus_K) * ((g2 / R) - c2)
+
+        var_g1 = std_g1 ** 2
+        var_g2 = std_g2 ** 2
+        # no c here I think because it's a std dev
+        # so it's alread mean-subtracted?
+        std_g1 = (1. / one_plus_K) * (std_g1 / R)
+        std_g2 = (1. / one_plus_K) * (std_g2 / R)
+        std_g1 = np.sqrt(var_g1)
+        std_g2 = np.sqrt(var_g2)
+
+        return g1, g2, var_g1, var_g2
+
+    def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
+        g1_out = []
+        g2_out = []
+        var_g1_out = []
+        var_g2_out = []
+
+        n = len(g1)
+
+        for i in range(n):
+            if self.config['shear_catalog_type'] == 'metacal':
+                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal)
+            elif self.config['shear_catalog_type'] == 'lensfit':
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], cal)
+            else:
+                raise ValueError("Unknown calibration")
+            g1_out.append(out[0])
+            g2_out.append(out[1])
+            var_g1_out.append(out[2])
+            var_g2_out.append(out[3])
+
+        return g1_out, g2_out, var_g1_out, var_g2_out
+
+
     def finalize_mappers(self, pixel_scheme, mappers):
         # only one mapper here - we call its finalize method
         # to collect everything
-        mapper = mappers[0]
-        pix, _, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        mapper, cal = mappers
+        pix, _, _, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+
 
         # build up output
         maps = {}
@@ -218,6 +293,9 @@ class TXSourceMaps(TXBaseMaps):
         # only master gets full stuff
         if self.rank != 0:
             return maps
+
+        # Calibrate the maps
+        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
 
         for b in mapper.source_bins:
             # keys are the output tag and the map name
@@ -293,7 +371,7 @@ class TXLensMaps(TXBaseMaps):
         # Again just the one mapper
         mapper = mappers[0]
         # Ignored return values are empty dicts for shear
-        pix, ngal, _, _, _, _, _ = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, _, _, _, _, _ = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
@@ -302,6 +380,7 @@ class TXLensMaps(TXBaseMaps):
         for b in mapper.lens_bins:
             # keys are the output tag and the map name
             maps["lens_maps", f"ngal_{b}"] = (pix, ngal[b])
+            maps["lens_maps", f"weighted_ngal_{b}"] = (pix, weighted_ngal[b])
 
         return maps
 
@@ -333,7 +412,7 @@ class TXExternalLensMaps(TXLensMaps):
             # next file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin"],
+            ["lens_bin", "lens_weight"],
             # another section in the same file
         )
 
@@ -390,7 +469,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             # next file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin"],
+            ["lens_bin", "lens_weight"],
             # next file
             "shear_tomography_catalog",
             "tomography",
@@ -398,9 +477,21 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         )
 
     def prepare_mappers(self, pixel_scheme):
-        # read both nbin values
+
+        shear_catalog_type = read_shear_catalog_type(self)
+        # read both nbin values and the calibration values
         with self.open_input("shear_tomography_catalog") as f:
             nbin_source = f["tomography"].attrs["nbin_source"]
+            if shear_catalog_type == "metacal":
+                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
+                cal = [R]
+            elif shear_catalog_type == "lensfit":
+                R = f['/metacal_response/R_mean'][:]
+                K = f['/metacal_response/K'][:]
+                c = f['/metacal_response/C'][:]
+                cal = (R, K, c)
+            else:
+                raise ValueError("Unknown calibration")
 
         with self.open_input("lens_tomography_catalog") as f:
             nbin_lens = f["tomography"].attrs["nbin_lens"]
@@ -415,7 +506,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         mapper = Mapper(
             pixel_scheme, lens_bins, source_bins, sparse=self.config["sparse"]
         )
-        return [mapper]
+        return [mapper, cal]
 
     # accumulate_maps is inherited from TXSourceMaps because
     # that appears first in the parent classes
@@ -423,16 +514,19 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
     def finalize_mappers(self, pixel_scheme, mappers):
         # Still one mapper, but now we read both source and
         # lens maps from it.
-        mapper = mappers[0]
-        pix, ngal, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        mapper, cal = mappers
+        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
             return maps
 
+        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
+
         # Now both loops, source and lens
         for b in mapper.lens_bins:
             maps["lens_maps", f"ngal_{b}"] = (pix, ngal[b])
+            maps["lens_maps", f"weighted_ngal_{b}"] = (pix, weighted_ngal[b])
 
         for b in mapper.source_bins:
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
@@ -480,7 +574,7 @@ class TXDensityMaps(PipelineStage):
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
             nbin_lens = meta["nbin_lens"]
-            ngal_maps = [f.read_map(f"ngal_{b}").flatten() for b in range(nbin_lens)]
+            ngal_maps = [f.read_map(f"weighted_ngal_{b}").flatten() for b in range(nbin_lens)]
 
         # Convert count maps into density maps
         density_maps = []
