@@ -1,5 +1,5 @@
 import numpy as np
-from .stats import ParallelStatsCalculator
+from parallel_statistics import ParallelMeanVariance
 
 
 def read_shear_catalog_type(stage):
@@ -420,9 +420,9 @@ class MeanShearInBins:
         self.size = len(self.limits) - 1
 
         # We have to work out the mean g1, g2 
-        self.g1 = ParallelStatsCalculator(self.size)
-        self.g2 = ParallelStatsCalculator(self.size)
-        self.x  = ParallelStatsCalculator(self.size)
+        self.g1 = ParallelMeanVariance(self.size)
+        self.g2 = ParallelMeanVariance(self.size)
+        self.x  = ParallelMeanVariance(self.size)
 
         if shear_catalog_type=='metacal':
             self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]

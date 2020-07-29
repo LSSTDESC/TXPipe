@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
-from .utils.stats import ParallelStatsCalculator
+from parallel_statistics import ParallelMeanVariance
 from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
@@ -385,8 +385,8 @@ class TXDiagnosticPlots(PipelineStage):
         bins = 10
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        calc2 = ParallelStatsCalculator(bins)
+        calc1 = ParallelMeanVariance(bins)
+        calc2 = ParallelMeanVariance(bins)
         
         
         while True:
@@ -482,7 +482,7 @@ class TXDiagnosticPlots(PipelineStage):
         bins = 10
         edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
+        calc1 = ParallelMeanVariance(bins)
         
         while True:
             data = yield

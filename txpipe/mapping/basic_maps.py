@@ -1,4 +1,5 @@
-from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
+from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme
+from parallel_statistics import ParallelMeanVariance
 import numpy as np
 
 class Mapper:
@@ -12,12 +13,12 @@ class Mapper:
         self.stats = {}
         for b in self.lens_bins:
             t = 0
-            self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+            self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
 
         for b in self.source_bins:
             for t in [1,2]:
-                self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
-            self.stats[(b,'weight')] = ParallelStatsCalculator(self.pixel_scheme.npix)
+                self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
+            self.stats[(b,'weight')] = ParallelMeanVariance(self.pixel_scheme.npix)
 
     def add_data(self, data):
         npix = self.pixel_scheme.npix
