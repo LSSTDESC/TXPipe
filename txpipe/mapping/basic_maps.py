@@ -12,12 +12,20 @@ class Mapper:
         self.do_lens = do_lens if len(lens_bins) else False
         self.sparse = sparse
         # TODO - replace this with arrays for faster lookup
+        # We index this with (bin_index, quantity) where
+        # quantity = 0 (lens weight), 1 (g1), 2 (g2), and
+        # 'weight' (source weight)
         self.stats = {}
         for b in self.lens_bins:
+            # We construct galaxy density maps by summing up weights
+            # among galaxies in bins per pixel
             t = 0
             self.stats[(b,t)] = ParallelSum(self.pixel_scheme.npix)
 
         for b in self.source_bins:
+            # For the lensing we are interested in both the mean and
+            # the variance of the g1 and g2 signals in each pixel, in
+            # each bin
             for t in [1,2]:
                 self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix, weighted=True)
             self.stats[(b,'weight')] = ParallelSum(self.pixel_scheme.npix)
@@ -50,11 +58,14 @@ class Mapper:
 
             if do_lens:
                 lens_bin = lens_bins[i]
+                # accumulate lens weight
                 if lens_bin >= 0:
                     lw = lens_weights[i]
                     self.stats[(lens_bin, 0)].add_datum(p, lw)
 
             if do_g:
+                # accumulate weighted g1, g2
+                # and overall weight
                 source_bin = source_bins[i]
                 if source_bin >= 0:
                     sw = source_weights[i]
@@ -86,6 +97,10 @@ class Mapper:
         for b in self.lens_bins:
             if rank==0:
                 print(f"Collating density map for lens bin {b}")
+
+            # Collect together galaxy counts from each processor.
+            # This class lets us collect both the raw number and
+            # the total weight in each pixel. We save both maps
             lens_stats = self.stats[(b,0)]
             count, weight = lens_stats.collect(comm)
 
@@ -109,6 +124,10 @@ class Mapper:
         for b in self.source_bins:
             if rank==0:
                 print(f"Collating shear map for source bin {b}")
+
+            # Now for sourc maps, we get the weighted mean and
+            # and variance for each bin, and the total weight
+            # (same for g1 and g2) separately.
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
             stats_weight = self.stats[(b, 'weight')]
@@ -125,14 +144,13 @@ class Mapper:
             assert np.all(count_g1==count_g2)
             del count_g2
 
-            # Convert variance of value to variance of mean,
+            # Convert variance-of-value to variance-of-mean,
             # Since that is what we want for noise estimation
             v_g1 /= count_g1
             v_g2 /= count_g1
 
             # Update the mask
             mask[weight>0] = True
-
 
             # Repalce NaNs with the Healpix unseen sentinel value
             # -1.6375e30
