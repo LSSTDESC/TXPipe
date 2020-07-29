@@ -176,9 +176,6 @@ class TXSourceMaps(TXBaseMaps):
             do_lens=False,
             sparse=self.config["sparse"],
         )
-
-
-
         return [mapper, cal]
 
     def data_iterator(self):

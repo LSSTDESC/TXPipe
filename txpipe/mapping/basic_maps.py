@@ -42,7 +42,6 @@ class Mapper:
             lens_weights = data['lens_weight']
             lens_bins = data['lens_bin']
 
-
         for i in range(n):
             p = pix_nums[i]
 
