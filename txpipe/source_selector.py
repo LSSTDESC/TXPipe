@@ -43,6 +43,7 @@ class TXSourceSelector(PipelineStage):
 
     config_options = {
         'input_pz': False,
+        'true_z': False,
         'bands': 'riz', # bands from metacal to use
         'verbose': False,
         'T_cut':float,

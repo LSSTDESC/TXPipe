@@ -217,9 +217,7 @@ class TXSourceMaps(TXBaseMaps):
         mapper = mappers[0]
         mapper.add_data(data)
 
-    def calibrate_map_metacal(self, g1, g2, var_g1, var_g2, cal):
-        R, = cal
-
+    def calibrate_map_metacal(self, g1, g2, var_g1, var_g2, R):
         g1, g2 = apply_metacal_response(R, 0, g1, g2)
 
         std_g1 = np.sqrt(var_g1)
@@ -232,25 +230,22 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
 
-    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, cal):
-        R, K, c = cal
-
+    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, R, K, c):
         c1 = c[:, 0]
         c2 = c[:, 1]
         one_plus_K = 1 + K
 
-
         g1 = (1. / one_plus_K) * ((g1 / R) - c1)
         g2 = (1. / one_plus_K) * ((g2 / R) - c2)
 
-        var_g1 = std_g1 ** 2
-        var_g2 = std_g2 ** 2
+        std_g1 = np.sqrt(var_g1)
+        std_g2 = np.sqrt(var_g2)
         # no c here I think because it's a std dev
         # so it's alread mean-subtracted?
         std_g1 = (1. / one_plus_K) * (std_g1 / R)
         std_g2 = (1. / one_plus_K) * (std_g2 / R)
-        std_g1 = np.sqrt(var_g1)
-        std_g2 = np.sqrt(var_g2)
+        var_g1 = std_g1 ** 2
+        var_g2 = std_g2 ** 2
 
         return g1, g2, var_g1, var_g2
 
@@ -264,9 +259,11 @@ class TXSourceMaps(TXBaseMaps):
 
         for i in range(n):
             if self.config['shear_catalog_type'] == 'metacal':
-                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal)
+                R = cal[0]
+                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], R[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], cal)
+                R, K, c = cal
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
             else:
                 raise ValueError("Unknown calibration")
             g1_out.append(out[0])
@@ -282,7 +279,6 @@ class TXSourceMaps(TXBaseMaps):
         # to collect everything
         mapper, cal = mappers
         pix, _, _, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
-
 
         # build up output
         maps = {}
@@ -398,7 +394,6 @@ class TXExternalLensMaps(TXLensMaps):
     config_options = {**map_config_options}
 
     def data_iterator(self):
-        print("TODO: no lens weights here")
         # See TXSourceMaps for an explanation of thsis
         return self.combined_iterators(
             self.config["chunk_rows"],
@@ -483,9 +478,9 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
                 R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
                 cal = [R]
             elif shear_catalog_type == "lensfit":
-                R = f['/metacal_response/R_mean'][:]
-                K = f['/metacal_response/K'][:]
-                c = f['/metacal_response/C'][:]
+                R = f['response/R_mean'][:]
+                K = f['response/K'][:]
+                c = f['response/C'][:]
                 cal = (R, K, c)
             else:
                 raise ValueError("Unknown calibration")
