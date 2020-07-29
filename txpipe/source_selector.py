@@ -89,7 +89,7 @@ class TXSourceSelector(PipelineStage):
 
 
         # Columns we need from the shear catalog, will need to modify for lensfit catalogs
-        shear_cols = [f'{shear_prefix}flags', f'{shear_prefix}psf_T_mean']
+        shear_cols = [f'{shear_prefix}flags', f'{shear_prefix}psf_T_mean', 'weight']
         shear_cols += band_variants(bands,
                                     f'{shear_prefix}mag',
                                     f'{shear_prefix}mag_err',
