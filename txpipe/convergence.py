@@ -1,5 +1,4 @@
 import numpy as np
-from .utils import choose_pixelization
 from .base_stage import PipelineStage
 from .data_types import MapsFile
 
@@ -30,6 +29,9 @@ class TXConvergenceMaps(PipelineStage):
         nbin_source = metadata['nbin_source']
         nside = metadata['nside']
 
+        # There is a flat-sky function in WLMassMap - if we need
+        # expose that later than we can do so easily, but for now
+        # let's stick with Healpix only
         if metadata['pixelization'] != 'healpix':
             raise ValueError("TXConvergenceMaps currently only runs on Healpix maps")
 
@@ -76,11 +78,10 @@ class TXConvergenceMaps(PipelineStage):
 class TXConvergenceMapPlots(PipelineStage):
 
     """
-    Make plots of all the available maps.
+    Make plots of all the convergence maps, Kappa_E and Kappa_B
     """
 
     name = "TXConvergenceMapPlots"
-
     inputs = [
         ("convergence_maps", MapsFile),
     ]
