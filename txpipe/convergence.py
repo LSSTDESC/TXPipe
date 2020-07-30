@@ -2,6 +2,7 @@ import numpy as np
 from .base_stage import PipelineStage
 from .data_types import MapsFile
 
+
 class TXConvergenceMaps(PipelineStage):
     name = "TXConvergenceMaps"
     inputs = [
@@ -14,9 +15,8 @@ class TXConvergenceMaps(PipelineStage):
 
     config_options = {
         "lmax": 0,
-        "smoothing_sigma": 10.0, # smoothing scale in arcmin
+        "smoothing_sigma": 10.0,  # smoothing scale in arcmin
     }
-
 
     def run(self):
         from wlmassmap.kaiser_squires import healpix_KS_map
@@ -24,30 +24,30 @@ class TXConvergenceMaps(PipelineStage):
 
         # Open the input file and read bit of metadata.
         # We will pass the entire metadata on to the outside
-        source_maps = self.open_input('source_maps', wrapper=True)
-        metadata = source_maps.file['maps'].attrs
-        nbin_source = metadata['nbin_source']
-        nside = metadata['nside']
+        source_maps = self.open_input("source_maps", wrapper=True)
+        metadata = source_maps.file["maps"].attrs
+        nbin_source = metadata["nbin_source"]
+        nside = metadata["nside"]
 
         # There is a flat-sky function in WLMassMap - if we need
         # expose that later than we can do so easily, but for now
         # let's stick with Healpix only
-        if metadata['pixelization'] != 'healpix':
+        if metadata["pixelization"] != "healpix":
             raise ValueError("TXConvergenceMaps currently only runs on Healpix maps")
 
         # Prepare the output file
-        output = self.open_output('convergence_maps', wrapper=True)
+        output = self.open_output("convergence_maps", wrapper=True)
         # Set up the output group, and copy in
         # metadata from the input file and then
         # our own config.
-        group = output.file.create_group('maps')
+        group = output.file.create_group("maps")
         group.attrs.update(metadata)
         group.attrs.update(self.config)
 
         # Use config value if it is non-zero, otherwise
         # use the default 2*nside as in WLMassMap
-        lmax = self.config['lmax'] or 2  * nside
-        sigma = self.config['smoothing_sigma']
+        lmax = self.config["lmax"] or 2 * nside
+        sigma = self.config["smoothing_sigma"]
 
         # Loop through all our source bins
         for i in range(nbin_source):
@@ -76,12 +76,12 @@ class TXConvergenceMaps(PipelineStage):
 
 
 class TXConvergenceMapPlots(PipelineStage):
-
     """
     Make plots of all the convergence maps, Kappa_E and Kappa_B
     """
 
     name = "TXConvergenceMapPlots"
+
     inputs = [
         ("convergence_maps", MapsFile),
     ]
@@ -89,13 +89,18 @@ class TXConvergenceMapPlots(PipelineStage):
     outputs = [
         ("convergence_map", PNGFile),
     ]
+
     config_options = {
-        # can also set Moll
+        # can also set this parameter as:
+        # "moll" for Mollweide
+        # "gnom" for Gnomonic
+        # "orth" for Orthogonal
         "projection": "cart",
     }
 
     def run(self):
         import matplotlib
+
         matplotlib.use("agg")
         import matplotlib.pyplot as plt
 
@@ -104,9 +109,9 @@ class TXConvergenceMapPlots(PipelineStage):
         nbin_source = m.file["maps"].attrs["nbin_source"]
 
         # Open a PNG output file, specifying output size
-        fig = self.open_output("convergence_map",
-                               wrapper=True,
-                               figsize=(5 * nbin_source, 5))
+        fig = self.open_output(
+            "convergence_map", wrapper=True, figsize=(5 * nbin_source, 5)
+        )
 
         # 2 x nbin for kappa_E and kappa_B
         _, axes = plt.subplots(2, nbin_source, num=fig.file.number)
