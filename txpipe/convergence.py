@@ -23,22 +23,24 @@ class TXConvergenceMaps(PipelineStage):
         from wlmassmap.kaiser_squires import healpix_KS_map
         import healpy
 
-        # Open input file
+        # Open the input file and read bit of metadata.
+        # We will pass the entire metadata on to the outside
         source_maps = self.open_input('source_maps', wrapper=True)
         metadata = source_maps.file['maps'].attrs
         nbin_source = metadata['nbin_source']
         nside = metadata['nside']
 
-        # Prepare output file
-        output = self.open_output('convergence_maps', wrapper=True)
+        if metadata['pixelization'] != 'healpix':
+            raise ValueError("TXConvergenceMaps currently only runs on Healpix maps")
 
+        # Prepare the output file
+        output = self.open_output('convergence_maps', wrapper=True)
         # Set up the output group, and copy in
         # metadata from the input file and then
         # our own config.
         group = output.file.create_group('maps')
         group.attrs.update(metadata)
         group.attrs.update(self.config)
-
 
         # Use config value if it is non-zero, otherwise
         # use the default 2*nside as in WLMassMap
@@ -55,13 +57,11 @@ class TXConvergenceMaps(PipelineStage):
             gmap = np.vstack([g1, g2])
             print(" - read maps")
 
-
             # Run main worker function to get convergence map
             kappa_E, kappa_B = healpix_KS_map(gmap, lmax=lmax, sigma=sigma)
             kappa_E[mask] = healpy.UNSEEN
             kappa_B[mask] = healpy.UNSEEN
             print(" - computed convergence")
-
 
             # Save pixels, just where they are valid.
             # Should be same for kappa_E and kappa_B.
