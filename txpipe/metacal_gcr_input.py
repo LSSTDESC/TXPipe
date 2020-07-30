@@ -61,7 +61,8 @@ class TXMetacalGCRInput(PipelineStage):
         # Columns that we will need.
         shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
+            + band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
+            + ['IxxPSF', 'IxyPSF', 'IyyPSF']
         )
 
         # Input columns for photometry
