@@ -15,7 +15,6 @@ class TXMapPlots(PipelineStage):
         ("density_maps", MapsFile),
         ("mask", MapsFile),
         ("aux_maps", MapsFile),
-        ("convergence_maps", MapsFile),
     ]
 
     outputs = [
@@ -26,7 +25,6 @@ class TXMapPlots(PipelineStage):
         ("psf_map", PNGFile),
         ("mask_map", PNGFile),
         ("bright_object_map", PNGFile),
-        ("convergence_map", PNGFile),
     ]
     config_options = {
         # can also set Moll
@@ -46,7 +44,6 @@ class TXMapPlots(PipelineStage):
         self.source_plots()
         self.lens_plots()
         self.mask_plots()
-        self.convergence_plots()
 
     def aux_plots(self):
         import matplotlib.pyplot as plt
@@ -134,29 +131,4 @@ class TXMapPlots(PipelineStage):
 
         fig = self.open_output("mask_map", wrapper=True, figsize=(5, 5))
         m.plot("mask", view=self.config["projection"])
-        fig.close()
-
-    def convergence_plots(self):
-        import matplotlib.pyplot as plt
-
-        m = self.open_input("convergence_maps", wrapper=True)
-
-        nbin_source = m.file["maps"].attrs["nbin_source"]
-
-        fig = self.open_output("convergence_map",
-                               wrapper=True,
-                               figsize=(5 * nbin_source, 5))
-
-        # 2 x nbin for kappa_E and kappa_B
-        _, axes = plt.subplots(2, nbin_source, num=fig.file.number)
-
-        for i in range(nbin_source):
-            # Set current axis to use (i.e. subplot)
-            plt.sca(axes[0, i])
-            # and plot E-mode kappa map
-            m.plot(f"kappa_E_{i}", view=self.config["projection"])
-
-            # B-mode
-            plt.sca(axes[1, i])
-            m.plot(f"kappa_B_{i}", view=self.config["projection"])
         fig.close()
