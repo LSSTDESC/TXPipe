@@ -44,9 +44,9 @@ stages:
     # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
 
 
-# If you have WLMassMap cloned in this directory, this will
-# add the path it we need for TXConvergenceMaps to the path, so you can
-# uncomment it above
+# If you have WLMassMap cloned in the working directory, this will
+# add the path into it that we need for TXConvergenceMaps to sys.path,
+# so you can uncomment that module above
 python_paths: WLMassMap/python/desc/
 
 # Where to put outputs
