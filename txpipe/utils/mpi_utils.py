@@ -70,12 +70,15 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
         start = end
 
 
-def in_place_reduce(data, comm):
+def in_place_reduce(data, comm, allreduce=False):
     import mpi4py.MPI
-    if comm.Get_rank() == 0:
-        comm.Reduce(mpi4py.MPI.IN_PLACE, data)
+    if allreduce:
+        comm.Allreduce(mpi4py.MPI.IN_PLACE, data)
     else:
-        comm.Reduce(counts, None)
+        if comm.Get_rank() == 0:
+            comm.Reduce(mpi4py.MPI.IN_PLACE, data)
+        else:
+            comm.Reduce(data, None)
 
 
 def test_reduce():
