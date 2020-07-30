@@ -9,6 +9,9 @@ def test_mean_shear():
     # equal weights
     b1 = MeanShearInBins(name, limits, delta_gamma)
 
+    # fake data set in two bins, with the x values in the middle
+    # of the bins and the g1, g2 some fixed simple values, with metacal
+    # factors perfectly applied
     data = {
         "x": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "x_1p": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
@@ -33,6 +36,9 @@ def test_mean_shear():
     assert np.allclose(mu, [-0.5, 0.5])
     assert np.allclose(g1, [-0.5, 0.5])
     assert np.allclose(g2, [-1.0, 1.0])
+
+    # using var([0.7, 0.6, 0.4, 0.3]) == var([-0.2, -0.1, 0.1, 0.2])
+    # this should equal the sigma (error on the mean) from the numbers above.
     expected_sigma1 = np.std([-0.2, -0.1, 0.1, 0.2]) / np.sqrt(4)
     expected_sigma2 = 2*expected_sigma1
     assert np.allclose(sigma1, expected_sigma1)
@@ -65,6 +71,7 @@ def test_mean_shear():
     b1.add_data(data)
 
     mu, g1, g2, sigma1, sigma2 = b1.collect()
+    # Now we have downweighted some of the samples some of these values change.
     assert np.allclose(mu, [-0.5, 0.5])
     assert np.allclose(g1, [-0.65, 0.35])
     assert np.allclose(g2, [-1.3, 0.7])
