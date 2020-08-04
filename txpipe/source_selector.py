@@ -365,6 +365,8 @@ class TXSourceSelector(PipelineStage):
         group.create_dataset('source_bin', (n,), dtype='i')
         group.create_dataset('source_counts', (nbin_source,), dtype='i')
         group.create_dataset('sigma_e', (nbin_source,), dtype='f')
+        group.create_dataset('mean_e1', (nbin_source,), dtype='f')
+        group.create_dataset('mean_e2', (nbin_source,), dtype='f')
         group.create_dataset('N_eff', (nbin_source,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
@@ -441,17 +443,23 @@ class TXSourceSelector(PipelineStage):
         C = np.zeros((nbin_source,1,2))
         N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
+        mean_e1 = np.zeros(nbin_source)
+        mean_e2 = np.zeros(nbin_source)
 
         # this needs fixing
-        sigma_e = number_density_stats.collect()
+        means, sigma_e = number_density_stats.collect()
 
         for i, cal in enumerate(calibrators):
             if self.config['shear_catalog_type']=='metacal':
                 R[i], S[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
+                mean_e1[i] / means[0]/R[i,0,0]
+                mean_e2[i] / means[1]/R[i,1,1]
             else:
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5*(R_scalar[i] + R_scalar[i])
+                mean_e1[i] / means[0]/R[i,0,0]
+                mean_e2[i] / means[1]/R[i,1,1]
         
 
         if self.rank==0:
@@ -465,6 +473,8 @@ class TXSourceSelector(PipelineStage):
                 # These are the same in metacal
                 group['source_counts'][:] = N
                 group['N_eff'][:] = N
+                group['mean_e1'][:] = mean_e1
+                group['mean_e2'][:] = mean_e2
             else:
                 group = outfile['response']
                 group['R_mean'][:] = R_scalar
@@ -474,7 +484,9 @@ class TXSourceSelector(PipelineStage):
                 group['sigma_e'][:] = sigma_e
                 # These are the same in metacal
                 group['source_counts'][:] = N
-                group['N_eff'][:] = N 
+                group['N_eff'][:] = N
+                group['mean_e1'][:] = mean_e1
+                group['mean_e2'][:] = mean_e2
 
     
     def select(self, data, bin_index):
