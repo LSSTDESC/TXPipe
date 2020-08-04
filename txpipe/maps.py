@@ -250,6 +250,13 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
+        import healpy
+        mask = (
+              (g1 == healpy.UNSEEN)
+            | (g2 == healpy.UNSEEN)
+            | (var_g1 == healpy.UNSEEN)
+            | (var_g3 == healpy.UNSEEN)
+        )
         g1_out = []
         g2_out = []
         var_g1_out = []
@@ -266,6 +273,13 @@ class TXSourceMaps(TXBaseMaps):
                 out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
             else:
                 raise ValueError("Unknown calibration")
+            # re-do the masking
+            g1_i, g2_i, v1_i, v2_i = out
+            g1_i[mask] = healpy.UNSEEN
+            g2_i[mask] = healpy.UNSEEN
+            v1_i[mask] = healpy.UNSEEN
+            v2_i[mask] = healpy.UNSEEN
+            # append
             g1_out.append(out[0])
             g2_out.append(out[1])
             var_g1_out.append(out[2])
