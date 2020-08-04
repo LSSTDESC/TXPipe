@@ -95,6 +95,9 @@ class TXTwoPointFourier(PipelineStage):
 
         # Load in the per-bin auto-correlation noise levels and 
         # mean response values
+        # Note - this is currently unused, because we are using the noise
+        # maps instead of an analytic form, but that could change later
+        # so I will leave this here.
         tomo_info = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
 
 
@@ -523,7 +526,6 @@ class TXTwoPointFourier(PipelineStage):
         # per tomographic bin.
         metadata = self.open_input('tracer_metadata')
         sigma_e = metadata['tracers/sigma_e'][:]
-        mean_R = metadata['tracers/R_gamma_mean'][:]
         N_eff = metadata['tracers/N_eff'][:]
         lens_counts = metadata['tracers/lens_counts'][:]
         metadata.close()
@@ -538,7 +540,6 @@ class TXTwoPointFourier(PipelineStage):
             "n_lens_steradian": n_lens,
             "sigma_e": sigma_e,
             "f_sky": f_sky,
-            "mean_R": mean_R,
         }
 
         warnings.warn("Using unweighted lens samples here")
