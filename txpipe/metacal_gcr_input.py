@@ -49,6 +49,9 @@ class TXMetacalGCRInput(PipelineStage):
             n = self.config['length']
             print(f"Using fixed specified size = {n}")
 
+        # This option, which prevented memory leaks with a previous
+        # catalog format, appears not to work for Parquet catalogs,
+        # but the memory leaks don't happen in that case either.
         try:
             cat.master.use_cache = False
         except AttributeError:
@@ -230,6 +233,8 @@ class TXIngestStars(PipelineStage):
         else:
             kwargs = {}
 
+        # As with the galaxy ingestion, this option doesn't 
+        # work with Parquet catalogs.
         try:
             cat.master.use_cache = False
         except AttributeError:
