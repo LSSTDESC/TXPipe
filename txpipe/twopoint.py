@@ -1855,7 +1855,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             #g = h['pdf']
             #data['mu'] = g['mu'][:]
             #Temporary fix for not running PDF's on DES
-            data['mu'] = g['meanz']
+            data['mu'] = g['mean_z']
 
     def load_random_catalog(self, data):
         filename = self.get_input('random_cats_source')
