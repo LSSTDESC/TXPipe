@@ -218,6 +218,14 @@ class TXSourceMaps(TXBaseMaps):
         mapper.add_data(data)
 
     def calibrate_map_metacal(self, g1, g2, var_g1, var_g2, R):
+        import healpy
+        mask = (
+              (g1 == healpy.UNSEEN)
+            | (g2 == healpy.UNSEEN)
+            | (var_g1 == healpy.UNSEEN)
+            | (var_g2 == healpy.UNSEEN)
+        )
+
         g1, g2 = apply_metacal_response(R, 0, g1, g2)
 
         std_g1 = np.sqrt(var_g1)
@@ -226,6 +234,11 @@ class TXSourceMaps(TXBaseMaps):
 
         var_g1 = std_g1 ** 2
         var_g2 = std_g2 ** 2
+
+        g1[mask] = healpy.UNSEEN
+        g2[mask] = healpy.UNSEEN
+        var_g1[mask] = healpy.UNSEEN
+        var_g2[mask] = healpy.UNSEEN
 
         return g1, g2, var_g1, var_g2
 
@@ -250,13 +263,6 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
-        import healpy
-        mask = (
-              (g1 == healpy.UNSEEN)
-            | (g2 == healpy.UNSEEN)
-            | (var_g1 == healpy.UNSEEN)
-            | (var_g2 == healpy.UNSEEN)
-        )
         g1_out = []
         g2_out = []
         var_g1_out = []
@@ -275,10 +281,6 @@ class TXSourceMaps(TXBaseMaps):
                 raise ValueError("Unknown calibration")
             # re-do the masking
             g1_i, g2_i, v1_i, v2_i = out
-            g1_i[mask] = healpy.UNSEEN
-            g2_i[mask] = healpy.UNSEEN
-            v1_i[mask] = healpy.UNSEEN
-            v2_i[mask] = healpy.UNSEEN
             # append
             g1_out.append(out[0])
             g2_out.append(out[1])
