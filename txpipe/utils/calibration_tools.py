@@ -429,8 +429,8 @@ class MeanShearInBins:
         self.size = len(self.limits) - 1
 
         # We have to work out the mean g1, g2 
-        self.g1 = ParallelMeanVariance(self.size, weighted=True)
-        self.g2 = ParallelMeanVariance(self.size, weighted=True)
+        self.g1 = ParallelMeanVariance(self.size)
+        self.g2 = ParallelMeanVariance(self.size)
         self.x  = ParallelMean(self.size)
 
         if shear_catalog_type=='metacal':

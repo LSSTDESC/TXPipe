@@ -49,8 +49,10 @@ class TXMetacalGCRInput(PipelineStage):
             n = self.config['length']
             print(f"Using fixed specified size = {n}")
 
-
-        cat.master.use_cache = False
+        try:
+            cat.master.use_cache = False
+        except AttributeError:
+            pass
 
         available = cat.list_all_quantities()
         bands = []
@@ -228,8 +230,10 @@ class TXIngestStars(PipelineStage):
         else:
             kwargs = {}
 
-
-        cat.master.use_cache = False
+        try:
+            cat.master.use_cache = False
+        except AttributeError:
+            pass
 
         start = 0
         star_start = 0

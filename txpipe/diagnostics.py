@@ -35,6 +35,7 @@ class TXDiagnosticPlots(PipelineStage):
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
         'psf_prefix': 'mcal_psf_',
+        'shear_prefix': 'mcal_',
         'T_min': 0.2,
         'T_max': 0.28,
     }
@@ -66,11 +67,12 @@ class TXDiagnosticPlots(PipelineStage):
         psf_prefix = self.config['psf_prefix']
         shear_prefix = self.config['shear_prefix']
         if self.config['shear_catalog_type']=='metacal':
-            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', f'{psf_prefix}T_mean', 'mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m', 'weight']
         else:
             shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2']
+
         photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']

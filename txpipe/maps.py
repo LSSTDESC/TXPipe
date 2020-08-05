@@ -255,7 +255,7 @@ class TXSourceMaps(TXBaseMaps):
               (g1 == healpy.UNSEEN)
             | (g2 == healpy.UNSEEN)
             | (var_g1 == healpy.UNSEEN)
-            | (var_g3 == healpy.UNSEEN)
+            | (var_g2 == healpy.UNSEEN)
         )
         g1_out = []
         g2_out = []
@@ -309,8 +309,8 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, var_g1[b])
+            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
+            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
         return maps
 
@@ -538,8 +538,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, var_g1[b])
+            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
+            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
         return maps
 
