@@ -27,13 +27,13 @@ class SourceNumberDensityStats:
         sigma_e = np.zeros(self.nbin_source)
 
         for i in range(self.nbin_source):
-            _, _, variances = self.shear_stats[i].collect(self.comm, mode='allgather')
+            _, means, variances = self.shear_stats[i].collect(self.comm, mode='allgather')
 
             # This needs to be divided by the response outside here,
             # as this value is not calibrated
             sigma_e[i] = (0.5 * (variances[0] + variances[1]))**0.5
 
-        return sigma_e
+        return means, sigma_e
 
 
 class LensNumberDensityStats:

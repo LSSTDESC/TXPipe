@@ -34,6 +34,7 @@ class TXDiagnosticPlots(PipelineStage):
     config_options = {
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
+        'shear_prefix':'mcal_',
         'psf_prefix': 'mcal_psf_',
         'shear_prefix': 'mcal_',
         'T_min': 0.2,
