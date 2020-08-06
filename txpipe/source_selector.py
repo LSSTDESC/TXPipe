@@ -453,13 +453,13 @@ class TXSourceSelector(PipelineStage):
             if self.config['shear_catalog_type']=='metacal':
                 R[i], S[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
-                mean_e1[i] / means[0]/R[i,0,0]
-                mean_e2[i] / means[1]/R[i,1,1]
+                mean_e1[i] = means[0] / R[i,0,0]
+                mean_e2[i] = means[1] / R[i,1,1]
             else:
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5*(R_scalar[i] + R_scalar[i])
-                mean_e1[i] / means[0]/R[i,0,0]
-                mean_e2[i] / means[1]/R[i,1,1]
+                mean_e1[i] = means[0] / R[i,0,0]
+                mean_e2[i] = means[1] / R[i,1,1]
         
 
         if self.rank==0:
