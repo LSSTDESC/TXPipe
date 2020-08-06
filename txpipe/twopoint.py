@@ -352,38 +352,48 @@ class TXTwoPoint(PipelineStage):
         return result
 
 
-    def get_m(self, data, meta, i):
+    def get_calibrated_catalog_bin(self, data, meta, i):
         """
         Calculate the metacal correction factor for this tomographic bin.
         """
 
         mask = (data['source_bin'] == i)
 
+
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
-            if self.config['use_true_shear']:            
-                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['true_g1'][mask],data['true_g2'][mask])
-            else:
-                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
-            return g1, g2, mask
+            prefix = 'true' if self.config['use_true_shear'] else 'mcal'
+            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data[f'{prefix}_g1'][mask], data[f'{prefix}_g2'][mask])
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
             g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
-            
-            if self.config['subtract_mean_shear']:
-                g1 -= meta['mean_e1'][i]
-                g2 -= meta['mean_e2'][i]
-            return g1, g2, mask
-
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+            
+        # Subtract mean shears, if needed.  These are calculated in source_selector,
+        # and have already been calibrated, so subtract them after calibrated our sample.
+        # Right now we are loading the full catalog here, so we could just take the mean
+        # at this point, but in future we would like to move to just loading part of the
+        # catalog.
+        if self.config['subtract_mean_shear']:
+            g1 -= meta['mean_e1'][i]
+            # If we flip g2 we also have to flip the sign
+            # of what we subtract
+            if flip_g2:
+                g2 += meta['mean_e2'][i]
+            else:
+                g2 -= meta['mean_e2'][i]
 
+
+        return g1, g2, mask
 
     def get_shear_catalog(self, data, meta, i):
         import treecorr
 
-        g1,g2,mask = self.get_m(data, meta, i)
+        # Load and calibrate the appropriate bin data
+        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
+
         if self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='metacal':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
