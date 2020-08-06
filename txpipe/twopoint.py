@@ -359,7 +359,6 @@ class TXTwoPoint(PipelineStage):
 
         mask = (data['source_bin'] == i)
 
-
         # We use S=0 here because we have already included it in R_total
         if self.config['shear_catalog_type']=='metacal':
             prefix = 'true' if self.config['use_true_shear'] else 'mcal'
@@ -380,7 +379,7 @@ class TXTwoPoint(PipelineStage):
             g1 -= meta['mean_e1'][i]
             # If we flip g2 we also have to flip the sign
             # of what we subtract
-            if flip_g2:
+            if self.config['flip_g2']:
                 g2 += meta['mean_e2'][i]
             else:
                 g2 -= meta['mean_e2'][i]
