@@ -67,6 +67,7 @@ TXTwoPoint:
     max_sep: 250
     nbins: 20
     verbose: 0
+    subtract_mean_shear: True
 
 TXMainMaps:
     pixelization: healpix
