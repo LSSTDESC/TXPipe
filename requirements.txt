@@ -14,7 +14,6 @@ sklearn
 astropy
 healpy
 camb
-tjpcov
 threadpoolctl
 #pymaster
 cosmosis-standalone

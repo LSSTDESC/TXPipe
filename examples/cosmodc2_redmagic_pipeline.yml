@@ -8,6 +8,11 @@ site:
 
 modules: txpipe
 
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
 stages:
     - name: TXRandomCat
     - name: TXIngestRedmagic
@@ -51,6 +56,9 @@ stages:
       threads_per_process: 64
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+      threads_per_process: 32
+    - name: TXConvergenceMapPlots # Plot the convergence map
 
 output_dir: data/cosmodc2/outputs_redmagic/
 # output_dir: data/cosmodc2/outputs_redmagic/no_shape_noise/

@@ -8,6 +8,11 @@ site:
 
 modules: txpipe
 
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
 stages:
     - name: TXRandomCat
     - name: TXSourceSelector
@@ -46,6 +51,9 @@ stages:
       threads_per_process: 64
     - name: TXRealGaussianCovariance
       threads_per_process: 64
+    - name: TXConvergenceMaps
+      threads_per_process: 32
+    - name: TXConvergenceMapPlots
 
 output_dir: data/cosmodc2/outputs
 config: examples/config/cosmodc2_config.yml
