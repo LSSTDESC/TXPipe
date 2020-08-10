@@ -6,6 +6,24 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the ceci repository for the infrastructure.
 
+
+Getting the code and some test data
+-----------------------------------
+
+Get the TXPipe code like this:
+```bash
+git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
+cd TXPipe
+```
+
+You can get some input test data like this:
+
+```bash
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
+```
+
+
 Permissions
 -----------
 
@@ -78,24 +96,6 @@ pip install ceci
 ```
 
 Then use shifter to run the actual jobs.
-
-
-
-Getting the code and some test data
------------------------------------
-
-Get the TXPipe code like this:
-```bash
-git clone https://github.com/LSSTDESC/TXPipe
-cd TXPipe
-```
-
-You can get some input test data like this:
-
-```bash
-curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
-tar -zxvf example.tar.gz
-```
 
 
 Running the pipeline
