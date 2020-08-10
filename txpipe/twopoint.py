@@ -376,15 +376,26 @@ class TXTwoPoint(PipelineStage):
         # at this point, but in future we would like to move to just loading part of the
         # catalog.
         if self.config['subtract_mean_shear']:
-            g1 -= meta['mean_e1'][i]
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            if self.config['flip_g2']:
-                g2 += meta['mean_e2'][i]
-            else:
-                g2 -= meta['mean_e2'][i]
-
-
+            flip = self.config['flip_g2']
+            mu1 = g1.mean()
+            mu2 = g2.mean()
+            g1 -= mu1
+            g2 -= mu2;
+#           # If we flip g2 we also have to flip the sign
+#           # of what we subtract
+#           if flip:
+#               g2 += meta['mean_e2'][i]
+#           else:
+#               g2 -= meta['mean_e2'][i]
+#           nu1 = g1.mean()
+#           nu2 = g2.mean()
+#           d1 = meta['mean_e1'][i]
+#           d2 = meta['mean_e2'][i]
+            print(f"Subtracting mean shears for bin {i}")
+            print(f"Means before: {mu1}  and  {mu2}")
+#           print(f"Means after:  {nu1}  and  {nu2}")
+#           print(f"Corrections:  {d1}   and  {d2}") 
+#           print(f"Flip = {flip}")
         return g1, g2, mask
 
     def get_shear_catalog(self, data, meta, i):
@@ -711,6 +722,7 @@ class TXTwoPointPlots(PipelineStage):
     config_options = {
         'wspace': 0.05,
         'hspace': 0.05,
+        'theory': True,
     }
 
 
@@ -745,8 +757,12 @@ class TXTwoPointPlots(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_real'], 
-            figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+        if self.config['theory']:
+            full_3x2pt_plots([filename], ['twopoint_data_real'], 
+                             figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+        else:
+            full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures)
+
 
         for fig in outputs.values():
             fig.close()
