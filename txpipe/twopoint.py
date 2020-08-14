@@ -359,14 +359,18 @@ class TXTwoPoint(PipelineStage):
 
         mask = (data['source_bin'] == i)
 
-        # We use S=0 here because we have already included it in R_total
-        if self.config['shear_catalog_type']=='metacal':
-            prefix = 'true' if self.config['use_true_shear'] else 'mcal'
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data[f'{prefix}_g1'][mask], data[f'{prefix}_g2'][mask])
+        if self.config['use_true_shear']:
+            g1 = data[f'{prefix}_g1'][mask]
+            g2 = data[f'{prefix}_g2'][mask]
+
+        elif self.config['shear_catalog_type']=='metacal':
+            # We use S=0 here because we have already included it in R_total
+            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask], data['mcal_g2'][mask])
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
             g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
+
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
             
