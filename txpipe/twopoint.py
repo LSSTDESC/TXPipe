@@ -692,6 +692,7 @@ class TXTwoPointLensCat(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('lens_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     def load_lens_catalog(self, data):
         filename = self.get_input('lens_catalog')
@@ -1103,6 +1104,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('exposures', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_field_center', SACCFile),
@@ -1122,7 +1124,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear':False
         }
 
     def run(self):
@@ -1253,6 +1256,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_bright_stars', SACCFile),
@@ -1272,7 +1276,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'shot',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear': False,
         }
 
     def run(self):
@@ -1419,6 +1424,7 @@ class TXGammaTDimStars(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_dim_stars', SACCFile),
@@ -1438,7 +1444,8 @@ class TXGammaTDimStars(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear': False,        
         }
 
     def run(self):
@@ -1586,6 +1593,7 @@ class TXGammaTRandoms(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_randoms', SACCFile),
@@ -1605,7 +1613,8 @@ class TXGammaTRandoms(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear': False,
         }
 
     def run(self):
