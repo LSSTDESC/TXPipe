@@ -62,7 +62,7 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
+    flip_g2: False  # use true when using metacal shears
     min_sep: 2.5
     max_sep: 250
     nbins: 20
