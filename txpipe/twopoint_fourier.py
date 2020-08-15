@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, \
                         YamlFile, SACCFile, MapsFile, HDFFile, \
-                        PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps
+                        PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps, PNGFile
 import numpy as np
 import collections
 from .utils import choose_pixelization, array_hash
@@ -95,6 +95,9 @@ class TXTwoPointFourier(PipelineStage):
 
         # Load in the per-bin auto-correlation noise levels and 
         # mean response values
+        # Note - this is currently unused, because we are using the noise
+        # maps instead of an analytic form, but that could change later
+        # so I will leave this here.
         tomo_info = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
 
 
@@ -523,7 +526,6 @@ class TXTwoPointFourier(PipelineStage):
         # per tomographic bin.
         metadata = self.open_input('tracer_metadata')
         sigma_e = metadata['tracers/sigma_e'][:]
-        mean_R = metadata['tracers/R_gamma_mean'][:]
         N_eff = metadata['tracers/N_eff'][:]
         lens_counts = metadata['tracers/lens_counts'][:]
         metadata.close()
@@ -538,7 +540,6 @@ class TXTwoPointFourier(PipelineStage):
             "n_lens_steradian": n_lens,
             "sigma_e": sigma_e,
             "f_sky": f_sky,
-            "mean_R": mean_R,
         }
 
         warnings.warn("Using unweighted lens samples here")
@@ -573,7 +574,6 @@ class TXTwoPointFourier(PipelineStage):
             tracers[name] = T
 
         return tracers
-
 
 
 
@@ -623,6 +623,73 @@ class TXTwoPointFourier(PipelineStage):
         output_filename = self.get_output("twopoint_data_fourier")
         S.save_fits(output_filename, overwrite=True)
 
+
+
+class TXTwoPointPlotsFourier(PipelineStage):
+
+    name='TXTwoPointPlotsFourier'
+    inputs = [
+        ('twopoint_data_fourier', SACCFile),
+        ('fiducial_cosmology', YamlFile),  # For example lines
+    ]
+    outputs = [
+        ('shear_cl_ee', PNGFile),
+        ('shearDensity_cl', PNGFile),
+        ('density_cl', PNGFile),
+    ]
+
+    config_options = {
+        'wspace': 0.05,
+        'hspace': 0.05,
+    }
+
+    def read_nbin(self,s):
+        sources = []
+        lenses = []
+        for tn,t in s.tracers.items():
+            if 'source' in tn:
+                sources.append(tn)
+            if 'lens' in tn:
+                lenses.append(tn)
+        return len(sources), len(lenses)
+
+    def run(self):
+        import sacc
+        import matplotlib
+        import pyccl
+        from .plotting import full_3x2pt_plots
+        matplotlib.use('agg')
+        matplotlib.rcParams["xtick.direction"]='in'
+        matplotlib.rcParams["ytick.direction"]='in'
+
+        filename = self.get_input('twopoint_data_fourier')
+        s = sacc.Sacc.load_fits(filename)
+        nbin_source, nbin_lens = self.read_nbin(s)  
+ 
+        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+
+        outputs = {
+            "galaxy_density_cl": self.open_output('density_cl',
+                figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
+
+            "galaxy_shearDensity_cl_e": self.open_output('shearDensity_cl',
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_cl_ee": self.open_output('shear_cl_ee',
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+
+        }
+
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['twopoint_data_fourier'], 
+                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False)
+
+        for fig in outputs.values():
+            fig.close()
+
+
+        
 
 if __name__ == '__main__':
     PipelineStage.main()

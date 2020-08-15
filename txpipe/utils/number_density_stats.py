@@ -1,4 +1,4 @@
-from .stats import ParallelStatsCalculator
+from parallel_statistics import ParallelMeanVariance
 import numpy as np
 
 class SourceNumberDensityStats:
@@ -7,7 +7,7 @@ class SourceNumberDensityStats:
         self.comm = comm
         self.shear_type=shear_type
         self.shear_stats = [
-            ParallelStatsCalculator(2)
+            ParallelMeanVariance(2)
             for i in range(nbin_source)
         ]
 

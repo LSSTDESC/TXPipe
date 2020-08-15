@@ -58,6 +58,7 @@ class TXIngestRedmagic(PipelineStage):
 
         h = tomo.create_group('tomography')
         h.create_dataset('lens_bin', (n,), dtype=np.int32)
+        h.create_dataset('lens_weight', (n,), dtype=np.float64)
         h.create_dataset('lens_counts', (nbin_lens,), dtype='i')
         h.attrs['nbin_lens'] = nbin_lens
         h.attrs[f'lens_zbin_edges'] = zbin_edges
@@ -107,6 +108,7 @@ class TXIngestRedmagic(PipelineStage):
                 g[f'mag_err_{b}'][s:e] = data['mag_err'][:, i]
 
             h['lens_bin'][s:e] = zbin
+            h['lens_weight'][s:e] = 1.0
 
         # this is an overall count
         h["lens_counts"][:] = counts
