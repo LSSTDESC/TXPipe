@@ -277,18 +277,16 @@ class TXSourceMaps(TXBaseMaps):
                 out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
             else:
                 raise ValueError("Unknown calibration")
+
             # re-apply the masking, just to make sure
-            g1_i, g2_i, v1_i, v2_i = out
-            g1[mask] = healpy.UNSEEN
-            g2[mask] = healpy.UNSEEN
-            var_g1[mask] = healpy.UNSEEN
-            var_g2[mask] = healpy.UNSEEN
+            for x in out:
+                x[mask] = healpy.UNSEEN
 
             # append our results for this tomographic bin
             g1_out.append(out[0])
             g2_out.append(out[1])
             var_g1_out.append(out[2])
-            var_g2_out.append(out[3])
+            var_g2_out.append(v2_i)
 
         return g1_out, g2_out, var_g1_out, var_g2_out
 
