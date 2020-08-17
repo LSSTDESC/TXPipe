@@ -32,11 +32,22 @@ stages:
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
-    # disabling these as they takes too long for a quick test
-#    - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-#    - name: TXTwoPointFourier          # Compute power spectra C_ell
-#    - name: TXFourierGaussianCovariance # Compute the C_ell covariance
-# these last two also require namaster
+
+    # These two require the WLMassMap repository on the path - see below
+    # - name: TXConvergenceMaps
+    # - name: TXConvergenceMapPlots
+
+    # Disabling these as they takes too long for a quick test.
+    # The latter two need NaMaster
+    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+    # - name: TXTwoPointFourier          # Compute power spectra C_ell
+    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+
+
+# If you have WLMassMap cloned in the working directory, this will
+# add the path into it that we need for TXConvergenceMaps to sys.path,
+# so you can uncomment that module above
+python_paths: WLMassMap/python/desc/
 
 # Where to put outputs
 output_dir: data/example/outputs

@@ -72,7 +72,13 @@ def full_3x2pt_plots(sacc_files, labels,
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
                      xi=None, fit_bias=False, figures=None):
     import sacc
-    sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
+    sacc_data = []
+    for f in sacc_files:
+        if isinstance(f, sacc.Sacc):
+            sacc_data.append(f)
+        else:
+            sacc_data.append(sacc.Sacc.load_fits(f))
+
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
 

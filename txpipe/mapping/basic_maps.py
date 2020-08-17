@@ -27,7 +27,7 @@ class Mapper:
             # the variance of the g1 and g2 signals in each pixel, in
             # each bin
             for t in [1,2]:
-                self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix, weighted=True)
+                self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
             self.stats[(b,'weight')] = ParallelSum(self.pixel_scheme.npix)
 
     def add_data(self, data):
