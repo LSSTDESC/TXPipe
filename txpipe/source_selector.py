@@ -469,8 +469,8 @@ class TXSourceSelector(PipelineStage):
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
                 sigma_e[i] /= 0.5 * (R_scalar[i] + R_scalar[i])
                 # should probably use one of the calibration_tools functions
-                mean_e1[i] = means[0] / R_scalar[i]
-                mean_e2[i] = means[1] / R_scalar[i]
+                mean_e1[i] = mu1 / R_scalar[i]
+                mean_e2[i] = mu2 / R_scalar[i]
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")
 
