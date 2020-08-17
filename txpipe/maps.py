@@ -250,6 +250,9 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
+        import healpy
+
+        # We will return lists of calibrated maps
         g1_out = []
         g2_out = []
         var_g1_out = []
@@ -258,6 +261,14 @@ class TXSourceMaps(TXBaseMaps):
         n = len(g1)
 
         for i in range(n):
+            # we want to avoid accidentally calibrating any pixels
+            # that should be masked.
+            mask = (
+                  (g1[i] == healpy.UNSEEN)
+                | (g2[i] == healpy.UNSEEN)
+                | (var_g1[i] == healpy.UNSEEN)
+                | (var_g2[i] == healpy.UNSEEN)
+            )
             if self.config['shear_catalog_type'] == 'metacal':
                 R = cal[0]
                 out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], R[i])
@@ -266,6 +277,12 @@ class TXSourceMaps(TXBaseMaps):
                 out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
             else:
                 raise ValueError("Unknown calibration")
+
+            # re-apply the masking, just to make sure
+            for x in out:
+                x[mask] = healpy.UNSEEN
+
+            # append our results for this tomographic bin
             g1_out.append(out[0])
             g2_out.append(out[1])
             var_g1_out.append(out[2])
@@ -295,8 +312,8 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, var_g1[b])
+            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
+            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
         return maps
 
@@ -524,8 +541,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, var_g1[b])
+            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
+            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
         return maps
 
