@@ -381,25 +381,27 @@ class TXTwoPoint(PipelineStage):
         # catalog.
         if self.config['subtract_mean_shear']:
             flip = self.config['flip_g2']
+            # Cross-check: print out the new mean.
+            # In the weighted case these won't actually be equal
             mu1 = g1.mean()
             mu2 = g2.mean()
-            g1 -= mu1
-            g2 -= mu2;
-#           # If we flip g2 we also have to flip the sign
-#           # of what we subtract
-#           if flip:
-#               g2 += meta['mean_e2'][i]
-#           else:
-#               g2 -= meta['mean_e2'][i]
-#           nu1 = g1.mean()
-#           nu2 = g2.mean()
-#           d1 = meta['mean_e1'][i]
-#           d2 = meta['mean_e2'][i]
+
+            # If we flip g2 we also have to flip the sign
+            # of what we subtract
+            g1 -= meta['mean_e1'][i]
+            if flip:
+                g2 += meta['mean_e2'][i]
+            else:
+                g2 -= meta['mean_e2'][i]
+
+            # Compare to final means.
+            nu1 = g1.mean()
+            nu2 = g2.mean()
             print(f"Subtracting mean shears for bin {i}")
             print(f"Means before: {mu1}  and  {mu2}")
-#           print(f"Means after:  {nu1}  and  {nu2}")
-#           print(f"Corrections:  {d1}   and  {d2}") 
-#           print(f"Flip = {flip}")
+            print(f"Means after:  {nu1}  and  {nu2}")
+            print("(In the weighted case the latter may not be exactly zero)")
+
         return g1, g2, mask
 
     def get_shear_catalog(self, data, meta, i):
