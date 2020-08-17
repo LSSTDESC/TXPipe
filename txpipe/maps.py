@@ -218,7 +218,6 @@ class TXSourceMaps(TXBaseMaps):
         mapper.add_data(data)
 
     def calibrate_map_metacal(self, g1, g2, var_g1, var_g2, R):
-
         g1, g2 = apply_metacal_response(R, 0, g1, g2)
 
         std_g1 = np.sqrt(var_g1)
