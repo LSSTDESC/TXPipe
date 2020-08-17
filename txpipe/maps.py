@@ -286,7 +286,7 @@ class TXSourceMaps(TXBaseMaps):
             g1_out.append(out[0])
             g2_out.append(out[1])
             var_g1_out.append(out[2])
-            var_g2_out.append(v2_i)
+            var_g2_out.append(out[3])
 
         return g1_out, g2_out, var_g1_out, var_g2_out
 
