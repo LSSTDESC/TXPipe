@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
 from .utils.calibration_tools import metacal_variants, band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
 import numpy as np
 import warnings
@@ -365,6 +365,8 @@ class TXSourceSelector(PipelineStage):
         group.create_dataset('source_bin', (n,), dtype='i')
         group.create_dataset('source_counts', (nbin_source,), dtype='i')
         group.create_dataset('sigma_e', (nbin_source,), dtype='f')
+        group.create_dataset('mean_e1', (nbin_source,), dtype='f')
+        group.create_dataset('mean_e2', (nbin_source,), dtype='f')
         group.create_dataset('N_eff', (nbin_source,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
@@ -441,18 +443,52 @@ class TXSourceSelector(PipelineStage):
         C = np.zeros((nbin_source,1,2))
         N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
+        mean_e1 = np.zeros(nbin_source)
+        mean_e2 = np.zeros(nbin_source)
+        sigma_e = np.zeros(nbin_source)
 
-        # this needs fixing
-        sigma_e = number_density_stats.collect()
+        means, variances = number_density_stats.collect()
+
 
         for i, cal in enumerate(calibrators):
+            mu1 = np.array([means[i, 0]])
+            mu2 = np.array([means[i, 1]])
+
+            # We now have to calibrate both the mean shear and the
+            # sigma_e estimator
             if self.config['shear_catalog_type']=='metacal':
+                # Collect the total calibration factor
                 R[i], S[i], N[i] = cal.collect(self.comm)
-                sigma_e[i] /= 0.5*(R[i,0,0] + R[i,1,1])
-            else:
+
+                # Apply it to the means
+                mean_e1[i], mean_e2[i] = apply_metacal_response(
+                    R[i], S[i], g1=mu1, g2=mu2)
+
+                # Inverse of the square of the reponse, taking
+                # diagonal because we don't have the covariance
+                # and it should be very small
+                P = np.diag(np.linalg.inv(R[i] @ R[i]))
+                # Apply to the variances to get sigma_e
+                sigma_e[i] = np.sqrt(0.5 * P @ variances[i])
+
+            elif self.config['shear_catalog_type']=='lensfit':
+                # TODO Someone using a lensft catalog needs to check
+                print("Warning: check the lensfit calibration in mean shear")
+
+                # Collect the overall calibration
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
-                sigma_e[i] /= 0.5*(R_scalar[i] + R_scalar[i])
-        
+
+                # should probably use one of the calibration_tools functions
+                mean_e1[i] = mu1 / R_scalar[i]
+                mean_e2[i] = mu2 / R_scalar[i]
+
+                # This also needs checking.
+                sigma_e[i] = np.sqrt(
+                    (0.5 * (variances[i, 0] + variances[i, 1]))
+                ) / R_scalar[i]
+
+            else:
+                raise ValueError("Unknown calibration type in mean g / sigma_e calc")
 
         if self.rank==0:
             if self.config['shear_catalog_type']=='metacal':
@@ -465,6 +501,8 @@ class TXSourceSelector(PipelineStage):
                 # These are the same in metacal
                 group['source_counts'][:] = N
                 group['N_eff'][:] = N
+                group['mean_e1'][:] = mean_e1
+                group['mean_e2'][:] = mean_e2
             else:
                 group = outfile['response']
                 group['R_mean'][:] = R_scalar
@@ -474,7 +512,9 @@ class TXSourceSelector(PipelineStage):
                 group['sigma_e'][:] = sigma_e
                 # These are the same in metacal
                 group['source_counts'][:] = N
-                group['N_eff'][:] = N 
+                group['N_eff'][:] = N
+                group['mean_e1'][:] = mean_e1
+                group['mean_e2'][:] = mean_e2
 
     
     def select(self, data, bin_index):
