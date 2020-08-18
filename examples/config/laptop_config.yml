@@ -109,6 +109,7 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
+    subtract_mean_shear: True
 
 TXGammaTBrightStars: {}
 

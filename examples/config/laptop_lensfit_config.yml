@@ -96,6 +96,7 @@ TXTwoPoint:
     nbins: 10
     verbose: 0
     shear_catalog_type: metacal
+    subtract_mean_shear: True
 
 TXGammaTBrightStars:
     shear_catalog_type: metacal

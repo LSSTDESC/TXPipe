@@ -58,6 +58,8 @@ class TXTracerMetadata(PipelineStage):
         copy(shear_tomo_file, "tomography", "tracers", "N_eff")
         copy(lens_tomo_file, "tomography", "tracers", "lens_counts")
         copy(shear_tomo_file, "tomography", "tracers", "sigma_e")
+        copy(shear_tomo_file, "tomography", "tracers", "mean_e1")
+        copy(shear_tomo_file, "tomography", "tracers", "mean_e2")
         copy(shear_tomo_file, "tomography", "tracers", "source_counts")
 
         N_eff = shear_tomo_file["tomography/N_eff"][:]
@@ -86,6 +88,8 @@ class TXTracerMetadata(PipelineStage):
             "lens_density": lens_density.tolist(),
             "source_density": source_density.tolist(),
             "sigma_e": shear_tomo_file["tomography/sigma_e"][:].tolist(),
+            "mean_e1": shear_tomo_file["tomography/mean_e1"][:].tolist(),
+            "mean_e2": shear_tomo_file["tomography/mean_e2"][:].tolist(),
             "n_eff": n_eff.tolist(),
             "lens_counts": lens_counts.tolist(),
             "source_counts": source_counts.tolist(),
