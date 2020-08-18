@@ -25,17 +25,13 @@ class SourceNumberDensityStats:
 
     def collect(self):
         # Get the basic shear numbers - means, counts, variances
-        sigma_e = np.zeros(self.nbin_source)
+        variances = np.zeros((self.nbin_source, 2))
         means = np.zeros((self.nbin_source, 2))
 
         for i in range(self.nbin_source):
-            _, means[i], variances = self.shear_stats[i].collect(self.comm, mode='allgather')
+            _, means[i], variances[i] = self.shear_stats[i].collect(self.comm, mode='allgather')
 
-            # This needs to be divided by the response outside here,
-            # as this value is not calibrated
-            sigma_e[i] = (0.5 * (variances[0] + variances[1]))**0.5
-
-        return means, sigma_e
+        return means, variances
 
 
 class LensNumberDensityStats:

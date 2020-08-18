@@ -445,13 +445,17 @@ class TXSourceSelector(PipelineStage):
         R_scalar = np.zeros(nbin_source)
         mean_e1 = np.zeros(nbin_source)
         mean_e2 = np.zeros(nbin_source)
+        sigma_e = np.zeros(nbin_source)
 
-        means, sigma_e = number_density_stats.collect()
+        means, variances = number_density_stats.collect()
 
 
         for i, cal in enumerate(calibrators):
             mu1 = np.array([means[i, 0]])
             mu2 = np.array([means[i, 1]])
+
+            # We now have to calibrate both the mean shear and the
+            # sigma_e estimator
             if self.config['shear_catalog_type']=='metacal':
                 # Collect the total calibration factor
                 R[i], S[i], N[i] = cal.collect(self.comm)
@@ -460,17 +464,27 @@ class TXSourceSelector(PipelineStage):
                 mean_e1[i], mean_e2[i] = apply_metacal_response(
                     R[i], S[i], g1=mu1, g2=mu2)
 
-                # TODO: use full R matrix here?
-                sigma_e[i] /= 0.5 * (R[i,0,0] + R[i,1,1])
+                # Inverse of the square of the reponse, taking
+                # diagonal because we don't have the covariance
+                # and it should be very small
+                P = np.diag(np.linalg.inv(R[i] @ R[i]))
+                # Apply to the variances to get sigma_e
+                sigma_e[i] = np.sqrt(0.5 * P @ variances[i])
+
             elif self.config['shear_catalog_type']=='lensfit':
-                # lensfit case
-                print("Warning: check the lensfit calibration in mean shear")
                 # TODO Someone using a lensft catalog needs to check
+                print("Warning: check the lensfit calibration in mean shear")
+
+                # Collect the overall calibration
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
-                sigma_e[i] /= 0.5 * (R_scalar[i] + R_scalar[i])
+
                 # should probably use one of the calibration_tools functions
                 mean_e1[i] = mu1 / R_scalar[i]
                 mean_e2[i] = mu2 / R_scalar[i]
+
+                # This also needs checking.
+                sigma_e[i] = 0.5 * (variances[i, 0] + variances[i, 1]) / R_scalar[i]
+
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")
 
