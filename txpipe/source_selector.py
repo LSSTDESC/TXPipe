@@ -483,7 +483,9 @@ class TXSourceSelector(PipelineStage):
                 mean_e2[i] = mu2 / R_scalar[i]
 
                 # This also needs checking.
-                sigma_e[i] = 0.5 * (variances[i, 0] + variances[i, 1]) / R_scalar[i]
+                sigma_e[i] = np.sqrt(
+                    (0.5 * (variances[i, 0] + variances[i, 1]))
+                ) / R_scalar[i]
 
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")
