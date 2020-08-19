@@ -588,11 +588,15 @@ class TXDensityMaps(PipelineStage):
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
+            mask_copy = mask.copy()
+            mask_copy[ng == healpy.UNSEEN] = 0
             ng[np.isnan(ng)] = 0.0
+            ng[ng == healpy.UNSEEN] = 0
             # Convert the number count maps to overdensity maps.
             # First compute the overall mean object count per bin.
             # mean clustering galaxies per pixel in this map
-            mu = np.average(ng, weights=mask)
+            mu = np.average(ng, weights=mask_copy)
+            print(f"Mean number density in bin {i} = {mu}")
             # and then use that to convert to overdensity
             d = (ng - mu) / mu
             # remove nans
