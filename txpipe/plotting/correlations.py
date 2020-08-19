@@ -70,7 +70,7 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 
 def full_3x2pt_plots(sacc_files, labels, 
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
-                     xi=None, fit_bias=False, figures=None):
+                     xi=None, fit_bias=False, figures=None, xlogscale=True):
     import sacc
     sacc_data = []
     for f in sacc_files:
@@ -121,7 +121,7 @@ def full_3x2pt_plots(sacc_files, labels,
     for t in types:
         if any(obs[t] for obs in obs_data):
             f = figures.get(t)
-            output_figures[t] = make_plot(t, obs_data, theory_data, fig=f)
+            output_figures[t] = make_plot(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
 
     return output_figures
     
@@ -151,7 +151,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.set_ylim(ymin, ymax)
 
 
-def make_plot(corr, obs_data, theory_data, fig=None):
+def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
     import matplotlib.pyplot as plt
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
@@ -225,22 +225,31 @@ def make_plot(corr, obs_data, theory_data, fig=None):
                 res = obs[(corr, i, j)]
                 if len(res) == 2:
                     theta, xi = res
-                    l, = a.loglog(theta, xi, 'x', label=obs['name'])
-                    a.loglog(theta, -xi, 's', color=l.get_color())
+                    if xlogscale:
+                        l, = a.loglog(theta, xi, 'x', label=obs['name'])
+                        a.loglog(theta, -xi, 's', color=l.get_color())
+                    else:
+                        l, = a.plot(theta, xi, 'x', label=obs['name'])
+                        a.plot(theta, -xi, 's', color=l.get_color())
+                        a.set_yscale('log')
                 else:
                     theta, xi, cov = res
                     err = cov.diagonal()**0.5
                     a.errorbar(theta, xi, err, fmt='.', label=obs['name'], capsize=5)
-                    a.set_xscale('log')
                     a.set_yscale('log')
+                    if xlogscale:
+                        a.set_xscale('log')
 
             for theory in theory_data:
                 theta, xi = theory[(corr, i, j)]
-                a.loglog(theta, xi, '-', label=theory['name'])
+                if xlogscale:
+                    a.loglog(theta, xi, '-', label=theory['name'])
+                else:
+                    a.plot(theta, xi, '-', label=theory['name'])
 
             axis_setup(a, i, j, ny, ymin, ymax, name)
             if corr in [EE, ED, DD]:
-                a.set_xlim(90, 3200)
+                a.set_xlim(90, 1500)
 
     f.suptitle(rf"TXPipe ${name}$")
 
