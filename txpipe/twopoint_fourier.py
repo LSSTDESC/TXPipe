@@ -692,7 +692,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         figures = {key: val.file for key, val in outputs.items()}
 
         full_3x2pt_plots([filename], ['twopoint_data_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False)
+                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=False)
 
         for fig in outputs.values():
             fig.close()
