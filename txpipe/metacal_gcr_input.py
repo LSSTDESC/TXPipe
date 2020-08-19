@@ -28,6 +28,8 @@ class TXMetacalGCRInput(PipelineStage):
         'cat_name': str,
         'single_tract': '',
         'length': 0,
+        'table_dir': '',
+        'data_release': '',
     }
 
     def run(self):
@@ -38,8 +40,14 @@ class TXMetacalGCRInput(PipelineStage):
         # since it's the starting point of the whol pipeline and so is
         # not in a TXPipe format.
         cat_name = self.config['cat_name']
-        cat = GCRCatalogs.load_catalog(cat_name)
 
+        # If set, override some keys from the config
+        config_overwrite={}
+        for key in ['table_dir', 'data_release']:
+            if self.config[k]:
+                config_overwrite[k] = self.config[k]
+
+        cat = GCRCatalogs.load_catalog(cat_name, config_overwrite=config_overwrite)
         # Total size is needed to set up the output file,
         # although in larger files it is a little slow to compute this.
         if self.config['length'] == 0:
@@ -49,8 +57,13 @@ class TXMetacalGCRInput(PipelineStage):
             n = self.config['length']
             print(f"Using fixed specified size = {n}")
 
-
-        cat.master.use_cache = False
+        # This option, which prevented memory leaks with a previous
+        # catalog format, appears not to work for Parquet catalogs,
+        # but the memory leaks don't happen in that case either.
+        try:
+            cat.master.use_cache = False
+        except AttributeError:
+            pass
 
         available = cat.list_all_quantities()
         bands = []
@@ -61,7 +74,7 @@ class TXMetacalGCRInput(PipelineStage):
         # Columns that we will need.
         shear_cols = (['id', 'ra', 'dec', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'mcal_flags']
             + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n')
-            + metacal_band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
+            + band_variants(bands, 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
         )
 
         # Input columns for photometry
@@ -75,7 +88,12 @@ class TXMetacalGCRInput(PipelineStage):
 
 
         # For shear we just add a weight column, and the non-rounded PSF estimates
-        shear_out_cols = shear_cols + ['weight',  'psf_g1', 'psf_g2'] 
+        shear_out_cols = shear_cols + ['weight',  'psf_g1', 'psf_g2', 'true_g1', 'true_g2']
+
+        # We want these in the input but not the output as we construct
+        # other values from them instead
+        shear_cols += ['IxxPSF', 'IxyPSF', 'IyyPSF', 'shear_1', 'shear_2']
+
 
         # For the photometry output we strip off the _cModeel suffix.
         photo_out_cols = [col[:-7] if col.endswith('_cModel') else col
@@ -130,6 +148,8 @@ class TXMetacalGCRInput(PipelineStage):
         Ixx = data['IxxPSF']
         Ixy = data['IxyPSF']
         Iyy = data['IyyPSF']
+        data['true_g1'] = data['shear_1']
+        data['true_g2'] = data['shear_2']
         data['psf_g1'], data['psf_g2'] = moments_to_shear(Ixx, Iyy, Ixy)
 
     def setup_output(self, name, group, cat, cols, n):
@@ -227,8 +247,12 @@ class TXIngestStars(PipelineStage):
         else:
             kwargs = {}
 
-
-        cat.master.use_cache = False
+        # As with the galaxy ingestion, this option doesn't
+        # work with Parquet catalogs.
+        try:
+            cat.master.use_cache = False
+        except AttributeError:
+            pass
 
         start = 0
         star_start = 0

@@ -3,11 +3,15 @@ TXGCRTwoCatalogInput:
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
 
 TXMetacalGCRInput:
-    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
+    cat_name: dc2_object_run2.2i_dr6c_matched
+    table_dir: /global/cscratch1/sd/jsanch87/dr6c_matches_wshear
+    data_release: dr6c_with_metacal
 
 TXExposureInfo:
     dc2_name: '1.2p'
 
+TXIngestStars:
+    cat_name: dc2_object_run2.2i_dr6c
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
