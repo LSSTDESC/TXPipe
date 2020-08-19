@@ -90,7 +90,7 @@ class TXTwoPointFourier(PipelineStage):
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
-        calcs = self.select_calculations(nbin_source, nbin_lens)[::-1]
+        calcs = self.select_calculations(nbin_source, nbin_lens)
 
 
         # Load in the per-bin auto-correlation noise levels and 
@@ -201,7 +201,8 @@ class TXTwoPointFourier(PipelineStage):
         for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
             lw[g1 == healpy.UNSEEN] = 0
             lw[g2 == healpy.UNSEEN] = 0
-
+            lw[lw == healpy.UNSEEN] = 0
+            
         # When running on the CosmoDC2 mocks I've found I need to flip
         # both g1 and g2 in order to get both positive galaxy-galaxy lensing
         # and shear-shear spectra.
@@ -476,6 +477,7 @@ class TXTwoPointFourier(PipelineStage):
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
         import pymaster as nmt
+        import healpy
 
         # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
@@ -497,14 +499,21 @@ class TXTwoPointFourier(PipelineStage):
             print(f"Analyzing noise map {r}")
             # Load the noise map - may be either (g1, g2)
             # or rho1 - rho2
+
+            # Also in the event there are any UNSEENs in these,
+            # downweight them
+            w = weight.copy()
             if k == SHEAR_SHEAR:
                 realization = noise_maps.read_rotation(r, i)
+                w[realization[0] == healpy.UNSEEN] = 0
+                w[realization[1] == healpy.UNSEEN] = 0
             else:
                 rho1, rho2 = noise_maps.read_density_split(r, i)
                 realization = [rho1 - rho2]
+                w[realization[0] == healpy.UNSEEN] = 0
 
             # Analyze it with namaster
-            field = nmt.NmtField(weight, realization, n_iter=0)
+            field = nmt.NmtField(w, realization, n_iter=0)
             cl_coupled = nmt.compute_coupled_cell(field, field)
 
             # Accumulate
@@ -683,7 +692,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         figures = {key: val.file for key, val in outputs.items()}
 
         full_3x2pt_plots([filename], ['twopoint_data_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False)
+                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=False)
 
         for fig in outputs.values():
             fig.close()

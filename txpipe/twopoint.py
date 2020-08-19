@@ -29,6 +29,7 @@ class TXTwoPoint(PipelineStage):
         ('lens_photoz_stack', HDFFile),
         ('random_cats', RandomsCatalog),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('twopoint_data_real_raw', SACCFile),
@@ -53,6 +54,7 @@ class TXTwoPoint(PipelineStage):
         'do_pos_pos': True,
         'var_methods': 'jackknife',
         'use_true_shear': False,
+        'subtract_mean_shear':False
         }
 
     def run(self):
@@ -75,7 +77,7 @@ class TXTwoPoint(PipelineStage):
 
         # Calculate metadata like the area and related
         # quantities
-        meta = self.calculate_metadata(data)
+        meta = self.read_metadata()
 
         # Choose which pairs of bins to calculate
         calcs = self.select_calculations(data)
@@ -88,7 +90,7 @@ class TXTwoPoint(PipelineStage):
         # but for this case I would expect it to be mostly fine
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
-            result = self.call_treecorr(data, i, j, k)
+            result = self.call_treecorr(data, meta, i, j, k)
             results.append(result)
 
         # If we are running in parallel this collects the results together
@@ -325,7 +327,7 @@ class TXTwoPoint(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-    def call_treecorr(self, data, i, j, k):
+    def call_treecorr(self, data, meta, i, j, k):
         """
         This is a wrapper for interaction with treecorr.
         """
@@ -333,10 +335,10 @@ class TXTwoPoint(PipelineStage):
 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, i, j)
+            xx = self.calculate_shear_shear(data, meta, i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(data, i, j)
+            xx = self.calculate_shear_pos(data, meta, i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
             xx = self.calculate_pos_pos(data, i, j)
@@ -350,34 +352,64 @@ class TXTwoPoint(PipelineStage):
         return result
 
 
-    def get_m(self, data, i):
+    def get_calibrated_catalog_bin(self, data, meta, i):
         """
         Calculate the metacal correction factor for this tomographic bin.
         """
 
         mask = (data['source_bin'] == i)
 
-        # We use S=0 here because we have already included it in R_total
-        if self.config['shear_catalog_type']=='metacal':
-            if self.config['use_true_shear']:            
-                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['true_g1'][mask],data['true_g2'][mask])
-            else:
-                g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask],data['mcal_g2'][mask])
-            return g1, g2, mask
+        if self.config['use_true_shear']:
+            g1 = data[f'{prefix}_g1'][mask]
+            g2 = data[f'{prefix}_g2'][mask]
+
+        elif self.config['shear_catalog_type']=='metacal':
+            # We use S=0 here because we have already included it in R_total
+            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask], data['mcal_g2'][mask])
 
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
             g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
-            return g1, g2, mask
 
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+            
+        # Subtract mean shears, if needed.  These are calculated in source_selector,
+        # and have already been calibrated, so subtract them after calibrated our sample.
+        # Right now we are loading the full catalog here, so we could just take the mean
+        # at this point, but in future we would like to move to just loading part of the
+        # catalog.
+        if self.config['subtract_mean_shear']:
+            flip = self.config['flip_g2']
+            # Cross-check: print out the new mean.
+            # In the weighted case these won't actually be equal
+            mu1 = g1.mean()
+            mu2 = g2.mean()
 
+            # If we flip g2 we also have to flip the sign
+            # of what we subtract
+            g1 -= meta['mean_e1'][i]
+            if flip:
+                g2 += meta['mean_e2'][i]
+            else:
+                g2 -= meta['mean_e2'][i]
 
-    def get_shear_catalog(self, data, i):
+            # Compare to final means.
+            nu1 = g1.mean()
+            nu2 = g2.mean()
+            print(f"Subtracting mean shears for bin {i}")
+            print(f"Means before: {mu1}  and  {mu2}")
+            print(f"Means after:  {nu1}  and  {nu2}")
+            print("(In the weighted case the latter may not be exactly zero)")
+
+        return g1, g2, mask
+
+    def get_shear_catalog(self, data, meta, i):
         import treecorr
 
-        g1,g2,mask = self.get_m(data, i)
+        # Load and calibrate the appropriate bin data
+        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
+
         if self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='metacal':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
@@ -388,7 +420,6 @@ class TXTwoPoint(PipelineStage):
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
         elif self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
             patch_centers = self.get_input('patch_centers')
-            g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -397,7 +428,6 @@ class TXTwoPoint(PipelineStage):
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
         elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='metacal':
-            g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -405,7 +435,6 @@ class TXTwoPoint(PipelineStage):
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
         elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            g1,g2,mask = self.get_m(data, i)
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -459,10 +488,10 @@ class TXTwoPoint(PipelineStage):
         return cat, rancat
 
 
-    def calculate_shear_shear(self, data, i, j):
+    def calculate_shear_shear(self, data, meta, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, i)
+        cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
 
@@ -470,7 +499,7 @@ class TXTwoPoint(PipelineStage):
             cat_j = cat_i
             n_j = n_i
         else:
-            cat_j = self.get_shear_catalog(data, j)
+            cat_j = self.get_shear_catalog(data, meta, j)
             n_j = cat_j.nobj
 
 
@@ -481,10 +510,10 @@ class TXTwoPoint(PipelineStage):
 
         return gg
 
-    def calculate_shear_pos(self,data, i, j):
+    def calculate_shear_pos(self, data, meta, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, i)
+        cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
         cat_j, rancat_j = self.get_lens_catalog(data, j)
@@ -632,27 +661,20 @@ class TXTwoPoint(PipelineStage):
         area=float(area) * 60. * 60.
         return area
 
-    def calculate_metadata(self, data):
-        tomo = self.open_input('shear_tomography_catalog')
-        area = self.calculate_area(data)
-        sigma_e = tomo['tomography/sigma_e'][:]
-        N_eff = tomo['tomography/N_eff'][:]
-
-        mean_g1_list = []
-        mean_g2_list = []
-        for i in data['source_list']:
-            g1, g2, mask = self.get_m(data, i)
-            mean_g1 = g1.mean()
-            mean_g2 = g2.mean()
-            mean_g1_list.append(mean_g1)
-            mean_g2_list.append(mean_g2)
+    def read_metadata(self):
+        meta_data = self.open_input('tracer_metadata')
+        area = meta_data['tracers'].attrs['area']
+        sigma_e = meta_data['tracers/sigma_e'][:]
+        N_eff = meta_data['tracers/N_eff'][:]
+        mean_e1 = meta_data['tracers/mean_e1'][:]
+        mean_e2 = meta_data['tracers/mean_e2'][:]
 
         meta = {}
         meta["neff"] =  N_eff
         meta["area"] =  area
         meta["sigma_e"] =  sigma_e
-        meta["mean_e1"] =  mean_g1
-        meta["mean_e2"] =  mean_g2
+        meta["mean_e1"] = mean_e1
+        meta["mean_e2"] = mean_e2
 
         return meta
 
@@ -672,6 +694,7 @@ class TXTwoPointLensCat(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('lens_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     def load_lens_catalog(self, data):
         filename = self.get_input('lens_catalog')
@@ -1078,6 +1101,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('exposures', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_field_center', SACCFile),
@@ -1097,7 +1121,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear':False
         }
 
     def run(self):
@@ -1228,6 +1253,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_bright_stars', SACCFile),
@@ -1247,7 +1273,8 @@ class TXGammaTBrightStars(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'shot',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear': False,
         }
 
     def run(self):
@@ -1394,6 +1421,7 @@ class TXGammaTDimStars(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_dim_stars', SACCFile),
@@ -1413,7 +1441,8 @@ class TXGammaTDimStars(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear': False,        
         }
 
     def run(self):
@@ -1561,6 +1590,7 @@ class TXGammaTRandoms(TXTwoPoint):
         ('random_cats', RandomsCatalog),
         ('star_catalog', HDFFile),
         ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('gammat_randoms', SACCFile),
@@ -1580,7 +1610,8 @@ class TXGammaTRandoms(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'var_methods': 'jackknife',
         'npatch': 5,
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear': False,
         }
 
     def run(self):
