@@ -280,7 +280,7 @@ class TXSourceSelector(PipelineStage):
 
                 pz_data_v = np.zeros(len(zz), dtype=int) -1
                 for zi in range(len(self.config['source_zbin_edges'])-1):
-                    mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+                    mask_zbin = (zz>self.config['source_zbin_edges'][zi]) & (zz<=self.config['source_zbin_edges'][zi+1])
                     pz_data_v[mask_zbin] = zi
 
                 pz_data[f'zbin{v}'] = pz_data_v
@@ -293,7 +293,7 @@ class TXSourceSelector(PipelineStage):
         
             pz_data_bin = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+                mask_zbin = (zz>self.config['source_zbin_edges'][zi]) & (zz<=self.config['source_zbin_edges'][zi+1])
                 pz_data_bin[mask_zbin] = zi
 
             pz_data[f'zbin'] = pz_data_bin
@@ -442,23 +442,25 @@ class TXSourceSelector(PipelineStage):
         K = np.zeros(nbin_source)
         C = np.zeros((nbin_source,1,2))
         N = np.zeros(nbin_source)
+        counts = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
         mean_e1 = np.zeros(nbin_source)
         mean_e2 = np.zeros(nbin_source)
         sigma_e = np.zeros(nbin_source)
 
-        means, variances = number_density_stats.collect()
+        weights, means, variances = number_density_stats.collect()
 
 
         for i, cal in enumerate(calibrators):
-            mu1 = np.array([means[i, 0]])
+            mu1 = np.array([means[i, 0]]) 
             mu2 = np.array([means[i, 1]])
 
             # We now have to calibrate both the mean shear and the
             # sigma_e estimator
             if self.config['shear_catalog_type']=='metacal':
                 # Collect the total calibration factor
-                R[i], S[i], N[i] = cal.collect(self.comm)
+                R[i], S[i], counts[i] = cal.collect(self.comm)
+                N[i] = counts[i] # raw value for N for now 
 
                 # Apply it to the means
                 mean_e1[i], mean_e2[i] = apply_metacal_response(
@@ -476,16 +478,17 @@ class TXSourceSelector(PipelineStage):
                 print("Warning: check the lensfit calibration in mean shear")
 
                 # Collect the overall calibration
-                R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
+                R_scalar[i], K[i], C[i], counts[i] = cal.collect(self.comm)
 
-                # should probably use one of the calibration_tools functions
-                mean_e1[i] = mu1 / R_scalar[i]
-                mean_e2[i] = mu2 / R_scalar[i]
+                mean_e1[i] = mu1 # weights already accounted for 
+                mean_e2[i] = mu2
 
                 # This also needs checking.
                 sigma_e[i] = np.sqrt(
                     (0.5 * (variances[i, 0] + variances[i, 1]))
-                ) / R_scalar[i]
+                )
+                
+                N[i] = weights[i][0]**2/weights[i][1]
 
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")
@@ -499,7 +502,7 @@ class TXSourceSelector(PipelineStage):
                 group = outfile['tomography']
                 group['sigma_e'][:] = sigma_e
                 # These are the same in metacal
-                group['source_counts'][:] = N
+                group['source_counts'][:] = counts
                 group['N_eff'][:] = N
                 group['mean_e1'][:] = mean_e1
                 group['mean_e2'][:] = mean_e2
@@ -511,7 +514,7 @@ class TXSourceSelector(PipelineStage):
                 group = outfile['tomography']
                 group['sigma_e'][:] = sigma_e
                 # These are the same in metacal
-                group['source_counts'][:] = N
+                group['source_counts'][:] = counts
                 group['N_eff'][:] = N
                 group['mean_e1'][:] = mean_e1
                 group['mean_e2'][:] = mean_e2

@@ -1,4 +1,4 @@
-from parallel_statistics import ParallelMeanVariance
+from parallel_statistics import ParallelMeanVariance, ParallelSum
 import numpy as np
 
 class SourceNumberDensityStats:
@@ -8,6 +8,10 @@ class SourceNumberDensityStats:
         self.shear_type=shear_type
         self.shear_stats = [
             ParallelMeanVariance(2)
+            for i in range(nbin_source)
+        ]
+        self.weight_stats = [
+            ParallelSum(2)
             for i in range(nbin_source)
         ]
 
@@ -21,17 +25,22 @@ class SourceNumberDensityStats:
             else:
                 self.shear_stats[i].add_data(0, shear_data['g1'][w], shear_data['weight'][w])
                 self.shear_stats[i].add_data(1, shear_data['g2'][w], shear_data['weight'][w])
+                self.weight_stats[i].add_data(0, shear_data['weight'][w])
+                self.weight_stats[i].add_data(1, shear_data['weight'][w]**2)
 
 
     def collect(self):
         # Get the basic shear numbers - means, counts, variances
         variances = np.zeros((self.nbin_source, 2))
         means = np.zeros((self.nbin_source, 2))
+        weights = np.zeros((self.nbin_source, 2))
 
         for i in range(self.nbin_source):
             _, means[i], variances[i] = self.shear_stats[i].collect(self.comm, mode='allgather')
+            if self.shear_type!='metacal':
+                _, weights[i] = self.weight_stats[i].collect(self.comm, mode='allgather')
 
-        return means, variances
+        return weights, means, variances
 
 
 class LensNumberDensityStats:
