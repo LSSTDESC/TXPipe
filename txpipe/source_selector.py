@@ -280,7 +280,7 @@ class TXSourceSelector(PipelineStage):
 
                 pz_data_v = np.zeros(len(zz), dtype=int) -1
                 for zi in range(len(self.config['source_zbin_edges'])-1):
-                    mask_zbin = (zz>self.config['source_zbin_edges'][zi]) & (zz<=self.config['source_zbin_edges'][zi+1])
+                    mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
                     pz_data_v[mask_zbin] = zi
 
                 pz_data[f'zbin{v}'] = pz_data_v
@@ -293,7 +293,7 @@ class TXSourceSelector(PipelineStage):
         
             pz_data_bin = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>self.config['source_zbin_edges'][zi]) & (zz<=self.config['source_zbin_edges'][zi+1])
+                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
                 pz_data_bin[mask_zbin] = zi
 
             pz_data[f'zbin'] = pz_data_bin
