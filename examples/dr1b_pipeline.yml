@@ -1,0 +1,77 @@
+# Stages to run
+stages:
+    - name: TXRandomCat
+    - name: TXSourceSelector
+    - name: TXTruthLensSelector
+    - name: TXTrueNumberDensity
+    - name: TXPhotozPlots
+    - name: TXTwoPointFourier
+      nprocess: 8
+      nodes: 8
+      threads_per_process: 64
+    - name: TXJackknifeCenters
+    - name: TXMainMaps
+    - name: TXAuxiliaryMaps
+    - name: TXDensityMaps
+    - name: TXNoiseMaps
+    - name: TXSimpleMask
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+
+# Where to put outputs
+output_dir: data/dr1b/outputs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+### batch
+#     name: cori-batch
+#     image: joezuntz/txpipe
+#     # These are the defaults:
+#     mpi_command: srun -un
+#     cpu_type: haswell
+#     queue: regular
+#     max_jobs: 1 #2
+#     account: m1727
+#     walltime: 04:00:00
+#     setup: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
+### interactive
+    name: cori-interactive
+    image: joezuntz/txpipe
+    # Number of jobs to run at once.  Default as shown.
+    max_threads: ${SLURM_JOB_NUM_NODES}
+
+# python modules to import to search for stages
+modules: txpipe
+
+# configuration settings
+config: examples/config/dr1b_config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+#    shear_catalog: data/example/inputs/shear_catalog.hdf5
+#    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    shear_catalog: /global/cscratch1/sd/jsanch87/Catalogs_for_Zilong/shear_catalog_weights.hdf5
+    photometry_catalog: /global/cscratch1/sd/jsanch87/Catalogs_for_Zilong/photometry_catalog.hdf5
+    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    exposures: data/example/inputs/exposures.hdf5
+    star_catalog: data/example/inputs/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+# where to put output logs for individual stages
+log_dir: data/dr1b/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/dr1b/log.txt
+
