@@ -97,7 +97,38 @@ def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
     g2 = (1./(one_plus_K))*((g2/R)-c2)
     return g1, g2, weight, one_plus_K
 
+def apply_hsc_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
+    """
+    Calibrate shear catalog.
+    For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
+    gi = 1/(1 + mhat)[ei/(2R) - ci] (Eq. (A6) in Mandelbaum et al., 2018)
+    R = 1 - < e_rms^2 >w (Eq. (A1) in Mandelbaum et al., 2018)
+    mhat = < m >w (Eq. (A2) in Mandelbaum et al., 2018)
+    Parameters
+    ----------
+    g1
+    g2
+    weight
+    c1
+    c2
+    sigma_e
+    m
 
+    Returns
+    -------
+
+    """
+
+    # Compute multiplicative bias
+    mhat = np.average(m, weights=weight)
+    one_plus_K = 1 + mhat
+    # Compute responsivity
+    resp = 1. - np.average(sigma_e ** 2, weights=weight)
+
+    g1_calib = (g1 / (2. * resp) - c1) / (1 + mhat)
+    g2_calib = (g2 / (2. * resp) - c2) / (1 + mhat)
+
+    return g1_calib, g2_calib, weight, one_plus_K
 
 
 class _DataWrapper:

@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
-from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
+from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration, apply_hsc_calibration
 from .utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
@@ -370,6 +370,10 @@ class TXTwoPoint(PipelineStage):
         elif self.config['shear_catalog_type']=='lensfit':
             #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
             g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
+
+        elif self.config['shear_catalog_type']=='hsc':
+            g1, g2, weight, one_plus_K = apply_hsc_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
+            return g1, g2, mask
 
         else:
             raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
