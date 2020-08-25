@@ -64,11 +64,12 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
+    flip_g2: False  # False now seems to be right for metacal
     min_sep: 2.5
     max_sep: 250
     nbins: 20
     verbose: 0
+    subtract_mean_shear: True
 
 TXMainMaps:
     pixelization: healpix
