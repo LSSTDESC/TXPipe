@@ -271,8 +271,10 @@ class TXTwoPointFourier(PipelineStage):
             npix = healpy.nside2npix(nside)
             # needed for NaMaster:
             s_maps_nc = np.array(s_maps).reshape([n_systmaps, 1, npix])
-            
-#             if syst_wl: 
+
+# wl not implemented yet
+# depends how we want to handle it re two-coponent maps
+#             if syst_wl:  
 #                 s_maps = []
 #                 systmaps_wl_e1 = self.config['systmaps_wl_e1']
 #                 print('Reading wl e1 systematics map file: ', systmaps_wl_e1)
@@ -300,11 +302,6 @@ class TXTwoPointFourier(PipelineStage):
         else:
             lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
                               for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
-
-#         lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
-#                           for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
-#         density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
-#                           for d in d_maps]
 
         # Collect together all the maps we will output
         maps = {
@@ -695,16 +692,16 @@ class TXTwoPointFourier(PipelineStage):
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
                     ell=d.l[i], window=win, i=d.i, j=d.j)
 
-#         # Save provenance information
-#         provenance = self.gather_provenance()
-#         provenance.update(SACCFile.generate_provenance())
-#         for key, value in provenance.items():
-#             if isinstance(value, str) and '\n' in value:
-#                 values = value.split("\n")
-#                 for i,v in enumerate(values):
-#                     S.metadata[f'provenance/{key}_{i}'] = v
-#             else:
-#                 S.metadata[f'provenance/{key}'] = value
+        # Save provenance information
+        provenance = self.gather_provenance()
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
+            if isinstance(value, str) and '\n' in value:
+                values = value.split("\n")
+                for i,v in enumerate(values):
+                    S.metadata[f'provenance/{key}_{i}'] = v
+            else:
+                S.metadata[f'provenance/{key}'] = value
 
 
         # And we're all done!
