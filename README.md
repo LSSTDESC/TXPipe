@@ -139,7 +139,16 @@ ceci examples/2.2i_pipeline.yml
 
 A smaller run is in `examples/2.2i_single_tract_pipeline.yml`.
 
+Batch runs
+----------
 
+You can launch an example of a batch run (a submitted job that queues so you don't have to wait around), by executing this on cori:
+
+```bash
+sbatch examples/cori-2.2i.sub
+```
+
+It will generate an output log `2.2i.log`.
 
 Implementation
 --------------
