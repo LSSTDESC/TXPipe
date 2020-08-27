@@ -44,8 +44,8 @@ class TXMetacalGCRInput(PipelineStage):
         # If set, override some keys from the config
         config_overwrite={}
         for key in ['table_dir', 'data_release']:
-            if self.config[k]:
-                config_overwrite[k] = self.config[k]
+            if self.config[key]:
+                config_overwrite[key] = self.config[key]
 
         cat = GCRCatalogs.load_catalog(cat_name, config_overwrite=config_overwrite)
         # Total size is needed to set up the output file,
