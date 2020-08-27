@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
-from .utils.stats import ParallelStatsCalculator
+from parallel_statistics import ParallelMeanVariance
 from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins, apply_hsc_calibration
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
@@ -294,19 +294,29 @@ class TXDiagnosticPlots(PipelineStage):
 
         
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
-
+        print(mu, mean1, mean2, std1, std2)
         if self.rank != 0:
             return
 
         # Get the error on the mean
         dx = 0.05*(snr_edges[1] - snr_edges[0])
         good = (mu>0) & (np.isfinite(mean1))
-        slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu[good]),mean1[good])
-        line1 = slope1*(np.log10(mu))+intercept1
-
+        if np.count_nonzero(good)>0:
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu[good]),mean1[good])
+            line1 = slope1*(np.log10(mu))+intercept1
+        else:
+            line1 = np.zeros(len(mu))
+            slope1 = 0
+            std_err1 = 0
         good = (mu>0) & (np.isfinite(mean2))
-        slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu[good]),mean2[good])
-        line2 = slope2*(np.log10(mu))+intercept2
+        if np.count_nonzero(good)>0:
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu[good]),mean2[good])
+            line2 = slope2*(np.log10(mu))+intercept2
+        else:
+            line2 = np.zeros(len(mu))
+            slope2 = 0
+            std_err2 = 0
+
         fig = self.open_output('g_snr', wrapper=True)
         
         plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
