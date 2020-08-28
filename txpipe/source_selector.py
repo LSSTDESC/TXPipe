@@ -90,14 +90,14 @@ class TXSourceSelector(PipelineStage):
 
 
         # Columns we need from the shear catalog, will need to modify for lensfit catalogs
-        shear_cols = [f'{shear_prefix}flags', f'{shear_prefix}psf_T_mean', 'weight']
+        shear_cols = [f'{shear_prefix}psf_T_mean', 'weight']
         shear_cols += band_variants(bands,
                                     f'{shear_prefix}mag',
                                     f'{shear_prefix}mag_err',
                                     shear_catalog_type=shear_catalog_type)
 
         if shear_catalog_type == 'metacal':
-            shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+            shear_cols += metacal_variants(f'{shear_prefix}flags','mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
         else:
             shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
 
