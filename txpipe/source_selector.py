@@ -99,7 +99,7 @@ class TXSourceSelector(PipelineStage):
         if shear_catalog_type == 'metacal':
             shear_cols += metacal_variants(f'{shear_prefix}flags','mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
         else:
-            shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
+            shear_cols += ['flags','T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
 
         if self.config['input_pz'] and self.config['shear_catalog_type']=='metacal':
             shear_cols += ['mean_z']
@@ -280,7 +280,7 @@ class TXSourceSelector(PipelineStage):
 
                 pz_data_v = np.zeros(len(zz), dtype=int) -1
                 for zi in range(len(self.config['source_zbin_edges'])-1):
-                    mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+                    mask_zbin = (zz>self.config['source_zbin_edges'][zi]) & (zz<=self.config['source_zbin_edges'][zi+1])
                     pz_data_v[mask_zbin] = zi
 
                 pz_data[f'zbin{v}'] = pz_data_v
@@ -293,7 +293,7 @@ class TXSourceSelector(PipelineStage):
         
             pz_data_bin = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+                mask_zbin = (zz>self.config['source_zbin_edges'][zi]) & (zz<=self.config['source_zbin_edges'][zi+1])
                 pz_data_bin[mask_zbin] = zi
 
             pz_data[f'zbin'] = pz_data_bin
@@ -480,15 +480,15 @@ class TXSourceSelector(PipelineStage):
                 # Collect the overall calibration
                 R_scalar[i], K[i], C[i], counts[i] = cal.collect(self.comm)
 
-                mean_e1[i] = mu1 # weights already accounted for 
-                mean_e2[i] = mu2
+                mean_e1[i] = mu1/K[i] 
+                mean_e2[i] = mu2/K[i]
 
                 # This also needs checking.
                 sigma_e[i] = np.sqrt(
                     (0.5 * (variances[i, 0] + variances[i, 1]))
-                )
+                )/K[i] #C.9 Joachimi et al 2020, sqrt(2) to quote per-component
                 
-                N[i] = weights[i][0]**2/weights[i][1]
+                N[i] = weights[i][0]**2/weights[i][1] #C.12 Joachimi et al 2020
 
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")

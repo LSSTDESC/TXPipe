@@ -25,8 +25,8 @@ class SourceNumberDensityStats:
             else:
                 self.shear_stats[i].add_data(0, shear_data['g1'][w], shear_data['weight'][w])
                 self.shear_stats[i].add_data(1, shear_data['g2'][w], shear_data['weight'][w])
-                self.weight_stats[i].add_data(0, shear_data['weight'][w])
-                self.weight_stats[i].add_data(1, shear_data['weight'][w]**2)
+                self.weight_stats[i].add_data(0, shear_data['weight'][w]*(1+shear_data['m'][w]))
+                self.weight_stats[i].add_data(1, (shear_data['weight'][w]*(1+shear_data['m'][w]))**2)
 
 
     def collect(self):
