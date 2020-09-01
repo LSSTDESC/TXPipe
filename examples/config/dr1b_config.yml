@@ -185,10 +185,8 @@ TXJackknifeCenters:
 TXTwoPointFourier:
     flip_g2: True
     bandwidth: 100
-#    cache_dir: data/example/outputs/cache
-    syst_nc: True
-    systmaps_nc_dir: /global/cfs/cdirs/lsst/groups/LSS/DC2_R2.1i/systmaps/txpipe/nc
-    syst_wl: False
+    deproject_syst_clustering: True
+    systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/LSS/DC2_R2.1i/systmaps/txpipe/nc # use all maps in this directory
 
 
 TXSimpleMask:

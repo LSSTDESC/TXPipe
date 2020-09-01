@@ -64,9 +64,8 @@ class TXTwoPointFourier(PipelineStage):
         "flip_g1": False,
         "flip_g2": False,
         "cache_dir": '',
-        "syst_nc": False,
-        "syst_wl": False,
-        "systmaps_nc_dir": '',
+        "deproject_syst_clustering": False,
+        "systmaps_clustering_dir": '',
     }
 
     def run(self):
@@ -217,91 +216,78 @@ class TXTwoPointFourier(PipelineStage):
             for g2 in g2_maps:
                 w = np.where(g2!=healpy.UNSEEN)
                 g2[w]*=-1
+                
 
-        # TODO: load systematics maps here, once we are making them.
-        # maybe from Eli or Zilong's code
-        syst_nc = None
-        syst_wl = None
-
-        
         # Load HEALPix systematics maps
-        syst_nc = self.config['syst_nc']
-        syst_wl = self.config['syst_wl']
-        if syst_nc:  
+        deproject_syst_clustering = self.config['deproject_syst_clustering']
+        if deproject_syst_clustering:  
             print('Deprojecting systematics maps for number counts')
             n_systmaps = 0
             s_maps = []
-            systmaps_dir = self.config['systmaps_nc_dir']
-            systmaps_path = pathlib.Path(systmaps_dir)
-            try:
-                for systmap in systmaps_path.iterdir():
+            systmaps_clustering_dir = self.config['systmaps_clustering_dir']
+            systmaps_path = pathlib.Path(systmaps_clustering_dir)
+            for systmap in systmaps_path.iterdir():
+                try:
                     if systmap.is_file():
-                        systmap_file = str(systmap)
-                        print('Reading nc systematics map file: ', systmap_file)
-                        syst_map = healpy.read_map(systmap_file,verbose=False)
-                        
-                        # Find value at given ra,dec
-                        ra = 55.
-                        dec = -30.
-                        theta = 0.5 * np.pi - np.deg2rad(dec)
-                        phi = np.deg2rad(ra)
-                        nside = healpy.pixelfunc.get_nside(syst_map)
-                        ipix = healpy.ang2pix(nside, theta, phi)
-                        print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
+                        if pathlib.Path(systmap).suffix != ".fits":
+                            print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
+                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                            print('Ignoring', systmap)
+                        else:
+                            systmap_file = str(systmap)
+                            self.config[f'clustering_deproject_{n_systmaps}'] = systmap_file # for provenance
+                            print('Reading clustering systematics map file:', systmap_file)
+                            syst_map = healpy.read_map(systmap_file,verbose=False)
 
-                        # normalize map for Namaster
-                        # set pixel values to value/mean - 1
-                        syst_map_mask = syst_map != healpy.UNSEEN
-                        mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
-                        if mean != 0:
-                            print('Syst map: mean value = ', mean)
-                            syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
-                            syst_map = syst_map / mean - 1
-                            print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
-                        
-                        s_maps.append(syst_map)
-                        n_systmaps += 1
-            except FileNotFoundError:
-                print('Systematics map file not found in path', systmap_path)
-                raise
-                
+                            # Find value at given ra,dec
+                            ra = 55.
+                            dec = -30.
+                            theta = 0.5 * np.pi - np.deg2rad(dec)
+                            phi = np.deg2rad(ra)
+                            nside = healpy.pixelfunc.get_nside(syst_map)
+                            ipix = healpy.ang2pix(nside, theta, phi)
+                            print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
+
+                            # normalize map for Namaster
+                            # set pixel values to value/mean - 1
+                            syst_map_mask = syst_map != healpy.UNSEEN
+                            mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
+                            if mean != 0:
+                                print('Syst map: mean value = ', mean)
+                                syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
+                                syst_map = syst_map / mean - 1
+                                print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
+
+                            s_maps.append(syst_map)
+                            n_systmaps += 1
+                except:
+                    print('Warning: Problem with systematics map file',systmap)
+                    print('Ignoring', systmap)
+                    
             print('Number of systematics maps read: ', n_systmaps)
-            # We assume all systematics maps have the same nside
-            nside = healpy.pixelfunc.get_nside(syst_map)
-            npix = healpy.nside2npix(nside)
-            # needed for NaMaster:
-            s_maps_nc = np.array(s_maps).reshape([n_systmaps, 1, npix])
-
-# wl not implemented yet
-# depends how we want to handle it re two-coponent maps
-#             if syst_wl:  
-#                 s_maps = []
-#                 systmaps_wl_e1 = self.config['systmaps_wl_e1']
-#                 print('Reading wl e1 systematics map file: ', systmaps_wl_e1)
-#                 syst_map_e1 = healpy.read_map(systmaps_wl_e1,verbose=False)
-#                 systmaps_wl_e2 = self.config['systmaps_wl_e2']
-#                 print('Reading wl e2 systematics map file: ', systmaps_wl_e2)
-#                 syst_map_e2 = healpy.read_map(systmaps_wl_e2,verbose=False)
-#                 s_maps_wl = np.repeat(s_maps_nc, 2, axis=1)
-#                 s_maps_wl[:, 1, :] = s_maps2
+            if n_systmaps == 0:
+                print('No systematics maps found. Skipping deprojection.')
+                deproject_syst_clustering = False
+            else:
+                print("Using systematics maps for galaxy number counts.")
+                # We assume all systematics maps have the same nside
+                nside = healpy.pixelfunc.get_nside(syst_map)
+                npix = healpy.nside2npix(nside)
+                # needed for NaMaster:
+                s_maps_nc = np.array(s_maps).reshape([n_systmaps, 1, npix])
             
         else:
-            print("Not uisng systematics maps for deprojection in NaMaster")    
+            print("Not using systematics maps for deprojection in NaMaster")    
 
-        if syst_nc:
-            print("Using systematics maps for galaxy number counts.")
+        if deproject_syst_clustering:
             density_fields = [(nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0))
                               for d in d_maps]
         else:
             density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
                               for d in d_maps]
-        if syst_wl:
-            print("Using systematics maps for weak lensing.") 
-            lensing_fields = [(nmt.NmtField(lw, [g1, g2], templates=s_maps_wl, n_iter=0))
-                              for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
-        else:
-            lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
-                              for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
+
+        lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
+                          for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
 
         # Collect together all the maps we will output
         maps = {
