@@ -203,12 +203,12 @@ class TXHSCLensSelector(TXBaseLensSelector):
 
         n = len(mag_i)
         # HDF does not support bools, so we will prepare a binary array
-        # where 0 is a lens and 1 is not
+        # where 1 is a lens and 0 is not
         lens_gals = np.repeat(0, n)
 
-        # If a galaxy is a lens give it a zero
+        # If a galaxy is a lens give it a one
         lens_mask = ((mag_i - a_i) <= mag_i_cut)
-        lens_gals[~lens_mask] = 1
+        lens_gals[lens_mask] = 1
 
         return lens_gals
 
