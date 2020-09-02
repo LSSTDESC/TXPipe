@@ -239,14 +239,14 @@ class TXTwoPointFourier(PipelineStage):
                             print('Reading clustering systematics map file:', systmap_file)
                             syst_map = healpy.read_map(systmap_file,verbose=False)
 
-                            # Find value at given ra,dec
-                            ra = 55.
-                            dec = -30.
-                            theta = 0.5 * np.pi - np.deg2rad(dec)
-                            phi = np.deg2rad(ra)
-                            nside = healpy.pixelfunc.get_nside(syst_map)
-                            ipix = healpy.ang2pix(nside, theta, phi)
-                            print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
+#                             # Find value at given ra,dec
+#                             ra = 55.
+#                             dec = -30.
+#                             theta = 0.5 * np.pi - np.deg2rad(dec)
+#                             phi = np.deg2rad(ra)
+#                             nside = healpy.pixelfunc.get_nside(syst_map)
+#                             ipix = healpy.ang2pix(nside, theta, phi)
+#                             print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
 
                             # normalize map for Namaster
                             # set pixel values to value/mean - 1
@@ -256,7 +256,7 @@ class TXTwoPointFourier(PipelineStage):
                                 print('Syst map: mean value = ', mean)
                                 syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
                                 syst_map = syst_map / mean - 1
-                                print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
+#                                 print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
 
                             s_maps.append(syst_map)
                             n_systmaps += 1
