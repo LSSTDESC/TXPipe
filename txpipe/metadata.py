@@ -83,7 +83,6 @@ class TXTracerMetadata(PipelineStage):
         meta_file.close()
 
         # human readable version
-        yaml_out_name = self.get_output("tracer_metadata_yml")
         metadata = {
             "lens_density": lens_density.tolist(),
             "source_density": source_density.tolist(),
@@ -100,20 +99,20 @@ class TXTracerMetadata(PipelineStage):
 
         if shear_catalog_type == "metacal":
             metadata["R_gamma_mean"] = (
-                shear_tomo_file["metacal_response/R_gamma_mean"][:].tolist(),
+                shear_tomo_file["metacal_response/R_gamma_mean"][:].tolist()
             )
-            metadata["R_S"] = (shear_tomo_file["metacal_response/R_S"][:].tolist(),)
+            metadata["R_S"] = shear_tomo_file["metacal_response/R_S"][:].tolist()
             metadata["R_total"] = (
-                shear_tomo_file["metacal_response/R_total"][:].tolist(),
+                shear_tomo_file["metacal_response/R_total"][:].tolist()
             )
         else:
-            metadata["R_mean"] = (shear_tomo_file["response/R_mean"][:].tolist(),)
-            metadata["K"] = (shear_tomo_file["response/K"][:].tolist(),)
-            metadata["C"] = (shear_tomo_file["response/C"][:].tolist(),)
+            metadata["R_mean"] = shear_tomo_file["response/R_mean"][:].tolist()
+            metadata["K"] = shear_tomo_file["response/K"][:].tolist()
+            metadata["C"] = shear_tomo_file["response/C"][:].tolist()
 
-        f = open(yaml_out_name, "w")
-        yaml.dump(metadata, f)
-        f.close()
+        yaml_out = self.open_output("tracer_metadata_yml", wrapper=True)
+        yaml_out.write(metadata)
+        yaml_out.close()
 
         shear_tomo_file.close()
         lens_tomo_file.close()

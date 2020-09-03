@@ -284,8 +284,55 @@ class TextFile(DataFile):
 class YamlFile(DataFile):
     """
     A data file in yaml format.
+    The top-level object in TXPipe YAML
+    files should always be a dictionary.
     """
     suffix = 'yml'
+
+    def __init__(self, path, mode, extra_provenance=None, validate=True, load_mode='full'):
+        self.path = path
+        self.mode = mode
+        self.file = self.open(path, mode)
+
+        if mode == "r":
+            if load_mode == 'safe':
+                self.content = yaml.safe_load(self.file)
+            elif load_mode == 'full':
+                self.content = yaml.full_load(self.file)
+            elif load_mode == 'unsafe':
+                self.content = yaml.unsafe_load(self.file)
+            else:
+                raise ValueError(f"Unknown value {yaml_load} of load_mode. "
+                                  "Should be 'safe', 'full', or 'unsafe'")
+            # get provenance
+            prov = self.content.pop('provenance', {})
+            self.provenance = {
+                'uuid':     prov.get('uuid', "UNKNOWN"),
+                'creation': prov.get('creation', "UNKNOWN"),
+                'domain':   prov.get('domain', "UNKNOWN"),
+                'username': prov.get('username', "UNKNOWN"),
+            }
+
+        else:
+            self.provenance = self.generate_provenance(extra_provenance)
+            self.write_provenance()
+
+    def read(self, key):
+        return self.content[key]
+
+    def write(self, d):
+        if not isinstance(d, dict):
+            raise ValueError("Only dicts should be passed to YamlFile.write")
+        yaml.dump(d, self.file)
+
+
+    def write_provenance(self):
+        d = {'provenance': self.provenance}
+        self.write(d)
+
+    def read_provenance(self):
+        return self.provenance
+
 
 class Directory(DataFile):
     suffix = ''
