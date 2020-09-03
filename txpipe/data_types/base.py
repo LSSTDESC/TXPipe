@@ -305,13 +305,7 @@ class YamlFile(DataFile):
                 raise ValueError(f"Unknown value {yaml_load} of load_mode. "
                                   "Should be 'safe', 'full', or 'unsafe'")
             # get provenance
-            prov = self.content.pop('provenance', {})
-            self.provenance = {
-                'uuid':     prov.get('uuid', "UNKNOWN"),
-                'creation': prov.get('creation', "UNKNOWN"),
-                'domain':   prov.get('domain', "UNKNOWN"),
-                'username': prov.get('username', "UNKNOWN"),
-            }
+            self.provenance = self.read_provenance()
 
         else:
             self.provenance = self.generate_provenance(extra_provenance)
@@ -325,13 +319,20 @@ class YamlFile(DataFile):
             raise ValueError("Only dicts should be passed to YamlFile.write")
         yaml.dump(d, self.file)
 
-
     def write_provenance(self):
         d = {'provenance': self.provenance}
         self.write(d)
 
     def read_provenance(self):
-        return self.provenance
+        prov = self.content.pop('provenance', {})
+        req_provenance = {
+                'uuid':     prov.get('uuid', "UNKNOWN"),
+                'creation': prov.get('creation', "UNKNOWN"),
+                'domain':   prov.get('domain', "UNKNOWN"),
+                'username': prov.get('username', "UNKNOWN"),
+        }
+        prov.update(req_provenance)
+        return prov
 
 
 class Directory(DataFile):
