@@ -33,6 +33,7 @@ class TXTwoPoint(PipelineStage):
     ]
     outputs = [
         ('twopoint_data_real_raw', SACCFile),
+        ('shearposX', SACCFile)
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -225,6 +226,7 @@ class TXTwoPoint(PipelineStage):
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
@@ -292,6 +294,8 @@ class TXTwoPoint(PipelineStage):
                     S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
                         theta=theta[i], error=err[i], weight=weight[i])
 
+                
+
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
         cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
@@ -301,8 +305,36 @@ class TXTwoPoint(PipelineStage):
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
+        self.write_metadata(S,meta)
+
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
+        
+        # Adding the gammaX calculation:
+        S2.sacc.Sacc()
+        if self.config['do_shear_pos'] = True:
+            comb = []
+            for d in results:
+                
+                if d.corr_type = GAMMAT:
+                    tracer1 = f'source_{d.i}' 
+                    tracer2 = f'lens_{d.j}'
+                    theta = np.exp(d.object.meanlogr)
+                    npair = d.object.npairs
+                    weight = d.object.weight
+                    xi_x = d.object.xi_im
+                    covX = d.object.estimate_cov('shot')
+                    comb.append(covX)
+                    err = np.sqrt(np.diag(covX))
+                    for i in range(n):
+                        S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
+                            theta=theta[i], error=err[i], weight=weight[i])
+            S2.add_covariance(comb)
+            S2.to_canonical_order
+            self.write_metadata(S2,meta)
+            S2.save_fits(self.get_output('shearposX'), overwrite=True)
+
+
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
