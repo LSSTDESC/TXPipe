@@ -312,7 +312,7 @@ class TXTwoPoint(PipelineStage):
         
         # Adding the gammaX calculation:
         S2.sacc.Sacc()
-        if self.config['do_shear_pos'] = True:
+        if self.config['do_shear_pos'] == True:
             comb = []
             for d in results:
                 
