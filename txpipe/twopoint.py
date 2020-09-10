@@ -315,10 +315,10 @@ class TXTwoPoint(PipelineStage):
         if self.config['do_shear_pos'] == True:
             comb = []
             for d in results:
+                tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
+                tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'   
                 
                 if d.corr_type == GAMMAT:
-                    tracer1 = f'source_{d.i}' 
-                    tracer2 = f'lens_{d.j}'
                     theta = np.exp(d.object.meanlogr)
                     npair = d.object.npairs
                     weight = d.object.weight
