@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --qos=regular
-#SBATCH --time=04:00:00
+#SBATCH --time=09:00:00
 #SBATCH --nodes=2
 #SBATCH --constraint=haswell
 #SBATCH --account=m1727
