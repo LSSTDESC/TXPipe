@@ -230,6 +230,8 @@ class TXTwoPoint(PipelineStage):
         WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
+        if self.config['do_shear_pos'] == True:
+            S2 = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
@@ -241,6 +243,8 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
+            if self.config['do_shear_pos'] == True:
+                S2.add_tracer('NZ', f'source_{i}',z, Nz)
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
@@ -248,6 +252,8 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
+            if self.config['do_shear_pos'] == True:
+                S2.add_tracer('NZ', f'lens_{i}',z, Nz)
         # Closing n(z) file
         f.close()
 
@@ -311,7 +317,7 @@ class TXTwoPoint(PipelineStage):
         S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
         
         # Adding the gammaX calculation:
-        S2 = sacc.Sacc()
+        
         if self.config['do_shear_pos'] == True:
             comb = []
             for d in results:
