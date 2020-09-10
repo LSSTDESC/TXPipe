@@ -311,7 +311,7 @@ class TXTwoPoint(PipelineStage):
         S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
         
         # Adding the gammaX calculation:
-        S2.sacc.Sacc()
+        S2 = sacc.Sacc()
         if self.config['do_shear_pos'] == True:
             comb = []
             for d in results:
