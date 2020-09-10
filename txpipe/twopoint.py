@@ -316,7 +316,7 @@ class TXTwoPoint(PipelineStage):
             comb = []
             for d in results:
                 
-                if d.corr_type = GAMMAT:
+                if d.corr_type == GAMMAT:
                     tracer1 = f'source_{d.i}' 
                     tracer2 = f'lens_{d.j}'
                     theta = np.exp(d.object.meanlogr)
