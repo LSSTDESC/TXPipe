@@ -1,4 +1,5 @@
-from .base import FitsFile, HDFFile, DataFile, YamlFile, TextFile, Directory, PNGFile
+from .base import FitsFile, HDFFile, DataFile, YamlFile
+from .base import TextFile, Directory, PNGFile, FileCollection
 
 def metacalibration_names(names):
     """
@@ -77,6 +78,20 @@ class RandomsCatalog(HDFFile):
 
 class MapsFile(HDFFile):
     required_datasets = []
+
+    def list_maps(self):
+        import h5py
+        maps = []
+
+        def visit(name, obj):
+            if isinstance(obj, h5py.Group):
+                keys = obj.keys()
+                if 'pixel' in keys and 'value' in keys:
+                    maps.append(name)
+
+        self.file['maps'].visititems(visit)
+
+        return maps
 
     def read_healpix(self, map_name, return_all=False):
         import healpy

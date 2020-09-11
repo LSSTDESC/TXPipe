@@ -319,6 +319,9 @@ class Directory(DataFile):
         yaml.dump(self.provenance, self._provenance_file)
         self._provenance_file.flush()
 
+    def path_for(self, filename):
+        return self.file / filename
+
 
     def read_provenance(self):
         try:
@@ -340,6 +343,26 @@ class Directory(DataFile):
 
         return provenance
 
+class FileCollection(Directory):
+    """
+    Represents a grouped bundle of files, for cases where you don't
+    know the exact list in advance.
+    """
+    suffix = ''
+
+    def write_listing(self, filenames):
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            yaml.dump(filenames, f)
+
+    def read_listing(self):
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            filenames = yaml.safe_load(f)
+        return filenames
+
+    def path_for_file(self, filename):
+        return str(self.file / filename)
 
 
 class PNGFile(DataFile):
