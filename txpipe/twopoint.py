@@ -1881,17 +1881,32 @@ class TXSelfCalibrationIA(TXTwoPoint):
     def load_shear_catalog(self, data):
 
         # Columns we need from the shear catalog
-        cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+        read_shear_catalog_type(self)
+
+        if self.config['shear_catalog_type']=='metacal':
+            if self.config['use_true_shear']:
+                cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
+            else:
+                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
+                
+        else:
+            cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
 
         f = self.open_input('shear_catalog')
-        g = f['metacal']
+        g = f['shear']
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]
 
         if self.config['flip_g2']:
-            data['mcal_g2'] *= -1   
+            if self.config['shear_catalog_type']=='metacal':
+                if self.config['use_true_shear']:
+                    data['true_g2'] *= -1
+                else:
+                    data['mcal_g2'] *= -1
+            else:
+                data['g2'] *= -1
 
         if self.config['3Dcoords']:
             #h = self.open_input('photoz_pdfs')
