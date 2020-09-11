@@ -3,6 +3,7 @@ import copy
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
+GAMMAX = "galaxy_shearDensity_xi_x"
 XIP = "galaxy_shear_xi_plus"
 XIM = "galaxy_shear_xi_minus"
 EE = "galaxy_shear_cl_ee"
@@ -12,6 +13,7 @@ ED = "galaxy_shearDensity_cl_e"
 types = {
     W: ('theta','lens','lens'),
     GAMMA: ('theta','source','lens'),
+    GAMMAX: ('theta','source','lens'),
     XIP: ('theta','source','source'),
     XIM: ('theta','source','source'),
     EE: ('ell', 'source','source'),
@@ -200,6 +202,12 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
         ymin = 2e-8
         ymax = 1e-4
         name = r"C_\ell^{DD}"
+        auto_only = True
+        half_only = False
+    elif corr == GAMMAX:
+        ymin = 5e-7
+        ymax = 2e-2
+        name r'\gamma_X(\theta)'
         auto_only = True
         half_only = False
 
