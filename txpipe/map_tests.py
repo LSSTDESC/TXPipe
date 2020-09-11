@@ -66,8 +66,11 @@ class TXMapCorrelations(PipelineStage):
         root = self.config["supreme_path_root"]
         sys_maps = glob.glob(f"{root}*.hs")
         nsys = len(sys_maps)
+        npair = nsys * ndata
         print(f"Found {nsys} total systematic maps")
-        print(f"Generating {nsys * ndata} total correlations")
+        print(f"Generating {npair} total correlations")
+        i = 0
+        outputs = []
         for map_path in sys_maps:
             # strip root, .hs, and underscores to get friendly name
             sys_name = map_path[len(root):-3].strip("_")
@@ -78,9 +81,13 @@ class TXMapCorrelations(PipelineStage):
             # Compute the correlation with each of our data
             # maps and save
             for data_name, data_map in data_maps.items():
-                print(f"\nCorrelating {sys_name} x {data_name}")
+                print(f"Correlating {sys_name} x {data_name} ({i+1} / {npair})")
                 corr = self.correlate(sys_map, data_map)
-                self.save(sys_name, data_name, corr, output_dir)
+                outfile = self.save(sys_name, data_name, corr, output_dir)
+                outputs.append(outfile)
+                i += 1
+
+        output_dir.write_listing(outputs)
 
     def correlate(self, sys_map, data_map):
         import scipy.stats
@@ -96,7 +103,6 @@ class TXMapCorrelations(PipelineStage):
         )
         sys_map = sys_map[finite]
         data_map = data_map[finite]
-        print(f"Using {sys_map.size} finite pixels")
 
         # Choose bin edges and put pixels in them
         percentiles = np.linspace(f, 1 - f, N + 1)
@@ -112,7 +118,7 @@ class TXMapCorrelations(PipelineStage):
         y = np.bincount(bins, weights=data_map) / counts
         y2 = np.bincount(bins, weights=data_map ** 2) / counts
         yerr = np.sqrt((y ** 2 - y2 ** 2) / counts)
-        print(counts)
+
         # return things we want to plit
         return x, y, yerr
 
@@ -128,6 +134,9 @@ class TXMapCorrelations(PipelineStage):
         plt.ylabel(data_name)
 
         # Save plot
-        filename = output_dir.path_for(f"{sys_name}_{data_name}.png")
+        base = f"{sys_name}_{data_name}.png"
+        filename = output_dir.path_for(base)
         plt.savefig(filename)
         plt.close()
+
+        return base
