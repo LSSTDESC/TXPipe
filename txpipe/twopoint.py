@@ -335,12 +335,8 @@ class TXTwoPoint(PipelineStage):
                     for i in range(n):
                         S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
                             theta=theta[i], error=err[i], weight=weight[i])
-<<<<<<< HEAD
                     S2.add_covariance(covX)
             #S2.add_covariance(comb)
-=======
-            S2.add_covariance(comb)
->>>>>>> parent of e3cf789... Update twopoint.py
             S2.to_canonical_order
             self.write_metadata(S2,meta)
             S2.save_fits(self.get_output('shearposX'), overwrite=True)
