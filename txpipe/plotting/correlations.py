@@ -207,7 +207,7 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
     elif corr == GAMMAX:
         ymin = 5e-7
         ymax = 2e-2
-        name r'\gamma_X(\theta)'
+        name = r"\gamma_X(\theta)"
         auto_only = True
         half_only = False
 
