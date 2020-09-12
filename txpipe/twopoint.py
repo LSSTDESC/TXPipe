@@ -1146,6 +1146,7 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
+        filename = self.get_input('shearposX')
         s = sacc.Sacc.load_fits(self.get_input('shearposX'))
         nbin_source, nbin_lens = self.read_nbin(s)
 
