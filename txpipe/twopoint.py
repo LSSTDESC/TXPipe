@@ -1141,6 +1141,7 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
     def run(self):
         import sacc
         import matplotlib
+        import pyccl
         from .plotting import full_3x2pt_plots
         matplotlib.use('agg')
         matplotlib.rcParams["xtick.direction"]='in'
@@ -1149,6 +1150,8 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
         filename = self.get_input('shearposX')
         s = sacc.Sacc.load_fits(self.get_input('shearposX'))
         nbin_source, nbin_lens = self.read_nbin(s)
+
+        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output('shearDensity_x',
