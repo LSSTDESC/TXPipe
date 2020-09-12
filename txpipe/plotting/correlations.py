@@ -208,7 +208,7 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
         ymin = 5e-7
         ymax = 2e-2
         name = r"\gamma_X(\theta)"
-        auto_only = True
+        auto_only = False
         half_only = False
 
     plt.rcParams['font.size'] = 14
