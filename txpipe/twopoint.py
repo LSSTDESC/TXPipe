@@ -1156,7 +1156,7 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output('shearDensity_x',
-                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True)
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
         }
         
         figures = {key: val.file for key, val in outputs.items()}

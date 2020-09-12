@@ -80,7 +80,7 @@ def full_3x2pt_plots(sacc_files, labels,
             sacc_data.append(f)
         else:
             sacc_data.append(sacc.Sacc.load_fits(f))
-
+    print(sacc_data)
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
 
