@@ -1150,7 +1150,7 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
         nbin_source, nbin_lens = self.read_nbin(s)
 
         outputs = {
-            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi',
+            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_x',
                 figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True)
         }
         
