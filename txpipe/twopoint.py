@@ -1161,7 +1161,7 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
         figures = {key: val.file for key, val in outputs.items()}
 
         full_3x2pt_plots([filename], ['twopoint_data_real'], 
-            figures=figures, theory_labels=['Fiducial'])
+            figures=figures)
         
         for fig in outputs.values():
             fig.close()
