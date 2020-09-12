@@ -262,7 +262,7 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
     f.suptitle(rf"TXPipe ${name}$")
 
     # plt.tight_layout()
-    f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    #f.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.subplots_adjust(wspace=0.05, hspace=0.05)
     return plt.gcf()
 
