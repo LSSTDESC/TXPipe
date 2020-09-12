@@ -332,6 +332,7 @@ class TXTwoPoint(PipelineStage):
                     covX = d.object.estimate_cov('shot')
                     comb.append(covX)
                     err = np.sqrt(np.diag(covX))
+                    n = len(xi_x)
                     for i in range(n):
                         S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
                             theta=theta[i], error=err[i], weight=weight[i])
