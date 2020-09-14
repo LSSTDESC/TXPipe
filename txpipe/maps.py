@@ -172,14 +172,14 @@ class TXSourceMaps(TXBaseMaps):
                 cal = {i:R[i] for i in range(nbin_source)}
                 cal['2D'] = f['/metacal_response/R_total_2d'][:]
             elif shear_catalog_type == "lensfit":
-                R = f['/metacal_response/R_mean'][:]
-                K = f['/metacal_response/K'][:]
-                c = f['/metacal_response/C'][:]
+                R = f['/response/R_mean'][:]
+                K = f['/response/K'][:]
+                c = f['/response/C'][:]
                 cal = {i: (R[i], K[i], c[i]) for i in range(nbin_source)}
                 cal['2D'] = (
-                    f['/metacal_response/R_mean_2d'][0],
-                    f['/metacal_response/K_2d'][0],
-                    f['/metacal_response/C_2d'][:],
+                    f['/response/R_mean_2d'][0],
+                    f['/response/K_2d'][0],
+                    f['/response/C_2d'][:],
                 )
             else:
                 raise ValueError("Unknown calibration")
@@ -279,7 +279,7 @@ class TXSourceMaps(TXBaseMaps):
                 out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
                 R, K, c = cal[i]
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
             else:
                 raise ValueError("Unknown calibration")
 
