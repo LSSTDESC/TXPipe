@@ -137,7 +137,7 @@ class TXSourceSelector(PipelineStage):
             calibrators.append(ParallelCalibratorMetacal(self.select_2d, delta_gamma))
         else:
             calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
-            calibrators.append(ParallelCalibratorNNonMetacal(self.select_2d))
+            calibrators.append(ParallelCalibratorNonMetacal(self.select_2d))
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data) in iter_shear:
