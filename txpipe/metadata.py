@@ -139,4 +139,4 @@ class TXTracerMetadata(PipelineStage):
         area_sq_deg = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = float(area_sq_deg) / 41252.96125
         print(f"Area = {area_sq_deg:.2f} deg^2")
-        return area_sq_deg
+        return float(area_sq_deg)
