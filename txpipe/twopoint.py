@@ -782,7 +782,7 @@ class TXTwoPointPlots(PipelineStage):
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
-        filename = self.get_input('twopoint_data_real','shearposX')
+        filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
@@ -801,8 +801,6 @@ class TXTwoPointPlots(PipelineStage):
             "galaxy_shear_xi_minus": self.open_output('shear_xi_minus',
                 figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
             
-            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi_x',
-                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
         }
 
         figures = {key: val.file for key, val in outputs.items()}
@@ -812,6 +810,18 @@ class TXTwoPointPlots(PipelineStage):
 
         for fig in outputs.values():
             fig.close()
+
+        filename = self.get_input('shearposX')
+
+        outputs = {
+            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_x',
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
+        }
+        
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['shearposX'], 
+            figures=figures)
 
     def read_nbin(self, s):
         import sacc
