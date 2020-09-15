@@ -230,8 +230,8 @@ class TXTwoPoint(PipelineStage):
         WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
-        if self.config['do_shear_pos'] == True:
-            S2 = sacc.Sacc()
+        #if self.config['do_shear_pos'] == True:
+        #    S2 = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
@@ -243,8 +243,8 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
-            if self.config['do_shear_pos'] == True:
-                S2.add_tracer('NZ', f'source_{i}',z, Nz)
+            #if self.config['do_shear_pos'] == True:
+            #    S2.add_tracer('NZ', f'source_{i}',z, Nz)
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
@@ -252,8 +252,8 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
-            if self.config['do_shear_pos'] == True:
-                S2.add_tracer('NZ', f'lens_{i}',z, Nz)
+            #if self.config['do_shear_pos'] == True:
+            #    S2.add_tracer('NZ', f'lens_{i}',z, Nz)
         # Closing n(z) file
         f.close()
 
@@ -305,21 +305,13 @@ class TXTwoPoint(PipelineStage):
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
         cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
-        S.add_covariance(cov)
+        #S.add_covariance(cov)
 
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        self.write_metadata(S,meta)
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
         
         # Adding the gammaX calculation:
         
         if self.config['do_shear_pos'] == True:
-            comb = []
+            comb = [cov]
             for d in results:
                 tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
                 tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'   
@@ -334,13 +326,24 @@ class TXTwoPoint(PipelineStage):
                     err = np.sqrt(np.diag(covX))
                     n = len(xi_x)
                     for i in range(n):
-                        S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
+                        S.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
                             theta=theta[i], error=err[i], weight=weight[i])
-            S2.add_covariance(comb)
-            S2.to_canonical_order
-            self.write_metadata(S2,meta)
-            S2.save_fits(self.get_output('shearposX'), overwrite=True)
+            S.add_covariance(comb)
+            #S2.to_canonical_order
+            #self.write_metadata(S2,meta)
+            #S2.save_fits(self.get_output('shearposX'), overwrite=True)
+        else:
+            S.add_covariance(cov)
 
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        self.write_metadata(S,meta)
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
+        
 
 
     def write_metadata(self, S, meta):
@@ -1147,6 +1150,7 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
         matplotlib.use('agg')
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
+        import matplotlib.pyplot as plt
 
         filename = self.get_input('shearposX')
         s = sacc.Sacc.load_fits(self.get_input('shearposX'))
@@ -1166,6 +1170,8 @@ class TXTwoPointGammaXPlots(TXTwoPointPlots):
         
         for fig in outputs.values():
             fig.close()
+
+        
 
 
 
