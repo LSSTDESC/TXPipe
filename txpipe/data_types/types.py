@@ -327,3 +327,9 @@ class NOfZFile(HDFFile):
         for b in range(self.get_nbin(kind)):
             z, nz = self.get_n_of_z(kind, b)
             plt.plot(z, nz, label=f'Bin {b}')
+
+class FiducialCosmology(YamlFile):
+    def to_ccl(self):
+        import pyccl as ccl
+        return ccl.Cosmology.read_yaml(self.path)
+
