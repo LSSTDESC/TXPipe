@@ -814,7 +814,7 @@ class TXTwoPointPlots(PipelineStage):
         filename = self.get_input('shearposX')
 
         outputs = {
-            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_x',
+            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi_x',
                 figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
         }
         
