@@ -766,6 +766,7 @@ class TXTwoPointPlots(PipelineStage):
         ('shear_xi_minus', PNGFile),
         ('shearDensity_xi', PNGFile),
         ('density_xi', PNGFile),
+        ('shearDensity_xi_x', PNGFile),
     ]
 
     config_options = {
@@ -801,6 +802,9 @@ class TXTwoPointPlots(PipelineStage):
 
             "galaxy_shear_xi_minus": self.open_output('shear_xi_minus',
                 figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+            
+            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi_x',
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
         }
 
         figures = {key: val.file for key, val in outputs.items()}
