@@ -757,6 +757,7 @@ class TXTwoPointPlots(PipelineStage):
     inputs = [
         ('twopoint_data_real', SACCFile),
         ('fiducial_cosmology', YamlFile),  # For example lines
+        ('shearposX', SACCFile),
     ]
     outputs = [
         ('shear_xi_plus', PNGFile),
@@ -781,7 +782,7 @@ class TXTwoPointPlots(PipelineStage):
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
-        filename = self.get_input('twopoint_data_real')
+        filename = self.get_input('twopoint_data_real','shearposX')
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
