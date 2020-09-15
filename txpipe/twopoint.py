@@ -823,6 +823,9 @@ class TXTwoPointPlots(PipelineStage):
         full_3x2pt_plots([filename], ['shearposX'], 
             figures=figures)
 
+        for fig in outputs.values():
+            fig.close()
+
     def read_nbin(self, s):
         import sacc
 
