@@ -7,8 +7,10 @@ import numpy as np
 class TXMapCorrelations(PipelineStage):
     name = "TXMapCorrelations"
     inputs = [
-        ("density_maps", MapsFile),
+        ("lens_maps", MapsFile),
         ("convergence_maps", MapsFile),
+        ("source_maps", MapsFile),
+        ("mask", MapsFile),
     ]
 
     outputs = [
@@ -40,36 +42,33 @@ class TXMapCorrelations(PipelineStage):
 
         data_maps = {}
         nside = 0
-        for map_input in ["density_maps", "convergence_maps"]:
-            n = 0
-            with self.open_input(map_input, wrapper=True) as map_file:
-                for name in map_file.list_maps():
-                    # load map and pix info
-                    ns = map_file.read_map_info(name)["nside"]
-                    if nside == 0:
-                        nside = ns
-                    else:
-                        if nside != ns:
-                            raise ValueError("Cannot correlate maps of varying nside")
-                    data_maps[name] = map_file.read_map(name)
-                    n += 1
-            print(f"Found {n} maps in {map_input}")
 
-        ndata = len(data_maps)
-        print(f"=> Found {ndata} total maps")
+        with self.open_input("lens_maps", wrapper=True) as map_file:
+            ngal = map_file.read_map("weighted_ngal_2D")
+            nside = map_file.read_map_info("weighted_ngal_2D")["nside"]
+
+        with self.open_input("source_maps", wrapper=True) as map_file:
+            source_g1 = map_file.read_map("g1_2D")
+            source_g2 = map_file.read_map("g2_2D")
+            source_w  = map_file.read_map("lensing_weight_2D")
+
+        with self.open_input("convergence_maps", wrapper=True) as map_file:
+            kappa = map_file.read_map("kappa_E_2D")
+
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask = map_file.read_map("mask")
+
+        if not (kappa.size == ngal.size == source_w.size == mask.size):
+            raise ValueError("Maps are different sizes")
+
         output_dir = self.open_output("map_systematic_correlations", wrapper=True)
 
-        # use the name of the last map we read to find the nside
-        # of them all
-        
 
         root = self.config["supreme_path_root"]
         sys_maps = glob.glob(f"{root}*.hs")
         nsys = len(sys_maps)
-        npair = nsys * ndata
         print(f"Found {nsys} total systematic maps")
-        print(f"Generating {npair} total correlations")
-        i = 0
+
         outputs = []
         for map_path in sys_maps:
             # strip root, .hs, and underscores to get friendly name
@@ -78,48 +77,79 @@ class TXMapCorrelations(PipelineStage):
             # get actual data for this map
             sys_map = self.read_healsparse(map_path, nside)
 
-            # Compute the correlation with each of our data
-            # maps and save
-            for data_name, data_map in data_maps.items():
-                print(f"Correlating {sys_name} x {data_name} ({i+1} / {npair})")
-                corr = self.correlate(sys_map, data_map)
-                outfile = self.save(sys_name, data_name, corr, output_dir)
+            if 'e1' in sys_name:
+                print(f"Correlating {sys_name} with g1")
+                corr = self.correlate(sys_map, source_g1, source_w)
+                outfile = self.save(sys_name, 'g1', corr, output_dir)
                 outputs.append(outfile)
-                i += 1
+
+            elif 'e2' in sys_name:
+                print(f"Correlating {sys_name} with g2")
+                corr = self.correlate(sys_map, source_g2, source_w)
+                outfile = self.save(sys_name, 'g2', corr, output_dir)
+                outputs.append(outfile)
+            else:
+                print(f"Correlating {sys_name} with convergance and number_density")
+                # correlate with kappa and and ngal maps, each with
+                # the appropriate weight
+                corr = self.correlate(sys_map, ngal, mask)
+                outfile = self.save(sys_name, 'number_density', corr, output_dir)
+                outputs.append(outfile)
+
+                corr = self.correlate(sys_map, kappa, source_w)
+                outfile = self.save(sys_name, 'convergence', corr, output_dir)
+                outputs.append(outfile)
+
 
         output_dir.write_listing(outputs)
 
-    def correlate(self, sys_map, data_map):
+    def correlate(self, sys_map, data_map, weight_map):
         import scipy.stats
         import healpy
 
         N = self.config["nbin"]
         f = 0.5 * self.config["outlier_fraction"]
-        # clean data
+
+        # clean the data
         finite = (
             np.isfinite(sys_map + data_map)
             & (sys_map != healpy.UNSEEN)
             & (data_map != healpy.UNSEEN)
+            & (weight_map != healpy.UNSEEN)
         )
+
         sys_map = sys_map[finite]
         data_map = data_map[finite]
+        weight_map = weight_map[finite]
 
-        # Choose bin edges and put pixels in them
+        # Choose bin edges and put pixels in them.
+        # Ignore the weights in the percentiles for now
         percentiles = np.linspace(f, 1 - f, N + 1)
         bin_edges = scipy.stats.mstats.mquantiles(sys_map, percentiles)
+
+        # Remove outliers in the systematic
         clip = (sys_map > bin_edges[0]) & (sys_map < bin_edges[-1])
         sys_map = sys_map[clip]
         data_map = data_map[clip]
+        weight_map = weight_map[clip]
+
+        # Find the bin each pixel lands in
         bins = np.digitize(sys_map, bin_edges) - 1
 
-        # Get stats on those pixels
-        counts = np.bincount(bins)
-        x = np.bincount(bins, weights=sys_map) / counts
-        y = np.bincount(bins, weights=data_map) / counts
-        y2 = np.bincount(bins, weights=data_map ** 2) / counts
+        # Get the weighted count in each bin in the
+        # systematic parameter
+        counts = np.bincount(bins, weights=weight_map)
+
+        # and the weighted mean of the systematic value
+        # itself, and of the y and y^2 values
+        x = np.bincount(bins, weights=sys_map * weight_map) / counts
+        y = np.bincount(bins, weights=data_map * weight_map) / counts
+        y2 = np.bincount(bins, weights=data_map ** 2 * weight_map) / counts
+
+        # the error on the mean = var / count
         yerr = np.sqrt((y ** 2 - y2 ** 2) / counts)
 
-        # return things we want to plit
+        # return things we want to plot
         return x, y, yerr
 
     def save(self, sys_name, data_name, corr, output_dir):
