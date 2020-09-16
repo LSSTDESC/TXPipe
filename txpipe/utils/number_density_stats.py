@@ -10,17 +10,24 @@ class SourceNumberDensityStats:
             ParallelMeanVariance(2)
             for i in range(nbin_source)
         ]
+        self.shear_stats_2d = ParallelMeanVariance(2)
 
     def add_data(self, shear_data, shear_bin):
+
         for i in range(self.nbin_source):
             w = np.where(shear_bin==i)
 
             if self.shear_type=='metacal':
                 self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w], shear_data['weight'][w])
                 self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w], shear_data['weight'][w])
+                # each bin contributes to the 2D
+                self.shear_stats_2d.add_data(0, shear_data['mcal_g1'][w], shear_data['weight'][w])
+                self.shear_stats_2d.add_data(1, shear_data['mcal_g2'][w], shear_data['weight'][w])
             else:
                 self.shear_stats[i].add_data(0, shear_data['g1'][w], shear_data['weight'][w])
                 self.shear_stats[i].add_data(1, shear_data['g2'][w], shear_data['weight'][w])
+                self.shear_stats_2d.add_data(0, shear_data['g1'][w], shear_data['weight'][w])
+                self.shear_stats_2d.add_data(1, shear_data['g2'][w], shear_data['weight'][w])
 
 
     def collect(self):
@@ -31,7 +38,8 @@ class SourceNumberDensityStats:
         for i in range(self.nbin_source):
             _, means[i], variances[i] = self.shear_stats[i].collect(self.comm, mode='allgather')
 
-        return means, variances
+        _, means2d, variances2d = self.shear_stats_2d.collect(self.comm, mode='allgather')
+        return means, variances, means2d, variances2d
 
 
 class LensNumberDensityStats:
@@ -39,17 +47,21 @@ class LensNumberDensityStats:
         self.nbin_lens = nbin_lens
         self.comm = comm
         self.lens_counts = np.zeros(nbin_lens)
+        self.lens_counts_2d = 0.0
 
     def add_data(self, lens_bin):
 
         for i in range(self.nbin_lens):
             n = (lens_bin==i).sum()
             self.lens_counts[i] += n
+            # each bin contributes to the 2D case
+            self.lens_counts_2d += n
 
     def collect(self):
 
         if self.comm is None:
             lens_counts = self.lens_counts
+            lens_counts_2d = self.lens_counts_2d
         else:
             import mpi4py.MPI
             lens_counts = np.zeros_like(self.lens_counts)
@@ -60,5 +72,11 @@ class LensNumberDensityStats:
                 root = 0
             )
 
-        return lens_counts
+            lens_counts_2d = self.comm.reduce(
+                self.lens_counts_2d,
+                op = mpi4py.MPI.SUM,
+                root = 0
+            )
+
+        return lens_counts, lens_counts_2d
 
