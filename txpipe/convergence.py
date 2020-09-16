@@ -50,7 +50,8 @@ class TXConvergenceMaps(PipelineStage):
         sigma = self.config["smoothing_sigma"]
 
         # Loop through all our source bins
-        for i in range(nbin_source):
+        maps = list(range(nbin_source)) + ["2D"]
+        for i in maps:
             print(f"Producing convergence map for bin {i}")
             # Load input shear maps
             g1 = source_maps.read_map(f"g1_{i}")
