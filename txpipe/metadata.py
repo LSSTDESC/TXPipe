@@ -120,12 +120,9 @@ class TXTracerMetadata(PipelineStage):
         copy_attrs(lens_tomo_file, "tomography", "tracers")
         meta_file.close()
 
-        # human readable version
-        yaml_out_name = self.get_output("tracer_metadata_yml")
-
-        f = open(yaml_out_name, "w")
-        yaml.dump(metadata, f)
-        f.close()
+        yaml_out = self.open_output("tracer_metadata_yml", wrapper=True)
+        yaml_out.write(metadata)
+        yaml_out.close()
 
         shear_tomo_file.close()
         lens_tomo_file.close()
