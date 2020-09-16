@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, \
-                        YamlFile, SACCFile, MapsFile, HDFFile, \
+                        FiducialCosmology, SACCFile, MapsFile, HDFFile, \
                         PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps, PNGFile
 import numpy as np
 import collections
@@ -43,7 +43,7 @@ class TXTwoPointFourier(PipelineStage):
     inputs = [
         ('shear_photoz_stack', HDFFile),  # Photoz stack
         ('lens_photoz_stack', HDFFile),  # Photoz stack
-        ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
+        ('fiducial_cosmology', FiducialCosmology),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
         ('source_maps', MapsFile),
         ('density_maps', MapsFile),
@@ -64,6 +64,8 @@ class TXTwoPointFourier(PipelineStage):
         "flip_g1": False,
         "flip_g2": False,
         "cache_dir": '',
+        "deproject_syst_clustering": False,
+        "systmaps_clustering_dir": '',
     }
 
     def run(self):
@@ -152,7 +154,6 @@ class TXTwoPointFourier(PipelineStage):
     def load_maps(self):
         import pymaster as nmt
         import healpy
-
         # Load the maps from their files.
         # First the mask
         with self.open_input('mask', wrapper=True) as f:
@@ -215,17 +216,78 @@ class TXTwoPointFourier(PipelineStage):
             for g2 in g2_maps:
                 w = np.where(g2!=healpy.UNSEEN)
                 g2[w]*=-1
+                
 
-        # TODO: load systematics maps here, once we are making them.
-        # maybe from Eli or Zilong's code
-        syst_nc = None
-        syst_wl = None
+        # Load HEALPix systematics maps
+        deproject_syst_clustering = self.config['deproject_syst_clustering']
+        if deproject_syst_clustering:  
+            print('Deprojecting systematics maps for number counts')
+            n_systmaps = 0
+            s_maps = []
+            systmaps_clustering_dir = self.config['systmaps_clustering_dir']
+            systmaps_path = pathlib.Path(systmaps_clustering_dir)
+            for systmap in systmaps_path.iterdir():
+                try:
+                    if systmap.is_file():
+                        if pathlib.Path(systmap).suffix != ".fits":
+                            print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
+                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                            print('Ignoring', systmap)
+                        else:
+                            systmap_file = str(systmap)
+                            self.config[f'clustering_deproject_{n_systmaps}'] = systmap_file # for provenance
+                            print('Reading clustering systematics map file:', systmap_file)
+                            syst_map = healpy.read_map(systmap_file,verbose=False)
 
+#                             # Find value at given ra,dec
+#                             ra = 55.
+#                             dec = -30.
+#                             theta = 0.5 * np.pi - np.deg2rad(dec)
+#                             phi = np.deg2rad(ra)
+#                             nside = healpy.pixelfunc.get_nside(syst_map)
+#                             ipix = healpy.ang2pix(nside, theta, phi)
+#                             print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
+
+                            # normalize map for Namaster
+                            # set pixel values to value/mean - 1
+                            syst_map_mask = syst_map != healpy.UNSEEN
+                            mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
+                            if mean != 0:
+                                print('Syst map: mean value = ', mean)
+                                syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
+                                syst_map = syst_map / mean - 1
+#                                 print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
+
+                            s_maps.append(syst_map)
+                            n_systmaps += 1
+                except:
+                    print('Warning: Problem with systematics map file',systmap)
+                    print('Ignoring', systmap)
+                    
+            print('Number of systematics maps read: ', n_systmaps)
+            if n_systmaps == 0:
+                print('No systematics maps found. Skipping deprojection.')
+                deproject_syst_clustering = False
+            else:
+                print("Using systematics maps for galaxy number counts.")
+                # We assume all systematics maps have the same nside
+                nside = healpy.pixelfunc.get_nside(syst_map)
+                npix = healpy.nside2npix(nside)
+                # needed for NaMaster:
+                s_maps_nc = np.array(s_maps).reshape([n_systmaps, 1, npix])
+            
+        else:
+            print("Not using systematics maps for deprojection in NaMaster")    
+
+        if deproject_syst_clustering:
+            density_fields = [(nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0))
+                              for d in d_maps]
+        else:
+            density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
+                              for d in d_maps]
 
         lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
                           for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
-        density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
-                          for d in d_maps]
 
         # Collect together all the maps we will output
         maps = {
@@ -327,7 +389,7 @@ class TXTwoPointFourier(PipelineStage):
                 print(f'Rank {self.rank} computing coupling matrix '
                       f"{i}, {j}, {k}")
                 space = nmt.NmtWorkspace()
-                space.compute_coupling_matrix(f1, f2, ell_bins)
+                space.compute_coupling_matrix(f1, f2, ell_bins,is_teb=False, n_iter=1)
             else:
                 print(f'Rank {self.rank} getting coupling matrix '
                        f'{i}, {j}, {k} from cache.')
@@ -468,7 +530,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
-            cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace)
+            cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
@@ -639,7 +701,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
     name='TXTwoPointPlotsFourier'
     inputs = [
         ('twopoint_data_fourier', SACCFile),
-        ('fiducial_cosmology', YamlFile),  # For example lines
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
     ]
     outputs = [
         ('shear_cl_ee', PNGFile),
@@ -675,7 +737,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
-        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
