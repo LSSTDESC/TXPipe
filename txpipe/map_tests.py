@@ -155,7 +155,7 @@ class TXMapCorrelations(PipelineStage):
 
         # Save plot
         base = f"{sys_name}_{data_name}.png"
-        filename = output_dir.path_for(base)
+        filename = output_dir.path_for_file(base)
         plt.savefig(filename)
         plt.close()
 
