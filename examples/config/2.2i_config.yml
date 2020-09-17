@@ -15,6 +15,11 @@ TXCosmoDC2Mock:
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
 
+FlexZPipe:
+    has_redshift: False
+    nz: 300
+    metacal_fluxes: False
+    chunk_rows: 100
 
 
 PZPDFMLZ:
