@@ -1,5 +1,5 @@
 import numpy as np
-from ..utils.stats import ParallelStatsCalculator
+from parallel_statistics import ParallelMeanVariance
 
 class DepthMapperDR1:
     def __init__(self, pixel_scheme, snr_threshold, snr_delta, sparse=False, comm=None):
@@ -48,7 +48,7 @@ class DepthMapperDR1:
         self.snr_delta = snr_delta
         self.comm = comm
         self.sparse = sparse
-        self.stats = ParallelStatsCalculator(pixel_scheme.npix, sparse=sparse)
+        self.stats = ParallelMeanVariance(pixel_scheme.npix, sparse=sparse)
 
     def add_data(self, data):
         ra = data['ra']
@@ -125,7 +125,7 @@ class BrightObjectMapper:
         self.mag_threshold = mag_threshold
         self.comm = comm
         self.sparse = sparse
-        self.stats = ParallelStatsCalculator(pixel_scheme.npix, sparse=sparse)
+        self.stats = ParallelMeanVariance(pixel_scheme.npix, sparse=sparse)
 
     def add_data(self, data):
         ra = data['ra']

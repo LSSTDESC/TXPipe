@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
-from .utils.stats import ParallelStatsCalculator, ParallelHistogram, combine_variances
+from parallel_statistics import ParallelHistogram
 import numpy as np
 from .plotting import manual_step_histogram
 

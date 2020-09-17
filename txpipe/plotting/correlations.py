@@ -70,9 +70,15 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 
 def full_3x2pt_plots(sacc_files, labels, 
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
-                     xi=None, fit_bias=False, figures=None):
+                     xi=None, fit_bias=False, figures=None, xlogscale=True):
     import sacc
-    sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in sacc_files]
+    sacc_data = []
+    for f in sacc_files:
+        if isinstance(f, sacc.Sacc):
+            sacc_data.append(f)
+        else:
+            sacc_data.append(sacc.Sacc.load_fits(f))
+
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
 
@@ -115,7 +121,7 @@ def full_3x2pt_plots(sacc_files, labels,
     for t in types:
         if any(obs[t] for obs in obs_data):
             f = figures.get(t)
-            output_figures[t] = make_plot(t, obs_data, theory_data, fig=f)
+            output_figures[t] = make_plot(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
 
     return output_figures
     
@@ -133,19 +139,19 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     if name.startswith(r'C_\ell'):
         a.set_xlabel(r"$C_\ell$")
     else:
-        a.set_xlabel(r"$\theta / $ arcmin")
+        a.set_xlabel(r"$\theta$ [arcmin]")
 
     a.tick_params(axis='both', which='major', length=10, direction='in')
     a.tick_params(axis='both', which='minor', length=5, direction='in')
 
     # Fix
-    a.text(0.1, 0.1, f"Bin {i}-{j}", transform=a.transAxes)
+    a.text(0.1, 0.1, f"{j} - {i}", transform=a.transAxes)
     if i==j==0:
         a.legend()
     a.set_ylim(ymin, ymax)
 
 
-def make_plot(corr, obs_data, theory_data, fig=None):
+def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
     import matplotlib.pyplot as plt
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
@@ -198,10 +204,10 @@ def make_plot(corr, obs_data, theory_data, fig=None):
         half_only = False
 
     plt.rcParams['font.size'] = 14
-    f = fig if fig is not None else plt.figure(figsize=(nx*5, ny*3))
+    f = fig if fig is not None else plt.figure(figsize=(nx*3.5, ny*3))
     ax = {}
     
-    axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=False)
+    axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=True)
     for i in range(ny):
         if auto_only:
             J = [i]
@@ -219,28 +225,37 @@ def make_plot(corr, obs_data, theory_data, fig=None):
                 res = obs[(corr, i, j)]
                 if len(res) == 2:
                     theta, xi = res
-                    l, = a.loglog(theta, xi, 'x', label=obs['name'])
-                    a.loglog(theta, -xi, 's', color=l.get_color())
+                    if xlogscale:
+                        l, = a.loglog(theta, xi, 'x', label=obs['name'])
+                        a.loglog(theta, -xi, 's', color=l.get_color())
+                    else:
+                        l, = a.plot(theta, xi, 'x', label=obs['name'])
+                        a.plot(theta, -xi, 's', color=l.get_color())
+                        a.set_yscale('log')
                 else:
                     theta, xi, cov = res
                     err = cov.diagonal()**0.5
                     a.errorbar(theta, xi, err, fmt='.', label=obs['name'], capsize=5)
-                    a.set_xscale('log')
                     a.set_yscale('log')
+                    if xlogscale:
+                        a.set_xscale('log')
 
             for theory in theory_data:
                 theta, xi = theory[(corr, i, j)]
-                a.loglog(theta, xi, '-', label=theory['name'])
+                if xlogscale:
+                    a.loglog(theta, xi, '-', label=theory['name'])
+                else:
+                    a.plot(theta, xi, '-', label=theory['name'])
 
             axis_setup(a, i, j, ny, ymin, ymax, name)
             if corr in [EE, ED, DD]:
-                a.set_xlim(90, 3200)
+                a.set_xlim(90, 1500)
 
     f.suptitle(rf"TXPipe ${name}$")
 
     # plt.tight_layout()
     f.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.subplots_adjust(wspace=0.0, hspace=0.0)
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
     return plt.gcf()
 
 def smooth_nz(nz):
@@ -342,8 +357,9 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
 
 
     for i in range(nbin_source):
+        
         for j in range(nbin_lens):
-            print(f"Computing theory lensing-density ({i},{j})")
+            print(f"Computing theory lensing-density (S{i},L{j})")
 
             # compute power spectra
             cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)

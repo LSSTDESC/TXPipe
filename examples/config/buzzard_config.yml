@@ -1,0 +1,6 @@
+TXBuzzardMock:
+    cat_name: buzzard
+    visits_per_band: 16
+    extra_cols: redshift_true size_true shear_1 shear_2
+    flip_g2: True # to match metacal
+    max_npix: 4

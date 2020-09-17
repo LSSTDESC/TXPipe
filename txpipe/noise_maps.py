@@ -35,6 +35,7 @@ class TXNoiseMaps(PipelineStage):
         'chunk_rows': 100000,
         'lensing_realizations': 30,
         'clustering_realizations': 1,
+        'shear_catalog_type': 'mcal',
     }        
 
     def run(self):
@@ -48,8 +49,10 @@ class TXNoiseMaps(PipelineStage):
         clustering_realizations = self.config['clustering_realizations']
 
         # The columns we will need
-        shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
-
+        if self.config["shear_catalog_type"] == "metacal":
+            shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
+        else:
+            shear_cols = ['ra', 'dec', 'weight', 'g1', 'g2']
         # Make the iterators
         chunk_rows = self.config['chunk_rows']
 
@@ -101,8 +104,8 @@ class TXNoiseMaps(PipelineStage):
             n = e - s
 
             w = data['weight']
-            g1 = data['mcal_g1'] * w
-            g2 = data['mcal_g2'] * w
+            g1 = data[shear_cols[-2]] * w
+            g2 = data[shear_cols[-1]] * w
 
             # randomly select a half for each object
             split = np.random.binomial(1, 0.5, (n, clustering_realizations))

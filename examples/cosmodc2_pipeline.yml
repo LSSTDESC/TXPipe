@@ -19,7 +19,7 @@ stages:
     - name: TXTwoPointFourier
       nprocess: 2
       nodes: 2
-      threads_per_process: 64
+      threads_per_process: 32
     - name: TXJackknifeCenters
     - name: TXMainMaps
       nprocess: 8
@@ -35,7 +35,7 @@ stages:
     - name: TXTracerMetadata
     - name: TXNullBlinding
     - name: TXTwoPoint
-      threads_per_process: 64
+      threads_per_process: 32
       nprocess: 2
       nodes: 2
     - name: TXTwoPointPlots
@@ -43,9 +43,9 @@ stages:
       nprocess: 16
       nodes: 1
     - name: TXFourierGaussianCovariance
-      threads_per_process: 64
+      threads_per_process: 32
     - name: TXRealGaussianCovariance
-      threads_per_process: 64
+      threads_per_process: 32
 
 output_dir: data/cosmodc2/outputs
 config: examples/config/cosmodc2_config.yml

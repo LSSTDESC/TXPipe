@@ -51,13 +51,15 @@ class TXTracerMetadata(PipelineStage):
             copy(shear_tomo_file, "metacal_response", "tracers", "R_S")
             copy(shear_tomo_file, "metacal_response", "tracers", "R_total")
         else:
-            copy(shear_tomo_file, "response", "tracers", "R")
+            copy(shear_tomo_file, "response", "tracers", "R_mean")
             copy(shear_tomo_file, "response", "tracers", "K")
             copy(shear_tomo_file, "response", "tracers", "C")
 
         copy(shear_tomo_file, "tomography", "tracers", "N_eff")
         copy(lens_tomo_file, "tomography", "tracers", "lens_counts")
         copy(shear_tomo_file, "tomography", "tracers", "sigma_e")
+        copy(shear_tomo_file, "tomography", "tracers", "mean_e1")
+        copy(shear_tomo_file, "tomography", "tracers", "mean_e2")
         copy(shear_tomo_file, "tomography", "tracers", "source_counts")
 
         N_eff = shear_tomo_file["tomography/N_eff"][:]
@@ -86,6 +88,8 @@ class TXTracerMetadata(PipelineStage):
             "lens_density": lens_density.tolist(),
             "source_density": source_density.tolist(),
             "sigma_e": shear_tomo_file["tomography/sigma_e"][:].tolist(),
+            "mean_e1": shear_tomo_file["tomography/mean_e1"][:].tolist(),
+            "mean_e2": shear_tomo_file["tomography/mean_e2"][:].tolist(),
             "n_eff": n_eff.tolist(),
             "lens_counts": lens_counts.tolist(),
             "source_counts": source_counts.tolist(),
@@ -103,7 +107,7 @@ class TXTracerMetadata(PipelineStage):
                 shear_tomo_file["metacal_response/R_total"][:].tolist(),
             )
         else:
-            metadata["R"] = (shear_tomo_file["response/R"][:].tolist(),)
+            metadata["R_mean"] = (shear_tomo_file["response/R_mean"][:].tolist(),)
             metadata["K"] = (shear_tomo_file["response/K"][:].tolist(),)
             metadata["C"] = (shear_tomo_file["response/C"][:].tolist(),)
 

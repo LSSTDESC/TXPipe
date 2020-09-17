@@ -29,3 +29,4 @@ from .auxiliary_maps import TXAuxiliaryMaps
 from .map_plots import TXMapPlots
 from .masks import TXSimpleMask
 from .metadata import TXTracerMetadata
+from .convergence import TXConvergenceMaps

@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
-from .utils.stats import ParallelStatsCalculator
+from parallel_statistics import ParallelMeanVariance
 from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins, apply_hsc_calibration
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
@@ -34,6 +34,7 @@ class TXDiagnosticPlots(PipelineStage):
     config_options = {
         'chunk_rows': 100000,
         'delta_gamma': 0.02,
+        'shear_prefix':'mcal_',
         'psf_prefix': 'mcal_psf_',
         'T_min': 0.2,
         'T_max': 0.28,
@@ -66,11 +67,12 @@ class TXDiagnosticPlots(PipelineStage):
         psf_prefix = self.config['psf_prefix']
         shear_prefix = self.config['shear_prefix']
         if self.config['shear_catalog_type']=='metacal':
-            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2','mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_psf_T_mean','mcal_s2n','mcal_T',
+            shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', f'{psf_prefix}T_mean', 'mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
-                     'mcal_s2n_2m']
+                     'mcal_s2n_2m', 'weight']
         else:
             shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2']
+
         photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']
@@ -292,19 +294,29 @@ class TXDiagnosticPlots(PipelineStage):
 
         
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
-
+        print(mu, mean1, mean2, std1, std2)
         if self.rank != 0:
             return
 
         # Get the error on the mean
         dx = 0.05*(snr_edges[1] - snr_edges[0])
         good = (mu>0) & (np.isfinite(mean1))
-        slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu[good]),mean1[good])
-        line1 = slope1*(np.log10(mu))+intercept1
-
+        if np.count_nonzero(good)>0:
+            slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(np.log10(mu[good]),mean1[good])
+            line1 = slope1*(np.log10(mu))+intercept1
+        else:
+            line1 = np.zeros(len(mu))
+            slope1 = 0
+            std_err1 = 0
         good = (mu>0) & (np.isfinite(mean2))
-        slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu[good]),mean2[good])
-        line2 = slope2*(np.log10(mu))+intercept2
+        if np.count_nonzero(good)>0:
+            slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu[good]),mean2[good])
+            line2 = slope2*(np.log10(mu))+intercept2
+        else:
+            line2 = np.zeros(len(mu))
+            slope2 = 0
+            std_err2 = 0
+
         fig = self.open_output('g_snr', wrapper=True)
         
         plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
@@ -385,8 +397,8 @@ class TXDiagnosticPlots(PipelineStage):
         bins = 10
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
-        calc2 = ParallelStatsCalculator(bins)
+        calc1 = ParallelMeanVariance(bins)
+        calc2 = ParallelMeanVariance(bins)
         
         
         while True:
@@ -486,7 +498,7 @@ class TXDiagnosticPlots(PipelineStage):
         bins = 10
         edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelStatsCalculator(bins)
+        calc1 = ParallelMeanVariance(bins)
         
         while True:
             data = yield

@@ -99,11 +99,11 @@ class TXMapPlots(PipelineStage):
         for i in range(nbin_source):
             # g1
             plt.sca(axes[0, i])
-            m.plot(f"g1_{i}", view=self.config["projection"])
+            m.plot(f"g1_{i}", view=self.config["projection"], min=-0.1, max=0.1)
 
             # g2
             plt.sca(axes[1, i])
-            m.plot(f"g2_{i}", view=self.config["projection"])
+            m.plot(f"g2_{i}", view=self.config["projection"], min=-0.1, max=0.1 )
         fig.close()
 
     def lens_plots(self):
