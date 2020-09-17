@@ -145,27 +145,11 @@ class TXSourceMaps(TXBaseMaps):
     config_options = {"true_shear": False, **map_config_options}
 
     def prepare_mappers(self, pixel_scheme):
-        # read shear cols and
-        shear_catalog_type = read_shear_catalog_type(self)
-        # open and return a single mapper
-        # read nbin_source
-        with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin_source"]
-
-            if shear_catalog_type == "metacal":
-                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
-                cal = [R]
-            elif shear_catalog_type == "lensfit":
-                R = f['/metacal_response/R_mean'][:]
-                K = f['/metacal_response/K'][:]
-                c = f['/metacal_response/C'][:]
-                cal = (R, K, c)
-            else:
-                raise ValueError("Unknown calibration")
+        # read shear cols and calibration info
+        nbin_source, cal = self.get_calibrators()
 
         # store in config so it is saved later
         self.config["nbin_source"] = nbin_source
-
         # create basic mapper object
         source_bins = list(range(nbin_source))
         lens_bins = []
@@ -177,6 +161,29 @@ class TXSourceMaps(TXBaseMaps):
             sparse=self.config["sparse"],
         )
         return [mapper, cal]
+
+    def get_calibrators(self):
+        shear_catalog_type = read_shear_catalog_type(self)
+        with self.open_input("shear_tomography_catalog") as f:
+            nbin_source = f["tomography"].attrs["nbin_source"]
+
+            if shear_catalog_type == "metacal":
+                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
+                cal = {i:R[i] for i in range(nbin_source)}
+                cal['2D'] = f['/metacal_response/R_total_2d'][:]
+            elif shear_catalog_type == "lensfit":
+                R = f['/response/R_mean'][:]
+                K = f['/response/K'][:]
+                c = f['/response/C'][:]
+                cal = {i: (R[i], K[i], c[i]) for i in range(nbin_source)}
+                cal['2D'] = (
+                    f['/response/R_mean_2d'][0],
+                    f['/response/K_2d'][0],
+                    f['/response/C_2d'][:],
+                )
+            else:
+                raise ValueError("Unknown calibration")
+        return nbin_source, cal
 
     def data_iterator(self):
 
@@ -250,26 +257,41 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
-        g1_out = []
-        g2_out = []
-        var_g1_out = []
-        var_g2_out = []
+        import healpy
 
-        n = len(g1)
+        # We will return lists of calibrated maps
+        g1_out = {}
+        g2_out = {}
+        var_g1_out = {}
+        var_g2_out = {}
 
-        for i in range(n):
+        # We calibrate the 2D case separately
+        for i in g1.keys():
+            # we want to avoid accidentally calibrating any pixels
+            # that should be masked.
+            mask = (
+                  (g1[i] == healpy.UNSEEN)
+                | (g2[i] == healpy.UNSEEN)
+                | (var_g1[i] == healpy.UNSEEN)
+                | (var_g2[i] == healpy.UNSEEN)
+            )
             if self.config['shear_catalog_type'] == 'metacal':
-                R = cal[0]
-                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], R[i])
+                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
-                R, K, c = cal
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
+                R, K, c = cal[i]
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
             else:
                 raise ValueError("Unknown calibration")
-            g1_out.append(out[0])
-            g2_out.append(out[1])
-            var_g1_out.append(out[2])
-            var_g2_out.append(out[3])
+
+            # re-apply the masking, just to make sure
+            for x in out:
+                x[mask] = healpy.UNSEEN
+
+            # append our results for this tomographic bin
+            g1_out[i] = out[0]
+            g2_out[i] = out[1]
+            var_g1_out[i] = out[2]
+            var_g2_out[i] = out[3]
 
         return g1_out, g2_out, var_g1_out, var_g2_out
 
@@ -295,8 +317,8 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, var_g1[b])
+            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
+            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
         return maps
 
@@ -469,21 +491,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         )
 
     def prepare_mappers(self, pixel_scheme):
-
-        shear_catalog_type = read_shear_catalog_type(self)
-        # read both nbin values and the calibration values
-        with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin_source"]
-            if shear_catalog_type == "metacal":
-                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
-                cal = [R]
-            elif shear_catalog_type == "lensfit":
-                R = f['response/R_mean'][:]
-                K = f['response/K'][:]
-                c = f['response/C'][:]
-                cal = (R, K, c)
-            else:
-                raise ValueError("Unknown calibration")
+        nbin_source, cal = self.get_calibrators()
 
         with self.open_input("lens_tomography_catalog") as f:
             nbin_lens = f["tomography"].attrs["nbin_lens"]
@@ -524,8 +532,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, var_g1[b])
+            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
+            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
         return maps
 
@@ -571,11 +579,15 @@ class TXDensityMaps(PipelineStage):
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
+            mask_copy = mask.copy()
+            mask_copy[ng == healpy.UNSEEN] = 0
             ng[np.isnan(ng)] = 0.0
+            ng[ng == healpy.UNSEEN] = 0
             # Convert the number count maps to overdensity maps.
             # First compute the overall mean object count per bin.
             # mean clustering galaxies per pixel in this map
-            mu = np.average(ng, weights=mask)
+            mu = np.average(ng, weights=mask_copy)
+            print(f"Mean number density in bin {i} = {mu}")
             # and then use that to convert to overdensity
             d = (ng - mu) / mu
             # remove nans

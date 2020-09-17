@@ -1,4 +1,4 @@
-ceci==1.0.4
+ceci==1.1
 h5py
 pandas
 sacc

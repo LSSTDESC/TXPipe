@@ -1,8 +1,14 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
 global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
     chunk_rows: 100000
-    sparse: True  # Generate sparse maps - faster if using small areas
+    # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 512
+    nside: 2048
+    sparse: True  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -21,6 +27,8 @@ TXCosmoDC2Mock:
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
 
+TXIngestRedmagic:
+    lens_zbin_edges: [0.1, 0.3, 0.5]
 
 PZPDFMLZ:
     nz: 301
@@ -41,7 +49,10 @@ FlexZPipe:
     metacal_fluxes: False #switch for whether or not to run metacal suffices
 
 
-TXPhotozStack: {}
+# Mock version of stacking:
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
 
 # Mock version of stacking:
 TXTrueNumberDensity:
@@ -49,37 +60,40 @@ TXTrueNumberDensity:
     zmax: 3.0
 
 TXSourceSelector:
-    input_pz: True
-    bands: ri #used for selection
-    T_cut: 0.25
-    s2n_cut: 5.0
+    input_pz: False
+    true_z: True
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
-    shear_prefix: ''
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: mcal_
 
 TXTruthLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0,0.2,0.4]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 21.6
-    i_lo_cut: 17.5
-    i_hi_cut: 21.9
-    r_i_cut: 2.0
+    input_pz: False
+    true_z: True
+    lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0]
+    cperp_cut: 20.0
+    r_cpar_cut: 20.0
+    r_lo_cut: 0.0
+    r_hi_cut: 100.0
+    i_lo_cut: 0.0
+    i_hi_cut: 100.0
+    r_i_cut: 20.0
     # may also need one for r_cpar_cut
 
 TXMeanLensSelector:
     # Mag cuts
     lens_zbin_edges: [0.0,0.2,0.4]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 21.6
-    i_lo_cut: 17.5
-    i_hi_cut: 21.9
-    r_i_cut: 2.0
+    cperp_cut: 20.0
+    r_cpar_cut: 20.0
+    r_lo_cut: 0.0
+    r_hi_cut: 100.0
+    i_lo_cut: 100.0
+    i_hi_cut: 100.0
+    r_i_cut: 20.0
 
 TXRandomCat:
     density: 10 # gals per sq arcmin
@@ -95,17 +109,14 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
-    shear_catalog_type: metacal
-    subtract_mean_shear: True
 
-TXGammaTBrightStars:
-    shear_catalog_type: metacal
-    
-TXGammaTDimStars:
-    shear_catalog_type: metacal
+TXGammaTBrightStars: {}
 
-TXGammaTFieldCenters:
-    shear_catalog_type: metacal
+TXGammaTDimStars: {}
+
+TXGammaTRandoms: {}
+
+TXGammaTFieldCenters: {}
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
@@ -119,44 +130,46 @@ TXBlinding:
     delete_unblinded: True
 
 TXDiagnosticPlots:
-    psf_prefix: psf_
-    shear_prefix: ''
-    T_min: 0.5
-    T_max: 1.0
-
-TXMapPlots:
-    projection: moll
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
 
 TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
-    pixelization: healpix
-    nside: 512
     # pixelization: gnomonic
     pixel_size: 0.2
     ra_cent: 62.
     dec_cent: -35.
     npix_x: 60
     npix_y: 60
-    depth_cut: 21.5
+    depth_cut: 23.0
     psf_prefix: mcal_psf_
 
-TXSourceMaps: {}
+TXSourceMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
 
-TXLensMaps: {}
+TXLensMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+# For redmagic mapping
+TXExternalLensMaps:
+    chunk_rows: 100000
+    sparse: True
+    pixelization: healpix
+    nside: 2048
+
 
 TXMainMaps: {}
 
 TXAuxiliaryMaps:
-    flag_exponent_max: 1
+    flag_exponent_max: 8
     dilate: True
     psf_prefix: psf_
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
-
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -172,7 +185,10 @@ TXJackknifeCenters:
 TXTwoPointFourier:
     flip_g2: True
     bandwidth: 100
+    deproject_syst_clustering: True
+    systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/LSS/DC2_R2.1i/systmaps/txpipe/nc # use all maps in this directory
+
 
 TXSimpleMask:
-    depth_cut : 21.5
+    depth_cut : 23.5
     bright_object_max: 10.0

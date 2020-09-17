@@ -30,8 +30,8 @@ stages:
     - name: TXMeanLensSelector
       nprocess: 32
     - name: PZPDFMLZ
-      nprocess: 128
-      nodes: 4
+      nprocess: 64
+      nodes: 2
     - name: TXPhotozStack
       nprocess: 16
     - name: TXPhotozPlots
@@ -50,18 +50,18 @@ stages:
       nprocess: 2
       nodes: 2
     - name: TXNullBlinding
-      threads_per_process: 64
+      threads_per_process: 32
     - name: TXTwoPointFourier
-      nprocess: 4
-      nodes: 4
-      threads_per_process: 64
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 32
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
       nprocess: 16
     - name: TXGammaTBrightStars
-      threads_per_process: 64
+      threads_per_process: 32
     - name: TXGammaTDimStars
-      threads_per_process: 64
+      threads_per_process: 32
     - name: TXBrighterFatterPlot
 #    - name: TXRoweStatistics
 #      nprocess: 2

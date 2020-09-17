@@ -50,6 +50,24 @@ Goals
 - Perform and publish a DC2 3x2pt analysis.
 
 
+Getting the code and some test data
+-----------------------------------
+
+Get the TXPipe code like this (on NERSC, do this in your scratch space):
+```bash
+git clone https://github.com/LSSTDESC/TXPipe
+cd TXPipe
+```
+
+You can get some input test data like this:
+
+```bash
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
+```
+
+
+
 Getting Dependencies
 --------------------
 
@@ -61,8 +79,6 @@ The various stages within it depend on the python packages listed in requirement
 ```
 pip install -r requirements.txt
 ```
-
-**NOTE** The current pipeline version needs version 1.0 of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -98,13 +114,13 @@ If you want to run inside a job (interactive or batch) under MPI using srun, you
 srun -n 32 shifter --image docker:joezuntz/txpipe python3 -m txpipe ...
 ```
 
-If you want to run pipelines under MPI, you can install a minimal environment on cori with just ceci inside (no other dependencies) like this:
+If you want to run pipelines under MPI, you can install a minimal environment on cori with just a few dependencies, as shown below.  Run this inside your TXPipe directory:
 
 ```bash
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install ceci
+pip install ceci numpy scipy parallel_statistics
 ```
 
 Then use shifter to run the actual jobs.
@@ -151,7 +167,16 @@ ceci examples/2.2i_pipeline.yml
 
 A smaller run is in `examples/2.2i_single_tract_pipeline.yml`.
 
+Batch runs
+----------
 
+You can launch an example of a batch run (a submitted job that queues so you don't have to wait around), by executing this on cori:
+
+```bash
+sbatch examples/cori-2.2i.sub
+```
+
+It will generate an output log `2.2i.log`.
 
 Implementation
 --------------
