@@ -284,8 +284,56 @@ class TextFile(DataFile):
 class YamlFile(DataFile):
     """
     A data file in yaml format.
+    The top-level object in TXPipe YAML
+    files should always be a dictionary.
     """
     suffix = 'yml'
+
+    def __init__(self, path, mode, extra_provenance=None, validate=True, load_mode='full'):
+        self.path = path
+        self.mode = mode
+        self.file = self.open(path, mode)
+
+        if mode == "r":
+            if load_mode == 'safe':
+                self.content = yaml.safe_load(self.file)
+            elif load_mode == 'full':
+                self.content = yaml.full_load(self.file)
+            elif load_mode == 'unsafe':
+                self.content = yaml.unsafe_load(self.file)
+            else:
+                raise ValueError(f"Unknown value {yaml_load} of load_mode. "
+                                  "Should be 'safe', 'full', or 'unsafe'")
+            # get provenance
+            self.provenance = self.read_provenance()
+
+        else:
+            self.provenance = self.generate_provenance(extra_provenance)
+            self.write_provenance()
+
+    def read(self, key):
+        return self.content[key]
+
+    def write(self, d):
+        if not isinstance(d, dict):
+            raise ValueError("Only dicts should be passed to YamlFile.write")
+        yaml.dump(d, self.file)
+
+    def write_provenance(self):
+        d = {'provenance': self.provenance}
+        self.write(d)
+
+    def read_provenance(self):
+        prov = self.content.pop('provenance', {})
+        req_provenance = {
+                'uuid':     prov.get('uuid', "UNKNOWN"),
+                'creation': prov.get('creation', "UNKNOWN"),
+                'domain':   prov.get('domain', "UNKNOWN"),
+                'username': prov.get('username', "UNKNOWN"),
+        }
+        prov.update(req_provenance)
+        return prov
+
 
 class Directory(DataFile):
     suffix = ''
@@ -319,6 +367,9 @@ class Directory(DataFile):
         yaml.dump(self.provenance, self._provenance_file)
         self._provenance_file.flush()
 
+    def path_for(self, filename):
+        return self.file / filename
+
 
     def read_provenance(self):
         try:
@@ -340,6 +391,26 @@ class Directory(DataFile):
 
         return provenance
 
+class FileCollection(Directory):
+    """
+    Represents a grouped bundle of files, for cases where you don't
+    know the exact list in advance.
+    """
+    suffix = ''
+
+    def write_listing(self, filenames):
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            yaml.dump(filenames, f)
+
+    def read_listing(self):
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            filenames = yaml.safe_load(f)
+        return filenames
+
+    def path_for_file(self, filename):
+        return str(self.file / filename)
 
 
 class PNGFile(DataFile):
