@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, \
-                        YamlFile, SACCFile, MapsFile, HDFFile, \
+                        FiducialCosmology, SACCFile, MapsFile, HDFFile, \
                         PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps, PNGFile
 import numpy as np
 import collections
@@ -43,7 +43,7 @@ class TXTwoPointFourier(PipelineStage):
     inputs = [
         ('shear_photoz_stack', HDFFile),  # Photoz stack
         ('lens_photoz_stack', HDFFile),  # Photoz stack
-        ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
+        ('fiducial_cosmology', FiducialCosmology),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
         ('source_maps', MapsFile),
         ('density_maps', MapsFile),
@@ -712,7 +712,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
     name='TXTwoPointPlotsFourier'
     inputs = [
         ('summary_statistics_fourier', SACCFile),
-        ('fiducial_cosmology', YamlFile),  # For example lines
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
     ]
     outputs = [
         ('shear_cl_ee', PNGFile),
@@ -748,7 +748,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
-        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',

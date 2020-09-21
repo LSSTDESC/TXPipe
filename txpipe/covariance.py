@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile, YamlFile, SACCFile
+from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile
 import numpy as np
 import warnings
 import os
@@ -15,7 +15,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     do_xi=False
     
     inputs = [
-        ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
+        ('fiducial_cosmology', FiducialCosmology),    # For the cosmological parameters
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata', HDFFile),        # For metadata
     ]
@@ -69,13 +69,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def read_cosmology(self):
-        import pyccl as ccl
-        filename = self.get_input('fiducial_cosmology')
-        cosmo = ccl.Cosmology.read_yaml(filename)
-
-        print("COSMOLOGY OBJECT:")
-        print(cosmo)
-        return cosmo
+        return self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
     def read_sacc(self):
         import sacc
@@ -478,7 +472,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     do_xi = True
 
     inputs = [
-        ('fiducial_cosmology', YamlFile),     # For the cosmological parameters
+        ('fiducial_cosmology', FiducialCosmology),     # For the cosmological parameters
         ('twopoint_data_real', SACCFile),     # For the binning information
         ('tracer_metadata', HDFFile),         # For metadata
 

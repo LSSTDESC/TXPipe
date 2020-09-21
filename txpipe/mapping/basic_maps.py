@@ -6,8 +6,8 @@ import numpy as np
 class Mapper:
     def __init__(self, pixel_scheme, lens_bins, source_bins, do_g=True, do_lens=True, sparse=False):
         self.pixel_scheme = pixel_scheme
-        self.source_bins = source_bins
-        self.lens_bins = lens_bins
+        self.source_bins = source_bins + ['2D']
+        self.lens_bins = lens_bins + ['2D']
         self.do_g = do_g if len(source_bins) else False
         self.do_lens = do_lens if len(lens_bins) else False
         self.sparse = sparse
@@ -22,6 +22,8 @@ class Mapper:
             t = 0
             self.stats[(b,t)] = ParallelSum(self.pixel_scheme.npix)
 
+        # We make maps of each bin independently, and also of the
+        # combined 2D case, for all selected objects.
         for b in self.source_bins:
             # For the lensing we are interested in both the mean and
             # the variance of the g1 and g2 signals in each pixel, in
@@ -62,6 +64,7 @@ class Mapper:
                 if lens_bin >= 0:
                     lw = lens_weights[i]
                     self.stats[(lens_bin, 0)].add_datum(p, lw)
+                    self.stats[('2D', 0)].add_datum(p, lw)
 
             if do_g:
                 # accumulate weighted g1, g2
@@ -72,6 +75,10 @@ class Mapper:
                     self.stats[(source_bin, 1)].add_datum(p, g1[i], sw)
                     self.stats[(source_bin, 2)].add_datum(p, g2[i], sw)
                     self.stats[(source_bin,'weight')].add_datum(p, sw)
+                    # Also save 2D case
+                    self.stats[("2D", 1)].add_datum(p, g1[i], sw)
+                    self.stats[("2D", 2)].add_datum(p, g2[i], sw)
+                    self.stats[("2D",'weight')].add_datum(p, sw)
 
 
     def finalize(self, comm=None):

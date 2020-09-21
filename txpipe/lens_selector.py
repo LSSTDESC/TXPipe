@@ -137,6 +137,7 @@ class TXBaseLensSelector(PipelineStage):
         group.create_dataset('lens_bin', (n,), dtype='i')
         group.create_dataset('lens_weight', (n,), dtype='f')
         group.create_dataset('lens_counts', (nbin_lens,), dtype='i')
+        group.create_dataset('lens_counts_2d', (1,), dtype='i')
 
         group.attrs['nbin_lens'] = nbin_lens
         group.attrs[f'lens_zbin_edges'] = self.config['lens_zbin_edges']
@@ -176,12 +177,13 @@ class TXBaseLensSelector(PipelineStage):
         ----------
         outfile: h5py.File
         """
-        lens_counts = number_density_stats.collect()
+        lens_counts, lens_counts_2d = number_density_stats.collect()
 
 
         if self.rank==0:
             group = outfile['tomography']
             group['lens_counts'][:] = lens_counts
+            group['lens_counts_2d'][:] = lens_counts_2d
 
 
     def select_lens(self, phot_data):
