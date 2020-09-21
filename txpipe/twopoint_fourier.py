@@ -454,7 +454,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Creating the ell binning from the edges using this Namaster constructor.
         edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
-        ell_bins = MyNmtBin.from_edges(edges_int[:-1], edges_int[1:], is_Dell=False)
+        ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
 
 
