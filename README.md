@@ -6,6 +6,36 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the ceci repository for the infrastructure.
 
+
+Getting the code and some test data
+-----------------------------------
+
+Get the TXPipe code like this:
+```bash
+git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
+cd TXPipe
+```
+
+The flag tells git to also download several other repositories
+that we depend on.
+
+You can get some input test data like this:
+
+```bash
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
+```
+
+Updating
+--------
+
+If you have a previous installation of TXPipe and have used `git pull` to
+update it, you can load the submodules using:
+
+```bash
+git submodule update --init
+```
+
 Permissions
 -----------
 
@@ -94,7 +124,6 @@ pip install ceci numpy scipy parallel_statistics
 ```
 
 Then use shifter to run the actual jobs.
-
 
 
 Running the pipeline
