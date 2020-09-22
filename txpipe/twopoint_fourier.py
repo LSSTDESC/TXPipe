@@ -60,7 +60,6 @@ class TXTwoPointFourier(PipelineStage):
 
     config_options = {
         "mask_threshold": 0.0,
-        "bandwidth": 0,
         "flip_g1": False,
         "flip_g2": False,
         "cache_dir": '',
@@ -453,7 +452,11 @@ class TXTwoPointFourier(PipelineStage):
         # Can feed these back upstream if useful.
 
         # Creating the ell binning from the edges using this Namaster constructor.
-        edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+        if self.config['ell_spacing'] == 'log': 
+            edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+        else:
+            edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+            
         ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
 
