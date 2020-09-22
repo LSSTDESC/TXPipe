@@ -756,7 +756,7 @@ class TXTwoPointPlots(PipelineStage):
     name='TXTwoPointPlots'
     inputs = [
         ('twopoint_data_real', SACCFile),
-        ('fiducial_cosmology', YamlFile),  # For example lines
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
         ('shearposX', SACCFile),
     ]
     outputs = [
