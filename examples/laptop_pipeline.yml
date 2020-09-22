@@ -32,7 +32,6 @@ stages:
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
-    #- name: TXTwoPGXP            # Plot the gammaX correlation
 
     # These two require the WLMassMap repository on the path - see below
     # - name: TXConvergenceMaps

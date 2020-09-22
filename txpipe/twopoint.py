@@ -1142,51 +1142,6 @@ class TXTwoPointPlots(PipelineStage):
             plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
             plot_output.close()
 
-class TXTwoPointGammaXPlots(TXTwoPointPlots):
-    name='TXTwoPGXP'
-    inputs = [
-        ('shearposX', SACCFile),
-        ('fiducial_cosmology', YamlFile),
-    ]
-    outputs = [
-        ('shearDensity_x', PNGFile),
-    ]
-
-    config_options = {
-        'wspace': 0.05,
-        'hspace': 0.05,
-    }
-
-    def run(self):
-        import sacc
-        import matplotlib
-        #import pyccl
-        from .plotting import full_3x2pt_plots
-        matplotlib.use('agg')
-        matplotlib.rcParams["xtick.direction"]='in'
-        matplotlib.rcParams["ytick.direction"]='in'
-
-        filename = self.get_input('shearposX')
-        s = sacc.Sacc.load_fits(self.get_input('shearposX'))
-        nbin_source, nbin_lens = self.read_nbin(s)
-
-        #cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
-
-        outputs = {
-            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_x',
-                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
-        }
-        
-        figures = {key: val.file for key, val in outputs.items()}
-
-        full_3x2pt_plots([filename], ['shearposX'], 
-            figures=figures)
-        
-        for fig in outputs.values():
-            fig.close()
-
-
-
 
 class TXGammaTFieldCenters(TXTwoPoint):
     """
