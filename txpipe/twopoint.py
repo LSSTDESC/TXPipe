@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
 from .utils.calibration_tools import read_shear_catalog_type
 import numpy as np
@@ -786,7 +786,7 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',

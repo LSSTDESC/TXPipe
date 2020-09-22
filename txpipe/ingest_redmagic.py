@@ -60,11 +60,13 @@ class TXIngestRedmagic(PipelineStage):
         h.create_dataset('lens_bin', (n,), dtype=np.int32)
         h.create_dataset('lens_weight', (n,), dtype=np.float64)
         h.create_dataset('lens_counts', (nbin_lens,), dtype='i')
+        h.create_dataset('lens_counts_2d', (1,), dtype='i')
         h.attrs['nbin_lens'] = nbin_lens
         h.attrs[f'lens_zbin_edges'] = zbin_edges
 
         # we keep track of the counts per-bin also
         counts = np.zeros(nbin_lens, dtype=np.int64)
+        counts_2d = 0
 
         # all cols that might be useful
         cols = ['ra', 'dec', 'zredmagic', 'mag', 'mag_err', 'chisq']
@@ -95,6 +97,7 @@ class TXIngestRedmagic(PipelineStage):
             # Build up the counts
             any_bin = zbin >= 0
             counts += np.bincount(zbin[any_bin], minlength=nbin_lens)
+            counts_2d += any_bin.sum()
 
             # save data
             g['ra'][s:e] = data['ra']
@@ -112,6 +115,7 @@ class TXIngestRedmagic(PipelineStage):
 
         # this is an overall count
         h["lens_counts"][:] = counts
+        h["lens_counts_2d"][:] = counts_2d
 
         # Finally save the n(z) values we have built up
         stack = self.open_output('lens_photoz_stack')
