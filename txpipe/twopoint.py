@@ -33,7 +33,7 @@ class TXTwoPoint(PipelineStage):
     ]
     outputs = [
         ('twopoint_data_real_raw', SACCFile),
-        ('shearposX', SACCFile)
+        ('twopoint_gamma_x', SACCFile)
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -339,7 +339,7 @@ class TXTwoPoint(PipelineStage):
             S2.add_covariance(comb)
             S2.to_canonical_order
             self.write_metadata(S2,meta)
-            S2.save_fits(self.get_output('shearposX'), overwrite=True)
+            S2.save_fits(self.get_output('twopoint_gamma_x'), overwrite=True)
 
 
 
@@ -757,7 +757,7 @@ class TXTwoPointPlots(PipelineStage):
     inputs = [
         ('twopoint_data_real', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
-        ('shearposX', SACCFile),
+        ('twopoint_gamma_x', SACCFile),
     ]
     outputs = [
         ('shear_xi_plus', PNGFile),
@@ -811,7 +811,7 @@ class TXTwoPointPlots(PipelineStage):
         for fig in outputs.values():
             fig.close()
 
-        filename = self.get_input('shearposX')
+        filename = self.get_input('twopoint_gamma_x')
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi_x',
@@ -820,7 +820,7 @@ class TXTwoPointPlots(PipelineStage):
         
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['shearposX'], 
+        full_3x2pt_plots([filename], ['twopoint_gamma_x'], 
             figures=figures)
 
         for fig in outputs.values():
