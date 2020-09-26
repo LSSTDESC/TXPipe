@@ -2022,10 +2022,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return cat, rancat
 
-    def get_shear_catalog(self, data, i):
+    def get_shear_catalog(self, data, mask, i):
         import treecorr
         import pyccl as ccl
-        g1,g2,mask = self.get_m(data, i)
+        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
         
         if self.config['3Dcoords']:
             mu = data['mu'][mask]
