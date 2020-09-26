@@ -2022,7 +2022,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return cat, rancat
 
-    def get_shear_catalog(self, data, mask, i):
+    def get_shear_catalog(self, data, meta, i):
         import treecorr
         import pyccl as ccl
         g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
@@ -2072,10 +2072,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return cat
 
-    def calculate_shear_pos_select(self,data, i, j):
+    def calculate_shear_pos_select(self,data, meta, i, j):
         import treecorr 
 
-        cat_i = self.get_shear_catalog(data, i)
+        cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
         cat_j, rancat_j = self.get_lens_catalog(data, j)
@@ -2107,7 +2107,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             xx = self.calculate_shear_pos(data, meta, i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==SHEAR_POS_SELECT:
-            xx = self.calculate_shear_pos_select(data, i, j)
+            xx = self.calculate_shear_pos_select(data, meta, i, j)
             xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
             xx = self.calculate_pos_pos(data, i, j)
