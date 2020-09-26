@@ -1851,7 +1851,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'var_methods': 'jackknife',
         '3Dcoords': True,
         'metric': 'Rperp',
-        'use_true_shear': False
+        'use_true_shear': False,
+        'subtract_mean_shear':False,
+        'use_random_catalog': True
         }
 
     def run(self):
@@ -1919,32 +1921,32 @@ class TXSelfCalibrationIA(TXTwoPoint):
             data['mu'] = g['mean_z']
 
     def load_random_catalog(self, data):
-        filename = self.get_input('random_cats_source')
-        if filename is None:
+        if self.config['use_random_catalog']:
+            filename = self.get_input('random_cats_source')
+            # Columns we need from the tomography catalog
+            randoms_cols = ['dec','ra','bin','z']
+            print(f"Loading random catalog columns: {randoms_cols}")
+
+            f = self.open_input('random_cats_source')
+            group = f['randoms']
+
+            cut = self.config['reduce_randoms_size']
+            if 0.0<cut<1.0:
+                N = group['dec'].size
+                sel = np.random.uniform(size=N) < cut
+            else:
+                sel = slice(None)
+
+            data['random_ra'] =  group['ra'][sel]
+            data['random_dec'] = group['dec'][sel]
+
+            data['random_bin'] = group['bin'][sel]
+            data['random_z'] = group['z'][sel]
+
+            f.close()
+        else:
             print("Not using randoms")
             return
-
-        # Columns we need from the tomography catalog
-        randoms_cols = ['dec','ra','bin','z']
-        print(f"Loading random catalog columns: {randoms_cols}")
-
-        f = self.open_input('random_cats_source')
-        group = f['randoms']
-
-        cut = self.config['reduce_randoms_size']
-        if 0.0<cut<1.0:
-            N = group['dec'].size
-            sel = np.random.uniform(size=N) < cut
-        else:
-            sel = slice(None)
-
-        data['random_ra'] =  group['ra'][sel]
-        data['random_dec'] = group['dec'][sel]
-
-        data['random_bin'] = group['bin'][sel]
-        data['random_z'] = group['z'][sel]
-
-        f.close()
 
     def get_lens_catalog(self, data, meta, i):
         import treecorr
