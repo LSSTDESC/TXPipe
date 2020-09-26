@@ -1946,13 +1946,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         f.close()
 
-    def get_lens_catalog(self, data, i):
+    def get_lens_catalog(self, data, meta, i):
         import treecorr
         import pyccl as ccl
 
         #Note that we are here actually loading the source bin as the lens bin!
         #mask = data['source_bin'] == i
-        g1,g2,mask = self.get_m(data, i)
+        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
 
         
         if 'lens_ra' in data:
@@ -2078,7 +2078,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
-        cat_j, rancat_j = self.get_lens_catalog(data, j)
+        cat_j, rancat_j = self.get_lens_catalog(data, meta, j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -2089,6 +2089,31 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         if rancat_j:
             rg = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+            rg.process(rancat_j, cat_i)
+        else:
+            rg = None
+
+        ng.calculateXi(rg=rg)
+
+        return ng
+
+    def calculate_shear_pos(self, data, meta, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_catalog(data, meta, i)
+        n_i = cat_i.nobj
+
+        cat_j, rancat_j = self.get_lens_catalog(data, meta, j)
+        n_j = cat_j.nobj
+        n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+
+        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+
+        ng = treecorr.NGCorrelation(self.config)
+        ng.process(cat_j, cat_i)
+
+        if rancat_j:
+            rg = treecorr.NGCorrelation(self.config)
             rg.process(rancat_j, cat_i)
         else:
             rg = None
