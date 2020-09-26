@@ -2097,14 +2097,14 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return ng
 
-    def call_treecorr(self, data, i, j, k):
+    def call_treecorr(self, data, meta, i, j, k):
         import sacc 
 
         if k==SHEAR_SHEAR:
             xx = self.calculate_shear_shear(data, i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(data, i, j)
+            xx = self.calculate_shear_pos(data, meta, i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==SHEAR_POS_SELECT:
             xx = self.calculate_shear_pos_select(data, i, j)
