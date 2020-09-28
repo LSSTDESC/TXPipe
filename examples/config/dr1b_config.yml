@@ -1,0 +1,194 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 2048
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXGCRTwoCatalogInput:
+    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
+    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
+
+TXMetacalGCRInput:
+    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
+
+TXExposureInfo:
+    dc2_name: '1.2p'
+
+
+TXCosmoDC2Mock:
+    cat_name: cosmoDC2_v1.1.4_image
+    visits_per_band: 16
+    extra_cols: redshift_true size_true shear_1 shear_2
+    flip_g2: True # to match metacal
+
+TXIngestRedmagic:
+    lens_zbin_edges: [0.1, 0.3, 0.5]
+
+PZPDFMLZ:
+    nz: 301
+    zmax: 3.0
+
+FlexZPipe:
+    chunk_rows: 1000
+    bands: ["u","g","r","i","z","y"]
+    sigma_intrins: 0.05  #"intrinsic" assumed scatter, used in ODDS                  
+    odds_int: 0.99445    #number of sigma_intrins to integrate +/- around peak         
+                         # note that 1.95993 is the number of sigma you get for old "ODDS" =0.95            
+                         #in old BPZ, 0.68 is 0.99445                                                           
+    has_redshift: True   #does the test file have redshift?
+                         #if so, read in and append to output file.
+    nz: 300              #Number of grid points that FZboost will calculate   
+    model_picklefile: "data/example/inputs/flexcode_model_sqderr.pkl"
+                         #the pickle file containing the trained  flexzbooxt model.
+    metacal_fluxes: False #switch for whether or not to run metacal suffices
+
+
+# Mock version of stacking:
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+
+# Mock version of stacking:
+TXTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+
+TXSourceSelector:
+    input_pz: False
+    true_z: True
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: mcal_
+
+TXTruthLensSelector:
+    # Mag cuts
+    input_pz: False
+    true_z: True
+    lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0]
+    cperp_cut: 20.0
+    r_cpar_cut: 20.0
+    r_lo_cut: 0.0
+    r_hi_cut: 100.0
+    i_lo_cut: 0.0
+    i_hi_cut: 100.0
+    r_i_cut: 20.0
+    # may also need one for r_cpar_cut
+
+TXMeanLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 20.0
+    r_cpar_cut: 20.0
+    r_lo_cut: 0.0
+    r_hi_cut: 100.0
+    i_lo_cut: 100.0
+    i_hi_cut: 100.0
+    r_i_cut: 20.0
+
+TXRandomCat:
+    density: 10 # gals per sq arcmin
+
+TXTwoPoint:
+    binslop: 0.1
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 60.0
+    nbins: 10
+    verbose: 0
+
+TXGammaTBrightStars: {}
+
+TXGammaTDimStars: {}
+
+TXGammaTRandoms: {}
+
+TXGammaTFieldCenters: {}
+
+TXBlinding:
+    seed: 1972  ## seed uniquely specifies the shift in parameters
+    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
+    Omega_c: [0.2545, 0.01]
+    w0: [-1.0, 0.1]
+    h: [0.682, 0.02]
+    sigma8: [0.801, 0.01]
+    n_s: [0.971, 0.03]
+    b0: 0.95  ## we use bias of the form b0/g
+    delete_unblinded: True
+
+TXDiagnosticPlots:
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
+
+TXDiagnosticMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+    snr_threshold: 10.0
+    snr_delta: 1.0
+    # pixelization: gnomonic
+    pixel_size: 0.2
+    ra_cent: 62.
+    dec_cent: -35.
+    npix_x: 60
+    npix_y: 60
+    depth_cut: 23.0
+    psf_prefix: mcal_psf_
+
+TXSourceMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLensMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+# For redmagic mapping
+TXExternalLensMaps:
+    chunk_rows: 100000
+    sparse: True
+    pixelization: healpix
+    nside: 2048
+
+
+TXMainMaps: {}
+
+TXAuxiliaryMaps:
+    flag_exponent_max: 8
+    dilate: True
+    psf_prefix: psf_
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+    depth_band : i
+    snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+    snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+
+TXRealGaussianCovariance:
+    min_sep: 2.5
+    max_sep: 60.
+    nbins: 10
+    pickled_wigner_transform: data/example/inputs/wigner.pkl
+
+
+TXJackknifeCenters:
+    npatch: 5
+
+
+TXTwoPointFourier:
+    flip_g2: True
+    bandwidth: 100
+    deproject_syst_clustering: True
+    systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/LSS/DC2_R2.1i/systmaps/txpipe/nc # use all maps in this directory
+
+
+TXSimpleMask:
+    depth_cut : 23.5
+    bright_object_max: 10.0
