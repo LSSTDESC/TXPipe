@@ -56,7 +56,9 @@ class TXMapCorrelations(PipelineStage):
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
 
-        if not (kappa.size == ngal.size):
+        # In python (unlike in e.g. C) you can chain equality tests
+        # like this (or indeed inequalities). Cool right?
+        if not (kappa.size == ngal.size == mask.size):
             raise ValueError("Maps are different sizes")
 
         output_dir = self.open_output("map_systematic_correlations", wrapper=True)
