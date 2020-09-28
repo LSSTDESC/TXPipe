@@ -1,7 +1,9 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile, PNGFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
 from parallel_statistics import ParallelHistogram
 import numpy as np
+from .utils.calibration_tools import read_shear_catalog_type
+from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .plotting import manual_step_histogram
 
 STAR_PSF_USED = 0
@@ -21,7 +23,7 @@ class TXPSFDiagnostics(PipelineStage):
     outputs = [
         ('e1_psf_residual_hist', PNGFile),
         ('e2_psf_residual_hist', PNGFile),
-        ('T_psf_residual_hist', PNGFile)
+        ('T_psf_residual_hist', PNGFile),
 
     ]
     config = {}
@@ -119,11 +121,11 @@ class TXPSFDiagnostics(PipelineStage):
         counts = {}
         for s in STAR_TYPES:
             counts[s] = counters[s].collect(self.comm)
-              
+
         fig = self.open_output(output_name, wrapper=True, figsize=(6,15))
         for s in STAR_TYPES:
             plt.subplot(len(STAR_TYPES), 1, s+1)
-            manual_step_histogram(edges, 
+            manual_step_histogram(edges,
                                   counts[s],
                                   color=STAR_COLORS[s],
                                   label=STAR_TYPE_NAMES[s]
@@ -144,11 +146,13 @@ class TXRoweStatistics(PipelineStage):
 
     name = 'TXRoweStatistics'
 
-    inputs =[('star_catalog', HDFFile)]
+    inputs =[('shear_catalog', ShearCatalog),('star_catalog', HDFFile),('shear_tomography_catalog', TomographyCatalog)]
     outputs = [
         ('rowe134', PNGFile),
         ('rowe25', PNGFile),
+        ('star_cross_galaxy', PNGFile),
         ('rowe_stats', HDFFile),
+        ('star_cross_galaxy_stats', HDFFile), #TODO, we might want these output to the same file
     ]
 
     config_options = {
@@ -157,7 +161,9 @@ class TXRoweStatistics(PipelineStage):
         'nbins':20,
         'bin_slop':0.01,
         'sep_units':'arcmin',
-        'psf_size_units':'sigma'
+        'psf_size_units':'sigma',
+        'shear_catalog_type':'metacal',
+        'flip_g2': False
     }
 
     def run(self):
@@ -167,6 +173,7 @@ class TXRoweStatistics(PipelineStage):
         matplotlib.use('agg')
 
         ra, dec, e_psf, de_psf, T_f, star_type = self.load_stars()
+        ra_gal, dec_gal, g1, g2, weight = self.load_galaxies()
 
         rowe_stats = {}
         for t in STAR_TYPES:
@@ -177,11 +184,19 @@ class TXRoweStatistics(PipelineStage):
             rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de_psf,    e_psf*T_f)
             rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_psf,     e_psf*T_f)
 
-        self.save_stats(rowe_stats)
+        #only use reserved stars for this statistics
+        galaxy_star_stats = {}
+        for t in STAR_TYPES:
+            s = star_type == t
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(1, ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            galaxy_star_stats[2, t] = self.compute_galaxy_star(2, ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight)
+
+        self.save_stats(rowe_stats,galaxy_star_stats)
         self.rowe_plots(rowe_stats)
+        self.galaxy_star_plots(galaxy_star_stats)
 
 
-    
+
     def load_stars(self):
         f = self.open_input('star_catalog')
         g = f['stars']
@@ -203,6 +218,52 @@ class TXRoweStatistics(PipelineStage):
 
         return ra, dec, e_psf, de_psf, T_frac, star_type
 
+    def load_galaxies(self):
+
+        # Columns we need from the shear catalog
+        # TODO: not sure of an application where we would want to use true shear but can be added
+        read_shear_catalog_type(self)
+
+        # load tomography data
+        f = self.open_input('shear_tomography_catalog')
+        source_bin = f['tomography/source_bin'][:]
+        mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
+        if self.config['shear_catalog_type']=='metacal':
+            R_total_2d = f['metacal_response/R_total_2d'][:]
+        else:
+            R_total_2d = f['response/R_mean_2d'][:]
+        f.close()
+
+        f = self.open_input('shear_catalog')
+        g = f['shear']
+        ra = g['ra'][:][mask]
+        dec = g['dec'][:][mask]
+        if self.config['shear_catalog_type']=='metacal':
+            g1 = g['mcal_g1'][:][mask]
+            g2 = g['mcal_g2'][:][mask]
+            weight = g['weight'][:][mask]
+        else:
+            g1 = g['g1'][:][mask]
+            g2 = g['g2'][:][mask]
+            weight = g['weight'][:][mask]
+            sigma_e = g['sigma_e'][:][mask]
+            m = g['m'][:][mask]
+
+        if self.config['flip_g2']:
+            g2 *= -1
+
+        if self.config['shear_catalog_type']=='metacal':
+            # We use S=0 here because we have already included it in R_total
+            g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
+
+        elif self.config['shear_catalog_type']=='lensfit':
+            #TODO: fix this to just apply the precomputed values from the tomography cat
+            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = g1,g2 = g2,weight = weight,sigma_e = sigma_e, m = m)
+        else:
+            print('Shear calibration type not recognized.')
+
+        return ra, dec, g1, g2, weight
+
     def compute_rowe(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
         ra = ra[s]
@@ -218,6 +279,24 @@ class TXRoweStatistics(PipelineStage):
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
 
+    def compute_galaxy_star(self, i, ra, dec, q, s, ra_gal, dec_gal, g1, g2, weight):
+        # select the reserved stars
+        ra = ra[s]
+        dec = dec[s]
+        q = q[:, s]
+        n = len(ra)
+        i = len(ra_gal)
+        print(f"Computing galaxy-cross-star statistic from {n} stars and {i} galaxies")
+        import treecorr
+        corr = treecorr.GGCorrelation(self.config)
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q[0], g2=q[1], ra_units='deg', dec_units='deg')
+        if self.config['shear_catalog_type']=='metacal':
+            cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=g1, g2=g2, ra_units='deg', dec_units='deg')
+        else:
+            cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=g2, g2=g2, ra_units='deg', dec_units='deg', w=weight)
+        corr.process(cat1, cat2)
+        return corr.meanr, corr.xip, corr.varxip**0.5
+
     def rowe_plots(self, rowe_stats):
         # First plot - stats 1,3,4
         import matplotlib.pyplot as plt
@@ -226,11 +305,11 @@ class TXRoweStatistics(PipelineStage):
         f = self.open_output('rowe134', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s+1)
-            
+
 
             for j,i in enumerate([1,3,4]):
                 theta, xi, err = rowe_stats[i, s]
-                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*(j-1), 0, units='inches')                
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*(j-1), 0, units='inches')
                 plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
             plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
             plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
@@ -247,7 +326,7 @@ class TXRoweStatistics(PipelineStage):
             ax = plt.subplot(len(STAR_TYPES), 1, s+1)
             for j,i in enumerate([2,5]):
                 theta, xi, err = rowe_stats[i, s]
-                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')                
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
                 plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
@@ -259,7 +338,31 @@ class TXRoweStatistics(PipelineStage):
                 plt.legend()
         f.close()
 
-    def save_stats(self, rowe_stats):
+    def galaxy_star_plots(self, galaxy_star_stats):
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+
+        f = self.open_output('star_cross_galaxy', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+            for j,i in enumerate([1,2]):
+                theta, xi, err = galaxy_star_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
+                if i==0:
+                    plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'galaxy cross star', capsize=3, transform=tr)
+                else:
+                    plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'galaxy cross star residuals', capsize=3, transform=tr)
+                plt.title(STAR_TYPE_NAMES[s])
+                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
+                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\xi_+(\theta)$")
+                plt.legend()
+        f.close()
+
+    def save_stats(self, rowe_stats, galaxy_star_stats):
         f = self.open_output('rowe_stats')
         g = f.create_group("rowe_statistics")
         for i in 1,2,3,4,5:
@@ -267,6 +370,19 @@ class TXRoweStatistics(PipelineStage):
                 theta, xi, err = rowe_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f'rowe_{i}_{name}')
+                h.create_dataset('theta', data=theta)
+                h.create_dataset('xi_plus', data=xi)
+                h.create_dataset('xi_err', data=err)
+        f.close()
+
+        f = self.open_output('star_cross_galaxy_stats')
+        g = f.create_group("star_cross_galaxy")
+        #TODO add a more informative name than 1,2 for this type
+        for i in 1,2:
+            for s in STAR_TYPES:
+                theta, xi, err = rowe_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f'star_cross_galaxy_{i}_{name}')
                 h.create_dataset('theta', data=theta)
                 h.create_dataset('xi_plus', data=xi)
                 h.create_dataset('xi_err', data=err)
