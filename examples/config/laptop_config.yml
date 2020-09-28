@@ -193,3 +193,5 @@ TXSimpleMask:
 
 TXMapCorrelations:
     supreme_path_root: data/example/inputs/supreme
+    outlier_fraction: 0.05
+    nbin: 20
