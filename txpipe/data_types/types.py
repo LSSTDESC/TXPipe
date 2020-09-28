@@ -1,5 +1,8 @@
-from .base import FitsFile, HDFFile, DataFile, YamlFile
-from .base import TextFile, Directory, PNGFile, FileCollection
+"""
+This file contains TXPipe-specific file types, subclassing the more
+generic types in base.py
+"""
+from .base import HDFFile, DataFile, YamlFile
 
 def metacalibration_names(names):
     """
