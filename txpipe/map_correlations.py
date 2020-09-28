@@ -30,6 +30,8 @@ class TXMapCorrelations(PipelineStage):
         # Convert to correct res healpix map
         m = healsparse.HealSparseMap.read(map_path)
         m = m.generate_healpix_map(nside=nside)
+        # Re-order the pixels from nest to ring.  Does not change the
+        # resolution at all, just the ordering.
         m = healpy.ud_grade(m, nside, order_in="nest", order_out="ring")
         return m
 
