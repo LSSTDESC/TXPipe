@@ -107,7 +107,8 @@ class TXMapCorrelations(PipelineStage):
 
         # clean the data
         finite = (
-            np.isfinite(sys_map + data_map)
+            np.isfinite(sys_map)
+            & np.isfinite(data_map)
             & (sys_map != healpy.UNSEEN)
             & (data_map != healpy.UNSEEN)
             & (mask > 0)
