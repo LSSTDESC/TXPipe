@@ -2160,6 +2160,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         GAMMAXS = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='xs')
 
         S = sacc.Sacc()
+        if self.config['do_shear_pos'] == True:
+            S2 = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
@@ -2171,6 +2173,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
+            if self.config['do_shear_pos'] == True:
+                S2.add_tracer('NZ', f'source_{i}', z, Nz)
 
         # f = self.open_input('lens_photoz_stack')
         # For both source and lens
