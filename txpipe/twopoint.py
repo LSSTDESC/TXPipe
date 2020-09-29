@@ -1831,7 +1831,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
     ]
     outputs = [
         ('twopoint_data_SCIA', SACCFile),
-        ('gammax_scia', SACCFile),
+        ('gammaX_scia', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
