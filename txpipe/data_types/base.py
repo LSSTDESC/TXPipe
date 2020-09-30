@@ -388,6 +388,38 @@ class Directory(DataFile):
 
         return provenance
 
+class FileCollection(Directory):
+    """
+    Represents a grouped bundle of files, for cases where you don't
+    know the exact list in advance.
+    """
+    suffix = ''
+
+    def write_listing(self, filenames):
+        """
+        Write a listing file in the directory recording
+        (presumably) the filenames put in it.
+        """
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            yaml.dump(filenames, f)
+
+    def read_listing(self):
+        """
+        Read a listing file from the directory.
+        """
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            filenames = yaml.safe_load(f)
+        return filenames
+
+    def path_for_file(self, filename):
+        """
+        Get the path for a file inside the collection.
+        Does not check if the file exists or anything like
+        that.
+        """
+        return str(self.file / filename)
 
 
 class PNGFile(DataFile):

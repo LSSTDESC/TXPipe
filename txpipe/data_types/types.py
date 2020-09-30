@@ -1,4 +1,8 @@
-from .base import FitsFile, HDFFile, DataFile, YamlFile, TextFile, Directory, PNGFile
+"""
+This file contains TXPipe-specific file types, subclassing the more
+generic types in base.py
+"""
+from .base import HDFFile, DataFile, YamlFile
 
 def metacalibration_names(names):
     """
@@ -77,6 +81,31 @@ class RandomsCatalog(HDFFile):
 
 class MapsFile(HDFFile):
     required_datasets = []
+
+    def list_maps(self):
+        import h5py
+        maps = []
+
+        # h5py uses this visititems method to walk through
+        # a file, looking at everything underneath a path.
+        # We use it here to search through everything in the
+        # "maps" section of a maps file looking for any groups
+        # that seem to be a map.  You have to pass a function
+        # like this to visititems.
+        def visit(name, obj):
+            if isinstance(obj, h5py.Group):
+                keys = obj.keys()
+                # we save maps with these two data sets,
+                # so if they are both there then this will
+                # be a map
+                if 'pixel' in keys and 'value' in keys:
+                    maps.append(name)
+
+        # Now actually run this
+        self.file['maps'].visititems(visit)
+
+        # return the accumulated list
+        return maps
 
     def read_healpix(self, map_name, return_all=False):
         import healpy
