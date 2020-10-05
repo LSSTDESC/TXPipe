@@ -60,12 +60,15 @@ class TXTwoPointFourier(PipelineStage):
 
     config_options = {
         "mask_threshold": 0.0,
-        "bandwidth": 0,
         "flip_g1": False,
         "flip_g2": False,
         "cache_dir": '',
         "deproject_syst_clustering": False,
         "systmaps_clustering_dir": '',
+        "ell_min": 100,
+        "ell_max": 1500,
+        "n_ell": 20,
+        "ell_spacing": 'log'
     }
 
     def run(self):
@@ -430,6 +433,9 @@ class TXTwoPointFourier(PipelineStage):
     def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
         from .utils.nmt_utils import MyNmtBin
+
+        # commented code below is not needed anymore
+        '''
         # This is just approximate.  It will be very wrong
         # in cases with non-square patches.
         area = f_sky * 4 * np.pi
@@ -439,11 +445,19 @@ class TXTwoPointFourier(PipelineStage):
         # user can specify the bandwidth, or we can just use
         # the maximum sensible value of Delta ell.
         nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
-
+        '''
+        
         # The subclass of NmtBin that we use here just adds some
         # helper methods compared to the default NaMaster one.
         # Can feed these back upstream if useful.
-        ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
+
+        # Creating the ell binning from the edges using this Namaster constructor.
+        if self.config['ell_spacing'] == 'log': 
+            edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+        else:
+            edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+            
+        ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
 
 
@@ -700,7 +714,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
     name='TXTwoPointPlotsFourier'
     inputs = [
-        ('twopoint_data_fourier', SACCFile),
+        ('summary_statistics_fourier', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
     ]
     outputs = [
@@ -733,7 +747,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
-        filename = self.get_input('twopoint_data_fourier')
+        filename = self.get_input('summary_statistics_fourier')
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
@@ -753,8 +767,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=False)
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], 
+                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=True)
 
         for fig in outputs.values():
             fig.close()

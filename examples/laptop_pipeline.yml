@@ -34,6 +34,7 @@ stages:
     - name: TXPhotozPlots        # Plot the bin n(z)
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXMapCorrelations    # plot the correlations between systematics and data
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster

@@ -367,9 +367,6 @@ class Directory(DataFile):
         yaml.dump(self.provenance, self._provenance_file)
         self._provenance_file.flush()
 
-    def path_for(self, filename):
-        return self.file / filename
-
 
     def read_provenance(self):
         try:
@@ -399,17 +396,29 @@ class FileCollection(Directory):
     suffix = ''
 
     def write_listing(self, filenames):
+        """
+        Write a listing file in the directory recording
+        (presumably) the filenames put in it.
+        """
         fn = self.path_for_file('txpipe_listing.txt')
         with open(fn, 'w') as f:
             yaml.dump(filenames, f)
 
     def read_listing(self):
+        """
+        Read a listing file from the directory.
+        """
         fn = self.path_for_file('txpipe_listing.txt')
         with open(fn, 'w') as f:
             filenames = yaml.safe_load(f)
         return filenames
 
     def path_for_file(self, filename):
+        """
+        Get the path for a file inside the collection.
+        Does not check if the file exists or anything like
+        that.
+        """
         return str(self.file / filename)
 
 

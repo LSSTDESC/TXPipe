@@ -30,4 +30,4 @@ from .map_plots import TXMapPlots
 from .masks import TXSimpleMask
 from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
-from .map_tests import TXMapCorrelations
+from .map_correlations import TXMapCorrelations
