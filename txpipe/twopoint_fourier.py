@@ -47,12 +47,9 @@ class TXTwoPointFourier(PipelineStage):
         ('tracer_metadata', TomographyCatalog),  # For density info
         ('source_maps', MapsFile),
         ('density_maps', MapsFile),
-        ('aux_maps', MapsFile),
         ('mask', MapsFile),
         ('source_noise_maps', LensingNoiseMaps),
         ('lens_noise_maps', ClusteringNoiseMaps),
-        ('shear_tomography_catalog', TomographyCatalog),  # For density info
-        ('lens_tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
