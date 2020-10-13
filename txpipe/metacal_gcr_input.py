@@ -89,11 +89,11 @@ class TXMetacalGCRInput(PipelineStage):
 
 
         # For shear we just add a weight column, and the non-rounded PSF estimates
-        shear_out_cols = shear_cols + ['weight',  'psf_g1', 'psf_g2']#, 'true_g1', 'true_g2']
+        shear_out_cols = shear_cols + ['weight',  'psf_g1', 'psf_g2']
 
         # We want these in the input but not the output as we construct
         # other values from them instead
-        shear_cols += ['IxxPSF', 'IxyPSF', 'IyyPSF']#, 'shear_1', 'shear_2']
+        shear_cols += ['IxxPSF', 'IxyPSF', 'IyyPSF']
 
 
         # For the photometry output we strip off the _cModeel suffix.
@@ -149,8 +149,6 @@ class TXMetacalGCRInput(PipelineStage):
         Ixx = data['IxxPSF']
         Ixy = data['IxyPSF']
         Iyy = data['IyyPSF']
-        #data['true_g1'] = data['shear_1']
-        #data['true_g2'] = data['shear_2']
         data['psf_g1'], data['psf_g2'] = moments_to_shear(Ixx, Iyy, Ixy)
 
     def setup_output(self, name, group, cat, cols, n):
