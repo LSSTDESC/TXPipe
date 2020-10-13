@@ -85,12 +85,12 @@ config: examples/config/2.2i_config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/2.2i_dr6/inputs/shear_catalog.hdf5
-    photometry_catalog: data/2.2i_dr6/inputs/photometry_catalog.hdf5
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/shear_catalog.hdf5
+    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/photometry_catalog.hdf5
     photoz_trained_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/sample_cosmodc2_w10year_errors.dat
-    star_catalog: data/2.2i_dr6/inputs/star_catalog.hdf5
+    star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/star_catalog.hdf5
     exposures: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/exposures.hdf5
 
 resume: True
