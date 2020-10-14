@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
-from parallel_statistics import ParallelMeanVariance
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, YamlFile
+from parallel_statistics import ParallelMeanVariance, ParallelMean
 from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
@@ -19,6 +19,7 @@ class TXDiagnosticPlots(PipelineStage):
     ]
 
     outputs = [
+        ('sample_stats',YamlFile),
         ('g_psf_T', PNGFile),
         ('g_psf_g', PNGFile),
         ('g1_hist', PNGFile),
@@ -54,6 +55,7 @@ class TXDiagnosticPlots(PipelineStage):
         # We instantiate them all here
         
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
+        plotters.append(self.sample_stats())
 
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
@@ -115,6 +117,42 @@ class TXDiagnosticPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
+
+    def sample_stats(self):
+        print("Working out some helpful statistics")
+        stats = ParallelMean(2)
+        psf_prefix = self.config['psf_prefix']
+        shear_prefix = self.config['shear_prefix']
+
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            sel = data['source_bin'] >= 0
+            snr = data[f'{shear_prefix}s2n'][sel].clip(0, 100)
+            T = data[f'{shear_prefix}T'][sel]
+            T_psf = data[f'{psf_prefix}T_mean'][sel]
+            size = (T / T_psf).clip(0, 5)
+
+            stats.add_data(0, snr)
+            stats.add_data(1, size)
+
+        _, mu = stats.collect(self.comm)
+
+        if self.rank != 0:
+            return
+
+        output = {
+            'mean_snr': float(mu[0]),
+            'mean_T': float(mu[1]),
+        }
+
+        with self.open_output('sample_stats', wrapper=True) as f:
+            f.write(output)
+
+
 
     def plot_psf_shear(self):
         # mean shear in bins of PSF
