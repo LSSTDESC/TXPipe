@@ -67,9 +67,6 @@ stages:
       threads_per_process: 32
     - name: TXBrighterFatterPlot
     - name: TXRoweStatistics
-      nprocess: 2
-      nodes: 2
-      threads_per_process: 32
     - name: TXPSFDiagnostics
     - name: TXConvergenceMaps
       threads_per_process: 32
