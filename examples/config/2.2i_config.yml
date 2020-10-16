@@ -3,11 +3,13 @@ TXGCRTwoCatalogInput:
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
 
 TXMetacalGCRInput:
-    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
+    cat_name: dc2_object_run2.2i_dr6c_with_metacal
 
 TXExposureInfo:
     dc2_name: '1.2p'
 
+TXIngestStars:
+    cat_name: dc2_object_run2.2i_dr6c
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -65,11 +67,12 @@ TXTwoPoint:
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
+    flip_g2: False  # False now seems to be right for metacal
     min_sep: 2.5
     max_sep: 250
     nbins: 20
     verbose: 0
+    subtract_mean_shear: True
 
 TXMainMaps:
     pixelization: healpix
