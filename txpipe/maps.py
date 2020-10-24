@@ -189,7 +189,7 @@ class TXSourceMaps(TXBaseMaps):
 
         # can optionally read truth values
         if self.config["true_shear"]:
-            shear_cols = ["true_g1", "true_g1", "ra", "dec", "weight"]
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
         else:
@@ -213,8 +213,8 @@ class TXSourceMaps(TXBaseMaps):
     def accumulate_maps(self, pixel_scheme, data, mappers):
         # rename columns, if needed
         if self.config["true_shear"]:
-            data["g1"] = data["true_g1"]
-            data["g2"] = data["true_g2"]
+            data["g1"] = data[f"true_g1"]
+            data["g2"] = data[f"true_g2"]
         elif self.config["shear_catalog_type"] == "metacal":
             data["g1"] = data["mcal_g1"]
             data["g2"] = data["mcal_g2"]
