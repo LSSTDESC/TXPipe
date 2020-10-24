@@ -66,9 +66,10 @@ class TXTwoPointFourier(PipelineStage):
         "deproject_syst_clustering": False,
         "systmaps_clustering_dir": '',
         "ell_min": 100,
-        "ell_max": 1500,
-        "n_ell": 20,
-        "ell_spacing": 'log'
+        "ell_max": 3000,
+        "n_ell": 25,
+        "ell_spacing": 'log',
+        "true_shear": False
     }
 
     def run(self):
@@ -540,12 +541,15 @@ class TXTwoPointFourier(PipelineStage):
         workspace = workspaces[(i,j,k)]
 
         # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+        if self.config['true_shear']:
+            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+        else:
+            cl_noise = None
 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-
+        
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
