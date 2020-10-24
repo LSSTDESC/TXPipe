@@ -26,17 +26,18 @@ TXSourceTrueNumberDensity:
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
-    nside: 512
+    nside: 2048
     sparse: True
 
 TXSourceMaps:
-    nside: 512
+    nside: 2048
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
+    true_shear: False
 
 TXExternalLensMaps:
-    nside: 512
+    nside: 2048
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
@@ -74,7 +75,7 @@ TXSourceSelector:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
+    source_zbin_edges: [0.3, 0.55, 0.8, 1.05, 2.0]
     chunk_rows: 100000
     # Mag cuts
     cperp_cut: 0.2
