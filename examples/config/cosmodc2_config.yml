@@ -136,6 +136,7 @@ TXTwoPointFourier:
     flip_g1: True
     apodization_size: 0.0
     cache_dir: ./cache
+    true_shear: False
     
 TXRealGaussianCovariance:
     use_true_shear: False
