@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog
 from parallel_statistics import ParallelHistogram
 import numpy as np
 from .utils.calibration_tools import read_shear_catalog_type
@@ -135,7 +135,6 @@ class TXPSFDiagnostics(PipelineStage):
             plt.ylabel(r'$N_{stars}$')
         fig.close()
 
-
 class TXRoweStatistics(PipelineStage):
     """
     People sometimes think that these statistics are called the Rho statistics,
@@ -146,13 +145,11 @@ class TXRoweStatistics(PipelineStage):
 
     name = 'TXRoweStatistics'
 
-    inputs =[('shear_catalog', ShearCatalog),('star_catalog', HDFFile),('shear_tomography_catalog', TomographyCatalog)]
+    inputs =[('star_catalog', HDFFile)]
     outputs = [
         ('rowe134', PNGFile),
         ('rowe25', PNGFile),
-        ('star_cross_galaxy', PNGFile),
         ('rowe_stats', HDFFile),
-        ('star_cross_galaxy_stats', HDFFile), #TODO, we might want these output to the same file
     ]
 
     config_options = {
@@ -162,8 +159,6 @@ class TXRoweStatistics(PipelineStage):
         'bin_slop':0.01,
         'sep_units':'arcmin',
         'psf_size_units':'sigma',
-        'shear_catalog_type':'metacal',
-        'flip_g2': False
     }
 
     def run(self):
@@ -173,7 +168,6 @@ class TXRoweStatistics(PipelineStage):
         matplotlib.use('agg')
 
         ra, dec, e_psf, de_psf, T_f, star_type = self.load_stars()
-        ra_gal, dec_gal, g1, g2, weight = self.load_galaxies()
 
         rowe_stats = {}
         for t in STAR_TYPES:
@@ -184,16 +178,8 @@ class TXRoweStatistics(PipelineStage):
             rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de_psf,    e_psf*T_f)
             rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_psf,     e_psf*T_f)
 
-        #only use reserved stars for this statistics
-        galaxy_star_stats = {}
-        for t in STAR_TYPES:
-            s = star_type == t
-            galaxy_star_stats[1, t] = self.compute_galaxy_star(1, ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight)
-            galaxy_star_stats[2, t] = self.compute_galaxy_star(2, ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight)
-
-        self.save_stats(rowe_stats,galaxy_star_stats)
+        self.save_stats(rowe_stats)
         self.rowe_plots(rowe_stats)
-        self.galaxy_star_plots(galaxy_star_stats)
 
 
 
@@ -217,6 +203,140 @@ class TXRoweStatistics(PipelineStage):
         star_type = load_star_type(g)
 
         return ra, dec, e_psf, de_psf, T_frac, star_type
+
+    def compute_rowe(self, i, s, ra, dec, q1, q2):
+        # select a subset of the stars
+        ra = ra[s]
+        dec = dec[s]
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        n = len(ra)
+        print(f"Computing Rowe statistic rho_{i} from {n} objects")
+        import treecorr
+        corr = treecorr.GGCorrelation(self.config)
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units='deg', dec_units='deg')
+        cat2 = treecorr.Catalog(ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units='deg', dec_units='deg')
+        corr.process(cat1, cat2)
+        return corr.meanr, corr.xip, corr.varxip**0.5
+
+    def rowe_plots(self, rowe_stats):
+        # First plot - stats 1,3,4
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+
+        f = self.open_output('rowe134', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+
+
+            for j,i in enumerate([1,3,4]):
+                theta, xi, err = rowe_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*(j-1), 0, units='inches')
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
+            plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
+            plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
+            plt.xscale('log')
+            plt.yscale('log')
+            plt.xlabel(r"$\theta$")
+            plt.ylabel(r"$\xi_+(\theta)$")
+            plt.legend()
+            plt.title(STAR_TYPE_NAMES[s])
+        f.close()
+
+        f = self.open_output('rowe25', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+            for j,i in enumerate([2,5]):
+                theta, xi, err = rowe_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
+                plt.title(STAR_TYPE_NAMES[s])
+                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
+                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\xi_+(\theta)$")
+                plt.legend()
+        f.close()
+
+    def save_stats(self, rowe_stats):
+        f = self.open_output('rowe_stats')
+        g = f.create_group("rowe_statistics")
+        for i in 1,2,3,4,5:
+            for s in STAR_TYPES:
+                theta, xi, err = rowe_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f'rowe_{i}_{name}')
+                h.create_dataset('theta', data=theta)
+                h.create_dataset('xi_plus', data=xi)
+                h.create_dataset('xi_err', data=err)
+        f.close()
+
+class TXStarShearTests(PipelineStage):
+    """
+    Star cross galaxy and star autocorrelation.
+    """
+
+    name = 'TXGalaxyStarShear'
+
+    inputs =[('shear_catalog', ShearCatalog),('star_catalog', HDFFile),
+    ('shear_tomography_catalog', TomographyCatalog)]
+    outputs = [
+        ('star_shear_test', PNGFile),
+        ('star_shear_stats', HDFFile),
+    ]
+
+    config_options = {
+        'min_sep':0.5,
+        'max_sep':250.0,
+        'nbins':20,
+        'bin_slop':0.01,
+        'sep_units':'arcmin',
+        'psf_size_units':'sigma',
+        'shear_catalog_type':'metacal',
+        'flip_g2': False,
+    }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+        matplotlib.use('agg')
+
+        ra, dec, e_psf, de_psf, star_type = self.load_stars()
+        ra_gal, dec_gal, g1, g2, weight = self.load_galaxies()
+
+        #only use reserved stars for this statistics
+        galaxy_star_stats = {}
+        for t in STAR_TYPES:
+            s = star_type == t
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(1, ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            galaxy_star_stats[2, t] = self.compute_galaxy_star(2, ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            galaxy_star_stats[3, t] = self.compute_star_star(3, ra, dec, e_psf, s, ra_gal, dec_gal, e_psf, weight)
+            galaxy_star_stats[4, t] = self.compute_star_star(4, ra, dec, de_psf, s, ra_gal, dec_gal, de_psf, weight)
+
+        self.save_stats(galaxy_star_stats)
+        self.galaxy_star_plots(galaxy_star_stats)
+
+
+
+    def load_stars(self):
+        f = self.open_input('star_catalog')
+        g = f['stars']
+        ra = g['ra'][:]
+        dec = g['dec'][:]
+        e1 = g['measured_e1'][:]
+        e2 = g['measured_e2'][:]
+        de1 = e1 - g['model_e1'][:]
+        de2 = e2 - g['model_e2'][:]
+
+        e_psf = np.array((e1, e2))
+        de_psf = np.array((de1, de2))
+
+        star_type = load_star_type(g)
+
+        return ra, dec, e_psf, de_psf, star_type
 
     def load_galaxies(self):
 
@@ -264,21 +384,6 @@ class TXRoweStatistics(PipelineStage):
 
         return ra, dec, g1, g2, weight
 
-    def compute_rowe(self, i, s, ra, dec, q1, q2):
-        # select a subset of the stars
-        ra = ra[s]
-        dec = dec[s]
-        q1 = q1[:, s]
-        q2 = q2[:, s]
-        n = len(ra)
-        print(f"Computing Rowe statistic rho_{i} from {n} objects")
-        import treecorr
-        corr = treecorr.GGCorrelation(self.config)
-        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units='deg', dec_units='deg')
-        cat2 = treecorr.Catalog(ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units='deg', dec_units='deg')
-        corr.process(cat1, cat2)
-        return corr.meanr, corr.xip, corr.varxip**0.5
-
     def compute_galaxy_star(self, i, ra, dec, q, s, ra_gal, dec_gal, g1, g2, weight):
         # select the reserved stars
         ra = ra[s]
@@ -297,52 +402,27 @@ class TXRoweStatistics(PipelineStage):
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
 
-    def rowe_plots(self, rowe_stats):
-        # First plot - stats 1,3,4
-        import matplotlib.pyplot as plt
-        import matplotlib.transforms as mtrans
-
-        f = self.open_output('rowe134', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
-        for s in STAR_TYPES:
-            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
-
-
-            for j,i in enumerate([1,3,4]):
-                theta, xi, err = rowe_stats[i, s]
-                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*(j-1), 0, units='inches')
-                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
-            plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
-            plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
-            plt.xscale('log')
-            plt.yscale('log')
-            plt.xlabel(r"$\theta$")
-            plt.ylabel(r"$\xi_+(\theta)$")
-            plt.legend()
-            plt.title(STAR_TYPE_NAMES[s])
-        f.close()
-
-        f = self.open_output('rowe25', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
-        for s in STAR_TYPES:
-            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
-            for j,i in enumerate([2,5]):
-                theta, xi, err = rowe_stats[i, s]
-                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
-                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'$\rho_{i}$', capsize=3, transform=tr)
-                plt.title(STAR_TYPE_NAMES[s])
-                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
-                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
-                plt.xscale('log')
-                plt.yscale('log')
-                plt.xlabel(r"$\theta$")
-                plt.ylabel(r"$\xi_+(\theta)$")
-                plt.legend()
-        f.close()
+    def compute_star_star(self, i, ra, dec, q1, s, ra_gal, dec_gal, q2, weight):
+        # select the reserved stars
+        ra = ra[s]
+        dec = dec[s]
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        n = len(ra)
+        i = len(ra_gal)
+        print(f"Computing galaxy-cross-star statistic from {n} stars and {i} galaxies")
+        import treecorr
+        corr = treecorr.GGCorrelation(self.config)
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units='deg', dec_units='deg')
+        cat2 = treecorr.Catalog(ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units='deg', dec_units='deg')
+        corr.process(cat1, cat2)
+        return corr.meanr, corr.xip, corr.varxip**0.5
 
     def galaxy_star_plots(self, galaxy_star_stats):
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
 
-        f = self.open_output('star_cross_galaxy', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        f = self.open_output('star_shear_test', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s+1)
             for j,i in enumerate([1,2]):
@@ -362,25 +442,14 @@ class TXRoweStatistics(PipelineStage):
                 plt.legend()
         f.close()
 
-    def save_stats(self, rowe_stats, galaxy_star_stats):
-        f = self.open_output('rowe_stats')
-        g = f.create_group("rowe_statistics")
-        for i in 1,2,3,4,5:
-            for s in STAR_TYPES:
-                theta, xi, err = rowe_stats[i, s]
-                name = STAR_TYPE_NAMES[s]
-                h = g.create_group(f'rowe_{i}_{name}')
-                h.create_dataset('theta', data=theta)
-                h.create_dataset('xi_plus', data=xi)
-                h.create_dataset('xi_err', data=err)
-        f.close()
+    def save_stats(self, galaxy_star_stats):
 
-        f = self.open_output('star_cross_galaxy_stats')
+        f = self.open_output('star_shear_stats')
         g = f.create_group("star_cross_galaxy")
         #TODO add a more informative name than 1,2 for this type
-        for i in 1,2:
+        for i in 1,2,3,4:
             for s in STAR_TYPES:
-                theta, xi, err = rowe_stats[i, s]
+                theta, xi, err = galaxy_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f'star_cross_galaxy_{i}_{name}')
                 h.create_dataset('theta', data=theta)
@@ -390,6 +459,186 @@ class TXRoweStatistics(PipelineStage):
 
 
 
+
+class TXStarDensityTests(PipelineStage):
+    """
+    Star cross galaxy and star autocorrelation density stats.
+    """
+
+    name = 'TXGalaxyStarDensity'
+
+    inputs =[('shear_catalog', ShearCatalog),('star_catalog', HDFFile),
+    ('shear_tomography_catalog', TomographyCatalog),
+    ('random_cats', RandomsCatalog)]
+    outputs = [
+        ('star_density_test', PNGFile),
+        ('star_density_stats', HDFFile),
+    ]
+
+    config_options = {
+        'min_sep':0.5,
+        'max_sep':250.0,
+        'nbins':20,
+        'bin_slop':0.01,
+        'sep_units':'arcmin',
+        'psf_size_units':'sigma',
+        'shear_catalog_type':'metacal',
+        'flip_g2': False,
+    }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+        matplotlib.use('agg')
+
+        ra, dec,  star_type = self.load_stars()
+        ra_gal, dec_gal = self.load_galaxies()
+        ra_random, dec_random = self.load_randoms()
+
+        #only use reserved stars for this statistics
+        galaxy_star_stats = {}
+        for t in STAR_TYPES:
+            s = star_type == t
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(1, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
+            galaxy_star_stats[2, t] = self.compute_star_star(2, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
+
+        self.save_stats(galaxy_star_stats)
+        self.galaxy_star_plots(galaxy_star_stats)
+
+
+
+    def load_stars(self):
+        f = self.open_input('star_catalog')
+        g = f['stars']
+        ra = g['ra'][:]
+        dec = g['dec'][:]
+
+        star_type = load_star_type(g)
+
+        return ra, dec, star_type
+
+    def load_randoms(self):
+
+        f = self.open_input('random_cats')
+        group = f['randoms']
+        ra_random = group['ra'][:]
+        dec_random = group['dec'][:]
+        return ra_random, dec_random
+
+    def load_galaxies(self):
+
+        # Columns we need from the shear catalog
+        # TODO: not sure of an application where we would want to use true shear but can be added
+        read_shear_catalog_type(self)
+
+        # load tomography data
+        f = self.open_input('shear_tomography_catalog')
+        source_bin = f['tomography/source_bin'][:]
+        mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
+        f.close()
+
+        f = self.open_input('shear_catalog')
+        g = f['shear']
+        ra = g['ra'][:][mask]
+        dec = g['dec'][:][mask]
+
+        return ra, dec
+
+    def compute_galaxy_star(self, i, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
+        # select the reserved stars
+        ra = ra[s]
+        dec = dec[s]
+        n = len(ra)
+        i = len(ra_gal)
+        print(f"Computing galaxy-cross-star statistic from {n} stars and {i} galaxies")
+
+        import treecorr
+
+        rancat  = treecorr.Catalog(
+                ra=ra_random, dec=dec_random,
+                ra_units='degree', dec_units='degree')
+
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, ra_units='deg', dec_units='deg')
+        cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, ra_units='deg', dec_units='deg')
+
+        nn = treecorr.NNCorrelation(self.config)
+        rn = treecorr.NNCorrelation(self.config)
+        nr = treecorr.NNCorrelation(self.config)
+        rr = treecorr.NNCorrelation(self.config)
+
+        nn.process(cat1,    cat2)
+        nr.process(cat1,    rancat)
+        rn.process(rancat, cat2)
+        rr.process(rancat, rancat)
+
+        nn.calculateXi(rr, dr=nr, rd=rn)
+        return nn.meanr, nn.xi, nn.varxi**0.5
+
+    def compute_star_star(self, i, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
+        # select the reserved stars
+        ra = ra[s]
+        dec = dec[s]
+        n = len(ra)
+        i = len(ra_gal)
+        print(f"Computing galaxy-cross-star statistic from {n} stars and {i} galaxies")
+
+        import treecorr
+
+        rancat  = treecorr.Catalog(
+                ra=ra_random, dec=dec_random,
+                ra_units='degree', dec_units='degree')
+
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, ra_units='deg', dec_units='deg')
+        cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, ra_units='deg', dec_units='deg')
+
+        nn = treecorr.NNCorrelation(self.config)
+        rn = treecorr.NNCorrelation(self.config)
+        nr = treecorr.NNCorrelation(self.config)
+        rr = treecorr.NNCorrelation(self.config)
+
+        nn.process(cat1,    cat1)
+        nr.process(cat1,    rancat)
+        rn.process(rancat, cat1)
+        rr.process(rancat, rancat)
+
+        nn.calculateXi(rr, dr=nr, rd=rn)
+        return nn.meanr, nn.xi, nn.varxi**0.5
+
+    def galaxy_star_plots(self, galaxy_star_stats):
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+
+        f = self.open_output('star_density_test', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+            for j,i in enumerate([1,2]):
+                theta, xi, err = galaxy_star_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'star_density_stats', capsize=3, transform=tr)
+                plt.title(STAR_TYPE_NAMES[s])
+                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
+                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\xi_+(\theta)$")
+                plt.legend()
+        f.close()
+
+    def save_stats(self, galaxy_star_stats):
+
+        f = self.open_output('star_density_stats')
+        g = f.create_group("star_density")
+        for i in 1,2:
+            for s in STAR_TYPES:
+                theta, xi, err = galaxy_star_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f'star_density_{i}_{name}')
+                h.create_dataset('theta', data=theta)
+                h.create_dataset('xi_plus', data=xi)
+                h.create_dataset('xi_err', data=err)
+        f.close()
 
 class TXBrighterFatterPlot(PipelineStage):
     name = 'TXBrighterFatterPlot'
