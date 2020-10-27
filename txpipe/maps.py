@@ -213,8 +213,8 @@ class TXSourceMaps(TXBaseMaps):
     def accumulate_maps(self, pixel_scheme, data, mappers):
         # rename columns, if needed
         if self.config["true_shear"]:
-            data["g1"] = data[f"true_g1"]
-            data["g2"] = data[f"true_g2"]
+            data["g1"] = data["true_g1"]
+            data["g2"] = data["true_g2"]
         elif self.config["shear_catalog_type"] == "metacal":
             data["g1"] = data["mcal_g1"]
             data["g2"] = data["mcal_g2"]
