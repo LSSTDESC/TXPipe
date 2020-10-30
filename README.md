@@ -271,7 +271,7 @@ Site and launcher options
 
 You now (with ceci 1.0) specify a *launcher*, which is the tool used to run the pipeline, and a *site*, which is where it should be run.
 
-The options are show below
+The options are show below.
 
 The best-tested launcher is mini, and the best-tested sites are local and cori-interactive.
 
