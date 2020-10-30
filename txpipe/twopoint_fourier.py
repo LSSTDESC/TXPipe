@@ -66,8 +66,8 @@ class TXTwoPointFourier(PipelineStage):
         "deproject_syst_clustering": False,
         "systmaps_clustering_dir": '',
         "ell_min": 100,
-        "ell_max": 3000,
-        "n_ell": 25,
+        "ell_max": 1500,
+        "n_ell": 20,
         "ell_spacing": 'log',
         "true_shear": False
     }
