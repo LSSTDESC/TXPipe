@@ -542,7 +542,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Get the coupled noise C_ell values to give to the master algorithm
         cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-
+ 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
@@ -558,59 +558,57 @@ class TXTwoPointFourier(PipelineStage):
             # if using true shear (i.e. no shape noise) we do not need to add any noise
             return None
         
+        import pymaster as nmt
+        import healpy
+
+        # No noise contribution in cross-correlations
+        if (i!=j) or (k==SHEAR_POS):
+            return None
+
+
+        if k == SHEAR_SHEAR:
+            noise_maps = self.open_input('source_noise_maps', wrapper=True)
+            weight = maps['lw'][i]
+
         else:
+            noise_maps = self.open_input('lens_noise_maps', wrapper=True)
+            weight = maps['dw']
 
-            import pymaster as nmt
-            import healpy
+        nreal = noise_maps.number_of_realizations()
+        noise_c_ells = []
 
-            # No noise contribution in cross-correlations
-            if (i!=j) or (k==SHEAR_POS):
-                return None
+        for r in range(nreal):
+            print(f"Analyzing noise map {r}")
+            # Load the noise map - may be either (g1, g2)
+            # or rho1 - rho2
 
-
+            # Also in the event there are any UNSEENs in these,
+            # downweight them
+            w = weight.copy()
             if k == SHEAR_SHEAR:
-                noise_maps = self.open_input('source_noise_maps', wrapper=True)
-                weight = maps['lw'][i]
-
+                realization = noise_maps.read_rotation(r, i)
+                w[realization[0] == healpy.UNSEEN] = 0
+                w[realization[1] == healpy.UNSEEN] = 0
             else:
-                noise_maps = self.open_input('lens_noise_maps', wrapper=True)
-                weight = maps['dw']
+                rho1, rho2 = noise_maps.read_density_split(r, i)
+                realization = [rho1 - rho2]
+                w[realization[0] == healpy.UNSEEN] = 0
 
-            nreal = noise_maps.number_of_realizations()
-            noise_c_ells = []
+            # Analyze it with namaster
+            field = nmt.NmtField(w, realization, n_iter=0)
+            cl_coupled = nmt.compute_coupled_cell(field, field)
 
-            for r in range(nreal):
-                print(f"Analyzing noise map {r}")
-                # Load the noise map - may be either (g1, g2)
-                # or rho1 - rho2
+            # Accumulate
+            noise_c_ells.append(cl_coupled)
 
-                # Also in the event there are any UNSEENs in these,
-                # downweight them
-                w = weight.copy()
-                if k == SHEAR_SHEAR:
-                    realization = noise_maps.read_rotation(r, i)
-                    w[realization[0] == healpy.UNSEEN] = 0
-                    w[realization[1] == healpy.UNSEEN] = 0
-                else:
-                    rho1, rho2 = noise_maps.read_density_split(r, i)
-                    realization = [rho1 - rho2]
-                    w[realization[0] == healpy.UNSEEN] = 0
+        mean_noise = np.mean(noise_c_ells, axis=0)
 
-                # Analyze it with namaster
-                field = nmt.NmtField(w, realization, n_iter=0)
-                cl_coupled = nmt.compute_coupled_cell(field, field)
+        # Since this is the noise on the half maps the real
+        # noise C_ell will be (0.5)**2 times the size
+        if k == POS_POS:
+            mean_noise /= 4
 
-                # Accumulate
-                noise_c_ells.append(cl_coupled)
-
-            mean_noise = np.mean(noise_c_ells, axis=0)
-
-            # Since this is the noise on the half maps the real
-            # noise C_ell will be (0.5)**2 times the size
-            if k == POS_POS:
-                mean_noise /= 4
-
-            return mean_noise
+        return mean_noise
 
 
 
