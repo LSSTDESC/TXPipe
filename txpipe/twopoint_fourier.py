@@ -553,60 +553,63 @@ class TXTwoPointFourier(PipelineStage):
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
-        import pymaster as nmt
-        import healpy
-
-        # No noise contribution in cross-correlations
-        if (i!=j) or (k==SHEAR_POS):
-            return None
-
-
-        if k == SHEAR_SHEAR:
-            noise_maps = self.open_input('source_noise_maps', wrapper=True)
-            weight = maps['lw'][i]
-
-        else:
-            noise_maps = self.open_input('lens_noise_maps', wrapper=True)
-            weight = maps['dw']
         
-        nreal = noise_maps.number_of_realizations()
-        noise_c_ells = []
-
-        for r in range(nreal):
-            print(f"Analyzing noise map {r}")
-            # Load the noise map - may be either (g1, g2)
-            # or rho1 - rho2
-
-            # Also in the event there are any UNSEENs in these,
-            # downweight them
-            w = weight.copy()
-            if k == SHEAR_SHEAR:
-                realization = noise_maps.read_rotation(r, i)
-                w[realization[0] == healpy.UNSEEN] = 0
-                w[realization[1] == healpy.UNSEEN] = 0
-            else:
-                rho1, rho2 = noise_maps.read_density_split(r, i)
-                realization = [rho1 - rho2]
-                w[realization[0] == healpy.UNSEEN] = 0
-
-            # Analyze it with namaster
-            field = nmt.NmtField(w, realization, n_iter=0)
-            cl_coupled = nmt.compute_coupled_cell(field, field)
-
-            # Accumulate
-            noise_c_ells.append(cl_coupled)
-
-        mean_noise = np.mean(noise_c_ells, axis=0)
-
-        # Since this is the noise on the half maps the real
-        # noise C_ell will be (0.5)**2 times the size
-        if k == POS_POS:
-            mean_noise /= 4
-
         if self.config['true_shear']:
             # if using true shear (i.e. no shape noise) we do not need to add any noise
             return None
+        
         else:
+
+            import pymaster as nmt
+            import healpy
+
+            # No noise contribution in cross-correlations
+            if (i!=j) or (k==SHEAR_POS):
+                return None
+
+
+            if k == SHEAR_SHEAR:
+                noise_maps = self.open_input('source_noise_maps', wrapper=True)
+                weight = maps['lw'][i]
+
+            else:
+                noise_maps = self.open_input('lens_noise_maps', wrapper=True)
+                weight = maps['dw']
+
+            nreal = noise_maps.number_of_realizations()
+            noise_c_ells = []
+
+            for r in range(nreal):
+                print(f"Analyzing noise map {r}")
+                # Load the noise map - may be either (g1, g2)
+                # or rho1 - rho2
+
+                # Also in the event there are any UNSEENs in these,
+                # downweight them
+                w = weight.copy()
+                if k == SHEAR_SHEAR:
+                    realization = noise_maps.read_rotation(r, i)
+                    w[realization[0] == healpy.UNSEEN] = 0
+                    w[realization[1] == healpy.UNSEEN] = 0
+                else:
+                    rho1, rho2 = noise_maps.read_density_split(r, i)
+                    realization = [rho1 - rho2]
+                    w[realization[0] == healpy.UNSEEN] = 0
+
+                # Analyze it with namaster
+                field = nmt.NmtField(w, realization, n_iter=0)
+                cl_coupled = nmt.compute_coupled_cell(field, field)
+
+                # Accumulate
+                noise_c_ells.append(cl_coupled)
+
+            mean_noise = np.mean(noise_c_ells, axis=0)
+
+            # Since this is the noise on the half maps the real
+            # noise C_ell will be (0.5)**2 times the size
+            if k == POS_POS:
+                mean_noise /= 4
+
             return mean_noise
 
 
