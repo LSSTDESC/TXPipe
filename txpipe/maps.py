@@ -189,7 +189,7 @@ class TXSourceMaps(TXBaseMaps):
 
         # can optionally read truth values
         if self.config["true_shear"]:
-            shear_cols = ["true_g1", "true_g1", "ra", "dec", "weight"]
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
         else:

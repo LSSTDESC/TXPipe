@@ -65,7 +65,8 @@ class TXTwoPointFourier(PipelineStage):
         "ell_min": 100,
         "ell_max": 1500,
         "n_ell": 20,
-        "ell_spacing": 'log'
+        "ell_spacing": 'log',
+        "true_shear": False
     }
 
     def run(self):
@@ -538,17 +539,22 @@ class TXTwoPointFourier(PipelineStage):
 
         # Get the coupled noise C_ell values to give to the master algorithm
         cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-
+ 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-
+        
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
+        
+        if self.config['true_shear']:
+            # if using true shear (i.e. no shape noise) we do not need to add any noise
+            return None
+        
         import pymaster as nmt
         import healpy
 
@@ -564,7 +570,7 @@ class TXTwoPointFourier(PipelineStage):
         else:
             noise_maps = self.open_input('lens_noise_maps', wrapper=True)
             weight = maps['dw']
-        
+
         nreal = noise_maps.number_of_realizations()
         noise_c_ells = []
 

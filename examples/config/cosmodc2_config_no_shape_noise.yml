@@ -26,18 +26,18 @@ TXSourceTrueNumberDensity:
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
-    nside: 512
+    nside: 2048
     sparse: True
 
 TXSourceMaps:
-    nside: 512
+    nside: 2048
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
-    true_shear: False
+    true_shear: True
 
 TXExternalLensMaps:
-    nside: 512
+    nside: 2048
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
@@ -115,7 +115,7 @@ TXTwoPoint:
     max_sep: 250
     nbins: 20
     verbose: 0
-    use_true_shear: False
+    use_true_shear: True
 
 TXTwoPointLensCat:
     binslop: 0.0
@@ -128,7 +128,7 @@ TXTwoPointLensCat:
     max_sep: 250
     nbins: 20
     verbose: 0
-    use_true_shear: False
+    use_true_shear: True
     
 TXTwoPointFourier:
     chunk_rows: 100000
@@ -136,10 +136,12 @@ TXTwoPointFourier:
     flip_g1: True
     apodization_size: 0.0
     cache_dir: ./cache
-    true_shear: False
+    true_shear: True
+    n_ell: 25
+    ell_max: 3000
     
 TXRealGaussianCovariance:
-    use_true_shear: False
+    use_true_shear: True
 
 TXClusteringNoiseMaps:
     n_realization: 30
