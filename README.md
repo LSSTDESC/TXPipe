@@ -4,7 +4,7 @@ DESC 3x2pt Pipeline Stages
 This is a collection of modules for the DESC 3x2pt pipeline.
 We will build up the modules needed for the analysis as shown in the Pipelines repository.
 
-It builds on the ceci repository for the infrastructure.
+It builds on the ceci repository for the infrastructure. 
 
 
 Getting the code and some test data
