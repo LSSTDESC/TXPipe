@@ -32,10 +32,9 @@ stages:
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
-
-    # These two require the WLMassMap repository on the path - see below
-    # - name: TXConvergenceMaps
-    # - name: TXConvergenceMapPlots
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXMapCorrelations    # plot the correlations between systematics and data
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
@@ -44,10 +43,16 @@ stages:
     # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
 
 
-# If you have WLMassMap cloned in the working directory, this will
-# add the path into it that we need for TXConvergenceMaps to sys.path,
-# so you can uncomment that module above
-python_paths: WLMassMap/python/desc/
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
 
 # Where to put outputs
 output_dir: data/example/outputs

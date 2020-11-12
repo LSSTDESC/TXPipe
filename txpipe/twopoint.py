@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, YamlFile, SACCFile, PhotozPDFFile, PNGFile, TextFile
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration, apply_hsc_calibration
 from .utils.calibration_tools import read_shear_catalog_type
 import numpy as np
@@ -33,6 +33,7 @@ class TXTwoPoint(PipelineStage):
     ]
     outputs = [
         ('twopoint_data_real_raw', SACCFile),
+        ('twopoint_gamma_x', SACCFile)
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -225,9 +226,12 @@ class TXTwoPoint(PipelineStage):
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
+        if self.config['do_shear_pos'] == True:
+            S2 = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
@@ -239,6 +243,8 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
+            if self.config['do_shear_pos'] == True:
+                S2.add_tracer('NZ', f'source_{i}',z, Nz)
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
@@ -246,6 +252,8 @@ class TXTwoPoint(PipelineStage):
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
+            if self.config['do_shear_pos'] == True:
+                S2.add_tracer('NZ', f'lens_{i}',z, Nz)
         # Closing n(z) file
         f.close()
 
@@ -292,6 +300,8 @@ class TXTwoPoint(PipelineStage):
                     S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
                         theta=theta[i], error=err[i], weight=weight[i])
 
+                
+
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
         cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
@@ -301,8 +311,37 @@ class TXTwoPoint(PipelineStage):
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
+        self.write_metadata(S,meta)
+
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
+        
+        # Adding the gammaX calculation:
+        
+        if self.config['do_shear_pos'] == True:
+            comb = []
+            for d in results:
+                tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
+                tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'   
+                
+                if d.corr_type == GAMMAT:
+                    theta = np.exp(d.object.meanlogr)
+                    npair = d.object.npairs
+                    weight = d.object.weight
+                    xi_x = d.object.xi_im
+                    covX = d.object.estimate_cov('shot')
+                    comb.append(covX)
+                    err = np.sqrt(np.diag(covX))
+                    n = len(xi_x)
+                    for i in range(n):
+                        S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
+                            theta=theta[i], error=err[i], weight=weight[i])
+            S2.add_covariance(comb)
+            S2.to_canonical_order
+            self.write_metadata(S2,meta)
+            S2.save_fits(self.get_output('twopoint_gamma_x'), overwrite=True)
+
+
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
@@ -721,13 +760,15 @@ class TXTwoPointPlots(PipelineStage):
     name='TXTwoPointPlots'
     inputs = [
         ('twopoint_data_real', SACCFile),
-        ('fiducial_cosmology', YamlFile),  # For example lines
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
+        ('twopoint_gamma_x', SACCFile),
     ]
     outputs = [
         ('shear_xi_plus', PNGFile),
         ('shear_xi_minus', PNGFile),
         ('shearDensity_xi', PNGFile),
         ('density_xi', PNGFile),
+        ('shearDensity_xi_x', PNGFile),
     ]
 
     config_options = {
@@ -749,7 +790,7 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',
@@ -763,12 +804,28 @@ class TXTwoPointPlots(PipelineStage):
 
             "galaxy_shear_xi_minus": self.open_output('shear_xi_minus',
                 figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+            
         }
 
         figures = {key: val.file for key, val in outputs.items()}
 
         full_3x2pt_plots([filename], ['twopoint_data_real'], 
             figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+
+        for fig in outputs.values():
+            fig.close()
+
+        filename = self.get_input('twopoint_gamma_x')
+
+        outputs = {
+            "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi_x',
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
+        }
+        
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['twopoint_gamma_x'], 
+            figures=figures)
 
         for fig in outputs.values():
             fig.close()

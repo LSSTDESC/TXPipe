@@ -145,27 +145,11 @@ class TXSourceMaps(TXBaseMaps):
     config_options = {"true_shear": False, **map_config_options}
 
     def prepare_mappers(self, pixel_scheme):
-        # read shear cols and
-        shear_catalog_type = read_shear_catalog_type(self)
-        # open and return a single mapper
-        # read nbin_source
-        with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin_source"]
-
-            if shear_catalog_type == "metacal":
-                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
-                cal = [R]
-            elif shear_catalog_type == "lensfit":
-                R = f['/metacal_response/R_mean'][:]
-                K = f['/metacal_response/K'][:]
-                c = f['/metacal_response/C'][:]
-                cal = (R, K, c)
-            else:
-                raise ValueError("Unknown calibration")
+        # read shear cols and calibration info
+        nbin_source, cal = self.get_calibrators()
 
         # store in config so it is saved later
         self.config["nbin_source"] = nbin_source
-
         # create basic mapper object
         source_bins = list(range(nbin_source))
         lens_bins = []
@@ -178,11 +162,34 @@ class TXSourceMaps(TXBaseMaps):
         )
         return [mapper, cal]
 
+    def get_calibrators(self):
+        shear_catalog_type = read_shear_catalog_type(self)
+        with self.open_input("shear_tomography_catalog") as f:
+            nbin_source = f["tomography"].attrs["nbin_source"]
+
+            if shear_catalog_type == "metacal":
+                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
+                cal = {i:R[i] for i in range(nbin_source)}
+                cal['2D'] = f['/metacal_response/R_total_2d'][:]
+            elif shear_catalog_type == "lensfit":
+                R = f['/response/R_mean'][:]
+                K = f['/response/K'][:]
+                c = f['/response/C'][:]
+                cal = {i: (R[i], K[i], c[i]) for i in range(nbin_source)}
+                cal['2D'] = (
+                    f['/response/R_mean_2d'][0],
+                    f['/response/K_2d'][0],
+                    f['/response/C_2d'][:],
+                )
+            else:
+                raise ValueError("Unknown calibration")
+        return nbin_source, cal
+
     def data_iterator(self):
 
         # can optionally read truth values
         if self.config["true_shear"]:
-            shear_cols = ["true_g1", "true_g1", "ra", "dec", "weight"]
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
         else:
@@ -253,14 +260,13 @@ class TXSourceMaps(TXBaseMaps):
         import healpy
 
         # We will return lists of calibrated maps
-        g1_out = []
-        g2_out = []
-        var_g1_out = []
-        var_g2_out = []
+        g1_out = {}
+        g2_out = {}
+        var_g1_out = {}
+        var_g2_out = {}
 
-        n = len(g1)
-
-        for i in range(n):
+        # We calibrate the 2D case separately
+        for i in g1.keys():
             # we want to avoid accidentally calibrating any pixels
             # that should be masked.
             mask = (
@@ -270,11 +276,10 @@ class TXSourceMaps(TXBaseMaps):
                 | (var_g2[i] == healpy.UNSEEN)
             )
             if self.config['shear_catalog_type'] == 'metacal':
-                R = cal[0]
-                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], R[i])
+                out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
-                R, K, c = cal
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R[i], K[i], c[i])
+                R, K, c = cal[i]
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
             else:
                 raise ValueError("Unknown calibration")
 
@@ -283,10 +288,10 @@ class TXSourceMaps(TXBaseMaps):
                 x[mask] = healpy.UNSEEN
 
             # append our results for this tomographic bin
-            g1_out.append(out[0])
-            g2_out.append(out[1])
-            var_g1_out.append(out[2])
-            var_g2_out.append(out[3])
+            g1_out[i] = out[0]
+            g2_out[i] = out[1]
+            var_g1_out[i] = out[2]
+            var_g2_out[i] = out[3]
 
         return g1_out, g2_out, var_g1_out, var_g2_out
 
@@ -486,21 +491,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         )
 
     def prepare_mappers(self, pixel_scheme):
-
-        shear_catalog_type = read_shear_catalog_type(self)
-        # read both nbin values and the calibration values
-        with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin_source"]
-            if shear_catalog_type == "metacal":
-                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
-                cal = [R]
-            elif shear_catalog_type == "lensfit":
-                R = f['response/R_mean'][:]
-                K = f['response/K'][:]
-                c = f['response/C'][:]
-                cal = (R, K, c)
-            else:
-                raise ValueError("Unknown calibration")
+        nbin_source, cal = self.get_calibrators()
 
         with self.open_input("lens_tomography_catalog") as f:
             nbin_lens = f["tomography"].attrs["nbin_lens"]

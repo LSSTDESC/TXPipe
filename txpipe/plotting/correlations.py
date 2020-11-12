@@ -3,6 +3,7 @@ import copy
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
+GAMMAX = "galaxy_shearDensity_xi_x"
 XIP = "galaxy_shear_xi_plus"
 XIM = "galaxy_shear_xi_minus"
 EE = "galaxy_shear_cl_ee"
@@ -12,6 +13,7 @@ ED = "galaxy_shearDensity_cl_e"
 types = {
     W: ('theta','lens','lens'),
     GAMMA: ('theta','source','lens'),
+    GAMMAX: ('theta','source','lens'),
     XIP: ('theta','source','source'),
     XIM: ('theta','source','source'),
     EE: ('ell', 'source','source'),
@@ -78,7 +80,7 @@ def full_3x2pt_plots(sacc_files, labels,
             sacc_data.append(f)
         else:
             sacc_data.append(sacc.Sacc.load_fits(f))
-
+            
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
     plot_theory = (cosmo is not None)
 
@@ -202,6 +204,12 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
         name = r"C_\ell^{DD}"
         auto_only = True
         half_only = False
+    elif corr == GAMMAX:
+        ymin = 5e-7
+        ymax = 2e-2
+        name = r"\gamma_X(\theta)"
+        auto_only = False
+        half_only = False
 
     plt.rcParams['font.size'] = 14
     f = fig if fig is not None else plt.figure(figsize=(nx*3.5, ny*3))
@@ -254,7 +262,7 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
     f.suptitle(rf"TXPipe ${name}$")
 
     # plt.tight_layout()
-    f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    #f.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.subplots_adjust(wspace=0.05, hspace=0.05)
     return plt.gcf()
 

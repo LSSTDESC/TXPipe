@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, \
-                        YamlFile, SACCFile, MapsFile, HDFFile, \
+                        FiducialCosmology, SACCFile, MapsFile, HDFFile, \
                         PhotozPDFFile, LensingNoiseMaps, ClusteringNoiseMaps, PNGFile
 import numpy as np
 import collections
@@ -43,16 +43,13 @@ class TXTwoPointFourier(PipelineStage):
     inputs = [
         ('shear_photoz_stack', HDFFile),  # Photoz stack
         ('lens_photoz_stack', HDFFile),  # Photoz stack
-        ('fiducial_cosmology', YamlFile),  # For the cosmological parameters
+        ('fiducial_cosmology', FiducialCosmology),  # For the cosmological parameters
         ('tracer_metadata', TomographyCatalog),  # For density info
         ('source_maps', MapsFile),
         ('density_maps', MapsFile),
-        ('aux_maps', MapsFile),
         ('mask', MapsFile),
         ('source_noise_maps', LensingNoiseMaps),
         ('lens_noise_maps', ClusteringNoiseMaps),
-        ('shear_tomography_catalog', TomographyCatalog),  # For density info
-        ('lens_tomography_catalog', TomographyCatalog),  # For density info
     ]
     outputs = [
         ('twopoint_data_fourier', SACCFile)
@@ -60,12 +57,16 @@ class TXTwoPointFourier(PipelineStage):
 
     config_options = {
         "mask_threshold": 0.0,
-        "bandwidth": 0,
         "flip_g1": False,
         "flip_g2": False,
         "cache_dir": '',
         "deproject_syst_clustering": False,
         "systmaps_clustering_dir": '',
+        "ell_min": 100,
+        "ell_max": 1500,
+        "n_ell": 20,
+        "ell_spacing": 'log',
+        "true_shear": False
     }
 
     def run(self):
@@ -430,6 +431,9 @@ class TXTwoPointFourier(PipelineStage):
     def choose_ell_bins(self, pixel_scheme, f_sky):
         import pymaster as nmt
         from .utils.nmt_utils import MyNmtBin
+
+        # commented code below is not needed anymore
+        '''
         # This is just approximate.  It will be very wrong
         # in cases with non-square patches.
         area = f_sky * 4 * np.pi
@@ -439,11 +443,19 @@ class TXTwoPointFourier(PipelineStage):
         # user can specify the bandwidth, or we can just use
         # the maximum sensible value of Delta ell.
         nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
-
+        '''
+        
         # The subclass of NmtBin that we use here just adds some
         # helper methods compared to the default NaMaster one.
         # Can feed these back upstream if useful.
-        ell_bins = MyNmtBin(int(pixel_scheme.nside), nlb=nlb)
+
+        # Creating the ell binning from the edges using this Namaster constructor.
+        if self.config['ell_spacing'] == 'log': 
+            edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+        else:
+            edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+            
+        ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
 
 
@@ -527,17 +539,22 @@ class TXTwoPointFourier(PipelineStage):
 
         # Get the coupled noise C_ell values to give to the master algorithm
         cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-
+ 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-
+        
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
+        
+        if self.config['true_shear']:
+            # if using true shear (i.e. no shape noise) we do not need to add any noise
+            return None
+        
         import pymaster as nmt
         import healpy
 
@@ -553,7 +570,7 @@ class TXTwoPointFourier(PipelineStage):
         else:
             noise_maps = self.open_input('lens_noise_maps', wrapper=True)
             weight = maps['dw']
-        
+
         nreal = noise_maps.number_of_realizations()
         noise_c_ells = []
 
@@ -700,8 +717,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
     name='TXTwoPointPlotsFourier'
     inputs = [
-        ('twopoint_data_fourier', SACCFile),
-        ('fiducial_cosmology', YamlFile),  # For example lines
+        ('summary_statistics_fourier', SACCFile),
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
     ]
     outputs = [
         ('shear_cl_ee', PNGFile),
@@ -733,11 +750,11 @@ class TXTwoPointPlotsFourier(PipelineStage):
         matplotlib.rcParams["xtick.direction"]='in'
         matplotlib.rcParams["ytick.direction"]='in'
 
-        filename = self.get_input('twopoint_data_fourier')
+        filename = self.get_input('summary_statistics_fourier')
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
-        cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
@@ -753,8 +770,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=False)
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], 
+                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=True)
 
         for fig in outputs.values():
             fig.close()

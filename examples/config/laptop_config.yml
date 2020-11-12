@@ -190,3 +190,8 @@ TXTwoPointFourier:
 TXSimpleMask:
     depth_cut : 23.5
     bright_object_max: 10.0
+
+TXMapCorrelations:
+    supreme_path_root: data/example/inputs/supreme
+    outlier_fraction: 0.05
+    nbin: 20

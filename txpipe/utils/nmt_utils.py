@@ -28,8 +28,8 @@ class MyNmtBinFlat(nmt.NmtBinFlat):
         return c_ell[b0:b1+1].mean()
 
 class MyNmtBin(nmt.NmtBin):
-    def __init__(self, nside, bpws=None, ells=None, weights=None, nlb=None, lmax=None):
-        super().__init__(nside, bpws=bpws, ells=ells, weights=weights, nlb=nlb, lmax=lmax)
+    def __init__(self, nside=None, bpws=None, ells=None, weights=None, nlb=None, lmax=None, is_Dell=False, f_ell=None):
+        super().__init__(nside=nside, bpws=bpws, ells=ells, weights=weights, nlb=nlb, lmax=lmax, is_Dell=False, f_ell=None)
         self.ell_max = self.lmax
 
     def get_window(self, b):
