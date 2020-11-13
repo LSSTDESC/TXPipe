@@ -184,23 +184,23 @@ class TXRoweStatistics(PipelineStage):
 
 
     def load_stars(self):
-        f = self.open_input('star_catalog')
-        g = f['stars']
-        ra = g['ra'][:]
-        dec = g['dec'][:]
-        e1 = g['measured_e1'][:]
-        e2 = g['measured_e2'][:]
-        de1 = e1 - g['model_e1'][:]
-        de2 = e2 - g['model_e2'][:]
-        if self.config['psf_size_units']=='T':
-            T_frac = (g['measured_T'][:] - g['model_T'][:]) / g['measured_T'][:]
-        elif self.config['psf_size_units']=='sigma':
-            T_frac = (g['measured_T'][:]**2 - g['model_T'][:]**2) / g['measured_T'][:]**2
+        with self.open_input('star_catalog') as f:
+            g = f['stars']
+            ra = g['ra'][:]
+            dec = g['dec'][:]
+            e1 = g['measured_e1'][:]
+            e2 = g['measured_e2'][:]
+            de1 = e1 - g['model_e1'][:]
+            de2 = e2 - g['model_e2'][:]
+            if self.config['psf_size_units']=='T':
+                T_frac = (g['measured_T'][:] - g['model_T'][:]) / g['measured_T'][:]
+            elif self.config['psf_size_units']=='sigma':
+                T_frac = (g['measured_T'][:]**2 - g['model_T'][:]**2) / g['measured_T'][:]**2
 
-        e_psf = np.array((e1, e2))
-        de_psf = np.array((de1, de2))
+            e_psf = np.array((e1, e2))
+            de_psf = np.array((de1, de2))
 
-        star_type = load_star_type(g)
+            star_type = load_star_type(g)
 
         return ra, dec, e_psf, de_psf, T_frac, star_type
 
@@ -284,6 +284,7 @@ class TXStarShearTests(PipelineStage):
     ('shear_tomography_catalog', TomographyCatalog)]
     outputs = [
         ('star_shear_test', PNGFile),
+        ('star_star_test', PNGFile),
         ('star_shear_stats', HDFFile),
     ]
 
@@ -309,32 +310,34 @@ class TXStarShearTests(PipelineStage):
 
         #only use reserved stars for this statistics
         galaxy_star_stats = {}
+        star_star_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
-            galaxy_star_stats[1, t] = self.compute_galaxy_star(1, ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight)
-            galaxy_star_stats[2, t] = self.compute_galaxy_star(2, ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight)
-            galaxy_star_stats[3, t] = self.compute_star_star(3, ra, dec, e_psf, s, ra_gal, dec_gal, e_psf, weight)
-            galaxy_star_stats[4, t] = self.compute_star_star(4, ra, dec, de_psf, s, ra_gal, dec_gal, de_psf, weight)
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            galaxy_star_stats[2, t] = self.compute_galaxy_star(ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            star_star_stats[1, t] = self.compute_star_star(ra, dec, e_psf, s, ra_gal, dec_gal, e_psf, weight)
+            star_star_stats[2, t] = self.compute_star_star(ra, dec, de_psf, s, ra_gal, dec_gal, de_psf, weight)
 
-        self.save_stats(galaxy_star_stats)
+        self.save_stats(galaxy_star_stats,star_star_stats)
         self.galaxy_star_plots(galaxy_star_stats)
+        self.star_star_plots(star_star_stats)
 
 
 
     def load_stars(self):
-        f = self.open_input('star_catalog')
-        g = f['stars']
-        ra = g['ra'][:]
-        dec = g['dec'][:]
-        e1 = g['measured_e1'][:]
-        e2 = g['measured_e2'][:]
-        de1 = e1 - g['model_e1'][:]
-        de2 = e2 - g['model_e2'][:]
+        with self.open_input('star_catalog') as f:
+            g = f['stars']
+            ra = g['ra'][:]
+            dec = g['dec'][:]
+            e1 = g['measured_e1'][:]
+            e2 = g['measured_e2'][:]
+            de1 = e1 - g['model_e1'][:]
+            de2 = e2 - g['model_e2'][:]
 
-        e_psf = np.array((e1, e2))
-        de_psf = np.array((de1, de2))
+            e_psf = np.array((e1, e2))
+            de_psf = np.array((de1, de2))
 
-        star_type = load_star_type(g)
+            star_type = load_star_type(g)
 
         return ra, dec, e_psf, de_psf, star_type
 
@@ -350,9 +353,6 @@ class TXStarShearTests(PipelineStage):
         mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
         if self.config['shear_catalog_type']=='metacal':
             R_total_2d = f['metacal_response/R_total_2d'][:]
-        else:
-            R_total_2d = f['response/R_mean_2d'][:]
-        f.close()
 
         f = self.open_input('shear_catalog')
         g = f['shear']
@@ -377,33 +377,29 @@ class TXStarShearTests(PipelineStage):
             g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
 
         elif self.config['shear_catalog_type']=='lensfit':
-            #TODO: fix this to just apply the precomputed values from the tomography cat
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = g1,g2 = g2,weight = weight,sigma_e = sigma_e, m = m)
+            g1, g2, weight, _ = apply_lensfit_calibration(g1 = g1,g2 = g2,weight = weight,sigma_e = sigma_e, m = m)
         else:
             print('Shear calibration type not recognized.')
 
         return ra, dec, g1, g2, weight
 
-    def compute_galaxy_star(self, i, ra, dec, q, s, ra_gal, dec_gal, g1, g2, weight):
-        # select the reserved stars
+    def compute_galaxy_star(self, ra, dec, q, s, ra_gal, dec_gal, g1, g2, weight):
+        # select the star type
         ra = ra[s]
         dec = dec[s]
-        q = q[:, s]
+        q = q[:, s] # PSF quantity, either ellipticity or residual
         n = len(ra)
         i = len(ra_gal)
         print(f"Computing galaxy-cross-star statistic from {n} stars and {i} galaxies")
         import treecorr
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q[0], g2=q[1], ra_units='deg', dec_units='deg')
-        if self.config['shear_catalog_type']=='metacal':
-            cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=g1, g2=g2, ra_units='deg', dec_units='deg')
-        else:
-            cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=g2, g2=g2, ra_units='deg', dec_units='deg', w=weight)
+        cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=g2, g2=g2, ra_units='deg', dec_units='deg', w=weight)
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
 
-    def compute_star_star(self, i, ra, dec, q1, s, ra_gal, dec_gal, q2, weight):
-        # select the reserved stars
+    def compute_star_star(self, ra, dec, q1, s, ra_gal, dec_gal, q2, weight):
+        # select the star type
         ra = ra[s]
         dec = dec[s]
         q1 = q1[:, s]
@@ -423,18 +419,14 @@ class TXStarShearTests(PipelineStage):
         import matplotlib.transforms as mtrans
 
         f = self.open_output('star_shear_test', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        TEST_TYPES = ['shear','residual']
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s+1)
             for j,i in enumerate([1,2]):
                 theta, xi, err = galaxy_star_stats[i, s]
                 tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
-                if i==0:
-                    plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'galaxy cross star', capsize=3, transform=tr)
-                else:
-                    plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'galaxy cross star residuals', capsize=3, transform=tr)
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=f'galaxy cross star {TEST_TYPES[i-1]}', capsize=3, transform=tr)
                 plt.title(STAR_TYPE_NAMES[s])
-                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
-                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
                 plt.xscale('log')
                 plt.yscale('log')
                 plt.xlabel(r"$\theta$")
@@ -442,16 +434,45 @@ class TXStarShearTests(PipelineStage):
                 plt.legend()
         f.close()
 
-    def save_stats(self, galaxy_star_stats):
+    def star_star_plots(self, star_star_stats):
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+
+        f = self.open_output('star_star_test', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        TEST_TYPES = ['shear','residual']
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s+1)
+            for j,i in enumerate([1,2]):
+                theta, xi, err = star_star_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=f'star cross star {TEST_TYPES[i-1]}', capsize=3, transform=tr)
+                plt.title(STAR_TYPE_NAMES[s])
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\xi_+(\theta)$")
+                plt.legend()
+        f.close()
+
+    def save_stats(self, galaxy_star_stats, star_star_stats):
 
         f = self.open_output('star_shear_stats')
         g = f.create_group("star_cross_galaxy")
-        #TODO add a more informative name than 1,2 for this type
-        for i in 1,2,3,4:
+        for i in 1,2:
             for s in STAR_TYPES:
                 theta, xi, err = galaxy_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f'star_cross_galaxy_{i}_{name}')
+                h.create_dataset('theta', data=theta)
+                h.create_dataset('xi_plus', data=xi)
+                h.create_dataset('xi_err', data=err)
+
+        g = f.create_group("star_cross_star")
+        for i in 1,2:
+            for s in STAR_TYPES:
+                theta, xi, err = star_star_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f'star_cross_star_{i}_{name}')
                 h.create_dataset('theta', data=theta)
                 h.create_dataset('xi_plus', data=xi)
                 h.create_dataset('xi_err', data=err)
@@ -482,7 +503,6 @@ class TXStarDensityTests(PipelineStage):
         'bin_slop':0.1,
         'sep_units':'arcmin',
         'psf_size_units':'sigma',
-        'shear_catalog_type':'metacal',
         'flip_g2': False,
     }
 
@@ -496,12 +516,11 @@ class TXStarDensityTests(PipelineStage):
         ra_gal, dec_gal = self.load_galaxies()
         ra_random, dec_random = self.load_randoms()
 
-        #only use reserved stars for this statistics
         galaxy_star_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
-            galaxy_star_stats[1, t] = self.compute_galaxy_star(1, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
-            galaxy_star_stats[2, t] = self.compute_star_star(2, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
+            galaxy_star_stats[2, t] = self.compute_star_star(ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
 
         self.save_stats(galaxy_star_stats)
         self.galaxy_star_plots(galaxy_star_stats)
@@ -509,21 +528,21 @@ class TXStarDensityTests(PipelineStage):
 
 
     def load_stars(self):
-        f = self.open_input('star_catalog')
-        g = f['stars']
-        ra = g['ra'][:]
-        dec = g['dec'][:]
+        with self.open_input('star_catalog') as f:
+            g = f['stars']
+            ra = g['ra'][:]
+            dec = g['dec'][:]
 
-        star_type = load_star_type(g)
+            star_type = load_star_type(g)
 
         return ra, dec, star_type
 
     def load_randoms(self):
 
-        f = self.open_input('random_cats')
-        group = f['randoms']
-        ra_random = group['ra'][:]
-        dec_random = group['dec'][:]
+        with self.open_input('random_cats') as f:
+            group = f['randoms']
+            ra_random = group['ra'][:]
+            dec_random = group['dec'][:]
         return ra_random, dec_random
 
     def load_galaxies(self):
@@ -533,20 +552,19 @@ class TXStarDensityTests(PipelineStage):
         read_shear_catalog_type(self)
 
         # load tomography data
-        f = self.open_input('shear_tomography_catalog')
-        source_bin = f['tomography/source_bin'][:]
-        mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
-        f.close()
+        with self.open_input('shear_tomography_catalog') as f:
+            source_bin = f['tomography/source_bin'][:]
+            mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
 
-        f = self.open_input('shear_catalog')
-        g = f['shear']
-        ra = g['ra'][:][mask]
-        dec = g['dec'][:][mask]
+        with self.open_input('shear_catalog') as f:
+            g = f['shear']
+            ra = g['ra'][:][mask]
+            dec = g['dec'][:][mask]
 
         return ra, dec
 
-    def compute_galaxy_star(self, i, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
-        # select the reserved stars
+    def compute_galaxy_star(self, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
+        # select the star type
         ra = ra[s]
         dec = dec[s]
         n = len(ra)
@@ -575,8 +593,8 @@ class TXStarDensityTests(PipelineStage):
         nn.calculateXi(rr, dr=nr, rd=rn)
         return nn.meanr, nn.xi, nn.varxi**0.5
 
-    def compute_star_star(self, i, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
-        # select the reserved stars
+    def compute_star_star(self, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
+        # select the star type
         ra = ra[s]
         dec = dec[s]
         n = len(ra)
@@ -610,15 +628,14 @@ class TXStarDensityTests(PipelineStage):
         import matplotlib.transforms as mtrans
 
         f = self.open_output('star_density_test', wrapper=True, figsize=(10, 6*len(STAR_TYPES)))
+        TEST_TYPES = ['star cross galaxy','star cross star']
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s+1)
             for j,i in enumerate([1,2]):
                 theta, xi, err = galaxy_star_stats[i, s]
                 tr = mtrans.offset_copy(ax.transData, f.file, 0.05*j-0.025, 0, units='inches')
-                plt.errorbar(theta, abs(xi), err, fmt='.', label=rf'star_density_stats', capsize=3, transform=tr)
+                plt.errorbar(theta, abs(xi), err, fmt='.', label=f'{TEST_TYPES[i-1]} density stats', capsize=3, transform=tr)
                 plt.title(STAR_TYPE_NAMES[s])
-                plt.bar(0.0,2e-05,width=5,align='edge',color='gray',alpha=0.2)
-                plt.bar(5,1e-07,width=245,align='edge',color='gray',alpha=0.2)
                 plt.xscale('log')
                 plt.yscale('log')
                 plt.xlabel(r"$\theta$")
@@ -673,16 +690,16 @@ class TXBrighterFatterPlot(PipelineStage):
         self.save_plots(results)
 
     def load_stars(self):
-        f = self.open_input('star_catalog')
-        g = f['stars']
+        with self.open_input('star_catalog') as f:
+            g = f['stars']
 
-        band = self.config['band']
-        data = {}
-        data['mag'] = g[f'mag_{band}'][:]
-        data['delta_e1'] = g['measured_e1'][:] - g['model_e1'][:]
-        data['delta_e2'] = g['measured_e2'][:] - g['model_e2'][:]
-        data['delta_T'] = g['measured_T'][:] - g['model_T'][:]
-        data['star_type'] = load_star_type(g)
+            band = self.config['band']
+            data = {}
+            data['mag'] = g[f'mag_{band}'][:]
+            data['delta_e1'] = g['measured_e1'][:] - g['model_e1'][:]
+            data['delta_e2'] = g['measured_e2'][:] - g['model_e2'][:]
+            data['delta_T'] = g['measured_T'][:] - g['model_T'][:]
+            data['star_type'] = load_star_type(g)
 
         return data
 
