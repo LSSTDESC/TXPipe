@@ -308,13 +308,13 @@ class TXHSCSourceSelector(TXSourceSelector):
 
         verbose = self.config['verbose']
         # Magnitude cut
-        mag_i_cut = self.config['mag_i_cut']
+        mag_i_cut = self.config['i_hi_cut']
 
         zbin = data['zbin']
 
         mag_i = data['mag_i']
-        a_i = data['a_i']
-
+        #a_i = data['a_i']
+        a_i = np.zeros(len(mag_i))
         n0 = len(mag_i)
         sel = ((mag_i - a_i) <= mag_i_cut)
         f1 = sel.sum() / n0

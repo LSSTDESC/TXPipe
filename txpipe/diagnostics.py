@@ -442,7 +442,9 @@ class TXDiagnosticPlots(PipelineStage):
                 elif self.config['shear_catalog_type']=='lensfit':
                     g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
                 elif self.config['shear_catalog_type']=='hsc':
-                    g1, g2, weight, one_plus_K = apply_hsc_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
+                    g1, g2, weight, one_plus_K = apply_hsc_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1], data['weight'][qual_cut][w1],
+                                                                      c1=data['c1'][qual_cut][w1], c2=data['c2'][qual_cut][w1], sigma_e=data['sigma_e'][qual_cut][w1],
+                                                                      m=data['m'][qual_cut][w1])
                 else:
                     raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 # Do more things here to establish
@@ -463,7 +465,9 @@ class TXDiagnosticPlots(PipelineStage):
                 elif self.config['shear_catalog_type']=='lensfit':
                     g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
                 elif self.config['shear_catalog_type']=='hsc':
-                    g1, g2, weight, one_plus_K = apply_hsc_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
+                    g1, g2, weight, one_plus_K = apply_hsc_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1], data['weight'][qual_cut][w1],
+                                                                      c1=data['c1'][qual_cut][w1], c2=data['c2'][qual_cut][w1], sigma_e=data['sigma_e'][qual_cut][w1],
+                                                                      m=data['m'][qual_cut][w1])
                 else:
                     raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
                 calc2.add_data(i, g2)

@@ -53,6 +53,12 @@ class TXSourceSelector(PipelineStage):
         'source_zbin_edges':[float],
         'random_seed': 42,
         'shear_prefix': 'mcal_',
+        'g_hi_cut': -99,
+        'r_hi_cut': -99,
+        'i_hi_cut': -99,
+        'g_lo_cut': -99,
+        'r_lo_cut': -99,
+        'i_lo_cut': -99,
     }
 
     def run(self):
@@ -605,10 +611,10 @@ class TXSourceSelector(PipelineStage):
         T_cut = self.config['T_cut']
         verbose = self.config['verbose']
         variant = data.suffix
-
+        bands = self.config['bands']
         s2n = data[f'{shear_prefix}s2n']
         T = data[f'{shear_prefix}T']
-
+        shear_catalog_type = read_shear_catalog_type(self)
         Tpsf = data[f'{shear_prefix}psf_T_mean']
         flag = data[f'{shear_prefix}flags']
 
@@ -619,17 +625,34 @@ class TXSourceSelector(PipelineStage):
         f2 = sel.sum() / n0
         sel &= s2n>s2n_cut
         f3 = sel.sum() / n0
+        
+        # Add ability to perform magnitude cuts
 
+        mag_cols = band_variants(self.config['bands'],
+                                    f'{shear_prefix}mag',
+                                    f'{shear_prefix}mag_err',
+                                    shear_catalog_type=shear_catalog_type)
+        for band in bands:
+            mag_name, = band_variants(band, f'{shear_prefix}mag',
+                                      f'{shear_prefix}mag_err',
+                                      shear_catalog_type=shear_catalog_type)
+            lo_cut = self.config[f'{band}_lo_cut']
+            hi_cut = self.config[f'{band}_hi_cut']
+            if lo_cut != -99:
+                sel &= data[mag_name] > lo_cut
+            if hi_cut != -99:
+                sel &= data[mag_name] < hi_cut
+        f4 = sel.sum() / n0
         # Print out a message.  If we are selecting a 2D sample
         # this is the complete message.  Otherwise if we are about
         # to also apply a redshift bin cut about then the message will continue
         # as above
         if verbose and is_2d:
             print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR")
+                    f"{f3:.2%} SNR, {f4:.2%} mag")
         elif verbose:
             print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR, ", end="")
+                    f"{f3:.2%} SNR, {f4:.2%} mag", end="")
         return sel
 
 
