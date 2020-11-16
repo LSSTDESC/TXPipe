@@ -171,7 +171,7 @@ class TXSourceMaps(TXBaseMaps):
                 R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
                 cal = {i:R[i] for i in range(nbin_source)}
                 cal['2D'] = f['/metacal_response/R_total_2d'][:]
-            elif shear_catalog_type == "lensfit":
+            elif (shear_catalog_type == "lensfit") or (shear_catalog_type == 'hsc'):
                 R = f['/response/R_mean'][:]
                 K = f['/response/K'][:]
                 c = f['/response/C'][:]
@@ -256,6 +256,23 @@ class TXSourceMaps(TXBaseMaps):
 
         return g1, g2, var_g1, var_g2
 
+    def calibrate_map_hsc(self, g1, g2, var_g1, var_g2, R, K, c):
+        c1 = c[:, 0]
+        c2 = c[:, 1]
+        one_plus_K = 1 + K
+
+        g1 = (1. / one_plus_K) * ((g1 / (2 * R)) - c1)
+        g2 = (1. / one_plus_K) * ((g2 / (2 * R)) - c2)
+        
+        std_g1 = np.sqrt(var_g1)
+        std_g2 = np.sqrt(var_g2)
+        std_g1 = (1. / one_plus_K) * ((g1 / (2 * R)) - c1)
+        std_g2 = (1. / one_plus_K) * ((g2 / (2 * R)) - c2)
+        var_g1 = std_g1 ** 2
+        var_g2 = std_g2 ** 2
+
+        return g1, g2, var_g1, var_g2
+
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
         import healpy
 
@@ -280,6 +297,9 @@ class TXSourceMaps(TXBaseMaps):
             elif self.config['shear_catalog_type'] == 'lensfit':
                 R, K, c = cal[i]
                 out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
+            elif self.config['shear_catalog_type'] == 'hsc':
+                R, K, c = cal[i]
+                out = self.calibrate_map_hsc(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
             else:
                 raise ValueError("Unknown calibration")
 

@@ -142,8 +142,10 @@ class TXSourceSelector(PipelineStage):
             # 2d calibrator
             calibrators.append(ParallelCalibratorMetacal(self.select_2d, delta_gamma))
         else:
-            calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
-            calibrators.append(ParallelCalibratorNonMetacal(self.select_2d))
+            calibrators = [ParallelCalibratorNonMetacal(self.select,
+                                                        shear_catalog_type=self.config['shear_catalog_type']) for i in range(nbin_source)]
+            calibrators.append(ParallelCalibratorNonMetacal(self.select_2d, 
+                                                            shear_catalog_type=self.config['shear_catalog_type']))
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data) in iter_shear:
@@ -473,7 +475,7 @@ class TXSourceSelector(PipelineStage):
         mean_e1 = np.zeros(nbin_source)
         mean_e2 = np.zeros(nbin_source)
         sigma_e = np.zeros(nbin_source)
-
+        cat_type = self.config['shear_catalog_type']
         means, variances, means_2d, variances_2d = number_density_stats.collect()
 
         # Loop through the tomographic calibrators.
@@ -485,7 +487,7 @@ class TXSourceSelector(PipelineStage):
 
             # We now have to calibrate both the mean shear and the
             # sigma_e estimator
-            if self.config['shear_catalog_type']=='metacal':
+            if cat_type=='metacal':
                 # Collect the total calibration factor
                 R[i], S[i], N[i] = cal.collect(self.comm)
 
@@ -500,7 +502,7 @@ class TXSourceSelector(PipelineStage):
                 # Apply to the variances to get sigma_e
                 sigma_e[i] = np.sqrt(0.5 * P @ variances[i])
 
-            elif self.config['shear_catalog_type']=='lensfit':
+            elif (cat_type=='lensfit') or (cat_type=='hsc'):
                 # TODO Someone using a lensft catalog needs to check
                 print("Warning: check the lensfit calibration in mean shear")
 
@@ -525,7 +527,7 @@ class TXSourceSelector(PipelineStage):
         mu2 = np.array([means_2d[1]])
 
         # Non-tomo metacal
-        if self.config['shear_catalog_type']=='metacal':
+        if cat_type=='metacal':
             R_2d, S_2d, N_2d = cal2d.collect(self.comm)
 
             mean_e1_2d, mean_e2_2d = apply_metacal_response(
@@ -536,7 +538,7 @@ class TXSourceSelector(PipelineStage):
             sigma_e_2d = np.sqrt(0.5 * P @ variances_2d)
 
         # Non-tomo lensfit
-        elif self.config['shear_catalog_type']=='lensfit':
+        elif (cat_type=='lensfit') or (cat_type=='hsc'):
             print("(also check in the 2D bit!)")
             R_scalar_2d, K_2d, C_2d, N_2d = cal2d.collect(self.comm)
 
@@ -628,14 +630,10 @@ class TXSourceSelector(PipelineStage):
         
         # Add ability to perform magnitude cuts
 
-        mag_cols = band_variants(self.config['bands'],
-                                    f'{shear_prefix}mag',
-                                    f'{shear_prefix}mag_err',
-                                    shear_catalog_type=shear_catalog_type)
         for band in bands:
-            mag_name, = band_variants(band, f'{shear_prefix}mag',
+            mag_name = band_variants(band, f'{shear_prefix}mag',
                                       f'{shear_prefix}mag_err',
-                                      shear_catalog_type=shear_catalog_type)
+                                      shear_catalog_type=shear_catalog_type)[0]
             lo_cut = self.config[f'{band}_lo_cut']
             hi_cut = self.config[f'{band}_hi_cut']
             if lo_cut != -99:

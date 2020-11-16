@@ -327,7 +327,7 @@ class ParallelCalibratorNonMetacal:
     wrapping the data object passed in to it and modifying the names of columns
     that are looked up.
     """
-    def __init__(self, selector):
+    def __init__(self, selector, shear_catalog_type='lensfit'):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -346,6 +346,7 @@ class ParallelCalibratorNonMetacal:
         self.K = []
         self.C = []
         self.counts = []
+        self.shear_catalog_type = shear_catalog_type
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -386,7 +387,10 @@ class ParallelCalibratorNonMetacal:
         w_tot = np.sum(data_00['weight'])
         m = np.sum(data_00['weight']*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
         K = 1.+m
-        R = 1. - np.sum(data_00['weight']*data_00['sigma_e'])/w_tot
+        if self.shear_catalog_type == 'lensfit':
+            R = 1. - np.sum(data_00['weight']*data_00['sigma_e'])/w_tot
+        elif self.shear_catalog_type == 'hsc':
+            R = 1. - np.sum(data_00['weight']*data_00['sigma_e']**2)/w_tot
         C = np.stack([data_00['c1'],data_00['c2']],axis=1)
 
         self.R.append(R)
@@ -467,7 +471,8 @@ class MeanShearInBins:
         if shear_catalog_type=='metacal':
             self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
         else:
-            self.calibrators = [ParallelCalibratorNonMetacal(self.selector) for i in range(self.size)]
+            self.calibrators = [ParallelCalibratorNonMetacal(self.selector, 
+                                                             shear_catalog_type=shear_catalog_type) for i in range(self.size)]
 
 
     def selector(self, data, i):
@@ -531,12 +536,17 @@ class MeanShearInBins:
                 # Apply the matrix in full to the shears and errors
                 g1[i], g2[i] = R_inv @ g
                 sigma1[i], sigma2[i] = R_inv @ sigma
-            else:
+            elif self.shear_catalog_type=='lensfit':
                 g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0][0])       
                 g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][0][1])
                 sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0][0])       
                 sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][0][1])
-
-
+            elif self.shear_catalog_type=='hsc':
+                g1[i] = (1./(1+K[i]))*(g1[i]/(2*R[i])-C[i][0][0])
+                g2[i] = (1./(1+K[i]))*(g2[i]/(2*R[i])-C[i][0][1])
+                sigma1[i] = (1./(1+K[i]))*((sigma[0]/(2*R[i]))-C[i][0][0])
+                sigma2[i] = (1./(1+K[i]))*((sigma[1]/(2*R[i]))-C[i][0][1])
+            else:
+                raise ValueError(f'Catalog {self.shear_catalog_type} not understood') 
         return mu, g1, g2, sigma1, sigma2
 
