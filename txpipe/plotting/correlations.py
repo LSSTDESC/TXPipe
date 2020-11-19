@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import yaml
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -68,6 +69,45 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 
 
 
+def ccl_read_yaml(filename, **kwargs):
+    import pyccl as ccl
+    """Read the parameters from a YAML file.
+
+    Args:
+        filename (:obj:`str`) Filename to read parameters from.
+    """
+    with open(filename, 'r') as fp:
+        params = yaml.load(fp, Loader=yaml.Loader)
+
+    # Now we assemble an init for the object since the CCL YAML has
+    # extra info we don't need and different formatting.
+    inits = dict(
+        Omega_c=params['Omega_c'],
+        Omega_b=params['Omega_b'],
+        h=params['h'],
+        n_s=params['n_s'],
+        sigma8=None if params['sigma8'] == 'nan' else params['sigma8'],
+        A_s=None if params['A_s'] == 'nan' else params['A_s'],
+        Omega_k=params['Omega_k'],
+        Neff=params['Neff'],
+        w0=params['w0'],
+        wa=params['wa'],
+        bcm_log10Mc=params['bcm_log10Mc'],
+        bcm_etab=params['bcm_etab'],
+        bcm_ks=params['bcm_ks'],
+        mu_0=params['mu_0'],
+        sigma_0=params['sigma_0'])
+    if 'z_mg' in params:
+        inits['z_mg'] = params['z_mg']
+        inits['df_mg'] = params['df_mg']
+
+    if 'm_nu' in params:
+        inits['m_nu'] = params['m_nu']
+        inits['m_nu_type'] = 'list'
+
+    inits.update(kwargs)
+
+    return ccl.Cosmology(**inits)
 
 
 def full_3x2pt_plots(sacc_files, labels, 
@@ -307,6 +347,9 @@ def extract_observables_plot_data(data, label):
 def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
     import pyccl
 
+    cosmology_file = 'data/fiducial_cosmology.yml'
+    cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='emu', Neff=3.04)
+    
     theory = {'name': label}
     xi = ('galaxy_density_xi' in data.get_data_types()) if xi is None else xi
 
