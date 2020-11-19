@@ -66,7 +66,8 @@ class TXTwoPointFourier(PipelineStage):
         "ell_max": 1500,
         "n_ell": 20,
         "ell_spacing": 'log',
-        "true_shear": False
+        "true_shear": False,
+        "analytic_noise": True,
     }
 
     def run(self):
@@ -538,12 +539,18 @@ class TXTwoPointFourier(PipelineStage):
         workspace = workspaces[(i,j,k)]
 
         # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
- 
+        if self.config['analytic_noise']==False:
+            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+        else:
+            cl_noise = self.compute_noise_analytic(i, j, k, maps)
+        print('Noise power-spectrum', cl_noise) 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        
+        print('noise subtraced power spectrum', c)
+        c2 = nmt.compute_full_master(field_i, field_j, ell_bins,
+                workspace=workspace, n_iter=0)
+        print('noise not subtracted power spectrum', c2)
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
@@ -607,7 +614,28 @@ class TXTwoPointFourier(PipelineStage):
 
         return mean_noise
 
-
+    def compute_noise_analytic(self, i, j, k, maps):
+        import pymaster
+        import healpy as hp
+        if (i != j) or (k == SHEAR_POS):
+            return None
+        # This bit only works with healpix maps but it's checked beforehand so that's fine
+        if k == SHEAR_SHEAR:
+            with self.open_input('source_maps', wrapper=True) as f:
+                _var_g1_map = f.read_map(f'var_g1_{i}')
+                _var_g2_map = f.read_map(f'var_g2_{i}')
+            var_map = 0.5*(_var_g1_map+_var_g2_map)
+            nside = hp.get_nside(var_map)
+            pxarea = hp.nside2pixarea(nside)
+            n_ell = np.mean(var_map[maps['lw'][i]>0])*pxarea
+            n_ell = n_ell*np.ones((4,3*nside))
+            return n_ell
+        if k == POS_POS:
+            metadata = self.open_input('tracer_metadata')
+            nside = hp.get_nside(maps['dw'])
+            n_ell = np.mean(maps['dw'][i])/metadata['tracers/N_eff'][i]
+            n_ell = [n_ell*np.ones(3*nside)]
+            return n_ell
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         # Get lots of bits of metadata from the input file,
