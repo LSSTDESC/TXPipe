@@ -320,7 +320,7 @@ class TXSourceMaps(TXBaseMaps):
         # only one mapper here - we call its finalize method
         # to collect everything
         mapper, cal = mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weights_g, esq, wsq = mapper.finalize(self.comm)
+        pix, _, _, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
 
         # build up output
         maps = {}
@@ -340,7 +340,7 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
             out_e = np.zeros_like(esq[b])
-            out_e[esq[b]>0] = esq[b][esq[b]>0]/wsq[b][esq[b]>0]
+            out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
         return maps
 
@@ -408,7 +408,7 @@ class TXLensMaps(TXBaseMaps):
         # Again just the one mapper
         mapper = mappers[0]
         # Ignored return values are empty dicts for shear
-        pix, ngal, weighted_ngal, _, _, _, _, _ = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, _, _, _, _,  = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
@@ -537,7 +537,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # Still one mapper, but now we read both source and
         # lens maps from it.
         mapper, cal = mappers
-        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g, esq, wsq = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
@@ -557,7 +557,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
             out_e = np.zeros_like(esq[b])
-            out_e[esq[b]>0] = esq[b][esq[b]>0]/wsq[b][esq[b]>0]
+            out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
         return maps
 
