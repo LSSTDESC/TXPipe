@@ -128,9 +128,12 @@ class TXPSFDiagnostics(PipelineStage):
             for s in STAR_TYPES:
                 r = data['star_type'] == s
                 # build up histogram
-                counters[s].add_data(value[r])
+                d = value[r]
+                counters[s].add_data(d)
                 # Also record data for mean and variance calculation
-                stats.add_data(s, value[r])
+                # There are some NaNs in here which are presumably
+                # not propagated to PSF estimation anyway
+                stats.add_data(s, d[np.isfinite(d)])
 
         counts = {}
         for s in STAR_TYPES:
