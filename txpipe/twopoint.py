@@ -399,8 +399,8 @@ class TXTwoPoint(PipelineStage):
         mask = (data['source_bin'] == i)
 
         if self.config['use_true_shear']:
-            g1 = data[f'{prefix}_g1'][mask]
-            g2 = data[f'{prefix}_g2'][mask]
+            g1 = data[f'true_g1'][mask]
+            g2 = data[f'true_g2'][mask]
 
         elif self.config['shear_catalog_type']=='metacal':
             # We use S=0 here because we have already included it in R_total
