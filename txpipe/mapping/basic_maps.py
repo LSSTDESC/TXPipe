@@ -31,6 +31,8 @@ class Mapper:
             for t in [1,2]:
                 self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
             self.stats[(b,'weight')] = ParallelSum(self.pixel_scheme.npix)
+            self.stats[(b,'esq')] = ParallelSum(self.pixel_scheme.npix)
+            self.stats[(b,'wsq')] = ParallelSum(self.pixel_scheme.npix)
 
     def add_data(self, data):
         npix = self.pixel_scheme.npix
@@ -75,6 +77,9 @@ class Mapper:
                     self.stats[(source_bin, 1)].add_datum(p, g1[i], sw)
                     self.stats[(source_bin, 2)].add_datum(p, g2[i], sw)
                     self.stats[(source_bin,'weight')].add_datum(p, sw)
+                    esq = 0.5*(g1[i]**2+g2[i]**2)
+                    self.stats[(source_bin, 'esq')].add_datum(p, esq*sw**2)
+                    self.stats[(source_bin, 'wsq')].add_datum(p, sw**2)
                     # Also save 2D case
                     self.stats[("2D", 1)].add_datum(p, g1[i], sw)
                     self.stats[("2D", 2)].add_datum(p, g2[i], sw)
@@ -90,7 +95,8 @@ class Mapper:
         var_g2 = {}
         source_weight = {}
         lens_weight = {}
-
+        var_e = {}
+        weight_sq = {}
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
 
@@ -138,11 +144,13 @@ class Mapper:
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
             stats_weight = self.stats[(b, 'weight')]
-
+            stats_esq = self.stats[(b, 'esq')]
+            stats_wsq = self.stats[(b, 'wsq')]
             count_g1, mean_g1, v_g1 = stats_g1.collect(comm)
             count_g2, mean_g2, v_g2 = stats_g2.collect(comm)
             _, weight  = stats_weight.collect(comm)
-
+            _, esq = stats_esq.collect(comm)
+            _, wsq = stats_wsq.collect(comm)
             if not is_master:
                 continue
 
@@ -166,23 +174,24 @@ class Mapper:
             v_g1[np.isnan(v_g1)] = UNSEEN
             v_g2[np.isnan(v_g2)] = UNSEEN
             weight[np.isnan(weight)] = UNSEEN
-
+            esq[np.isnan(esq)] = UNSEEN
+            wsq[np.isnan(wsq)] = UNSEEN
             # Save the maps for this tomographic bin
             g1[b] = mean_g1
             g2[b] = mean_g2
             source_weight[b] = weight
             var_g1[b] = v_g1
             var_g2[b] = v_g2
-
-
+            var_e[b] = esq 
+            weight_sq[b] = wsq
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2, source_weight, lens_weight]:
+            for d in [ngal, g1, g2, var_g1, var_g2, source_weight, lens_weight, var_e, weight_sq]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight
+        return pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight, var_e, weight_sq
 
 
 class FlagMapper:
