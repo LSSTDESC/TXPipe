@@ -502,10 +502,11 @@ class TXTwoPointFourier(PipelineStage):
 
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
+        CEB=sacc.standard_types.galaxy_shear_cl_eb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
         CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
-
+       
         type_name = NAMES[k]
         print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
         sys.stdout.flush()
@@ -524,7 +525,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             field_i = maps['lf'][i]
             field_j = maps['lf'][j]
-            results_to_use = [(0, CEE, ), (3, CBB, )]
+            results_to_use = [(0, CEE, ), (1, CEB, ), (3, CBB, )]
 
         elif k == POS_POS:
             field_i = maps['df'][i]
@@ -547,10 +548,7 @@ class TXTwoPointFourier(PipelineStage):
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        print('noise subtraced power spectrum', c)
-        c2 = nmt.compute_full_master(field_i, field_j, ell_bins,
-                workspace=workspace, n_iter=0)
-        print('noise not subtracted power spectrum', c2)
+        print('noise subtraced power spectrum', c, c.shape)
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c[index], win, i, j))
@@ -622,12 +620,14 @@ class TXTwoPointFourier(PipelineStage):
         # This bit only works with healpix maps but it's checked beforehand so that's fine
         if k == SHEAR_SHEAR:
             with self.open_input('source_maps', wrapper=True) as f:
-                _var_g1_map = f.read_map(f'var_g1_{i}')
-                _var_g2_map = f.read_map(f'var_g2_{i}')
-            var_map = 0.5*(_var_g1_map+_var_g2_map)
+                var_map = f.read_map(f'var_e_{i}')
+                #_var_g1_map = f.read_map(f'var_g1_{i}')
+                #_var_g2_map = f.read_map(f'var_g2_{i}')
+            #var_map = 0.5*(_var_g1_map+_var_g2_map)
+            var_map[var_map==hp.UNSEEN] = 0.
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
-            n_ell = np.mean(var_map[maps['lw'][i]>0])*pxarea
+            n_ell = np.mean(var_map)*pxarea
             n_ell = n_ell*np.ones((4,3*nside))
             return n_ell
         if k == POS_POS:
@@ -698,6 +698,7 @@ class TXTwoPointFourier(PipelineStage):
         from sacc.windows import TopHatWindow
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
+        CEB=sacc.standard_types.galaxy_shear_cl_eb
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
         CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
@@ -711,8 +712,8 @@ class TXTwoPointFourier(PipelineStage):
         # bin pair and spectrum type, but many data points at different angles.
         # Here we pull them all out to add to sacc
         for d in self.results:
-            tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CdE, CdB] else f'lens_{d.i}'
-            tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CBB] else f'lens_{d.j}'
+            tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CEB, CdE, CdB] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CEB, CBB] else f'lens_{d.j}'
 
             n = len(d.l)
             for i in range(n):

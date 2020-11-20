@@ -160,7 +160,7 @@ class TXAuxiliaryMaps(TXBaseMaps):
         psf_mapper, depth_mapper, brobj_mapper, flag_mapper = mappers
 
         # Four different mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weight = psf_mapper.finalize(self.comm)
+        pix, _, _, g1, g2, var_g1, var_g2, weight, _, _ = psf_mapper.finalize(self.comm)
         depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
         brobj_pix, brobj_count, brobj_mag, brobj_mag_var = brobj_mapper.finalize(
             self.comm
