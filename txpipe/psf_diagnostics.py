@@ -23,7 +23,7 @@ class TXPSFDiagnostics(PipelineStage):
     outputs = [
         ('e1_psf_residual_hist', PNGFile),
         ('e2_psf_residual_hist', PNGFile),
-        ('T_psf_residual_hist', PNGFile),
+        ('T_frac_psf_residual_hist', PNGFile),
         ('star_psf_stats', YamlFile),
 
     ]
@@ -40,20 +40,20 @@ class TXPSFDiagnostics(PipelineStage):
             self.plot_histogram(
                 lambda d: (d['measured_e1'] - d['model_e1']),
                 'e1_psf_residual',
-                '$(e_{1}-e_{1,psf})$',
+                '$e_{1}-e_{1,psf}$',
                 np.linspace(-0.1, 0.1, 51),
                 ),
 
             self.plot_histogram(
                 lambda d: (d['measured_e2'] - d['model_e2']),
                 'e2_psf_residual',
-                '$(e_{2}-e_{2,psf})$',
+                '$e_{2}-e_{2,psf}$',
                 np.linspace(-0.1, 0.1, 51),
                 ),
 
             self.plot_histogram(
                 lambda d: (d['measured_T'] - d['model_T']) / d['measured_T'],
-                'T_psf_residual',
+                'T_frac_psf_residual',
                 '$(T-T{psf})/T{psf}$',
                 np.linspace(-0.1, 0.1, 51),
                 ),
