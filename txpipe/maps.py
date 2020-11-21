@@ -340,7 +340,8 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
             out_e = np.zeros_like(esq[b])
-            out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
+            #out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
+            out_e[esq[b]>0] = esq[b][esq[b]>0]
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
         return maps
 
@@ -557,7 +558,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
             out_e = np.zeros_like(esq[b])
-            out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
+            #out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
+            out_e[esq[b]>0] = esq[b][esq[b]>0]
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
         return maps
 

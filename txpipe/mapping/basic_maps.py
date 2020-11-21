@@ -159,7 +159,7 @@ class Mapper:
             # Since that is what we want for noise estimation
             v_g1 /= count_g1
             v_g2 /= count_g1
-
+            esq /= weight**2
             # Update the mask
             mask[weight>0] = True
 
