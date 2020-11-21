@@ -139,7 +139,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl)
+                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl, f_sky)
 
         if self.rank==0:
             print(f"Collecting results together")
@@ -490,7 +490,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory, f_sky):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -543,7 +543,7 @@ class TXTwoPointFourier(PipelineStage):
         if self.config['analytic_noise']==False:
             cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
         else:
-            cl_noise = self.compute_noise_analytic(i, j, k, maps)
+            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky)
         print('Noise power-spectrum', cl_noise) 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
@@ -612,7 +612,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return mean_noise
 
-    def compute_noise_analytic(self, i, j, k, maps):
+    def compute_noise_analytic(self, i, j, k, maps, f_sky):
         import pymaster
         import healpy as hp
         if (i != j) or (k == SHEAR_POS):
@@ -628,12 +628,14 @@ class TXTwoPointFourier(PipelineStage):
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ell = np.mean(var_map)*pxarea
-            n_ell = n_ell*np.ones((4,3*nside))
+            n_ell = n_ell*np.ones((4, 3*nside))
             return n_ell
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
-            n_ell = np.mean(maps['dw'][i])/metadata['tracers/N_eff'][i]
+            ndens = metadata['tracers/lens_counts'][i]/(4*np.pi*f_sky)
+            print(np.mean(maps['dw']), ndens)
+            n_ell = np.mean(maps['dw'])/ndens
             n_ell = [n_ell*np.ones(3*nside)]
             return n_ell
 
