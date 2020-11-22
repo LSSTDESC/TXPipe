@@ -627,8 +627,10 @@ class TXTwoPointFourier(PipelineStage):
             var_map[var_map==hp.UNSEEN] = 0.
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
-            n_ell = np.mean(var_map)*pxarea
-            n_ell = n_ell*np.ones((4, 3*nside))
+            n_ls = np.mean(var_map)*pxarea
+            n_ell = np.zeros((4, 3*nside))
+            n_ell[0, :] = n_ls
+            n_ell[3, :] = n_ls
             return n_ell
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
