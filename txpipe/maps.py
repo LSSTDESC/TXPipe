@@ -3,6 +3,7 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibration_tools import apply_hsc_calibration, apply_lensfit_calibration
 from .mapping import Mapper, FlagMapper
 
 
@@ -193,7 +194,7 @@ class TXSourceMaps(TXBaseMaps):
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
         else:
-            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            shear_cols = ["g1", "g2", "ra", "dec", "weight", "c1", "c2", "sigma_e", "m"]
 
         # use utility function that combines data chunks
         # from different files. Reading from n file sections
@@ -210,7 +211,7 @@ class TXSourceMaps(TXBaseMaps):
             ["source_bin"],  # column(s) to read
         )
 
-    def accumulate_maps(self, pixel_scheme, data, mappers):
+    def accumulate_maps(self, pixel_scheme, data, mappers, precal=True):
         # rename columns, if needed
         if self.config["true_shear"]:
             data["g1"] = data["true_g1"]
@@ -218,6 +219,32 @@ class TXSourceMaps(TXBaseMaps):
         elif self.config["shear_catalog_type"] == "metacal":
             data["g1"] = data["mcal_g1"]
             data["g2"] = data["mcal_g2"]
+        elif (self.config["shear_catalog_type"] == "lensfit") & (precal):
+            for b in mappers[0].source_bins:
+                i = data['source_bin'] == b
+                if np.count_nonzero(i) > 0:
+                    g1, g2, _, _ = apply_lensfit_calibration(data["g1"][i],
+                                                             data["g2"][i], 
+                                                             data["weight"][i], 
+                                                             c1=data["c1"][i], 
+                                                             c2=data["c2"][i], 
+                                                             sigma_e=data["sigma_e"][i], 
+                                                             m=data["m"][i])
+                    data["g1"][i] = g1
+                    data["g2"][i] = g2
+        elif (self.config["shear_catalog_type"] == "hsc") & (precal):
+            for b in mappers[0].source_bins:
+                i = data["source_bin"] == b
+                if np.count_nonzero(i)>0:
+                    g1, g2, _, _ = apply_hsc_calibration(data["g1"][i],
+                                                         data["g2"][i],
+                                                         data["weight"][i],
+                                                         c1=data["c1"][i],
+                                                         c2=data["c2"][i],
+                                                         sigma_e=data["sigma_e"][i],
+                                                         m=data["m"][i])
+                    data["g1"][i] = g1
+                    data["g2"][i] = g2
         # for other catalogs they're just called g1, g2 aready
 
         # send data to map
@@ -237,43 +264,45 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
 
-    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, R, K, c):
-        c1 = c[:, 0]
-        c2 = c[:, 1]
-        one_plus_K = 1 + K
+    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, R, K, c, precal=True):
+        if not precal:
+            c1 = c[:, 0]
+            c2 = c[:, 1]
+            one_plus_K = 1 + K
 
-        g1 = (1. / one_plus_K) * ((g1 / R) - c1)
-        g2 = (1. / one_plus_K) * ((g2 / R) - c2)
+            g1 = (1. / one_plus_K) * ((g1 / R) - c1)
+            g2 = (1. / one_plus_K) * ((g2 / R) - c2)
 
-        std_g1 = np.sqrt(var_g1)
-        std_g2 = np.sqrt(var_g2)
-        # no c here I think because it's a std dev
-        # so it's alread mean-subtracted?
-        std_g1 = (1. / one_plus_K) * (std_g1 / R)
-        std_g2 = (1. / one_plus_K) * (std_g2 / R)
-        var_g1 = std_g1 ** 2
-        var_g2 = std_g2 ** 2
+            std_g1 = np.sqrt(var_g1)
+            std_g2 = np.sqrt(var_g2)
+            # no c here I think because it's a std dev
+            # so it's alread mean-subtracted?
+            std_g1 = (1. / one_plus_K) * (std_g1 / R)
+            std_g2 = (1. / one_plus_K) * (std_g2 / R)
+            var_g1 = std_g1 ** 2
+            var_g2 = std_g2 ** 2
 
         return g1, g2, var_g1, var_g2
 
-    def calibrate_map_hsc(self, g1, g2, var_g1, var_g2, R, K, c):
-        c1 = c[:, 0]
-        c2 = c[:, 1]
-        one_plus_K = 1 + K
+    def calibrate_map_hsc(self, g1, g2, var_g1, var_g2, R, K, c, precal=True):
+        if not precal:
+            c1 = c[:, 0]
+            c2 = c[:, 1]
+            one_plus_K = 1 + K
 
-        g1 = (1. / one_plus_K) * ((g1 / (2 * R)) - c1)
-        g2 = (1. / one_plus_K) * ((g2 / (2 * R)) - c2)
+            g1 = (1. / one_plus_K) * ((g1 / (2 * R)) - c1)
+            g2 = (1. / one_plus_K) * ((g2 / (2 * R)) - c2)
         
-        std_g1 = np.sqrt(var_g1)
-        std_g2 = np.sqrt(var_g2)
-        std_g1 = (1. / one_plus_K) * ((g1 / (2 * R)) - c1)
-        std_g2 = (1. / one_plus_K) * ((g2 / (2 * R)) - c2)
-        var_g1 = std_g1 ** 2
-        var_g2 = std_g2 ** 2
+            std_g1 = np.sqrt(var_g1)
+            std_g2 = np.sqrt(var_g2)
+            std_g1 = (1. / one_plus_K) * ((g1 / (2 * R)) - c1)
+            std_g2 = (1. / one_plus_K) * ((g2 / (2 * R)) - c2)
+            var_g1 = std_g1 ** 2
+            var_g2 = std_g2 ** 2
 
         return g1, g2, var_g1, var_g2
 
-    def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
+    def calibrate_maps(self, g1, g2, var_g1, var_g2, cal, precal=True):
         import healpy
 
         # We will return lists of calibrated maps
@@ -296,10 +325,10 @@ class TXSourceMaps(TXBaseMaps):
                 out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
                 R, K, c = cal[i]
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c, precal=precal)
             elif self.config['shear_catalog_type'] == 'hsc':
                 R, K, c = cal[i]
-                out = self.calibrate_map_hsc(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
+                out = self.calibrate_map_hsc(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c, precal=precal)
             else:
                 raise ValueError("Unknown calibration")
 
@@ -316,7 +345,7 @@ class TXSourceMaps(TXBaseMaps):
         return g1_out, g2_out, var_g1_out, var_g2_out
 
 
-    def finalize_mappers(self, pixel_scheme, mappers):
+    def finalize_mappers(self, pixel_scheme, mappers, precal=True):
         # only one mapper here - we call its finalize method
         # to collect everything
         mapper, cal = mappers
@@ -330,7 +359,7 @@ class TXSourceMaps(TXBaseMaps):
             return maps
 
         # Calibrate the maps
-        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
+        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal, precal=precal)
 
         for b in mapper.source_bins:
             # keys are the output tag and the map name
@@ -491,7 +520,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         elif shear_catalog_type == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
         else:
-            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            shear_cols = ["g1", "g2", "ra", "dec", "weight", 
+                          "c1", "c2", "sigma_e", "m"]
 
         return self.combined_iterators(
             self.config["chunk_rows"],
@@ -534,7 +564,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
     # accumulate_maps is inherited from TXSourceMaps because
     # that appears first in the parent classes
 
-    def finalize_mappers(self, pixel_scheme, mappers):
+    def finalize_mappers(self, pixel_scheme, mappers, precal=True):
         # Still one mapper, but now we read both source and
         # lens maps from it.
         mapper, cal = mappers
@@ -544,7 +574,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         if self.rank != 0:
             return maps
 
-        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
+        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal, precal=precal)
 
         # Now both loops, source and lens
         for b in mapper.lens_bins:
