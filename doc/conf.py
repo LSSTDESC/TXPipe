@@ -51,7 +51,7 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'numpydoc',
+    #'numpydoc',
     ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -73,9 +73,9 @@ source_suffix = ['.rst', '.md']
 master_doc = 'index'
 
 # General information about the project.
-project = 'TXPipe'
-copyright = '2020, DESC'
-author = 'DESC'
+project = u'TXPipe'
+copyright = u'2020, DESC'
+author = u'DESC'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -198,6 +198,6 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/3': None}
 
-numpydoc_show_inherited_class_members = False
+#numpydoc_show_inherited_class_members = False
 
-autodoc_mock_imports = ['camb', 'ceci', 'cosmosis-standalone', 'firecrown', 'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 'mpmath']
+autodoc_mock_imports = ['cmake','camb', 'ceci', 'cosmosis-standalone', 'firecrown', 'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 'mpmath']
