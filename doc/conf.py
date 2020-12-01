@@ -206,4 +206,4 @@ autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrow
                         'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
                         'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
                         'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
-                        'mpmath']
+                        'parallel_statistics', 'mpmath']
