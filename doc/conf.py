@@ -51,6 +51,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
+    'sphinx.etx.ifconfig',
+    'sphinx.ext.napoleon'
     #'numpydoc',
     ]
 
