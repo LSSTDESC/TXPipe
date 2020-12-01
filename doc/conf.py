@@ -202,8 +202,8 @@ intersphinx_mapping = {'https://docs.python.org/3': None}
 
 numpydoc_show_inherited_class_members = True
 
-#autodoc_mock_imports = ['cmake','camb', 'cosmosis-standalone', 'firecrown', 
-#                        'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
-#                        'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
-#                        'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
-#                        'mpmath']
+autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrown', 
+                        'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
+                        'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
+                        'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
+                        'mpmath']
