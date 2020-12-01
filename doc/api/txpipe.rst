@@ -6,6 +6,11 @@ txpipe package
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: txpipe
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Subpackages
 -----------
 
@@ -17,7 +22,7 @@ Subpackages
    txpipe.plotting
    txpipe.randoms
 
-Submodules
+Stages
 ----------
 
 .. toctree::

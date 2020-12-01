@@ -202,6 +202,8 @@ intersphinx_mapping = {'https://docs.python.org/3': None}
 
 numpydoc_show_inherited_class_members = True
 
+autoclass_content = 'both'
+
 autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrown', 
                         'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
                         'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
