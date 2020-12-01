@@ -16,7 +16,6 @@ Subpackages
    txpipe.mapping
    txpipe.plotting
    txpipe.randoms
-   txpipe.utils
 
 Submodules
 ----------
