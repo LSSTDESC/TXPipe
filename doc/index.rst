@@ -13,7 +13,7 @@ TXPipe documentation
 
    installation
 
-   API References <api/txpipe.rst>
+   stages
 
 
 
