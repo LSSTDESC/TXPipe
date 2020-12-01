@@ -10,6 +10,7 @@ TXPipe documentation
    :includehidden:
    :maxdepth: 4
    :caption: Contents:
+   :show-inheritance:
 
    installation
 
