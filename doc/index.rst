@@ -7,12 +7,12 @@ TXPipe documentation
 ====================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
    installation
    api
-   utils
+   API Reference <api/TXPipe.rst>
 
 
 
