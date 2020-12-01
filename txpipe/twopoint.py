@@ -7,6 +7,10 @@ import random
 import collections
 import sys
 
+"""
+.. module:: txtwopoint
+"""
+
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(

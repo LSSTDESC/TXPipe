@@ -7,7 +7,6 @@ TXPipe documentation
 ====================
 
 .. toctree::
-   :includehidden:
    :maxdepth: 4
    :caption: Contents:
    :show-inheritance:

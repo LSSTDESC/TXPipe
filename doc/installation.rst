@@ -1,5 +1,5 @@
 TXPipe Installation
-==========
+===================
 
 Requirements
 ------------
