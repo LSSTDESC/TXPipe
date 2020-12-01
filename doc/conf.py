@@ -29,7 +29,7 @@ if os.path.isdir(root_path):
     sys.path.insert(0, root_path)
 
 
-#autodoc_member_order = 'bysource'
+autodoc_member_order = 'alphabetical'
 
 os.system("./apidoc.sh")
 
