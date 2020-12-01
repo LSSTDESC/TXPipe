@@ -12,7 +12,7 @@ TXPipe documentation
 
    installation
    api
-   API Reference <api/TXPipe.rst>
+   API Reference <api/txpipe.rst>
 
 
 
