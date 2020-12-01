@@ -200,7 +200,7 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/3': None}
 
-#numpydoc_show_inherited_class_members = False
+numpydoc_show_inherited_class_members = True
 
 #autodoc_mock_imports = ['cmake','camb', 'cosmosis-standalone', 'firecrown', 
 #                        'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
