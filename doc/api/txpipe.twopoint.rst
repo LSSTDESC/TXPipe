@@ -1,7 +1,7 @@
 txpipe.twopoint module
 ======================
 
-.. autoclass:: txpipe.twopoint
+.. autoclass:: txpipe.TXTwoPoint
    :members:
-   :undoc-members:
+   :special-members:
    :show-inheritance:

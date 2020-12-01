@@ -1,16 +1,6 @@
 txpipe package
 ==============
 
-.. automodule:: txpipe
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: txpipe
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Subpackages
 -----------
 
