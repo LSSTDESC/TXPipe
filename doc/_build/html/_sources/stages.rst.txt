@@ -29,3 +29,17 @@ These are the stages implemented so far:
     source_selector
     twopoint
     twopoint_fourier
+
+Submodules
+----------
+These are a bunch of shared utilities and plotting functions
+
+
+.. toctree::
+
+    data_types
+    mapping
+    plotting
+    randoms 
+    ui 
+    utils

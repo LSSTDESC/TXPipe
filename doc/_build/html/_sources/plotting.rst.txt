@@ -1,12 +1,12 @@
-data\_types
------------
+plotting
+--------
 
-.. automodule:: txpipe.data_types.base
+.. automodule:: txpipe.plotting.correlations
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: txpipe.data_types.types
+.. automodule:: txpipe.plotting.histogram
    :members:
    :undoc-members:
    :show-inheritance:

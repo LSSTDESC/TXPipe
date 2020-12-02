@@ -1,12 +1,12 @@
-data\_types
+mapping
 -----------
 
-.. automodule:: txpipe.data_types.base
+.. automodule:: txpipe.mapping.basic_maps
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: txpipe.data_types.types
+.. automodule:: txpipe.mapping.dr1
    :members:
    :undoc-members:
    :show-inheritance:

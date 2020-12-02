@@ -1,0 +1,359 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.mapping.dr1 &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.mapping.dr1</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.mapping.dr1</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">parallel_statistics</span> <span class="kn">import</span> <span class="n">ParallelMeanVariance</span>
+
+<div class="viewcode-block" id="DepthMapperDR1"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.DepthMapperDR1">[docs]</a><span class="k">class</span> <span class="nc">DepthMapperDR1</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">snr_threshold</span><span class="p">,</span> <span class="n">snr_delta</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Class to build up depth maps iteratively as we cycle through a data set.</span>
+
+<span class="sd">        Two methods should be used:</span>
+<span class="sd">        - add_data which should be called each time a new data chunk is loaded</span>
+<span class="sd">        - finalize, at the end to collect the results</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pixel_scheme: PixelScheme object</span>
+<span class="sd">            Converter from angle to pixel</span>
+
+<span class="sd">        snr_threshold: float</span>
+<span class="sd">            Value of SNR to use as the depth (e.g. 5.0 for 5 sigma depth)</span>
+
+<span class="sd">        snr_delta: float, optional</span>
+<span class="sd">            Half-width of the SNR values to use for the depth estimation</span>
+
+<span class="sd">        sparse: bool, optional</span>
+<span class="sd">            Whether to use sparse indexing for the calculation.  Faster if only a small number of pixels</span>
+<span class="sd">            Are used.</span>
+
+<span class="sd">        comm: MPI communicator, optional</span>
+<span class="sd">            An MPI comm for parallel processing.  If None, calculation is serial.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        pixel: array</span>
+<span class="sd">            Indices of all pixels with any objects</span>
+
+<span class="sd">        count: array</span>
+<span class="sd">            Number of objects in each pixel</span>
+
+<span class="sd">        depth: array</span>
+<span class="sd">            Estimated depth of each pixel</span>
+
+<span class="sd">        depth_var: array</span>
+<span class="sd">            Estimated variance of depth of each pixel</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_scheme</span> <span class="o">=</span> <span class="n">pixel_scheme</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">snr_threshold</span> <span class="o">=</span> <span class="n">snr_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">snr_delta</span> <span class="o">=</span> <span class="n">snr_delta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="o">=</span> <span class="n">comm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span> <span class="o">=</span> <span class="n">sparse</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="o">.</span><span class="n">npix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="n">sparse</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DepthMapperDR1.add_data"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.DepthMapperDR1.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">ra</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span>
+        <span class="n">dec</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span>
+        <span class="n">snr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;snr&#39;</span><span class="p">]</span>
+        <span class="n">mags</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag&#39;</span><span class="p">]</span>
+        <span class="c1"># Get healpix pixels</span>
+        <span class="n">pix_nums</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_scheme</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
+
+        <span class="c1"># For each found pixel find all values hitting that pixel</span>
+        <span class="c1"># and yield the index and their magnitudes</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix_nums</span><span class="p">):</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix_nums</span><span class="o">==</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">snr</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">snr_threshold</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">snr_delta</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">mags</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="DepthMapperDR1.finalize"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.DepthMapperDR1.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="n">count</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">depth_var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="c1"># Generate the pixel indexing (if parallel and the master process) and </span>
+        <span class="c1"># convert from sparse arrays to pixel, index arrays.if sparse</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pixel</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span><span class="p">:</span>
+            <span class="n">pixel</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">count</span><span class="o">.</span><span class="n">to_arrays</span><span class="p">()</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">depth</span> <span class="o">=</span> <span class="n">depth</span><span class="o">.</span><span class="n">to_arrays</span><span class="p">()</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">depth_var</span> <span class="o">=</span> <span class="n">depth_var</span><span class="o">.</span><span class="n">to_arrays</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">depth</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">pixel</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">depth_var</span></div></div>
+
+    
+<div class="viewcode-block" id="BrightObjectMapper"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.BrightObjectMapper">[docs]</a><span class="k">class</span> <span class="nc">BrightObjectMapper</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mag_threshold</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Class to build up bright object maps iteratively as we cycle through a data set.</span>
+
+<span class="sd">        Two methods should be used:</span>
+<span class="sd">        - add_data which should be called each time a new data chunk is loaded</span>
+<span class="sd">        - finalize, at the end to collect the results</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pixel_scheme: PixelScheme object</span>
+<span class="sd">            Converter from angle to pixel</span>
+
+<span class="sd">        mag_threshold: float</span>
+<span class="sd">            Value of magnitude to use as the cutoff for bright objects</span>
+
+<span class="sd">        sparse: bool, optional</span>
+<span class="sd">            Whether to use sparse indexing for the calculation.  Faster if only a small number of pixels</span>
+<span class="sd">            Are used.</span>
+
+<span class="sd">        comm: MPI communicator, optional</span>
+<span class="sd">            An MPI comm for parallel processing.  If None, calculation is serial.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        pixel: array</span>
+<span class="sd">            Indices of all pixels with bright objects</span>
+
+<span class="sd">        count: array</span>
+<span class="sd">            Number of bright objects in each pixel</span>
+
+<span class="sd">        brmag: array</span>
+<span class="sd">            mean magnitude of bright objects in each pixel</span>
+
+<span class="sd">        brmag_var: array</span>
+<span class="sd">            variance of magnitude of bright objects in each pixel</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_scheme</span> <span class="o">=</span> <span class="n">pixel_scheme</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mag_threshold</span> <span class="o">=</span> <span class="n">mag_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="o">=</span> <span class="n">comm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span> <span class="o">=</span> <span class="n">sparse</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="o">.</span><span class="n">npix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="n">sparse</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BrightObjectMapper.add_data"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.BrightObjectMapper.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">ra</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span>
+        <span class="n">dec</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;extendedness&#39;</span><span class="p">]</span>
+        <span class="n">mags</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag&#39;</span><span class="p">]</span>
+        <span class="c1"># Get healpix pixels</span>
+        <span class="n">pix_nums</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_scheme</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
+
+        <span class="c1"># For each found pixel find all values hitting that pixel</span>
+        <span class="c1"># and yield the index and their magnitudes</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix_nums</span><span class="p">):</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix_nums</span><span class="o">==</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ext</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">mags</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">mag_threshold</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">mags</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="BrightObjectMapper.finalize"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.BrightObjectMapper.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+        <span class="n">count</span><span class="p">,</span> <span class="n">brmag</span><span class="p">,</span> <span class="n">brmag_var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="c1"># Generate the pixel indexing (if parallel and the master process) and </span>
+        <span class="c1"># convert from sparse arrays to pixel, index arrays.if sparse</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pixel</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span><span class="p">:</span>
+            <span class="n">pixel</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">count</span><span class="o">.</span><span class="n">to_arrays</span><span class="p">()</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">brmag</span> <span class="o">=</span> <span class="n">brmag</span><span class="o">.</span><span class="n">to_arrays</span><span class="p">()</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">brmag_var</span> <span class="o">=</span> <span class="n">brmag_var</span><span class="o">.</span><span class="n">to_arrays</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">brmag</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">pixel</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">brmag</span><span class="p">,</span> <span class="n">brmag_var</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

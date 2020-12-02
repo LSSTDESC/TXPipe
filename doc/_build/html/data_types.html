@@ -36,8 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Utilities" href="utils.html" />
-    <link rel="prev" title="Submodules for TXPipe" href="submodules.html" /> 
+    <link rel="next" title="mapping" href="mapping.html" />
+    <link rel="prev" title="twopoint_fourier" href="twopoint_fourier.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -87,12 +87,11 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">data_types</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a><ul class="simple">
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">data_types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mapping.html">mapping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plotting.html">plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="randoms.html">randoms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ui.html">Ui</a></li>
 <li class="toctree-l2"><a class="reference internal" href="utils.html">Utilities</a></li>
 </ul>
 </li>
@@ -142,7 +141,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-          <li><a href="submodules.html">Submodules for TXPipe</a> &raquo;</li>
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
         
       <li>data_types</li>
     
@@ -163,13 +162,659 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-txpipe.data_types">
-<span id="data-types"></span><h1>data_types<a class="headerlink" href="#module-txpipe.data_types" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
-<div class="toctree-wrapper compound">
-</div>
-</div>
+  <div class="section" id="module-txpipe.data_types.base">
+<span id="data-types"></span><h1>data_types<a class="headerlink" href="#module-txpipe.data_types.base" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.data_types.base.DataFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">DataFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class representing a DataFile to be made by pipeline stages
+and passed on to subsequent ones.</p>
+<p>DataFile itself should not be instantiated - instead subclasses
+should be defined for different file types.</p>
+<p>These subclasses are used in the definition of pipeline stages
+to indicate what kind of file is expected.  The “suffix” attribute,
+which must be defined on subclasses, indicates the file suffix.</p>
+<p>The open method, which can optionally be overridden, is used by the
+machinery of the PipelineStage class to open an input our output
+named by a tag.</p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.add_provenance">
+<code class="sig-name descname">add_provenance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">key</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.add_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.add_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses (for which it is possible) should override
+this method to save the a new string key/value pair to file</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.generate_provenance">
+<em class="property">static </em><code class="sig-name descname">generate_provenance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.generate_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.generate_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate provenance information - a dictionary
+of useful information about the origina</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.make_name">
+<em class="property">classmethod </em><code class="sig-name descname">make_name</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.make_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.make_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.open">
+<em class="property">classmethod </em><code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a data file.  The base implementation of this function just
+opens and returns a standard python file object.</p>
+<p>Subclasses can override to either open files using different openers
+(like fitsio.FITS), or, for more specific data types, return an
+instance of the class itself to use as an intermediary for the file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.DataFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = None</em><a class="headerlink" href="#txpipe.data_types.base.DataFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.DataFile.supports_parallel_write">
+<code class="sig-name descname">supports_parallel_write</code><em class="property"> = False</em><a class="headerlink" href="#txpipe.data_types.base.DataFile.supports_parallel_write" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.validate">
+<code class="sig-name descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses should override this method
+to check that all expected columns are present.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.DataFile.write_provenance">
+<code class="sig-name descname">write_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#DataFile.write_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.DataFile.write_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses (for which it is possible) should override
+this method to save the dictionary self.provenance to the file.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.Directory">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">Directory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#Directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.Directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.Directory.open">
+<em class="property">classmethod </em><code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#Directory.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.Directory.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a data file.  The base implementation of this function just
+opens and returns a standard python file object.</p>
+<p>Subclasses can override to either open files using different openers
+(like fitsio.FITS), or, for more specific data types, return an
+instance of the class itself to use as an intermediary for the file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.Directory.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#Directory.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.Directory.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.Directory.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = ''</em><a class="headerlink" href="#txpipe.data_types.base.Directory.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.Directory.write_provenance">
+<code class="sig-name descname">write_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#Directory.write_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.Directory.write_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write provenance information to a new group,
+called ‘provenance’</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.FileCollection">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">FileCollection</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FileCollection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FileCollection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.Directory" title="txpipe.data_types.base.Directory"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.Directory</span></code></a></p>
+<p>Represents a grouped bundle of files, for cases where you don’t
+know the exact list in advance.</p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.FileCollection.path_for_file">
+<code class="sig-name descname">path_for_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FileCollection.path_for_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FileCollection.path_for_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the path for a file inside the collection.
+Does not check if the file exists or anything like
+that.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FileCollection.read_listing">
+<code class="sig-name descname">read_listing</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FileCollection.read_listing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FileCollection.read_listing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a listing file from the directory.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.FileCollection.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = ''</em><a class="headerlink" href="#txpipe.data_types.base.FileCollection.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FileCollection.write_listing">
+<code class="sig-name descname">write_listing</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filenames</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FileCollection.write_listing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FileCollection.write_listing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a listing file in the directory recording
+(presumably) the filenames put in it.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt id="txpipe.data_types.base.FileValidationError">
+<em class="property">exception </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">FileValidationError</code><a class="reference internal" href="_modules/txpipe/data_types/base.html#FileValidationError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FileValidationError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.FitsFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">FitsFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<p>A data file in the FITS format.
+Using these files requires the fitsio package.</p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.FitsFile.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FitsFile.missing_columns">
+<code class="sig-name descname">missing_columns</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">columns</span></em>, <em class="sig-param"><span class="n">hdu</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile.missing_columns"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile.missing_columns" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that all supplied columns exist
+and are in the chosen HDU</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FitsFile.open">
+<em class="property">classmethod </em><code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a data file.  The base implementation of this function just
+opens and returns a standard python file object.</p>
+<p>Subclasses can override to either open files using different openers
+(like fitsio.FITS), or, for more specific data types, return an
+instance of the class itself to use as an intermediary for the file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FitsFile.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.FitsFile.required_columns">
+<code class="sig-name descname">required_columns</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.base.FitsFile.required_columns" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.FitsFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'fits'</em><a class="headerlink" href="#txpipe.data_types.base.FitsFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FitsFile.validate">
+<code class="sig-name descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that the catalog has all the required columns and complain otherwise</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.FitsFile.write_provenance">
+<code class="sig-name descname">write_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#FitsFile.write_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.FitsFile.write_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write provenance information to a new group,
+called ‘provenance’</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.HDFFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">HDFFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#HDFFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.HDFFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.HDFFile.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#HDFFile.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.HDFFile.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.HDFFile.open">
+<em class="property">classmethod </em><code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#HDFFile.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.HDFFile.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a data file.  The base implementation of this function just
+opens and returns a standard python file object.</p>
+<p>Subclasses can override to either open files using different openers
+(like fitsio.FITS), or, for more specific data types, return an
+instance of the class itself to use as an intermediary for the file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.HDFFile.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#HDFFile.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.HDFFile.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.HDFFile.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.base.HDFFile.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.HDFFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'hdf5'</em><a class="headerlink" href="#txpipe.data_types.base.HDFFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.HDFFile.supports_parallel_write">
+<code class="sig-name descname">supports_parallel_write</code><em class="property"> = True</em><a class="headerlink" href="#txpipe.data_types.base.HDFFile.supports_parallel_write" title="Permalink to this definition">¶</a></dt>
+<dd><p>A data file in the HDF5 format.
+Using these files requires the h5py package, which in turn
+requires an HDF5 library installation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.HDFFile.validate">
+<code class="sig-name descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#HDFFile.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.HDFFile.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses should override this method
+to check that all expected columns are present.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.HDFFile.write_provenance">
+<code class="sig-name descname">write_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#HDFFile.write_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.HDFFile.write_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write provenance information to a new group,
+called ‘provenance’</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.PNGFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">PNGFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#PNGFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.PNGFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.PNGFile.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#PNGFile.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.PNGFile.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.PNGFile.open">
+<em class="property">classmethod </em><code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#PNGFile.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.PNGFile.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a data file.  The base implementation of this function just
+opens and returns a standard python file object.</p>
+<p>Subclasses can override to either open files using different openers
+(like fitsio.FITS), or, for more specific data types, return an
+instance of the class itself to use as an intermediary for the file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.PNGFile.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#PNGFile.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.PNGFile.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.PNGFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'png'</em><a class="headerlink" href="#txpipe.data_types.base.PNGFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.PNGFile.write_provenance">
+<code class="sig-name descname">write_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#PNGFile.write_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.PNGFile.write_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses (for which it is possible) should override
+this method to save the dictionary self.provenance to the file.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.TextFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">TextFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#TextFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.TextFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<p>A data file in plain text format.</p>
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.TextFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'txt'</em><a class="headerlink" href="#txpipe.data_types.base.TextFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.base.YamlFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.base.</code><code class="sig-name descname">YamlFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">load_mode</span><span class="o">=</span><span class="default_value">'full'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#YamlFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.YamlFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<p>A data file in yaml format.
+The top-level object in TXPipe YAML
+files should always be a dictionary.</p>
+<dl class="py method">
+<dt id="txpipe.data_types.base.YamlFile.read">
+<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">key</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#YamlFile.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.YamlFile.read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.YamlFile.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#YamlFile.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.YamlFile.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.base.YamlFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'yml'</em><a class="headerlink" href="#txpipe.data_types.base.YamlFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.YamlFile.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">d</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#YamlFile.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.YamlFile.write" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.base.YamlFile.write_provenance">
+<code class="sig-name descname">write_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/base.html#YamlFile.write_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.base.YamlFile.write_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses (for which it is possible) should override
+this method to save the dictionary self.provenance to the file.</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-txpipe.data_types.types"></span><p>This file contains TXPipe-specific file types, subclassing the more
+generic types in base.py</p>
+<dl class="py class">
+<dt id="txpipe.data_types.types.CSVFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">CSVFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#CSVFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.CSVFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.CSVFile.save_file">
+<code class="sig-name descname">save_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">dataframe</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#CSVFile.save_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.CSVFile.save_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.CSVFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'csv'</em><a class="headerlink" href="#txpipe.data_types.types.CSVFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.ClusteringNoiseMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">ClusteringNoiseMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#ClusteringNoiseMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.ClusteringNoiseMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.types.MapsFile" title="txpipe.data_types.types.MapsFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.types.MapsFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.ClusteringNoiseMaps.number_of_realizations">
+<code class="sig-name descname">number_of_realizations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#ClusteringNoiseMaps.number_of_realizations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.ClusteringNoiseMaps.number_of_realizations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.ClusteringNoiseMaps.read_density_split">
+<code class="sig-name descname">read_density_split</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">realization_index</span></em>, <em class="sig-param"><span class="n">bin_index</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#ClusteringNoiseMaps.read_density_split"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.ClusteringNoiseMaps.read_density_split" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.FiducialCosmology">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">FiducialCosmology</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">load_mode</span><span class="o">=</span><span class="default_value">'full'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#FiducialCosmology"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.FiducialCosmology" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.YamlFile" title="txpipe.data_types.base.YamlFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.YamlFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.FiducialCosmology.to_ccl">
+<code class="sig-name descname">to_ccl</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#FiducialCosmology.to_ccl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.FiducialCosmology.to_ccl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.LensingNoiseMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">LensingNoiseMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#LensingNoiseMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.LensingNoiseMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.types.MapsFile" title="txpipe.data_types.types.MapsFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.types.MapsFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.LensingNoiseMaps.number_of_realizations">
+<code class="sig-name descname">number_of_realizations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#LensingNoiseMaps.number_of_realizations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.LensingNoiseMaps.number_of_realizations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.LensingNoiseMaps.read_rotation">
+<code class="sig-name descname">read_rotation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">realization_index</span></em>, <em class="sig-param"><span class="n">bin_index</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#LensingNoiseMaps.read_rotation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.LensingNoiseMaps.read_rotation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.LensingNoiseMaps.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.types.LensingNoiseMaps.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.MapsFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">MapsFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.HDFFile" title="txpipe.data_types.base.HDFFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.HDFFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.list_maps">
+<code class="sig-name descname">list_maps</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.list_maps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.list_maps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.plot_gnomonic">
+<code class="sig-name descname">plot_gnomonic</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.plot_gnomonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.plot_gnomonic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.plot_healpix">
+<code class="sig-name descname">plot_healpix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em>, <em class="sig-param"><span class="n">view</span><span class="o">=</span><span class="default_value">'cart'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.plot_healpix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.plot_healpix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.read_gnomonic">
+<code class="sig-name descname">read_gnomonic</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.read_gnomonic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.read_gnomonic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.read_healpix">
+<code class="sig-name descname">read_healpix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em>, <em class="sig-param"><span class="n">return_all</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.read_healpix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.read_healpix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.read_map">
+<code class="sig-name descname">read_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.read_map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.read_map" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.read_map_info">
+<code class="sig-name descname">read_map_info</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.read_map_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.read_map_info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.read_mask">
+<code class="sig-name descname">read_mask</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.read_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.read_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.MapsFile.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.types.MapsFile.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.MapsFile.write_map">
+<code class="sig-name descname">write_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">map_name</span></em>, <em class="sig-param"><span class="n">pixel</span></em>, <em class="sig-param"><span class="n">value</span></em>, <em class="sig-param"><span class="n">metadata</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#MapsFile.write_map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.MapsFile.write_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save an output map to an HDF5 subgroup.</p>
+<p>The pixel numbering and the metadata are also saved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>group</strong> (<em>H5Group</em>) – The h5py Group object in which to store maps</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – The name of this map, used as the name of a subgroup in the group where the data is stored.</p></li>
+<li><p><strong>pixel</strong> (<em>array</em>) – Array of indices of observed pixels</p></li>
+<li><p><strong>value</strong> (<em>array</em>) – Array of values of observed pixels</p></li>
+<li><p><strong>metadata</strong> (<em>mapping</em>) – Dict or other mapping of metadata to store along with the map</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.NOfZFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">NOfZFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#NOfZFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.NOfZFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.HDFFile" title="txpipe.data_types.base.HDFFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.HDFFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.NOfZFile.get_n_of_z">
+<code class="sig-name descname">get_n_of_z</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">kind</span></em>, <em class="sig-param"><span class="n">bin_index</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#NOfZFile.get_n_of_z"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.NOfZFile.get_n_of_z" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.NOfZFile.get_n_of_z_spline">
+<code class="sig-name descname">get_n_of_z_spline</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bin_index</span></em>, <em class="sig-param"><span class="n">kind</span><span class="o">=</span><span class="default_value">'cubic'</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#NOfZFile.get_n_of_z_spline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.NOfZFile.get_n_of_z_spline" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.NOfZFile.get_nbin">
+<code class="sig-name descname">get_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">kind</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#NOfZFile.get_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.NOfZFile.get_nbin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.NOfZFile.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">kind</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#NOfZFile.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.NOfZFile.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.NOfZFile.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.types.NOfZFile.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.NOfZFile.save_plot">
+<code class="sig-name descname">save_plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">fig_kw</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#NOfZFile.save_plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.NOfZFile.save_plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.PhotozPDFFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">PhotozPDFFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#PhotozPDFFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.PhotozPDFFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.HDFFile" title="txpipe.data_types.base.HDFFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.HDFFile</span></code></a></p>
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.PhotozPDFFile.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.types.PhotozPDFFile.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.RandomsCatalog">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">RandomsCatalog</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#RandomsCatalog"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.RandomsCatalog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.HDFFile" title="txpipe.data_types.base.HDFFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.HDFFile</span></code></a></p>
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.RandomsCatalog.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = ['randoms/ra', 'randoms/dec']</em><a class="headerlink" href="#txpipe.data_types.types.RandomsCatalog.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.SACCFile">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">SACCFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#SACCFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.SACCFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.DataFile" title="txpipe.data_types.base.DataFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.DataFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.SACCFile.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#SACCFile.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.SACCFile.close" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.SACCFile.open">
+<em class="property">classmethod </em><code class="sig-name descname">open</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#SACCFile.open"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.SACCFile.open" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a data file.  The base implementation of this function just
+opens and returns a standard python file object.</p>
+<p>Subclasses can override to either open files using different openers
+(like fitsio.FITS), or, for more specific data types, return an
+instance of the class itself to use as an intermediary for the file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.SACCFile.read_provenance">
+<code class="sig-name descname">read_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#SACCFile.read_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.SACCFile.read_provenance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concrete subclasses for which it is possible should override
+this method and read the provenance information from the file.</p>
+<p>Other classes will return this dictionary of UNKNOWNs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.SACCFile.suffix">
+<code class="sig-name descname">suffix</code><em class="property"> = 'sacc'</em><a class="headerlink" href="#txpipe.data_types.types.SACCFile.suffix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.ShearCatalog">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">ShearCatalog</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#ShearCatalog"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.ShearCatalog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.HDFFile" title="txpipe.data_types.base.HDFFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.HDFFile</span></code></a></p>
+<p>A generic shear catalog</p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.ShearCatalog.catalog_type">
+<em class="property">property </em><code class="sig-name descname">catalog_type</code><a class="headerlink" href="#txpipe.data_types.types.ShearCatalog.catalog_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.ShearCatalog.read_catalog_info">
+<code class="sig-name descname">read_catalog_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#ShearCatalog.read_catalog_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.ShearCatalog.read_catalog_info" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.data_types.types.TomographyCatalog">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">TomographyCatalog</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">extra_provenance</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">validate</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#TomographyCatalog"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.TomographyCatalog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.data_types.base.HDFFile" title="txpipe.data_types.base.HDFFile"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.data_types.base.HDFFile</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.data_types.types.TomographyCatalog.read_nbin">
+<code class="sig-name descname">read_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bin_type</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#TomographyCatalog.read_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.TomographyCatalog.read_nbin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.data_types.types.TomographyCatalog.read_zbins">
+<code class="sig-name descname">read_zbins</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bin_type</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#TomographyCatalog.read_zbins"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.TomographyCatalog.read_zbins" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read saved redshift bin edges from attributes</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.data_types.types.TomographyCatalog.required_datasets">
+<code class="sig-name descname">required_datasets</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.data_types.types.TomographyCatalog.required_datasets" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.data_types.types.metacalibration_names">
+<code class="sig-prename descclassname">txpipe.data_types.types.</code><code class="sig-name descname">metacalibration_names</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">names</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/data_types/types.html#metacalibration_names"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.data_types.types.metacalibration_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate the metacalibrated variants of the inputs names,
+that is, variants with _1p, _1m, _2p, and _2m on the end
+of each name.</p>
+</dd></dl>
+
 </div>
 
 
@@ -180,10 +825,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="utils.html" class="btn btn-neutral float-right" title="Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="mapping.html" class="btn btn-neutral float-right" title="mapping" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="submodules.html" class="btn btn-neutral float-left" title="Submodules for TXPipe" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="twopoint_fourier.html" class="btn btn-neutral float-left" title="twopoint_fourier" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
