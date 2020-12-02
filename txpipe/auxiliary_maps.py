@@ -5,7 +5,9 @@ from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization
 from .utils.calibration_tools import read_shear_catalog_type
-
+"""
+.. module:: TXAuxiliaryMaps
+"""
 
 class TXAuxiliaryMaps(TXBaseMaps):
     name = "TXAuxiliaryMaps"

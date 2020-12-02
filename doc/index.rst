@@ -14,6 +14,8 @@ TXPipe documentation
    installation
 
    stages
+   submodules
+   
 
 
 

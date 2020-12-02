@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # TXPipe documentation build configuration file, created by
@@ -28,12 +27,6 @@ root_path = abspath(pjoin(this_dir, '../'))
 if os.path.isdir(root_path):
     sys.path.insert(0, root_path)
 
-
-#autodoc_member_order = 'alphabetical'
-
-os.system("./apidoc.sh")
-
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -45,31 +38,21 @@ os.system("./apidoc.sh")
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.ifconfig',
-    'sphinx.ext.napoleon'
-    #'numpydoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autosectionlabel',
     ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+#templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-from recommonmark.parser import CommonMarkParser  # noqa
-
-source_parsers = {
-    '.md': CommonMarkParser,
-}
-
-source_suffix = ['.rst', '.md']
+ source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = 'index'
@@ -98,7 +81,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+#exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -141,7 +124,7 @@ GoogleDocstring._parse = patched_parse
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+#html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
@@ -151,19 +134,19 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = [] #['_static']
+html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
 # This is required for the alabaster theme
 # refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
-html_sidebars = {
-    '**': [
-        'relations.html',  # needs 'show_related': True theme option to display
-        'searchbox.html',
-    ]
-}
+#html_sidebars = {
+#    '**': [
+#        'relations.html',  # needs 'show_related': True theme option to display
+#        'searchbox.html',
+#    ]
+#}
 
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -226,14 +209,14 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/3': None}
+#intersphinx_mapping = {'https://docs.python.org/3': None}
 
-numpydoc_show_inherited_class_members = True
+#numpydoc_show_inherited_class_members = True
 
-autoclass_content = 'both'
+#autoclass_content = 'both'
 
-autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrown', 
-                        'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
-                        'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
-                        'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
-                        'parallel_statistics', 'mpmath']
+#autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrown', 
+#                        'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
+#                        'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
+#                        'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
+#                        'parallel_statistics', 'mpmath']

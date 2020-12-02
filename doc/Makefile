@@ -17,7 +17,7 @@ help:
 generate-api: ./apidoc.sh
 	bash $<
 .PHONY: html
-html: generate-api
+html:
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 clean-api:
