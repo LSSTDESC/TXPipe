@@ -1,7 +1,7 @@
-Blinding
---------
+photoz 
+------
 
-.. automodule:: txpipe.blinding
+.. automodule:: txpipe.photoz 
    :members:
    :special-members:
    :show-inheritance:

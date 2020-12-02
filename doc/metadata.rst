@@ -1,7 +1,7 @@
-Blinding
+metadata
 --------
 
-.. automodule:: txpipe.blinding
+.. automodule:: txpipe.metadata
    :members:
    :special-members:
    :show-inheritance:

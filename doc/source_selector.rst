@@ -1,7 +1,7 @@
-Convergencemaps
+source_selector
 ---------------
 
-.. automodule:: txpipe.convergence
+.. automodule:: txpipe.source_selector
    :members:
    :special-members:
    :show-inheritance:

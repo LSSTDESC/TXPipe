@@ -1,7 +1,7 @@
-Base stage
+random_cats
 -----------
 
-.. automodule:: txpipe.base_stage
+.. automodule:: txpipe.random_cats
    :members:
    :special-members:
    :show-inheritance:

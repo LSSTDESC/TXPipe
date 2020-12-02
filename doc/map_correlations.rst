@@ -1,7 +1,7 @@
-Ingest redmagic
+map_correlations
 ----------------
 
-.. automodule:: txpipe.ingest_redmagic
+.. automodule:: txpipe.map_correlations
    :members:
    :special-members:
    :show-inheritance:

@@ -1,7 +1,7 @@
-Convergencemaps
+psf_diagnostics
 ---------------
 
-.. automodule:: txpipe.convergence
+.. automodule:: txpipe.psf_diagnostics
    :members:
    :special-members:
    :show-inheritance:

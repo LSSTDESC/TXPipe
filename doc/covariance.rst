@@ -1,7 +1,7 @@
 covariance stage
 ----------------
 
-.. autoclass:: txpipe.TXFourierGaussianCovariance
+.. automodule:: txpipe.covariance
    :members:
    :special-members:
    :show-inheritance:

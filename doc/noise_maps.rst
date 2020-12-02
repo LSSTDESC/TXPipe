@@ -1,7 +1,7 @@
-Blinding
---------
+noise_maps
+----------
 
-.. automodule:: txpipe.blinding
+.. automodule:: txpipe.noise_maps
    :members:
    :special-members:
    :show-inheritance:

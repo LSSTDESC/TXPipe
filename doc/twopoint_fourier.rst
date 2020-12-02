@@ -1,7 +1,7 @@
-Ingest redmagic
+twopoint_fourier
 ----------------
 
-.. automodule:: txpipe.ingest_redmagic
+.. automodule:: txpipe.twopoint_fourier
    :members:
    :special-members:
    :show-inheritance:

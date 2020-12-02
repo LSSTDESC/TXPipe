@@ -1,7 +1,7 @@
-Blinding
---------
+maps
+----
 
-.. automodule:: txpipe.blinding
+.. automodule:: txpipe.maps
    :members:
    :special-members:
    :show-inheritance:
