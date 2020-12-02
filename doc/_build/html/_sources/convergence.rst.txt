@@ -1,7 +1,7 @@
 Convergencemaps
 ---------------
 
-.. autoclass:: txpipe.TXConvergenceMaps
+.. automodule:: txpipe.convergence
    :members:
    :special-members:
    :show-inheritance:

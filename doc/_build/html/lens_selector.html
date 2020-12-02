@@ -35,7 +35,9 @@
 
     
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="map_correlations" href="map_correlations.html" />
+    <link rel="prev" title="exposure_info" href="exposure_info.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -81,9 +83,34 @@
             
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="auxiliary_maps.html">Auxilliary maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_stage.html">Base stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="blinding.html">Blinding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="covariance.html">covariance stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exposure_info.html">exposure_info</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Lens selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map_correlations.html">map_correlations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map_plots.html">map_plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="maps.html">maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="masks.html">masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metacal_gcr_input.html">metacal_gcr_input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="noise_maps.html">noise_maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz.html">photoz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz_mlz.html">photoz_mlz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz_stack.html">photoz_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="psf_diagnostics.html">psf_diagnostics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="random_cats.html">random_cats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_selector.html">source_selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="twopoint.html">Twopoint correlations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="twopoint_fourier.html">twopoint_fourier</a></li>
+</ul>
+</li>
 </ul>
 
             
@@ -130,6 +157,8 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+        
       <li>Lens selector</li>
     
     
@@ -149,8 +178,95 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="lens-selector">
-<h1>Lens selector<a class="headerlink" href="#lens-selector" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.lens_selector">
+<span id="lens-selector"></span><h1>Lens selector<a class="headerlink" href="#module-txpipe.lens_selector" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.lens_selector.TXBaseLensSelector">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.lens_selector.</code><code class="sig-name descname">TXBaseLensSelector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXBaseLensSelector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXBaseLensSelector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>This pipeline stage selects objects to be used
+as the lens sample for the galaxy clustering and
+shear-position calibrations.</p>
+<dl class="py method">
+<dt id="txpipe.lens_selector.TXBaseLensSelector.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXBaseLensSelector.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXBaseLensSelector.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Collect the list of columns to read</p></li>
+<li><p>Create iterators to read chunks of those columns</p></li>
+<li><dl class="simple">
+<dt>Loop through chunks:</dt><dd><ul>
+<li><p>select objects for each bin</p></li>
+<li><p>write them out</p></li>
+<li><p>accumulate selection bias values</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Average the selection biases</p></li>
+<li><p>Write out biases and close the output</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.lens_selector.TXBaseLensSelector.select_lens">
+<code class="sig-name descname">select_lens</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">phot_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXBaseLensSelector.select_lens"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXBaseLensSelector.select_lens" title="Permalink to this definition">¶</a></dt>
+<dd><p>Photometry cuts based on the BOSS Galaxy Target Selection:
+<a class="reference external" href="http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php">http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php</a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.lens_selector.TXBaseLensSelector.setup_output">
+<code class="sig-name descname">setup_output</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXBaseLensSelector.setup_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXBaseLensSelector.setup_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up the output data file.</p>
+<p>Creates the data sets and groups to put module output
+in the tomography_catalog output file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.lens_selector.TXBaseLensSelector.write_global_values">
+<code class="sig-name descname">write_global_values</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outfile</span></em>, <em class="sig-param"><span class="n">number_density_stats</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXBaseLensSelector.write_global_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXBaseLensSelector.write_global_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out overall selection biases</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>outfile</strong> (<em>h5py.File</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.lens_selector.TXBaseLensSelector.write_tomography">
+<code class="sig-name descname">write_tomography</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outfile</span></em>, <em class="sig-param"><span class="n">start</span></em>, <em class="sig-param"><span class="n">end</span></em>, <em class="sig-param"><span class="n">lens_bin</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXBaseLensSelector.write_tomography"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXBaseLensSelector.write_tomography" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out a chunk of tomography and response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outfile</strong> (<em>h5py.File</em>) – </p></li>
+<li><p><strong>start</strong> (<em>int</em>) – The index into the output this chunk starts at</p></li>
+<li><p><strong>end</strong> (<em>int</em>) – The index into the output this chunk ends at</p></li>
+<li><p><strong>tomo_bin</strong> (<em>array of shape</em><em> (</em><em>nrow</em><em>,</em><em>)</em>) – The bin index for each output object</p></li>
+<li><p><strong>R</strong> (<em>array of shape</em><em> (</em><em>nrow</em><em>,</em><em>2</em><em>,</em><em>2</em><em>)</em>) – Multiplicative bias calibration factor for each object</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.lens_selector.TXMeanLensSelector">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.lens_selector.</code><code class="sig-name descname">TXMeanLensSelector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXMeanLensSelector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXMeanLensSelector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.lens_selector.TXBaseLensSelector" title="txpipe.lens_selector.TXBaseLensSelector"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.lens_selector.TXBaseLensSelector</span></code></a></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.lens_selector.TXTruthLensSelector">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.lens_selector.</code><code class="sig-name descname">TXTruthLensSelector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/lens_selector.html#TXTruthLensSelector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.lens_selector.TXTruthLensSelector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.lens_selector.TXBaseLensSelector" title="txpipe.lens_selector.TXBaseLensSelector"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.lens_selector.TXBaseLensSelector</span></code></a></p>
+</dd></dl>
+
 </div>
 
 
@@ -158,6 +274,15 @@
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="map_correlations.html" class="btn btn-neutral float-right" title="map_correlations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="exposure_info.html" class="btn btn-neutral float-left" title="exposure_info" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

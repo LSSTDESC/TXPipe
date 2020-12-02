@@ -1,7 +1,7 @@
 exposure_info
 -------------
 
-.. autoclass:: txpipe.TXExposureInfo
+.. automodule:: txpipe.exposure_info
    :members:
    :special-members:
    :show-inheritance:

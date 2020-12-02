@@ -1,7 +1,7 @@
 Ingest redmagic
 ----------------
 
-.. autoclass:: txpipe.TXIngestRedmagic
+.. automodule:: txpipe.ingest_redmagic
    :members:
    :special-members:
    :show-inheritance:

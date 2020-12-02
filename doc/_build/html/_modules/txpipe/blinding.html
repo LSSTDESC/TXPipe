@@ -83,7 +83,6 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
             
@@ -385,7 +384,7 @@
         <span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">TXNullBlinding</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXNullBlinding"><a class="viewcode-back" href="../../blinding.html#txpipe.TXNullBlinding">[docs]</a><span class="k">class</span> <span class="nc">TXNullBlinding</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A null stage to trivially copy the real raw data to real without blinding, </span>
 <span class="sd">    for use with simulations data. </span>
@@ -401,7 +400,7 @@
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span> 
         <span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXNullBlinding.run"><a class="viewcode-back" href="../../blinding.html#txpipe.TXNullBlinding.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">            Run the analysis for this stage.</span>
 
@@ -411,7 +410,7 @@
         <span class="kn">import</span> <span class="nn">shutil</span>
 
         <span class="n">unblinded_fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real_raw&#39;</span><span class="p">)</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">unblinded_fname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">))</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">unblinded_fname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">))</span></div></div>
 </pre></div>
 
            </div>

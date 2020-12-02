@@ -1,0 +1,840 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.source_selector &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.source_selector</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.source_selector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">ShearCatalog</span><span class="p">,</span> <span class="n">YamlFile</span><span class="p">,</span> <span class="n">PhotozPDFFile</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">TextFile</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">SourceNumberDensityStats</span>
+<span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">read_shear_catalog_type</span><span class="p">,</span> <span class="n">apply_metacal_response</span>
+<span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">metacal_variants</span><span class="p">,</span> <span class="n">band_variants</span><span class="p">,</span> <span class="n">ParallelCalibratorMetacal</span><span class="p">,</span> <span class="n">ParallelCalibratorNonMetacal</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<div class="viewcode-block" id="TXSourceSelector"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector">[docs]</a><span class="k">class</span> <span class="nc">TXSourceSelector</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This pipeline stage selects objects to be used</span>
+<span class="sd">    as the source sample for the shear-shear and</span>
+<span class="sd">    shear-position calibrations.  It applies some</span>
+<span class="sd">    general cuts based on the flags that metacal</span>
+<span class="sd">    gives for the objects, and size and S/N cuts</span>
+<span class="sd">    based on the configuration file.</span>
+
+<span class="sd">    It also splits those objects into tomographic</span>
+<span class="sd">    bins according to the choice the user makes</span>
+<span class="sd">    in the input file, from the information in the</span>
+<span class="sd">    photo-z PDF file.</span>
+
+<span class="sd">    Once these selections are made it constructs</span>
+<span class="sd">    the quantities needed to calibrate each bin -</span>
+<span class="sd">    this consists of two shear response quantities.</span>
+
+<span class="sd">    TODO: add option to use lensfit catalogs, which </span>
+<span class="sd">    would be much much simpler.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXSourceSelector&#39;</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">,</span> <span class="n">ShearCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;calibration_table&#39;</span><span class="p">,</span> <span class="n">TextFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>  <span class="c1"># this is to get the photo-z, does not necessarily need it</span>
+    <span class="p">]</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;input_pz&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;true_z&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;bands&#39;</span><span class="p">:</span> <span class="s1">&#39;riz&#39;</span><span class="p">,</span> <span class="c1"># bands from metacal to use</span>
+        <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;T_cut&#39;</span><span class="p">:</span><span class="nb">float</span><span class="p">,</span>
+        <span class="s1">&#39;s2n_cut&#39;</span><span class="p">:</span><span class="nb">float</span><span class="p">,</span>
+        <span class="s1">&#39;delta_gamma&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="s1">&#39;chunk_rows&#39;</span><span class="p">:</span><span class="mi">10000</span><span class="p">,</span>
+        <span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">:[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="s1">&#39;random_seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+        <span class="s1">&#39;shear_prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;mcal_&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+<div class="viewcode-block" id="TXSourceSelector.run"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the analysis for this stage.</span>
+<span class="sd">        </span>
+<span class="sd">         - Collect the list of columns to read</span>
+<span class="sd">         - Create iterators to read chunks of those columns</span>
+<span class="sd">         - Loop through chunks:</span>
+<span class="sd">            - select objects for each bin</span>
+<span class="sd">            - write them out</span>
+<span class="sd">            - accumulate selection bias values</span>
+<span class="sd">         - Average the selection biases</span>
+<span class="sd">         - Write out biases and close the output</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">astropy.table</span>
+        <span class="kn">import</span> <span class="nn">sklearn.ensemble</span>
+
+        <span class="c1"># Suppress some warnings from numpy that are not relevant</span>
+        <span class="n">original_warning_settings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">seterr</span><span class="p">(</span><span class="nb">all</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>  
+
+        <span class="c1"># Are we using a metacal or lensfit catalog?</span>
+        <span class="n">shear_catalog_type</span> <span class="o">=</span> <span class="n">read_shear_catalog_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># The output file we will put the tomographic</span>
+        <span class="c1"># information into</span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_output</span><span class="p">()</span>
+
+        <span class="c1"># various config options</span>
+        <span class="n">bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;bands&#39;</span><span class="p">]</span>
+        <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+
+
+        <span class="c1"># Columns we need from the shear catalog, will need to modify for lensfit catalogs</span>
+        <span class="n">shear_cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">flags&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">psf_T_mean&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">]</span>
+        <span class="n">shear_cols</span> <span class="o">+=</span> <span class="n">band_variants</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span>
+                                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">mag&#39;</span><span class="p">,</span>
+                                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">mag_err&#39;</span><span class="p">,</span>
+                                    <span class="n">shear_catalog_type</span><span class="o">=</span><span class="n">shear_catalog_type</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">shear_catalog_type</span> <span class="o">==</span> <span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="n">metacal_variants</span><span class="p">(</span><span class="s1">&#39;mcal_T&#39;</span><span class="p">,</span> <span class="s1">&#39;mcal_s2n&#39;</span><span class="p">,</span> <span class="s1">&#39;mcal_g1&#39;</span><span class="p">,</span> <span class="s1">&#39;mcal_g2&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="s1">&#39;s2n&#39;</span><span class="p">,</span> <span class="s1">&#39;g1&#39;</span><span class="p">,</span> <span class="s1">&#39;g2&#39;</span><span class="p">,</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span><span class="s1">&#39;m&#39;</span><span class="p">,</span><span class="s1">&#39;c1&#39;</span><span class="p">,</span><span class="s1">&#39;c2&#39;</span><span class="p">,</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_pz&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;mean_z&#39;</span><span class="p">]</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;mean_z_1p&#39;</span><span class="p">]</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;mean_z_1m&#39;</span><span class="p">]</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;mean_z_2p&#39;</span><span class="p">]</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;mean_z_2m&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_pz&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">!=</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;mean_z&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;true_z&#39;</span><span class="p">]:</span>
+            <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Build a classifier used to put objects into tomographic bins</span>
+            <span class="n">classifier</span><span class="p">,</span> <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_tomographic_classifier</span><span class="p">()</span>
+
+            <span class="c1"># this bit is for metacal if we want to use it later</span>
+
+        <span class="c1"># Input data.  These are iterators - they lazily load chunks</span>
+        <span class="c1"># of the data one by one later when we do the for loop.</span>
+        <span class="c1"># This code can be run in parallel, and different processes will</span>
+        <span class="c1"># each get different chunks of the data</span>
+        <span class="n">iter_shear</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;shear&#39;</span><span class="p">,</span> <span class="n">shear_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
+
+        <span class="c1"># We will collect the selection biases for each bin</span>
+        <span class="c1"># as a matrix.  We will collect together the different</span>
+        <span class="c1"># matrices for each chunk and do a weighted average at the end.</span>
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">selection_biases</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">number_density_stats</span> <span class="o">=</span> <span class="n">SourceNumberDensityStats</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span><span class="n">shear_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">shear_catalog_type</span> <span class="o">==</span> <span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">ParallelCalibratorMetacal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">select</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)]</span>
+            <span class="c1"># 2d calibrator</span>
+            <span class="n">calibrators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ParallelCalibratorMetacal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">select_2d</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">ParallelCalibratorNonMetacal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">select</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)]</span>
+            <span class="n">calibrators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ParallelCalibratorNonMetacal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">select_2d</span><span class="p">))</span>
+
+        <span class="c1"># Loop through the input data, processing it chunk by chunk</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">shear_data</span><span class="p">)</span> <span class="ow">in</span> <span class="n">iter_shear</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> running selection for rows </span><span class="si">{</span><span class="n">start</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;true_z&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_pz&#39;</span><span class="p">]:</span>
+                <span class="n">pz_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_simple_redshift_cut</span><span class="p">(</span><span class="n">shear_data</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Select most likely tomographic source bin</span>
+                <span class="n">pz_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_classifier</span><span class="p">(</span><span class="n">classifier</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">shear_data</span><span class="p">)</span>
+
+            <span class="c1"># Combine this selection with size and snr cuts to produce a source selection</span>
+            <span class="c1"># and calculate the shear bias it would generate</span>
+            <span class="n">tomo_bin</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_tomography</span><span class="p">(</span><span class="n">pz_data</span><span class="p">,</span> <span class="n">shear_data</span><span class="p">,</span> <span class="n">calibrators</span><span class="p">)</span>
+
+            <span class="c1"># Save the tomography for this chunk</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_tomography</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">tomo_bin</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span>
+
+            <span class="c1"># Accumulate information on the number counts and the selection biases.</span>
+            <span class="c1"># These will be brought together at the end.</span>
+            <span class="n">number_density_stats</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">shear_data</span><span class="p">,</span> <span class="n">tomo_bin</span><span class="p">)</span>  <span class="c1"># check this</span>
+
+        <span class="c1"># Do the selection bias averaging and output that too.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_global_values</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">calibrators</span><span class="p">,</span> <span class="n">number_density_stats</span><span class="p">)</span>
+
+        <span class="c1"># Save and complete</span>
+        <span class="n">output_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c1"># Restore the original warning settings in case we are being called from a library</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">seterr</span><span class="p">(</span><span class="o">**</span><span class="n">original_warning_settings</span><span class="p">)</span></div>
+
+    
+    <span class="k">def</span> <span class="nf">build_tomographic_classifier</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Load the training data</span>
+        <span class="c1"># Build the SOM from the training data</span>
+        <span class="kn">from</span> <span class="nn">astropy.table</span> <span class="kn">import</span> <span class="n">Table</span>
+        <span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">classifier</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">classifier</span><span class="p">,</span> <span class="n">features</span>
+
+        <span class="c1"># Load the training data</span>
+        <span class="n">training_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s2">&quot;calibration_table&quot;</span><span class="p">)</span>
+        <span class="n">training_data_table</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">training_file</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;ascii&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Pull out the appropriate columns and combinations of the data</span>
+        <span class="n">bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;bands&#39;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using these bands to train the tomography selector: </span><span class="si">{</span><span class="n">bands</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Generate the training data that we will use</span>
+        <span class="c1"># We record both the name of the column and the data iself</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">training_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">b1</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">[:]:</span>
+            <span class="c1"># First we use the magnitudes themselves</span>
+            <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b1</span><span class="p">)</span>
+            <span class="n">training_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">training_data_table</span><span class="p">[</span><span class="n">b1</span><span class="p">])</span>
+            <span class="c1"># We also use the colours as training data, even the redundant ones</span>
+            <span class="k">for</span> <span class="n">b2</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">[:]:</span>
+                <span class="k">if</span> <span class="n">b1</span><span class="o">&lt;</span><span class="n">b2</span><span class="p">:</span>
+                    <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">b1</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">b2</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="n">training_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">training_data_table</span><span class="p">[</span><span class="n">b1</span><span class="p">]</span> <span class="o">-</span> <span class="n">training_data_table</span><span class="p">[</span><span class="n">b2</span><span class="p">])</span>
+        <span class="n">training_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">training_data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training data for bin classifier has shape &quot;</span><span class="p">,</span> <span class="n">training_data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="c1"># Now put the training data into redshift bins</span>
+        <span class="c1"># We use -1 to indicate that we are outside the desired ranges</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">training_data_table</span><span class="p">[</span><span class="s1">&#39;sz&#39;</span><span class="p">]</span>
+        <span class="n">training_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using these bin edges:&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">zmin</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="n">zmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">][</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">training_bin</span><span class="p">[(</span><span class="n">z</span><span class="o">&gt;</span><span class="n">zmin</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">z</span><span class="o">&lt;</span><span class="n">zmax</span><span class="p">)]</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="n">ntrain_bin</span> <span class="o">=</span> <span class="p">((</span><span class="n">z</span><span class="o">&gt;</span><span class="n">zmin</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">z</span><span class="o">&lt;</span><span class="n">zmax</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training set: </span><span class="si">{</span><span class="n">ntrain_bin</span><span class="si">}</span><span class="s2"> objects in tomographic bin </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Can be replaced with any classifier</span>
+        <span class="n">classifier</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">max_features</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n_estimators</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;random_seed&#39;</span><span class="p">])</span>
+        <span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">training_data</span><span class="p">,</span> <span class="n">training_bin</span><span class="p">)</span>
+
+        <span class="c1"># Sklearn fitters can be pickled, which means they can also be sent through</span>
+        <span class="c1"># mpi4py</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_mpi</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">classifier</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">classifier</span><span class="p">,</span> <span class="n">features</span>
+
+
+<div class="viewcode-block" id="TXSourceSelector.apply_classifier"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector.apply_classifier">[docs]</a>    <span class="k">def</span> <span class="nf">apply_classifier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">classifier</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">shear_data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Apply the classifier to the measured magnitudes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;bands&#39;</span><span class="p">]</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">variants</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;_1p&#39;</span><span class="p">,</span> <span class="s1">&#39;_2p&#39;</span><span class="p">,</span> <span class="s1">&#39;_1m&#39;</span><span class="p">,</span> <span class="s1">&#39;_2m&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">variants</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">]</span>
+
+        <span class="n">pz_data</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variants</span><span class="p">:</span>
+            <span class="c1"># Pull out the columns that we have trained this bin selection</span>
+            <span class="c1"># model on.</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+                <span class="c1"># may be a single band</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">col</span> <span class="o">=</span> <span class="n">shear_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">mag_</span><span class="si">{</span><span class="n">f</span><span class="si">}{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+                <span class="c1"># or a colour</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">b1</span><span class="p">,</span><span class="n">b2</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)</span>
+                    <span class="n">col</span> <span class="o">=</span> <span class="n">shear_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">mag_</span><span class="si">{</span><span class="n">b1</span><span class="si">}{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">shear_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">mag_</span><span class="si">{</span><span class="n">b2</span><span class="si">}{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">col</span><span class="p">)):</span>
+                    <span class="c1"># entire column is NaN.  Hopefully this will get deselected elsewhere</span>
+                    <span class="n">col</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">30.0</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+                    <span class="n">col</span><span class="p">[</span><span class="o">~</span><span class="n">ok</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+            <span class="c1"># Run the random forest on this data chunk</span>
+            <span class="n">pz_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;zbin</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classifier</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pz_data</span></div>
+
+    <span class="k">def</span> <span class="nf">apply_simple_redshift_cut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shear_data</span><span class="p">):</span>
+
+        <span class="n">pz_data</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_pz&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+
+            <span class="c1"># this bit is for metacal, if we need it later</span>
+            <span class="n">variants</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;_1p&#39;</span><span class="p">,</span> <span class="s1">&#39;_2p&#39;</span><span class="p">,</span> <span class="s1">&#39;_1m&#39;</span><span class="p">,</span> <span class="s1">&#39;_2m&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">variants</span><span class="p">:</span>
+                <span class="n">zz</span> <span class="o">=</span> <span class="n">shear_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mean_z</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+
+                <span class="n">pz_data_v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zz</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span>
+                <span class="k">for</span> <span class="n">zi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="n">mask_zbin</span> <span class="o">=</span> <span class="p">(</span><span class="n">zz</span><span class="o">&gt;=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">][</span><span class="n">zi</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">zz</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">][</span><span class="n">zi</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">pz_data_v</span><span class="p">[</span><span class="n">mask_zbin</span><span class="p">]</span> <span class="o">=</span> <span class="n">zi</span>
+
+                <span class="n">pz_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;zbin</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pz_data_v</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_pz&#39;</span><span class="p">]:</span>
+                <span class="n">zz</span> <span class="o">=</span> <span class="n">shear_data</span><span class="p">[</span><span class="s1">&#39;mean_z&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">zz</span> <span class="o">=</span> <span class="n">shear_data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">]</span>
+        
+            <span class="n">pz_data_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zz</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">for</span> <span class="n">zi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">mask_zbin</span> <span class="o">=</span> <span class="p">(</span><span class="n">zz</span><span class="o">&gt;=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">][</span><span class="n">zi</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">zz</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">][</span><span class="n">zi</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">pz_data_bin</span><span class="p">[</span><span class="n">mask_zbin</span><span class="p">]</span> <span class="o">=</span> <span class="n">zi</span>
+
+            <span class="n">pz_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;zbin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pz_data_bin</span>
+
+            
+
+        <span class="k">return</span> <span class="n">pz_data</span>
+
+<div class="viewcode-block" id="TXSourceSelector.calculate_tomography"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector.calculate_tomography">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_tomography</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pz_data</span><span class="p">,</span> <span class="n">shear_data</span><span class="p">,</span> <span class="n">calibrators</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Select objects to go in each tomographic bin and their calibration.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        pz_data: table or dict of arrays</span>
+<span class="sd">            A chunk of input photo-z data containing mean values for each object</span>
+<span class="sd">        shear_data: table or dict of arrays</span>
+<span class="sd">            A chunk of input shear data with metacalibration variants.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">nbin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">shear_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">g1&#39;</span><span class="p">])</span>
+
+        <span class="c1"># The main output data - the tomographic</span>
+        <span class="c1"># bin index for each object, or -1 for no bin.</span>
+        <span class="n">tomo_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>
+
+        <span class="c1"># We also keep count of total count of objects in each bin</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">pz_data</span><span class="p">,</span> <span class="o">**</span><span class="n">shear_data</span><span class="p">}</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">R</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1p&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1m&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="n">delta_gamma</span>
+            <span class="n">R</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2p&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2m&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="n">delta_gamma</span>
+            <span class="n">R</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1p&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1m&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="n">delta_gamma</span>
+            <span class="n">R</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2p&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2m&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="n">delta_gamma</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">w_tot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">])</span>
+            <span class="n">R</span><span class="p">[:]</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">])</span><span class="o">/</span><span class="n">w_tot</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]))</span>
+
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="n">sel_00</span> <span class="o">=</span> <span class="n">calibrators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="n">tomo_bin</span><span class="p">[</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="n">nsum</span> <span class="o">=</span> <span class="n">sel_00</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">counts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">nsum</span>
+            <span class="c1"># also count up the 2D sample</span>
+            <span class="n">counts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">nsum</span>
+
+        <span class="c1"># and calibrate the 2D sample.</span>
+        <span class="c1"># This calibrator refers to self.select_2d</span>
+        <span class="n">calibrators</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tomo_bin</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">counts</span></div>
+
+<div class="viewcode-block" id="TXSourceSelector.setup_output"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector.setup_output">[docs]</a>    <span class="k">def</span> <span class="nf">setup_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set up the output data file.</span>
+
+<span class="sd">        Creates the data sets and groups to put module output</span>
+<span class="sd">        in the shear_tomography_catalog output file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">)[</span><span class="s1">&#39;shear/ra&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">zbins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_zbin_edges&#39;</span><span class="p">]</span>
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">zbins</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">outfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;tomography&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;source_bin&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;source_counts&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;source_counts_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;sigma_e_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;mean_e1&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;mean_e2&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;mean_e1_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;mean_e2_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;N_eff&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;N_eff_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+
+        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nbin_source</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_zmin_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zbins</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_zmax_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zbins</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1">#group = outfile.create_group(&#39;multiplicative_bias&#39;)  # why is this called &quot;multiplicative_bias&quot;?</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;metacal_response&#39;</span><span class="p">)</span> 
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_gamma&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_S&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_gamma_mean&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_total&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_S_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_gamma_mean_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_total_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;response&#39;</span><span class="p">)</span> 
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;K&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_mean&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_source</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;K_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;C_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;R_mean_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">outfile</span></div>
+
+<div class="viewcode-block" id="TXSourceSelector.write_tomography"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector.write_tomography">[docs]</a>    <span class="k">def</span> <span class="nf">write_tomography</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">source_bin</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write out a chunk of tomography and response.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+
+<span class="sd">        outfile: h5py.File</span>
+
+<span class="sd">        start: int</span>
+<span class="sd">            The index into the output this chunk starts at</span>
+
+<span class="sd">        end: int</span>
+<span class="sd">            The index into the output this chunk ends at</span>
+
+<span class="sd">        tomo_bin: array of shape (nrow,)</span>
+<span class="sd">            The bin index for each output object</span>
+
+<span class="sd">        R: array of shape (nrow,2,2)</span>
+<span class="sd">            Multiplicative bias calibration factor for each object</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span>
+        <span class="n">group</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_bin</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;metacal_response&#39;</span><span class="p">]</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_gamma&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">,:,:]</span> <span class="o">=</span> <span class="n">R</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;response&#39;</span><span class="p">]</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span></div>
+
+<div class="viewcode-block" id="TXSourceSelector.write_global_values"><a class="viewcode-back" href="../../source_selector.html#txpipe.source_selector.TXSourceSelector.write_global_values">[docs]</a>    <span class="k">def</span> <span class="nf">write_global_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">calibrators</span><span class="p">,</span> <span class="n">number_density_stats</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write out overall selection biases</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        outfile: h5py.File</span>
+
+<span class="sd">        S: array of shape (nbin,2,2)</span>
+<span class="sd">            Selection bias matrices</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">calibrators</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nbin_source</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nbin_source</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nbin_source</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">R_scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">mean_e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">mean_e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)</span>
+
+        <span class="n">means</span><span class="p">,</span> <span class="n">variances</span><span class="p">,</span> <span class="n">means_2d</span><span class="p">,</span> <span class="n">variances_2d</span> <span class="o">=</span> <span class="n">number_density_stats</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+        <span class="c1"># Loop through the tomographic calibrators.</span>
+        <span class="c1"># (The last calibrator is for the non-tomographic selection)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
+            <span class="n">cal</span> <span class="o">=</span> <span class="n">calibrators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">mu1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>
+            <span class="n">mu2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+
+            <span class="c1"># We now have to calibrate both the mean shear and the</span>
+            <span class="c1"># sigma_e estimator</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                <span class="c1"># Collect the total calibration factor</span>
+                <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">S</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+                <span class="c1"># Apply it to the means</span>
+                <span class="n">mean_e1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mean_e2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply_metacal_response</span><span class="p">(</span>
+                    <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">S</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g1</span><span class="o">=</span><span class="n">mu1</span><span class="p">,</span> <span class="n">g2</span><span class="o">=</span><span class="n">mu2</span><span class="p">)</span>
+
+                <span class="c1"># Inverse of the square of the reponse, taking</span>
+                <span class="c1"># diagonal because we don&#39;t have the covariance</span>
+                <span class="c1"># and it should be very small</span>
+                <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">@</span> <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="c1"># Apply to the variances to get sigma_e</span>
+                <span class="n">sigma_e</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">P</span> <span class="o">@</span> <span class="n">variances</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+                <span class="c1"># TODO Someone using a lensft catalog needs to check</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: check the lensfit calibration in mean shear&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Collect the overall calibration</span>
+                <span class="n">R_scalar</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">N</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cal</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+                <span class="c1"># should probably use one of the calibration_tools functions</span>
+                <span class="n">mean_e1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu1</span> <span class="o">/</span> <span class="n">R_scalar</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">mean_e2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu2</span> <span class="o">/</span> <span class="n">R_scalar</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+                <span class="c1"># This also needs checking.</span>
+                <span class="n">sigma_e</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                    <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">variances</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">variances</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+                <span class="p">)</span> <span class="o">/</span> <span class="n">R_scalar</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown calibration type in mean g / sigma_e calc&quot;</span><span class="p">)</span>
+
+        <span class="c1"># The non-tomographic parts</span>
+        <span class="n">cal2d</span> <span class="o">=</span> <span class="n">calibrators</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">mu1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">means_2d</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">mu2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">means_2d</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="c1"># Non-tomo metacal</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">R_2d</span><span class="p">,</span> <span class="n">S_2d</span><span class="p">,</span> <span class="n">N_2d</span> <span class="o">=</span> <span class="n">cal2d</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+            <span class="n">mean_e1_2d</span><span class="p">,</span> <span class="n">mean_e2_2d</span> <span class="o">=</span> <span class="n">apply_metacal_response</span><span class="p">(</span>
+                <span class="n">R_2d</span><span class="p">,</span> <span class="n">S_2d</span><span class="p">,</span> <span class="n">g1</span><span class="o">=</span><span class="n">mu1</span><span class="p">,</span> <span class="n">g2</span><span class="o">=</span><span class="n">mu2</span><span class="p">)</span>
+
+            <span class="c1"># non-tomo sigma_e in metacal</span>
+            <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">R_2d</span> <span class="o">@</span> <span class="n">R_2d</span><span class="p">))</span>
+            <span class="n">sigma_e_2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">P</span> <span class="o">@</span> <span class="n">variances_2d</span><span class="p">)</span>
+
+        <span class="c1"># Non-tomo lensfit</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;(also check in the 2D bit!)&quot;</span><span class="p">)</span>
+            <span class="n">R_scalar_2d</span><span class="p">,</span> <span class="n">K_2d</span><span class="p">,</span> <span class="n">C_2d</span><span class="p">,</span> <span class="n">N_2d</span> <span class="o">=</span> <span class="n">cal2d</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+            <span class="c1"># should probably use one of the calibration_tools functions</span>
+            <span class="n">mean_e1_2d</span> <span class="o">=</span> <span class="n">mu1</span> <span class="o">/</span> <span class="n">R_scalar_2d</span>
+            <span class="n">mean_e2_2d</span> <span class="o">=</span> <span class="n">mu2</span> <span class="o">/</span> <span class="n">R_scalar_2d</span>
+            <span class="c1"># non-tomo sigma_e in lensfit</span>
+            <span class="n">sigma_e_2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">variances_2d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">variances_2d</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="n">R_scalar_2d</span>
+
+
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;metacal_response&#39;</span><span class="p">]</span>
+                <span class="c1"># Tomographic outputs</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_S&#39;</span><span class="p">][:,:,:]</span> <span class="o">=</span> <span class="n">S</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_gamma_mean&#39;</span><span class="p">][:,:,:]</span> <span class="o">=</span> <span class="n">R</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_total&#39;</span><span class="p">][:,:,:]</span> <span class="o">=</span> <span class="n">R</span> <span class="o">+</span> <span class="n">S</span>
+
+                <span class="c1"># Non-tomographic outputs</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_S_2d&#39;</span><span class="p">][:,:]</span> <span class="o">=</span> <span class="n">S_2d</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_gamma_mean_2d&#39;</span><span class="p">][:,:]</span> <span class="o">=</span> <span class="n">R_2d</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_total_2d&#39;</span><span class="p">][:,:]</span> <span class="o">=</span> <span class="n">R_2d</span> <span class="o">+</span> <span class="n">S_2d</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;response&#39;</span><span class="p">]</span>
+                <span class="c1"># Tomographic outputs</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_mean&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">R_scalar</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;C&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">C</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;K&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">K</span>
+
+                <span class="c1"># Non-tomographic outputs</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;R_mean_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">R_scalar_2d</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;C_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">C_2d</span>
+                <span class="n">group</span><span class="p">[</span><span class="s1">&#39;K_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">K_2d</span>
+
+            <span class="c1"># These are the same in the two methods</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span>
+
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;source_counts&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">N</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;N_eff&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">N</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;mean_e1&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">mean_e1</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;mean_e2&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">mean_e2</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">sigma_e</span>
+
+            <span class="c1"># and the non-tomographic versions of the same things</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;source_counts_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">N_2d</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;N_eff_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">N_2d</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;mean_e1_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">mean_e1_2d</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;mean_e2_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">mean_e2_2d</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;sigma_e_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">sigma_e_2d</span></div>
+
+    
+    <span class="k">def</span> <span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
+        <span class="n">zbin</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;zbin&#39;</span><span class="p">]</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;verbose&#39;</span><span class="p">]</span>
+
+        <span class="n">sel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_2d</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">is_2d</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">sel</span> <span class="o">&amp;=</span> <span class="n">zbin</span><span class="o">==</span><span class="n">bin_index</span>
+        <span class="n">f4</span> <span class="o">=</span> <span class="n">sel</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">sel</span><span class="o">.</span><span class="n">size</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">f4</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> z for bin </span><span class="si">{</span><span class="n">bin_index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">sel</span>
+
+    <span class="k">def</span> <span class="nf">select_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">is_2d</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># Select any objects that pass general WL cuts</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+        <span class="n">s2n_cut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;s2n_cut&#39;</span><span class="p">]</span>
+        <span class="n">T_cut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;T_cut&#39;</span><span class="p">]</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;verbose&#39;</span><span class="p">]</span>
+        <span class="n">variant</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">suffix</span>
+
+        <span class="n">s2n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">s2n&#39;</span><span class="p">]</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">T&#39;</span><span class="p">]</span>
+
+        <span class="n">Tpsf</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">psf_T_mean&#39;</span><span class="p">]</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">flags&#39;</span><span class="p">]</span>
+
+        <span class="n">n0</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span>
+        <span class="n">sel</span>  <span class="o">=</span> <span class="n">flag</span><span class="o">==</span><span class="mi">0</span>
+        <span class="n">f1</span> <span class="o">=</span> <span class="n">sel</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">n0</span>
+        <span class="n">sel</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="n">T</span><span class="o">/</span><span class="n">Tpsf</span><span class="p">)</span><span class="o">&gt;</span><span class="n">T_cut</span>
+        <span class="n">f2</span> <span class="o">=</span> <span class="n">sel</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">n0</span>
+        <span class="n">sel</span> <span class="o">&amp;=</span> <span class="n">s2n</span><span class="o">&gt;</span><span class="n">s2n_cut</span>
+        <span class="n">f3</span> <span class="o">=</span> <span class="n">sel</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">n0</span>
+
+        <span class="c1"># Print out a message.  If we are selecting a 2D sample</span>
+        <span class="c1"># this is the complete message.  Otherwise if we are about</span>
+        <span class="c1"># to also apply a redshift bin cut about then the message will continue</span>
+        <span class="c1"># as above</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">is_2d</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;2D selection (</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2">) </span><span class="si">{</span><span class="n">f1</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> flag, </span><span class="si">{</span><span class="n">f2</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> size, &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">f3</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> SNR&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tomo selection (</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2">) </span><span class="si">{</span><span class="n">f1</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> flag, </span><span class="si">{</span><span class="n">f2</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> size, &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">f3</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> SNR, &quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sel</span></div>
+
+
+<span class="k">def</span> <span class="nf">flatten_list</span><span class="p">(</span><span class="n">lst</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span> <span class="n">lst</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">PipelineStage</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

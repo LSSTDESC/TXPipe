@@ -1,7 +1,7 @@
 Input Catalogs
 --------------
 
-.. autoclass:: txpipe.TXCosmoDC2Mock
+.. automodule:: txpipe.input_catalog
    :members:
    :special-members:
    :show-inheritance:

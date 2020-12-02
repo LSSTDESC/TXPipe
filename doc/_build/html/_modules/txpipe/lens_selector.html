@@ -1,0 +1,503 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.lens_selector &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.lens_selector</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.lens_selector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">YamlFile</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">TextFile</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">LensNumberDensityStats</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+
+
+
+<div class="viewcode-block" id="TXBaseLensSelector"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXBaseLensSelector">[docs]</a><span class="k">class</span> <span class="nc">TXBaseLensSelector</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This pipeline stage selects objects to be used</span>
+<span class="sd">    as the lens sample for the galaxy clustering and</span>
+<span class="sd">    shear-position calibrations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXBaseLensSelector&#39;</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;chunk_rows&#39;</span><span class="p">:</span><span class="mi">10000</span><span class="p">,</span>
+        <span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">:[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="c1"># Mag cuts</span>
+        <span class="c1"># Default photometry cuts based on the BOSS Galaxy Target Selection:                                                     </span>
+        <span class="c1"># http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php                                           </span>
+        <span class="s1">&#39;cperp_cut&#39;</span><span class="p">:</span><span class="mf">0.2</span><span class="p">,</span>
+        <span class="s1">&#39;r_cpar_cut&#39;</span><span class="p">:</span><span class="mf">13.5</span><span class="p">,</span>
+        <span class="s1">&#39;r_lo_cut&#39;</span><span class="p">:</span><span class="mf">16.0</span><span class="p">,</span>
+        <span class="s1">&#39;r_hi_cut&#39;</span><span class="p">:</span><span class="mf">19.6</span><span class="p">,</span>
+        <span class="s1">&#39;i_lo_cut&#39;</span><span class="p">:</span><span class="mf">17.5</span><span class="p">,</span>
+        <span class="s1">&#39;i_hi_cut&#39;</span><span class="p">:</span><span class="mf">19.9</span><span class="p">,</span>
+        <span class="s1">&#39;r_i_cut&#39;</span><span class="p">:</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="s1">&#39;random_seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="p">}</span>
+
+<div class="viewcode-block" id="TXBaseLensSelector.run"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXBaseLensSelector.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the analysis for this stage.</span>
+<span class="sd">        </span>
+<span class="sd">         - Collect the list of columns to read</span>
+<span class="sd">         - Create iterators to read chunks of those columns</span>
+<span class="sd">         - Loop through chunks:</span>
+<span class="sd">            - select objects for each bin</span>
+<span class="sd">            - write them out</span>
+<span class="sd">            - accumulate selection bias values</span>
+<span class="sd">         - Average the selection biases</span>
+<span class="sd">         - Write out biases and close the output</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">astropy.table</span>
+        <span class="kn">import</span> <span class="nn">sklearn.ensemble</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;TXBaseLensSelector&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Do not run TXBaseLensSelector - run a sub-class&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Suppress some warnings from numpy that are not relevant</span>
+        <span class="n">original_warning_settings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">seterr</span><span class="p">(</span><span class="nb">all</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>  
+
+        <span class="c1"># The output file we will put the tomographic</span>
+        <span class="c1"># information into</span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_output</span><span class="p">()</span>
+
+        <span class="n">iterator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_iterator</span><span class="p">()</span>
+
+        <span class="c1"># We will collect the selection biases for each bin</span>
+        <span class="c1"># as a matrix.  We will collect together the different</span>
+        <span class="c1"># matrices for each chunk and do a weighted average at the end.</span>
+        <span class="n">nbin_lens</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="n">number_density_stats</span> <span class="o">=</span> <span class="n">LensNumberDensityStats</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="c1"># Loop through the input data, processing it chunk by chunk</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">phot_data</span><span class="p">)</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> running selection for rows </span><span class="si">{</span><span class="n">start</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">pz_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_redshift_cut</span><span class="p">(</span><span class="n">phot_data</span><span class="p">)</span>
+
+            <span class="c1"># Select lens bin objects</span>
+            <span class="n">lens_gals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_lens</span><span class="p">(</span><span class="n">phot_data</span><span class="p">)</span>
+
+            <span class="c1"># Combine this selection with size and snr cuts to produce a source selection</span>
+            <span class="c1"># and calculate the shear bias it would generate</span>
+            <span class="n">tomo_bin</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_tomography</span><span class="p">(</span><span class="n">pz_data</span><span class="p">,</span> <span class="n">phot_data</span><span class="p">,</span> <span class="n">lens_gals</span><span class="p">)</span>
+
+            <span class="c1"># Save the tomography for this chunk</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_tomography</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">tomo_bin</span><span class="p">)</span>
+
+            <span class="c1"># Accumulate information on the number counts and the selection biases.</span>
+            <span class="c1"># These will be brought together at the end.</span>
+            <span class="n">number_density_stats</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">tomo_bin</span><span class="p">)</span>
+
+        <span class="c1"># Do the selection bias averaging and output that too.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_global_values</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">number_density_stats</span><span class="p">)</span>
+
+        <span class="c1"># Save and complete</span>
+        <span class="n">output_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c1"># Restore the original warning settings in case we are being called from a library</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">seterr</span><span class="p">(</span><span class="o">**</span><span class="n">original_warning_settings</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">apply_redshift_cut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phot_data</span><span class="p">):</span>
+
+        <span class="n">pz_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">nbin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="n">phot_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+
+        <span class="n">zbin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">zi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="n">mask_zbin</span> <span class="o">=</span> <span class="p">(</span>
+                  <span class="p">(</span><span class="n">z</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">][</span><span class="n">zi</span><span class="p">])</span> 
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">z</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">][</span><span class="n">zi</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">zbin</span><span class="p">[</span><span class="n">mask_zbin</span><span class="p">]</span> <span class="o">=</span> <span class="n">zi</span>
+            
+        <span class="n">pz_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;zbin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zbin</span>
+
+        <span class="k">return</span> <span class="n">pz_data</span>
+
+
+<div class="viewcode-block" id="TXBaseLensSelector.setup_output"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXBaseLensSelector.setup_output">[docs]</a>    <span class="k">def</span> <span class="nf">setup_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set up the output data file.</span>
+
+<span class="sd">        Creates the data sets and groups to put module output</span>
+<span class="sd">        in the tomography_catalog output file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">)[</span><span class="s1">&#39;photometry/ra&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">nbin_lens</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">outfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;tomography&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;lens_weight&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;lens_counts&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">nbin_lens</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;lens_counts_2d&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+
+        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nbin_lens</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">outfile</span></div>
+
+<div class="viewcode-block" id="TXBaseLensSelector.write_tomography"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXBaseLensSelector.write_tomography">[docs]</a>    <span class="k">def</span> <span class="nf">write_tomography</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">lens_bin</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write out a chunk of tomography and response.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outfile: h5py.File</span>
+
+<span class="sd">        start: int</span>
+<span class="sd">            The index into the output this chunk starts at</span>
+
+<span class="sd">        end: int</span>
+<span class="sd">            The index into the output this chunk ends at</span>
+
+<span class="sd">        tomo_bin: array of shape (nrow,)</span>
+<span class="sd">            The bin index for each output object</span>
+
+<span class="sd">        R: array of shape (nrow,2,2)</span>
+<span class="sd">            Multiplicative bias calibration factor for each object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span>
+        <span class="n">group</span><span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">lens_bin</span>
+        <span class="n">group</span><span class="p">[</span><span class="s1">&#39;lens_weight&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span></div>
+
+<div class="viewcode-block" id="TXBaseLensSelector.write_global_values"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXBaseLensSelector.write_global_values">[docs]</a>    <span class="k">def</span> <span class="nf">write_global_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">number_density_stats</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write out overall selection biases</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outfile: h5py.File</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lens_counts</span><span class="p">,</span> <span class="n">lens_counts_2d</span> <span class="o">=</span> <span class="n">number_density_stats</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;lens_counts&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">lens_counts</span>
+            <span class="n">group</span><span class="p">[</span><span class="s1">&#39;lens_counts_2d&#39;</span><span class="p">][:]</span> <span class="o">=</span> <span class="n">lens_counts_2d</span></div>
+
+
+<div class="viewcode-block" id="TXBaseLensSelector.select_lens"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXBaseLensSelector.select_lens">[docs]</a>    <span class="k">def</span> <span class="nf">select_lens</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">phot_data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Photometry cuts based on the BOSS Galaxy Target Selection:</span>
+<span class="sd">        http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mag_i</span> <span class="o">=</span> <span class="n">phot_data</span><span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">]</span>
+        <span class="n">mag_r</span> <span class="o">=</span> <span class="n">phot_data</span><span class="p">[</span><span class="s1">&#39;mag_r&#39;</span><span class="p">]</span>
+        <span class="n">mag_g</span> <span class="o">=</span> <span class="n">phot_data</span><span class="p">[</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Mag cuts </span>
+        <span class="n">cperp_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;cperp_cut&#39;</span><span class="p">]</span>
+        <span class="n">r_cpar_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;r_cpar_cut&#39;</span><span class="p">]</span>
+        <span class="n">r_lo_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;r_lo_cut&#39;</span><span class="p">]</span>
+        <span class="n">r_hi_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;r_hi_cut&#39;</span><span class="p">]</span>
+        <span class="n">i_lo_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;i_lo_cut&#39;</span><span class="p">]</span>
+        <span class="n">i_hi_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;i_hi_cut&#39;</span><span class="p">]</span>
+        <span class="n">r_i_cut_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;r_i_cut&#39;</span><span class="p">]</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mag_i</span><span class="p">)</span>
+        <span class="c1"># HDF does not support bools, so we will prepare a binary array</span>
+        <span class="c1"># where 0 is a lens and 1 is not</span>
+        <span class="n">lens_gals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="n">cpar</span> <span class="o">=</span> <span class="mf">0.7</span> <span class="o">*</span> <span class="p">(</span><span class="n">mag_g</span> <span class="o">-</span> <span class="n">mag_r</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.2</span> <span class="o">*</span> <span class="p">((</span><span class="n">mag_r</span> <span class="o">-</span> <span class="n">mag_i</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.18</span><span class="p">)</span>
+        <span class="n">cperp</span> <span class="o">=</span> <span class="p">(</span><span class="n">mag_r</span> <span class="o">-</span> <span class="n">mag_i</span><span class="p">)</span> <span class="o">-</span> <span class="p">((</span><span class="n">mag_g</span> <span class="o">-</span> <span class="n">mag_r</span><span class="p">)</span> <span class="o">/</span> <span class="mf">4.0</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.18</span>
+        <span class="n">dperp</span> <span class="o">=</span> <span class="p">(</span><span class="n">mag_r</span> <span class="o">-</span> <span class="n">mag_i</span><span class="p">)</span> <span class="o">-</span> <span class="p">((</span><span class="n">mag_g</span> <span class="o">-</span> <span class="n">mag_r</span><span class="p">)</span> <span class="o">/</span> <span class="mf">8.0</span><span class="p">)</span>
+
+        <span class="c1"># LOWZ</span>
+        <span class="n">cperp_cut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">cperp</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">cperp_cut_val</span> <span class="c1">#0.2</span>
+        <span class="n">r_cpar_cut</span> <span class="o">=</span> <span class="n">mag_r</span> <span class="o">&lt;</span> <span class="n">r_cpar_cut_val</span> <span class="o">+</span> <span class="n">cpar</span> <span class="o">/</span> <span class="mf">0.3</span>
+        <span class="n">r_lo_cut</span> <span class="o">=</span> <span class="n">mag_r</span> <span class="o">&gt;</span> <span class="n">r_lo_cut_val</span> <span class="c1">#16.0</span>
+        <span class="n">r_hi_cut</span> <span class="o">=</span> <span class="n">mag_r</span> <span class="o">&lt;</span> <span class="n">r_hi_cut_val</span> <span class="c1">#19.6</span>
+
+        <span class="n">lowz_cut</span> <span class="o">=</span> <span class="p">(</span><span class="n">cperp_cut</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">r_cpar_cut</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">r_lo_cut</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">r_hi_cut</span><span class="p">)</span>
+
+        <span class="c1"># CMASS</span>
+        <span class="n">i_lo_cut</span> <span class="o">=</span> <span class="n">mag_i</span> <span class="o">&gt;</span> <span class="n">i_lo_cut_val</span> <span class="c1">#17.5</span>
+        <span class="n">i_hi_cut</span> <span class="o">=</span> <span class="n">mag_i</span> <span class="o">&lt;</span> <span class="n">i_hi_cut_val</span> <span class="c1">#19.9</span>
+        <span class="n">r_i_cut</span> <span class="o">=</span> <span class="p">(</span><span class="n">mag_r</span> <span class="o">-</span> <span class="n">mag_i</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">r_i_cut_val</span> <span class="c1">#2.0</span>
+        <span class="c1">#dperp_cut = dperp &gt; 0.55 # this cut did not return any sources...</span>
+
+        <span class="n">cmass_cut</span> <span class="o">=</span> <span class="p">(</span><span class="n">i_lo_cut</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">i_hi_cut</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">r_i_cut</span><span class="p">)</span>
+
+        <span class="c1"># If a galaxy is a lens under either LOWZ or CMASS give it a zero</span>
+        <span class="n">lens_mask</span> <span class="o">=</span>  <span class="n">lowz_cut</span> <span class="o">|</span> <span class="n">cmass_cut</span>
+        <span class="n">lens_gals</span><span class="p">[</span><span class="n">lens_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">lens_gals</span></div>
+
+    <span class="k">def</span> <span class="nf">calculate_tomography</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pz_data</span><span class="p">,</span> <span class="n">phot_data</span><span class="p">,</span> <span class="n">lens_gals</span><span class="p">):</span>
+    
+        <span class="n">nbin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_zbin_edges&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">phot_data</span><span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">])</span>
+
+        <span class="c1"># The main output data - the tomographic</span>
+        <span class="c1"># bin index for each object, or -1 for no bin.</span>
+        <span class="n">tomo_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+
+        <span class="c1"># We also keep count of total count of objects in each bin</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="n">sel_00</span> <span class="o">=</span> <span class="p">(</span><span class="n">pz_data</span><span class="p">[</span><span class="s1">&#39;zbin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">lens_gals</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">tomo_bin</span><span class="p">[</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="n">counts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">sel_00</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">tomo_bin</span><span class="p">,</span> <span class="n">counts</span></div>
+
+
+<div class="viewcode-block" id="TXTruthLensSelector"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXTruthLensSelector">[docs]</a><span class="k">class</span> <span class="nc">TXTruthLensSelector</span><span class="p">(</span><span class="n">TXBaseLensSelector</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXTruthLensSelector&quot;</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;We are cheating and using the true redshift.&quot;</span><span class="p">)</span>
+        <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
+        <span class="n">phot_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">,</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span><span class="s1">&#39;mag_g&#39;</span><span class="p">,</span> <span class="s1">&#39;redshift_true&#39;</span><span class="p">]</span>
+        <span class="c1"># Input data.  These are iterators - they lazily load chunks</span>
+        <span class="c1"># of the data one by one later when we do the for loop.</span>
+        <span class="c1"># This code can be run in parallel, and different processes will</span>
+        <span class="c1"># each get different chunks of the data </span>
+        <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">phot_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">]</span>
+            <span class="k">yield</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="TXMeanLensSelector"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXMeanLensSelector">[docs]</a><span class="k">class</span> <span class="nc">TXMeanLensSelector</span><span class="p">(</span><span class="n">TXBaseLensSelector</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXMeanLensSelector&quot;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
+        <span class="n">phot_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">,</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span>
+        <span class="n">z_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;z_mean&#39;</span><span class="p">]</span>
+        <span class="n">iter_phot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">phot_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
+        <span class="n">iter_pz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="s1">&#39;point_estimates&#39;</span><span class="p">,</span> <span class="n">z_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">z_data</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">iter_phot</span><span class="p">,</span> <span class="n">iter_pz</span><span class="p">):</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_data</span><span class="p">[</span><span class="s1">&#39;z_mean&#39;</span><span class="p">]</span>
+            <span class="k">yield</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">flatten_list</span><span class="p">(</span><span class="n">lst</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span> <span class="n">lst</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">PipelineStage</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 Diagnostics plots
 -----------------
 
-.. autoclass:: txpipe.TXDiagnosticPlots
+.. automodule:: txpipe.diagnostics
    :members:
    :special-members:
    :show-inheritance:

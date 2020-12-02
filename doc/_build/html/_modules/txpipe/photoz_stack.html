@@ -1,0 +1,689 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.photoz_stack &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.photoz_stack</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.photoz_stack</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">PhotozPDFFile</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">,</span> <span class="n">NOfZFile</span>
+<span class="kn">from</span> <span class="nn">.utils.mpi_utils</span> <span class="kn">import</span> <span class="n">in_place_reduce</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+
+<span class="k">class</span> <span class="nc">Stack</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an n(z) stacker</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name: str</span>
+<span class="sd">            Name of the stack, for when we save it</span>
+<span class="sd">        z: array</span>
+<span class="sd">            redshift edges array</span>
+<span class="sd">        nbin: int</span>
+<span class="sd">            number of tomographic bins</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbin</span> <span class="o">=</span> <span class="n">nbin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nz</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nbin</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nbin</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_pdfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">pdfs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add a set of PDFs to the stack, per tomographic bin</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        bins: array[int]</span>
+<span class="sd">            The tomographic bin for each object</span>
+<span class="sd">        pdfs: 2d array[float]</span>
+<span class="sd">            The p(z) per object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bins</span><span class="o">==</span><span class="n">b</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">+=</span> <span class="n">pdfs</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">+=</span> <span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="k">def</span> <span class="nf">add_delta_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add a set of objects to the stack whose redshift</span>
+<span class="sd">        is known perfectly</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        bins: array[int]</span>
+<span class="sd">            The tomographic bin for each object</span>
+<span class="sd">        z: array[float]</span>
+<span class="sd">            The redshift per object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">stack_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bins</span><span class="o">==</span><span class="n">b</span><span class="p">)</span>
+            <span class="n">stack_bin_b</span> <span class="o">=</span> <span class="n">stack_bin</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">stack_bin_b</span><span class="p">:</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">nz</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write this stack to a new group in the output file.</span>
+<span class="sd">        Collect the stack from all processors if comm is provided</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        outfile: h5py.File</span>
+<span class="sd">            Output file, already open</span>
+
+<span class="sd">        comm: mpi4py communicator</span>
+<span class="sd">            Optional, default=0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># stack the results from different comms</span>
+        <span class="k">if</span> <span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">in_place_reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+            <span class="n">in_place_reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+            <span class="c1"># only root saves output</span>
+            <span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span>
+
+        <span class="c1"># normalize each n(z)</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+
+        <span class="c1"># Create a group inside for the n_of_z data we made here.</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">outfile</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_of_z/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># HDF has &quot;attributes&quot; which are for small metadata like this</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;nbin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbin</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;nz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+
+        <span class="c1"># Save the redshift sampling</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+        
+        <span class="c1"># And all the bins separately</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbin</span><span class="p">):</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;count_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;bin_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+
+
+
+<div class="viewcode-block" id="TXPhotozSourceStack"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXPhotozSourceStack">[docs]</a><span class="k">class</span> <span class="nc">TXPhotozSourceStack</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="k">pass</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Naively stack photo-z PDFs in bins according to previous selections.</span>
+
+<span class="sd">    This parent class does only the source bins.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXPhotozSourceStack&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="n">PhotozPDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">),</span>            
+    <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;chunk_rows&#39;</span><span class="p">:</span> <span class="mi">5000</span><span class="p">,</span>  <span class="c1"># number of rows to read at once</span>
+    <span class="p">}</span>
+
+<div class="viewcode-block" id="TXPhotozSourceStack.run"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXPhotozSourceStack.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the analysis for this stage.</span>
+<span class="sd">        </span>
+<span class="sd">         - Get metadata and allocate space for output</span>
+<span class="sd">         - Set up iterators to loop through tomography and PDF input files</span>
+<span class="sd">         - Accumulate the PDFs for each object in each bin</span>
+<span class="sd">         - Divide by the counts to get the stacked PDF</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Create the stack objects</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_outputs</span><span class="p">()</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;WEIGHTS/RESPONSE ARE NOT CURRENTLY INCLUDED CORRECTLY in PZ STACKING&quot;</span><span class="p">)</span>
+
+        <span class="c1"># So we just do a single loop through the pair of files.</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_iterator</span><span class="p">():</span>
+            <span class="c1"># Feed back on our progress</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> read data chunk </span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Add data to the stacks</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stack_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">outputs</span><span class="p">)</span>
+        <span class="c1"># Save the stacks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">prepare_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">()</span>
+        <span class="c1"># For this class we do two stacks, and main one and a 2d one</span>
+        <span class="n">source_stack</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">source2d_stack</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">(</span><span class="s1">&#39;source2d&#39;</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">source_stack</span><span class="p">,</span> <span class="n">source2d_stack</span>
+
+
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># This collects together matching inputs from the different</span>
+        <span class="c1"># input files and returns an iterator to them which yields</span>
+        <span class="c1"># start, end, data</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;pdf&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;pdf&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+
+                <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stack_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+        <span class="c1"># add the data we have loaded into the stacks</span>
+        <span class="n">source_stack</span><span class="p">,</span> <span class="n">source2d_stack</span> <span class="o">=</span> <span class="n">outputs</span>
+        <span class="n">source_stack</span><span class="o">.</span><span class="n">add_pdfs</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;pdf&#39;</span><span class="p">])</span>
+        <span class="c1"># -1 indicates no selection.  For the non-tomo 2d case</span>
+        <span class="c1"># we just say anything that is &gt;=0 is set to bin zero, like this</span>
+        <span class="n">bin2d</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">source2d_stack</span><span class="o">.</span><span class="n">add_pdfs</span><span class="p">(</span><span class="n">bin2d</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;pdf&#39;</span><span class="p">])</span>
+
+
+    <span class="k">def</span> <span class="nf">write_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+        <span class="n">source_stack</span><span class="p">,</span> <span class="n">source2d_stack</span> <span class="o">=</span> <span class="n">outputs</span>
+        <span class="c1"># only the root process opens the file.</span>
+        <span class="c1"># The others don&#39;t use that so we have to</span>
+        <span class="c1"># give them something in place</span>
+        <span class="c1"># (i.e. inside the save method the non-root procs</span>
+        <span class="c1"># will not reference the first arg)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s2">&quot;shear_photoz_stack&quot;</span><span class="p">)</span>
+            <span class="n">source_stack</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="n">source2d_stack</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">source_stack</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="n">source2d_stack</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TXPhotozSourceStack.get_metadata"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXPhotozSourceStack.get_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load the z column and the number of bins</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        z: array</span>
+<span class="sd">            Redshift column for photo-z PDFs</span>
+<span class="sd">        nbin:</span>
+<span class="sd">            Number of different redshift bins</span>
+<span class="sd">            to split into.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># It&#39;s a bit odd but we will just get this from the file and </span>
+        <span class="c1"># then close it again, because we&#39;re going to use the </span>
+        <span class="c1"># built-in iterator method to get the rest of the data</span>
+
+        <span class="c1"># open_input is a method defined on the superclass.</span>
+        <span class="c1"># it knows about different file formats (pdf, fits, etc)</span>
+        <span class="n">photoz_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">)</span>
+
+        <span class="c1"># This is the syntax for reading a complete HDF column</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">photoz_file</span><span class="p">[</span><span class="s1">&#39;pdf/zgrid&#39;</span><span class="p">][:]</span>
+        <span class="n">photoz_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c1"># Save again but for the number of bins in the tomography catalog</span>
+        <span class="n">shear_tomo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">)</span>
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">shear_tomo_file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
+        <span class="n">shear_tomo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span></div></div>
+
+
+
+<div class="viewcode-block" id="TXPhotozStack"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXPhotozStack">[docs]</a><span class="k">class</span> <span class="nc">TXPhotozStack</span><span class="p">(</span><span class="n">TXPhotozSourceStack</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This PZ stacking subclass does both source and lens</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXPhotozStack&#39;</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="n">PhotozPDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">)</span>
+    <span class="p">]</span>
+
+
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># As in the parent class, but we also read the lens bin</span>
+        <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;pdf&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;pdf&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+
+                <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+
+                <span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">it</span>
+
+    <span class="k">def</span> <span class="nf">prepare_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># as in the parent class, but we also make a lens stack.</span>
+        <span class="c1"># the fiddliness with get_metadata means it&#39;s not worth</span>
+        <span class="c1"># trying to use the parent method here</span>
+        <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">()</span>
+        <span class="c1"># make the stacks</span>
+        <span class="n">source_stack</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">)</span>
+        <span class="n">source2d_stack</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">(</span><span class="s1">&#39;source2d&#39;</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">lens_stack</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">(</span><span class="s1">&#39;lens&#39;</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">)</span>
+        <span class="c1"># return them all</span>
+        <span class="k">return</span> <span class="n">source_stack</span><span class="p">,</span> <span class="n">source2d_stack</span><span class="p">,</span> <span class="n">lens_stack</span>
+
+
+<div class="viewcode-block" id="TXPhotozStack.get_metadata"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXPhotozStack.get_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># same as parent class except we also open</span>
+        <span class="c1"># the lens tomo file and check the nbin</span>
+        <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">()</span>
+        <span class="n">lens_tomo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">)</span>
+        <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">lens_tomo_file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span>
+        <span class="n">lens_tomo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span></div>
+
+    <span class="k">def</span> <span class="nf">stack_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+        <span class="c1"># give the parent method the source stacks</span>
+        <span class="c1"># to do and we do the lens stack</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stack_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">outputs</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">lens_stack</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">lens_stack</span><span class="o">.</span><span class="n">add_pdfs</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;pdf&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">write_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+        <span class="c1"># call the parent method to save the source stacks</span>
+        <span class="c1"># and we save the lens stack in the same way</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">write_outputs</span><span class="p">(</span><span class="n">outputs</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">lens_stack</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s2">&quot;lens_photoz_stack&quot;</span><span class="p">)</span>
+            <span class="n">lens_stack</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lens_stack</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TXPhotozPlots"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXPhotozPlots">[docs]</a><span class="k">class</span> <span class="nc">TXPhotozPlots</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make n(z) plots</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXPhotozPlots&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;nz_lens&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;nz_source&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">matplotlib</span>
+        <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="n">out1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;nz_lens&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;lens&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Lens n(z)&quot;</span><span class="p">)</span>
+        <span class="n">out1</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">out2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;nz_source&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Source n(z)&quot;</span><span class="p">)</span>
+        <span class="n">out2</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TXTrueNumberDensity"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXTrueNumberDensity">[docs]</a><span class="k">class</span> <span class="nc">TXTrueNumberDensity</span><span class="p">(</span><span class="n">TXPhotozStack</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fake an n(z) by histogramming the true redshift values for each object.</span>
+<span class="sd">    Uses the same method as its parent but loads the data</span>
+<span class="sd">    differently and uses the truth redshift as a delta function PDF</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXTrueNumberDensity&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;chunk_rows&#39;</span><span class="p">:</span> <span class="mi">5000</span><span class="p">,</span>  <span class="c1"># number of rows to read at once</span>
+        <span class="s1">&#39;zmax&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="s1">&#39;nz&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+
+                <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+
+                <span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stack_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+        <span class="n">source_stack</span><span class="p">,</span> <span class="n">source2d_stack</span><span class="p">,</span> <span class="n">lens_stack</span> <span class="o">=</span> <span class="n">outputs</span>
+        <span class="n">source_stack</span><span class="o">.</span><span class="n">add_delta_function</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">])</span>
+        <span class="n">bin2d</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">source2d_stack</span><span class="o">.</span><span class="n">add_delta_function</span><span class="p">(</span><span class="n">bin2d</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">])</span>
+        <span class="n">lens_stack</span><span class="o">.</span><span class="n">add_delta_function</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="TXTrueNumberDensity.get_metadata"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXTrueNumberDensity.get_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Check we are running on a photo file with redshift_true</span>
+        <span class="n">photo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">)</span>
+        <span class="n">has_z</span> <span class="o">=</span> <span class="s1">&#39;redshift_true&#39;</span> <span class="ow">in</span> <span class="n">photo_file</span><span class="p">[</span><span class="s1">&#39;photometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">photo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_z</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;The photometry_catalog file you supplied does not have a redshift_true column. &quot;</span>
+                   <span class="s2">&quot;If you&#39;re running on sims you need to make sure to ingest that column from GCR. &quot;</span>
+                   <span class="s2">&quot;If you&#39;re running on real data then sadly this isn&#39;t going to work. &quot;</span>
+                   <span class="s2">&quot;Use a different stacking stage.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="n">zmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;zmax&#39;</span><span class="p">]</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;nz&#39;</span><span class="p">]</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">zmax</span><span class="p">,</span> <span class="n">nz</span><span class="p">)</span>
+
+        <span class="n">shear_tomo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">)</span>
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">shear_tomo_file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
+        <span class="n">shear_tomo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">lens_tomo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">)</span>
+        <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">lens_tomo_file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span>
+        <span class="n">lens_tomo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span></div></div>
+
+
+<div class="viewcode-block" id="TXSourceTrueNumberDensity"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXSourceTrueNumberDensity">[docs]</a><span class="k">class</span> <span class="nc">TXSourceTrueNumberDensity</span><span class="p">(</span><span class="n">TXPhotozSourceStack</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fake an n(z) by histogramming the true redshift values for each object.</span>
+<span class="sd">    Uses the same method as its parent but loads the data</span>
+<span class="sd">    differently and uses the truth redshift as a delta function PDF</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXSourceTrueNumberDensity&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">NOfZFile</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;chunk_rows&#39;</span><span class="p">:</span> <span class="mi">5000</span><span class="p">,</span>  <span class="c1"># number of rows to read at once</span>
+        <span class="s1">&#39;zmax&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="s1">&#39;nz&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+
+                <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="c1"># tag of input file to iterate through</span>
+                <span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="c1"># data group within file to look at</span>
+                <span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="c1"># column(s) to read</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stack_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+        <span class="n">source_stack</span><span class="p">,</span> <span class="n">source2d_stack</span> <span class="o">=</span> <span class="n">outputs</span>
+        <span class="n">source_stack</span><span class="o">.</span><span class="n">add_delta_function</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">])</span>
+        <span class="n">bin2d</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">source2d_stack</span><span class="o">.</span><span class="n">add_delta_function</span><span class="p">(</span><span class="n">bin2d</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="TXSourceTrueNumberDensity.get_metadata"><a class="viewcode-back" href="../../photoz_stack.html#txpipe.photoz_stack.TXSourceTrueNumberDensity.get_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Check we are running on a photo file with redshift_true</span>
+        <span class="n">photo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">)</span>
+        <span class="n">has_z</span> <span class="o">=</span> <span class="s1">&#39;redshift_true&#39;</span> <span class="ow">in</span> <span class="n">photo_file</span><span class="p">[</span><span class="s1">&#39;photometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">photo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_z</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;The photometry_catalog file you supplied does not have a redshift_true column. &quot;</span>
+                   <span class="s2">&quot;If you&#39;re running on sims you need to make sure to ingest that column from GCR. &quot;</span>
+                   <span class="s2">&quot;If you&#39;re running on real data then sadly this isn&#39;t going to work. &quot;</span>
+                   <span class="s2">&quot;Use a different stacking stage.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="n">zmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;zmax&#39;</span><span class="p">]</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;nz&#39;</span><span class="p">]</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">zmax</span><span class="p">,</span> <span class="n">nz</span><span class="p">)</span>
+
+        <span class="n">shear_tomo_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">)</span>
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">shear_tomo_file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
+        <span class="n">shear_tomo_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">z</span><span class="p">,</span> <span class="n">nbin_source</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

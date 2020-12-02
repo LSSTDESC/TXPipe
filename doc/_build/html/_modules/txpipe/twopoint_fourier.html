@@ -1,0 +1,983 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.twopoint_fourier &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.twopoint_fourier</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.twopoint_fourier</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">TomographyCatalog</span><span class="p">,</span> \
+                        <span class="n">FiducialCosmology</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> \
+                        <span class="n">PhotozPDFFile</span><span class="p">,</span> <span class="n">LensingNoiseMaps</span><span class="p">,</span> <span class="n">ClusteringNoiseMaps</span><span class="p">,</span> <span class="n">PNGFile</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">choose_pixelization</span><span class="p">,</span> <span class="n">array_hash</span>
+<span class="kn">from</span> <span class="nn">.utils.theory</span> <span class="kn">import</span> <span class="n">theory_3x2pt</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+
+<span class="c1"># Using the same convention as in twopoint.py</span>
+<span class="n">SHEAR_SHEAR</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">SHEAR_POS</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">POS_POS</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+
+<span class="n">NAMES</span> <span class="o">=</span> <span class="p">{</span><span class="n">SHEAR_SHEAR</span><span class="p">:</span><span class="s2">&quot;shear-shear&quot;</span><span class="p">,</span> <span class="n">SHEAR_POS</span><span class="p">:</span><span class="s2">&quot;shear-position&quot;</span><span class="p">,</span> <span class="n">POS_POS</span><span class="p">:</span><span class="s2">&quot;position-position&quot;</span><span class="p">}</span>
+
+<span class="n">Measurement</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span>
+    <span class="s1">&#39;Measurement&#39;</span><span class="p">,</span>
+    <span class="p">[</span><span class="s1">&#39;corr_type&#39;</span><span class="p">,</span> <span class="s1">&#39;l&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="s1">&#39;win&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="s1">&#39;j&#39;</span><span class="p">])</span>
+
+<div class="viewcode-block" id="TXTwoPointFourier"><a class="viewcode-back" href="../../twopoint_fourier.html#txpipe.twopoint_fourier.TXTwoPointFourier">[docs]</a><span class="k">class</span> <span class="nc">TXTwoPointFourier</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This Pipeline Stage computes all auto- and cross-correlations</span>
+<span class="sd">    for a list of tomographic bins, including all galaxy-galaxy,</span>
+<span class="sd">    galaxy-shear and shear-shear power spectra. Sources and lenses</span>
+<span class="sd">    both come from the same shear_catalog and tomography_catalog objects.</span>
+
+<span class="sd">    The power spectra are computed after deprojecting a number of</span>
+<span class="sd">    systematic-dominated modes, represented as input maps.</span>
+
+<span class="sd">    In the future we will want to include the following generalizations:</span>
+<span class="sd">     - TODO: specify which cross-correlations in particular to include</span>
+<span class="sd">             (e.g. which bin pairs and which source/lens combinations).</span>
+<span class="sd">     - TODO: include flags for rejected objects. Is this included in</span>
+<span class="sd">             the tomography_catalog?</span>
+<span class="sd">     - TODO: ell-binning is currently static.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;TXTwoPointFourier&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>  <span class="c1"># Photoz stack</span>
+        <span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>  <span class="c1"># Photoz stack</span>
+        <span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">,</span> <span class="n">FiducialCosmology</span><span class="p">),</span>  <span class="c1"># For the cosmological parameters</span>
+        <span class="p">(</span><span class="s1">&#39;tracer_metadata&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>  <span class="c1"># For density info</span>
+        <span class="p">(</span><span class="s1">&#39;source_maps&#39;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;density_maps&#39;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;mask&#39;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;source_noise_maps&#39;</span><span class="p">,</span> <span class="n">LensingNoiseMaps</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="n">ClusteringNoiseMaps</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;twopoint_data_fourier&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;mask_threshold&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s2">&quot;flip_g1&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;flip_g2&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;cache_dir&quot;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+        <span class="s2">&quot;deproject_syst_clustering&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;systmaps_clustering_dir&quot;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+        <span class="s2">&quot;ell_min&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s2">&quot;ell_max&quot;</span><span class="p">:</span> <span class="mi">1500</span><span class="p">,</span>
+        <span class="s2">&quot;n_ell&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="s2">&quot;ell_spacing&quot;</span><span class="p">:</span> <span class="s1">&#39;log&#39;</span><span class="p">,</span>
+        <span class="s2">&quot;true_shear&quot;</span><span class="p">:</span> <span class="kc">False</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pymaster</span>
+        <span class="kn">import</span> <span class="nn">healpy</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Barrier</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_results</span><span class="p">()</span>
+
+
+        <span class="c1"># Generate namaster fields</span>
+        <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">f_sky</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_maps</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded maps.&quot;</span><span class="p">)</span>
+
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">maps</span><span class="p">[</span><span class="s1">&#39;g&#39;</span><span class="p">])</span>
+        <span class="n">nbin_lens</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">maps</span><span class="p">[</span><span class="s1">&#39;d&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Get the complete list of calculations to be done,</span>
+        <span class="c1"># for all the three spectra and all the bin pairs.</span>
+        <span class="c1"># This will be used for parallelization.</span>
+        <span class="n">calcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_calculations</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">)</span>
+
+
+        <span class="c1"># Load in the per-bin auto-correlation noise levels and </span>
+        <span class="c1"># mean response values</span>
+        <span class="c1"># Note - this is currently unused, because we are using the noise</span>
+        <span class="c1"># maps instead of an analytic form, but that could change later</span>
+        <span class="c1"># so I will leave this here.</span>
+        <span class="n">tomo_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_tomographic_quantities</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">,</span> <span class="n">f_sky</span><span class="p">)</span>
+
+
+        <span class="c1"># Binning scheme, currently chosen from the geometry.</span>
+        <span class="c1"># TODO: set ell binning from config</span>
+        <span class="n">ell_bins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">choose_ell_bins</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">f_sky</span><span class="p">)</span>
+
+        <span class="n">workspaces</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_workspaces</span><span class="p">(</span><span class="n">maps</span><span class="p">,</span> <span class="n">calcs</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">)</span>
+
+        <span class="c1"># Load the n(z) values, which are both saved in the output</span>
+        <span class="c1"># file alongside the spectra, and then used to calcualate the</span>
+        <span class="c1"># fiducial theory C_ell, which is used in the deprojection calculation</span>
+        <span class="n">tracers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_tracers</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">)</span>
+        <span class="n">theory_cl</span> <span class="o">=</span> <span class="n">theory_3x2pt</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">),</span>
+            <span class="n">tracers</span><span class="p">,</span>
+            <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">,</span>
+            <span class="n">fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># If we are rank zero print out some info</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">nband</span> <span class="o">=</span> <span class="n">ell_bins</span><span class="o">.</span><span class="n">get_n_bands</span><span class="p">()</span>
+            <span class="n">ell_effs</span> <span class="o">=</span> <span class="n">ell_bins</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chosen </span><span class="si">{</span><span class="n">nband</span><span class="si">}</span><span class="s2"> ell bin bands with effective ell values and ranges:&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nband</span><span class="p">):</span>
+                <span class="n">leff</span> <span class="o">=</span> <span class="n">ell_effs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">lmin</span> <span class="o">=</span> <span class="n">ell_bins</span><span class="o">.</span><span class="n">get_ell_min</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">lmax</span> <span class="o">=</span> <span class="n">ell_bins</span><span class="o">.</span><span class="n">get_ell_max</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">leff</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">    (</span><span class="si">{</span><span class="n">lmin</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">lmax</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Run the compute power spectra portion in parallel</span>
+        <span class="c1"># This splits the calculations among the parallel bins</span>
+        <span class="c1"># It&#39;s not the most optimal way of doing it</span>
+        <span class="c1"># as it&#39;s not dynamic, just a round-robin assignment.</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">calcs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">compute_power_spectra</span><span class="p">(</span>
+                <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">workspaces</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">theory_cl</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Collecting results together&quot;</span><span class="p">)</span>
+        <span class="c1"># Pull all the results together to the master process.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collect_results</span><span class="p">()</span>
+
+        <span class="c1"># Write the collect results out to HDF5.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_power_spectra</span><span class="p">(</span><span class="n">tracers</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saved power spectra&quot;</span><span class="p">)</span>
+
+
+
+    <span class="k">def</span> <span class="nf">load_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pymaster</span> <span class="k">as</span> <span class="nn">nmt</span>
+        <span class="kn">import</span> <span class="nn">healpy</span>
+        <span class="c1"># Load the maps from their files.</span>
+        <span class="c1"># First the mask</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;mask&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="s1">&#39;mask&#39;</span><span class="p">)</span>
+            <span class="n">area</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">]</span>
+            <span class="n">f_sky</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;f_sky&#39;</span><span class="p">]</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="s1">&#39;mask&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded mask&quot;</span><span class="p">)</span>
+        <span class="c1"># Then the shear maps and weights</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;source_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;maps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
+            <span class="n">g1_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)]</span>
+            <span class="n">g2_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)]</span>
+            <span class="n">lensing_weights</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;lensing_weight_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded 2 x </span><span class="si">{</span><span class="n">nbin_source</span><span class="si">}</span><span class="s2"> shear maps&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="n">nbin_source</span><span class="si">}</span><span class="s2"> lensing weight maps&quot;</span><span class="p">)</span>
+
+        <span class="c1"># And finally the density maps</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;density_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;maps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span>
+            <span class="n">d_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;delta_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="n">nbin_lens</span><span class="si">}</span><span class="s2"> overdensity maps&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Choose pixelization and read mask and systematics maps</span>
+        <span class="n">pixel_scheme</span> <span class="o">=</span> <span class="n">choose_pixelization</span><span class="p">(</span><span class="o">**</span><span class="n">info</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unmasked area = </span><span class="si">{</span><span class="n">area</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> deg^2, fsky = </span><span class="si">{</span><span class="n">f_sky</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pixel_scheme</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="s1">&#39;healpix&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;TXTwoPointFourier can only run on healpix maps&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Using a flat mask as the clustering weight for now, since I need to know</span>
+        <span class="c1"># how to turn the depth map into a weight</span>
+        <span class="n">clustering_weight</span> <span class="o">=</span> <span class="n">mask</span>
+
+
+        <span class="c1"># Set any unseen pixels to zero weight.</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">d_maps</span><span class="p">:</span>
+            <span class="n">clustering_weight</span><span class="p">[</span><span class="n">clustering_weight</span><span class="o">==</span><span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">clustering_weight</span><span class="p">[</span><span class="n">d</span><span class="o">==</span><span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Mask any pixels which have the healpix bad value</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">lw</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">g1_maps</span><span class="p">,</span> <span class="n">g2_maps</span><span class="p">,</span> <span class="n">lensing_weights</span><span class="p">):</span>
+            <span class="n">lw</span><span class="p">[</span><span class="n">g1</span> <span class="o">==</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">lw</span><span class="p">[</span><span class="n">g2</span> <span class="o">==</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">lw</span><span class="p">[</span><span class="n">lw</span> <span class="o">==</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            
+        <span class="c1"># When running on the CosmoDC2 mocks I&#39;ve found I need to flip</span>
+        <span class="c1"># both g1 and g2 in order to get both positive galaxy-galaxy lensing</span>
+        <span class="c1"># and shear-shear spectra.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;flip_g1&#39;</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">g1</span> <span class="ow">in</span> <span class="n">g1_maps</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">g1</span><span class="o">!=</span><span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">)</span>
+                <span class="n">g1</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">*=-</span><span class="mi">1</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;flip_g2&#39;</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">g2</span> <span class="ow">in</span> <span class="n">g2_maps</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">g2</span><span class="o">!=</span><span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">)</span>
+                <span class="n">g2</span><span class="p">[</span><span class="n">w</span><span class="p">]</span><span class="o">*=-</span><span class="mi">1</span>
+                
+
+        <span class="c1"># Load HEALPix systematics maps</span>
+        <span class="n">deproject_syst_clustering</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;deproject_syst_clustering&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">deproject_syst_clustering</span><span class="p">:</span>  
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Deprojecting systematics maps for number counts&#39;</span><span class="p">)</span>
+            <span class="n">n_systmaps</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">s_maps</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">systmaps_clustering_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;systmaps_clustering_dir&#39;</span><span class="p">]</span>
+            <span class="n">systmaps_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">systmaps_clustering_dir</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">systmap</span> <span class="ow">in</span> <span class="n">systmaps_path</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">systmap</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">systmap</span><span class="p">)</span><span class="o">.</span><span class="n">suffix</span> <span class="o">!=</span> <span class="s2">&quot;.fits&quot;</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: Problem reading systematics map file&#39;</span><span class="p">,</span> <span class="n">systmap</span><span class="p">,</span> <span class="s1">&#39;Not a HEALPix .fits file.&#39;</span><span class="p">)</span>
+                            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Systematics map file must be a HEALPix .fits file.&quot;</span><span class="p">)</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ignoring&#39;</span><span class="p">,</span> <span class="n">systmap</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">systmap_file</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">systmap</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;clustering_deproject_</span><span class="si">{</span><span class="n">n_systmaps</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">systmap_file</span> <span class="c1"># for provenance</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Reading clustering systematics map file:&#39;</span><span class="p">,</span> <span class="n">systmap_file</span><span class="p">)</span>
+                            <span class="n">syst_map</span> <span class="o">=</span> <span class="n">healpy</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="n">systmap_file</span><span class="p">,</span><span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1">#                             # Find value at given ra,dec</span>
+<span class="c1">#                             ra = 55.</span>
+<span class="c1">#                             dec = -30.</span>
+<span class="c1">#                             theta = 0.5 * np.pi - np.deg2rad(dec)</span>
+<span class="c1">#                             phi = np.deg2rad(ra)</span>
+<span class="c1">#                             nside = healpy.pixelfunc.get_nside(syst_map)</span>
+<span class="c1">#                             ipix = healpy.ang2pix(nside, theta, phi)</span>
+<span class="c1">#                             print(&#39;Syst map: value at ra,dec = 55,-30: &#39;, syst_map[ipix])</span>
+
+                            <span class="c1"># normalize map for Namaster</span>
+                            <span class="c1"># set pixel values to value/mean - 1</span>
+                            <span class="n">syst_map_mask</span> <span class="o">=</span> <span class="n">syst_map</span> <span class="o">!=</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span>
+                            <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">syst_map</span><span class="p">[</span><span class="n">syst_map_mask</span><span class="p">])</span> <span class="c1"># gives mean of all pixels with mask applied</span>
+                            <span class="k">if</span> <span class="n">mean</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Syst map: mean value = &#39;</span><span class="p">,</span> <span class="n">mean</span><span class="p">)</span>
+                                <span class="n">syst_map</span><span class="p">[</span><span class="o">~</span><span class="n">syst_map_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># sets unmasked pixels to zero </span>
+                                <span class="n">syst_map</span> <span class="o">=</span> <span class="n">syst_map</span> <span class="o">/</span> <span class="n">mean</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="c1">#                                 print(&#39;Syst map&#39;, systmap_file, &#39;normalized value at ra,dec = 55,-30: &#39;, syst_map[ipix])</span>
+
+                            <span class="n">s_maps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">syst_map</span><span class="p">)</span>
+                            <span class="n">n_systmaps</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: Problem with systematics map file&#39;</span><span class="p">,</span><span class="n">systmap</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ignoring&#39;</span><span class="p">,</span> <span class="n">systmap</span><span class="p">)</span>
+                    
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Number of systematics maps read: &#39;</span><span class="p">,</span> <span class="n">n_systmaps</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">n_systmaps</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No systematics maps found. Skipping deprojection.&#39;</span><span class="p">)</span>
+                <span class="n">deproject_syst_clustering</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using systematics maps for galaxy number counts.&quot;</span><span class="p">)</span>
+                <span class="c1"># We assume all systematics maps have the same nside</span>
+                <span class="n">nside</span> <span class="o">=</span> <span class="n">healpy</span><span class="o">.</span><span class="n">pixelfunc</span><span class="o">.</span><span class="n">get_nside</span><span class="p">(</span><span class="n">syst_map</span><span class="p">)</span>
+                <span class="n">npix</span> <span class="o">=</span> <span class="n">healpy</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
+                <span class="c1"># needed for NaMaster:</span>
+                <span class="n">s_maps_nc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">s_maps</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">([</span><span class="n">n_systmaps</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">npix</span><span class="p">])</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not using systematics maps for deprojection in NaMaster&quot;</span><span class="p">)</span>    
+
+        <span class="k">if</span> <span class="n">deproject_syst_clustering</span><span class="p">:</span>
+            <span class="n">density_fields</span> <span class="o">=</span> <span class="p">[(</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span><span class="n">clustering_weight</span><span class="p">,</span> <span class="p">[</span><span class="n">d</span><span class="p">],</span> <span class="n">templates</span><span class="o">=</span><span class="n">s_maps_nc</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+                              <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">d_maps</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">density_fields</span> <span class="o">=</span> <span class="p">[(</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span><span class="n">clustering_weight</span><span class="p">,</span> <span class="p">[</span><span class="n">d</span><span class="p">],</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+                              <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">d_maps</span><span class="p">]</span>
+
+        <span class="n">lensing_fields</span> <span class="o">=</span> <span class="p">[(</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span><span class="n">lw</span><span class="p">,</span> <span class="p">[</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">],</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+                          <span class="k">for</span> <span class="p">(</span><span class="n">lw</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">lensing_weights</span><span class="p">,</span> <span class="n">g1_maps</span><span class="p">,</span> <span class="n">g2_maps</span><span class="p">)]</span>
+
+        <span class="c1"># Collect together all the maps we will output</span>
+        <span class="n">maps</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;dw&#39;</span><span class="p">:</span> <span class="n">clustering_weight</span><span class="p">,</span>
+            <span class="s1">&#39;lw&#39;</span><span class="p">:</span> <span class="n">lensing_weights</span><span class="p">,</span>
+            <span class="s1">&#39;g&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">g1_maps</span><span class="p">,</span> <span class="n">g2_maps</span><span class="p">)),</span>
+            <span class="s1">&#39;d&#39;</span><span class="p">:</span> <span class="n">d_maps</span><span class="p">,</span>
+            <span class="s1">&#39;lf&#39;</span><span class="p">:</span> <span class="n">lensing_fields</span><span class="p">,</span>
+            <span class="s1">&#39;df&#39;</span><span class="p">:</span> <span class="n">density_fields</span><span class="p">,</span>
+
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">f_sky</span>
+
+    <span class="k">def</span> <span class="nf">load_workspace_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">.utils.nmt_utils</span> <span class="kn">import</span> <span class="n">WorkspaceCache</span>
+        <span class="n">dirname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;cache_dir&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dirname</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not using an on-disc cache.  Set cache_dir to use one&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">cache</span> <span class="o">=</span> <span class="n">WorkspaceCache</span><span class="p">(</span><span class="n">dirname</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cache</span>
+
+    <span class="k">def</span> <span class="nf">save_workspace_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">spaces</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">cache</span> <span class="o">==</span> <span class="p">{}):</span>
+            <span class="k">return</span>
+
+        <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="n">spaces</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">cache</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">make_workspaces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">calcs</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pymaster</span> <span class="k">as</span> <span class="nn">nmt</span>
+
+        <span class="c1"># Make the field object</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Preparing workspaces&quot;</span><span class="p">)</span>
+
+        <span class="c1"># load the cache</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_workspace_cache</span><span class="p">()</span>
+
+        <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">maps</span><span class="p">[</span><span class="s1">&#39;g&#39;</span><span class="p">])</span>
+        <span class="n">nbin_lens</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">maps</span><span class="p">[</span><span class="s1">&#39;d&#39;</span><span class="p">])</span>
+
+        <span class="c1"># empty workspaces</span>
+        <span class="n">zero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">maps</span><span class="p">[</span><span class="s1">&#39;dw&#39;</span><span class="p">])</span>
+
+        <span class="n">lensing_weights</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lw&#39;</span><span class="p">]</span>
+        <span class="n">density_weight</span>  <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;dw&#39;</span><span class="p">]</span>
+        <span class="n">lensing_fields</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lf&#39;</span><span class="p">]</span>
+        <span class="n">density_fields</span>  <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;df&#39;</span><span class="p">]</span>
+
+        <span class="n">ell_hash</span> <span class="o">=</span> <span class="n">array_hash</span><span class="p">(</span><span class="n">ell_bins</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">())</span>
+        <span class="n">hashes</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">(</span><span class="n">x</span><span class="p">):</span><span class="n">array_hash</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lensing_weights</span><span class="p">}</span>
+        <span class="n">hashes</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">density_weight</span><span class="p">)]</span> <span class="o">=</span> <span class="n">array_hash</span><span class="p">(</span><span class="n">density_weight</span><span class="p">)</span>
+
+
+        <span class="c1"># It&#39;s an oddity of NaMaster that we</span>
+        <span class="c1"># need to supply a field object to the workspace even though the</span>
+        <span class="c1"># coupling matrix only depends on the mask and ell binning.</span>
+        <span class="c1"># So here we re-use the fields we&#39;ve made for the actual</span>
+        <span class="c1"># analysis, but to save the coupling matrices while being sure</span>
+        <span class="c1"># we&#39;re using the right ones we derive a key based on the</span>
+        <span class="c1"># mask and ell centers.</span>
+
+        <span class="c1"># Each lensing field has its own mask</span>
+        <span class="n">lensing_fields</span> <span class="o">=</span> <span class="p">[(</span><span class="n">lw</span><span class="p">,</span> <span class="n">lf</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">lw</span><span class="p">,</span> <span class="n">lf</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">lensing_weights</span><span class="p">,</span> <span class="n">lensing_fields</span><span class="p">)]</span>
+
+        <span class="c1"># The density fields share a mask, so just use the field</span>
+        <span class="c1"># object for the first one.  </span>
+        <span class="n">density_field</span> <span class="o">=</span> <span class="p">(</span><span class="n">density_weight</span><span class="p">,</span> <span class="n">density_fields</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">spaces</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">def</span> <span class="nf">get_workspace</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">):</span>
+            <span class="n">w1</span><span class="p">,</span> <span class="n">f1</span> <span class="o">=</span> <span class="n">f1</span>
+            <span class="n">w2</span><span class="p">,</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">f2</span>
+
+            <span class="c1"># First we derive a hash which will change whenever either</span>
+            <span class="c1"># the mask changes or the ell binning.</span>
+            <span class="c1"># We combine the hashes of those three objects together</span>
+            <span class="c1"># using xor (python  ^ operator), which seems to be standard.</span>
+            <span class="n">h1</span> <span class="o">=</span> <span class="n">hashes</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">w1</span><span class="p">)]</span>
+            <span class="n">h2</span> <span class="o">=</span> <span class="n">hashes</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="n">w2</span><span class="p">)]</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">h1</span> <span class="o">^</span> <span class="n">ell_hash</span>
+            <span class="c1"># ... except that if we are using the same field twice then</span>
+            <span class="c1"># x ^ x = 0, which causes problems (all the auto-bins would</span>
+            <span class="c1"># have the same key).  So we only combine the hashes if the</span>
+            <span class="c1"># fields are different.</span>
+            <span class="k">if</span> <span class="n">h2</span> <span class="o">!=</span> <span class="n">h1</span><span class="p">:</span>
+                <span class="n">key</span> <span class="o">^=</span> <span class="n">h2</span>
+            <span class="c1"># Check on disc to see if we have one saved already.</span>
+            <span class="n">space</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="c1"># If not, compute it.  We will save it later</span>
+            <span class="k">if</span> <span class="n">space</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s1"> computing coupling matrix &#39;</span>
+                      <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">space</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="p">()</span>
+                <span class="n">space</span><span class="o">.</span><span class="n">compute_coupling_matrix</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span><span class="n">is_teb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s1"> getting coupling matrix &#39;</span>
+                       <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1"> from cache.&#39;</span><span class="p">)</span>
+            <span class="c1"># This is a bit awkward - we attach the key to the</span>
+            <span class="c1"># object to avoid more book-keeping.  This is used inside</span>
+            <span class="c1"># the workspace cache</span>
+            <span class="n">space</span><span class="o">.</span><span class="n">txpipe_key</span> <span class="o">=</span> <span class="n">key</span>
+            <span class="k">return</span> <span class="n">space</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="ow">in</span> <span class="n">calcs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">SHEAR_SHEAR</span><span class="p">:</span>
+                <span class="n">f1</span> <span class="o">=</span> <span class="n">lensing_fields</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">f2</span> <span class="o">=</span> <span class="n">lensing_fields</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="n">SHEAR_POS</span><span class="p">:</span>
+                <span class="n">f1</span> <span class="o">=</span> <span class="n">lensing_fields</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">f2</span> <span class="o">=</span> <span class="n">density_field</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">f1</span> <span class="o">=</span> <span class="n">density_field</span>
+                <span class="n">f2</span> <span class="o">=</span> <span class="n">density_field</span>
+            <span class="n">spaces</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">)]</span> <span class="o">=</span> <span class="n">get_workspace</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_workspace_cache</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">spaces</span>
+
+    <span class="k">def</span> <span class="nf">collect_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Concatenate results</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">def</span> <span class="nf">setup_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">choose_ell_bins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">f_sky</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pymaster</span> <span class="k">as</span> <span class="nn">nmt</span>
+        <span class="kn">from</span> <span class="nn">.utils.nmt_utils</span> <span class="kn">import</span> <span class="n">MyNmtBin</span>
+
+        <span class="c1"># commented code below is not needed anymore</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        # This is just approximate.  It will be very wrong</span>
+<span class="sd">        # in cases with non-square patches.</span>
+<span class="sd">        area = f_sky * 4 * np.pi</span>
+<span class="sd">        width = np.sqrt(area) #radians</span>
+<span class="sd">        nlb = self.config[&#39;bandwidth&#39;]</span>
+
+<span class="sd">        # user can specify the bandwidth, or we can just use</span>
+<span class="sd">        # the maximum sensible value of Delta ell.</span>
+<span class="sd">        nlb = nlb if nlb&gt;0 else max(1,int(2 * np.pi / width))</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        
+        <span class="c1"># The subclass of NmtBin that we use here just adds some</span>
+        <span class="c1"># helper methods compared to the default NaMaster one.</span>
+        <span class="c1"># Can feed these back upstream if useful.</span>
+
+        <span class="c1"># Creating the ell binning from the edges using this Namaster constructor.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ell_spacing&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;log&#39;</span><span class="p">:</span> 
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">geomspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ell_min&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ell_max&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;n_ell&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ell_min&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;ell_max&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;n_ell&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+            
+        <span class="n">ell_bins</span> <span class="o">=</span> <span class="n">MyNmtBin</span><span class="o">.</span><span class="n">from_edges</span><span class="p">(</span><span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">is_Dell</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ell_bins</span>
+
+
+    <span class="k">def</span> <span class="nf">select_calculations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbins_source</span><span class="p">,</span> <span class="n">nbins_lens</span><span class="p">):</span>
+        <span class="c1"># Build up a big list of all the calculations we want to</span>
+        <span class="c1"># perform.  We should probably expose this in the configuration</span>
+        <span class="c1"># file so you can skip some.</span>
+        <span class="n">calcs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># For shear-shear we omit pairs with j&gt;i</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">SHEAR_SHEAR</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins_source</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">calcs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+
+        <span class="c1"># For shear-position we use all pairs</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">SHEAR_POS</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins_source</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins_lens</span><span class="p">):</span>
+                <span class="n">calcs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+
+        <span class="c1"># For position-position we omit pairs with j&gt;i.</span>
+        <span class="c1"># We do keep cross-pairs, since even though we may not want to</span>
+        <span class="c1"># do parameter estimation with them they are useful diagnostics.</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">POS_POS</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins_lens</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">calcs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+
+        <span class="n">calcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">calc</span> <span class="k">for</span> <span class="n">calc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">split_tasks_by_rank</span><span class="p">(</span><span class="n">calcs</span><span class="p">)]</span>
+
+        <span class="k">return</span> <span class="n">calcs</span>
+
+    <span class="k">def</span> <span class="nf">compute_power_spectra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">workspaces</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">cl_theory</span><span class="p">):</span>
+        <span class="c1"># Compute power spectra</span>
+        <span class="c1"># TODO: now all possible auto- and cross-correlation are computed.</span>
+        <span class="c1">#      This should be tunable.</span>
+
+        <span class="c1"># k refers to the type of measurement we are making</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="kn">import</span> <span class="nn">pymaster</span> <span class="k">as</span> <span class="nn">nmt</span>
+        <span class="kn">import</span> <span class="nn">healpy</span>
+
+        <span class="n">CEE</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_cl_ee</span>
+        <span class="n">CBB</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_cl_bb</span>
+        <span class="n">CdE</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shearDensity_cl_e</span>
+        <span class="n">CdB</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shearDensity_cl_b</span>
+        <span class="n">Cdd</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_density_cl</span>
+
+        <span class="n">type_name</span> <span class="o">=</span> <span class="n">NAMES</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> calculating </span><span class="si">{</span><span class="n">type_name</span><span class="si">}</span><span class="s2"> spectrum for bin pair </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+        <span class="c1"># The binning information - effective (mid) ell values and</span>
+        <span class="c1"># the window information</span>
+        <span class="n">ls</span> <span class="o">=</span> <span class="n">ell_bins</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">()</span>
+        <span class="n">win</span> <span class="o">=</span> <span class="p">[</span><span class="n">ell_bins</span><span class="o">.</span><span class="n">get_window</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span><span class="p">,</span><span class="n">l</span>  <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ls</span><span class="p">)]</span>
+
+        <span class="c1"># We need the theory spectrum for this pair</span>
+        <span class="c1">#TODO: when we have templates to deproject, use this.</span>
+        <span class="n">theory</span> <span class="o">=</span> <span class="n">cl_theory</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">)]</span>
+        <span class="n">ell_guess</span> <span class="o">=</span> <span class="n">cl_theory</span><span class="p">[</span><span class="s1">&#39;ell&#39;</span><span class="p">]</span>
+        <span class="n">cl_guess</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">SHEAR_SHEAR</span><span class="p">:</span>
+            <span class="n">field_i</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lf&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">field_j</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lf&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">results_to_use</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">CEE</span><span class="p">,</span> <span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">CBB</span><span class="p">,</span> <span class="p">)]</span>
+
+        <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="n">POS_POS</span><span class="p">:</span>
+            <span class="n">field_i</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;df&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">field_j</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;df&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">results_to_use</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">Cdd</span><span class="p">)]</span>
+
+        <span class="k">elif</span> <span class="n">k</span> <span class="o">==</span> <span class="n">SHEAR_POS</span><span class="p">:</span>
+            <span class="n">field_i</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lf&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">field_j</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;df&#39;</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">results_to_use</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">CdE</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">CdB</span><span class="p">)]</span>
+
+        <span class="n">workspace</span> <span class="o">=</span> <span class="n">workspaces</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">,</span><span class="n">k</span><span class="p">)]</span>
+
+        <span class="c1"># Get the coupled noise C_ell values to give to the master algorithm</span>
+        <span class="n">cl_noise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_noise</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">workspace</span><span class="p">)</span>
+ 
+        <span class="c1"># Run the master algorithm</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_full_master</span><span class="p">(</span><span class="n">field_i</span><span class="p">,</span> <span class="n">field_j</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span>
+            <span class="n">cl_noise</span><span class="o">=</span><span class="n">cl_noise</span><span class="p">,</span> <span class="n">cl_guess</span><span class="o">=</span><span class="n">cl_guess</span><span class="p">,</span> <span class="n">workspace</span><span class="o">=</span><span class="n">workspace</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Save all the results, skipping things we don&#39;t want like EB modes</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">results_to_use</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Measurement</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">ls</span><span class="p">,</span> <span class="n">c</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">win</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">))</span>
+
+
+    <span class="k">def</span> <span class="nf">compute_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">workspace</span><span class="p">):</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;true_shear&#39;</span><span class="p">]:</span>
+            <span class="c1"># if using true shear (i.e. no shape noise) we do not need to add any noise</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        
+        <span class="kn">import</span> <span class="nn">pymaster</span> <span class="k">as</span> <span class="nn">nmt</span>
+        <span class="kn">import</span> <span class="nn">healpy</span>
+
+        <span class="c1"># No noise contribution in cross-correlations</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">i</span><span class="o">!=</span><span class="n">j</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">k</span><span class="o">==</span><span class="n">SHEAR_POS</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+
+        <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">SHEAR_SHEAR</span><span class="p">:</span>
+            <span class="n">noise_maps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;source_noise_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lw&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">noise_maps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;dw&#39;</span><span class="p">]</span>
+
+        <span class="n">nreal</span> <span class="o">=</span> <span class="n">noise_maps</span><span class="o">.</span><span class="n">number_of_realizations</span><span class="p">()</span>
+        <span class="n">noise_c_ells</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nreal</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Analyzing noise map </span><span class="si">{</span><span class="n">r</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Load the noise map - may be either (g1, g2)</span>
+            <span class="c1"># or rho1 - rho2</span>
+
+            <span class="c1"># Also in the event there are any UNSEENs in these,</span>
+            <span class="c1"># downweight them</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">weight</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">SHEAR_SHEAR</span><span class="p">:</span>
+                <span class="n">realization</span> <span class="o">=</span> <span class="n">noise_maps</span><span class="o">.</span><span class="n">read_rotation</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                <span class="n">w</span><span class="p">[</span><span class="n">realization</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">w</span><span class="p">[</span><span class="n">realization</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">rho1</span><span class="p">,</span> <span class="n">rho2</span> <span class="o">=</span> <span class="n">noise_maps</span><span class="o">.</span><span class="n">read_density_split</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+                <span class="n">realization</span> <span class="o">=</span> <span class="p">[</span><span class="n">rho1</span> <span class="o">-</span> <span class="n">rho2</span><span class="p">]</span>
+                <span class="n">w</span><span class="p">[</span><span class="n">realization</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="c1"># Analyze it with namaster</span>
+            <span class="n">field</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">realization</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+
+            <span class="c1"># Accumulate</span>
+            <span class="n">noise_c_ells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
+
+        <span class="n">mean_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">noise_c_ells</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Since this is the noise on the half maps the real</span>
+        <span class="c1"># noise C_ell will be (0.5)**2 times the size</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">POS_POS</span><span class="p">:</span>
+            <span class="n">mean_noise</span> <span class="o">/=</span> <span class="mi">4</span>
+
+        <span class="k">return</span> <span class="n">mean_noise</span>
+
+
+
+    <span class="k">def</span> <span class="nf">load_tomographic_quantities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">,</span> <span class="n">f_sky</span><span class="p">):</span>
+        <span class="c1"># Get lots of bits of metadata from the input file,</span>
+        <span class="c1"># per tomographic bin.</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;tracer_metadata&#39;</span><span class="p">)</span>
+        <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;tracers/sigma_e&#39;</span><span class="p">][:]</span>
+        <span class="n">N_eff</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;tracers/N_eff&#39;</span><span class="p">][:]</span>
+        <span class="n">lens_counts</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;tracers/lens_counts&#39;</span><span class="p">][:]</span>
+        <span class="n">metadata</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">area</span> <span class="o">=</span> <span class="mi">4</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">f_sky</span>
+        <span class="n">n_eff</span> <span class="o">=</span> <span class="n">N_eff</span> <span class="o">/</span> <span class="n">area</span>
+        <span class="n">n_lens</span> <span class="o">=</span> <span class="n">lens_counts</span> <span class="o">/</span> <span class="n">area</span>
+
+        <span class="n">tomo_info</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;area_steradians&quot;</span><span class="p">:</span> <span class="n">area</span><span class="p">,</span>
+            <span class="s2">&quot;n_eff_steradian&quot;</span><span class="p">:</span> <span class="n">n_eff</span><span class="p">,</span>
+            <span class="s2">&quot;n_lens_steradian&quot;</span><span class="p">:</span> <span class="n">n_lens</span><span class="p">,</span>
+            <span class="s2">&quot;sigma_e&quot;</span><span class="p">:</span> <span class="n">sigma_e</span><span class="p">,</span>
+            <span class="s2">&quot;f_sky&quot;</span><span class="p">:</span> <span class="n">f_sky</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Using unweighted lens samples here&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tomo_info</span>
+
+
+
+    <span class="k">def</span> <span class="nf">load_tracers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">):</span>
+        <span class="c1"># Load the N(z) and convert to sacc tracers.</span>
+        <span class="c1"># We need this both to put it into the output file,</span>
+        <span class="c1"># but also potentially to compute the theory guess</span>
+        <span class="c1"># for projecting out modes</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="n">f_shear</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_photoz_stack&#39;</span><span class="p">)</span>
+        <span class="n">f_lens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">)</span>
+
+        <span class="n">tracers</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">f_shear</span><span class="p">[</span><span class="s1">&#39;n_of_z/source/z&#39;</span><span class="p">][:]</span>
+            <span class="n">Nz</span> <span class="o">=</span> <span class="n">f_shear</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;n_of_z/source/bin_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][:]</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">BaseTracer</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;NZ&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">Nz</span><span class="p">)</span>
+            <span class="n">tracers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;lens_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">f_lens</span><span class="p">[</span><span class="s1">&#39;n_of_z/lens/z&#39;</span><span class="p">][:]</span>
+            <span class="n">Nz</span> <span class="o">=</span> <span class="n">f_lens</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;n_of_z/lens/bin_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][:]</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">BaseTracer</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;NZ&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">Nz</span><span class="p">)</span>
+            <span class="n">tracers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span>
+
+        <span class="k">return</span> <span class="n">tracers</span>
+
+
+
+    <span class="k">def</span> <span class="nf">save_power_spectra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="kn">from</span> <span class="nn">sacc.windows</span> <span class="kn">import</span> <span class="n">TopHatWindow</span>
+        <span class="n">CEE</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_cl_ee</span>
+        <span class="n">CBB</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_cl_bb</span>
+        <span class="n">CdE</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shearDensity_cl_e</span>
+        <span class="n">CdB</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shearDensity_cl_b</span>
+        <span class="n">Cdd</span><span class="o">=</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_density_cl</span>
+
+        <span class="n">S</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">tracer</span> <span class="ow">in</span> <span class="n">tracers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">S</span><span class="o">.</span><span class="n">add_tracer_object</span><span class="p">(</span><span class="n">tracer</span><span class="p">)</span>
+
+        <span class="c1"># We have saved the results in a big list.  Each entry contains a single</span>
+        <span class="c1"># bin pair and spectrum type, but many data points at different angles.</span>
+        <span class="c1"># Here we pull them all out to add to sacc</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+            <span class="n">tracer1</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">corr_type</span> <span class="ow">in</span> <span class="p">[</span><span class="n">CEE</span><span class="p">,</span> <span class="n">CBB</span><span class="p">,</span> <span class="n">CdE</span><span class="p">,</span> <span class="n">CdB</span><span class="p">]</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="n">tracer2</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">corr_type</span> <span class="ow">in</span> <span class="p">[</span><span class="n">CEE</span><span class="p">,</span> <span class="n">CBB</span><span class="p">]</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span>
+
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">l</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">ell_vals</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">win</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># second term is weights</span>
+                <span class="n">win</span> <span class="o">=</span> <span class="n">TopHatWindow</span><span class="p">(</span><span class="n">ell_vals</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ell_vals</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="c1"># We use optional tags i and j here to record the bin indices, as well</span>
+                <span class="c1"># as in the tracer names, in case it helps to select on them later.</span>
+                <span class="n">S</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">corr_type</span><span class="p">,</span> <span class="p">(</span><span class="n">tracer1</span><span class="p">,</span> <span class="n">tracer2</span><span class="p">),</span> <span class="n">d</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="n">ell</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">window</span><span class="o">=</span><span class="n">win</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">j</span><span class="p">)</span>
+
+        <span class="c1"># Save provenance information</span>
+        <span class="n">provenance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gather_provenance</span><span class="p">()</span>
+        <span class="n">provenance</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">SACCFile</span><span class="o">.</span><span class="n">generate_provenance</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">provenance</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+                    <span class="n">S</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;provenance/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">S</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;provenance/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+
+        <span class="c1"># And we&#39;re all done!</span>
+        <span class="n">output_filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s2">&quot;twopoint_data_fourier&quot;</span><span class="p">)</span>
+        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="n">output_filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="TXTwoPointPlotsFourier"><a class="viewcode-back" href="../../twopoint_fourier.html#txpipe.twopoint_fourier.TXTwoPointPlotsFourier">[docs]</a><span class="k">class</span> <span class="nc">TXTwoPointPlotsFourier</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXTwoPointPlotsFourier&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;summary_statistics_fourier&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">,</span> <span class="n">FiducialCosmology</span><span class="p">),</span>  <span class="c1"># For example lines</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;shear_cl_ee&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shearDensity_cl&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;density_cl&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;wspace&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="s1">&#39;hspace&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">s</span><span class="p">):</span>
+        <span class="n">sources</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lenses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">tn</span><span class="p">,</span><span class="n">t</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tn</span><span class="p">:</span>
+                <span class="n">sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tn</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;lens&#39;</span> <span class="ow">in</span> <span class="n">tn</span><span class="p">:</span>
+                <span class="n">lenses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tn</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">lenses</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="kn">import</span> <span class="nn">matplotlib</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span>
+        <span class="kn">from</span> <span class="nn">.plotting</span> <span class="kn">import</span> <span class="n">full_3x2pt_plots</span>
+        <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
+        <span class="n">matplotlib</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s2">&quot;xtick.direction&quot;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;in&#39;</span>
+        <span class="n">matplotlib</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s2">&quot;ytick.direction&quot;</span><span class="p">]</span><span class="o">=</span><span class="s1">&#39;in&#39;</span>
+
+        <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;summary_statistics_fourier&#39;</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="o">.</span><span class="n">load_fits</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_nbin</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>  
+ 
+        <span class="n">cosmo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_ccl</span><span class="p">()</span>
+
+        <span class="n">outputs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;galaxy_density_cl&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;density_cl&#39;</span><span class="p">,</span>
+                <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">nbin_lens</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">nbin_lens</span><span class="p">),</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+
+            <span class="s2">&quot;galaxy_shearDensity_cl_e&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;shearDensity_cl&#39;</span><span class="p">,</span>
+                <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">nbin_lens</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">nbin_source</span><span class="p">),</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+
+            <span class="s2">&quot;galaxy_shear_cl_ee&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;shear_cl_ee&#39;</span><span class="p">,</span>
+                <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">3.5</span><span class="o">*</span><span class="n">nbin_source</span><span class="p">,</span> <span class="mi">3</span><span class="o">*</span><span class="n">nbin_source</span><span class="p">),</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+
+        <span class="p">}</span>
+
+        <span class="n">figures</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">val</span><span class="o">.</span><span class="n">file</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">outputs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="n">full_3x2pt_plots</span><span class="p">([</span><span class="n">filename</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;summary_statistics_fourier&#39;</span><span class="p">],</span> 
+                         <span class="n">figures</span><span class="o">=</span><span class="n">figures</span><span class="p">,</span> <span class="n">cosmo</span><span class="o">=</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">theory_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Fiducial&#39;</span><span class="p">],</span> <span class="n">xi</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">xlogscale</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">fig</span> <span class="ow">in</span> <span class="n">outputs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+        
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">PipelineStage</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

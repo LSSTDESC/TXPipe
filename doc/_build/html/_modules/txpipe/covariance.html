@@ -83,7 +83,6 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
             
@@ -617,7 +616,7 @@
         <span class="k">return</span> <span class="n">cov_full</span></div>
 
 
-<span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRealGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.TXRealGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXRealGaussianCovariance&#39;</span>
     <span class="n">do_xi</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -670,7 +669,7 @@
     <span class="k">def</span> <span class="nf">save_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">,</span> <span class="n">cov</span><span class="p">):</span>
         <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;summary_statistics_real&#39;</span><span class="p">)</span>
         <span class="n">two_point_data</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
-        <span class="n">two_point_data</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 </pre></div>
 
            </div>

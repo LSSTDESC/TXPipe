@@ -1,7 +1,7 @@
 Lens selector
 --------------
 
-.. autoclass:: txpipe.TXBaseLensSelector
+.. automodule:: txpipe.lens_selector
    :members:
    :special-members:
    :show-inheritance:
