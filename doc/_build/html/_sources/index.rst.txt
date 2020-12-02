@@ -12,7 +12,7 @@ TXPipe documentation
 
    installation
 
-   stages<api/txpipe.rst>
+   stages
    submodules
    
 

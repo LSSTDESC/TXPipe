@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Utilities &mdash; TXPipe  documentation</title>
+  <title>data_types &mdash; TXPipe  documentation</title>
   
 
   
@@ -36,7 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="data_types" href="data_types.html" /> 
+    <link rel="next" title="Utilities" href="utils.html" />
+    <link rel="prev" title="Submodules for TXPipe" href="submodules.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -86,8 +87,13 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="data_types.html">data_types</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Utilities</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">data_types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">Utilities</a></li>
 </ul>
 </li>
 </ul>
@@ -138,13 +144,13 @@
         
           <li><a href="submodules.html">Submodules for TXPipe</a> &raquo;</li>
         
-      <li>Utilities</li>
+      <li>data_types</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/utils.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/data_types.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -157,49 +163,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="utilities">
-<h1>Utilities<a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
-<blockquote>
-<div><span class="target" id="module-txpipe.utils.pixel_schemes"></span><dl class="py function">
-<dt id="txpipe.utils.pixel_schemes.choose_pixelization">
-<code class="sig-prename descclassname">txpipe.utils.pixel_schemes.</code><code class="sig-name descname">choose_pixelization</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">config</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/pixel_schemes.html#choose_pixelization"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.pixel_schemes.choose_pixelization" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct a pixelization scheme based on configuration choices.</p>
-<p>Currently only the Healpix pixelization is defined.</p>
-<p>If kwargs[‘pixelization’]==’healpix’ then these parameters will be checked:</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>pixelization</strong> (<em>str</em>) – Choice of pixelization, currently only “healpix” is supported</p></li>
-<li><p><strong>nside</strong> (<em>int</em><em>, </em><em>optional</em>) – Only used if pixelization==’healpix’.  Healpix resolution parameter, must be power of 2.</p></li>
-<li><p><strong>nest</strong> (<em>bool</em><em>, </em><em>optional</em>) – Only used if pixelization==’healpix’.  Healpix ordering scheme. Default=False</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>scheme</strong> – Instance of a pixelization scheme subclass</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>PixelizationScheme</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.utils.pixel_schemes.round_approx">
-<code class="sig-prename descclassname">txpipe.utils.pixel_schemes.</code><code class="sig-name descname">round_approx</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/pixel_schemes.html#round_approx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.pixel_schemes.round_approx" title="Permalink to this definition">¶</a></dt>
-<dd><p>Round down to the floor integer value for x, except where x is very close
-to floor(x)+1, in which case round to that value.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>array</em><em> or </em><em>float</em>) – </p></li>
-<li><p><strong>Returns</strong> – </p></li>
-<li><p><strong>out</strong> (<em>integer array</em>) – Rounded value of x</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-</div></blockquote>
+  <div class="section" id="module-txpipe.data_types">
+<span id="data-types"></span><h1>data_types<a class="headerlink" href="#module-txpipe.data_types" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+</div>
+</div>
 </div>
 
 
@@ -210,8 +180,10 @@ to floor(x)+1, in which case round to that value.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="utils.html" class="btn btn-neutral float-right" title="Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
-        <a href="data_types.html" class="btn btn-neutral float-left" title="data_types" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+        <a href="submodules.html" class="btn btn-neutral float-left" title="Submodules for TXPipe" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
