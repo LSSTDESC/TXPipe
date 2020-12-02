@@ -4,5 +4,5 @@ These are the stages implemented so far:
 
 .. toctree::
     
-    auxiliary_maps
+    Auxilliary_maps
     twopoint
