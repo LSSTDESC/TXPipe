@@ -7,4 +7,7 @@ These are the stages implemented so far:
     auxiliary_maps
     base_stage
     blinding
+    convergence
+    covariance
+    diagnostics
     twopoint

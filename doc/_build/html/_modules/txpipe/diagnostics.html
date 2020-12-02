@@ -1,0 +1,884 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.diagnostics &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.diagnostics</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.diagnostics</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">Directory</span><span class="p">,</span> <span class="n">ShearCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">,</span> <span class="n">TomographyCatalog</span>
+<span class="kn">from</span> <span class="nn">parallel_statistics</span> <span class="kn">import</span> <span class="n">ParallelMeanVariance</span>
+<span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">calculate_selection_response</span><span class="p">,</span> <span class="n">calculate_shear_response</span><span class="p">,</span> <span class="n">apply_metacal_response</span><span class="p">,</span> <span class="n">apply_lensfit_calibration</span><span class="p">,</span> <span class="n">MeanShearInBins</span>
+<span class="kn">from</span> <span class="nn">.utils.fitting</span> <span class="kn">import</span> <span class="n">fit_straight_line</span>
+<span class="kn">from</span> <span class="nn">.plotting</span> <span class="kn">import</span> <span class="n">manual_step_histogram</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<div class="viewcode-block" id="TXDiagnosticPlots"><a class="viewcode-back" href="../../diagnostics.html#txpipe.TXDiagnosticPlots">[docs]</a><span class="k">class</span> <span class="nc">TXDiagnosticPlots</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXDiagnosticPlots&#39;</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">,</span> <span class="n">ShearCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;g_psf_T&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;g_psf_g&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;g1_hist&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;g2_hist&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;g_snr&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;g_T&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;snr_hist&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;mag_hist&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;response_hist&#39;</span><span class="p">,</span> <span class="n">PNGFile</span><span class="p">),</span>
+
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;chunk_rows&#39;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>
+        <span class="s1">&#39;delta_gamma&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
+        <span class="s1">&#39;shear_prefix&#39;</span><span class="p">:</span><span class="s1">&#39;mcal_&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;psf_prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;mcal_psf_&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;T_min&#39;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="s1">&#39;T_max&#39;</span><span class="p">:</span> <span class="mf">0.28</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># PSF tests</span>
+        <span class="kn">import</span> <span class="nn">matplotlib</span>
+        <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">catalog_type</span>
+
+        <span class="c1"># Collect together all the methods on this class called self.plot_*</span>
+        <span class="c1"># They are all expected to be python coroutines - generators that</span>
+        <span class="c1"># use the yield feature to pause and wait for more input.</span>
+        <span class="c1"># We instantiate them all here</span>
+        
+        <span class="n">plotters</span> <span class="o">=</span> <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">)()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;plot_&#39;</span><span class="p">)]</span>
+
+        <span class="c1"># Start off each of the plotters.  This will make them all run up to the</span>
+        <span class="c1"># first yield statement, then pause and wait for the first chunk of data</span>
+        <span class="k">for</span> <span class="n">plotter</span> <span class="ow">in</span> <span class="n">plotters</span><span class="p">:</span>
+            <span class="n">plotter</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># Create an iterator for reading through the input data.</span>
+        <span class="c1"># This method automatically splits up data among the processes,</span>
+        <span class="c1"># so the plotters should handle this.</span>
+        <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
+        <span class="n">psf_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;psf_prefix&#39;</span><span class="p">]</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s1">g1&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s1">g2&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s1">T_mean&#39;</span><span class="p">,</span> <span class="s1">&#39;mcal_g1&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g1_1p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g1_2p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g1_1m&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g1_2m&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g2_1p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g2_2p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g2_1m&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_g2_2m&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_s2n&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_T&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;mcal_T_1p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_T_2p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_T_1m&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_T_2m&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_s2n_1p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_s2n_2p&#39;</span><span class="p">,</span><span class="s1">&#39;mcal_s2n_1m&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;mcal_s2n_2m&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;psf_g1&#39;</span><span class="p">,</span><span class="s1">&#39;psf_g2&#39;</span><span class="p">,</span><span class="s1">&#39;g1&#39;</span><span class="p">,</span><span class="s1">&#39;g2&#39;</span><span class="p">,</span><span class="s1">&#39;psf_T_mean&#39;</span><span class="p">,</span><span class="s1">&#39;s2n&#39;</span><span class="p">,</span><span class="s1">&#39;T&#39;</span><span class="p">,</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span><span class="s1">&#39;m&#39;</span><span class="p">,</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">,</span><span class="s1">&#39;c1&#39;</span><span class="p">,</span><span class="s1">&#39;c2&#39;</span><span class="p">]</span>
+
+        <span class="n">photo_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mag_u&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_g&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_r&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_i&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_z&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_y&#39;</span><span class="p">]</span>
+        <span class="n">shear_tomo_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span>
+        <span class="n">lens_tomo_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">]</span>
+        <span class="n">photo_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mag_u&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_g&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_r&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_i&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_z&#39;</span><span class="p">,</span> <span class="s1">&#39;mag_y&#39;</span><span class="p">]</span>
+        <span class="n">shear_tomo_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span>
+        <span class="n">lens_tomo_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span><span class="n">chunk_rows</span><span class="p">,</span>
+                                         <span class="s1">&#39;shear_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;shear&#39;</span><span class="p">,</span> <span class="n">shear_cols</span><span class="p">,</span>
+                                         <span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">photo_cols</span><span class="p">,</span>
+                                         <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;tomography&#39;</span><span class="p">,</span><span class="n">shear_tomo_cols</span><span class="p">,</span>
+                                         <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;metacal_response&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;R_gamma&#39;</span><span class="p">],</span>
+                                         <span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;tomography&#39;</span><span class="p">,</span><span class="n">lens_tomo_cols</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span><span class="n">chunk_rows</span><span class="p">,</span>
+                                         <span class="s1">&#39;shear_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;shear&#39;</span><span class="p">,</span> <span class="n">shear_cols</span><span class="p">,</span>
+                                         <span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">photo_cols</span><span class="p">,</span>
+                                         <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;tomography&#39;</span><span class="p">,</span><span class="n">shear_tomo_cols</span><span class="p">,</span>
+                                         <span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;response&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;R&#39;</span><span class="p">],</span>
+                                         <span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;tomography&#39;</span><span class="p">,</span><span class="n">lens_tomo_cols</span><span class="p">)</span>
+
+
+        <span class="c1"># Now loop through each chunk of input data, one at a time.</span>
+        <span class="c1"># Each time we get a new segment of data, which goes to all the plotters</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read data </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># This causes each data = yield statement in each plotter to</span>
+            <span class="c1"># be given this data chunk as the variable data.</span>
+
+            <span class="k">for</span> <span class="n">plotter</span> <span class="ow">in</span> <span class="n">plotters</span><span class="p">:</span>
+                <span class="n">plotter</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+
+        <span class="c1"># Tell all the plotters to finish, collect together results from the different</span>
+        <span class="c1"># processors, and make their final plots.  Plotters need to respond</span>
+        <span class="c1"># to the None input and</span>
+        <span class="k">for</span> <span class="n">plotter</span> <span class="ow">in</span> <span class="n">plotters</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">plotter</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">plot_psf_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># mean shear in bins of PSF</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Making PSF shear plot&quot;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+        <span class="kn">from</span> <span class="nn">.utils.fitting</span> <span class="kn">import</span> <span class="n">fit_straight_line</span>
+        
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">gr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">//</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">psf_g_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="o">-</span><span class="n">gr</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">gr</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;psf_g_edges&#39;</span><span class="p">,</span> <span class="n">psf_g_edges</span><span class="p">)</span>
+        <span class="n">psf_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;psf_prefix&#39;</span><span class="p">]</span>
+
+        <span class="n">p1</span> <span class="o">=</span> <span class="n">MeanShearInBins</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s1">g1&#39;</span><span class="p">,</span> <span class="n">psf_g_edges</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">,</span> <span class="n">cut_source_bin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shear_catalog_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">])</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="n">MeanShearInBins</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s1">g2&#39;</span><span class="p">,</span> <span class="n">psf_g_edges</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">,</span> <span class="n">cut_source_bin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">shear_catalog_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">])</span>
+
+        <span class="n">psf_g_mid</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">psf_g_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">psf_g_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">p1</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">p2</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="n">mu1</span><span class="p">,</span> <span class="n">mean11</span><span class="p">,</span> <span class="n">mean12</span><span class="p">,</span> <span class="n">std11</span><span class="p">,</span> <span class="n">std12</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+        <span class="n">mu2</span><span class="p">,</span> <span class="n">mean21</span><span class="p">,</span> <span class="n">mean22</span><span class="p">,</span> <span class="n">std21</span><span class="p">,</span> <span class="n">std22</span> <span class="o">=</span> <span class="n">p2</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;g_psf_g&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1">#Include a small shift to be able to see the g1 / g2 points on the plot</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="mf">0.1</span><span class="o">*</span><span class="p">(</span><span class="n">mu1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">mu1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+
+        <span class="n">slope11</span><span class="p">,</span> <span class="n">intercept11</span><span class="p">,</span> <span class="n">mc_cov</span> <span class="o">=</span> <span class="n">fit_straight_line</span><span class="p">(</span><span class="n">mu1</span><span class="p">,</span> <span class="n">mean11</span><span class="p">,</span> <span class="n">y_err</span><span class="o">=</span><span class="n">std11</span><span class="p">,</span> <span class="n">nan_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_nan</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">std_err11</span> <span class="o">=</span> <span class="n">mc_cov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">line11</span> <span class="o">=</span> <span class="n">slope11</span><span class="o">*</span><span class="p">(</span><span class="n">mu1</span><span class="p">)</span><span class="o">+</span><span class="n">intercept11</span>
+
+        <span class="n">slope12</span><span class="p">,</span> <span class="n">intercept12</span><span class="p">,</span> <span class="n">mc_cov</span> <span class="o">=</span> <span class="n">fit_straight_line</span><span class="p">(</span><span class="n">mu1</span><span class="p">,</span> <span class="n">mean12</span><span class="p">,</span> <span class="n">y_err</span><span class="o">=</span><span class="n">std12</span><span class="p">,</span> <span class="n">nan_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_nan</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">std_err12</span> <span class="o">=</span> <span class="n">mc_cov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">line12</span> <span class="o">=</span> <span class="n">slope12</span><span class="o">*</span><span class="p">(</span><span class="n">mu1</span><span class="p">)</span><span class="o">+</span><span class="n">intercept12</span>
+
+        <span class="n">slope21</span><span class="p">,</span> <span class="n">intercept21</span><span class="p">,</span> <span class="n">mc_cov</span> <span class="o">=</span> <span class="n">fit_straight_line</span><span class="p">(</span><span class="n">mu2</span><span class="p">,</span> <span class="n">mean21</span><span class="p">,</span> <span class="n">y_err</span><span class="o">=</span><span class="n">std21</span><span class="p">,</span> <span class="n">nan_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_nan</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">std_err21</span> <span class="o">=</span> <span class="n">mc_cov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">line21</span> <span class="o">=</span> <span class="n">slope21</span><span class="o">*</span><span class="p">(</span><span class="n">mu2</span><span class="p">)</span><span class="o">+</span><span class="n">intercept21</span>
+
+        <span class="n">slope22</span><span class="p">,</span> <span class="n">intercept22</span><span class="p">,</span> <span class="n">mc_cov</span> <span class="o">=</span> <span class="n">fit_straight_line</span><span class="p">(</span><span class="n">mu2</span><span class="p">,</span> <span class="n">mean22</span><span class="p">,</span> <span class="n">y_err</span><span class="o">=</span><span class="n">std22</span><span class="p">,</span> <span class="n">nan_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_nan</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">std_err22</span> <span class="o">=</span> <span class="n">mc_cov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">line22</span> <span class="o">=</span> <span class="n">slope22</span><span class="o">*</span><span class="p">(</span><span class="n">mu2</span><span class="p">)</span><span class="o">+</span><span class="n">intercept22</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu1</span><span class="p">,</span><span class="n">line11</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope11</span><span class="p">,</span> <span class="n">std_err11</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu1</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">line11</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu1</span><span class="p">,</span><span class="n">line12</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope12</span><span class="p">,</span> <span class="n">std_err12</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu1</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">line12</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu1</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean11</span><span class="p">,</span> <span class="n">std11</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g1&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu1</span><span class="o">-</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean12</span><span class="p">,</span> <span class="n">std12</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g2&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;PSF g1&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Mean g&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu2</span><span class="p">,</span><span class="n">line21</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope21</span><span class="p">,</span> <span class="n">std_err21</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu2</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">line21</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu2</span><span class="p">,</span><span class="n">line22</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope22</span><span class="p">,</span> <span class="n">std_err22</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu2</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">line22</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu2</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean21</span><span class="p">,</span> <span class="n">std21</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g1&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu2</span><span class="o">-</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean22</span><span class="p">,</span> <span class="n">std22</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g2&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;PSF g2&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Mean g&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+        <span class="c1"># This also saves the figure</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_psf_size_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># mean shear in bins of PSF</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Making PSF size plot&quot;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+        
+        <span class="n">psf_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;psf_prefix&#39;</span><span class="p">]</span>
+        
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">T_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;T_min&#39;</span><span class="p">]</span>
+        <span class="n">T_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;T_max&#39;</span><span class="p">]</span>
+        <span class="n">psf_T_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">T_min</span><span class="p">,</span> <span class="n">T_max</span><span class="p">,</span> <span class="n">size</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">binnedShear</span> <span class="o">=</span> <span class="n">MeanShearInBins</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s1">T_mean&#39;</span><span class="p">,</span> <span class="n">psf_T_edges</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">,</span> <span class="n">cut_source_bin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shear_catalog_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">])</span>
+            
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">binnedShear</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            
+
+        <span class="n">mu</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">std2</span> <span class="o">=</span> <span class="n">binnedShear</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">w</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">!=</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">std1</span><span class="p">)</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">mu</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+        <span class="n">mean1</span> <span class="o">=</span> <span class="n">mean1</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+        <span class="n">mean2</span> <span class="o">=</span> <span class="n">mean2</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+        <span class="n">std1</span> <span class="o">=</span> <span class="n">std1</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+        <span class="n">std2</span> <span class="o">=</span> <span class="n">std2</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
+
+        <span class="n">dx</span> <span class="o">=</span> <span class="mf">0.05</span><span class="o">*</span><span class="p">(</span><span class="n">psf_T_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">psf_T_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">slope1</span><span class="p">,</span> <span class="n">intercept1</span><span class="p">,</span> <span class="n">cov1</span> <span class="o">=</span> <span class="n">fit_straight_line</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">skip_nan</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nan_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">std_err1</span> <span class="o">=</span> <span class="n">cov1</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">line1</span> <span class="o">=</span> <span class="n">slope1</span><span class="o">*</span><span class="n">mu</span> <span class="o">+</span> <span class="n">intercept1</span>
+        <span class="n">slope2</span><span class="p">,</span> <span class="n">intercept2</span><span class="p">,</span> <span class="n">cov2</span> <span class="o">=</span> <span class="n">fit_straight_line</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std2</span><span class="p">,</span> <span class="n">skip_nan</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nan_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">std_err2</span> <span class="o">=</span> <span class="n">cov2</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mf">0.5</span>
+        <span class="n">line2</span> <span class="o">=</span> <span class="n">slope2</span><span class="o">*</span><span class="n">mu</span> <span class="o">+</span> <span class="n">intercept2</span>
+
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;g_psf_T&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">line1</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope1</span><span class="p">,</span> <span class="n">std_err1</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g1&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="o">-</span><span class="n">dx</span><span class="p">,</span><span class="n">line2</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope2</span><span class="p">,</span> <span class="n">std_err2</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu</span><span class="o">-</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g2&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;PSF T&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Mean g&quot;</span><span class="p">)</span>
+        <span class="c1">#plt.ylim(-0.0015,0.0015)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_snr_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># mean shear in bins of snr</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Making mean shear SNR plot&quot;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+        
+        <span class="c1"># Parameters of the binning in SNR</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+        <span class="n">snr_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">,</span><span class="mf">2.5</span><span class="p">,</span><span class="n">size</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># This class includes all the cutting and calibration, both for </span>
+        <span class="c1"># estimator and selection biases</span>
+        <span class="n">binnedShear</span> <span class="o">=</span> <span class="n">MeanShearInBins</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">s2n&#39;</span><span class="p">,</span> <span class="n">snr_edges</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">,</span> <span class="n">cut_source_bin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shear_catalog_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">])</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># This happens when we have loaded a new data chunk</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="c1"># Indicates the end of the data stream</span>
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">binnedShear</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        
+        <span class="n">mu</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">std2</span> <span class="o">=</span> <span class="n">binnedShear</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Get the error on the mean</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="mf">0.05</span><span class="o">*</span><span class="p">(</span><span class="n">snr_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">snr_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">mean1</span><span class="p">))</span>
+        <span class="n">slope1</span><span class="p">,</span> <span class="n">intercept1</span><span class="p">,</span> <span class="n">r_value1</span><span class="p">,</span> <span class="n">p_value1</span><span class="p">,</span> <span class="n">std_err1</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">linregress</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">[</span><span class="n">good</span><span class="p">]),</span><span class="n">mean1</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+        <span class="n">line1</span> <span class="o">=</span> <span class="n">slope1</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">))</span><span class="o">+</span><span class="n">intercept1</span>
+
+        <span class="n">good</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">mean2</span><span class="p">))</span>
+        <span class="n">slope2</span><span class="p">,</span> <span class="n">intercept2</span><span class="p">,</span> <span class="n">r_value2</span><span class="p">,</span> <span class="n">p_value2</span><span class="p">,</span> <span class="n">std_err2</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">linregress</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">[</span><span class="n">good</span><span class="p">]),</span><span class="n">mean2</span><span class="p">[</span><span class="n">good</span><span class="p">])</span>
+        <span class="n">line2</span> <span class="o">=</span> <span class="n">slope2</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">))</span><span class="o">+</span><span class="n">intercept2</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;g_snr&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">line1</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope1</span><span class="p">,</span> <span class="n">std_err1</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g1&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">line2</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope2</span><span class="p">,</span> <span class="n">std_err2</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="o">-</span><span class="n">dx</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="c1"># plt.ylim(-0.0015,0.0015)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu</span><span class="o">-</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g2&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;SNR&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Mean g&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_size_shear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># mean shear in bins of galaxy size</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Making mean shear galaxy size plot&quot;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+        
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">psf_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;psf_prefix&#39;</span><span class="p">]</span>
+        
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">5</span>
+        
+        <span class="n">T_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">2.1</span><span class="p">,</span><span class="n">size</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+        <span class="n">binnedShear</span> <span class="o">=</span> <span class="n">MeanShearInBins</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">T&#39;</span><span class="p">,</span> <span class="n">T_edges</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">,</span> <span class="n">cut_source_bin</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shear_catalog_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">])</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># This happens when we have loaded a new data chunk</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="c1"># Indicates the end of the data stream</span>
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">binnedShear</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="n">mu</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">std2</span> <span class="o">=</span> <span class="n">binnedShear</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">dx</span> <span class="o">=</span> <span class="mf">0.05</span><span class="o">*</span><span class="p">(</span><span class="n">T_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">T_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">slope1</span><span class="p">,</span> <span class="n">intercept1</span><span class="p">,</span> <span class="n">r_value1</span><span class="p">,</span> <span class="n">p_value1</span><span class="p">,</span> <span class="n">std_err1</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">linregress</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">mean1</span><span class="p">)</span>
+        <span class="n">line1</span> <span class="o">=</span> <span class="n">slope1</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">))</span><span class="o">+</span><span class="n">intercept1</span>
+        <span class="n">slope2</span><span class="p">,</span> <span class="n">intercept2</span><span class="p">,</span> <span class="n">r_value2</span><span class="p">,</span> <span class="n">p_value2</span><span class="p">,</span> <span class="n">std_err2</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">linregress</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">mean2</span><span class="p">)</span>
+        <span class="n">line2</span> <span class="o">=</span> <span class="n">slope2</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">mu</span><span class="p">))</span><span class="o">+</span><span class="n">intercept2</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;g_T&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">line1</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope1</span><span class="p">,</span> <span class="n">std_err1</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">std1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g1&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">line2</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$m=</span><span class="si">%.4f</span><span class="s2"> \pm </span><span class="si">%.4f</span><span class="s2">$&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">slope2</span><span class="p">,</span> <span class="n">std_err2</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">mu</span><span class="p">,[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="p">),</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">mu</span><span class="o">-</span><span class="n">dx</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">std2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;g2&#39;</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="c1">#plt.ylim(-0.0015,0.0015)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;galaxy size T&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Mean g&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">plot_g_histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;plotting histogram&#39;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+        
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bins</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mids</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">calc1</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+        <span class="n">calc2</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+        
+        
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">qual_cut</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span> <span class="o">!=-</span><span class="mi">1</span>
+<span class="c1">#            qual_cut |= data[&#39;lens_bin&#39;] !=-1</span>
+        
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                <span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="n">b1_1p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> 
+                <span class="n">b1_2p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="n">b1_1m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> 
+                <span class="n">b1_2m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> 
+            
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                <span class="n">b2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="n">b2_1p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> 
+                <span class="n">b2_2p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="n">b2_1m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> 
+                <span class="n">b2_2m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">b2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bins</span><span class="p">):</span>
+                <span class="n">w1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b1</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                    <span class="n">w1_1p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b1_1p</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">w1_2p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b1_2p</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">w1_1m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b1_1m</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">w1_2m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b1_2m</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">S</span> <span class="o">=</span> <span class="n">calculate_selection_response</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">w1_1p</span><span class="p">,</span> <span class="n">w1_2p</span><span class="p">,</span><span class="n">w1_1m</span><span class="p">,</span> <span class="n">w1_2m</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">)</span>
+                    <span class="n">R</span> <span class="o">=</span> <span class="n">calculate_shear_response</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span>
+                                                  <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">delta_gamma</span><span class="p">)</span>
+                    <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span> <span class="o">=</span> <span class="n">apply_metacal_response</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">])</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+                    <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">one_plus_K</span> <span class="o">=</span> <span class="n">apply_lensfit_calibration</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Please specify metacal or lensfit for shear_catalog in config.&quot;</span><span class="p">)</span>
+                <span class="c1"># Do more things here to establish</span>
+                <span class="n">calc1</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">g1</span><span class="p">)</span>
+                
+                
+                <span class="n">w2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b2</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                    <span class="n">w2_1p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b2_1p</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">w2_2p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b2_2p</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">w2_1m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b2_1m</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">w2_2m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b2_2m</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                    <span class="n">S</span> <span class="o">=</span> <span class="n">calculate_selection_response</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">w1_1p</span><span class="p">,</span> <span class="n">w1_2p</span><span class="p">,</span><span class="n">w1_1m</span><span class="p">,</span> <span class="n">w1_2m</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">)</span>
+                    <span class="n">R</span> <span class="o">=</span> <span class="n">calculate_shear_response</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_1m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1_2m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span>
+                                                  <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2p&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_1m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2_2m&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span><span class="n">delta_gamma</span><span class="p">)</span>
+                    <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span> <span class="o">=</span> <span class="n">apply_metacal_response</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">])</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+                    <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">one_plus_K</span> <span class="o">=</span> <span class="n">apply_lensfit_calibration</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">],</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w1</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Please specify metacal or lensfit for shear_catalog in config.&quot;</span><span class="p">)</span>
+                <span class="n">calc2</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">g2</span><span class="p">)</span>
+
+        <span class="n">count1</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">var1</span> <span class="o">=</span> <span class="n">calc1</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gather&#39;</span><span class="p">)</span>
+        <span class="n">count2</span><span class="p">,</span> <span class="n">mean2</span><span class="p">,</span> <span class="n">var2</span> <span class="o">=</span> <span class="n">calc2</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gather&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">std1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var1</span><span class="o">/</span><span class="n">count1</span><span class="p">)</span>
+        <span class="n">std2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var2</span><span class="o">/</span><span class="n">count2</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;g1_hist&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">mids</span><span class="p">,</span> <span class="n">count1</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">edges</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span><span class="n">align</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$N_</span><span class="si">{galaxies}</span><span class="s1">$&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mf">1.1</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">count1</span><span class="p">))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;g2_hist&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">mids</span><span class="p">,</span> <span class="n">count2</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">edges</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">align</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span><span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;purple&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ticklabel_format</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="s1">&#39;sci&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">scilimits</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;g2&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$N_</span><span class="si">{galaxies}</span><span class="s1">$&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mf">1.1</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">count2</span><span class="p">))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_snr_histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;plotting snr histogram&#39;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        
+        <span class="n">delta_gamma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delta_gamma&#39;</span><span class="p">]</span>
+        <span class="n">shear_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_prefix&#39;</span><span class="p">]</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">bins</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mids</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">calc1</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+        
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+            
+            <span class="n">qual_cut</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span> <span class="o">!=-</span><span class="mi">1</span>
+<span class="c1">#            qual_cut |= data[&#39;lens_bin&#39;] !=-1</span>
+
+            <span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">s2n&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bins</span><span class="p">):</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">b1</span><span class="o">==</span><span class="n">i</span><span class="p">)</span>
+                <span class="c1"># Do more things here to establish</span>
+                <span class="n">calc1</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">shear_prefix</span><span class="si">}</span><span class="s1">s2n&#39;</span><span class="p">][</span><span class="n">qual_cut</span><span class="p">][</span><span class="n">w</span><span class="p">])</span>
+
+        <span class="n">count1</span><span class="p">,</span> <span class="n">mean1</span><span class="p">,</span> <span class="n">var1</span> <span class="o">=</span> <span class="n">calc1</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gather&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">std1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var1</span><span class="o">/</span><span class="n">count1</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;snr_hist&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">mids</span><span class="p">,</span> <span class="n">count1</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">-</span><span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span><span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span><span class="n">align</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ticklabel_format</span><span class="p">(</span><span class="n">style</span><span class="o">=</span><span class="s1">&#39;sci&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">scilimits</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;log(snr)&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$N_</span><span class="si">{galaxies}</span><span class="s1">$&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mf">1.1</span><span class="o">*</span><span class="nb">max</span><span class="p">(</span><span class="n">count1</span><span class="p">))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_response_histograms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">mpi4py.MPI</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="c1"># This seems to be a reasonable range, though there are samples</span>
+        <span class="c1"># with extremely high values</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">size</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mid</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="c1"># count of objects</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">size</span><span class="p">))</span>
+            <span class="c1"># make a separate histogram of the shear-sample-selected</span>
+            <span class="c1"># objects</span>
+            <span class="n">counts_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">size</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># count of objects</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">size</span><span class="p">))</span>
+            <span class="c1"># make a separate histogram of the shear-sample-selected</span>
+            <span class="c1"># objects</span>
+            <span class="n">counts_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">size</span><span class="p">))</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="c1"># check if selected for any source bin</span>
+            <span class="n">in_shear_sample</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span> <span class="o">!=-</span><span class="mi">1</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+                <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;R_gamma&#39;</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="c1"># loop through this chunk of data.</span>
+                <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">in_shear_sample</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+                    <span class="c1"># for each element in the 2x2 matrix</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+                        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+                            <span class="n">bij</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+                            <span class="c1"># this will naturally filter out</span>
+                            <span class="c1"># the nans</span>
+                            <span class="k">if</span> <span class="p">(</span><span class="n">bij</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">bij</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">):</span>
+                                <span class="n">counts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">bij</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                                <span class="k">if</span> <span class="n">s</span><span class="p">:</span>
+                                    <span class="n">counts_s</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">bij</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;R&#39;</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="c1"># loop through this chunk of data.</span>
+                <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">in_shear_sample</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">b</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">b</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">):</span>
+                        <span class="n">counts</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">+=</span><span class="mi">1</span>
+                        <span class="k">if</span> <span class="n">s</span><span class="p">:</span>
+                            <span class="n">counts_s</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Sum from all processors and then non-root ones return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Reduce</span><span class="p">(</span><span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">IN_PLACE</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Reduce</span><span class="p">(</span><span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">IN_PLACE</span><span class="p">,</span> <span class="n">counts_s</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Reduce</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Reduce</span><span class="p">(</span><span class="n">counts_s</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+                <span class="c1"># only root process makes plots</span>
+                <span class="k">return</span>
+
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;response_hist&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R00&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#1f77b4&#39;</span><span class="p">)</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R11&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#ff7f0e&#39;</span><span class="p">)</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R01&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#2ca02c&#39;</span><span class="p">)</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R10&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#d62728&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#1f77b4&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">counts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">*</span><span class="mf">1.1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;R_gamma&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Count&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;All flag=0&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts_s</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R00&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#1f77b4&#39;</span><span class="p">)</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts_s</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R11&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#ff7f0e&#39;</span><span class="p">)</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts_s</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R01&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#2ca02c&#39;</span><span class="p">)</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts_s</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R10&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#d62728&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">manual_step_histogram</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">counts_s</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#1f77b4&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">counts_s</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">*</span><span class="mf">1.1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;R_gamma&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Count&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Source sample&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+
+    <span class="k">def</span> <span class="nf">plot_mag_histograms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">mpi4py.MPI</span>
+        <span class="c1"># mean shear in bins of PSF</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Making mag histogram&quot;</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">mag_min</span> <span class="o">=</span> <span class="mi">20</span>
+        <span class="n">mag_max</span> <span class="o">=</span> <span class="mi">30</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">mag_min</span><span class="p">,</span> <span class="n">mag_max</span><span class="p">,</span> <span class="n">size</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">mid</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">bands</span> <span class="o">=</span> <span class="s1">&#39;ugrizy&#39;</span>
+        <span class="n">nband</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bands</span><span class="p">)</span>
+        <span class="n">full_hists</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
+        <span class="n">source_hists</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
+
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span>
+
+            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="k">for</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h1</span><span class="p">,</span><span class="n">h2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">full_hists</span><span class="p">,</span> <span class="n">source_hists</span><span class="p">):</span>
+                <span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+                    <span class="n">w</span> <span class="o">=</span> <span class="n">b1</span><span class="o">==</span><span class="n">i</span>
+                    <span class="n">count</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="n">h1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">count</span>
+
+                    <span class="n">w</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="n">count</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="n">h2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">count</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">full_hists</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span> <span class="n">full_hists</span><span class="p">)</span>
+            <span class="n">source_hists</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span> <span class="n">source_hists</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;mag_hist&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="n">nband</span><span class="o">*</span><span class="mi">3</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">h1</span><span class="p">,</span><span class="n">h2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">full_hists</span><span class="p">,</span> <span class="n">source_hists</span><span class="p">)):</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="n">nband</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">mid</span><span class="p">,</span> <span class="n">h1</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Complete&#39;</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">mid</span><span class="p">,</span> <span class="n">h2</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="n">label</span><span class="o">=</span><span class="s1">&#39;WL Source&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;g&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mag </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;N&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<span class="k">def</span> <span class="nf">reduce</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">H</span><span class="p">):</span>
+    <span class="n">H2</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
+    <span class="k">for</span>	<span class="n">h</span> <span class="ow">in</span> <span class="n">H</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">hsum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">hsum</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">comm</span><span class="o">.</span><span class="n">Reduce</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">hsum</span><span class="p">)</span>
+        <span class="n">H2</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">hsum</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">H2</span>
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
