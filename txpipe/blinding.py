@@ -4,6 +4,10 @@ import numpy as np
 import warnings
 import os
 
+"""
+.. module:: txblinding
+"""
+
 class TXBlinding(PipelineStage):
     """
     Blinding the data vectors.

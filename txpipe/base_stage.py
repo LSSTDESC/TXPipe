@@ -4,6 +4,10 @@ from textwrap import dedent
 from .utils.provenance import find_module_versions, git_diff, git_current_revision
 import sys
 
+"""
+.. module:: pipelinestage
+"""
+
 class PipelineStage(PipelineStageBase):
     name = "Error"
     inputs = []
