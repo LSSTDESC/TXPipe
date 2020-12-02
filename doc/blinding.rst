@@ -1,7 +1,7 @@
 Blinding
 --------
 
-.. autoclass:: txpipe.txblinding
+.. autoclass:: txpipe.blinding
    :members:
    :special-members:
    :show-inheritance:
