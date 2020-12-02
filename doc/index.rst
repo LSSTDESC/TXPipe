@@ -9,7 +9,6 @@ TXPipe documentation
 .. toctree::
    :maxdepth: 4
    :caption: Contents:
-   :show-inheritance:
 
    installation
 
