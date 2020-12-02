@@ -6,3 +6,7 @@ Twopoint correlations
    :special-members:
    :show-inheritance:
 
+.. autoclass:: txpipe.TXTwoPointLensCat
+   :members:
+   :special-members:
+   :show-inheritance:
