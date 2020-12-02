@@ -1,7 +1,7 @@
 Base stage
 -----------
 
-.. autoclass:: txpipe.base_stage
+.. autoclass:: txpipe.PipelineStage
    :members:
    :special-members:
    :show-inheritance:
