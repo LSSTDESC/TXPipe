@@ -10,4 +10,6 @@ These are the stages implemented so far:
     convergence
     covariance
     diagnostics
+    exposure_info
+    ingest_redmagic
     twopoint
