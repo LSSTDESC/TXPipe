@@ -161,10 +161,25 @@
             
   <div class="section" id="blinding">
 <h1>Blinding<a class="headerlink" href="#blinding" title="Permalink to this headline">¶</a></h1>
-<dl class="py attribute">
-<dt id="txpipe.blinding">
-<code class="sig-prename descclassname">txpipe.</code><code class="sig-name descname">blinding</code><a class="headerlink" href="#txpipe.blinding" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#txpipe.blinding" title="txpipe.blinding"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.blinding</span></code></a></p>
+<dl class="py class">
+<dt id="txpipe.TXBlinding">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.</code><code class="sig-name descname">TXBlinding</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/blinding.html#TXBlinding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.TXBlinding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<p>Blinding the data vectors.</p>
+<dl class="py method">
+<dt id="txpipe.TXBlinding.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/blinding.html#TXBlinding.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.TXBlinding.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Load two point SACC file</p></li>
+<li><p>Blinding it</p></li>
+<li><p>Output blinded data</p></li>
+<li><p>Optionally deletete unblinded data</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
 </dd></dl>
 
 </div>
