@@ -721,9 +721,6 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
-"""
-.. module:: txtwopointlenscat
-"""
 class TXTwoPointLensCat(TXTwoPoint):
     """
     This subclass of the standard TXTwoPoint takes its
