@@ -1,7 +1,6 @@
 Utilities
 ---------------
 
-
 .. automodule:: txpipe.utils.calibration_tools
     :members:
 
@@ -25,6 +24,8 @@ Utilities
 
 .. automodule:: txpipe.utils.number_density_stats
     :members:
+    :undoc-members:
+    :show-inheritance:
 
  .. automodule:: txpipe.utils.pixel_schemes
     :members:
