@@ -2,7 +2,7 @@ Utilities
 ---------------
 
 
- .. automodule:: txpipe.utils.calibration_tools
+.. automodule:: txpipe.utils.calibration_tools
     :members:
 
 .. automodule:: txpipe.utils.fitting
