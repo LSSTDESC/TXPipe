@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>TXPipe documentation &mdash; TXPipe  documentation</title>
+  <title>exposure_info &mdash; TXPipe  documentation</title>
   
 
   
@@ -36,7 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="TXPipe Installation" href="installation.html" /> 
+    <link rel="next" title="Twopoint correlations" href="twopoint.html" />
+    <link rel="prev" title="Diagnostics plots" href="diagnostics.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +51,7 @@
           
 
           
-            <a href="#" class="icon icon-home" alt="Documentation Home"> TXPipe
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
           
 
           
@@ -82,9 +83,19 @@
             
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="auxiliary_maps.html">Auxilliary maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_stage.html">Base stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="blinding.html">Blinding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="covariance.html">covariance stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">exposure_info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="twopoint.html">Twopoint correlations</a></li>
+</ul>
+</li>
 </ul>
 
             
@@ -100,7 +111,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">TXPipe</a>
+          <a href="index.html">TXPipe</a>
         
       </nav>
 
@@ -129,15 +140,17 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>TXPipe documentation</li>
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+        
+      <li>exposure_info</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/exposure_info.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -150,36 +163,14 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="txpipe-documentation">
-<h1>TXPipe documentation<a class="headerlink" href="#txpipe-documentation" title="Permalink to this headline">¶</a></h1>
-<div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="auxiliary_maps.html">Auxilliary maps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="base_stage.html">Base stage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="blinding.html">Blinding</a></li>
-<li class="toctree-l2"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="covariance.html">covariance stage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
-<li class="toctree-l2"><a class="reference internal" href="exposure_info.html">exposure_info</a></li>
-<li class="toctree-l2"><a class="reference internal" href="twopoint.html">Twopoint correlations</a></li>
-</ul>
-</li>
-</ul>
-</div>
-</div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
-<ul class="simple">
-<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
-<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
-<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
-</ul>
+  <div class="section" id="exposure-info">
+<h1>exposure_info<a class="headerlink" href="#exposure-info" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.TXExposureInfo">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.</code><code class="sig-name descname">TXExposureInfo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/exposure_info.html#TXExposureInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.TXExposureInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+</dd></dl>
+
 </div>
 
 
@@ -190,8 +181,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="installation.html" class="btn btn-neutral float-right" title="TXPipe Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="twopoint.html" class="btn btn-neutral float-right" title="Twopoint correlations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
+      
+        <a href="diagnostics.html" class="btn btn-neutral float-left" title="Diagnostics plots" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

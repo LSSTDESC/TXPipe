@@ -871,7 +871,7 @@
 
         <span class="k">return</span> <span class="n">meta</span></div>
 
-<span class="k">class</span> <span class="nc">TXTwoPointLensCat</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
+<div class="viewcode-block" id="TXTwoPointLensCat"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXTwoPointLensCat">[docs]</a><span class="k">class</span> <span class="nc">TXTwoPointLensCat</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This subclass of the standard TXTwoPoint takes its</span>
 <span class="sd">    lens sample from an external source instead of using</span>
@@ -900,10 +900,10 @@
 
         <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">)</span>
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;tomography/lens_bin&#39;</span><span class="p">][:]</span> 
-        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
-<span class="k">class</span> <span class="nc">TXTwoPointPlots</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXTwoPointPlots"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXTwoPointPlots">[docs]</a><span class="k">class</span> <span class="nc">TXTwoPointPlots</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Make n(z) plots</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1021,7 +1021,7 @@
         <span class="k">return</span> <span class="n">sources</span><span class="p">,</span> <span class="n">lenses</span>
 
     
-    <span class="k">def</span> <span class="nf">get_theta_xi_err</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">D</span><span class="p">):</span>
+<div class="viewcode-block" id="TXTwoPointPlots.get_theta_xi_err"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXTwoPointPlots.get_theta_xi_err">[docs]</a>    <span class="k">def</span> <span class="nf">get_theta_xi_err</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">D</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        For a given datapoint D, returns theta, xi, err,</span>
 <span class="sd">        after masking for positive errorbars</span>
@@ -1035,10 +1035,10 @@
         <span class="n">xi</span> <span class="o">=</span> <span class="n">xi</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
         <span class="n">err</span> <span class="o">=</span> <span class="n">err</span><span class="p">[</span><span class="n">w</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">theta</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">err</span>
+        <span class="k">return</span> <span class="n">theta</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">err</span></div>
 
 
-    <span class="k">def</span> <span class="nf">get_theta_xi_err_jk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">src1</span><span class="p">,</span> <span class="n">src2</span><span class="p">):</span>
+<div class="viewcode-block" id="TXTwoPointPlots.get_theta_xi_err_jk"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXTwoPointPlots.get_theta_xi_err_jk">[docs]</a>    <span class="k">def</span> <span class="nf">get_theta_xi_err_jk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">src1</span><span class="p">,</span> <span class="n">src2</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        In this case we want to get the JK errorbars,</span>
 <span class="sd">        which are stored in the covariance, so we want to</span>
@@ -1054,7 +1054,7 @@
         <span class="n">xi_jk</span> <span class="o">=</span> <span class="n">xi_jk</span><span class="p">[</span><span class="n">w_jk</span><span class="p">]</span>
         <span class="n">err_jk</span> <span class="o">=</span> <span class="n">err_jk</span><span class="p">[</span><span class="n">w_jk</span><span class="p">]</span>
         
-        <span class="k">return</span> <span class="n">theta_jk</span><span class="p">,</span> <span class="n">xi_jk</span><span class="p">,</span> <span class="n">err_jk</span>
+        <span class="k">return</span> <span class="n">theta_jk</span><span class="p">,</span> <span class="n">xi_jk</span><span class="p">,</span> <span class="n">err_jk</span></div>
 
 
     
@@ -1294,10 +1294,10 @@
                 <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
             <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
             <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">hspace</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;hspace&#39;</span><span class="p">],</span><span class="n">wspace</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;wspace&#39;</span><span class="p">])</span>
-            <span class="n">plot_output</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">plot_output</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
-<span class="k">class</span> <span class="nc">TXGammaTFieldCenters</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTFieldCenters"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTFieldCenters">[docs]</a><span class="k">class</span> <span class="nc">TXGammaTFieldCenters</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This subclass of the standard TXTwoPoint uses the centers</span>
 <span class="sd">    of exposure fields as &quot;lenses&quot;, as a systematics test.</span>
@@ -1336,7 +1336,7 @@
         <span class="s1">&#39;subtract_mean_shear&#39;</span><span class="p">:</span><span class="kc">False</span>
         <span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTFieldCenters.run"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTFieldCenters.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Before running the parent class we add source_bins and lens_bins</span>
         <span class="c1"># options that it is expecting, both set to -1 to indicate that we</span>
         <span class="c1"># will choose them automatically (below).</span>
@@ -1344,14 +1344,14 @@
         <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span></div>
 
-    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTFieldCenters.read_nbin"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTFieldCenters.read_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We use only a single source and lens bin in this case -</span>
         <span class="c1"># the source is the complete 2D field and the lens is the</span>
         <span class="c1"># field centers</span>
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
     <span class="k">def</span> <span class="nf">load_lens_catalog</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We load our lenses from the exposures input.</span>
@@ -1445,11 +1445,11 @@
         <span class="n">S</span><span class="o">.</span><span class="n">to_canonical_order</span><span class="p">()</span>
 
         <span class="c1"># Finally, save the output to Sacc file</span>
-        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_field_center&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_field_center&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
         <span class="c1"># Also make a plot of the data</span>
 
-<span class="k">class</span> <span class="nc">TXGammaTBrightStars</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTBrightStars"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTBrightStars">[docs]</a><span class="k">class</span> <span class="nc">TXGammaTBrightStars</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This subclass of the standard TXTwoPoint uses the centers</span>
 <span class="sd">    of stars as &quot;lenses&quot;, as a systematics test.</span>
@@ -1488,7 +1488,7 @@
         <span class="s1">&#39;subtract_mean_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTBrightStars.run"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTBrightStars.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Before running the parent class we add source_bins and lens_bins</span>
         <span class="c1"># options that it is expecting, both set to -1 to indicate that we</span>
         <span class="c1"># will choose them automatically (below).</span>
@@ -1496,14 +1496,14 @@
         <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span></div>
 
-    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTBrightStars.read_nbin"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTBrightStars.read_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We use only a single source and lens bin in this case -</span>
         <span class="c1"># the source is the complete 2D field and the lens is the</span>
         <span class="c1"># field centers</span>
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
     <span class="k">def</span> <span class="nf">load_lens_catalog</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We load our lenses from the exposures input.</span>
@@ -1613,11 +1613,11 @@
         <span class="n">S</span><span class="o">.</span><span class="n">to_canonical_order</span><span class="p">()</span>
 
         <span class="c1"># Finally, save the output to Sacc file</span>
-        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_bright_stars&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_bright_stars&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
         <span class="c1"># Also make a plot of the data</span>
 
-<span class="k">class</span> <span class="nc">TXGammaTDimStars</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTDimStars"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTDimStars">[docs]</a><span class="k">class</span> <span class="nc">TXGammaTDimStars</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This subclass of the standard TXTwoPoint uses the centers</span>
 <span class="sd">    of stars as &quot;lenses&quot;, as a systematics test.</span>
@@ -1656,7 +1656,7 @@
         <span class="s1">&#39;subtract_mean_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>        
         <span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTDimStars.run"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTDimStars.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Before running the parent class we add source_bins and lens_bins</span>
         <span class="c1"># options that it is expecting, both set to -1 to indicate that we</span>
         <span class="c1"># will choose them automatically (below).</span>
@@ -1664,14 +1664,14 @@
         <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span></div>
 
-    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTDimStars.read_nbin"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTDimStars.read_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We use only a single source and lens bin in this case -</span>
         <span class="c1"># the source is the complete 2D field and the lens is the</span>
         <span class="c1"># field centers</span>
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
     <span class="k">def</span> <span class="nf">load_lens_catalog</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We load our lenses from the exposures input.</span>
@@ -1782,11 +1782,11 @@
         <span class="n">S</span><span class="o">.</span><span class="n">to_canonical_order</span><span class="p">()</span>
 
         <span class="c1"># Finally, save the output to Sacc file</span>
-        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_dim_stars&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_dim_stars&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
         <span class="c1"># Also make a plot of the data</span>
 
-<span class="k">class</span> <span class="nc">TXGammaTRandoms</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTRandoms"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTRandoms">[docs]</a><span class="k">class</span> <span class="nc">TXGammaTRandoms</span><span class="p">(</span><span class="n">TXTwoPoint</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This subclass of the standard TXTwoPoint uses the centers</span>
 <span class="sd">    of stars as &quot;lenses&quot;, as a systematics test.</span>
@@ -1825,7 +1825,7 @@
         <span class="s1">&#39;subtract_mean_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTRandoms.run"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTRandoms.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Before running the parent class we add source_bins and lens_bins</span>
         <span class="c1"># options that it is expecting, both set to -1 to indicate that we</span>
         <span class="c1"># will choose them automatically (below).</span>
@@ -1833,14 +1833,14 @@
         <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;source_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lens_bins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span></div>
 
-    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<div class="viewcode-block" id="TXGammaTRandoms.read_nbin"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXGammaTRandoms.read_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># We use only a single source and lens bin in this case -</span>
         <span class="c1"># the source is the complete 2D field and the lens is the</span>
         <span class="c1"># field centers</span>
         <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
     <span class="k">def</span> <span class="nf">load_random_catalog</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># override the parent method</span>
@@ -1950,11 +1950,11 @@
         <span class="n">S</span><span class="o">.</span><span class="n">to_canonical_order</span><span class="p">()</span>
 
         <span class="c1"># Finally, save the output to Sacc file</span>
-        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_randoms&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">S</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;gammat_randoms&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
         <span class="c1"># Also make a plot of the data</span>
 
-<span class="k">class</span> <span class="nc">TXJackknifeCenters</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXJackknifeCenters"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXJackknifeCenters">[docs]</a><span class="k">class</span> <span class="nc">TXJackknifeCenters</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is the pipeline stage that is run to generate the patch centers for</span>
 <span class="sd">    the Jackknife method.</span>
@@ -1973,7 +1973,7 @@
         <span class="s1">&#39;every_nth&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
     <span class="p">}</span>
 
-    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">patch</span><span class="p">):</span>
+<div class="viewcode-block" id="TXJackknifeCenters.plot"><a class="viewcode-back" href="../../twopoint.html#txpipe.TXJackknifeCenters.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">patch</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Plot the jackknife regions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1990,7 +1990,7 @@
         <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;RA&#39;</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;DEC&#39;</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-        <span class="n">jk_plot</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">jk_plot</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -2018,7 +2018,7 @@
                                 <span class="n">npatch</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;npatch&#39;</span><span class="p">])</span>
         <span class="n">cat</span><span class="o">.</span><span class="n">write_patch_centers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;patch_centers&#39;</span><span class="p">))</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">ra</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">dec</span><span class="p">),</span> <span class="n">cat</span><span class="o">.</span><span class="n">patch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">ra</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">dec</span><span class="p">),</span> <span class="n">cat</span><span class="o">.</span><span class="n">patch</span><span class="p">)</span></div>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>

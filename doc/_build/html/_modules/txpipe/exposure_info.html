@@ -1,0 +1,336 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.exposure_info &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.exposure_info</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.exposure_info</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">HDFFile</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<div class="viewcode-block" id="TXExposureInfo"><a class="viewcode-back" href="../../exposure_info.html#txpipe.TXExposureInfo">[docs]</a><span class="k">class</span> <span class="nc">TXExposureInfo</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXExposureInfo&#39;</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;exposures&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;dc2_name&#39;</span><span class="p">:</span> <span class="s1">&#39;1.2p&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;opsim_db&#39;</span><span class="p">:</span> <span class="s2">&quot;/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db&quot;</span><span class="p">,</span>
+        <span class="s1">&#39;propId&#39;</span><span class="p">:</span> <span class="mi">54</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+        <span class="kn">import</span> <span class="nn">sqlite3</span>
+
+        <span class="c1"># find butler by name using this tool.</span>
+        <span class="c1"># change later to general repo path.</span>
+        <span class="kn">from</span> <span class="nn">desc_dc2_dm_data</span> <span class="kn">import</span> <span class="n">get_butler</span>
+        <span class="kn">from</span> <span class="nn">lsst.daf.persistence</span> <span class="kn">import</span> <span class="n">NoResults</span>
+        
+        <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;dc2_name&#39;</span><span class="p">]</span>
+        <span class="n">propId</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;propId&#39;</span><span class="p">]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Getting butler for repo </span><span class="si">{</span><span class="n">run</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">butler</span> <span class="o">=</span> <span class="n">get_butler</span><span class="p">(</span><span class="n">run</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Butler loaded&quot;</span><span class="p">)</span>
+
+        <span class="c1"># central detector in whole focal plane, just as example</span>
+        <span class="n">refs</span> <span class="o">=</span> <span class="n">butler</span><span class="o">.</span><span class="n">subset</span><span class="p">(</span><span class="s1">&#39;calexp&#39;</span><span class="p">,</span> <span class="n">raftName</span><span class="o">=</span><span class="s1">&#39;R22&#39;</span><span class="p">,</span> <span class="n">detectorName</span><span class="o">=</span><span class="s1">&#39;S11&#39;</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">refs</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> exposure centers.  Reading exposure info.&quot;</span><span class="p">)</span>
+
+        <span class="n">matching_visits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_matching_opsim_visits</span><span class="p">()</span>
+        <span class="n">nmatch</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">matching_visits</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found list of </span><span class="si">{</span><span class="n">nmatch</span><span class="si">}</span><span class="s2"> visits with propId==</span><span class="si">{</span><span class="n">propId</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">float_params</span> <span class="o">=</span><span class="p">[</span>
+            <span class="s2">&quot;mjd-obs&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bore-ra&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bore-dec&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bore-az&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bore-alt&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bore-rotang&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bore-airmass&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;humidity&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bgmean&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;bgvar&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magzero_rms&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;colorterm1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;colorterm2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;colorterm3&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;exptime&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;darktime&quot;</span><span class="p">,</span>
+            
+        <span class="p">]</span>
+
+        <span class="n">int_params</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;expid&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magzero_nobj&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ap_corr_map_id&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;psf_id&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;skywcs_id&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="n">str_params</span>  <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;date-avg&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;timesys&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;rottype&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;filter&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;testtype&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;obstype&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="c1"># We can add WCS information here if needed, there is lots</span>
+        <span class="c1"># of it.</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="n">float_params</span> <span class="o">+</span> <span class="n">int_params</span> <span class="o">+</span> <span class="n">str_params</span>
+        <span class="c1"># Spaces for output columns</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span><span class="nb">list</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">}</span>
+
+        <span class="n">num_params</span> <span class="o">=</span> <span class="n">float_params</span> <span class="o">+</span> <span class="n">int_params</span>
+        <span class="c1"># Loop through the images and get their metadata</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">ref</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">refs</span><span class="p">):</span>
+            <span class="c1"># Progress update</span>
+            <span class="k">if</span> <span class="n">i</span><span class="o">%</span><span class="mi">100</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Reading metadata for exposure </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1"> / </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Read the metadata for this exposure reference</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">metadata</span> <span class="o">=</span> <span class="n">butler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calexp_md&#39;</span><span class="p">,</span> <span class="n">dataId</span><span class="o">=</span><span class="n">ref</span><span class="o">.</span><span class="n">dataId</span><span class="p">)</span><span class="o">.</span><span class="n">toDict</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">NoResults</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">obsid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;EXPID&#39;</span><span class="p">])[:</span><span class="o">-</span><span class="mi">3</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">obsid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">matching_visits</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># columns that we want to save to file, from the metadata</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">upper</span><span class="p">()])</span>
+
+        <span class="n">m</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;bore-ra&#39;</span><span class="p">])</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="mf">100.</span> <span class="o">*</span> <span class="n">m</span> <span class="o">/</span> <span class="n">n</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> visits match propId=</span><span class="si">{</span><span class="n">propId</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">f</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Save output</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;exposures&#39;</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;exposures&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">num_params</span><span class="p">:</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">str_params</span><span class="p">:</span>
+            <span class="c1"># H5PY cannot deal with fixed-length unicode arrays (the numpy default in py3)</span>
+            <span class="c1"># so convert to ASCII</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;S&quot;</span><span class="p">))</span>
+
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">find_matching_opsim_visits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">sqlite3</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;opsim_db&#39;</span><span class="p">]</span>
+        <span class="n">propId</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;propId&#39;</span><span class="p">]</span>
+        <span class="n">connection</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;select obsHistID from summary where propId=:propId&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;propId&#39;</span><span class="p">:</span><span class="n">propId</span><span class="p">})</span>
+        <span class="n">obsHistID</span> <span class="o">=</span> <span class="p">{</span><span class="n">Id</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">Id</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="n">obsHistID</span></div>
+
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

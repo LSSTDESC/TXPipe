@@ -1,7 +1,7 @@
 Twopoint correlations
 ---------------------
 
-.. automodule:: txpipe.TXTwoPoint
+.. automodule:: txpipe.twopoint
    :members:
    :special-members:
    :show-inheritance:

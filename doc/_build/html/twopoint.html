@@ -36,7 +36,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Blinding" href="blinding.html" /> 
+    <link rel="prev" title="exposure_info" href="exposure_info.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -88,6 +88,10 @@
 <li class="toctree-l2"><a class="reference internal" href="auxiliary_maps.html">Auxilliary maps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="base_stage.html">Base stage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="blinding.html">Blinding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="covariance.html">covariance stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exposure_info.html">exposure_info</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Twopoint correlations</a></li>
 </ul>
 </li>
@@ -158,163 +162,218 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-txpipe.TXTwoPoint">
-<span id="twopoint-correlations"></span><h1>Twopoint correlations<a class="headerlink" href="#module-txpipe.TXTwoPoint" title="Permalink to this headline">¶</a></h1>
-<p>A PipelineStage implements a single calculation step within a wider pipeline.</p>
-<p>Each different type of analysis stge is represented by a subclass of this
-base class.  The base class handles the connection between different pipeline
-stages, and the execution of the stages within a workflow system (parsl),
-potentially in parallel (MPI).</p>
-<p>An instance of one of these classes represents an actual run of the stage,
-with the required inputs, outputs, and configuration specified.</p>
-<p>See documentation pages for more details.</p>
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__delattr__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__delattr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__delattr__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Implement delattr(self, name).</p>
+  <div class="section" id="module-txpipe.twopoint">
+<span id="twopoint-correlations"></span><h1>Twopoint correlations<a class="headerlink" href="#module-txpipe.twopoint" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.twopoint.Measurement">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">Measurement</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">corr_type</span></em>, <em class="sig-param"><span class="n">object</span></em>, <em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="n">j</span></em><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<dl class="py method">
+<dt id="txpipe.twopoint.Measurement.__getnewargs__">
+<code class="sig-name descname">__getnewargs__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement.__getnewargs__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return self as a plain tuple.  Used by copy and pickle.</p>
 </dd></dl>
 
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__dir__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__dir__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__dir__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default dir() implementation.</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.Measurement.__new__">
+<em class="property">static </em><code class="sig-name descname">__new__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">_cls</span></em>, <em class="sig-param"><span class="n">corr_type</span></em>, <em class="sig-param"><span class="n">object</span></em>, <em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="n">j</span></em><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement.__new__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new instance of Measurement(corr_type, object, i, j)</p>
 </dd></dl>
 
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__eq__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__eq__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__eq__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return self==value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__format__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__format__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__format__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Default object formatter.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__ge__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__ge__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__ge__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return self&gt;=value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__getattribute__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__getattribute__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__getattribute__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return getattr(self, name).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__gt__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__gt__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__gt__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return self&gt;value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__hash__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__hash__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__hash__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return hash(self).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__le__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__le__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__le__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return self&lt;=value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__lt__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__lt__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__lt__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return self&lt;value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__ne__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__ne__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__ne__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return self!=value.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__new__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__new__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__new__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create and return a new object.  See help(type) for accurate signature.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__reduce__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__reduce__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__reduce__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Helper for pickle.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__reduce_ex__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__reduce_ex__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__reduce_ex__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Helper for pickle.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__repr__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__repr__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return repr(self).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__setattr__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__setattr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__setattr__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Implement setattr(self, name, value).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__sizeof__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__sizeof__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__sizeof__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Size of object in memory, in bytes.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__str__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__str__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return str(self).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="txpipe.TXTwoPoint.__subclasshook__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__subclasshook__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.TXTwoPoint.__subclasshook__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Abstract classes can override this to customize issubclass().</p>
-<p>This is invoked early on by abc.ABCMeta.__subclasscheck__().
-It should return True, False or NotImplemented.  If it returns
-NotImplemented, the normal algorithm is used.  Otherwise, it
-overrides the normal algorithm (and the outcome is cached).</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.Measurement.__repr__">
+<code class="sig-name descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a nicely formatted representation string</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="txpipe.TXTwoPoint.__weakref__">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">__weakref__</code><a class="headerlink" href="#txpipe.TXTwoPoint.__weakref__" title="Permalink to this definition">¶</a></dt>
-<dd><p>list of weak references to the object (if defined)</p>
+<dt id="txpipe.twopoint.Measurement.corr_type">
+<code class="sig-name descname">corr_type</code><a class="headerlink" href="#txpipe.twopoint.Measurement.corr_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="txpipe.TXTwoPoint.comm">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">comm</code><a class="headerlink" href="#txpipe.TXTwoPoint.comm" title="Permalink to this definition">¶</a></dt>
-<dd><p>The MPI communicator object (None if not running under MPI)</p>
+<dt id="txpipe.twopoint.Measurement.i">
+<code class="sig-name descname">i</code><a class="headerlink" href="#txpipe.twopoint.Measurement.i" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="txpipe.TXTwoPoint.config">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">config</code><a class="headerlink" href="#txpipe.TXTwoPoint.config" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the configuration dictionary for this stage, aggregating command
-line options and optional configuration file.</p>
+<dt id="txpipe.twopoint.Measurement.j">
+<code class="sig-name descname">j</code><a class="headerlink" href="#txpipe.twopoint.Measurement.j" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt id="txpipe.TXTwoPoint.rank">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">rank</code><a class="headerlink" href="#txpipe.TXTwoPoint.rank" title="Permalink to this definition">¶</a></dt>
-<dd><p>The rank of this process under MPI (0 if not running under MPI)</p>
+<dt id="txpipe.twopoint.Measurement.object">
+<code class="sig-name descname">object</code><a class="headerlink" href="#txpipe.twopoint.Measurement.object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
 </dd></dl>
 
-<dl class="py attribute">
-<dt id="txpipe.TXTwoPoint.size">
-<code class="sig-prename descclassname">txpipe.TXTwoPoint.</code><code class="sig-name descname">size</code><a class="headerlink" href="#txpipe.TXTwoPoint.size" title="Permalink to this definition">¶</a></dt>
-<dd><p>The number or processes under MPI (1 if not running under MPI)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXGammaTBrightStars">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXGammaTBrightStars</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTBrightStars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTBrightStars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.twopoint.TXTwoPoint" title="txpipe.twopoint.TXTwoPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.twopoint.TXTwoPoint</span></code></a></p>
+<p>This subclass of the standard TXTwoPoint uses the centers
+of stars as “lenses”, as a systematics test.</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTBrightStars.read_nbin">
+<code class="sig-name descname">read_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTBrightStars.read_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTBrightStars.read_nbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the bins to use in this analysis, either from the input file
+or from the configuration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTBrightStars.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTBrightStars.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTBrightStars.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXGammaTDimStars">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXGammaTDimStars</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTDimStars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTDimStars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.twopoint.TXTwoPoint" title="txpipe.twopoint.TXTwoPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.twopoint.TXTwoPoint</span></code></a></p>
+<p>This subclass of the standard TXTwoPoint uses the centers
+of stars as “lenses”, as a systematics test.</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTDimStars.read_nbin">
+<code class="sig-name descname">read_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTDimStars.read_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTDimStars.read_nbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the bins to use in this analysis, either from the input file
+or from the configuration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTDimStars.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTDimStars.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTDimStars.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXGammaTFieldCenters">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXGammaTFieldCenters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTFieldCenters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTFieldCenters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.twopoint.TXTwoPoint" title="txpipe.twopoint.TXTwoPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.twopoint.TXTwoPoint</span></code></a></p>
+<p>This subclass of the standard TXTwoPoint uses the centers
+of exposure fields as “lenses”, as a systematics test.</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTFieldCenters.read_nbin">
+<code class="sig-name descname">read_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTFieldCenters.read_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTFieldCenters.read_nbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the bins to use in this analysis, either from the input file
+or from the configuration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTFieldCenters.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTFieldCenters.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTFieldCenters.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXGammaTRandoms">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXGammaTRandoms</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTRandoms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTRandoms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.twopoint.TXTwoPoint" title="txpipe.twopoint.TXTwoPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.twopoint.TXTwoPoint</span></code></a></p>
+<p>This subclass of the standard TXTwoPoint uses the centers
+of stars as “lenses”, as a systematics test.</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTRandoms.read_nbin">
+<code class="sig-name descname">read_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTRandoms.read_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTRandoms.read_nbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the bins to use in this analysis, either from the input file
+or from the configuration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXGammaTRandoms.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXGammaTRandoms.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXGammaTRandoms.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXJackknifeCenters">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXJackknifeCenters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXJackknifeCenters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXJackknifeCenters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<p>This is the pipeline stage that is run to generate the patch centers for
+the Jackknife method.</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXJackknifeCenters.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ra</span></em>, <em class="sig-param"><span class="n">dec</span></em>, <em class="sig-param"><span class="n">patch</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXJackknifeCenters.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXJackknifeCenters.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the jackknife regions.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXTwoPoint">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXTwoPoint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXTwoPoint.call_treecorr">
+<code class="sig-name descname">call_treecorr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">meta</span></em>, <em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="n">j</span></em>, <em class="sig-param"><span class="n">k</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint.call_treecorr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.call_treecorr" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a wrapper for interaction with treecorr.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXTwoPoint.get_calibrated_catalog_bin">
+<code class="sig-name descname">get_calibrated_catalog_bin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">meta</span></em>, <em class="sig-param"><span class="n">i</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint.get_calibrated_catalog_bin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.get_calibrated_catalog_bin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the metacal correction factor for this tomographic bin.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXTwoPoint.read_nbin">
+<code class="sig-name descname">read_nbin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint.read_nbin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.read_nbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the bins to use in this analysis, either from the input file
+or from the configuration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXTwoPoint.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXTwoPointLensCat">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXTwoPointLensCat</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPointLensCat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPointLensCat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.twopoint.TXTwoPoint" title="txpipe.twopoint.TXTwoPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.twopoint.TXTwoPoint</span></code></a></p>
+<p>This subclass of the standard TXTwoPoint takes its
+lens sample from an external source instead of using
+the photometric sample.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint.TXTwoPointPlots">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXTwoPointPlots</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPointPlots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPointPlots" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<p>Make n(z) plots</p>
+<dl class="py method">
+<dt id="txpipe.twopoint.TXTwoPointPlots.get_theta_xi_err">
+<code class="sig-name descname">get_theta_xi_err</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">D</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPointPlots.get_theta_xi_err"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPointPlots.get_theta_xi_err" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a given datapoint D, returns theta, xi, err,
+after masking for positive errorbars
+(sometimes there are NaNs).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint.TXTwoPointPlots.get_theta_xi_err_jk">
+<code class="sig-name descname">get_theta_xi_err_jk</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">s</span></em>, <em class="sig-param"><span class="n">dt</span></em>, <em class="sig-param"><span class="n">src1</span></em>, <em class="sig-param"><span class="n">src2</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPointPlots.get_theta_xi_err_jk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPointPlots.get_theta_xi_err_jk" title="Permalink to this definition">¶</a></dt>
+<dd><p>In this case we want to get the JK errorbars,
+which are stored in the covariance, so we want to
+load a particular covariance block, given a dataype dt.
+Returns theta, xi, err,
+after masking for positive errorbars
+(sometimes there are NaNs).</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -328,7 +387,7 @@ line options and optional configuration file.</p>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="blinding.html" class="btn btn-neutral float-left" title="Blinding" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="exposure_info.html" class="btn btn-neutral float-left" title="exposure_info" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

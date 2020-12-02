@@ -1,5 +1,5 @@
 Diagnostics plots
----------------
+-----------------
 
 .. autoclass:: txpipe.TXDiagnosticPlots
    :members:
