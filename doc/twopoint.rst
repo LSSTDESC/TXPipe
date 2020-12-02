@@ -1,12 +1,7 @@
 Twopoint correlations
 ---------------------
 
-.. autoclass:: txpipe.TXTwoPoint
-   :members:
-   :special-members:
-   :show-inheritance:
-
-.. autoclass:: txpipe.TXTwoPointLensCat
+.. automodule:: txpipe.TXTwoPoint
    :members:
    :special-members:
    :show-inheritance:
