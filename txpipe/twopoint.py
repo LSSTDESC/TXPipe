@@ -28,17 +28,17 @@ class TXTwoPoint(PipelineStage):
     This is the base stage for real-space two-point correlations. 
 
     Input files:
-        shear_tomography_catalog:
-        shear_photoz_stack:
-        lens_tomography_catalog:
-        lens_photoz_stack:
-        random_cats:
-        patch_centers:
-        tracer_metadata:
+        shear_tomography_catalog:   shear catalog
+        shear_photoz_stack:         shear photoz information
+        lens_tomography_catalog:    lens catalog
+        lens_photoz_stack:          lens photoz information
+        random_cats:                random catalogs
+        patch_centers:              patch centers for Jackknife
+        tracer_metadata:            Metadata for tracers
 
     Returns:
-        twopoint_data_real_raw:      
-        twopoint_gamma_x:            This is the gamma_x component, for null tests, its kept seperate since it is only needed for null tests.
+        twopoint_data_real_raw:     Sacc file with all two-point correlations including jackknife covariance matrices.       
+        twopoint_gamma_x:           This is the gamma_x component, for null tests, its kept seperate since it is only needed for null tests.
     """
     name='TXTwoPoint'
     inputs = [
