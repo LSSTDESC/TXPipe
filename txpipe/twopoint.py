@@ -24,6 +24,22 @@ POS_POS = 2
 
 
 class TXTwoPoint(PipelineStage):
+    """
+    This is the base stage for real-space two-point correlations. 
+
+    It requires the following files:
+        shear_tomography_catalog
+        shear_photoz_stack
+        lens_tomography_catalog
+        lens_photoz_stack
+        random_cats
+        patch_centers
+        tracer_metadata
+
+    it returns:
+        twopoint_data_real_raw      
+        twopoint_gamma_x            This is the gamma_x component, for null tests, its kept seperate since it is only needed for null tests.
+    """
     name='TXTwoPoint'
     inputs = [
         ('shear_catalog', ShearCatalog),
@@ -532,6 +548,9 @@ class TXTwoPoint(PipelineStage):
 
 
     def calculate_shear_shear(self, data, meta, i, j):
+        """
+        calling Treecorr to calculate the shear-shear between bins i and j. 
+        """
         import treecorr
 
         cat_i = self.get_shear_catalog(data, meta, i)
@@ -554,6 +573,9 @@ class TXTwoPoint(PipelineStage):
         return gg
 
     def calculate_shear_pos(self, data, meta, i, j):
+        """
+        calling Treecorr to calculate the shear-position between bins i and j. 
+        """
         import treecorr
 
         cat_i = self.get_shear_catalog(data, meta, i)
@@ -580,6 +602,9 @@ class TXTwoPoint(PipelineStage):
 
 
     def calculate_pos_pos(self, data, i, j):
+        """
+        calling Treecorr to calculate the position-position between bins i and j. 
+        """
         import treecorr
 
         cat_i, rancat_i = self.get_lens_catalog(data, i)

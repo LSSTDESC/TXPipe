@@ -9,6 +9,9 @@ import sys
 """
 
 class PipelineStage(PipelineStageBase):
+    """
+    This is the base pipeline stage for TXPipe, it is based on the ceci pipeline software. 
+    """
     name = "Error"
     inputs = []
     outputs = []
