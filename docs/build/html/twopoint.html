@@ -325,18 +325,19 @@ the Jackknife method.</p>
 <dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
 <p>This is the base stage for real-space two-point correlations.</p>
 <dl class="simple">
-<dt>Input files:</dt><dd><p>shear_tomography_catalog:
-shear_photoz_stack:
-lens_tomography_catalog:
-lens_photoz_stack:
-random_cats:
-patch_centers:
-tracer_metadata:</p>
+<dt>Input files:</dt><dd><p>shear_tomography_catalog:   shear catalog
+shear_photoz_stack:         shear photoz information
+lens_tomography_catalog:    lens catalog
+lens_photoz_stack:          lens photoz information
+random_cats:                random catalogs
+patch_centers:              patch centers for Jackknife
+tracer_metadata:            Metadata for tracers</p>
 </dd>
 </dl>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>twopoint_gamma_x:            This is the gamma_x component, for null tests, its kept seperate since it is only needed for null tests.</p>
+<dd class="field-odd"><p>Sacc file with all two-point correlations including jackknife covariance matrices.
+twopoint_gamma_x:           This is the gamma_x component, for null tests, its kept seperate since it is only needed for null tests.</p>
 </dd>
 <dt class="field-even">Return type</dt>
 <dd class="field-even"><p>twopoint_data_real_raw</p>
