@@ -36,7 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="exposure_info" href="exposure_info.html" /> 
+    <link rel="next" title="twopoint_fourier" href="twopoint_fourier.html" />
+    <link rel="prev" title="source_selector" href="source_selector.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -92,9 +93,28 @@
 <li class="toctree-l2"><a class="reference internal" href="covariance.html">covariance stage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="exposure_info.html">exposure_info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ingest_redmagic.html">Ingest redmagic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input_cats.html">Input Catalogs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lens_selector.html">Lens selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map_correlations.html">map_correlations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map_plots.html">map_plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="maps.html">maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="masks.html">masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metacal_gcr_input.html">metacal_gcr_input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="noise_maps.html">noise_maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz.html">photoz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz_mlz.html">photoz_mlz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz_stack.html">photoz_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="psf_diagnostics.html">psf_diagnostics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="random_cats.html">random_cats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_selector.html">source_selector</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Twopoint correlations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="twopoint_fourier.html">twopoint_fourier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#submodules">Submodules</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
             
@@ -299,7 +319,7 @@ or from the configuration.</p>
 <dl class="py class">
 <dt id="txpipe.twopoint.TXJackknifeCenters">
 <em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXJackknifeCenters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXJackknifeCenters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXJackknifeCenters" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
 <p>This is the pipeline stage that is run to generate the patch centers for
 the Jackknife method.</p>
 <dl class="py method">
@@ -313,7 +333,7 @@ the Jackknife method.</p>
 <dl class="py class">
 <dt id="txpipe.twopoint.TXTwoPoint">
 <em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXTwoPoint</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
 <dl class="py method">
 <dt id="txpipe.twopoint.TXTwoPoint.call_treecorr">
 <code class="sig-name descname">call_treecorr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">meta</span></em>, <em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="n">j</span></em>, <em class="sig-param"><span class="n">k</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPoint.call_treecorr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.call_treecorr" title="Permalink to this definition">¶</a></dt>
@@ -353,7 +373,7 @@ the photometric sample.</p>
 <dl class="py class">
 <dt id="txpipe.twopoint.TXTwoPointPlots">
 <em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint.</code><code class="sig-name descname">TXTwoPointPlots</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint.html#TXTwoPointPlots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPointPlots" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></p>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
 <p>Make n(z) plots</p>
 <dl class="py method">
 <dt id="txpipe.twopoint.TXTwoPointPlots.get_theta_xi_err">
@@ -386,8 +406,10 @@ after masking for positive errorbars
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="twopoint_fourier.html" class="btn btn-neutral float-right" title="twopoint_fourier" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
-        <a href="exposure_info.html" class="btn btn-neutral float-left" title="exposure_info" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+        <a href="source_selector.html" class="btn btn-neutral float-left" title="source_selector" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

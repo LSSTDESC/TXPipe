@@ -161,7 +161,7 @@
 
 <span class="c1"># Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix</span>
 
-<div class="viewcode-block" id="TXFourierGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.TXFourierGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXFourierGaussianCovariance</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXFourierGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.covariance.TXFourierGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXFourierGaussianCovariance</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXFourierGaussianCovariance&#39;</span>
     <span class="n">do_xi</span><span class="o">=</span><span class="kc">False</span>
     
@@ -618,7 +618,7 @@
         <span class="k">return</span> <span class="n">cov_full</span></div>
 
 
-<div class="viewcode-block" id="TXRealGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.TXRealGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRealGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.covariance.TXRealGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXRealGaussianCovariance&#39;</span>
     <span class="n">do_xi</span> <span class="o">=</span> <span class="kc">True</span>
 

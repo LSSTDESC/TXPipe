@@ -155,7 +155,7 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.utils.timer</span> <span class="kn">import</span> <span class="n">Timer</span>
 
-<div class="viewcode-block" id="TXCosmoDC2Mock"><a class="viewcode-back" href="../../input_cats.html#txpipe.TXCosmoDC2Mock">[docs]</a><span class="k">class</span> <span class="nc">TXCosmoDC2Mock</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXCosmoDC2Mock"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock">[docs]</a><span class="k">class</span> <span class="nc">TXCosmoDC2Mock</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This stage simulates metacal data and metacalibrated</span>
 <span class="sd">    photometry measurements, starting from a cosmology catalogs</span>
@@ -435,7 +435,7 @@
         <span class="k">return</span> <span class="n">cols</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">,</span>  <span class="s1">&#39;mcal_flags&#39;</span><span class="p">]</span>
         
 
-<div class="viewcode-block" id="TXCosmoDC2Mock.load_metacal_response_model"><a class="viewcode-back" href="../../input_cats.html#txpipe.TXCosmoDC2Mock.load_metacal_response_model">[docs]</a>    <span class="k">def</span> <span class="nf">load_metacal_response_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXCosmoDC2Mock.load_metacal_response_model"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock.load_metacal_response_model">[docs]</a>    <span class="k">def</span> <span class="nf">load_metacal_response_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load an HDF file containing the response model</span>
 <span class="sd">        R(log10(snr), size)</span>
@@ -465,7 +465,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">Rstd_spline</span><span class="o">=</span><span class="n">scipy</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">SmoothBivariateSpline</span><span class="p">(</span><span class="n">snr_grid</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">sz_grid</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">R_std</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>        </div>
 
 
-<div class="viewcode-block" id="TXCosmoDC2Mock.write_output"><a class="viewcode-back" href="../../input_cats.html#txpipe.TXCosmoDC2Mock.write_output">[docs]</a>    <span class="k">def</span> <span class="nf">write_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">target_size</span><span class="p">,</span> <span class="n">photo_cols</span><span class="p">,</span> <span class="n">metacal_cols</span><span class="p">,</span> <span class="n">photo_file</span><span class="p">,</span> <span class="n">photo_data</span><span class="p">,</span> <span class="n">metacal_file</span><span class="p">,</span> <span class="n">metacal_data</span><span class="p">):</span>
+<div class="viewcode-block" id="TXCosmoDC2Mock.write_output"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock.write_output">[docs]</a>    <span class="k">def</span> <span class="nf">write_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">target_size</span><span class="p">,</span> <span class="n">photo_cols</span><span class="p">,</span> <span class="n">metacal_cols</span><span class="p">,</span> <span class="n">photo_file</span><span class="p">,</span> <span class="n">photo_data</span><span class="p">,</span> <span class="n">metacal_file</span><span class="p">,</span> <span class="n">metacal_data</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Save the photometry we have just simulated to disc</span>
 
@@ -512,7 +512,7 @@
 
 
 
-<div class="viewcode-block" id="TXCosmoDC2Mock.make_mock_metacal"><a class="viewcode-back" href="../../input_cats.html#txpipe.TXCosmoDC2Mock.make_mock_metacal">[docs]</a>    <span class="k">def</span> <span class="nf">make_mock_metacal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">photo</span><span class="p">):</span>
+<div class="viewcode-block" id="TXCosmoDC2Mock.make_mock_metacal"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock.make_mock_metacal">[docs]</a>    <span class="k">def</span> <span class="nf">make_mock_metacal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">photo</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generate a mock metacal table.</span>
 <span class="sd">        This is a long and complicated function unfortunately.</span>
@@ -713,7 +713,7 @@
 
 
 
-<div class="viewcode-block" id="TXCosmoDC2Mock.remove_undetected"><a class="viewcode-back" href="../../input_cats.html#txpipe.TXCosmoDC2Mock.remove_undetected">[docs]</a>    <span class="k">def</span> <span class="nf">remove_undetected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">photo</span><span class="p">):</span>
+<div class="viewcode-block" id="TXCosmoDC2Mock.remove_undetected"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock.remove_undetected">[docs]</a>    <span class="k">def</span> <span class="nf">remove_undetected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">photo</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Strip out any undetected objects from the two</span>
 <span class="sd">        simulated data sets.</span>
@@ -768,7 +768,7 @@
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">detected</span><span class="p">]</span></div></div>
 
-<div class="viewcode-block" id="TXBuzzardMock"><a class="viewcode-back" href="../../input_cats.html#txpipe.TXBuzzardMock">[docs]</a><span class="k">class</span> <span class="nc">TXBuzzardMock</span><span class="p">(</span><span class="n">TXCosmoDC2Mock</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBuzzardMock"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXBuzzardMock">[docs]</a><span class="k">class</span> <span class="nc">TXBuzzardMock</span><span class="p">(</span><span class="n">TXCosmoDC2Mock</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This stage simulates metacal data and metacalibrated</span>
 <span class="sd">    photometry measurements, starting from a cosmology catalogs</span>
@@ -801,7 +801,7 @@
         <span class="p">}</span></div>
 
 
-<div class="viewcode-block" id="make_mock_photometry"><a class="viewcode-back" href="../../input_cats.html#txpipe.make_mock_photometry">[docs]</a><span class="k">def</span> <span class="nf">make_mock_photometry</span><span class="p">(</span><span class="n">n_visit</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">unit_response</span><span class="p">):</span>
+<div class="viewcode-block" id="make_mock_photometry"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.make_mock_photometry">[docs]</a><span class="k">def</span> <span class="nf">make_mock_photometry</span><span class="p">(</span><span class="n">n_visit</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">unit_response</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate a mock photometric table with noise added</span>
 
