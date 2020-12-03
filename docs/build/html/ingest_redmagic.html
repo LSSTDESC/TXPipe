@@ -1,0 +1,245 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Ingest redmagic &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Input Catalogs" href="input_cats.html" />
+    <link rel="prev" title="exposure_info" href="exposure_info.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="auxiliary_maps.html">Auxilliary maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_stage.html">Base stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="blinding.html">Blinding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="covariance.html">covariance stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exposure_info.html">exposure_info</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Ingest redmagic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="input_cats.html">Input Catalogs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lens_selector.html">Lens selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map_correlations.html">map_correlations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="map_plots.html">map_plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="maps.html">maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="masks.html">masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metacal_gcr_input.html">metacal_gcr_input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="noise_maps.html">noise_maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz.html">photoz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz_mlz.html">photoz_mlz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="photoz_stack.html">photoz_stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="psf_diagnostics.html">psf_diagnostics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="random_cats.html">random_cats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source_selector.html">source_selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="twopoint.html">Twopoint correlations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="twopoint_fourier.html">twopoint_fourier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+        
+      <li>Ingest redmagic</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/ingest_redmagic.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ingest-redmagic">
+<h1>Ingest redmagic<a class="headerlink" href="#ingest-redmagic" title="Permalink to this headline">¶</a></h1>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="input_cats.html" class="btn btn-neutral float-right" title="Input Catalogs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="exposure_info.html" class="btn btn-neutral float-left" title="exposure_info" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

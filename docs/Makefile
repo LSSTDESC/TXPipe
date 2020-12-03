@@ -5,8 +5,8 @@
 SPHINXOPTS    =
 SPHINXBUILD   = python3 -msphinx
 SPHINXPROJ    = TXPipe
-SOURCEDIR     = .
-BUILDDIR      = _build
+SOURCEDIR     = src
+BUILDDIR      = build
 
 # Put it first so that "make" without argument is like "make help".
 help:
