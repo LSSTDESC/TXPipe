@@ -182,8 +182,49 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="blinding">
-<h1>Blinding<a class="headerlink" href="#blinding" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.blinding">
+<span id="blinding"></span><h1>Blinding<a class="headerlink" href="#module-txpipe.blinding" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.blinding.TXBlinding">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.blinding.</code><code class="sig-name descname">TXBlinding</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/blinding.html#TXBlinding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.blinding.TXBlinding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>Blinding the data vectors.</p>
+<dl class="py method">
+<dt id="txpipe.blinding.TXBlinding.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/blinding.html#TXBlinding.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.blinding.TXBlinding.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Load two point SACC file</p></li>
+<li><p>Blinding it</p></li>
+<li><p>Output blinded data</p></li>
+<li><p>Optionally deletete unblinded data</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.blinding.TXNullBlinding">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.blinding.</code><code class="sig-name descname">TXNullBlinding</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/blinding.html#TXNullBlinding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.blinding.TXNullBlinding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>A null stage to trivially copy the real raw data to real without blinding,
+for use with simulations data.</p>
+<dl class="py method">
+<dt id="txpipe.blinding.TXNullBlinding.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/blinding.html#TXNullBlinding.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.blinding.TXNullBlinding.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Load two point SACC file</p></li>
+<li><p>Copy two point SACC file twopoint_data_real_raw to twopoint_data_real</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 

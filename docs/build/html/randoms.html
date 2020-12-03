@@ -162,8 +162,63 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="randoms">
-<h1>randoms<a class="headerlink" href="#randoms" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.randoms.randoms">
+<span id="randoms"></span><h1>randoms<a class="headerlink" href="#module-txpipe.randoms.randoms" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt id="txpipe.randoms.randoms.random_points_in_quadrilateral">
+<code class="sig-prename descclassname">txpipe.randoms.randoms.</code><code class="sig-name descname">random_points_in_quadrilateral</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p1</span></em>, <em class="sig-param"><span class="n">p2</span></em>, <em class="sig-param"><span class="n">p3</span></em>, <em class="sig-param"><span class="n">p4</span></em>, <em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/randoms/randoms.html#random_points_in_quadrilateral"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.randoms.randoms.random_points_in_quadrilateral" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate random points uniformly distributed in a quadrilateral.</p>
+<p>The points can be in any number of dimensions.  If two of them
+co-incide so you are actually specifying a triangle it will still work.</p>
+<p>As long as you specify the vertices consistently either clockwise or
+anti-clockwise is okay.</p>
+<dl class="simple">
+<dt>p1: 1D array</dt><dd><p>Vector pointing to the first vertex</p>
+</dd>
+<dt>p2: 1D array</dt><dd><p>Vector pointing to the second vertex</p>
+</dd>
+<dt>p3: 1D array</dt><dd><p>Vector pointing to the third vertex</p>
+</dd>
+<dt>p4: 1D array</dt><dd><p>Vector pointing to the fourth vertex</p>
+</dd>
+<dt>n: int</dt><dd><p>Number of points to generate</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>p</strong> – n * ndim array of points in the quadrilateral</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.randoms.randoms.random_points_in_triangle">
+<code class="sig-prename descclassname">txpipe.randoms.randoms.</code><code class="sig-name descname">random_points_in_triangle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p1</span></em>, <em class="sig-param"><span class="n">p2</span></em>, <em class="sig-param"><span class="n">p3</span></em>, <em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/randoms/randoms.html#random_points_in_triangle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.randoms.randoms.random_points_in_triangle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate random points uniformly distributed in a triangle.</p>
+<p>The points can be in any number of dimensions.</p>
+<dl class="simple">
+<dt>p1: 1D array</dt><dd><p>Vector pointing to the first vertex</p>
+</dd>
+<dt>p2: 1D array</dt><dd><p>Vector pointing to the second vertex</p>
+</dd>
+<dt>p3: 1D array</dt><dd><p>Vector pointing to the third vertex</p>
+</dd>
+<dt>n: int</dt><dd><p>Number of points to generate</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>p</strong> – n * ndim array of points in the triangle</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 
 

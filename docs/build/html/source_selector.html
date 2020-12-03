@@ -182,8 +182,111 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="source-selector">
-<h1>source_selector<a class="headerlink" href="#source-selector" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.source_selector">
+<span id="source-selector"></span><h1>source_selector<a class="headerlink" href="#module-txpipe.source_selector" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.source_selector.TXSourceSelector">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.source_selector.</code><code class="sig-name descname">TXSourceSelector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>This pipeline stage selects objects to be used
+as the source sample for the shear-shear and
+shear-position calibrations.  It applies some
+general cuts based on the flags that metacal
+gives for the objects, and size and S/N cuts
+based on the configuration file.</p>
+<p>It also splits those objects into tomographic
+bins according to the choice the user makes
+in the input file, from the information in the
+photo-z PDF file.</p>
+<p>Once these selections are made it constructs
+the quantities needed to calibrate each bin -
+this consists of two shear response quantities.</p>
+<p>TODO: add option to use lensfit catalogs, which
+would be much much simpler.</p>
+<dl class="py method">
+<dt id="txpipe.source_selector.TXSourceSelector.apply_classifier">
+<code class="sig-name descname">apply_classifier</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">classifier</span></em>, <em class="sig-param"><span class="n">features</span></em>, <em class="sig-param"><span class="n">shear_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector.apply_classifier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector.apply_classifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply the classifier to the measured magnitudes</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.source_selector.TXSourceSelector.calculate_tomography">
+<code class="sig-name descname">calculate_tomography</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pz_data</span></em>, <em class="sig-param"><span class="n">shear_data</span></em>, <em class="sig-param"><span class="n">calibrators</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector.calculate_tomography"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector.calculate_tomography" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select objects to go in each tomographic bin and their calibration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pz_data</strong> (<em>table</em><em> or </em><em>dict of arrays</em>) – A chunk of input photo-z data containing mean values for each object</p></li>
+<li><p><strong>shear_data</strong> (<em>table</em><em> or </em><em>dict of arrays</em>) – A chunk of input shear data with metacalibration variants.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.source_selector.TXSourceSelector.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Collect the list of columns to read</p></li>
+<li><p>Create iterators to read chunks of those columns</p></li>
+<li><dl class="simple">
+<dt>Loop through chunks:</dt><dd><ul>
+<li><p>select objects for each bin</p></li>
+<li><p>write them out</p></li>
+<li><p>accumulate selection bias values</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Average the selection biases</p></li>
+<li><p>Write out biases and close the output</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.source_selector.TXSourceSelector.setup_output">
+<code class="sig-name descname">setup_output</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector.setup_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector.setup_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up the output data file.</p>
+<p>Creates the data sets and groups to put module output
+in the shear_tomography_catalog output file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.source_selector.TXSourceSelector.write_global_values">
+<code class="sig-name descname">write_global_values</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outfile</span></em>, <em class="sig-param"><span class="n">calibrators</span></em>, <em class="sig-param"><span class="n">number_density_stats</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector.write_global_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector.write_global_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out overall selection biases</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outfile</strong> (<em>h5py.File</em>) – </p></li>
+<li><p><strong>S</strong> (<em>array of shape</em><em> (</em><em>nbin</em><em>,</em><em>2</em><em>,</em><em>2</em><em>)</em>) – Selection bias matrices</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.source_selector.TXSourceSelector.write_tomography">
+<code class="sig-name descname">write_tomography</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">outfile</span></em>, <em class="sig-param"><span class="n">start</span></em>, <em class="sig-param"><span class="n">end</span></em>, <em class="sig-param"><span class="n">source_bin</span></em>, <em class="sig-param"><span class="n">R</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/source_selector.html#TXSourceSelector.write_tomography"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.source_selector.TXSourceSelector.write_tomography" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out a chunk of tomography and response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outfile</strong> (<em>h5py.File</em>) – </p></li>
+<li><p><strong>start</strong> (<em>int</em>) – The index into the output this chunk starts at</p></li>
+<li><p><strong>end</strong> (<em>int</em>) – The index into the output this chunk ends at</p></li>
+<li><p><strong>tomo_bin</strong> (<em>array of shape</em><em> (</em><em>nrow</em><em>,</em><em>)</em>) – The bin index for each output object</p></li>
+<li><p><strong>R</strong> (<em>array of shape</em><em> (</em><em>nrow</em><em>,</em><em>2</em><em>,</em><em>2</em><em>)</em>) – Multiplicative bias calibration factor for each object</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 

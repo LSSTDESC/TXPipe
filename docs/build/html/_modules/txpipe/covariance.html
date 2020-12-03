@@ -1,0 +1,723 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.covariance &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.covariance</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.covariance</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">ShearCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">FiducialCosmology</span><span class="p">,</span> <span class="n">SACCFile</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="c1"># require TJPCov to be in PYTHONPATH</span>
+<span class="n">d2r</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">180</span>
+
+<span class="c1"># Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix</span>
+
+<div class="viewcode-block" id="TXFourierGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.covariance.TXFourierGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXFourierGaussianCovariance</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXFourierGaussianCovariance&#39;</span>
+    <span class="n">do_xi</span><span class="o">=</span><span class="kc">False</span>
+    
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">,</span> <span class="n">FiducialCosmology</span><span class="p">),</span>    <span class="c1"># For the cosmological parameters</span>
+        <span class="p">(</span><span class="s1">&#39;twopoint_data_fourier&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span> <span class="c1"># For the binning information</span>
+        <span class="p">(</span><span class="s1">&#39;tracer_metadata&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>        <span class="c1"># For metadata</span>
+    <span class="p">]</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;summary_statistics_fourier&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;use_true_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        
+    <span class="p">}</span>
+
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="kn">import</span> <span class="nn">tjpcov</span>
+        <span class="kn">import</span> <span class="nn">threadpoolctl</span>
+
+        <span class="c1"># read the fiducial cosmology</span>
+        <span class="n">cosmo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_cosmology</span><span class="p">()</span>
+
+        <span class="c1"># read binning</span>
+        <span class="n">two_point_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_sacc</span><span class="p">()</span>
+
+        <span class="c1"># read the n(z) and f_sky from the source summary stats        </span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_number_statistics</span><span class="p">()</span>
+        
+        <span class="c1"># Binning choices. The ell binning is a linear piece with all the</span>
+        <span class="c1"># integer values up to 500 -- these are from firecrown, might need </span>
+        <span class="c1"># to change later</span>
+        <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;ell&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">500</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> 
+             <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mf">6e4</span><span class="p">),</span> <span class="mi">500</span><span class="p">))</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Theta binning - log spaced between 1 .. 300 arcmin.</span>
+        <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;theta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">60</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mf">300.</span><span class="o">/</span><span class="mi">60</span><span class="p">),</span> <span class="mi">3000</span><span class="p">)</span> 
+
+        <span class="c1">#C_ell covariance</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_covariance</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">two_point_data</span><span class="o">=</span><span class="n">two_point_data</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_outputs</span><span class="p">(</span><span class="n">two_point_data</span><span class="p">,</span> <span class="n">cov</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">save_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">,</span> <span class="n">cov</span><span class="p">):</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;summary_statistics_fourier&#39;</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">read_cosmology</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_ccl</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">read_sacc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;twopoint_data_fourier&#39;</span><span class="p">)</span>
+        <span class="n">two_point_data</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="o">.</span><span class="n">load_fits</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="c1"># Remove the data types that we won&#39;t use for inference</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_cl_ee</span><span class="p">),</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shearDensity_cl_e</span><span class="p">),</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_density_cl</span><span class="p">),</span>
+            <span class="c1"># not doing b-modes, do we want to?</span>
+        <span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Length before cuts = &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">two_point_data</span><span class="p">))</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">keep_indices</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Length after cuts = &quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">two_point_data</span><span class="p">))</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">to_canonical_order</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">two_point_data</span>
+
+
+    <span class="k">def</span> <span class="nf">read_number_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">input_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;tracer_metadata&#39;</span><span class="p">)</span>
+
+        <span class="c1"># per-bin quantities</span>
+        <span class="n">N_eff</span> <span class="o">=</span> <span class="n">input_data</span><span class="p">[</span><span class="s1">&#39;tracers/N_eff&#39;</span><span class="p">][:]</span>
+        <span class="n">N_lens</span> <span class="o">=</span> <span class="n">input_data</span><span class="p">[</span><span class="s1">&#39;tracers/lens_counts&#39;</span><span class="p">][:]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;use_true_shear&#39;</span><span class="p">]:</span>
+            <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">input_data</span><span class="p">[</span><span class="s1">&#39;tracers/sigma_e&#39;</span><span class="p">][:])</span>
+            <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbins</span><span class="p">)])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">input_data</span><span class="p">[</span><span class="s1">&#39;tracers/sigma_e&#39;</span><span class="p">][:]</span>
+
+        <span class="c1"># area in sq deg</span>
+        <span class="n">area_deg2</span> <span class="o">=</span> <span class="n">input_data</span><span class="p">[</span><span class="s1">&#39;tracers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">]</span>
+        <span class="n">area_unit</span> <span class="o">=</span> <span class="n">input_data</span><span class="p">[</span><span class="s1">&#39;tracers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;area_unit&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">area_unit</span> <span class="o">!=</span> <span class="s1">&#39;deg^2&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Units of area have changed&quot;</span><span class="p">)</span>
+
+        <span class="n">input_data</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c1"># area in steradians and sky fraction</span>
+        <span class="n">area</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">area_arcmin2</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="mi">60</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">full_sky</span> <span class="o">=</span> <span class="mi">4</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+        <span class="n">f_sky</span> <span class="o">=</span> <span class="n">area</span> <span class="o">/</span> <span class="n">full_sky</span>
+
+        <span class="c1"># Density information from counts</span>
+        <span class="n">n_eff</span> <span class="o">=</span> <span class="n">N_eff</span> <span class="o">/</span> <span class="n">area</span>
+        <span class="n">n_lens</span> <span class="o">=</span> <span class="n">N_lens</span> <span class="o">/</span> <span class="n">area</span>
+
+        <span class="c1"># for printing out only</span>
+        <span class="n">n_eff_arcmin</span> <span class="o">=</span> <span class="n">N_eff</span> <span class="o">/</span> <span class="n">area_arcmin2</span>
+        <span class="n">n_lens_arcmin</span> <span class="o">=</span> <span class="n">N_lens</span> <span class="o">/</span> <span class="n">area_arcmin2</span>
+
+        <span class="c1"># Feedback</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area =  </span><span class="si">{</span><span class="n">area_deg2</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> deg^2&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky:  </span><span class="si">{</span><span class="n">f_sky</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_eff:  </span><span class="si">{</span><span class="n">N_eff</span><span class="si">}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_lens: </span><span class="si">{</span><span class="n">N_lens</span><span class="si">}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_eff:  </span><span class="si">{</span><span class="n">n_eff</span><span class="si">}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     =  </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">n_eff_arcmin</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> / sq arcmin&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lens density: </span><span class="si">{</span><span class="n">n_lens</span><span class="si">}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;            = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">n_lens_arcmin</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> / arcmin&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Pass all this back as a dictionary</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;f_sky&#39;</span><span class="p">:</span> <span class="n">f_sky</span><span class="p">,</span>
+            <span class="s1">&#39;sigma_e&#39;</span><span class="p">:</span> <span class="n">sigma_e</span><span class="p">,</span>
+            <span class="s1">&#39;n_eff&#39;</span><span class="p">:</span> <span class="n">n_eff</span><span class="p">,</span>
+            <span class="s1">&#39;n_lens&#39;</span><span class="p">:</span> <span class="n">n_lens</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">meta</span>
+
+    <span class="k">def</span> <span class="nf">get_tracer_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">):</span>
+        <span class="c1"># Generates CCL tracers from n(z) information in the data file</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
+        <span class="n">ccl_tracers</span><span class="o">=</span><span class="p">{}</span>
+        <span class="n">tracer_noise</span><span class="o">=</span><span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">tracer</span> <span class="ow">in</span> <span class="n">two_point_data</span><span class="o">.</span><span class="n">tracers</span><span class="p">:</span>
+
+            <span class="c1"># Pull out the integer corresponding to the tracer index</span>
+            <span class="n">tracer_dat</span> <span class="o">=</span> <span class="n">two_point_data</span><span class="o">.</span><span class="n">get_tracer</span><span class="p">(</span><span class="n">tracer</span><span class="p">)</span>
+            <span class="n">nbin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">two_point_data</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="n">z</span> <span class="o">=</span> <span class="n">tracer_dat</span><span class="o">.</span><span class="n">z</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">nz</span> <span class="o">=</span> <span class="n">tracer_dat</span><span class="o">.</span><span class="n">nz</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+            <span class="c1"># Identify source tracers and gnerate WeakLensingTracer objects</span>
+            <span class="c1"># based on them</span>
+            <span class="k">if</span> <span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer</span> <span class="ow">or</span> <span class="s1">&#39;src&#39;</span> <span class="ow">in</span> <span class="n">tracer</span><span class="p">:</span>
+                <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
+                <span class="n">n_eff</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
+                <span class="n">ccl_tracers</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">WeakLensingTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">))</span> <span class="c1">#CCL automatically normalizes dNdz</span>
+                <span class="n">tracer_noise</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span> <span class="o">=</span> <span class="n">sigma_e</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="n">n_eff</span>
+
+            <span class="c1"># or if it is a lens bin then generaete the corresponding</span>
+            <span class="c1"># CCL tracer class</span>
+            <span class="k">elif</span> <span class="s1">&#39;lens&#39;</span> <span class="ow">in</span> <span class="n">tracer</span><span class="p">:</span>
+                <span class="n">b</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>  <span class="c1"># place holder</span>
+                <span class="n">n_gal</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;n_lens&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
+                <span class="n">tracer_noise</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">n_gal</span>
+                <span class="n">ccl_tracers</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">NumberCountsTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">has_rsd</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">nz</span><span class="p">),</span> <span class="n">bias</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">b</span><span class="p">))</span>
+        
+        <span class="k">return</span> <span class="n">ccl_tracers</span><span class="p">,</span> <span class="n">tracer_noise</span>
+
+    <span class="k">def</span> <span class="nf">get_spins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracer_comb</span><span class="p">):</span>
+        <span class="c1"># Get the Wigner Transform factors</span>
+        <span class="n">WT_factors</span><span class="o">=</span><span class="p">{}</span>
+        <span class="n">WT_factors</span><span class="p">[</span><span class="s1">&#39;lens&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">WT_factors</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="s1">&#39;lens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1">#same as (0,2)</span>
+        <span class="n">WT_factors</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">,</span><span class="s1">&#39;source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;plus&#39;</span><span class="p">:(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="s1">&#39;minus&#39;</span><span class="p">:(</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)}</span>
+        <span class="n">WT_factors</span><span class="p">[</span><span class="s1">&#39;lens&#39;</span><span class="p">,</span><span class="s1">&#39;lens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">tracers</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tracer_comb</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;lens&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+                <span class="n">tracers</span><span class="o">+=</span><span class="p">[</span><span class="s1">&#39;lens&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">:</span>
+                <span class="n">tracers</span><span class="o">+=</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">WT_factors</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">tracers</span><span class="p">)]</span>
+
+    <span class="c1"># compute a single covariance matrix for a given pair of C_ell or xi.  </span>
+    <span class="k">def</span> <span class="nf">compute_covariance_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">ell_bins</span><span class="p">,</span>
+        <span class="n">tracer_comb1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tracer_comb2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ccl_tracers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tracer_Noise</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">two_point_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">xi_plus_minus1</span><span class="o">=</span><span class="s1">&#39;plus&#39;</span><span class="p">,</span> <span class="n">xi_plus_minus2</span><span class="o">=</span><span class="s1">&#39;plus&#39;</span><span class="p">,</span>
+        <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">WT</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
+        <span class="kn">from</span> <span class="nn">tjpcov</span> <span class="kn">import</span> <span class="n">bin_cov</span>
+
+        <span class="n">cl</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># tracers 1,2,3,4 = tracer_comb1[0], tracer_comb1[1], tracer_comb2[0], tracer_comb2[1]</span>
+        <span class="c1"># In the dicts below we use &#39;13&#39; to indicate C_ell_(1,3), etc.</span>
+        <span class="c1"># This index maps to this usae</span>
+        <span class="n">reindex</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="mi">13</span><span class="p">,</span>
+            <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="mi">24</span><span class="p">,</span>
+            <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="mi">14</span><span class="p">,</span>
+            <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="mi">23</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">ell</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;ell&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Getting all the C_ell that we need, saving the results in a cache</span>
+        <span class="c1"># for later re-use</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">local_key</span> <span class="o">=</span> <span class="n">reindex</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">)]</span>
+                <span class="c1"># For symmetric pairs we may have saved the C_ell the other</span>
+                <span class="c1"># way around, so try both keys</span>
+                <span class="n">cache_key1</span> <span class="o">=</span> <span class="p">(</span><span class="n">tracer_comb1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+                <span class="n">cache_key2</span> <span class="o">=</span> <span class="p">(</span><span class="n">tracer_comb2</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">cache_key1</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
+                    <span class="n">cl</span><span class="p">[</span><span class="n">local_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache</span><span class="p">[</span><span class="n">cache_key1</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">cache_key2</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
+                    <span class="n">cl</span><span class="p">[</span><span class="n">local_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache</span><span class="p">[</span><span class="n">cache_key2</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># If not cached then we must compute</span>
+                    <span class="n">t1</span> <span class="o">=</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">t2</span> <span class="o">=</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">ccl_tracers</span><span class="p">[</span><span class="n">t1</span><span class="p">],</span> <span class="n">ccl_tracers</span><span class="p">[</span><span class="n">t2</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computed C_ell for &quot;</span><span class="p">,</span> <span class="n">cache_key1</span><span class="p">)</span>
+                    <span class="n">cache</span><span class="p">[</span><span class="n">cache_key1</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+                    <span class="n">cl</span><span class="p">[</span><span class="n">local_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+
+        <span class="c1"># The shape noise C_ell values.</span>
+        <span class="c1"># These are zero for cross bins and as computed earlier for auto bins</span>
+        <span class="n">SN</span><span class="o">=</span><span class="p">{}</span>
+        <span class="n">SN</span><span class="p">[</span><span class="mi">13</span><span class="p">]</span> <span class="o">=</span> <span class="n">tracer_Noise</span><span class="p">[</span><span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="k">if</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">SN</span><span class="p">[</span><span class="mi">24</span><span class="p">]</span> <span class="o">=</span> <span class="n">tracer_Noise</span><span class="p">[</span><span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="k">if</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">SN</span><span class="p">[</span><span class="mi">14</span><span class="p">]</span> <span class="o">=</span> <span class="n">tracer_Noise</span><span class="p">[</span><span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="k">if</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">SN</span><span class="p">[</span><span class="mi">23</span><span class="p">]</span> <span class="o">=</span> <span class="n">tracer_Noise</span><span class="p">[</span><span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="k">if</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="mi">0</span>
+
+
+        <span class="c1"># The overall normalization factor at the front of the matrix</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span><span class="p">:</span>
+            <span class="n">norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;f_sky&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="n">norm</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">ell</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">ell</span><span class="p">)</span> <span class="o">*</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;f_sky&#39;</span><span class="p">]</span>
+
+        <span class="c1"># The coupling is an identity matrix at least when we neglect</span>
+        <span class="c1"># the mask</span>
+        <span class="n">coupling_mat</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ell</span><span class="p">))</span>
+        <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ell</span><span class="p">))</span>
+
+        <span class="c1"># Initial covariance of C_ell components</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">cov</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">cl</span><span class="p">[</span><span class="mi">13</span><span class="p">]</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">13</span><span class="p">],</span> <span class="n">cl</span><span class="p">[</span><span class="mi">24</span><span class="p">]</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">24</span><span class="p">])</span> <span class="o">*</span> <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span>
+        <span class="n">cov</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">cl</span><span class="p">[</span><span class="mi">14</span><span class="p">]</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">14</span><span class="p">],</span> <span class="n">cl</span><span class="p">[</span><span class="mi">23</span><span class="p">]</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">23</span><span class="p">])</span> <span class="o">*</span> <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span>
+
+        <span class="c1"># for shear-shear components we also add a B-mode contribution</span>
+        <span class="n">first_is_shear_shear</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">second_is_shear_shear</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span> <span class="ow">and</span> <span class="p">(</span><span class="n">first_is_shear_shear</span> <span class="ow">or</span> <span class="n">second_is_shear_shear</span><span class="p">):</span>
+            <span class="c1"># this adds the B-mode shape noise contribution.</span>
+            <span class="c1"># We assume B-mode power (C_ell) is 0</span>
+            <span class="n">Bmode_F</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">xi_plus_minus1</span> <span class="o">!=</span> <span class="n">xi_plus_minus2</span><span class="p">:</span>
+                <span class="c1"># in the cross term, this contribution is subtracted.</span>
+                <span class="c1"># eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf</span>
+                <span class="n">Bmode_F</span><span class="o">=-</span><span class="mi">1</span> 
+            <span class="c1"># below the we multiply zero to maintain the shape of the Cl array, these are effectively </span>
+            <span class="c1"># B-modes</span>
+            <span class="n">cov</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">cl</span><span class="p">[</span><span class="mi">13</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">13</span><span class="p">],</span> <span class="n">cl</span><span class="p">[</span><span class="mi">24</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">24</span><span class="p">])</span> <span class="o">*</span> <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span> <span class="o">*</span> <span class="n">Bmode_F</span>
+            <span class="n">cov</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">cl</span><span class="p">[</span><span class="mi">14</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">14</span><span class="p">],</span> <span class="n">cl</span><span class="p">[</span><span class="mi">23</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">23</span><span class="p">])</span> <span class="o">*</span> <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span> <span class="o">*</span> <span class="n">Bmode_F</span>
+
+        <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">cov</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span><span class="o">+</span><span class="n">cov</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span><span class="p">:</span>
+            <span class="n">s1_s2_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_spins</span><span class="p">(</span><span class="n">tracer_comb1</span><span class="p">)</span>
+            <span class="n">s1_s2_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_spins</span><span class="p">(</span><span class="n">tracer_comb2</span><span class="p">)</span>
+
+            <span class="c1"># For the shear-shear we have two sets of spins, plus and minus,</span>
+            <span class="c1"># which are returned as a dict, so we need to pull out the one we need</span>
+            <span class="c1"># Otherwise it&#39;s just specified as a tuple, e.g. (2,0)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s1_s2_1</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">s1_s2_1</span> <span class="o">=</span> <span class="n">s1_s2_1</span><span class="p">[</span><span class="n">xi_plus_minus1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s1_s2_2</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">s1_s2_2</span> <span class="o">=</span> <span class="n">s1_s2_2</span><span class="p">[</span><span class="n">xi_plus_minus2</span><span class="p">]</span>
+
+            <span class="c1"># Use these terms to project the covariance from C_ell to xi(theta)</span>
+            <span class="n">th</span><span class="p">,</span> <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">WT</span><span class="o">.</span><span class="n">projected_covariance2</span><span class="p">(</span>
+                <span class="n">l_cl</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">s1_s2</span><span class="o">=</span><span class="n">s1_s2_1</span><span class="p">,</span> <span class="n">s1_s2_cross</span><span class="o">=</span><span class="n">s1_s2_2</span><span class="p">,</span> <span class="n">cl_cov</span><span class="o">=</span><span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Normalize</span>
+        <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">norm</span>
+
+        <span class="c1"># Put the covariance into bins. </span>
+        <span class="c1"># This is optional in the case of a C_ell covariance (only if bins in ell are</span>
+        <span class="c1"># supplied, otherwise the matrix is for each ell value individually).  It is</span>
+        <span class="c1"># required for real-space covariances since these are always binned.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span><span class="p">:</span>
+            <span class="n">thb</span><span class="p">,</span> <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final_b&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">bin_cov</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="n">th</span><span class="o">/</span><span class="n">d2r</span><span class="p">,</span> <span class="n">r_bins</span><span class="o">=</span><span class="n">ell_bins</span><span class="p">,</span> <span class="n">cov</span><span class="o">=</span><span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ell_bins</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">lb</span><span class="p">,</span> <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final_b&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">bin_cov</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">r_bins</span><span class="o">=</span><span class="n">ell_bins</span><span class="p">,</span> <span class="n">cov</span><span class="o">=</span><span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">cov</span>
+    
+    <span class="k">def</span> <span class="nf">get_angular_bins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">):</span>
+        <span class="c1"># Assume that the ell binning is the same for each of the bins.</span>
+        <span class="c1"># This is true in the current pipeline.</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">two_point_data</span><span class="o">.</span><span class="n">get_data_points</span><span class="p">(</span><span class="s1">&#39;galaxy_shear_cl_ee&#39;</span><span class="p">,</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">j</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Further assume that the ell ranges are contiguous, so that</span>
+        <span class="c1"># the max value of one window is the min value of the next.</span>
+        <span class="c1"># So we just need the lower edges of each bin and then the</span>
+        <span class="c1"># final maximum value of the last bin</span>
+        <span class="n">ell_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;window&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X</span><span class="p">]</span>
+        <span class="n">ell_edges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;window&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ell_edges</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">make_wigner_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meta</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">threadpoolctl</span>
+        <span class="kn">from</span> <span class="nn">tjpcov</span> <span class="kn">import</span> <span class="n">wigner_transform</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading precomputed wigner transform from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">WT</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">WT</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precomputed wigner transform </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Will compute it and then save it.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># We don&#39;t want to use n processes with n threads each by accident,</span>
+        <span class="c1"># where n is the number of CPUs we have</span>
+        <span class="c1"># so for this bit of the code, which uses python&#39;s multiprocessing,</span>
+        <span class="c1"># we limit the number of threads that numpy etc can use.</span>
+        <span class="c1"># After this is finished this will switch back to allowing all the CPUs</span>
+        <span class="c1"># to be used for threading instead.</span>
+        <span class="n">num_processes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;OMP_NUM_THREADS&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating Wigner Transform.&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">threadpoolctl</span><span class="o">.</span><span class="n">threadpool_limits</span><span class="p">(</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">WT</span> <span class="o">=</span> <span class="n">wigner_transform</span><span class="p">(</span>
+                <span class="n">l</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;ell&#39;</span><span class="p">],</span>
+                <span class="n">theta</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;theta&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">d2r</span><span class="p">,</span>
+                <span class="n">s1_s2</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)],</span>
+                <span class="n">ncpu</span> <span class="o">=</span> <span class="n">num_processes</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computed Wigner Transform.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">WT</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not save wigner transform to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">WT</span>
+
+
+    <span class="c1">#compute all the covariances and then combine them into one single giant matrix</span>
+    <span class="k">def</span> <span class="nf">compute_covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">tjpcov</span> <span class="kn">import</span> <span class="n">bin_cov</span>
+
+        <span class="n">ccl_tracers</span><span class="p">,</span><span class="n">tracer_Noise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_tracer_info</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">two_point_data</span><span class="o">=</span><span class="n">two_point_data</span><span class="p">)</span>
+        <span class="c1"># we will loop over all these</span>
+        <span class="n">tracer_combs</span> <span class="o">=</span> <span class="n">two_point_data</span><span class="o">.</span><span class="n">get_tracer_combinations</span><span class="p">()</span> 
+        <span class="n">N2pt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tracer_combs</span><span class="p">)</span>
+
+
+        <span class="n">WT</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_wigner_transform</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
+        
+        <span class="c1"># the bit below is just counting the number of 2pt functions, and accounting </span>
+        <span class="c1"># for the fact that xi needs to be double counted</span>
+        <span class="n">N2pt0</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span><span class="p">:</span>
+            <span class="n">N2pt0</span> <span class="o">=</span> <span class="n">N2pt</span>
+            <span class="n">tracer_combs_temp</span> <span class="o">=</span> <span class="n">tracer_combs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">combo</span> <span class="ow">in</span> <span class="n">tracer_combs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">combo</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">combo</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                    <span class="n">N2pt</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">tracer_combs_temp</span> <span class="o">+=</span> <span class="p">[</span><span class="n">combo</span><span class="p">]</span>
+            <span class="n">tracer_combs</span> <span class="o">=</span> <span class="n">tracer_combs_temp</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">ell_bins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_angular_bins</span><span class="p">(</span><span class="n">two_point_data</span><span class="p">)</span>
+        <span class="n">Nell_bins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ell_bins</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+
+        <span class="n">cov_full</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Nell_bins</span><span class="o">*</span><span class="n">N2pt</span><span class="p">,</span> <span class="n">Nell_bins</span><span class="o">*</span><span class="n">N2pt</span><span class="p">))</span>
+        <span class="n">count_xi_pm1</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">count_xi_pm2</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">cl_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">xi_pm</span> <span class="o">=</span> <span class="p">[[(</span><span class="s1">&#39;plus&#39;</span><span class="p">,</span><span class="s1">&#39;plus&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;plus&#39;</span><span class="p">,</span> <span class="s1">&#39;minus&#39;</span><span class="p">)],</span> <span class="p">[(</span><span class="s1">&#39;minus&#39;</span><span class="p">,</span><span class="s1">&#39;plus&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;minus&#39;</span><span class="p">,</span> <span class="s1">&#39;minus&#39;</span><span class="p">)]]</span>
+
+        <span class="c1"># Look through the chunk of matrix, tracer pair by tracer pair</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N2pt</span><span class="p">):</span>
+            <span class="n">tracer_comb1</span> <span class="o">=</span> <span class="n">tracer_combs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">N2pt0</span><span class="p">:</span>
+                <span class="n">count_xi_pm1</span> <span class="o">=</span> <span class="mi">1</span>
+
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">N2pt</span><span class="p">):</span>
+                <span class="n">tracer_comb2</span> <span class="o">=</span> <span class="n">tracer_combs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{</span><span class="n">tracer_comb1</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">tracer_comb2</span><span class="si">}</span><span class="s2">: chunk (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) of (</span><span class="si">{</span><span class="n">N2pt</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">N2pt</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="n">N2pt0</span><span class="p">:</span>
+                    <span class="n">count_xi_pm2</span> <span class="o">=</span> <span class="mi">1</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb1</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb2</span><span class="p">):</span>
+                    <span class="n">cov_ij</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_covariance_block</span><span class="p">(</span>
+                        <span class="n">cosmo</span><span class="p">,</span>
+                        <span class="n">meta</span><span class="p">,</span>
+                        <span class="n">ell_bins</span><span class="p">,</span> 
+                        <span class="n">tracer_comb1</span><span class="o">=</span><span class="n">tracer_comb1</span><span class="p">,</span>
+                        <span class="n">tracer_comb2</span><span class="o">=</span><span class="n">tracer_comb2</span><span class="p">,</span>
+                        <span class="n">ccl_tracers</span><span class="o">=</span><span class="n">ccl_tracers</span><span class="p">,</span>
+                        <span class="n">tracer_Noise</span><span class="o">=</span><span class="n">tracer_Noise</span><span class="p">,</span> 
+                        <span class="n">two_point_data</span><span class="o">=</span><span class="n">two_point_data</span><span class="p">,</span>
+                        <span class="n">xi_plus_minus1</span><span class="o">=</span><span class="n">xi_pm</span><span class="p">[</span><span class="n">count_xi_pm1</span><span class="p">,</span> <span class="n">count_xi_pm2</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="n">xi_plus_minus2</span><span class="o">=</span><span class="n">xi_pm</span><span class="p">[</span><span class="n">count_xi_pm1</span><span class="p">,</span> <span class="n">count_xi_pm2</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">cache</span><span class="o">=</span><span class="n">cl_cache</span><span class="p">,</span>
+                        <span class="n">WT</span><span class="o">=</span><span class="n">WT</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cov_ij</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_covariance_block</span><span class="p">(</span>
+                        <span class="n">cosmo</span><span class="p">,</span>
+                        <span class="n">meta</span><span class="p">,</span>
+                        <span class="n">ell_bins</span><span class="p">,</span>
+                        <span class="n">tracer_comb1</span><span class="o">=</span><span class="n">tracer_comb1</span><span class="p">,</span>
+                        <span class="n">tracer_comb2</span><span class="o">=</span><span class="n">tracer_comb2</span><span class="p">,</span>
+                        <span class="n">ccl_tracers</span><span class="o">=</span><span class="n">ccl_tracers</span><span class="p">,</span>
+                        <span class="n">tracer_Noise</span><span class="o">=</span><span class="n">tracer_Noise</span><span class="p">,</span>
+                        <span class="n">two_point_data</span><span class="o">=</span><span class="n">two_point_data</span><span class="p">,</span>
+                        <span class="n">cache</span><span class="o">=</span><span class="n">cl_cache</span><span class="p">,</span>
+                        <span class="n">WT</span><span class="o">=</span><span class="n">WT</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Fill in this chunk of the matrix</span>
+                <span class="n">cov_ij</span> <span class="o">=</span> <span class="n">cov_ij</span><span class="p">[</span><span class="s1">&#39;final_b&#39;</span><span class="p">]</span>
+                <span class="c1"># Find the right location in the matrix</span>
+                <span class="n">start_i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">Nell_bins</span>
+                <span class="n">start_j</span> <span class="o">=</span> <span class="n">j</span> <span class="o">*</span> <span class="n">Nell_bins</span>
+                <span class="n">end_i</span> <span class="o">=</span> <span class="n">start_i</span> <span class="o">+</span> <span class="n">Nell_bins</span>
+                <span class="n">end_j</span> <span class="o">=</span> <span class="n">start_j</span> <span class="o">+</span> <span class="n">Nell_bins</span>
+                <span class="c1"># and fill it in, and the transpose component</span>
+                <span class="n">cov_full</span><span class="p">[</span><span class="n">start_i</span><span class="p">:</span><span class="n">end_i</span><span class="p">,</span> <span class="n">start_j</span><span class="p">:</span><span class="n">end_j</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_ij</span>
+                <span class="n">cov_full</span><span class="p">[</span><span class="n">start_j</span><span class="p">:</span><span class="n">end_j</span><span class="p">,</span> <span class="n">start_i</span><span class="p">:</span><span class="n">end_i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_ij</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">cov_full</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>        
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;liAnalg.LinAlgError: Covariance not positive definite! &quot;</span>
+                <span class="s2">&quot;Most likely this is a problem in xim. &quot;</span>
+                <span class="s2">&quot;We will continue for now but this needs to be fixed.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cov_full</span></div>
+
+
+<div class="viewcode-block" id="TXRealGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.covariance.TXRealGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXRealGaussianCovariance&#39;</span>
+    <span class="n">do_xi</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;fiducial_cosmology&#39;</span><span class="p">,</span> <span class="n">FiducialCosmology</span><span class="p">),</span>     <span class="c1"># For the cosmological parameters</span>
+        <span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>     <span class="c1"># For the binning information</span>
+        <span class="p">(</span><span class="s1">&#39;tracer_metadata&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>         <span class="c1"># For metadata</span>
+
+    <span class="p">]</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;summary_statistics_real&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;min_sep&#39;</span><span class="p">:</span><span class="mf">2.5</span><span class="p">,</span>  <span class="c1"># arcmin</span>
+        <span class="s1">&#39;max_sep&#39;</span><span class="p">:</span><span class="mi">250</span><span class="p">,</span>
+        <span class="s1">&#39;nbins&#39;</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span>
+        <span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_angular_bins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">):</span>
+        <span class="c1"># this should be changed to read from sacc file</span>
+        <span class="n">th_arcmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;min_sep&#39;</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;max_sep&#39;</span><span class="p">]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;nbins&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">th_arcmin</span><span class="o">/</span><span class="mf">60.0</span>
+
+
+    <span class="k">def</span> <span class="nf">read_sacc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">)</span>
+        <span class="n">two_point_data</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="o">.</span><span class="n">load_fits</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_density_xi</span><span class="p">),</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shearDensity_xi_t</span><span class="p">),</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_xi_plus</span><span class="p">),</span>
+            <span class="n">two_point_data</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">sacc</span><span class="o">.</span><span class="n">standard_types</span><span class="o">.</span><span class="n">galaxy_shear_xi_minus</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">keep_indices</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">to_canonical_order</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">two_point_data</span>
+
+
+    <span class="k">def</span> <span class="nf">save_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">two_point_data</span><span class="p">,</span> <span class="n">cov</span><span class="p">):</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;summary_statistics_real&#39;</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+        <span class="n">two_point_data</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

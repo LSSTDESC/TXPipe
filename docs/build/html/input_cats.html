@@ -182,8 +182,94 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="input-catalogs">
-<h1>Input Catalogs<a class="headerlink" href="#input-catalogs" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.input_cats">
+<span id="input-catalogs"></span><h1>Input Catalogs<a class="headerlink" href="#module-txpipe.input_cats" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.input_cats.TXBuzzardMock">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.input_cats.</code><code class="sig-name descname">TXBuzzardMock</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#TXBuzzardMock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.TXBuzzardMock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.input_cats.TXCosmoDC2Mock" title="txpipe.input_cats.TXCosmoDC2Mock"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.input_cats.TXCosmoDC2Mock</span></code></a></p>
+<p>This stage simulates metacal data and metacalibrated
+photometry measurements, starting from a cosmology catalogs
+of the kind used as an input to DC2 image and obs-catalog simulations.</p>
+<p>This is mainly useful for testing infrastructure in advance
+of the DC2 catalogs being available, but might also be handy
+for starting from a purer simulation.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.input_cats.TXCosmoDC2Mock">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.input_cats.</code><code class="sig-name descname">TXCosmoDC2Mock</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#TXCosmoDC2Mock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.TXCosmoDC2Mock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>This stage simulates metacal data and metacalibrated
+photometry measurements, starting from a cosmology catalogs
+of the kind used as an input to DC2 image and obs-catalog simulations.</p>
+<p>This is mainly useful for testing infrastructure in advance
+of the DC2 catalogs being available, but might also be handy
+for starting from a purer simulation.</p>
+<dl class="py method">
+<dt id="txpipe.input_cats.TXCosmoDC2Mock.load_metacal_response_model">
+<code class="sig-name descname">load_metacal_response_model</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#TXCosmoDC2Mock.load_metacal_response_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.TXCosmoDC2Mock.load_metacal_response_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load an HDF file containing the response model
+R(log10(snr), size)
+R_std(log10(snr), size)</p>
+<p>where R is the mean metacal response in a bin and
+R_std is its standard deviation.</p>
+<p>So far only one of these files exists!</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.input_cats.TXCosmoDC2Mock.make_mock_metacal">
+<code class="sig-name descname">make_mock_metacal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">photo</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#TXCosmoDC2Mock.make_mock_metacal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.TXCosmoDC2Mock.make_mock_metacal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a mock metacal table.
+This is a long and complicated function unfortunately.</p>
+<p>Throughout we assume a single R = R11 = R22, with R12 = R21 = 0</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em>) – Dictionary of arrays read from the input cosmo catalog</p></li>
+<li><p><strong>photo</strong> (<em>dict</em>) – Dictionary of arrays generated to simulate photometry</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.input_cats.TXCosmoDC2Mock.remove_undetected">
+<code class="sig-name descname">remove_undetected</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">photo</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#TXCosmoDC2Mock.remove_undetected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.TXCosmoDC2Mock.remove_undetected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Strip out any undetected objects from the two
+simulated data sets.</p>
+<p>Use a configuration parameter snr_limit to decide
+on the detection limit.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.input_cats.TXCosmoDC2Mock.write_output">
+<code class="sig-name descname">write_output</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">start</span></em>, <em class="sig-param"><span class="n">target_size</span></em>, <em class="sig-param"><span class="n">photo_cols</span></em>, <em class="sig-param"><span class="n">metacal_cols</span></em>, <em class="sig-param"><span class="n">photo_file</span></em>, <em class="sig-param"><span class="n">photo_data</span></em>, <em class="sig-param"><span class="n">metacal_file</span></em>, <em class="sig-param"><span class="n">metacal_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#TXCosmoDC2Mock.write_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.TXCosmoDC2Mock.write_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the photometry we have just simulated to disc</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>photo_file</strong> (<em>HDF File object</em>) – </p></li>
+<li><p><strong>metacal_file</strong> (<em>HDF File object</em>) – </p></li>
+<li><p><strong>photo_data</strong> (<em>dict</em>) – Dictionary of simulated photometry</p></li>
+<li><p><strong>metacal_data</strong> (<em>dict</em>) – Dictionary of simulated metacal data</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.input_cats.make_mock_photometry">
+<code class="sig-prename descclassname">txpipe.input_cats.</code><code class="sig-name descname">make_mock_photometry</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n_visit</span></em>, <em class="sig-param"><span class="n">bands</span></em>, <em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">unit_response</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/input_cats.html#make_mock_photometry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.input_cats.make_mock_photometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a mock photometric table with noise added</p>
+<p>This is mostly from LSE‐40 by
+Zeljko Ivezic, Lynne Jones, and Robert Lupton
+retrieved here:
+<a class="reference external" href="http://faculty.washington.edu/ivezic/Teaching/Astr511/LSST_SNRdoc.pdf">http://faculty.washington.edu/ivezic/Teaching/Astr511/LSST_SNRdoc.pdf</a></p>
+</dd></dl>
+
 </div>
 
 

@@ -182,8 +182,195 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="maps">
-<h1>maps<a class="headerlink" href="#maps" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.maps">
+<span id="maps"></span><h1>maps<a class="headerlink" href="#module-txpipe.maps" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.maps.TXBaseMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.maps.</code><code class="sig-name descname">TXBaseMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>This is an abstract base mapping class, which other subclasses
+inherit from to use the same basic structure, which is:
+- select pixelization
+- prepare some mapper objects
+- iterate through selected columns</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>update each mapper with each chunk</p></li>
+</ul>
+</div></blockquote>
+<ul class="simple">
+<li><p>finalize the mappers</p></li>
+<li><p>save the maps</p></li>
+</ul>
+<dl class="py method">
+<dt id="txpipe.maps.TXBaseMaps.accumulate_maps">
+<code class="sig-name descname">accumulate_maps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps.accumulate_maps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps.accumulate_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to supply the next chunk “data” to
+their mappers</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXBaseMaps.choose_pixel_scheme">
+<code class="sig-name descname">choose_pixel_scheme</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps.choose_pixel_scheme"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps.choose_pixel_scheme" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can override to instead load pixelization
+from an existing map</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXBaseMaps.data_iterator">
+<code class="sig-name descname">data_iterator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps.data_iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps.data_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXBaseMaps.finalize_mappers">
+<code class="sig-name descname">finalize_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps.finalize_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps.finalize_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to finalize their maps and return
+a dictionary of (output_tag, map_name) -&gt; (pixels, values)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXBaseMaps.prepare_mappers">
+<code class="sig-name descname">prepare_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps.prepare_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps.prepare_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to init any mapper objects</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXBaseMaps.save_maps">
+<code class="sig-name descname">save_maps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">maps</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXBaseMaps.save_maps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXBaseMaps.save_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can use this directly, by generating maps as described
+in finalize_mappers</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.maps.TXDensityMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.maps.</code><code class="sig-name descname">TXDensityMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXDensityMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXDensityMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>Convert n_gal maps to overdensity delta maps
+delta = (ngal - &lt;ngal&gt;) / &lt;ngal&gt;</p>
+<p>This has to be separate from the lens mappers above
+because it requires the mask, which is created elsewhere
+(right now in masks.py)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.maps.TXExternalLensMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.maps.</code><code class="sig-name descname">TXExternalLensMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXExternalLensMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXExternalLensMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.maps.TXLensMaps" title="txpipe.maps.TXLensMaps"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.maps.TXLensMaps</span></code></a></p>
+<p>Same as TXLensMaps except it reads from an external
+lens catalog.</p>
+<dl class="py method">
+<dt id="txpipe.maps.TXExternalLensMaps.data_iterator">
+<code class="sig-name descname">data_iterator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXExternalLensMaps.data_iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXExternalLensMaps.data_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.maps.TXLensMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.maps.</code><code class="sig-name descname">TXLensMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXLensMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXLensMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.maps.TXBaseMaps" title="txpipe.maps.TXBaseMaps"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.maps.TXBaseMaps</span></code></a></p>
+<p>Make galaxy number count maps from photometry
+and lens tomography.</p>
+<p>Density maps are made later once masks are generated.</p>
+<dl class="py method">
+<dt id="txpipe.maps.TXLensMaps.accumulate_maps">
+<code class="sig-name descname">accumulate_maps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXLensMaps.accumulate_maps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXLensMaps.accumulate_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to supply the next chunk “data” to
+their mappers</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXLensMaps.data_iterator">
+<code class="sig-name descname">data_iterator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXLensMaps.data_iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXLensMaps.data_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXLensMaps.finalize_mappers">
+<code class="sig-name descname">finalize_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXLensMaps.finalize_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXLensMaps.finalize_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to finalize their maps and return
+a dictionary of (output_tag, map_name) -&gt; (pixels, values)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXLensMaps.prepare_mappers">
+<code class="sig-name descname">prepare_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXLensMaps.prepare_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXLensMaps.prepare_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to init any mapper objects</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.maps.TXMainMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.maps.</code><code class="sig-name descname">TXMainMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXMainMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXMainMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.maps.TXSourceMaps" title="txpipe.maps.TXSourceMaps"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.maps.TXSourceMaps</span></code></a>, <a class="reference internal" href="#txpipe.maps.TXLensMaps" title="txpipe.maps.TXLensMaps"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.maps.TXLensMaps</span></code></a></p>
+<p>Combined source and photometric lens maps, from the
+same photometry catalog.  Same as running TXSourceMaps
+and then TXLensMaps but faster as we only do the I/O once.</p>
+<dl class="py method">
+<dt id="txpipe.maps.TXMainMaps.data_iterator">
+<code class="sig-name descname">data_iterator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXMainMaps.data_iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXMainMaps.data_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXMainMaps.finalize_mappers">
+<code class="sig-name descname">finalize_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXMainMaps.finalize_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXMainMaps.finalize_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to finalize their maps and return
+a dictionary of (output_tag, map_name) -&gt; (pixels, values)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXMainMaps.prepare_mappers">
+<code class="sig-name descname">prepare_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXMainMaps.prepare_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXMainMaps.prepare_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to init any mapper objects</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.maps.TXSourceMaps">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.maps.</code><code class="sig-name descname">TXSourceMaps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXSourceMaps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXSourceMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.maps.TXBaseMaps" title="txpipe.maps.TXBaseMaps"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.maps.TXBaseMaps</span></code></a></p>
+<p>Make g1, g2, var(g1), var(g2), and lensing weight maps
+from shear catalogs and tomography</p>
+<dl class="py method">
+<dt id="txpipe.maps.TXSourceMaps.accumulate_maps">
+<code class="sig-name descname">accumulate_maps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXSourceMaps.accumulate_maps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXSourceMaps.accumulate_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to supply the next chunk “data” to
+their mappers</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXSourceMaps.data_iterator">
+<code class="sig-name descname">data_iterator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXSourceMaps.data_iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXSourceMaps.data_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXSourceMaps.finalize_mappers">
+<code class="sig-name descname">finalize_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">mappers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXSourceMaps.finalize_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXSourceMaps.finalize_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to finalize their maps and return
+a dictionary of (output_tag, map_name) -&gt; (pixels, values)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.maps.TXSourceMaps.prepare_mappers">
+<code class="sig-name descname">prepare_mappers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/maps.html#TXSourceMaps.prepare_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.maps.TXSourceMaps.prepare_mappers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must override to init any mapper objects</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 

@@ -182,8 +182,373 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="base-stage">
-<h1>Base stage<a class="headerlink" href="#base-stage" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.base_stage">
+<span id="base-stage"></span><h1>Base stage<a class="headerlink" href="#module-txpipe.base_stage" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.base_stage.PipelineStage">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.base_stage.</code><code class="sig-name descname">PipelineStage</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/base_stage.html#PipelineStage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ceci.stage.PipelineStage</span></code></p>
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.__dict__">
+<code class="sig-name descname">__dict__</code><em class="property"> = mappingproxy({'__module__': 'txpipe.base_stage', 'name': 'Error', 'inputs': [], 'outputs': [], 'config_options': {}, 'run': &lt;function PipelineStage.run&gt;, 'combined_iterators': &lt;function PipelineStage.combined_iterators&gt;, 'gather_provenance': &lt;function PipelineStage.gather_provenance&gt;, 'open_output': &lt;function PipelineStage.open_output&gt;, '__doc__': None})</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.__dict__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a pipeline stage, specifying the inputs, outputs, and configuration for it.</p>
+<p>The constructor needs a dict or namespace. It should include:
+- input paths (required)
+- config path (required)
+- output paths (optional but usual)
+- additional configuration (required if not specified elsewhere)</p>
+<p>Input and output paths should map tags to paths.
+Tags are strings, and the first elements in each item in the subclass’s
+“inputs” and “output” attributes.
+e.g. for a subclass with:</p>
+<blockquote>
+<div><p>inputs = [(‘eggs’, TextFile)]
+outputs = [(‘spam’, TextFile)]</p>
+</div></blockquote>
+<dl class="simple">
+<dt>the args could contain:</dt><dd><dl class="simple">
+<dt>{‘eggs’: ‘inputs/eggs.txt’,</dt><dd><p>‘spam’: ‘outputs/spam.txt’ }</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>If spam is not specified it will default to “./spam.txt”</p>
+<p>}</p>
+<p>The config should map “config” to a path where a YAML config file
+is located, e.g. {‘config’:’/path/to/config.yml’}</p>
+<p>Any config variables that are specified in the class’s config attribute
+will be searched for first in args, then in the config file, and then
+by looking at any default value they have been given.
+If they have no default value (and just a type, like int, is listed), then
+it’s an error if they are not specified somewhere.</p>
+<p>The execute method can instantiate and run the class together, with added bonuses
+like profiling and debugging tools.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>dict</em><em> or </em><em>namespace</em>) – Specification of input and output paths and any missing config options</p></li>
+<li><p><strong>comm</strong> (<em>MPI communicator</em>) – (default is None) An MPI comm object to use in preference to COMM_WORLD</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.__init_subclass__">
+<em class="property">classmethod </em><code class="sig-name descname">__init_subclass__</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.__init_subclass__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.__init_subclass__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Python 3.6+ provides a facility to automatically
+call a method (this one) whenever a new subclass
+is defined.  In this case we use that feature to keep
+track of all available pipeline stages, each of which is
+defined by a class.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.__module__">
+<code class="sig-name descname">__module__</code><em class="property"> = 'txpipe.base_stage'</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.__module__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.__weakref__">
+<code class="sig-name descname">__weakref__</code><a class="headerlink" href="#txpipe.base_stage.PipelineStage.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.combined_iterators">
+<code class="sig-name descname">combined_iterators</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rows</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">inputs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/base_stage.html#PipelineStage.combined_iterators"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.combined_iterators" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.comm">
+<em class="property">property </em><code class="sig-name descname">comm</code><a class="headerlink" href="#txpipe.base_stage.PipelineStage.comm" title="Permalink to this definition">¶</a></dt>
+<dd><p>The MPI communicator object (None if not running under MPI)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.config">
+<em class="property">property </em><code class="sig-name descname">config</code><a class="headerlink" href="#txpipe.base_stage.PipelineStage.config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the configuration dictionary for this stage, aggregating command
+line options and optional configuration file.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.config_options">
+<code class="sig-name descname">config_options</code><em class="property"> = {}</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.config_options" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.data_ranges_by_rank">
+<code class="sig-name descname">data_ranges_by_rank</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n_rows</span></em>, <em class="sig-param"><span class="n">chunk_rows</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.data_ranges_by_rank"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.data_ranges_by_rank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Split a number of rows by process.</p>
+<p>Given a total number of rows to read and a chunk size, yield
+the ranges within them that this process should handle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_rows</strong> (<em>int</em>) – Total number of rows to split up</p></li>
+<li><p><strong>chunk_rows</strong> (<em>int</em>) – Size of each chunk to be read.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.doc">
+<code class="sig-name descname">doc</code><em class="property"> = ''</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.doc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.execute">
+<em class="property">classmethod </em><code class="sig-name descname">execute</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an instance of this stage and run it
+with the specified inputs and outputs.</p>
+<p>This is calld by the main method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>args</strong> (<em>namespace</em>) – The argparse namespace for this subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.finalize">
+<code class="sig-name descname">finalize</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.finalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.finalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finalize the stage, moving all its outputs to their final locations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.gather_provenance">
+<code class="sig-name descname">gather_provenance</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/base_stage.html#PipelineStage.gather_provenance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.gather_provenance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.generate_command">
+<em class="property">classmethod </em><code class="sig-name descname">generate_command</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">inputs</span></em>, <em class="sig-param"><span class="n">config</span></em>, <em class="sig-param"><span class="n">outputs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.generate_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.generate_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a command line that will run the stage</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.generate_cwl">
+<em class="property">classmethod </em><code class="sig-name descname">generate_cwl</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">log_dir</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.generate_cwl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.generate_cwl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produces a CWL App object which can then be exported to yaml</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.get_input">
+<code class="sig-name descname">get_input</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.get_input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.get_input" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path of an input file with the given tag</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.get_input_type">
+<code class="sig-name descname">get_input_type</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.get_input_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.get_input_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the file type class of an input file with the given tag.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.get_module">
+<em class="property">classmethod </em><code class="sig-name descname">get_module</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.get_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.get_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the python package containing the current sub-class</p>
+<p>If we have a PipelineStage subclass defined in a module called “bar”, in
+a package called “foo” e.g.:
+/path/to/foo/bar.py  &lt;–   contains subclass “Baz”</p>
+<p>Then calling Baz.get_module() will return “foo.bar”.</p>
+<p>We use this later to construct command lines like “python -m foo Baz”</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>module</strong> – The module containing this class.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.get_output">
+<code class="sig-name descname">get_output</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em>, <em class="sig-param"><span class="n">final_name</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.get_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.get_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path of an output file with the given tag</p>
+<p>If final_name is False then use a temporary name - file will
+be moved to its final name at the end</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.get_output_type">
+<code class="sig-name descname">get_output_type</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.get_output_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.get_output_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the file type class of an output file with the given tag.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.get_stage">
+<em class="property">classmethod </em><code class="sig-name descname">get_stage</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.get_stage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.get_stage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the PipelineStage subclass with the given name.</p>
+<p>This is used so that we do not need a new entry point __main__ function
+for each new stage - instead we can just use a single one which can query
+which class it should be using based on the name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>cls</strong> – The corresponding subclass</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>class</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.input_tags">
+<em class="property">classmethod </em><code class="sig-name descname">input_tags</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.input_tags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.input_tags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of input tags required by this stage</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.inputs">
+<code class="sig-name descname">inputs</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.inputs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.is_mpi">
+<code class="sig-name descname">is_mpi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.is_mpi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.is_mpi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if the stage is being run under MPI.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.is_parallel">
+<code class="sig-name descname">is_parallel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.is_parallel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.is_parallel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if the code is being run in parallel.
+Right now is_parallel() will return the same value as is_mpi(),
+but that may change in future if we implement other forms of
+parallelization.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.iterate_fits">
+<code class="sig-name descname">iterate_fits</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em>, <em class="sig-param"><span class="n">hdunum</span></em>, <em class="sig-param"><span class="n">cols</span></em>, <em class="sig-param"><span class="n">chunk_rows</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.iterate_fits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.iterate_fits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loop through chunks of the input data from a FITS file with the given tag</p>
+<p>TODO: add ceci tests of these functions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.iterate_hdf">
+<code class="sig-name descname">iterate_hdf</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em>, <em class="sig-param"><span class="n">group_name</span></em>, <em class="sig-param"><span class="n">cols</span></em>, <em class="sig-param"><span class="n">chunk_rows</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.iterate_hdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.iterate_hdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loop through chunks of the input data from an HDF5 file with the given tag.</p>
+<p>All the selected columns must have the same length.</p>
+<p>TODO: add ceci tests of these functions</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.main">
+<em class="property">classmethod </em><code class="sig-name descname">main</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an instance of this stage and execute it with
+inputs and outputs taken from the command line</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.name">
+<code class="sig-name descname">name</code><em class="property"> = 'Error'</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.open_input">
+<code class="sig-name descname">open_input</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em>, <em class="sig-param"><span class="n">wrapper</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.open_input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.open_input" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find and open an input file with the given tag, in read-only mode.</p>
+<p>For general files this will simply return a standard
+python file object.</p>
+<p>For specialized file types like FITS or HDF5 it will return
+a more specific object - see the types.py file for more info.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.open_output">
+<code class="sig-name descname">open_output</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tag</span></em>, <em class="sig-param"><span class="n">wrapper</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/base_stage.html#PipelineStage.open_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.open_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find and open an output file with the given tag, in write mode.</p>
+<p>For general files this will simply return a standard
+python file object.</p>
+<p>For specialized file types like FITS or HDF5 it will return
+a more specific object - see the types.py file for more info.</p>
+<p>This is an extended version of the parent class method which
+also saves configuration information.  Putting this here right
+now for testing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.output_tags">
+<em class="property">classmethod </em><code class="sig-name descname">output_tags</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.output_tags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.output_tags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of output tags required by this stage</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.outputs">
+<code class="sig-name descname">outputs</code><em class="property"> = []</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.outputs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.parallel">
+<code class="sig-name descname">parallel</code><em class="property"> = True</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.parallel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.base_stage.PipelineStage.pipeline_stages">
+<code class="sig-name descname">pipeline_stages</code><em class="property"> = {'Error': (&lt;class 'txpipe.base_stage.PipelineStage'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/base_stage.py')), 'PZPDFMLZ': (&lt;class 'txpipe.photoz_mlz.PZPDFMLZ'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz_mlz.py')), 'TXAuxiliaryMaps': (&lt;class 'txpipe.auxiliary_maps.TXAuxiliaryMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/auxiliary_maps.py')), 'TXBaseLensSelector': (&lt;class 'txpipe.lens_selector.TXBaseLensSelector'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/lens_selector.py')), 'TXBaseMaps': (&lt;class 'txpipe.maps.TXBaseMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/maps.py')), 'TXBlinding': (&lt;class 'txpipe.blinding.TXBlinding'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/blinding.py')), 'TXBrighterFatterPlot': (&lt;class 'txpipe.psf_diagnostics.TXBrighterFatterPlot'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/psf_diagnostics.py')), 'TXBuzzardMock': (&lt;class 'txpipe.input_cats.TXBuzzardMock'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/input_cats.py')), 'TXConvergenceMapPlots': (&lt;class 'txpipe.convergence.TXConvergenceMapPlots'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/convergence.py')), 'TXConvergenceMaps': (&lt;class 'txpipe.convergence.TXConvergenceMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/convergence.py')), 'TXCosmoDC2Mock': (&lt;class 'txpipe.input_cats.TXCosmoDC2Mock'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/input_cats.py')), 'TXDensityMaps': (&lt;class 'txpipe.maps.TXDensityMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/maps.py')), 'TXDiagnosticPlots': (&lt;class 'txpipe.diagnostics.TXDiagnosticPlots'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/diagnostics.py')), 'TXExposureInfo': (&lt;class 'txpipe.exposure_info.TXExposureInfo'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/exposure_info.py')), 'TXExternalLensMaps': (&lt;class 'txpipe.maps.TXExternalLensMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/maps.py')), 'TXExternalLensNoiseMaps': (&lt;class 'txpipe.noise_maps.TXExternalLensNoiseMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/noise_maps.py')), 'TXFourierGaussianCovariance': (&lt;class 'txpipe.covariance.TXFourierGaussianCovariance'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/covariance.py')), 'TXGalaxyStarDensity': (&lt;class 'txpipe.psf_diagnostics.TXStarDensityTests'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/psf_diagnostics.py')), 'TXGalaxyStarShear': (&lt;class 'txpipe.psf_diagnostics.TXStarShearTests'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/psf_diagnostics.py')), 'TXGammaTBrightStars': (&lt;class 'txpipe.twopoint.TXGammaTBrightStars'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXGammaTDimStars': (&lt;class 'txpipe.twopoint.TXGammaTDimStars'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXGammaTFieldCenters': (&lt;class 'txpipe.twopoint.TXGammaTFieldCenters'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXGammaTRandoms': (&lt;class 'txpipe.twopoint.TXGammaTRandoms'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXIngestRedmagic': (&lt;class 'txpipe.ingest_redmagic.TXIngestRedmagic'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/ingest_redmagic.py')), 'TXIngestStars': (&lt;class 'txpipe.metacal_gcr_input.TXIngestStars'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/metacal_gcr_input.py')), 'TXJackknifeCenters': (&lt;class 'txpipe.twopoint.TXJackknifeCenters'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXLensMaps': (&lt;class 'txpipe.maps.TXLensMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/maps.py')), 'TXMainMaps': (&lt;class 'txpipe.maps.TXMainMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/maps.py')), 'TXMapCorrelations': (&lt;class 'txpipe.map_correlations.TXMapCorrelations'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/map_correlations.py')), 'TXMapPlots': (&lt;class 'txpipe.map_plots.TXMapPlots'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/map_plots.py')), 'TXMeanLensSelector': (&lt;class 'txpipe.lens_selector.TXMeanLensSelector'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/lens_selector.py')), 'TXMetacalGCRInput': (&lt;class 'txpipe.metacal_gcr_input.TXMetacalGCRInput'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/metacal_gcr_input.py')), 'TXNoiseMaps': (&lt;class 'txpipe.noise_maps.TXNoiseMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/noise_maps.py')), 'TXNullBlinding': (&lt;class 'txpipe.blinding.TXNullBlinding'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/blinding.py')), 'TXPSFDiagnostics': (&lt;class 'txpipe.psf_diagnostics.TXPSFDiagnostics'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/psf_diagnostics.py')), 'TXPhotozPlots': (&lt;class 'txpipe.photoz_stack.TXPhotozPlots'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz_stack.py')), 'TXPhotozSourceStack': (&lt;class 'txpipe.photoz_stack.TXPhotozSourceStack'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz_stack.py')), 'TXPhotozStack': (&lt;class 'txpipe.photoz_stack.TXPhotozStack'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz_stack.py')), 'TXRandomCat': (&lt;class 'txpipe.random_cats.TXRandomCat'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/random_cats.py')), 'TXRandomPhotozPDF': (&lt;class 'txpipe.photoz.TXRandomPhotozPDF'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz.py')), 'TXRealGaussianCovariance': (&lt;class 'txpipe.covariance.TXRealGaussianCovariance'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/covariance.py')), 'TXRoweStatistics': (&lt;class 'txpipe.psf_diagnostics.TXRoweStatistics'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/psf_diagnostics.py')), 'TXSimpleMask': (&lt;class 'txpipe.masks.TXSimpleMask'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/masks.py')), 'TXSourceMaps': (&lt;class 'txpipe.maps.TXSourceMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/maps.py')), 'TXSourceNoiseMaps': (&lt;class 'txpipe.noise_maps.TXSourceNoiseMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/noise_maps.py')), 'TXSourceSelector': (&lt;class 'txpipe.source_selector.TXSourceSelector'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/source_selector.py')), 'TXSourceTrueNumberDensity': (&lt;class 'txpipe.photoz_stack.TXSourceTrueNumberDensity'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz_stack.py')), 'TXStandaloneAuxiliaryMaps': (&lt;class 'txpipe.auxiliary_maps.TXStandaloneAuxiliaryMaps'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/auxiliary_maps.py')), 'TXTracerMetadata': (&lt;class 'txpipe.metadata.TXTracerMetadata'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/metadata.py')), 'TXTrueNumberDensity': (&lt;class 'txpipe.photoz_stack.TXTrueNumberDensity'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/photoz_stack.py')), 'TXTruthLensSelector': (&lt;class 'txpipe.lens_selector.TXTruthLensSelector'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/lens_selector.py')), 'TXTwoPoint': (&lt;class 'txpipe.twopoint.TXTwoPoint'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXTwoPointFourier': (&lt;class 'txpipe.twopoint_fourier.TXTwoPointFourier'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint_fourier.py')), 'TXTwoPointLensCat': (&lt;class 'txpipe.twopoint.TXTwoPointLensCat'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXTwoPointPlots': (&lt;class 'txpipe.twopoint.TXTwoPointPlots'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint.py')), 'TXTwoPointPlotsFourier': (&lt;class 'txpipe.twopoint_fourier.TXTwoPointPlotsFourier'&gt;, PosixPath('/Users/jaz/src/TXPipe/txpipe/twopoint_fourier.py'))}</em><a class="headerlink" href="#txpipe.base_stage.PipelineStage.pipeline_stages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.rank">
+<em class="property">property </em><code class="sig-name descname">rank</code><a class="headerlink" href="#txpipe.base_stage.PipelineStage.rank" title="Permalink to this definition">¶</a></dt>
+<dd><p>The rank of this process under MPI (0 if not running under MPI)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.read_config">
+<code class="sig-name descname">read_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.read_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.read_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function looks for the arguments of the pipeline stage using a
+combination of default values, command line options and separate
+configuration file.</p>
+<p>The order for resolving config options is first looking for a default
+value, then looking for a</p>
+<p>In case a mandatory argument (argument with no default) is missing,
+an exception is raised.</p>
+<p>Note that we recognize arguments with no default as the ones where
+self.config_options holds a type instead of a value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/base_stage.html#PipelineStage.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.size">
+<em class="property">property </em><code class="sig-name descname">size</code><a class="headerlink" href="#txpipe.base_stage.PipelineStage.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number or processes under MPI (1 if not running under MPI)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.split_tasks_by_rank">
+<code class="sig-name descname">split_tasks_by_rank</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tasks</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.split_tasks_by_rank"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.split_tasks_by_rank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterate through a list of items, yielding ones this process is responsible for/</p>
+<p>Tasks are allocated in a round-robin way.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tasks</strong> (<em>iterable</em>) – Tasks to split up</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.base_stage.PipelineStage.usage">
+<em class="property">classmethod </em><code class="sig-name descname">usage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ceci/stage.html#PipelineStage.usage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.base_stage.PipelineStage.usage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print a usage message.</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 

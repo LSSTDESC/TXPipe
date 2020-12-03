@@ -182,8 +182,124 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="photoz-stack">
-<h1>photoz_stack<a class="headerlink" href="#photoz-stack" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.photoz_stack">
+<span id="photoz-stack"></span><h1>photoz_stack<a class="headerlink" href="#module-txpipe.photoz_stack" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.photoz_stack.TXPhotozPlots">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.photoz_stack.</code><code class="sig-name descname">TXPhotozPlots</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXPhotozPlots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXPhotozPlots" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>Make n(z) plots</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.photoz_stack.TXPhotozSourceStack">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.photoz_stack.</code><code class="sig-name descname">TXPhotozSourceStack</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXPhotozSourceStack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXPhotozSourceStack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<dl class="py method">
+<dt id="txpipe.photoz_stack.TXPhotozSourceStack.get_metadata">
+<code class="sig-name descname">get_metadata</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXPhotozSourceStack.get_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXPhotozSourceStack.get_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the z column and the number of bins</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>z</strong> (<em>array</em>) – Redshift column for photo-z PDFs</p></li>
+<li><p><em>nbin</em> – Number of different redshift bins
+to split into.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.photoz_stack.TXPhotozSourceStack.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXPhotozSourceStack.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXPhotozSourceStack.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for this stage.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Get metadata and allocate space for output</p></li>
+<li><p>Set up iterators to loop through tomography and PDF input files</p></li>
+<li><p>Accumulate the PDFs for each object in each bin</p></li>
+<li><p>Divide by the counts to get the stacked PDF</p></li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.photoz_stack.TXPhotozStack">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.photoz_stack.</code><code class="sig-name descname">TXPhotozStack</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXPhotozStack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXPhotozStack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.photoz_stack.TXPhotozSourceStack" title="txpipe.photoz_stack.TXPhotozSourceStack"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.photoz_stack.TXPhotozSourceStack</span></code></a></p>
+<p>This PZ stacking subclass does both source and lens</p>
+<dl class="py method">
+<dt id="txpipe.photoz_stack.TXPhotozStack.get_metadata">
+<code class="sig-name descname">get_metadata</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXPhotozStack.get_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXPhotozStack.get_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the z column and the number of bins</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>z</strong> (<em>array</em>) – Redshift column for photo-z PDFs</p></li>
+<li><p><em>nbin</em> – Number of different redshift bins
+to split into.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.photoz_stack.TXSourceTrueNumberDensity">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.photoz_stack.</code><code class="sig-name descname">TXSourceTrueNumberDensity</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXSourceTrueNumberDensity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXSourceTrueNumberDensity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.photoz_stack.TXPhotozSourceStack" title="txpipe.photoz_stack.TXPhotozSourceStack"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.photoz_stack.TXPhotozSourceStack</span></code></a></p>
+<p>Fake an n(z) by histogramming the true redshift values for each object.
+Uses the same method as its parent but loads the data
+differently and uses the truth redshift as a delta function PDF</p>
+<dl class="py method">
+<dt id="txpipe.photoz_stack.TXSourceTrueNumberDensity.get_metadata">
+<code class="sig-name descname">get_metadata</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXSourceTrueNumberDensity.get_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXSourceTrueNumberDensity.get_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the z column and the number of bins</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>z</strong> (<em>array</em>) – Redshift column for photo-z PDFs</p></li>
+<li><p><em>nbin</em> – Number of different redshift bins
+to split into.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.photoz_stack.TXTrueNumberDensity">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.photoz_stack.</code><code class="sig-name descname">TXTrueNumberDensity</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXTrueNumberDensity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXTrueNumberDensity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpipe.photoz_stack.TXPhotozStack" title="txpipe.photoz_stack.TXPhotozStack"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.photoz_stack.TXPhotozStack</span></code></a></p>
+<p>Fake an n(z) by histogramming the true redshift values for each object.
+Uses the same method as its parent but loads the data
+differently and uses the truth redshift as a delta function PDF</p>
+<dl class="py method">
+<dt id="txpipe.photoz_stack.TXTrueNumberDensity.get_metadata">
+<code class="sig-name descname">get_metadata</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/photoz_stack.html#TXTrueNumberDensity.get_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.photoz_stack.TXTrueNumberDensity.get_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the z column and the number of bins</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>z</strong> (<em>array</em>) – Redshift column for photo-z PDFs</p></li>
+<li><p><em>nbin</em> – Number of different redshift bins
+to split into.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 

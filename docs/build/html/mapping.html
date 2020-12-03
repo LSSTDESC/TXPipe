@@ -162,8 +162,72 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="mapping">
-<h1>mapping<a class="headerlink" href="#mapping" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.mapping.basic_maps">
+<span id="mapping"></span><h1>mapping<a class="headerlink" href="#module-txpipe.mapping.basic_maps" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.mapping.basic_maps.FlagMapper">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.mapping.basic_maps.</code><code class="sig-name descname">FlagMapper</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">flag_exponent_max</span></em>, <em class="sig-param"><span class="n">sparse</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/basic_maps.html#FlagMapper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.basic_maps.FlagMapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="txpipe.mapping.basic_maps.FlagMapper.add_data">
+<code class="sig-name descname">add_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/basic_maps.html#FlagMapper.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.basic_maps.FlagMapper.add_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.mapping.basic_maps.FlagMapper.finalize">
+<code class="sig-name descname">finalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/basic_maps.html#FlagMapper.finalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.basic_maps.FlagMapper.finalize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.mapping.basic_maps.Mapper">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.mapping.basic_maps.</code><code class="sig-name descname">Mapper</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">lens_bins</span></em>, <em class="sig-param"><span class="n">source_bins</span></em>, <em class="sig-param"><span class="n">do_g</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">do_lens</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">sparse</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/basic_maps.html#Mapper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.basic_maps.Mapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="txpipe.mapping.basic_maps.Mapper.add_data">
+<code class="sig-name descname">add_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/basic_maps.html#Mapper.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.basic_maps.Mapper.add_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.mapping.basic_maps.Mapper.finalize">
+<code class="sig-name descname">finalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/basic_maps.html#Mapper.finalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.basic_maps.Mapper.finalize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-txpipe.mapping.dr1"></span><dl class="py class">
+<dt id="txpipe.mapping.dr1.BrightObjectMapper">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.mapping.dr1.</code><code class="sig-name descname">BrightObjectMapper</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">mag_threshold</span></em>, <em class="sig-param"><span class="n">sparse</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/dr1.html#BrightObjectMapper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.dr1.BrightObjectMapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="txpipe.mapping.dr1.BrightObjectMapper.add_data">
+<code class="sig-name descname">add_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/dr1.html#BrightObjectMapper.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.dr1.BrightObjectMapper.add_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.mapping.dr1.BrightObjectMapper.finalize">
+<code class="sig-name descname">finalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/dr1.html#BrightObjectMapper.finalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.dr1.BrightObjectMapper.finalize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.mapping.dr1.DepthMapperDR1">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.mapping.dr1.</code><code class="sig-name descname">DepthMapperDR1</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pixel_scheme</span></em>, <em class="sig-param"><span class="n">snr_threshold</span></em>, <em class="sig-param"><span class="n">snr_delta</span></em>, <em class="sig-param"><span class="n">sparse</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/dr1.html#DepthMapperDR1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.dr1.DepthMapperDR1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="txpipe.mapping.dr1.DepthMapperDR1.add_data">
+<code class="sig-name descname">add_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/dr1.html#DepthMapperDR1.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.dr1.DepthMapperDR1.add_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.mapping.dr1.DepthMapperDR1.finalize">
+<code class="sig-name descname">finalize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/mapping/dr1.html#DepthMapperDR1.finalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.mapping.dr1.DepthMapperDR1.finalize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </div>
 
 

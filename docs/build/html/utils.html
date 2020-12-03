@@ -162,9 +162,282 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="utilities">
-<h1>Utilities<a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
-</div>
+  <div class="section" id="module-txpipe.utils.calibration_tools">
+<span id="utilities"></span><h1>Utilities<a class="headerlink" href="#module-txpipe.utils.calibration_tools" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.utils.calibration_tools.ParallelCalibratorMetacal">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.utils.calibration_tools.</code><code class="sig-name descname">ParallelCalibratorMetacal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">selector</span></em>, <em class="sig-param"><span class="n">delta_gamma</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#ParallelCalibratorMetacal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.ParallelCalibratorMetacal" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class builds up the total response and selection calibration
+factors for Metacalibration from each chunk of data it is given.
+At the end an MPI communuicator can be supplied to collect together
+the results from the different processes.</p>
+<p>To do this we need the function used to select the data, and the instance
+this function to each of the metacalibrated variants automatically by
+wrapping the data object passed in to it and modifying the names of columns
+that are looked up.</p>
+<dl class="py method">
+<dt id="txpipe.utils.calibration_tools.ParallelCalibratorMetacal.add_data">
+<code class="sig-name descname">add_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#ParallelCalibratorMetacal.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.ParallelCalibratorMetacal.add_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select objects from a new chunk of data and tally their responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em>) – Dictionary of data columns to select on and add</p></li>
+<li><p><strong>*args</strong> – Positional arguments to be passed to the selection function</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed to the selection function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.utils.calibration_tools.ParallelCalibratorMetacal.collect">
+<code class="sig-name descname">collect</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#ParallelCalibratorMetacal.collect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.ParallelCalibratorMetacal.collect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finalize and sum up all the response values, returning separate
+R (estimator response) and S (selection bias) 2x2 matrices
+:param comm: If supplied, all processors response values will be combined together.</p>
+<blockquote>
+<div><p>All processes will return the same final value</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>R</strong> (<em>2x2 array</em>) – Estimator response matrix</p></li>
+<li><p><strong>S</strong> (<em>2x2 array</em>) – Selection bias matrix</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.utils.calibration_tools.</code><code class="sig-name descname">ParallelCalibratorNonMetacal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">selector</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#ParallelCalibratorNonMetacal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class builds up the total response calibration
+factors for NonMetacalibration shears from each chunk of data it is given.
+At the end an MPI communicator can be supplied to collect together
+the results from the different processes.</p>
+<p>To do this we need the function used to select the data, and the instance
+this function to each of the metacalibrated variants automatically by
+wrapping the data object passed in to it and modifying the names of columns
+that are looked up.</p>
+<dl class="py method">
+<dt id="txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal.add_data">
+<code class="sig-name descname">add_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#ParallelCalibratorNonMetacal.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal.add_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select objects from a new chunk of data and tally their responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em>) – Dictionary of data columns to select on and add</p></li>
+<li><p><strong>*args</strong> – Positional arguments to be passed to the selection function</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed to the selection function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal.collect">
+<code class="sig-name descname">collect</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#ParallelCalibratorNonMetacal.collect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal.collect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finalize and sum up all the response values, returning separate
+R (estimator response) and S (selection bias) 2x2 matrices</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>comm</strong> (<em>MPI Communicator</em>) – If supplied, all processors response values will be combined together.
+All processes will return the same final value</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>R</strong> (<em>2x2 array</em>) – Estimator response matrix</p></li>
+<li><p><strong>S</strong> (<em>2x2 array</em>) – Selection bias matrix</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.utils.calibration_tools.read_shear_catalog_type">
+<code class="sig-prename descclassname">txpipe.utils.calibration_tools.</code><code class="sig-name descname">read_shear_catalog_type</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">stage</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/calibration_tools.html#read_shear_catalog_type"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.read_shear_catalog_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the type of shear catalog a stage is using as input.
+Returns a string, e.g. metacal, lensfit.
+Also sets shear_catalog_type in the stage’s configuration
+so that it is available later and is saved in output.</p>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.fitting"></span><dl class="py function">
+<dt id="txpipe.utils.fitting.fit_straight_line">
+<code class="sig-prename descclassname">txpipe.utils.fitting.</code><code class="sig-name descname">fit_straight_line</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">x_err</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">y_err</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">m0</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">c0</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">nan_error</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">skip_nan</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/fitting.html#fit_straight_line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.fitting.fit_straight_line" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use scipy to fit a straight line, with errors or covariances allowed
+on both x and y.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>array</em>) – x-coordinate</p></li>
+<li><p><strong>y</strong> (<em>array</em>) – y-coordinate</p></li>
+<li><p><strong>m0</strong> (<em>float</em>) – optional, default=1, guess at gradient</p></li>
+<li><p><strong>c0</strong> (<em>float</em>) – optional, default=1, guess at intercept</p></li>
+<li><p><strong>x_err</strong> (<em>array/float</em>) – optional, default=None, errors either 1D std. dev., 2D covariance, or scalar constant, or None for unspecified</p></li>
+<li><p><strong>y_err</strong> (<em>array/float</em>) – optional, default=None, errors either 1D std. dev., 2D covariance, or scalar constant, or None for unspecified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>m</strong> (<em>float</em>) – gradient</p></li>
+<li><p><strong>c</strong> (<em>float</em>) – intercept</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.hdf_tools"></span><dl class="py function">
+<dt id="txpipe.utils.hdf_tools.create_dataset_early_allocated">
+<code class="sig-prename descclassname">txpipe.utils.hdf_tools.</code><code class="sig-name descname">create_dataset_early_allocated</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">group</span></em>, <em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">size</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/hdf_tools.html#create_dataset_early_allocated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.hdf_tools.create_dataset_early_allocated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an HdF5 dataset, allocating the full space for it at the start of the process.
+This can make it faster to write data incrementally from multiple processes.
+The dataset is also not pre-filled, saving more time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>group</strong> (<em>h5py.Group</em>) – the parent for the dataset</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – name for the new dataset</p></li>
+<li><p><strong>size</strong> (<em>int</em>) – The size of the new data set (which must be 1D)</p></li>
+<li><p><strong>dtype</strong> (<em>str</em>) – Data type, One of f4, f8, i4, i8</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.utils.hdf_tools.repack">
+<code class="sig-prename descclassname">txpipe.utils.hdf_tools.</code><code class="sig-name descname">repack</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/hdf_tools.html#repack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.hdf_tools.repack" title="Permalink to this definition">¶</a></dt>
+<dd><p>In-place HDF5 repack operation on file.</p>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.healpix"></span><dl class="py function">
+<dt id="txpipe.utils.healpix.dilated_healpix_map">
+<code class="sig-prename descclassname">txpipe.utils.healpix.</code><code class="sig-name descname">dilated_healpix_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/healpix.html#dilated_healpix_map"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.healpix.dilated_healpix_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dilate a healpix map - every pixel with a neighbour
+that is UNSEEN gets set to unseen as well</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>m</strong> (<em>array</em>) – Healpix float map</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>m2</strong> – Matching-sized map with edge pixels UNSEEN</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.misc"></span><dl class="py function">
+<dt id="txpipe.utils.misc.unique_list">
+<code class="sig-prename descclassname">txpipe.utils.misc.</code><code class="sig-name descname">unique_list</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">seq</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/misc.html#unique_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.misc.unique_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the unique elements in a list or other sequence
+while maintaining the order. (i.e., remove any duplicated
+elements but otherwise leave it the same)</p>
+<p>Method from:
+<a class="reference external" href="https://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-whilst-preserving-order">https://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-whilst-preserving-order</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>seq</strong> (<em>list</em><em> or </em><em>sequence</em>) – Any input object that can be iterated</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>L</strong> – a new list of the unique objects</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.mpi_utils"></span><dl class="py function">
+<dt id="txpipe.utils.mpi_utils.mpi_reduce_large">
+<code class="sig-prename descclassname">txpipe.utils.mpi_utils.</code><code class="sig-name descname">mpi_reduce_large</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">comm</span></em>, <em class="sig-param"><span class="n">max_chunk_count</span><span class="o">=</span><span class="default_value">1073741824</span></em>, <em class="sig-param"><span class="n">root</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">op</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">debug</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/mpi_utils.html#mpi_reduce_large"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.mpi_utils.mpi_reduce_large" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use MPI reduce in-place on an array, even a very large one.</p>
+<p>MPI Reduce is a reduction operation that will, (e.g.) sum arrays
+from different processors on a single process.</p>
+<p>It fails whenever the size of the array is greater than 2**31,
+due to an overflow.  This version detects that case and divides
+the array up into chunks, running reduction on each one separately</p>
+<p>This specific call does in-place reduction, so that the root
+process overwrites its own array with the result.
+This minimizes memory usage.</p>
+<p>The default is to do a sum of all the arrays, and to collect
+at process zero, but those can be overridden.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>array</em>) – can be any shape but must be contiguous</p></li>
+<li><p><strong>comm</strong> (<em>MPI communictator</em>) – </p></li>
+<li><p><strong>max_chunk_count</strong> (<em>int</em>) – Optional, default=2**30.  Max number of items to allow to be sent at once</p></li>
+<li><p><strong>root</strong> (<em>int</em>) – Optional, default=0.  Rank of process to receive final result</p></li>
+<li><p><strong>op</strong> (<em>MPI operation</em>) – Optional, default=None. MPI operation, e.g. MPI.PROD, MPI.MAX, etc. Default is to SUM</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>) – Optional, default=False.  Whether to print out information from each rank</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.provenance"></span><dl class="py function">
+<dt id="txpipe.utils.provenance.find_module_versions">
+<code class="sig-prename descclassname">txpipe.utils.provenance.</code><code class="sig-name descname">find_module_versions</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/provenance.html#find_module_versions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.provenance.find_module_versions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a dictionary of versions of all imported modules
+by looking for __version__ or version attributes on them.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.utils.provenance.get_caller_directory">
+<code class="sig-prename descclassname">txpipe.utils.provenance.</code><code class="sig-name descname">get_caller_directory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grandparent</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/provenance.html#get_caller_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.provenance.get_caller_directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the directory where the code calling this
+module lives, or where the code calling
+that code lives if grandparent=True.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.utils.provenance.git_current_revision">
+<code class="sig-prename descclassname">txpipe.utils.provenance.</code><code class="sig-name descname">git_current_revision</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/provenance.html#git_current_revision"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.provenance.git_current_revision" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run git diff in the caller’s directory, and return stdout+stderr</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="txpipe.utils.provenance.git_diff">
+<code class="sig-prename descclassname">txpipe.utils.provenance.</code><code class="sig-name descname">git_diff</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/provenance.html#git_diff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.provenance.git_diff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run git diff in the caller’s directory, and return stdout+stderr</p>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.theory"></span><dl class="py function">
+<dt id="txpipe.utils.theory.theory_3x2pt">
+<code class="sig-prename descclassname">txpipe.utils.theory.</code><code class="sig-name descname">theory_3x2pt</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cosmology_file</span></em>, <em class="sig-param"><span class="n">tracers</span></em>, <em class="sig-param"><span class="n">nbin_source</span></em>, <em class="sig-param"><span class="n">nbin_lens</span></em>, <em class="sig-param"><span class="n">fourier</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/utils/theory.html#theory_3x2pt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.utils.theory.theory_3x2pt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the 3x2pt theory, for example for a fiducial cosmology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cosmology_file</strong> (<em>str</em>) – name of YAML file</p></li>
+<li><p><strong>tracers</strong> (<em>dict{str:obj}</em>) – dict of objects (e.g. sacc tracers) containing z, nz.
+keys are source_0, source_1, …, lens_0, lens_1, …</p></li>
+<li><p><strong>nbin_source</strong> (<em>int</em>) – number of source bins</p></li>
+<li><p><strong>nbin_lens</strong> (<em>int</em>) – number of lens bins</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>theory_cl</strong> – theory c_ell for each pair (i,j,k) where k is one of
+SHEAR_SHEAR = 0, SHEAR_POS = 1, POS_POS = 2</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict{str:array}</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.timer"></span></div>
 
 
            </div>

@@ -1,0 +1,464 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>txpipe.blinding &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>txpipe.blinding</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for txpipe.blinding</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">SACCFile</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: txblinding</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TXBlinding"><a class="viewcode-back" href="../../blinding.html#txpipe.blinding.TXBlinding">[docs]</a><span class="k">class</span> <span class="nc">TXBlinding</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Blinding the data vectors.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXBlinding&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;twopoint_data_real_raw&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">1972</span><span class="p">,</span>  <span class="c1">## seed uniquely specifies the shift in parameters</span>
+        <span class="s1">&#39;Omega_b&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0485</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">],</span> <span class="c1">## fiducial_model_value, shift_sigma</span>
+        <span class="s1">&#39;Omega_c&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.2545</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+        <span class="s1">&#39;w0&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span>
+        <span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.682</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">],</span>
+        <span class="s1">&#39;sigma8&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.801</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+        <span class="s1">&#39;n_s&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.971</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">],</span>
+        <span class="s1">&#39;b0&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>  <span class="c1">### we assume bias to be of the form b0/growth</span>
+        <span class="s1">&#39;delete_unblinded&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">}</span>
+
+<div class="viewcode-block" id="TXBlinding.run"><a class="viewcode-back" href="../../blinding.html#txpipe.blinding.TXBlinding.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run the analysis for this stage.</span>
+<span class="sd">        </span>
+<span class="sd">         - Load two point SACC file</span>
+<span class="sd">         - Blinding it </span>
+<span class="sd">         - Output blinded data</span>
+<span class="sd">         - Optionally deletete unblinded data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span>
+        <span class="kn">import</span> <span class="nn">firecrown</span>
+        <span class="kn">import</span> <span class="nn">sacc</span>
+
+        <span class="n">unblinded_fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real_raw&#39;</span><span class="p">)</span>
+
+        <span class="c1"># We may have blinded already. The error message would be quite</span>
+        <span class="c1"># obscure, so check here and say something more straightforward.</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">unblinded_fname</span><span class="p">)</span><span class="o">.</span><span class="n">st_size</span>
+        <span class="k">if</span> <span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The raw 2point file you specified has zero size. &quot;</span>
+                             <span class="s2">&quot;Maybe you already run the blinding stage? &quot;</span>
+                             <span class="s2">&quot;It clears the input file to enforce blindness.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Load</span>
+        <span class="n">sack</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="o">.</span><span class="n">load_fits</span><span class="p">(</span><span class="n">unblinded_fname</span><span class="p">)</span>
+
+        <span class="c1"># Blind</span>
+        <span class="n">blinded_sack</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blind_muir</span><span class="p">(</span><span class="n">sack</span><span class="p">)</span>
+
+        <span class="c1"># Save</span>
+        <span class="n">blinded_sack</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Optionally make sure we stay blind by deleting the pre-blinding</span>
+        <span class="c1"># file.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;delete_unblinded&#39;</span><span class="p">]:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Replacing </span><span class="si">{</span><span class="n">unblinded_fname</span><span class="si">}</span><span class="s2"> with empty file.&quot;</span><span class="p">)</span>
+            <span class="nb">open</span><span class="p">(</span><span class="n">unblinded_fname</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+                
+
+    <span class="k">def</span> <span class="nf">blind_muir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sack</span><span class="p">):</span>
+        <span class="c1"># Get the parameters, fiducial and offset.</span>
+        <span class="c1"># The signature is a short sequence that means we can</span>
+        <span class="c1"># check that it is unchanged</span>
+        <span class="n">signature</span><span class="p">,</span> <span class="n">fid_params</span><span class="p">,</span> <span class="n">offset_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_parameters</span><span class="p">()</span>
+
+        <span class="c1"># Save the signature into the output</span>
+        <span class="n">sack</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;blinding_signature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">signature</span>
+
+        <span class="c1"># Turn the b0 parameter into the b(z) per lens bin.</span>
+        <span class="n">bias</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_bias</span><span class="p">(</span><span class="n">sack</span><span class="p">,</span> <span class="n">fid_params</span><span class="p">)</span>
+
+        <span class="c1"># Get the configuration dictionary</span>
+        <span class="n">firecrown_config</span><span class="p">,</span> <span class="n">types</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_firecrown_config</span><span class="p">(</span><span class="n">sack</span><span class="p">,</span> <span class="n">bias</span><span class="p">)</span>
+
+        <span class="c1">## now try to get predictions</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing fiducial theory&quot;</span><span class="p">)</span>
+        <span class="n">fid_theory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_theory_vector</span><span class="p">(</span><span class="n">firecrown_config</span><span class="p">,</span>
+                                                <span class="n">fid_params</span><span class="p">,</span> <span class="n">types</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing offset theory&quot;</span><span class="p">)</span>
+        <span class="n">offset_theory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_theory_vector</span><span class="p">(</span><span class="n">firecrown_config</span><span class="p">,</span> 
+                                                   <span class="n">offset_params</span><span class="p">,</span><span class="n">types</span><span class="p">)</span>
+
+        <span class="c1"># Get the parameter shift vector</span>
+        <span class="n">diff_vec</span> <span class="o">=</span> <span class="n">offset_theory</span> <span class="o">-</span> <span class="n">fid_theory</span>
+
+        <span class="c1"># And add this to the original data.</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">delta</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sack</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">diff_vec</span><span class="p">):</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="o">+=</span> <span class="n">delta</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Congratulations you are now blind.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sack</span>
+
+
+    <span class="k">def</span> <span class="nf">get_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;seed&quot;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Blinding with seed </span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># This is the legacy random number generator</span>
+        <span class="c1"># which will always produce the same values</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="c1"># blind signature -- this ensures seed is consistent across</span>
+        <span class="c1"># numpy versions.  We do this before and after</span>
+        <span class="n">signature_bytes</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">bytes</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;02x&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">signature_bytes</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Blinding signature: </span><span class="si">{</span><span class="n">signature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Pull out the fiducial parameters from the config</span>
+        <span class="n">fid_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">p</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> 
+            <span class="p">[</span><span class="s1">&#39;Omega_b&#39;</span><span class="p">,</span> <span class="s1">&#39;Omega_c&#39;</span><span class="p">,</span> <span class="s1">&#39;h&#39;</span><span class="p">,</span> <span class="s1">&#39;w0&#39;</span><span class="p">,</span> <span class="s1">&#39;sigma8&#39;</span><span class="p">,</span> <span class="s1">&#39;n_s&#39;</span><span class="p">]</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Get the parameters in the offset space</span>
+        <span class="n">offset_params</span> <span class="o">=</span> <span class="n">fid_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># This should have a standard order since python dictionaries</span>
+        <span class="c1"># now maintain their order.</span>
+        <span class="k">for</span> <span class="n">par</span> <span class="ow">in</span> <span class="n">fid_params</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">offset_params</span><span class="p">[</span><span class="n">par</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">par</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">signature</span><span class="p">,</span> <span class="n">fid_params</span><span class="p">,</span> <span class="n">offset_params</span>
+
+
+    <span class="k">def</span> <span class="nf">compute_bias</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sack</span><span class="p">,</span> <span class="n">fid_params</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computing bias values b(z)&quot;</span><span class="p">)</span>
+        <span class="c1"># now get bias as a function of redshift for each lens bin</span>
+        <span class="n">bias</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">fid_cosmo</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">Cosmology</span><span class="p">(</span><span class="o">**</span><span class="n">fid_params</span><span class="p">)</span>
+        <span class="n">b0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;b0&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">tracer</span> <span class="ow">in</span> <span class="n">sack</span><span class="o">.</span><span class="n">tracers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;lens&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                <span class="n">z_eff</span> <span class="o">=</span> <span class="p">(</span><span class="n">tracer</span><span class="o">.</span><span class="n">z</span><span class="o">*</span><span class="n">tracer</span><span class="o">.</span><span class="n">nz</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">tracer</span><span class="o">.</span><span class="n">nz</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="n">a_eff</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z_eff</span><span class="p">)</span>
+                <span class="n">bias</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">b0</span> <span class="o">/</span> <span class="n">ccl</span><span class="o">.</span><span class="n">growth_factor</span><span class="p">(</span><span class="n">fid_cosmo</span><span class="p">,</span> <span class="n">a_eff</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">bias</span>        
+
+    <span class="k">def</span> <span class="nf">make_firecrown_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sack</span><span class="p">,</span> <span class="n">bias</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">sacc.utils</span> <span class="kn">import</span> <span class="n">unique_list</span>
+        <span class="c1"># We will run firecrown with the old and new parameters,</span>
+        <span class="c1"># but otherwise the same configuration</span>
+        <span class="n">firecrown_config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;Omega_k&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s1">&#39;wa&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s1">&#39;one&#39;</span><span class="p">:</span> <span class="mi">1</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;two_point&#39;</span><span class="p">:</span> <span class="p">{</span>
+               <span class="s1">&#39;module&#39;</span><span class="p">:</span> <span class="s1">&#39;firecrown.ccl.two_point&#39;</span><span class="p">,</span>
+               <span class="s1">&#39;sacc_data&#39;</span><span class="p">:</span> <span class="n">sack</span><span class="p">,</span>
+               <span class="s1">&#39;systematics&#39;</span><span class="p">:</span> <span class="p">{</span>
+                   <span class="s1">&#39;dummy&#39;</span><span class="p">:</span> <span class="p">{</span>
+                       <span class="s1">&#39;kind&#39;</span><span class="p">:</span> <span class="s1">&#39;PhotoZShiftBias&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;delta_z&#39;</span><span class="p">:</span> <span class="s1">&#39;one&#39;</span>
+                    <span class="p">}</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;sources&#39;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s1">&#39;statistics&#39;</span><span class="p">:</span> <span class="p">{}</span>
+                <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">bias</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">firecrown_config</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">][</span><span class="sa">f</span><span class="s1">&#39;bias_</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="c1"># Tell FireCrown to use the sources we have here, and</span>
+        <span class="c1"># their types.</span>
+        <span class="n">firecrown_sources</span> <span class="o">=</span> <span class="n">firecrown_config</span><span class="p">[</span><span class="s1">&#39;two_point&#39;</span><span class="p">][</span><span class="s1">&#39;sources&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">tracer</span> <span class="ow">in</span> <span class="n">sack</span><span class="o">.</span><span class="n">tracers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># Assume the word source or lens will be in the name.</span>
+            <span class="c1"># Bit of a hack.</span>
+            <span class="k">if</span> <span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                <span class="n">firecrown_sources</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;kind&#39;</span> <span class="p">:</span> <span class="s1">&#39;WLSource&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;sacc_tracer&#39;</span> <span class="p">:</span> <span class="n">key</span>
+                <span class="p">}</span>
+
+            <span class="k">if</span> <span class="s1">&#39;lens&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                <span class="n">firecrown_sources</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;kind&#39;</span> <span class="p">:</span> <span class="s1">&#39;NumberCountsSource&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;bias&#39;</span> <span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;bias_</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;sacc_tracer&#39;</span> <span class="p">:</span> <span class="n">key</span>
+                <span class="p">}</span>
+
+        <span class="c1">## Make a list of the unique tracer/bin groups</span>
+        <span class="n">types</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">sack</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">data_type</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">types</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">p</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">tracers</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+
+        <span class="n">types</span> <span class="o">=</span> <span class="n">unique_list</span><span class="p">(</span><span class="n">types</span><span class="p">)</span>
+            
+        <span class="c1"># Collect together the statistics we will need</span>
+        <span class="n">firecrown_stats</span> <span class="o">=</span> <span class="n">firecrown_config</span><span class="p">[</span><span class="s1">&#39;two_point&#39;</span><span class="p">][</span><span class="s1">&#39;statistics&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="p">(</span><span class="n">tracer1</span><span class="p">,</span><span class="n">tracer2</span><span class="p">),</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">types</span><span class="p">:</span>
+            <span class="n">firecrown_stats</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;sources&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="n">tracer1</span><span class="p">,</span> <span class="n">tracer2</span><span class="p">],</span>
+                <span class="s1">&#39;sacc_data_type&#39;</span> <span class="p">:</span> <span class="n">dtype</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">firecrown_config</span><span class="p">,</span> <span class="n">types</span>
+
+    <span class="k">def</span> <span class="nf">compute_theory_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">types</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">firecrown</span>
+
+        <span class="c1"># Set up the firecrown configuration</span>
+        <span class="n">config</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="n">config2</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">firecrown</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Run the cosmology.  The loglike also as a by-product</span>
+        <span class="c1"># fills in the predictions deep inside the data dictionary.</span>
+        <span class="n">cosmo</span> <span class="o">=</span> <span class="n">firecrown</span><span class="o">.</span><span class="n">get_ccl_cosmology</span><span class="p">(</span><span class="n">config2</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">])</span>
+        <span class="n">firecrown</span><span class="o">.</span><span class="n">compute_loglike</span><span class="p">(</span><span class="n">cosmo</span><span class="o">=</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># Pull out and stack the theory predictions at this point</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;two_point&#39;</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="s1">&#39;statistics&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">results</span><span class="p">[</span><span class="n">stat_name</span><span class="p">]</span><span class="o">.</span><span class="n">predicted_statistic_</span> 
+            <span class="k">for</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">stat_name</span><span class="p">)</span> <span class="ow">in</span> <span class="n">types</span><span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TXNullBlinding"><a class="viewcode-back" href="../../blinding.html#txpipe.blinding.TXNullBlinding">[docs]</a><span class="k">class</span> <span class="nc">TXNullBlinding</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A null stage to trivially copy the real raw data to real without blinding, </span>
+<span class="sd">    for use with simulations data. </span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXNullBlinding&#39;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s1">&#39;twopoint_data_real_raw&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+        <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">,</span> <span class="n">SACCFile</span><span class="p">),</span>
+        <span class="p">]</span>
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span> 
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="TXNullBlinding.run"><a class="viewcode-back" href="../../blinding.html#txpipe.blinding.TXNullBlinding.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Run the analysis for this stage.</span>
+
+<span class="sd">             - Load two point SACC file</span>
+<span class="sd">             - Copy two point SACC file twopoint_data_real_raw to twopoint_data_real</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">shutil</span>
+
+        <span class="n">unblinded_fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real_raw&#39;</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">unblinded_fname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;twopoint_data_real&#39;</span><span class="p">))</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

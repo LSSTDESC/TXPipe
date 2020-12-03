@@ -182,8 +182,102 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="twopoint-fourier">
-<h1>twopoint_fourier<a class="headerlink" href="#twopoint-fourier" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-txpipe.twopoint_fourier">
+<span id="twopoint-fourier"></span><h1>twopoint_fourier<a class="headerlink" href="#module-txpipe.twopoint_fourier" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="txpipe.twopoint_fourier.Measurement">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint_fourier.</code><code class="sig-name descname">Measurement</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">corr_type</span></em>, <em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">value</span></em>, <em class="sig-param"><span class="n">win</span></em>, <em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="n">j</span></em><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<dl class="py method">
+<dt id="txpipe.twopoint_fourier.Measurement.__getnewargs__">
+<code class="sig-name descname">__getnewargs__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.__getnewargs__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return self as a plain tuple.  Used by copy and pickle.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint_fourier.Measurement.__new__">
+<em class="property">static </em><code class="sig-name descname">__new__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">_cls</span></em>, <em class="sig-param"><span class="n">corr_type</span></em>, <em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">value</span></em>, <em class="sig-param"><span class="n">win</span></em>, <em class="sig-param"><span class="n">i</span></em>, <em class="sig-param"><span class="n">j</span></em><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.__new__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new instance of Measurement(corr_type, l, value, win, i, j)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="txpipe.twopoint_fourier.Measurement.__repr__">
+<code class="sig-name descname">__repr__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.__repr__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a nicely formatted representation string</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.twopoint_fourier.Measurement.corr_type">
+<code class="sig-name descname">corr_type</code><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.corr_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.twopoint_fourier.Measurement.i">
+<code class="sig-name descname">i</code><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.i" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 4</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.twopoint_fourier.Measurement.j">
+<code class="sig-name descname">j</code><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.j" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 5</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.twopoint_fourier.Measurement.l">
+<code class="sig-name descname">l</code><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.l" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.twopoint_fourier.Measurement.value">
+<code class="sig-name descname">value</code><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="txpipe.twopoint_fourier.Measurement.win">
+<code class="sig-name descname">win</code><a class="headerlink" href="#txpipe.twopoint_fourier.Measurement.win" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint_fourier.TXTwoPointFourier">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint_fourier.</code><code class="sig-name descname">TXTwoPointFourier</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint_fourier.html#TXTwoPointFourier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint_fourier.TXTwoPointFourier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+<p>This Pipeline Stage computes all auto- and cross-correlations
+for a list of tomographic bins, including all galaxy-galaxy,
+galaxy-shear and shear-shear power spectra. Sources and lenses
+both come from the same shear_catalog and tomography_catalog objects.</p>
+<p>The power spectra are computed after deprojecting a number of
+systematic-dominated modes, represented as input maps.</p>
+<dl class="simple">
+<dt>In the future we will want to include the following generalizations:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>TODO: specify which cross-correlations in particular to include</dt><dd><p>(e.g. which bin pairs and which source/lens combinations).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>TODO: include flags for rejected objects. Is this included in</dt><dd><p>the tomography_catalog?</p>
+</dd>
+</dl>
+</li>
+<li><p>TODO: ell-binning is currently static.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="txpipe.twopoint_fourier.TXTwoPointPlotsFourier">
+<em class="property">class </em><code class="sig-prename descclassname">txpipe.twopoint_fourier.</code><code class="sig-name descname">TXTwoPointPlotsFourier</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/twopoint_fourier.html#TXTwoPointPlotsFourier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.twopoint_fourier.TXTwoPointPlotsFourier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
+</dd></dl>
+
 </div>
 
 
