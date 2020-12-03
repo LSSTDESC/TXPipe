@@ -371,3 +371,9 @@ The mapping stages allocate quite a lot of memory, and there is a trade-off betw
 ### Two-point
 
 Both the real-space and fourier-space two-point and covariance stages can efficiently use threads, so it's worth using the maximum number of them (64 on Cori Haswell).  The stages that do tomography (i.e. not the systematics ones) can also split the pairs over several nodes - it's worth doing so and using all your nodes.
+
+
+Documentation
+-------------
+
+Documentation should hopefully appear at lsstdesc.org/TXPipe after I push this.
