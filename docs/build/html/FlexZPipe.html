@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Diagnostics plots &mdash; TXPipe  documentation</title>
+  <title>FlexZPipe &mdash; TXPipe  documentation</title>
   
 
   
@@ -36,8 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="map_plots" href="map_plots.html" />
-    <link rel="prev" title="Convergencemaps" href="convergence.html" /> 
+    <link rel="next" title="TJPCov" href="TJPCov.html" />
+    <link rel="prev" title="Submodules for TXPipe" href="submodules.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -85,26 +85,13 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="stages.html#the-base-stage">The base stage:</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#ingestion-stages">Ingestion stages:</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#selection-and-tomography-stages">Selection and Tomography stages:</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#photoz-stages">Photoz stages:</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#maps-and-mask-stages">Maps and Mask stages:</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#two-point-stages">Two point stages:</a></li>
-<li class="toctree-l2 current"><a class="reference internal" href="stages.html#plotting-and-diagnostics">Plotting and diagnostics:</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="blinding.html">Blinding</a></li>
-<li class="toctree-l3"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Diagnostics plots</a></li>
-<li class="toctree-l3"><a class="reference internal" href="map_plots.html">map_plots</a></li>
-<li class="toctree-l3"><a class="reference internal" href="metadata.html">metadata</a></li>
-<li class="toctree-l3"><a class="reference internal" href="psf_diagnostics.html">psf_diagnostics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">FlexZPipe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TJPCov.html">TJPCov</a></li>
+<li class="toctree-l2"><a class="reference internal" href="WLMassMap.html">WLMassMap</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#extra-utilities">Extra utilities</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
             
@@ -151,15 +138,15 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+          <li><a href="submodules.html">Submodules for TXPipe</a> &raquo;</li>
         
-      <li>Diagnostics plots</li>
+      <li>FlexZPipe</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/diagnostics.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/FlexZPipe.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -172,14 +159,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="module-txpipe.diagnostics">
-<span id="diagnostics-plots"></span><h1>Diagnostics plots<a class="headerlink" href="#module-txpipe.diagnostics" title="Permalink to this headline">¶</a></h1>
-<dl class="py class">
-<dt id="txpipe.diagnostics.TXDiagnosticPlots">
-<em class="property">class </em><code class="sig-prename descclassname">txpipe.diagnostics.</code><code class="sig-name descname">TXDiagnosticPlots</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em>, <em class="sig-param"><span class="n">comm</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/txpipe/diagnostics.html#TXDiagnosticPlots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpipe.diagnostics.TXDiagnosticPlots" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="base_stage.html#txpipe.base_stage.PipelineStage" title="txpipe.base_stage.PipelineStage"><code class="xref py py-class docutils literal notranslate"><span class="pre">txpipe.base_stage.PipelineStage</span></code></a></p>
-</dd></dl>
-
+  <div class="section" id="module-submodules.FlexZPipe">
+<span id="flexzpipe"></span><h1>FlexZPipe<a class="headerlink" href="#module-submodules.FlexZPipe" title="Permalink to this headline">¶</a></h1>
 </div>
 
 
@@ -190,10 +171,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="map_plots.html" class="btn btn-neutral float-right" title="map_plots" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="TJPCov.html" class="btn btn-neutral float-right" title="TJPCov" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="convergence.html" class="btn btn-neutral float-left" title="Convergencemaps" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="submodules.html" class="btn btn-neutral float-left" title="Submodules for TXPipe" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
