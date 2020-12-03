@@ -8,6 +8,7 @@ The base stage:
 
     base_stage
 
+
 Ingestion stages:
 -----------------
 .. toctree::
@@ -15,6 +16,7 @@ Ingestion stages:
     ingest_redmagic
     metacal_gcr_input
     exposure_info
+
 
 Selection and Tomography stages:
 --------------------------------
@@ -31,14 +33,16 @@ Photoz stages:
     photoz_mlz
     photoz_stack
 
- Maps and Mask stages:
- ---------------------
+
+Maps and Mask stages:
+---------------------
  .. toctree::   
 
     maps 
     auxiliary_maps
     noise_maps
     masks 
+
 
 Two point stages:
 -----------------
@@ -49,6 +53,7 @@ Two point stages:
     twopoint_fourier
     map_correlations
     covariance
+
 
 Plotting and diagnostics:
 -------------------------
@@ -65,7 +70,7 @@ Plotting and diagnostics:
 
 
 Extra utilities
-----------
+---------------
 These are a bunch of shared utilities and plotting functions
 
 .. toctree::
