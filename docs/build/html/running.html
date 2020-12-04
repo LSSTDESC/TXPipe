@@ -87,6 +87,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Running a pipeline:</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#the-pipeline-file">The pipeline file:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#config-file">Config file:</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
@@ -208,7 +209,8 @@ For details on Ceci please see <a class="reference external" href="https://ceci.
 </pre></div>
 </div>
 <p>Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in <a class="reference internal" href="stages.html"><span class="doc">TXPipe</span></a>.
-Note a few lines have have specifically <code class="docutils literal notranslate"><span class="pre">threads_per_process:</span> <span class="pre">2</span></code> which is just a way to indicate that these stages should be run with more threads.</p>
+Note a few lines have have specifically <code class="docutils literal notranslate"><span class="pre">threads_per_process:</span> <span class="pre">2</span></code> which is just a way to indicate that these stages should be run with more threads.
+Another option available is <code class="docutils literal notranslate"><span class="pre">nprocess:</span> <span class="pre">32</span></code> which would run the stage on 32 processes.</p>
 <p>Next follows modules, which simply is which modules and packages the pipeline stages are defined in.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">modules</span><span class="p">:</span> <span class="n">txpipe</span>
 
@@ -272,6 +274,63 @@ In the example we use:</p>
 <p>The first here is simply if possible should a restart of the pipeline resume from where it ended or start over.
 Secondly for each stage there will be a log file detailing what has been done, where is this saved.
 While <code class="docutils literal notranslate"><span class="pre">pipeline_log</span></code> is where the overall parsl pipeline log is saved.</p>
+</div>
+<div class="section" id="config-file">
+<h2>Config file:<a class="headerlink" href="#config-file" title="Permalink to this headline">¶</a></h2>
+<p>Let us take a look at the how the <em>configuration file</em> will look like.
+First we have <code class="docutils literal notranslate"><span class="pre">global</span></code> which is configuration options that are shared across all stages:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">global</span><span class="p">:</span>
+  <span class="c1"># This is read by many stages that read complete</span>
+  <span class="c1"># catalog data, and tells them how many rows to read</span>
+  <span class="c1"># at once</span>
+  <span class="n">chunk_rows</span><span class="p">:</span> <span class="mi">100000</span>
+  <span class="c1"># These mapping options are also read by a range of stages</span>
+  <span class="n">pixelization</span><span class="p">:</span> <span class="n">healpix</span>
+  <span class="n">nside</span><span class="p">:</span> <span class="mi">512</span>
+  <span class="n">sparse</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># Generate sparse maps - faster if using small areas</span>
+</pre></div>
+</div>
+<p>Next follows the options for each stages. Options listed here will overwrite the options given at the beginning of the corresponding stage. As an example we can look at <code class="docutils literal notranslate"><span class="pre">TXTwoPoint</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">TXTwoPoint</span><span class="p">:</span>
+  <span class="n">binslop</span><span class="p">:</span> <span class="mf">0.1</span>
+  <span class="n">delta_gamma</span><span class="p">:</span> <span class="mf">0.02</span>
+  <span class="n">do_pos_pos</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">do_shear_shear</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">do_shear_pos</span><span class="p">:</span> <span class="kc">True</span>
+  <span class="n">flip_g2</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># use true when using metacal shears</span>
+  <span class="n">min_sep</span><span class="p">:</span> <span class="mf">2.5</span>
+  <span class="n">max_sep</span><span class="p">:</span> <span class="mf">60.0</span>
+  <span class="n">nbins</span><span class="p">:</span> <span class="mi">10</span>
+  <span class="n">verbose</span><span class="p">:</span> <span class="mi">0</span>
+  <span class="n">subtract_mean_shear</span><span class="p">:</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>Each line here overwrite the standard configuration given for the <code class="docutils literal notranslate"><span class="pre">TXTwoPoint</span></code> stage <a class="reference internal" href="twopoint.html"><span class="doc">TXTwoPoint</span></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="s1">&#39;calcs&#39;</span><span class="p">:[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span>
+      <span class="s1">&#39;min_sep&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span>
+      <span class="s1">&#39;max_sep&#39;</span><span class="p">:</span><span class="mf">300.</span><span class="p">,</span>
+      <span class="s1">&#39;nbins&#39;</span><span class="p">:</span><span class="mi">9</span><span class="p">,</span>
+      <span class="s1">&#39;bin_slop&#39;</span><span class="p">:</span><span class="mf">0.1</span><span class="p">,</span>
+      <span class="s1">&#39;sep_units&#39;</span><span class="p">:</span><span class="s1">&#39;arcmin&#39;</span><span class="p">,</span>
+      <span class="s1">&#39;flip_g2&#39;</span><span class="p">:</span><span class="kc">True</span><span class="p">,</span>
+      <span class="s1">&#39;cores_per_task&#39;</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span>
+      <span class="s1">&#39;verbose&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span>
+      <span class="s1">&#39;source_bins&#39;</span><span class="p">:[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+      <span class="s1">&#39;lens_bins&#39;</span><span class="p">:[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+      <span class="s1">&#39;reduce_randoms_size&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span>
+      <span class="s1">&#39;do_shear_shear&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+      <span class="s1">&#39;do_shear_pos&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+      <span class="s1">&#39;do_pos_pos&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+      <span class="s1">&#39;var_methods&#39;</span><span class="p">:</span> <span class="s1">&#39;jackknife&#39;</span><span class="p">,</span>
+      <span class="s1">&#39;use_true_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+      <span class="s1">&#39;subtract_mean_shear&#39;</span><span class="p">:</span><span class="kc">False</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>we don’t need to replace all options, the options we don’t replace will just use the options from the file.</p>
+</div>
 </div>
 </div>
 

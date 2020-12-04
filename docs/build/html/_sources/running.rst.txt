@@ -56,6 +56,7 @@ First part of the file is the stages::
 
 Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in :doc:`TXPipe <stages>`.
 Note a few lines have have specifically ``threads_per_process: 2`` which is just a way to indicate that these stages should be run with more threads. 
+Another option available is ``nprocess: 32`` which would run the stage on 32 processes. 
 
 Next follows modules, which simply is which modules and packages the pipeline stages are defined in.::
 
@@ -126,3 +127,62 @@ Finally a few more ceci details::
 The first here is simply if possible should a restart of the pipeline resume from where it ended or start over.
 Secondly for each stage there will be a log file detailing what has been done, where is this saved. 
 While ``pipeline_log`` is where the overall parsl pipeline log is saved. 
+
+
+Config file:
+------------
+
+Let us take a look at the how the *configuration file* will look like. 
+First we have ``global`` which is configuration options that are shared across all stages::
+
+  global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 512
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+Next follows the options for each stages. Options listed here will overwrite the options given at the beginning of the corresponding stage. As an example we can look at ``TXTwoPoint``::
+
+  TXTwoPoint:
+    binslop: 0.1
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 60.0
+    nbins: 10
+    verbose: 0
+    subtract_mean_shear: True
+
+Each line here overwrite the standard configuration given for the ``TXTwoPoint`` stage :doc:`TXTwoPoint <twopoint>`::
+
+  config_options = {
+        'calcs':[0,1,2],
+        'min_sep':0.5,
+        'max_sep':300.,
+        'nbins':9,
+        'bin_slop':0.1,
+        'sep_units':'arcmin',
+        'flip_g2':True,
+        'cores_per_task':20,
+        'verbose':1,
+        'source_bins':[-1],
+        'lens_bins':[-1],
+        'reduce_randoms_size':1.0,
+        'do_shear_shear': True,
+        'do_shear_pos': True,
+        'do_pos_pos': True,
+        'var_methods': 'jackknife',
+        'use_true_shear': False,
+        'subtract_mean_shear':False
+
+.. note::
+
+  we don't need to replace all options, the options we don't replace will just use the options from the file.
+
