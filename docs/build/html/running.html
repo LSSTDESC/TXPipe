@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Running a pipeline: &mdash; TXPipe  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Stages implemented in TX-Pipe:" href="stages.html" />
+    <link rel="prev" title="TXPipe Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Running a pipeline:</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-pipeline-file">The pipeline file:</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TXPipe</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Running a pipeline:</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/running.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="running-a-pipeline">
+<h1>Running a pipeline:<a class="headerlink" href="#running-a-pipeline" title="Permalink to this headline">¶</a></h1>
+<p>TXPipe is based on ceci on software. To run the pipeline it needs 2 files a <em>configuration file</em> and a <em>Pipeline file</em></p>
+<p>Examples of both can be found in the <cite>examples folder &lt;https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples&gt;</cite>. To running the actual pipeline will be as simple as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceci</span> <span class="n">examples</span><span class="o">/</span><span class="n">laptop_pipeline</span><span class="o">.</span><span class="n">yml</span>
+</pre></div>
+</div>
+<p>So what goes into this sort of file? We will use <em>laptop_pipeline.yml</em> as an example and go through it.
+For details on Ceci please see <cite>Ceci Documentation &lt;https://ceci.readthedocs.io/en/latest/index.html&gt;</cite>.</p>
+<div class="section" id="the-pipeline-file">
+<h2>The pipeline file:<a class="headerlink" href="#the-pipeline-file" title="Permalink to this headline">¶</a></h2>
+<p>First part of the file is the stages:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stages</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXSourceSelector</span>     <span class="c1"># select and split objects into source bins</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXTruthLensSelector</span>  <span class="c1"># select objects for lens bins</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">PZPDFMLZ</span>             <span class="c1"># compute p(z) per galaxy using MLZ</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXPhotozStack</span>        <span class="c1"># stack p(z) into n(z)</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXMainMaps</span>           <span class="c1"># make source g1, g2 and lens n_gal maps</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXAuxiliaryMaps</span>      <span class="c1"># make PSF, depth, flag, and other maps</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXSimpleMask</span>         <span class="c1"># combine maps to make a simple mask</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXDensityMaps</span>        <span class="c1"># turn mask and ngal maps into overdensity maps</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXMapPlots</span>           <span class="c1"># make pictures of all the maps</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXTracerMetadata</span>     <span class="c1"># collate metadata</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXRandomCat</span>          <span class="c1"># generate lens bin random catalogs</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXJackknifeCenters</span>   <span class="c1"># Split the area into jackknife regions</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXTwoPoint</span>           <span class="c1"># Compute real-space 2-point correlations</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXBlinding</span>           <span class="c1"># Blind the data following Muir et al</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXTwoPointPlots</span>      <span class="c1"># Make plots of 2pt correlations</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXDiagnosticPlots</span>    <span class="c1"># Make a suite of diagnostic plots</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXGammaTFieldCenters</span> <span class="c1"># Compute and plot gamma_t around center points</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXGammaTBrightStars</span>  <span class="c1"># Compute and plot gamma_t around bright stars</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXGammaTRandoms</span>      <span class="c1"># Compute and plot gamma_t around randoms</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXGammaTDimStars</span>     <span class="c1"># Compute and plot gamma_t around dim stars</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXRoweStatistics</span>     <span class="c1"># Compute and plot Rowe statistics</span>
+  <span class="n">threads_per_process</span><span class="p">:</span> <span class="mi">2</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXGalaxyStarDensity</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXGalaxyStarShear</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXPSFDiagnostics</span>     <span class="c1"># Compute and plots other PSF diagnostics</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXBrighterFatterPlot</span> <span class="c1"># Make plots tracking the brighter-fatter effect</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXPhotozPlots</span>        <span class="c1"># Plot the bin n(z)</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXConvergenceMaps</span>    <span class="c1"># Make convergence kappa maps from g1, g2 maps</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXConvergenceMapPlots</span> <span class="c1"># Plot the convergence map</span>
+<span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXMapCorrelations</span>    <span class="c1"># plot the correlations between systematics and data</span>
+</pre></div>
+</div>
+<p>Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in <a class="reference internal" href="stages.html"><span class="doc">TXPipe</span></a>.
+Note a few lines have have specifically <code class="docutils literal notranslate"><span class="pre">threads_per_process:</span> <span class="pre">2</span></code> which is just a way to indicate that these stages should be run with more threads.</p>
+<p>Next follows modules, which simply is which modules and packages the pipeline stages are defined in.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">modules</span><span class="p">:</span> <span class="n">txpipe</span>
+
+<span class="n">python_paths</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">submodules</span><span class="o">/</span><span class="n">WLMassMap</span><span class="o">/</span><span class="n">python</span><span class="o">/</span><span class="n">desc</span><span class="o">/</span>
+<span class="o">-</span> <span class="n">submodules</span><span class="o">/</span><span class="n">TJPCov</span>
+<span class="o">-</span> <span class="n">submodules</span><span class="o">/</span><span class="n">FlexZPipe</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">python_paths</span></code> is modules we need that are not in the TXPipe repo and where to find them.</p>
+<p>Then comes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">output_dir</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">outputs</span>
+</pre></div>
+</div>
+<p>Which is where all outputs from the stages will be saved.</p>
+<p>Launcher, determines how ceci schedules the stages: currently there are 3 options available:
+* mini
+* parsl
+* cwl</p>
+<p>See Ceci’s documentation on <cite>Launchers &lt;https://ceci.readthedocs.io/en/latest/launchers.html&gt;</cite>.
+In the example we use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">launcher</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">mini</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="mf">1.0</span>
+</pre></div>
+</div>
+<p>Interval is how often ceci checks if stages have completed.</p>
+<p>Next follows site, again this is a ceci configuration <cite>details &lt;https://ceci.readthedocs.io/en/latest/sites.html&gt;</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">site</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">local</span>
+    <span class="n">max_threads</span><span class="p">:</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>It tells us where the code is to be run, and the <code class="docutils literal notranslate"><span class="pre">max_threads</span></code> that the code will be run on.</p>
+<p>Then we have <code class="docutils literal notranslate"><span class="pre">config</span></code> which points to the configuration file mentioned as the other needed file.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">config</span><span class="p">:</span> <span class="n">examples</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="n">laptop_config</span><span class="o">.</span><span class="n">yml</span>
+</pre></div>
+</div>
+<p>Then we have the <em>inputs</em>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">inputs</span><span class="p">:</span>
+    <span class="c1"># See README for paths to download these files</span>
+    <span class="n">shear_catalog</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">shear_catalog</span><span class="o">.</span><span class="n">hdf5</span>
+    <span class="n">photometry_catalog</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">photometry_catalog</span><span class="o">.</span><span class="n">hdf5</span>
+    <span class="n">photoz_trained_model</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">cosmoDC2_trees_i25</span><span class="o">.</span><span class="mf">3.</span><span class="n">npy</span>
+    <span class="n">calibration_table</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">sample_cosmodc2_w10year_errors</span><span class="o">.</span><span class="n">dat</span>
+    <span class="n">exposures</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">exposures</span><span class="o">.</span><span class="n">hdf5</span>
+    <span class="n">star_catalog</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">star_catalog</span><span class="o">.</span><span class="n">hdf5</span>
+    <span class="c1"># This file comes with the code</span>
+    <span class="n">fiducial_cosmology</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">fiducial_cosmology</span><span class="o">.</span><span class="n">yml</span>
+</pre></div>
+</div>
+<p>This is the location of all the inputs that the pipeline will be run on. In the code the inputs will be refered to by the names i.e. <code class="docutils literal notranslate"><span class="pre">shear_catalog</span></code> etc. but here is where which shear catalog it is is specified.</p>
+<p>Finally a few more ceci details:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">resume</span><span class="p">:</span> <span class="kc">True</span>
+
+<span class="n">log_dir</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">logs</span>
+
+<span class="n">pipeline_log</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">log</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>The first here is simply if possible should a restart of the pipeline resume from where it ended or start over.
+Secondly for each stage there will be a log file detailing what has been done, where is this saved.
+While <code class="docutils literal notranslate"><span class="pre">pipeline_log</span></code> is where the overall parsl pipeline log is saved.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="stages.html" class="btn btn-neutral float-right" title="Stages implemented in TX-Pipe:" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral float-left" title="TXPipe Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, DESC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -16,6 +16,7 @@ Ingestion stages:
     ingest_redmagic
     metacal_gcr_input
     exposure_info
+    input_cats
 
 
 Selection and Tomography stages:
