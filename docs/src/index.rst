@@ -11,6 +11,7 @@ TXPipe documentation
    :caption: Contents:
 
    installation
+   running
 
    stages
    submodules
