@@ -3,12 +3,12 @@ Running a pipeline:
 
 TXPipe is based on ceci on software. To run the pipeline it needs 2 files a *configuration file* and a *Pipeline file*
 
-Examples of both can be found in the `examples folder <https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples>`. To running the actual pipeline will be as simple as::
+Examples of both can be found in the `examples folder <https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples>`_. To running the actual pipeline will be as simple as::
 
     ceci examples/laptop_pipeline.yml
 
 So what goes into this sort of file? We will use *laptop_pipeline.yml* as an example and go through it.
-For details on Ceci please see `Ceci Documentation <https://ceci.readthedocs.io/en/latest/index.html>`.
+For details on Ceci please see `Ceci Documentation <https://ceci.readthedocs.io/en/latest/index.html>`_.
 
 
 The pipeline file:
@@ -79,7 +79,7 @@ Launcher, determines how ceci schedules the stages: currently there are 3 option
 * parsl
 * cwl
 
-See Ceci's documentation on `Launchers <https://ceci.readthedocs.io/en/latest/launchers.html>`.
+See Ceci's documentation on `Launchers <https://ceci.readthedocs.io/en/latest/launchers.html>`_.
 In the example we use::
 
     launcher:
@@ -88,7 +88,7 @@ In the example we use::
 
 Interval is how often ceci checks if stages have completed. 
 
-Next follows site, again this is a ceci configuration `details <https://ceci.readthedocs.io/en/latest/sites.html>`::
+Next follows site, again this is a ceci configuration `details <https://ceci.readthedocs.io/en/latest/sites.html>`_::
 
     site:
         name: local

@@ -159,12 +159,12 @@
   <div class="section" id="running-a-pipeline">
 <h1>Running a pipeline:<a class="headerlink" href="#running-a-pipeline" title="Permalink to this headline">¶</a></h1>
 <p>TXPipe is based on ceci on software. To run the pipeline it needs 2 files a <em>configuration file</em> and a <em>Pipeline file</em></p>
-<p>Examples of both can be found in the <cite>examples folder &lt;https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples&gt;</cite>. To running the actual pipeline will be as simple as:</p>
+<p>Examples of both can be found in the <a class="reference external" href="https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples">examples folder</a>. To running the actual pipeline will be as simple as:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceci</span> <span class="n">examples</span><span class="o">/</span><span class="n">laptop_pipeline</span><span class="o">.</span><span class="n">yml</span>
 </pre></div>
 </div>
 <p>So what goes into this sort of file? We will use <em>laptop_pipeline.yml</em> as an example and go through it.
-For details on Ceci please see <cite>Ceci Documentation &lt;https://ceci.readthedocs.io/en/latest/index.html&gt;</cite>.</p>
+For details on Ceci please see <a class="reference external" href="https://ceci.readthedocs.io/en/latest/index.html">Ceci Documentation</a>.</p>
 <div class="section" id="the-pipeline-file">
 <h2>The pipeline file:<a class="headerlink" href="#the-pipeline-file" title="Permalink to this headline">¶</a></h2>
 <p>First part of the file is the stages:</p>
@@ -228,7 +228,7 @@ Note a few lines have have specifically <code class="docutils literal notranslat
 * mini
 * parsl
 * cwl</p>
-<p>See Ceci’s documentation on <cite>Launchers &lt;https://ceci.readthedocs.io/en/latest/launchers.html&gt;</cite>.
+<p>See Ceci’s documentation on <a class="reference external" href="https://ceci.readthedocs.io/en/latest/launchers.html">Launchers</a>.
 In the example we use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">launcher</span><span class="p">:</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">mini</span>
@@ -236,7 +236,7 @@ In the example we use:</p>
 </pre></div>
 </div>
 <p>Interval is how often ceci checks if stages have completed.</p>
-<p>Next follows site, again this is a ceci configuration <cite>details &lt;https://ceci.readthedocs.io/en/latest/sites.html&gt;</cite>:</p>
+<p>Next follows site, again this is a ceci configuration <a class="reference external" href="https://ceci.readthedocs.io/en/latest/sites.html">details</a>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">site</span><span class="p">:</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">local</span>
     <span class="n">max_threads</span><span class="p">:</span> <span class="mi">2</span>
