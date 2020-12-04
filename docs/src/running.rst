@@ -3,7 +3,7 @@ Running a pipeline:
 
 TXPipe is based on ceci on software. To run the pipeline it needs 2 files a *configuration file* and a *Pipeline file*
 
-Examples of both can be found in the `examples folder <https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples>. To running the actual pipeline will be as simple as::
+Examples of both can be found in the `examples folder <https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples>`. To running the actual pipeline will be as simple as::
 
     ceci examples/laptop_pipeline.yml
 
@@ -54,7 +54,7 @@ First part of the file is the stages::
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
 
-Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in :role:`TXPipe <stages>`.
+Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in :doc:`TXPipe <stages>`.
 Note a few lines have have specifically ``threads_per_process: 2`` which is just a way to indicate that these stages should be run with more threads. 
 
 Next follows modules, which simply is which modules and packages the pipeline stages are defined in.::
