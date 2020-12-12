@@ -231,15 +231,27 @@ class TXTwoPointFourier(PipelineStage):
             for systmap in systmaps_path.iterdir():
                 try:
                     if systmap.is_file():
-                        if pathlib.Path(systmap).suffix != ".fits":
-                            print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
-                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                        if pathlib.Path(systmap).suffix not in [".fits", ".hs"]:
+                            print('Warning: Problem reading systematics map file', systmap)
+                            print('Not a HEALPix .fits or a healsparse .hs file.')
+                            warnings.warn("Systematics map file must be a HEALPix .fits file or a healsparse .hs file.")
                             print('Ignoring', systmap)
                         else:
                             systmap_file = str(systmap)
                             self.config[f'clustering_deproject_{n_systmaps}'] = systmap_file # for provenance
                             print('Reading clustering systematics map file:', systmap_file)
-                            syst_map = healpy.read_map(systmap_file,verbose=False)
+                            try:
+                                # try reading the file using healpy
+                                syst_map = healpy.read_map(systmap_file, verbose=False)
+                            except:
+                                # okay that didnt work
+                                print('\n## couldnt read the map with healpy; reading in using healsparse.\n')
+                                import healsparse
+                                # read in the map using healsparse
+                                syst_map = healsparse.HealSparseMap.read(systmap_file)
+                                # convert to healpix map with resolution same as density maps
+                                # default healpy resolution udgrade method uses mean
+                                syst_map = syst_map.generate_healpix_map(nside=healpy.pixelfunc.get_nside(clustering_weight))
 
 #                             # Find value at given ra,dec
 #                             ra = 55.
