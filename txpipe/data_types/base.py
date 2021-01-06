@@ -6,6 +6,7 @@ import warnings
 import pathlib
 import yaml
 import shutil
+import pickle
 
 class FileValidationError(Exception):
     pass
@@ -445,3 +446,27 @@ class PNGFile(DataFile):
 
     def read_provenance(self):
         raise ValueError("Reading existing PNG files is not supported")
+
+class PickleFile(DataFile):
+    suffix = "pkl"
+
+    @classmethod
+    def open(self, path, mode, **kwargs):
+        return open(path, mode + "b")
+
+    def write_provenance(self):
+        self.write(self.provenance)
+
+    def read_provenance(self):
+        return self.read()
+
+    def write(self, obj):
+        if self.mode != "w":
+            raise ValueError("Tried to write to read-only pickle file")
+        pickle.dump(obj, self.file)
+
+    def read(self):
+        if self.mode != "r":
+            raise ValueError("Tried to read from a write-only pickle file")
+        return pickle.load(self.file)
+
