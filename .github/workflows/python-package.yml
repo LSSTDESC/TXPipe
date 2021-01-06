@@ -42,8 +42,6 @@ jobs:
       with:
         path: ./gsl-2.5
         key: ${{ runner.os }}-gsl
-        restore-keys: |
-          ${{ runner.os }}-gsl
 
     - uses: actions/cache@v2
       name: Load pip cache
@@ -51,8 +49,6 @@ jobs:
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
     - name: Compile GSL
       if: steps.cache-gsl.outputs.cache-hit != 'true'
@@ -84,7 +80,8 @@ jobs:
 
     - name: Test with pytest
       run: |
-        python -m pytest txpipe
+        pip list
+        pytest txpipe
 
     - name: Run more pipelines
       run: |
@@ -95,6 +92,7 @@ jobs:
         test -f data/example/outputs_lensfit/shear_xi_plus.png
 
     - name: Failure logs
+      if: ${{ always() }}
       run: |
         tail -n +1 data/example/logs/*
         tail -n +1 data/example/logs_redmagic/*
