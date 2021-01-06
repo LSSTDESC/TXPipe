@@ -4,6 +4,16 @@ import numpy as np
 
 
 class PZRailTrain(PipelineStage):
+    """Train a photo-z model using RAIL.
+
+    The Redshift Assessment Infrastructure Layers (RAIL) library provides a uniform
+    interface to DESC photo-z code.
+
+    TXPipe uses RAIL across several different pipeline stages.
+    This stage, which would normally be run first, uses a training set (e.g. of
+    spectroscopic redshifts) to train and save an Estimator object that a later
+    stage can use to measure redshifts of the survey sample.
+    """
     name = "PZRailTrain"
 
     inputs = [
@@ -15,6 +25,7 @@ class PZRailTrain(PipelineStage):
 
     config_options = {
         "class_name": str,
+        "chunk_rows": 10000,
         "zmin": 0.0,
         "zmax": 3.0,
         "nzbins": 301,
@@ -52,7 +63,7 @@ class PZRailTrain(PipelineStage):
         # If there is any kind of testing/validation to be run we could
         # do so here.
 
-        # Otherwise, save the model.  This assumes that estimator
+        # Afterwards, save the model.  This assumes that estimator
         # classes can be pickled, which is true for now but see the
         # issue opened on th RAIL repo
         with self.open_output("photoz_trained_model", wrapper=True) as output:
@@ -60,6 +71,24 @@ class PZRailTrain(PipelineStage):
 
 
 class PZRailEstimate(PipelineStage):
+    """Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
+
+    We load a redshift Estimator model, typically saved by the PZRailTrain stage,
+    and then load chunks of photometry and run the estimator on it, and save the
+    result.
+
+    RAIL currently returns the PDF and then only the modal z as a point estimate,
+    so we save that.  Previous stages have returned mean or median methods too.
+    We could ask for this in RAIL, or calculate the mean or median ourselves.
+
+    There's currently a slight ambiguity about bin edges vs bin centers that I
+    will follow up on with the RAIL team.
+
+    The training stage is (currently all) serial, but applying the trained
+    model can be done in parallel, so we split into two stages to avoid
+    many processors sitting idle or repeating the same training process.
+
+    """
     name = "PZRailEstimate"
 
     inputs = [
@@ -79,19 +108,22 @@ class PZRailEstimate(PipelineStage):
         # Importing this means that we can unpickle the relevant class
         import rail.estimation
 
+        # Load the estimator trained in PZRailTrain
         with self.open_input("photoz_trained_model", wrapper=True) as f:
             estimator = f.read()
 
-        with self.open_input("photometry_catalog") as f:
-            nobj = f["photometry/ra"].size
+        # prepare the output data - we will save things to this
+        # as we go along
+        output = self.setup_output_file(estimator)
 
-        output = self.setup_output_file(estimator, nobj)
-
+        # Create the iterator the reads chunks of photometry
+        # The method we use here automatically splits up data when we run in parallel
         cols = [f"mag_{b}" for b in "ugrizy"] + [f"mag_err_{b}" for b in "ugrizy"]
         chunk_rows = self.config["chunk_rows"]
-        for s, e, data in self.iterate_hdf(
-            "photometry_catalog", "photometry", cols, chunk_rows
-        ):
+        it = self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows)
+
+        # Loop through the chunks of data
+        for s, e, data in it:
             # Rename things so col names match what RAIL expects
             self.rename_columns(data)
 
@@ -108,13 +140,20 @@ class PZRailEstimate(PipelineStage):
             data[f"mag_{band}_lsst"] = data[f"mag_{band}"]
             data[f"mag_err_{band}_lsst"] = data[f"mag_err_{band}"]
 
-    def setup_output_file(self, estimator, nobj):
+    def setup_output_file(self, estimator):
+        # Briefly check the size of the catalog so we know how much
+        # space to reserve in the output
+        with self.open_input("photometry_catalog") as f:
+            nobj = f["photometry/ra"].size
+
+        # open the output file
         f = self.open_output("photoz_pdfs", parallel=True)
         # copied from RAIL as it doesn't seem to get saved at least
         # in the flexzboost version.  Need to understand z edges vs z mid
         z = np.linspace(estimator.zmin, estimator.zmax, estimator.nzbins)
         nz = z.size
 
+        # create the spaces in the output
         pdfs = f.create_group("pdf")
         pdfs.create_dataset("zgrid", (nz,))
         pdfs.create_dataset("pdf", (nobj, nz), dtype="f4")
