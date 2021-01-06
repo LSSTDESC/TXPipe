@@ -264,7 +264,7 @@ Then you're ready.
 Continuous Integration
 ----------------------
 
-Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
+Github actions is set up to run pytest and then three pipelines (metacal, metacal + redmagic, and lensfit) whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://github.com/LSSTDESC/TXPipe/actions
 
 Site and launcher options
 -------------------------
