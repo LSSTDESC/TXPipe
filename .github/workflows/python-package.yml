@@ -50,9 +50,9 @@ jobs:
       id: cache-pip
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
     - name: Compile GSL
       if: steps.cache-gsl.outputs.cache-hit != 'true'
@@ -90,4 +90,8 @@ jobs:
         test -f data/example/outputs_redmagic/shear_xi_plus.png
         test -f data/example/outputs_lensfit/shear_xi_plus.png
 
-      
+    - name: Failure logs
+      run: |
+        tail -n +1 data/example/logs/*
+        tail -n +1 data/example/logs_redmagic/*
+        tail -n +1 data/example/logs_lensfit/*
