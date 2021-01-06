@@ -11,9 +11,7 @@ class PZRailTrain(PipelineStage):
         ("photoz_testing", HDFFile),
     ]
 
-    outputs = [
-        ("photoz_trained_model", PickleFile)
-    ]
+    outputs = [("photoz_trained_model", PickleFile)]
 
     config_options = {
         "class_name": str,
@@ -34,7 +32,7 @@ class PZRailTrain(PipelineStage):
             "testfile": self.get_input("photoz_testing"),
             "hdf5_groupname": "photometry",
             "chunk_size": self.config["chunk_rows"],
-            "outpath": None, # should not be used here
+            "outpath": None,  # should not be used here
         }
 
         # Additional confguration specific to this algorithm
@@ -61,21 +59,20 @@ class PZRailTrain(PipelineStage):
             output.write(estimator)
 
 
-
 class PZRailEstimate(PipelineStage):
-    name='PZRailEstimate'
+    name = "PZRailEstimate"
 
     inputs = [
-        ('photometry_catalog', HDFFile),
-        ('photoz_trained_model', PickleFile),
+        ("photometry_catalog", HDFFile),
+        ("photoz_trained_model", PickleFile),
     ]
 
     outputs = [
-        ('photoz_pdfs', PhotozPDFFile),
+        ("photoz_pdfs", PhotozPDFFile),
     ]
 
     config_options = {
-        'chunk_rows': 10000,
+        "chunk_rows": 10000,
     }
 
     def run(self):
@@ -86,14 +83,15 @@ class PZRailEstimate(PipelineStage):
             estimator = f.read()
 
         with self.open_input("photometry_catalog") as f:
-            nobj = f['photometry/ra'].size
+            nobj = f["photometry/ra"].size
 
         output = self.setup_output_file(estimator, nobj)
 
-
         cols = [f"mag_{b}" for b in "ugrizy"] + [f"mag_err_{b}" for b in "ugrizy"]
         chunk_rows = self.config["chunk_rows"]
-        for s, e, data in self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows):
+        for s, e, data in self.iterate_hdf(
+            "photometry_catalog", "photometry", cols, chunk_rows
+        ):
             # Rename things so col names match what RAIL expects
             self.rename_columns(data)
 
@@ -107,29 +105,28 @@ class PZRailEstimate(PipelineStage):
         # RAIL expects the magnitudes and errors to have
         # the suffix _lsst, which we add here
         for band in "ugrizy":
-            data[f'mag_{band}_lsst'] = data[f'mag_{band}']
-            data[f'mag_err_{band}_lsst'] = data[f'mag_err_{band}']
+            data[f"mag_{band}_lsst"] = data[f"mag_{band}"]
+            data[f"mag_err_{band}_lsst"] = data[f"mag_err_{band}"]
 
     def setup_output_file(self, estimator, nobj):
-        f =  self.open_output("photoz_pdfs", parallel=True)
+        f = self.open_output("photoz_pdfs", parallel=True)
         # copied from RAIL as it doesn't seem to get saved at least
         # in the flexzboost version.  Need to understand z edges vs z mid
         z = np.linspace(estimator.zmin, estimator.zmax, estimator.nzbins)
         nz = z.size
 
-        pdfs = f.create_group('pdf')
+        pdfs = f.create_group("pdf")
         pdfs.create_dataset("zgrid", (nz,))
-        pdfs.create_dataset("pdf", (nobj,nz), dtype='f4')
+        pdfs.create_dataset("pdf", (nobj, nz), dtype="f4")
 
-        modes = f.create_group('point_estimates')
-        modes.create_dataset("z_mode", (nobj,), dtype='f4')
+        modes = f.create_group("point_estimates")
+        modes.create_dataset("z_mode", (nobj,), dtype="f4")
 
         # One processor writes the redshift axis to output.
-        if self.rank==0:
-            pdfs['zgrid'][:] = z
+        if self.rank == 0:
+            pdfs["zgrid"][:] = z
 
         return f
-
 
     def write_output_chunk(self, output_file, start, end, pz_data):
         """
@@ -150,5 +147,5 @@ class PZRailEstimate(PipelineStage):
         pz_data: dict
             As returned by rail, containing zmode and pz_pdf
         """
-        output_file['pdf/pdf'][start:end] = pz_data['pz_pdf']
-        output_file['point_estimates/z_mode'][start:end] = pz_data['zmode']
+        output_file["pdf/pdf"][start:end] = pz_data["pz_pdf"]
+        output_file["point_estimates/z_mode"][start:end] = pz_data["zmode"]
