@@ -22,3 +22,4 @@ psutil
 parallel_statistics
 healsparse
 flexcode
+xgboost
