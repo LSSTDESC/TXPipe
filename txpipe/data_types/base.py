@@ -7,6 +7,7 @@ import pathlib
 import yaml
 import shutil
 import pickle
+from io import UnsupportedOperation
 
 class FileValidationError(Exception):
     pass
@@ -33,6 +34,10 @@ class DataFile:
     def __init__(self, path, mode, extra_provenance=None, validate=True, **kwargs):
         self.path = path
         self.mode = mode
+
+        if mode not in ["r", "w"]:
+            raise ValueError(f"File 'mode' argument must be 'r' or 'w' not '{mode}'")
+
         self.file = self.open(path, mode, **kwargs)
 
         if validate and mode == 'r':
@@ -462,11 +467,13 @@ class PickleFile(DataFile):
 
     def write(self, obj):
         if self.mode != "w":
-            raise ValueError("Tried to write to read-only pickle file")
+            raise UnsupportedOperation("Tried to write to read-only pickle file "
+                                      f"(mode={self.mode}")
         pickle.dump(obj, self.file)
 
     def read(self):
         if self.mode != "r":
-            raise ValueError("Tried to read from a write-only pickle file")
+            raise UnsupportedOperation("Tried to read from a write-only pickle file "
+                                      f"(mode={self.mode}")
         return pickle.load(self.file)
 
