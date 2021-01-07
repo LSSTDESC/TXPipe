@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, HDFFile, PickleFile
+from .data_types import PhotozPDFFile, HDFFile, PickleFile, DataFile
 import numpy as np
 
 
@@ -17,8 +17,8 @@ class PZRailTrain(PipelineStage):
     name = "PZRailTrain"
 
     inputs = [
-        ("photoz_training", HDFFile),
-        ("photoz_testing", HDFFile),
+        ("photoz_training", DataFile),
+        ("photoz_testing", DataFile),
     ]
 
     outputs = [("photoz_trained_model", PickleFile)]
