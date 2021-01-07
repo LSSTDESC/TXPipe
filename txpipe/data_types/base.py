@@ -167,7 +167,9 @@ class HDFFile(DataFile):
         called 'provenance'
         """
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read-only mode")
+            raise UnsupportedOperation("Cannot write provenance to an HDF5 "
+                                      f"file opened in read-only mode "
+                                      f"({self.mode}")
 
         # This method *must* be called by all the processes in a parallel
         # run.  
@@ -244,7 +246,9 @@ class FitsFile(DataFile):
         """
         # Call the sub-method to do each item
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read mode")
+            raise UnsupportedOperation("Cannot write provenance to a FITS file opened "
+                                      f"in read-only mode ({self.mode}")
+
 
         for key, value in self.provenance.items():
             if isinstance(value, str) and '\n' in value:
@@ -365,7 +369,8 @@ class Directory(DataFile):
         # This method *must* be called by all the processes in a parallel
         # run.  
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a directory opened in read-only mode")
+            raise UnsupportedOperation("Cannot write provenance to a directory opened "
+                                       f"in read-only mode ({self.mode})")
 
         self._provenance_file = open(self.file / 'provenance.yml', 'w')
 
@@ -467,13 +472,13 @@ class PickleFile(DataFile):
 
     def write(self, obj):
         if self.mode != "w":
-            raise UnsupportedOperation("Tried to write to read-only pickle file "
-                                      f"(mode={self.mode}")
+            raise UnsupportedOperation("Cannot write to pickle file opened in "
+                                      f"read-only ({self.mode})")
         pickle.dump(obj, self.file)
 
     def read(self):
         if self.mode != "r":
-            raise UnsupportedOperation("Tried to read from a write-only pickle file "
-                                      f"(mode={self.mode}")
+            raise UnsupportedOperation("Cannot read from pickle file opened in "
+                                      f"write-only ({self.mode})")
         return pickle.load(self.file)
 
