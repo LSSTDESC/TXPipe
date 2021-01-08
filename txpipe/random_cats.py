@@ -204,7 +204,7 @@ class TXRandomCat_source(PipelineStage):
 
         ### The current file in 'pz_stack' only has 1 lens bin, but zbins loads 4 bins!!
         Ntomo = len(pz_stack['n_of_z']['source'].keys())-1
-        z_photo_arr = pz_stack['n_of_z']['source']['z'].value
+        z_photo_arr = pz_stack['n_of_z']['source']['z'][:]
         
         ### Loop over the tomographic bins to find number of galaxies in each pixel/zbin
         ### When the density changes per redshift bin, this can go into the main Ntomo loop

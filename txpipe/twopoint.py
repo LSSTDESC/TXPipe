@@ -1883,7 +1883,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('random_cats_source', RandomsCatalog),
         ('patch_centers', TextFile),
         #('photoz_pdfs', PhotozPDFFile),
-        ('fiducial_cosmology', YamlFile),
+        ('fiducial_cosmology', FiducialCosmology),
         ('tracer_metadata', HDFFile),
     ]
     outputs = [

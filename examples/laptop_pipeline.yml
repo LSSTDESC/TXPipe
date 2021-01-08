@@ -37,6 +37,8 @@ stages:
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
+    - name: TXRandomCat_source   # Randoms for sources as well as lenses
+    - name: TXSCIA               # Self-calibration intrinsic alignments
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
