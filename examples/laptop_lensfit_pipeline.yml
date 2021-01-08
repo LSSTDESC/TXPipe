@@ -29,9 +29,13 @@ stages:
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
+    - name: TXGalaxyStarDensity
+    - name: TXGalaxyStarShear
     - name: TXPSFDiagnostics
     - name: TXBrighterFatterPlot
     - name: TXPhotozPlots
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    - name: TXConvergenceMapPlots # Plot the convergence map
     # disabling these as they takes too long for a quick test
 #    - name: TXRealGaussianCovariance
 #    - name: TXTwoPointFourier
@@ -51,8 +55,16 @@ site:
     name: local
     max_threads: 2
 
-# python modules to import to search for stages
+# modules and packages to import that have pipeline
+# stages defined in them
 modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
 
 # configuration settings
 config: examples/config/laptop_lensfit_config.yml
@@ -75,7 +87,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_lensfit
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
-

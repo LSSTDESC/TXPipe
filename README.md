@@ -6,6 +6,36 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the ceci repository for the infrastructure.
 
+
+Getting the code and some test data
+-----------------------------------
+
+Get the TXPipe code like this:
+```bash
+git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
+cd TXPipe
+```
+
+The flag tells git to also download several other repositories
+that we depend on.
+
+You can get some input test data like this:
+
+```bash
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
+```
+
+Updating
+--------
+
+If you have a previous installation of TXPipe and have used `git pull` to
+update it, you can load the submodules using:
+
+```bash
+git submodule update --init
+```
+
 Permissions
 -----------
 
@@ -20,6 +50,24 @@ Goals
 - Perform and publish a DC2 3x2pt analysis.
 
 
+Getting the code and some test data
+-----------------------------------
+
+Get the TXPipe code like this (on NERSC, do this in your scratch space):
+```bash
+git clone https://github.com/LSSTDESC/TXPipe
+cd TXPipe
+```
+
+You can get some input test data like this:
+
+```bash
+curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
+```
+
+
+
 Getting Dependencies
 --------------------
 
@@ -31,8 +79,6 @@ The various stages within it depend on the python packages listed in requirement
 ```
 pip install -r requirements.txt
 ```
-
-**NOTE** The current pipeline version needs version 1.0 of *ceci*.  This is installed by requirements.txt
 
 The twopoint_fourier stage also requires NaMaster, which must be manually installed.  For testing, stick to a real-space analysis.
 
@@ -68,34 +114,16 @@ If you want to run inside a job (interactive or batch) under MPI using srun, you
 srun -n 32 shifter --image docker:joezuntz/txpipe python3 -m txpipe ...
 ```
 
-If you want to run pipelines under MPI, you can install a minimal environment on cori with just ceci inside (no other dependencies) like this:
+If you want to run pipelines under MPI, you can install a minimal environment on cori with just a few dependencies, as shown below.  Run this inside your TXPipe directory:
 
 ```bash
 source examples/nersc/setup
 python -m venv env
 source env/bin/activate
-pip install ceci
+pip install ceci numpy scipy parallel_statistics
 ```
 
 Then use shifter to run the actual jobs.
-
-
-
-Getting the code and some test data
------------------------------------
-
-Get the TXPipe code like this:
-```bash
-git clone https://github.com/LSSTDESC/TXPipe
-cd TXPipe
-```
-
-You can get some input test data like this:
-
-```bash
-curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
-tar -zxvf example.tar.gz
-```
 
 
 Running the pipeline
@@ -139,7 +167,16 @@ ceci examples/2.2i_pipeline.yml
 
 A smaller run is in `examples/2.2i_single_tract_pipeline.yml`.
 
+Batch runs
+----------
 
+You can launch an example of a batch run (a submitted job that queues so you don't have to wait around), by executing this on cori:
+
+```bash
+sbatch examples/cori-2.2i.sub
+```
+
+It will generate an output log `2.2i.log`.
 
 Implementation
 --------------
@@ -227,7 +264,7 @@ Then you're ready.
 Continuous Integration
 ----------------------
 
-Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
+Github actions is set up to run pytest and then three pipelines (metacal, metacal + redmagic, and lensfit) whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://github.com/LSSTDESC/TXPipe/actions
 
 Site and launcher options
 -------------------------
