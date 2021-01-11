@@ -124,6 +124,7 @@ class PZRailEstimate(PipelineStage):
 
         # Loop through the chunks of data
         for s, e, data in it:
+            print(f"Process {self.rank} estimating PZ PDF for rows {s:,} - {e:,}")
             # Rename things so col names match what RAIL expects
             self.rename_columns(data)
 
