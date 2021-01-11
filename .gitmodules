@@ -8,3 +8,6 @@
 [submodule "submodules/TJPCov"]
 	path = submodules/TJPCov
 	url = https://github.com/LSSTDESC/TJPCov
+[submodule "submodules/RAIL"]
+	path = submodules/RAIL
+	url = https://github.com/LSSTDESC/RAIL/
