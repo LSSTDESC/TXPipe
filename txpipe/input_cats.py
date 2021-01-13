@@ -33,6 +33,7 @@ class TXCosmoDC2Mock(PipelineStage):
         'extra_cols': "", # string-separated list of columns to include
         'max_npix':99999999999999,
         'unit_response': False,
+        'cat_size': 0,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
         }
 
@@ -70,7 +71,15 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
         gc = GCRCatalogs.load_catalog(cat_name)
-        N = len(gc)
+
+        # GCR sometimes tries to read the entire catalog
+        # to measure its length rather than looking at metadata
+        # this can take a very long time.
+        # allow the user to say that already know it.
+        N = self.config['cat_size']
+        if N == 0:
+            N = len(gc)
+
         print(f"Rank {self.rank} loaded: length = {N}.")
 
         target_size = min(N, self.config['max_size'])
