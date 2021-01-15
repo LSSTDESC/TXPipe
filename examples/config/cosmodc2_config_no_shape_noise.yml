@@ -94,7 +94,7 @@ TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXJackknifeCenters:
-    npatch: 10
+    npatch: 40
 
 TXDiagnosticPlots:
     shear_prefix: mcal_
