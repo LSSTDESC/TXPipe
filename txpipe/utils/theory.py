@@ -77,7 +77,7 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
 
     cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='emu', Neff=3.04)
 
-    ell_max = 2000 if fourier else 100_000
+    ell_max = 3000 if fourier else 100_000
     n_ell = 100 if fourier else 200
     ell = np.logspace(1, np.log10(ell_max), n_ell).astype(int)
     ell = np.unique(ell)
