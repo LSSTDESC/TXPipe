@@ -419,7 +419,14 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                if (i==0) & (j==3):
+                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
+                    # double free or corruption (!prev)
+                    # Since there is no lensing for this one, set the prediction to zero.
+                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
+                else:
+                    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                
 
     return theory
 
