@@ -1,0 +1,78 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXRandomCat
+    - name: TXSourceSelector
+      nodes: 8
+      nprocess: 256
+    - name: TXTruthLensSelector
+      nodes: 8
+      nprocess: 256
+    - name: TXTrueNumberDensity
+    - name: TXPhotozPlots
+    - name: TXTwoPointFourier
+      nprocess: 4
+      nodes: 4
+      threads_per_process: 32
+    - name: TXJackknifeCenters
+    - name: TXMainMaps
+      nodes: 2
+      nprocess: 16
+    - name: TXAuxiliaryMaps
+      nodes: 2
+      nprocess: 16
+    - name: TXDensityMaps
+    - name: TXNoiseMaps
+      nprocess: 32
+      nodes: 8
+      threads_per_process: 1
+    - name: TXSimpleMask
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXNullBlinding
+    - name: TXTwoPoint
+      threads_per_process: 32
+      nprocess: 8
+      nodes: 8
+    - name: TXTwoPointPlots
+    - name: TXDiagnosticPlots
+      nprocess: 16
+      nodes: 1
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 32
+    - name: TXRealGaussianCovariance
+      threads_per_process: 32
+    - name: TXConvergenceMaps
+      threads_per_process: 32
+    - name: TXConvergenceMapPlots
+
+output_dir: data/skysim5000_v1.1.1/outputs
+config: examples/config/skysim5000_config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/skysim5000_v1.1.1/shear_catalog.hdf5
+    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/skysim5000_v1.1.1/photometry_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+
+resume: True
+log_dir: data/skysim5000_v1.1.1/logs
+pipeline_log: data/skysim5000_v1.1.1/log.txt
+
