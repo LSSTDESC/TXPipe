@@ -2,7 +2,7 @@ import numpy as np
 import copy
 import yaml
 
-W = "galaxy_density_xi"
+1;95;0cW = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
 GAMMAX = "galaxy_shearDensity_xi_x"
 XIP = "galaxy_shear_xi_plus"
@@ -420,7 +420,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
                 if (i==0) & (j==3):
-                    print('!!! By hand setting this measurement to zero! This is because lenses are behind the sources and CCL raises an error otherwise.')
+                    print('By hand setting this measurement to zero! This is because lenses are behind the sources and CCL raises an error otherwise.')
                     # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
                     # double free or corruption (!prev)
                     # Since there is no lensing for this one, set the prediction to zero.
