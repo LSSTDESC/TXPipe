@@ -37,8 +37,8 @@ PZPDFMLZ:
 PZRailTrain:
     class_name: FZBoost
     zmin: 0.0
-    zmax: 3.0
-    nzbins: 301
+    zmax: 2.0
+    nzbins: 201
     trainfrac: 0.75
     bumpmin: 0.02
     bumpmax: 0.35
