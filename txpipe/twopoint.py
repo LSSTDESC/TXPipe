@@ -419,7 +419,6 @@ class TXTwoPoint(PipelineStage):
         # at this point, but in future we would like to move to just loading part of the
         # catalog.
         if self.config['subtract_mean_shear']:
-            flip = self.config['flip_g2']
             # Cross-check: print out the new mean.
             # In the weighted case these won't actually be equal
             mu1 = g1.mean()
@@ -428,10 +427,7 @@ class TXTwoPoint(PipelineStage):
             # If we flip g2 we also have to flip the sign
             # of what we subtract
             g1 -= meta['mean_e1'][i]
-            if flip:
-                g2 += meta['mean_e2'][i]
-            else:
-                g2 -= meta['mean_e2'][i]
+            g2 -= meta['mean_e2'][i]
 
             # Compare to final means.
             nu1 = g1.mean()
@@ -440,6 +436,9 @@ class TXTwoPoint(PipelineStage):
             print(f"Means before: {mu1}  and  {mu2}")
             print(f"Means after:  {nu1}  and  {nu2}")
             print("(In the weighted case the latter may not be exactly zero)")
+
+        if self.config['flip_g2']:
+            g2 *= -1
 
         return g1, g2, mask
 
@@ -654,15 +653,6 @@ class TXTwoPoint(PipelineStage):
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]
-
-        if self.config['flip_g2']:
-            if self.config['shear_catalog_type']=='metacal':
-                if self.config['use_true_shear']:
-                    data['true_g2'] *= -1
-                else:
-                    data['mcal_g2'] *= -1
-            else:
-                data['g2'] *= -1
 
 
     def load_random_catalog(self, data):

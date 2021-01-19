@@ -3,7 +3,8 @@
 stages:
     - name: TXSourceSelector
     - name: TXTruthLensSelector
-    - name: PZPDFMLZ
+    - name: PZRailTrain
+    - name: PZRailEstimate
     - name: TXPhotozStack
     - name: TXMainMaps
     - name: TXAuxiliaryMaps
@@ -65,6 +66,7 @@ python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
     - submodules/FlexZPipe
+    - submodules/RAIL
 
 # configuration settings
 config: examples/config/laptop_lensfit_config.yml
@@ -74,9 +76,10 @@ config: examples/config/laptop_lensfit_config.yml
 
 inputs:
     # See README for paths to download these files
+    photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/lensfit_photometry_catalog.hdf5
-    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
@@ -87,6 +90,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_lensfit
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt

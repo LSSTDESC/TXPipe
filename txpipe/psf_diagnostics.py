@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog
-from parallel_statistics import ParallelHistogram
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile
+from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
@@ -23,7 +23,8 @@ class TXPSFDiagnostics(PipelineStage):
     outputs = [
         ('e1_psf_residual_hist', PNGFile),
         ('e2_psf_residual_hist', PNGFile),
-        ('T_psf_residual_hist', PNGFile),
+        ('T_frac_psf_residual_hist', PNGFile),
+        ('star_psf_stats', YamlFile),
 
     ]
     config = {}
@@ -37,22 +38,22 @@ class TXPSFDiagnostics(PipelineStage):
         # the thing we want to histogram, the name, label, and range
         plotters = [
             self.plot_histogram(
-                lambda d: (d['measured_e1'] - d['model_e1']) / d['measured_e1'],
-                'e1_psf_residual_hist',
-                '$(e_{1}-e_{1,psf})/e_{1,psf}$',
-                np.linspace(-10, 10, 51),
+                lambda d: (d['measured_e1'] - d['model_e1']),
+                'e1_psf_residual',
+                '$e_{1}-e_{1,psf}$',
+                np.linspace(-0.1, 0.1, 51),
                 ),
 
             self.plot_histogram(
-                lambda d: (d['measured_e2'] - d['model_e2']) / d['measured_e2'],
-                'e2_psf_residual_hist',
-                '$(e_{2}-e_{2,psf})/e_{2,psf}$',
-                np.linspace(-10, 10, 51),
+                lambda d: (d['measured_e2'] - d['model_e2']),
+                'e2_psf_residual',
+                '$e_{2}-e_{2,psf}$',
+                np.linspace(-0.1, 0.1, 51),
                 ),
 
             self.plot_histogram(
                 lambda d: (d['measured_T'] - d['model_T']) / d['measured_T'],
-                'T_psf_residual_hist',
+                'T_frac_psf_residual',
                 '$(T-T{psf})/T{psf}$',
                 np.linspace(-0.1, 0.1, 51),
                 ),
@@ -95,16 +96,24 @@ class TXPSFDiagnostics(PipelineStage):
         # Tell all the plotters to finish, collect together results from the different
         # processors, and make their final plots.  Plotters need to respond
         # to the None input and
+        results = {}
         for plotter in plotters:
             try:
                 plotter.send(None)
-            except StopIteration:
-                pass
+            except StopIteration as err:
+                # This feels like some cruel abuse because I don't
+                # really understand how co-routines should be used.
+                results.update(err.value)
+
+        # save all counts, means, and sigmas to yaml file
+        with self.open_output("star_psf_stats", wrapper=True) as f:
+            f.write(results)
 
     def plot_histogram(self, function, output_name, xlabel, edges):
         import matplotlib.pyplot as plt
         print(f"Plotting {output_name}")
         counters = {s:ParallelHistogram(edges) for s in STAR_TYPES}
+        stats = ParallelMeanVariance(len(STAR_TYPES))
 
         while True:
             data = yield
@@ -112,17 +121,25 @@ class TXPSFDiagnostics(PipelineStage):
             if data is None:
                 break
 
+            # Get the specific quantity to plot
+            # from the full data set
             value = function(data)
 
             for s in STAR_TYPES:
                 r = data['star_type'] == s
-                counters[s].add_data(value[r])
+                # build up histogram
+                d = value[r]
+                counters[s].add_data(d)
+                # Also record data for mean and variance calculation
+                # There are some NaNs in here which are presumably
+                # not propagated to PSF estimation anyway
+                stats.add_data(s, d[np.isfinite(d)])
 
         counts = {}
         for s in STAR_TYPES:
             counts[s] = counters[s].collect(self.comm)
 
-        fig = self.open_output(output_name, wrapper=True, figsize=(6,15))
+        fig = self.open_output(output_name + "_hist", wrapper=True, figsize=(6,15))
         for s in STAR_TYPES:
             plt.subplot(len(STAR_TYPES), 1, s+1)
             manual_step_histogram(edges,
@@ -134,6 +151,17 @@ class TXPSFDiagnostics(PipelineStage):
             plt.xlabel(xlabel)
             plt.ylabel(r'$N_{stars}$')
         fig.close()
+
+        n, mu, sigma2 = stats.collect(self.comm)
+        results = {}
+        for s in STAR_TYPES:
+            name = STAR_TYPE_NAMES[s]
+            results[f'{output_name}_{name}_n'] = int(n[s])
+            results[f'{output_name}_{name}_mu'] =float(mu[s])
+            results[f'{output_name}_{name}_std'] = float(sigma2[s]**0.5)
+
+        return results
+
 
 class TXRoweStatistics(PipelineStage):
     """
