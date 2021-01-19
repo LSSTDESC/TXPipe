@@ -2,7 +2,7 @@ import numpy as np
 import copy
 import yaml
 
-1;95;0cW = "galaxy_density_xi"
+W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
 GAMMAX = "galaxy_shearDensity_xi_x"
 XIP = "galaxy_shear_xi_plus"
