@@ -1894,6 +1894,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'reduce_randoms_size':1.0,
         'do_shear_pos': True,
         'do_pos_pos': True,
+        'do_shear_shear': False, 
         'var_methods': 'jackknife',
         '3Dcoords': True,
         'metric': 'Rperp',
@@ -1924,6 +1925,14 @@ class TXSelfCalibrationIA(TXTwoPoint):
             for i in source_list:
                 calcs.append((i,i,k))
         
+        if self.config['do_shear_shear']:
+            k = SHEAR_SHEAR
+            for i in source_list:
+                for j in range(i+1):
+                    if j in source_list:
+                        calcs.append((i,j,k))
+
+
         if self.rank==0:
             print(f"Running these calculations: {calcs}")
         
