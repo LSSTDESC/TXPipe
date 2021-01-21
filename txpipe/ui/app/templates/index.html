@@ -1,0 +1,75 @@
+<html>
+<HEAD>
+    <!-- Fav icon -->
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href= "{{ url_for('static', filename='style.css') }}" >
+</HEAD>
+<body>
+    <!-- Scripts: jquery -->
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+    <!-- Socket -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+
+    <!-- Flow chart stuff -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.8.0/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.4/dagre-d3.min.js"></script>
+
+    <!-- My code -->
+    <script type="text/javascript" src= {{ url_for("static", filename="main.js") }} ></script>
+
+
+
+    <H1> TXPipe GUI </H1>
+
+    <div id="tabs">
+        <ul>
+            <li><a href="#pipeline-tab">Pipeline</a></li>
+            <li><a href="#config-tab">Configuration</a></li>
+            <li><a href="#log-tab">Logs</a></li>
+            <li><a href="#output-tab">Outputs</a></li>
+        </ul>
+
+        <div id="pipeline-tab">
+            <H2>Pipeline</H2>
+            <input type='file' id="select_pipeline_input" accept=".yml" style="display:none">
+            <button style="display:block;width:180px; height:30px;" onclick="$('#select_pipeline_input').click()">Select Pipeline</button>
+            <button style="display:block;width:180px; height:30px;" onclick="launch_pipeline();">Launch Pipeline</button>        
+
+        </div>
+
+        <div id="config-tab">
+            <p>Config tab content</p>
+        </div>
+
+        <div id="log-tab">
+            <p>Log tab content</p>
+            <div id="accordion">
+
+            </div>
+        </div>
+
+        <div id="output-tab">
+            <p>Output tab content</p>
+        </div>
+    </div> 
+    <!-- End of tabs -->
+
+    <h2> Pipeline Diagram </h2>
+    <svg id="svg-canvas" width=5000 height=5000>
+        <g />
+    </svg>
+
+
+    <div id="hiddenTextBox">
+        abc
+    </div>
+
+</body>
+</html>
+
