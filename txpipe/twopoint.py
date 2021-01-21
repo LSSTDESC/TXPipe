@@ -399,8 +399,8 @@ class TXTwoPoint(PipelineStage):
         mask = (data['source_bin'] == i)
 
         if self.config['use_true_shear']:
-            g1 = data[f'{prefix}_g1'][mask]
-            g2 = data[f'{prefix}_g2'][mask]
+            g1 = data[f'true_g1'][mask]
+            g2 = data[f'true_g2'][mask]
 
         elif self.config['shear_catalog_type']=='metacal':
             # We use S=0 here because we have already included it in R_total
@@ -776,7 +776,11 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
+        # TODO: when there is a better Cosmology serialization method
+        # switch to that
+        print("Manually specifying matter_power_spectrum and Neff")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+            matter_power_spectrum='emu', Neff=3.04)
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',

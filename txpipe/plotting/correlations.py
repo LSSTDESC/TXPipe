@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import yaml
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -65,9 +66,6 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
             theory_cl *= bias[j]
 
     return theory
-
-
-
 
 
 def full_3x2pt_plots(sacc_files, labels, 
@@ -306,7 +304,7 @@ def extract_observables_plot_data(data, label):
 
 def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
     import pyccl
-
+    
     theory = {'name': label}
     xi = ('galaxy_density_xi' in data.get_data_types()) if xi is None else xi
 
@@ -376,7 +374,11 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                try:
+                    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                except pyccl.CCLError as err:
+                    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
+                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
 
     return theory
 
