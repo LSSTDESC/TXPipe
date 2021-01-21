@@ -374,15 +374,11 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                if (i==0) & (j==3):
-                    print('By hand setting this measurement to zero! This is because lenses are behind the sources and CCL raises an error otherwise.')
-                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
-                    # double free or corruption (!prev)
-                    # Since there is no lensing for this one, set the prediction to zero.
-                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
-                else:
+                try:
                     theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-                
+                except pyccl.CCLError as err:
+                    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
+                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
 
     return theory
 
