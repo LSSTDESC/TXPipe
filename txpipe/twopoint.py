@@ -776,7 +776,11 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
+        # TODO: when there is a better Cosmology serialization method
+        # switch to that
+        print("Manually specifying matter_power_spectrum and Neff")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+            matter_power_spectrum='emu', Neff=3.04)
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',
