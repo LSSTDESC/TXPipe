@@ -45,7 +45,7 @@ function visualize_graph(nodes, edges) {
     pipeline_graph = new dagre.graphlib.Graph();
 
     // Set an object for the graph label
-    pipeline_graph.setGraph({nodesep: 5, ranksep: 30});
+    pipeline_graph.setGraph({nodesep: 2, ranksep: 30});
     pipeline_graph.setDefaultEdgeLabel(function() { return {}; });
 
     // Default to assigning a new object as a label for each new edge.
@@ -74,9 +74,9 @@ function visualize_graph(nodes, edges) {
 
     // // // Center the graph
     // // Set up an SVG group so that we can translate the final graph.
-    // // var svg = d3.select("svg");
+    var svg = d3.select("svg g");
     // // var xCenterOffset = (svg.attr("width") - g.graph().width) / 2;
-    // // svgGroup.attr("transform", "translate(" + xCenterOffset + ", 20)");
+    svg.attr("transform", "scale(0.75, 0.75)");
     // // svg.attr("height", g.graph().height + 40);
 
     // console.log(d3.selectAll('svg g.comp'));

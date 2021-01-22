@@ -81,7 +81,7 @@ class Session:
         print("Override resume")
         self.config["resume"] = False
 
-        site_config = self.config.get("site", {"name": "local"})
+        site_config = {"name": "local", "max_threads":2, "max_processes":3}
 
         # Override these with some of our own?
         run_config = {
@@ -89,6 +89,7 @@ class Session:
             "log_dir": self.config["log_dir"],
             "resume": self.config["resume"],
         }
+
 
         stages_config = self.config["config"]
 
@@ -99,6 +100,12 @@ class Session:
         site_config["python_paths"] = paths
         ceci.sites.load({"name": "mini"}, [site_config])
         print("Ident of _run_task thread:", threading.get_ident())
+
+        # Re-make the pipeline here.  Hack, because when the pipeline is created
+        # it looks at the default site, which has only been set here.
+        self.pipeline = ceci.pipeline.MiniPipeline(self.config["stages"], {"name": "mini"}, callback=self.callback, sleep=socketio.sleep)
+ 
+
         with chdir(TXPIPE_DIR):
             with ceci.utils.extra_paths(paths):
                 self.pipeline.run(inputs, run_config, stages_config)
