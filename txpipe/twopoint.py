@@ -437,7 +437,7 @@ class TXTwoPoint(PipelineStage):
             print(f"Means after:  {nu1}  and  {nu2}")
             print("(In the weighted case the latter may not be exactly zero)")
         if self.config['flip_g2']:
-            data['g2'] *= -1
+            g2 *= -1
 
         return g1, g2, mask
 
