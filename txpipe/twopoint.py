@@ -2174,7 +2174,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import sacc 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, i, j)
+            xx = self.calculate_shear_shear(data, meta, i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
             xx = self.calculate_shear_pos(data, meta, i, j)
@@ -2183,7 +2183,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             xx = self.calculate_shear_pos_select(data, meta, i, j)
             xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, i, j)
+            xx = self.calculate_pos_pos(data, meta, i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
