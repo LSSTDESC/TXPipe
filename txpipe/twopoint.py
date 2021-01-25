@@ -2080,7 +2080,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
             r = ccl.background.comoving_radial_distance(cosmo, 1/(1+mu))
 
-            if self.config['var_methods']=='jackknife':
+            if self.config['var_method']=='jackknife':
                 patch_centers = self.get_input('patch_centers')
                 cat = treecorr.Catalog(
                     g1 = g1,
@@ -2100,7 +2100,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                     dec = data['dec'][mask],
                     ra_units='degree', dec_units='degree')
         else:
-            if self.config['var_methods']=='jackknife':
+            if self.config['var_method']=='jackknife':
                 patch_centers = self.get_input('patch_centers')
                 cat = treecorr.Catalog(
                     g1 = g1,
