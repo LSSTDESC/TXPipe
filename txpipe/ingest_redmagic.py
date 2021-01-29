@@ -74,6 +74,7 @@ class TXIngestRedmagic(PipelineStage):
         for (s, e, data) in self.iterate_fits('redmagic_catalog', 1, cols, chunk_rows):
             n = data['ra'].size
             z = data['zredmagic']
+            z_true = data['zredmagic']
             # Unit weight still
             weight = np.repeat(1.0, n)
 
@@ -89,7 +90,7 @@ class TXIngestRedmagic(PipelineStage):
             zbin[~sel] = -1
 
             # Build up the count of the n(z) histograms per-bin
-            z_grid_index = np.floor((z - zmin) / dz).astype(int)
+            z_grid_index = np.floor((z_true - zmin) / dz).astype(int)
             for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
                 if (b >= 0):
                     nz_grid[b][i_z] += weight[i]
