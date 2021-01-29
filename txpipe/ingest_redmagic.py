@@ -69,12 +69,12 @@ class TXIngestRedmagic(PipelineStage):
         counts_2d = 0
 
         # all cols that might be useful
-        cols = ['ra', 'dec', 'zredmagic', 'mag', 'mag_err', 'chisq']
+        cols = ['ra', 'dec', 'zredmagic', 'mag', 'mag_err', 'chisq', 'zspec']
 
         for (s, e, data) in self.iterate_fits('redmagic_catalog', 1, cols, chunk_rows):
             n = data['ra'].size
             z = data['zredmagic']
-            z_true = data['zredmagic']
+            z_true = data['zspec']
             # Unit weight still
             weight = np.repeat(1.0, n)
 
