@@ -222,7 +222,7 @@ class TXTwoPointFourier(PipelineStage):
                 w = np.where(g2!=healpy.UNSEEN)
                 g2[w]*=-1
                 
-
+                
         # Load HEALPix systematics maps for clustering deprojection
         deproject_syst_clustering = self.config['deproject_syst_clustering']
         if deproject_syst_clustering:  
@@ -232,32 +232,29 @@ class TXTwoPointFourier(PipelineStage):
             systmaps_clustering_dir = self.config['systmaps_clustering_dir']
             systmaps_path = pathlib.Path(systmaps_clustering_dir)
             for systmap in systmaps_path.iterdir():
+                systmap_file = str(systmap)
+                print('Reading clustering systematics map file:', systmap_file)
                 try:
                     if systmap.is_file():
-                        if pathlib.Path(systmap).suffix != ".fits":
-                            print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
-                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
-                            print('Ignoring', systmap)
-                        else:
-                            systmap_file = str(systmap)
-                            self.config[f'clustering_deproject_{n_systmaps}'] = systmap_file # for provenance
-                            print('Reading clustering systematics map file:', systmap_file)
-                            syst_map = healpy.read_map(systmap_file,verbose=False)
-                            # normalize map for Namaster
-                            # set pixel values to value/mean - 1
-                            syst_map_mask = syst_map != healpy.UNSEEN
-                            mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
-                            if mean != 0:
-                                print('Syst map: mean value = ', mean)
-                                syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
-                                syst_map = syst_map / mean - 1
-#                                 print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
-
-                            s_maps.append(syst_map)
-                            n_systmaps += 1
+                        syst_map = healpy.read_map(systmap_file, verbose=False)
+                    else:
+                        warnings.warn(f'Map from {systmap} is missing. Skipping...')
                 except:
-                    print('Warning: Problem with systematics map file',systmap)
-                    print('Ignoring', systmap)
+                    print(f'A problem occurred while reading {systmap}. Skipping...')
+                    continue
+
+                self.config[f'clustering_deproject_{n_systmaps}'] = systmap_file # for provenance                    
+                # normalize map for Namaster
+                # set pixel values to value/mean - 1
+                syst_map_mask = syst_map != healpy.UNSEEN
+                mean = np.mean(syst_map[syst_map_mask]) # gives mean of all unmasked pixels
+                print('Syst map: mean value = ', mean)
+                if mean != 0:
+                    syst_map[syst_map_mask] = syst_map[syst_map_mask] / mean - 1
+                    syst_map[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster 
+
+                s_maps.append(syst_map)
+                n_systmaps += 1
                     
             print('Number of systematics maps read: ', n_systmaps)
             if n_systmaps == 0:
@@ -295,34 +292,30 @@ class TXTwoPointFourier(PipelineStage):
             s_maps_2 = []
             for file in s_maps_scalar_names:
                 systmap = pathlib.Path(file)
+                print('Reading weaklensing systematics map file:', file)
                 try:
                     if systmap.is_file():
-                        if pathlib.Path(systmap).suffix != ".fits":
-                            print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
-                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
-                            print('Ignoring', systmap)
-                        else:
-                            systmap_file = str(systmap)
-                            self.config[f'weaklensing_scalar_deproject_{n_systmaps}'] = systmap_file # for provenance
-                            print('Reading weaklensing systematics map file:', systmap_file)
-                            syst_map = healpy.read_map(systmap_file,verbose=False)
-                            # normalize map for Namaster
-                            # set pixel values to value/mean - 1
-                            syst_map_mask = syst_map != healpy.UNSEEN
-                            mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
-                            if mean != 0:
-                                print('Syst map: mean value = ', mean)
-                                syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
-                                syst_map = syst_map / mean - 1
-#                                 print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
-
-                            s_maps_1.append(syst_map)
-                            s_maps_2.append(syst_map)
-                            n_systmaps_scalar += 1
+                        syst_map = healpy.read_map(file, verbose=False)
+                    else:
+                        warnings.warn(f'Map from {systmap} is missing. Skipping...')
                 except:
-                    print('Warning: Problem with systematics map file',systmap)
-                    print('Ignoring', systmap)
-                    
+                    print(f'A problem occurred while reading {systmap}. Skipping...')
+                    continue   
+                
+                self.config[f'weaklensing_scalar_deproject_{n_systmaps}'] = file # for provenance
+                # normalize map for Namaster
+                # set pixel values to value/mean - 1
+                syst_map_mask = syst_map != healpy.UNSEEN
+                mean = np.mean(syst_map[syst_map_mask]) # gives mean of all unmasked pixels
+                print('Syst map: mean value = ', mean)
+                if mean != 0:
+                    syst_map[syst_map_mask] = syst_map[syst_map_mask] / mean - 1
+                    syst_map[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster 
+
+                s_maps_1.append(syst_map)
+                s_maps_2.append(syst_map)
+                n_systmaps_scalar += 1
+      
             print('Number of scalar systematics maps read: ', n_systmaps_scalar)
                     
             # load _e1, _e2 maps
@@ -330,66 +323,56 @@ class TXTwoPointFourier(PipelineStage):
             n_systmaps_e1 = 0
             for file in s_maps_e1_names:
                 systmap = pathlib.Path(file)
+                print('Reading weaklensing systematics map file:', file)
                 try:
                     if systmap.is_file():
-                        if pathlib.Path(systmap).suffix != ".fits":
-                            print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
-                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
-                            print('Ignoring', systmap)
-                        else:
-                            systmap_file = str(systmap)
-                            self.config[f'weaklensing_tensor_deproject_{n_systmaps}'] = systmap_file # for provenance
-                            print('Reading weaklensing systematics map file:', systmap_file)
-                            syst_map = healpy.read_map(systmap_file,verbose=False)
-                            # normalize map for Namaster
-                            # set pixel values to value/mean - 1
-                            syst_map_mask = syst_map != healpy.UNSEEN
-                            mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
-                            if mean != 0:
-                                print('Syst map: mean value = ', mean)
-                                syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
-                                syst_map_e1 = syst_map / mean - 1
-                                # print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
-                            n_systmaps += 1
-                    # get the matching _e2 map
-                    file2 = file.replace("_e1", "_e2")
-                    systmap = pathlib.Path(file2)
-                    try:
-                        if systmap.is_file():
-                            if pathlib.Path(systmap).suffix != ".fits":
-                                print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
-                                warnings.warn("Systematics map file must be a HEALPix .fits file.")
-                                print('Ignoring', systmap)
-                            else:
-                                systmap_file = str(systmap)
-                                self.config[f'weaklensing_tensor_deproject_{n_systmaps}'] = systmap_file # for provenance
-                                print('Reading weaklensing systematics map file:', systmap_file)
-                                syst_map = healpy.read_map(systmap_file,verbose=False)
-                                # normalize map for Namaster
-                                # set pixel values to value/mean - 1
-                                syst_map_mask = syst_map != healpy.UNSEEN
-                                mean = np.mean(syst_map[syst_map_mask]) # gives mean of all pixels with mask applied
-                                if mean != 0:
-                                    print('Syst map: mean value = ', mean)
-                                    syst_map[~syst_map_mask] = 0 # sets unmasked pixels to zero 
-                                    syst_map_e2 = syst_map / mean - 1
-                                   # print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
-
-                                s_maps_1.append(syst_map_e1)
-                                s_maps_2.append(syst_map_e2)
-                                n_systmaps += 1 
-                                n_systmaps_e1 += 1
-                        else:
-                            # skip this e1,e2 pair
-                            print('Warning: No _e2 match to map file', file)
-                            print('Ignoring', file)
-                    except:
-                        print('Warning: Problem with systematics map file',systmap)
-                        print('Ignoring', systmap)    
-                  
+                        syst_map_e1 = healpy.read_map(file, verbose=False)
+                    else:
+                        warnings.warn(f'Map from {systmap} is missing. Skipping...')
                 except:
-                    print('Warning: Problem with systematics map file',systmap)
-                    print('Ignoring', systmap)
+                    print(f'A problem occurred while reading {systmap}. Skipping...')
+                    continue 
+                    
+                self.config[f'weaklensing_tensor_deproject_{n_systmaps}'] = file # for provenance
+                # normalize map for Namaster
+                # set pixel values to value/mean - 1
+                syst_map_mask = syst_map_e1 != healpy.UNSEEN
+                mean = np.mean(syst_map_e1[syst_map_mask]) # gives mean of all unmasked pixels
+                print('Syst map: mean value = ', mean)
+                if mean != 0:
+                    syst_map_e1[syst_map_mask] = syst_map_e1[syst_map_mask] / mean - 1
+                    syst_map_e1[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster 
+                
+                n_systmaps += 1
+                
+                # get the matching _e2 map
+                file2 = file.replace("_e1", "_e2")
+                systmap = pathlib.Path(file2)
+                print('Reading weaklensing systematics map file:', file2)
+                try:
+                    if systmap.is_file():
+                        syst_map_e2 = healpy.read_map(file2, verbose=False)
+                    else:
+                        warnings.warn(f'Map from {systmap} is missing. Skipping...')
+                except:
+                    print(f'A problem occurred while reading {systmap}. Skipping...')
+                    print('Warning: No _e2 match to map file', file, 'Skipping this e1,e2 pair')
+                    continue
+
+                self.config[f'weaklensing_tensor_deproject_{n_systmaps}'] = file2 # for provenance
+                # normalize map for Namaster
+                # set pixel values to value/mean - 1
+                syst_map_mask = syst_map_e2 != healpy.UNSEEN
+                mean = np.mean(syst_map_e2[syst_map_mask]) # gives mean of all unmasked pixels
+                print('Syst map: mean value = ', mean)
+                if mean != 0:
+                    syst_map_e2[syst_map_mask] = syst_map_e2[syst_map_mask] / mean - 1
+                    syst_map_e2[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster
+                
+                s_maps_1.append(syst_map_e1)
+                s_maps_2.append(syst_map_e2)
+                n_systmaps += 1 
+                n_systmaps_e1 += 1
 
             print('Number of tensor systematics map pairs read: ', n_systmaps_e1)
             
@@ -661,15 +644,15 @@ class TXTwoPointFourier(PipelineStage):
             field_j = maps['lf'][j]
             results_to_use = [(0, CEE, ), (1, CEB, ), (3, CBB, )]
 
-#         elif k == POS_POS:
-#             field_i = maps['df'][i]
-#             field_j = maps['df'][j]
-#             results_to_use = [(0, Cdd)]
+        elif k == POS_POS:
+            field_i = maps['df'][i]
+            field_j = maps['df'][j]
+            results_to_use = [(0, Cdd)]
 
-#         elif k == SHEAR_POS:
-#             field_i = maps['lf'][i]
-#             field_j = maps['df'][j]
-#             results_to_use = [(0, CdE), (1, CdB)]
+        elif k == SHEAR_POS:
+            field_i = maps['lf'][i]
+            field_j = maps['df'][j]
+            results_to_use = [(0, CdE), (1, CdB)]
 
         workspace = workspaces[(i,j,k)]
 
