@@ -589,19 +589,19 @@ class TXTwoPointFourier(PipelineStage):
             for j in range(i + 1):
                 calcs.append((i, j, k))
 
-#         # For shear-position we use all pairs
-#         k = SHEAR_POS
-#         for i in range(nbins_source):
-#             for j in range(nbins_lens):
-#                 calcs.append((i, j, k))
+        # For shear-position we use all pairs
+        k = SHEAR_POS
+        for i in range(nbins_source):
+            for j in range(nbins_lens):
+                calcs.append((i, j, k))
 
-#         # For position-position we omit pairs with j>i.
-#         # We do keep cross-pairs, since even though we may not want to
-#         # do parameter estimation with them they are useful diagnostics.
-#         k = POS_POS
-#         for i in range(nbins_lens):
-#             for j in range(i + 1):
-#                 calcs.append((i, j, k))
+        # For position-position we omit pairs with j>i.
+        # We do keep cross-pairs, since even though we may not want to
+        # do parameter estimation with them they are useful diagnostics.
+        k = POS_POS
+        for i in range(nbins_lens):
+            for j in range(i + 1):
+                calcs.append((i, j, k))
 
         calcs = [calc for calc in self.split_tasks_by_rank(calcs)]
 
