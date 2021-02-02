@@ -765,9 +765,11 @@ class TXTwoPointPlotsFourier(PipelineStage):
         nbin_source, nbin_lens = self.read_nbin(s)  
  
         print("Manually specifying matter_power_spectrum and Neff")
+        #cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+        #    matter_power_spectrum='emu', Neff=3.04)
         cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-            matter_power_spectrum='emu', Neff=3.04)
-
+            matter_power_spectrum='halofit', Neff=3.04)
+        print(cosmo)
         
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
