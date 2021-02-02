@@ -329,6 +329,9 @@ class TXPhotozPlots(PipelineStage):
         ('nz_source', PNGFile),
     ]
 
+    config_options = {
+    }
+
 
     def run(self):
         import matplotlib
