@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import yaml
+import pdb
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -70,7 +71,7 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
 
 def full_3x2pt_plots(sacc_files, labels, 
                      cosmo=None, theory_sacc_files=None, theory_labels=None,
-                     xi=None, fit_bias=False, figures=None, xlogscale=True):
+                     xi=None, fit_bias=False, figures=None, xlogscale=True, ratios=False):
     import sacc
     sacc_data = []
     for f in sacc_files:
@@ -96,7 +97,7 @@ def full_3x2pt_plots(sacc_files, labels,
             if theory_labels is None:
                 raise ValueError("Must provide theory names if you provide theory sacc files")
         # Get the ranges from the first obs data set
-        theory_data = [make_theory_plot_data(s, cosmo, obs_data[0], label, smooth=False, xi=None) 
+        theory_data = [make_theory_plot_data(s, cosmo, obs_data[0], label, smooth=False, xi=None, ratios=ratios) 
                        for (s, label) in zip(theory_sacc_data, theory_labels)]
         if fit_bias:
             if len(theory_data) > 1:
@@ -121,7 +122,10 @@ def full_3x2pt_plots(sacc_files, labels,
     for t in types:
         if any(obs[t] for obs in obs_data):
             f = figures.get(t)
-            output_figures[t] = make_plot(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
+            if not ratios:
+                output_figures[t] = make_plot(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
+            if ratios:
+                output_figures[t] = make_plot_ratios(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
 
     return output_figures
     
@@ -264,6 +268,117 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
     plt.subplots_adjust(wspace=0.05, hspace=0.05)
     return plt.gcf()
 
+
+def make_plot_ratios(corr, obs_data, theory_data, fig=None, xlogscale=True):
+    import matplotlib.pyplot as plt
+    nbin_source = obs_data[0]['nbin_source']
+    nbin_lens = obs_data[0]['nbin_lens']
+
+    ny = nbin_source if types[corr][1] == 'source' else nbin_lens
+    nx = nbin_source if types[corr][2] == 'source' else nbin_lens
+
+
+    if corr == XIP:
+        name = r"\xi_+(\theta) \mathrm{ ratios}"
+        ymin = 5e-7
+        ymax = 9e-5
+        auto_only = False
+        half_only = True
+    elif corr == XIM:
+        name = r"\xi_-(\theta) \mathrm{ ratios}"
+        ymin = 5e-7
+        ymax = 9e-5
+        auto_only = False
+        half_only = True
+    elif corr == GAMMA:
+        ymin = 5e-7
+        ymax = 2e-2
+        name = r'\gamma_T(\theta) \mathrm{ ratios}'
+        auto_only = False
+        half_only = False
+    elif corr == W:
+        ymin = 2e-4
+        ymax = 1e-0
+        name = r'w(\theta) \mathrm{ ratios}'
+        auto_only = True
+        half_only = False
+    elif corr == EE:
+        name = r"C_\ell^{EE} \mathrm{ ratios}"
+        ymin = 2e-12
+        ymax = 9e-8
+        auto_only = False
+        half_only = True
+    elif corr == ED:
+        ymin = 2e-10
+        ymax = 2e-6
+        name = r"C_\ell^{ED} \mathrm{ ratios}"
+        auto_only = False
+        half_only = False
+    elif corr == DD:
+        ymin = 2e-8
+        ymax = 1e-4
+        name = r"C_\ell^{DD} \mathrm{ ratios}"
+        auto_only = True
+        half_only = False
+    elif corr == GAMMAX:
+        ymin = 5e-7
+        ymax = 2e-2
+        name = r"\gamma_X(\theta) \mathrm{ ratios}"
+        auto_only = False
+        half_only = False
+
+    plt.rcParams['font.size'] = 14
+    f = fig if fig is not None else plt.figure(figsize=(nx*3.5, ny*3))
+    ax = {}
+    
+    axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=True)
+    for i in range(ny):
+        if auto_only:
+            J = [i]
+        elif half_only:
+            J = range(i+1)
+        else:
+            J = range(nx)
+        for j in range(nx):
+            a = axes[i,j]
+            if j not in J:
+                f.delaxes(a)
+                continue
+
+            for index, obs in enumerate(obs_data):
+
+                res = obs[(corr, i, j)]
+                theta_th, xi_th = theory_data[index][(corr, i, j)]
+                if len(res) == 2:
+                    theta, xi = res
+                    if xlogscale:
+                        l, = a.loglog(theta, xi, 'x', label=obs['name'])
+                        a.loglog(theta, -xi, 's', color=l.get_color())
+                    else:
+                        l, = a.plot(theta, xi, 'x', label=obs['name'])
+                        a.plot(theta, -xi, 's', color=l.get_color())
+                        a.set_yscale('log')
+                else:
+                    theta, xi, cov = res
+                    err = cov.diagonal()**0.5
+                    a.errorbar(theta, xi/xi_th, fmt='.', label='TXPipe Data/CCL Theory')
+                    a.axhline(y=1, color='k', ls = ':')
+                    if xlogscale:
+                        a.set_xscale('log')
+
+
+            axis_setup(a, i, j, ny, 0.6, 1.4, name)
+            if corr in [EE, ED, DD]:
+                a.set_xlim(90, 1500)
+
+    f.suptitle(rf"TXPipe ${name}$")
+
+    # plt.tight_layout()
+    #f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    return plt.gcf()
+
+
 def smooth_nz(nz):
     return np.convolve(nz, np.exp(-0.5*np.arange(-4,5)**2)/2**2, mode='same')
 
@@ -302,7 +417,7 @@ def extract_observables_plot_data(data, label):
                     obs[(t, i, j)] = res
     return obs
 
-def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
+def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=False):
     import pyccl
     
     theory = {'name': label}
@@ -315,12 +430,22 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
 
     tracers = {}
 
+    
+    #print('Cosmological parameters:')
+    #print(cosmo)
+    #cosmology_file = 'data/fiducial_cosmology.yml'
+    #cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='emu', Neff=3.04)
+
+    print('Cosmological parameters:')
+    print(cosmo)
+
+    
     # Make the lensing tracers
     for i in range(nbin_source):
         name = f'source_{i}'
         Ti = data.get_tracer(name)
         nz = smooth_nz(Ti.nz) if smooth else Ti.nz
-
+        print("smooth:",  smooth)
         # Convert to CCL form
         tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
 
@@ -339,13 +464,23 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
         for j in range(i+1):
             print(f"Computing theory lensing-lensing ({i},{j})")
 
+            # uncomment to take ratio in Fourier space to get the exact ells
+            if ratios and (not xi):
+                if i==0 and j==0:
+                    ell, _, _ = obs[('galaxy_shearDensity_cl_e', i, j)] # to get the ratio between theory and data
+
             # compute power spectra
+            print(tracers[f'source_{i}'], tracers[f'source_{j}'])
             cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
+            
             theory[(EE, i, j)] = ell, cl
 
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(XIP, i, j)]
+
+                pdb.set_trace()
+                print ("theta", theta)
                 theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+')
                 theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-')
 
@@ -374,11 +509,21 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None):
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                try:
-                    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-                except pyccl.CCLError as err:
-                    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
+
+                if (i==0) & (j==3):
+                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
+                    # double free or corruption (!prev)
+                    # Since there is no lensing for this one, set the prediction to zero.
                     theory[GAMMA, i, j] = theta, np.zeros(len(theta))
+                else:
+                    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+
+                    
+                #try:
+                #    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                #except pyccl.CCLError as err:
+                #    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
+                #    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
 
     return theory
 
