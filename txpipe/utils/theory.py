@@ -75,7 +75,6 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     """
     import pyccl as ccl
 
-    #cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='emu', Neff=3.04)
     cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='halofit', Neff=3.04)
 
     ell_max = 3000 if fourier else 100_000
@@ -110,10 +109,8 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     theory_cl = {}
     theory_cl['ell'] = ell
     k = SHEAR_SHEAR
-    print('SHEAR_SHEAR')
     for i in range(nbin_source):
         for j in range(i+1):
-            print(i,j)
             Ti = CTracers[('S',i)]
             Tj = CTracers[('S',j)]
             # The full theory C_ell over the range 0..ellmax
@@ -123,20 +120,16 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
 
     # The same for the galaxy galaxy-lensing cross-correlation
     k = SHEAR_POS
-    print('SHEAR_POS')
     for i in range(nbin_source):
         for j in range(nbin_lens):
-            print(i,j)
             Ti = CTracers[('S',i)]
             Tj = CTracers[('P',j)]
             theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
 
     # And finally for the density correlations
     k = POS_POS
-    print('POS_POS')
     for i in range(nbin_lens):
         for j in range(i+1):
-            print(i,j)
             Ti = CTracers[('P',i)]
             Tj = CTracers[('P',j)]
             theory_cl [(i,j,k)] = ccl.angular_cl(cosmo, Ti, Tj, ell)
