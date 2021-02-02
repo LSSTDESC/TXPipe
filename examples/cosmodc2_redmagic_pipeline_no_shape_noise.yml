@@ -17,7 +17,8 @@ stages:
     - name: TXRandomCat
     - name: TXIngestRedmagic
     - name: TXSourceSelector
-      nprocess: 32
+      nprocess: 64
+      nodes: 2
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
@@ -62,8 +63,8 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/feb2_2021_colorbinning/
-config: examples/config/cosmodc2_config.yml
+output_dir: data/cosmodc2/outputs_redmagic/no_shape_noise/feb2_2021_sourcecolorbinning
+config: examples/config/cosmodc2_config_no_shape_noise.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
