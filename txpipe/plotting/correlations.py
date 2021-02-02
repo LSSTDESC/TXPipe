@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import yaml
-import pdb
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -430,15 +429,8 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
 
     tracers = {}
 
-    
-    #print('Cosmological parameters:')
-    #print(cosmo)
-    #cosmology_file = 'data/fiducial_cosmology.yml'
-    #cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='emu', Neff=3.04)
-
-    print('Cosmological parameters:')
+    print('Cosmological parameters used in plots:')
     print(cosmo)
-
     
     # Make the lensing tracers
     for i in range(nbin_source):
@@ -470,7 +462,6 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
                     ell, _, _ = obs[('galaxy_shearDensity_cl_e', i, j)] # to get the ratio between theory and data
 
             # compute power spectra
-            print(tracers[f'source_{i}'], tracers[f'source_{j}'])
             cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
             
             theory[(EE, i, j)] = ell, cl
@@ -479,8 +470,6 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
             if xi:
                 theta, *_ = obs[(XIP, i, j)]
 
-                pdb.set_trace()
-                print ("theta", theta)
                 theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+')
                 theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-')
 
