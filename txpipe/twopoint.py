@@ -53,7 +53,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'var_methods': 'jackknife',
+        'var_method': 'jackknife',
         'use_true_shear': False,
         'subtract_mean_shear':False
         }
@@ -304,7 +304,7 @@ class TXTwoPoint(PipelineStage):
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
-        cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
+        cov = treecorr.estimate_multi_cov(comb, self.config['var_method'])
         S.add_covariance(cov)
 
         # Our data points may currently be in any order depending on which processes
@@ -448,7 +448,7 @@ class TXTwoPoint(PipelineStage):
         # Load and calibrate the appropriate bin data
         g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
 
-        if self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='metacal':
+        if self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='metacal':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -456,7 +456,7 @@ class TXTwoPoint(PipelineStage):
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
+        elif self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -465,14 +465,14 @@ class TXTwoPoint(PipelineStage):
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='metacal':
+        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
-        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
+        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -498,7 +498,7 @@ class TXTwoPoint(PipelineStage):
             ra = data['ra'][mask]
             dec = data['dec'][mask]
 
-        if self.config['var_methods']=='jackknife':
+        if self.config['var_method']=='jackknife':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
@@ -511,7 +511,7 @@ class TXTwoPoint(PipelineStage):
 
         if 'random_bin' in data:
             random_mask = data['random_bin']==i
-            if self.config['var_methods']=='jackknife':
+            if self.config['var_method']=='jackknife':
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                     ra_units='degree', dec_units='degree',
@@ -1170,7 +1170,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear':False
@@ -1322,7 +1322,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'shot',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,
@@ -1490,7 +1490,7 @@ class TXGammaTDimStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,        
@@ -1659,7 +1659,7 @@ class TXGammaTRandoms(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,
