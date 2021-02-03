@@ -1170,7 +1170,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_method': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear':False
