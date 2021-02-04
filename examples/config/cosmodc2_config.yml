@@ -102,8 +102,9 @@ TXDiagnosticPlots:
 
 TXRealGaussianCovariance:
     min_sep: 2.5
-    max_sep: 250.
-    nbins: 20
+    max_sep: 100.
+    nbins: 15
+    use_true_shear: False
 
 TXTwoPoint:
     binslop: 0.0
@@ -113,8 +114,8 @@ TXTwoPoint:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 250
-    nbins: 20
+    max_sep: 100
+    nbins: 15
     verbose: 0
     use_true_shear: False
 
@@ -126,8 +127,8 @@ TXTwoPointLensCat:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 250
-    nbins: 20
+    max_sep: 100
+    nbins: 15
     verbose: 0
     use_true_shear: False
     
@@ -142,9 +143,6 @@ TXTwoPointFourier:
     ell_max: 3000
     nside: 2048
     
-TXRealGaussianCovariance:
-    use_true_shear: False
-
 TXClusteringNoiseMaps:
     n_realization: 30
 
