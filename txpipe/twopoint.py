@@ -746,7 +746,7 @@ class TXTwoPointTheory(PipelineStage):
     """
     name='TXTwoPointTheory'
     inputs = [
-        ('twopoint_data_real', SACCFile),
+        ('summary_statistics_real', SACCFile),
         ('summary_statistics_fourier', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
     ]
@@ -760,7 +760,7 @@ class TXTwoPointTheory(PipelineStage):
         import sacc
 
         # Real space
-        filename = self.get_input('twopoint_data_real')
+        filename = self.get_input('summary_statistics_real')
         s = sacc.Sacc.load_fits(filename)
 
         # TODO: when there is a better Cosmology serialization method
