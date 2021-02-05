@@ -18,28 +18,28 @@ stages:
     - name: TXIngestRedmagic
     - name: TXSourceSelector
       nprocess: 64
-      nodes: 3      
+      nodes: 2 
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXSourceMaps
-      nprocess: 12
+      nprocess: 8
       threads_per_process: 1
-      nodes: 3
+      nodes: 1
     - name: TXExternalLensMaps
     - name: TXAuxiliaryMaps
-      nprocess: 16
+      nprocess: 8
       threads_per_process: 1
-      nodes: 2
+      nodes: 1
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
     - name: TXTwoPointLensCat
       threads_per_process: 64
       nprocess: 2
-      nodes: 3
+      nodes: 2
     - name: TXTwoPointTheory
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
@@ -54,7 +54,7 @@ stages:
       threads_per_process: 1
     - name: TXTwoPointFourier
       nprocess: 2
-      nodes: 3
+      nodes: 2
       threads_per_process: 64
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
@@ -63,7 +63,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/feb3_2021_max100arcmin/
+output_dir: data/cosmodc2/outputs_redmagic/2021_feb4_7sbins/
 config: examples/config/cosmodc2_config.yml
 
 # On NERSC, set this before running:

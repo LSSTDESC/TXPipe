@@ -99,6 +99,9 @@ TXJackknifeCenters:
 TXDiagnosticPlots:
     shear_prefix: mcal_
 
+TXFourierGaussianCovariance:
+    use_true_shear: True
+
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 100.
