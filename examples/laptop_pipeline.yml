@@ -39,7 +39,7 @@ stages:
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
-    - name: TXRandomCat_source   # Randoms for sources as well as lenses
+    #- name: TXRandomCat_source   # Randoms for sources as well as lenses
     - name: TXSCIA               # Self-calibration intrinsic alignments
 
     # Disabling these as they takes too long for a quick test.
@@ -94,6 +94,8 @@ inputs:
     star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
+    # We are not using Random_cat_source for now
+    random_cat_source: None
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
