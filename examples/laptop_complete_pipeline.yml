@@ -2,7 +2,8 @@
 stages:
     - name: TXSourceSelector
     - name: TXTruthLensSelector
-    - name: FlexZPipe
+    - name: PZRailTrain
+    - name: PZRailEstimate
     - name: TXPhotozStack
     - name: TXMainMaps
     - name: TXAuxiliaryMaps

@@ -6,6 +6,11 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the ceci repository for the infrastructure.
 
+Tutorial
+--------
+
+[See our tutorial](https://docs.google.com/presentation/d/1haMu1eLBzfYjAlcZ-En7PdBxA4ebnWPwp8D2mCdvZV8/edit?usp=sharing) for information on understanding and developing for TXPipe.
+
 
 Getting the code and some test data
 -----------------------------------
@@ -41,13 +46,6 @@ Permissions
 
 Email or Slack Joe Zuntz to be added to the development team.
 
-Goals
------
-
-- Test using parsl for some of our larger more complex analyses.
-- Build and test a prototype pipeline infrastructure.
-- Build and run prototype.
-- Perform and publish a DC2 3x2pt analysis.
 
 
 Getting the code and some test data

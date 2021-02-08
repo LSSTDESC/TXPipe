@@ -2,8 +2,10 @@
 # Stages to run
 stages:
     - name: TXSourceSelector     # select and split objects into source bins
-    - name: TXTruthLensSelector  # select objects for lens bins
-    - name: PZPDFMLZ             # compute p(z) per galaxy using MLZ
+    - name: TXModeLensSelector  # select objects for lens bins
+    - name: PZRailTrain
+      threads_per_process: 2
+    - name: PZRailEstimate
     - name: TXPhotozStack        # stack p(z) into n(z)
     - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
     - name: TXAuxiliaryMaps      # make PSF, depth, flag, and other maps
@@ -57,6 +59,7 @@ python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
     - submodules/FlexZPipe
+    - submodules/RAIL
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -84,7 +87,8 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
+    photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5

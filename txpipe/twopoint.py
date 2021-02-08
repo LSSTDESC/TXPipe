@@ -399,8 +399,8 @@ class TXTwoPoint(PipelineStage):
         mask = (data['source_bin'] == i)
 
         if self.config['use_true_shear']:
-            g1 = data[f'{prefix}_g1'][mask]
-            g2 = data[f'{prefix}_g2'][mask]
+            g1 = data[f'true_g1'][mask]
+            g2 = data[f'true_g2'][mask]
 
         elif self.config['shear_catalog_type']=='metacal':
             # We use S=0 here because we have already included it in R_total
@@ -436,6 +436,9 @@ class TXTwoPoint(PipelineStage):
             print(f"Means before: {mu1}  and  {mu2}")
             print(f"Means after:  {nu1}  and  {nu2}")
             print("(In the weighted case the latter may not be exactly zero)")
+        if self.config['flip_g2']:
+            g2 *= -1
+
         if self.config['flip_g2']:
             g2 *= -1
 
@@ -775,7 +778,11 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
+        # TODO: when there is a better Cosmology serialization method
+        # switch to that
+        print("Manually specifying matter_power_spectrum and Neff")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+            matter_power_spectrum='emu', Neff=3.04)
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',
@@ -1165,7 +1172,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_method': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear':False
@@ -1485,7 +1492,7 @@ class TXGammaTDimStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_method': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,        
@@ -1654,7 +1661,7 @@ class TXGammaTRandoms(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_method': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,

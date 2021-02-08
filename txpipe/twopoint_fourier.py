@@ -543,10 +543,19 @@ class TXTwoPointFourier(PipelineStage):
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+
+        def window_pixel(ell, nside):
+            r_theta=1/(np.sqrt(3.)*nside)
+            x=ell*r_theta
+            f=0.532+0.006*(x-0.5)**2
+            y=f*x
+            return np.exp(-y**2/2)
+
+        c_beam = c/(window_pixel(ls, self.config['nside']))**2
         
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
-            self.results.append(Measurement(name, ls, c[index], win, i, j))
+            self.results.append(Measurement(name, ls, c_beam[index], win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
