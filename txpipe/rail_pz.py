@@ -113,8 +113,9 @@ class PZRailEstimate(PipelineStage):
             estimator = f.read()
 
         # prepare the output data - we will save things to this
-        # as we go along
-        output = self.setup_output_file(estimator)
+        # as we go along.  We also need the z grid becauwe we use
+        # it to get the mean z from the PDF
+        output, z = self.setup_output_file(estimator)
 
         # Create the iterator the reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
@@ -132,7 +133,7 @@ class PZRailEstimate(PipelineStage):
             pz_data = estimator.estimate(data)
 
             # Save the results
-            self.write_output_chunk(output, s, e, pz_data)
+            self.write_output_chunk(output, s, e, z, pz_data)
 
     def rename_columns(self, data):
         # RAIL expects the magnitudes and errors to have
@@ -161,14 +162,15 @@ class PZRailEstimate(PipelineStage):
 
         modes = f.create_group("point_estimates")
         modes.create_dataset("z_mode", (nobj,), dtype="f4")
+        modes.create_dataset("z_mean", (nobj,), dtype="f4")
 
         # One processor writes the redshift axis to output.
         if self.rank == 0:
             pdfs["zgrid"][:] = z
 
-        return f
+        return f, z
 
-    def write_output_chunk(self, output_file, start, end, pz_data):
+    def write_output_chunk(self, output_file, start, end, z, pz_data):
         """
         Write out a chunk of the computed PZ data.
 
@@ -187,5 +189,11 @@ class PZRailEstimate(PipelineStage):
         pz_data: dict
             As returned by rail, containing zmode and pz_pdf
         """
-        output_file["pdf/pdf"][start:end] = pz_data["pz_pdf"]
+        # RAIL does not currently output the mean z by default, so
+        # we compute it here
+        p = pz_data['pz_pdf']
+        mu = (p @ z) / p.sum(axis=1)
+
+        output_file["pdf/pdf"][start:end] = p
         output_file["point_estimates/z_mode"][start:end] = pz_data["zmode"]
+        output_file["point_estimates/z_mean"][start:end] = mu
