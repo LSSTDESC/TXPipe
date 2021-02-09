@@ -2,7 +2,7 @@
 # Stages to run
 stages:
     - name: TXSourceSelector     # select and split objects into source bins
-    - name: TXModeLensSelector  # select objects for lens bins
+    - name: TXMeanLensSelector  # select objects for lens bins
     - name: PZRailTrain
       threads_per_process: 2
     - name: PZRailEstimate
