@@ -24,13 +24,13 @@ stages:
     - name: TXTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXTwoPointFourier
-      nprocess: 4
-      nodes: 4
+      nprocess: 8
+      nodes: 8
       threads_per_process: 32
     - name: TXJackknifeCenters
     - name: TXMainMaps
-      nodes: 2
-      nprocess: 16
+      nodes: 8
+      nprocess: 64
     - name: TXAuxiliaryMaps
       nodes: 2
       nprocess: 16
@@ -49,8 +49,8 @@ stages:
       nodes: 8
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-      nprocess: 16
-      nodes: 1
+      nprocess: 64
+      nodes: 4
     - name: TXFourierGaussianCovariance
       threads_per_process: 32
     - name: TXRealGaussianCovariance
@@ -67,10 +67,10 @@ config: examples/config/skysim5000_config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/skysim5000_v1.1.1/shear_catalog.hdf5
-    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/skysim5000_v1.1.1/photometry_catalog.hdf5
+    shear_catalog:  data/skysim5000_v1.1.1/inputs/shear_catalog.hdf5
+    photometry_catalog: data/skysim5000_v1.1.1/inputs/photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
-
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
 
 resume: True
 log_dir: data/skysim5000_v1.1.1/logs

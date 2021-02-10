@@ -86,7 +86,7 @@ TXSourceSelector:
     i_hi_cut: 19.9
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
-    true_z: True
+    true_z: False
     shear_prefix: mcal_
 
 TXRandomCat:
