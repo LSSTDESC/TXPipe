@@ -33,6 +33,7 @@ class TXCosmoDC2Mock(PipelineStage):
         'extra_cols': "", # string-separated list of columns to include
         'max_npix':99999999999999,
         'unit_response': False,
+        'cat_size': 0,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
         }
 
@@ -66,57 +67,20 @@ class TXCosmoDC2Mock(PipelineStage):
         cat_name = self.config['cat_name']
         self.bands = ('u', 'g', 'r', 'i', 'z', 'y')
 
-        if self.rank == 0:
-            print(f"Loading from catalog {cat_name}")
-            # Load the input catalog (this is lazy)
-            # For testing we may want to cut down to a smaller number of pixels.
-            # This is separate from the split by processor later on
-            if 'cosmoDC2' in cat_name:
-                all_healpix_pixels = GCRCatalogs.get_available_catalogs()[cat_name]['healpix_pixels']
-            elif 'buzzard' in cat_name:
-                all_healpix_pixels = GCRCatalogs.load_catalog(cat_name).healpix_pixels
-            else:
-                raise NotImplementedError
+        print(f"Loading from catalog {cat_name}")
 
-            max_npix = self.config['max_npix']
-            if max_npix != 99999999999999:
-                print(f"Cutting down initial catalog to {max_npix} healpix pixels")
-                all_healpix_pixels = all_healpix_pixels[:max_npix]
 
-            # complete_cat = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
-            # print(f"Loaded overall catalog {cat_name}")
+        gc = GCRCatalogs.load_catalog(cat_name)
 
-            # # Get the size, and optionally cut down to a smaller
-            # # size if we want to test
-            # N = len(complete_cat)
-            # print(f"Measured catalog length: {N}")
+        # GCR sometimes tries to read the entire catalog
+        # to measure its length rather than looking at metadata
+        # this can take a very long time.
+        # allow the user to say that already know it.
+        N = self.config['cat_size']
+        if N == 0:
+            N = len(gc)
 
-        else:
-            N = 0
-            all_healpix_pixels = None
-
-        if self.comm:
-            # Split up the pixels to load among the processors
-            all_healpix_pixels = self.comm.bcast(all_healpix_pixels)
-            all_npix = len(all_healpix_pixels)
-            my_healpix_pixels = all_healpix_pixels[self.rank::self.size]
-            my_npix = len(my_healpix_pixels)
-
-            # Load the catalog for this processor
-            print(f"Rank {self.rank} loading catalog with {my_npix} pixels from total {all_npix}.")
-            gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
-
-            # Work out my local length and the total length (from the sum of all the local lengths)
-            my_N = len(gc)
-            N = self.comm.allreduce(my_N)
-            print(f"Rank {self.rank}: loaded. Have {my_N} objects from total {N}")
-
-        else:
-            all_npix = len(all_healpix_pixels)
-            print(f"Rank {self.rank} loading catalog with all {all_npix} pixels.")
-            gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
-            N = my_N = len(gc)
-            print(f"Rank {self.rank} loaded: length = {N}.")
+        print(f"Rank {self.rank} loaded: length = {N}.")
 
         target_size = min(N, self.config['max_size'])
         select_fraction = target_size / N
@@ -145,7 +109,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # This will be reduced later as we remove objects
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
-            print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {my_N}")
+            print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {N}")
             count += chunk_size
             # Select a random fraction of the catalog if we are cutting down
             # We can't just take the earliest galaxies because they are ordered
