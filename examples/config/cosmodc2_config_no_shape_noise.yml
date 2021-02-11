@@ -139,6 +139,7 @@ TXTwoPointFourier:
     true_shear: True
     n_ell: 25
     ell_max: 3000
+    nside: 2048
     
 TXRealGaussianCovariance:
     use_true_shear: True
