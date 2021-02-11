@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile
 import numpy as np
-
+import GCRCatalogs
 
 
 class CLIngestHalosCosmoDC2(PipelineStage):
@@ -18,17 +18,19 @@ class CLIngestHalosCosmoDC2(PipelineStage):
     def run(self):
         # Configuration options
         mass_min = self.config['halo_mass_min']
+        cat_name = self.config['cat_name']
         sz = self.config['initial_size']
 
         # Open the cosmoDC2 catalog
-        cat = GCRCatalogs.load_catalog(cat_name)
-
+        overwrite = {'check_md5': False, 'check_size': False, 'ensure_meta_consistent': False}
+        cat = GCRCatalogs.load_catalog(cat_name, config_overwrite=overwrite)
+        
         # Selection of data we will read from it below
         cols = ['halo_mass', 'redshift','ra', 'dec', 'halo_id']
         filters = [f'halo_mass > {mass_min}','is_central==True']
 
         # Create output data file with extensible data sets 
-        f = self.open_output("halo_catalog", "w")
+        f = self.open_output("halo_catalog")
         g = f.create_group("halos")
         g.create_dataset('halo_mass', (sz,), maxshape=(None,), dtype='f8', chunks=True)
         g.create_dataset('redshift', (sz,), maxshape=(None,), dtype='f8', chunks=True)
@@ -44,7 +46,7 @@ class CLIngestHalosCosmoDC2(PipelineStage):
         for data in it:
             # e is the end index for this data chunk
             e = s + data['ra'].size
-            print(r"Read data chunk {s:,} - {e:,}")
+            print(f"Read data chunk {s:,} - {e:,}")
 
             # Expand the data sets if we are exceeding the current
             # size.  Grow by 50% each time.
@@ -52,7 +54,7 @@ class CLIngestHalosCosmoDC2(PipelineStage):
                 sz = int(1.5 * e)
                 print(f"Resizing data to {sz:,}")
                 for col in cols:
-                    g[col].resize(sz)
+                    g[col].resize((sz,))
 
             # Output this chunk of data to the file
             for col in cols:
@@ -61,10 +63,11 @@ class CLIngestHalosCosmoDC2(PipelineStage):
             # Update the starting index for the next chunk
             s = e
 
+        print(f"Ingestion complete. Resizing to final halo count {e:,}")
         # Now we have finished we can truncate any
         # excess space in the output data
         for col in cols:
-            g[col].resize(e)
+            g[col].resize((e,))
 
         # And that's all.
         f.close()
