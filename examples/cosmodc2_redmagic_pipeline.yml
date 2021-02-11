@@ -63,7 +63,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2021_feb4_7sbins/
+output_dir: data/cosmodc2/outputs_redmagic/
 config: examples/config/cosmodc2_config.yml
 
 # On NERSC, set this before running:

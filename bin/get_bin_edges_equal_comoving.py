@@ -13,6 +13,7 @@ def get_z_edges(n_bin, zmax):
     z_edges[0] = 0.
     z_edges[-1] = zmax
     z_edges[1:-1] = np.interp(chi_edges[1:-1], chi_grid, zgrid)
+    print('Cosmology used:', model)
     print('n_bin, zmax:', n_bin, zmax)
     print('z edges:', z_edges)
 
