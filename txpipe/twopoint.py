@@ -753,7 +753,7 @@ class TXTwoPointTheory(PipelineStage):
     outputs = [
         ('twopoint_theory_real', SACCFile),
         ('twopoint_theory_fourier', SACCFile),
-        ]
+    ]
     
 
     def run(self):
@@ -969,6 +969,7 @@ class TXTwoPointPlots(PipelineStage):
         ('twopoint_data_real', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
         ('twopoint_gamma_x', SACCFile),
+        ('twopoint_theory_real', SACCFile),
     ]
     outputs = [
         ('shear_xi_plus', PNGFile),
@@ -1001,14 +1002,7 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        # TODO: when there is a better Cosmology serialization method
-        # switch to that
-        print("Manually specifying matter_power_spectrum and Neff")
-        #cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        #    matter_power_spectrum='emu', Neff=3.04)
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-            matter_power_spectrum='halofit', Neff=3.04)
-        print(cosmo)
+        filename_theory = self.get_input('twopoint_theory_real')
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',
@@ -1027,8 +1021,8 @@ class TXTwoPointPlots(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_real'], 
-            figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+        full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures, 
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'])
 
         for fig in outputs.values():
             fig.close()
@@ -1050,8 +1044,8 @@ class TXTwoPointPlots(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_real'], 
-                  figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], ratios=True)
+        full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures,
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'], ratios=True)
 
         for fig in outputs.values():
             fig.close()

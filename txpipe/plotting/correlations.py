@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import yaml
+import pdb
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -68,8 +69,7 @@ def apply_galaxy_bias_ggl(obs, theory, xi):
     return theory
 
 
-def full_3x2pt_plots(sacc_files, labels, 
-                     cosmo=None, theory_sacc_files=None, theory_labels=None,
+def full_3x2pt_plots(sacc_files, labels, theory_sacc_files=None, theory_labels=None,
                      xi=None, fit_bias=False, figures=None, xlogscale=True, ratios=False):
     import sacc
     sacc_data = []
@@ -78,39 +78,33 @@ def full_3x2pt_plots(sacc_files, labels,
             sacc_data.append(f)
         else:
             sacc_data.append(sacc.Sacc.load_fits(f))
-            
+
     obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
-    plot_theory = (cosmo is not None)
-
-
-    if plot_theory:
-        # By default, just plot a single theory line, not one per observable line
-        # Label it "Theory"
-        if theory_sacc_files is None:
-            theory_sacc_data = sacc_data[:1]
-            if theory_labels is None:
-                theory_labels = ["Theory"]
-        else:
-            theory_sacc_data = [sacc.Sacc.load_fits(sacc_file) for sacc_file in theory_sacc_files]
-            # But if specified, can provide multiple theory inputs, and then label them
-            if theory_labels is None:
-                raise ValueError("Must provide theory names if you provide theory sacc files")
-        # Get the ranges from the first obs data set
-        theory_data = [make_theory_plot_data(s, cosmo, obs_data[0], label, smooth=False, xi=None, ratios=ratios) 
-                       for (s, label) in zip(theory_sacc_data, theory_labels)]
-        if fit_bias:
-            if len(theory_data) > 1:
-                print("warning - fitting to just the first set of theory spectra")
-            fitted_theory_data = []
-            for obs, label in zip(obs_data, labels):
-                theory_fit = apply_galaxy_bias_ggl(obs, theory_data[0], xi)
-                theory_fit['name'] = f"Fit to {label}"
-                fitted_theory_data.append(theory_fit)
-            theory_data = fitted_theory_data
-
+    
+    if theory_sacc_files is not None:
+        sacc_theory = []
+        for f in theory_sacc_files:
+            if isinstance(f, sacc.Sacc):
+                sacc_theory.append(f)
+            else:
+                sacc_theory.append(sacc.Sacc.load_fits(f))
+             
+        obs_theory = [extract_observables_plot_data(s, label) for s, label in zip(sacc_theory, theory_labels)]
     else:
-        theory_data = []
+        obs_theory = []
+            
+    
+    if fit_bias:
+        if len(obs_theory) > 1:
+            print("warning - fitting to just the first set of theory spectra")
+        fitted_obs_theory = []
+        for obs, label in zip(obs_data, labels):
+            theory_fit = apply_galaxy_bias_ggl(obs, obs_theory[0], xi)
+            theory_fit['name'] = f"Fit to {label}"
+            fitted_obs_theory.append(theory_fit)
+        obs_theory = fitted_obs_theory
 
+        
     if figures is None:
         figures = {}
 
@@ -118,13 +112,12 @@ def full_3x2pt_plots(sacc_files, labels,
         f = figures.get(t)
 
     output_figures = {}
+
     for t in types:
         if any(obs[t] for obs in obs_data):
+            print('Making Plot')
             f = figures.get(t)
-            if not ratios:
-                output_figures[t] = make_plot(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
-            if ratios:
-                output_figures[t] = make_plot_ratios(t, obs_data, theory_data, fig=f, xlogscale=xlogscale)
+            output_figures[t] = make_plot(t, obs_data, obs_theory, fig=f, xlogscale=xlogscale, ratios=ratios)
 
     return output_figures
     
@@ -154,7 +147,8 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.set_ylim(ymin, ymax)
 
 
-def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
+#def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True, ratios=False):
+def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False):
     import matplotlib.pyplot as plt
     nbin_source = obs_data[0]['nbin_source']
     nbin_lens = obs_data[0]['nbin_lens']
@@ -212,120 +206,9 @@ def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True):
         auto_only = False
         half_only = False
 
-    plt.rcParams['font.size'] = 14
-    f = fig if fig is not None else plt.figure(figsize=(nx*3.5, ny*3))
-    ax = {}
-    
-    axes = f.subplots(ny, nx, sharex='col', sharey='row', squeeze=True)
-    for i in range(ny):
-        if auto_only:
-            J = [i]
-        elif half_only:
-            J = range(i+1)
-        else:
-            J = range(nx)
-        for j in range(nx):
-            a = axes[i,j]
-            if j not in J:
-                f.delaxes(a)
-                continue
-
-            for obs in obs_data:
-                res = obs[(corr, i, j)]
-                if len(res) == 2:
-                    theta, xi = res
-                    if xlogscale:
-                        l, = a.loglog(theta, xi, 'x', label=obs['name'])
-                        a.loglog(theta, -xi, 's', color=l.get_color())
-                    else:
-                        l, = a.plot(theta, xi, 'x', label=obs['name'])
-                        a.plot(theta, -xi, 's', color=l.get_color())
-                        a.set_yscale('log')
-                else:
-                    theta, xi, cov = res
-                    err = cov.diagonal()**0.5
-                    a.errorbar(theta, xi, err, fmt='.', label=obs['name'], capsize=5)
-                    a.set_yscale('log')
-                    if xlogscale:
-                        a.set_xscale('log')
-
-            for theory in theory_data:
-                theta, xi = theory[(corr, i, j)]
-                if xlogscale:
-                    a.loglog(theta, xi, '-', label=theory['name'])
-                else:
-                    a.plot(theta, xi, '-', label=theory['name'])
-
-            axis_setup(a, i, j, ny, ymin, ymax, name)
-            if corr in [EE, ED, DD]:
-                a.set_xlim(90, 1500)
-
-    f.suptitle(rf"TXPipe ${name}$")
-
-    # plt.tight_layout()
-    #f.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.subplots_adjust(wspace=0.05, hspace=0.05)
-    return plt.gcf()
-
-
-def make_plot_ratios(corr, obs_data, theory_data, fig=None, xlogscale=True):
-    import matplotlib.pyplot as plt
-    nbin_source = obs_data[0]['nbin_source']
-    nbin_lens = obs_data[0]['nbin_lens']
-
-    ny = nbin_source if types[corr][1] == 'source' else nbin_lens
-    nx = nbin_source if types[corr][2] == 'source' else nbin_lens
-
-
-    if corr == XIP:
-        name = r"\xi_+(\theta) \mathrm{ ratios}"
-        ymin = 5e-7
-        ymax = 9e-5
-        auto_only = False
-        half_only = True
-    elif corr == XIM:
-        name = r"\xi_-(\theta) \mathrm{ ratios}"
-        ymin = 5e-7
-        ymax = 9e-5
-        auto_only = False
-        half_only = True
-    elif corr == GAMMA:
-        ymin = 5e-7
-        ymax = 2e-2
-        name = r'\gamma_T(\theta) \mathrm{ ratios}'
-        auto_only = False
-        half_only = False
-    elif corr == W:
-        ymin = 2e-4
-        ymax = 1e-0
-        name = r'w(\theta) \mathrm{ ratios}'
-        auto_only = True
-        half_only = False
-    elif corr == EE:
-        name = r"C_\ell^{EE} \mathrm{ ratios}"
-        ymin = 2e-12
-        ymax = 9e-8
-        auto_only = False
-        half_only = True
-    elif corr == ED:
-        ymin = 2e-10
-        ymax = 2e-6
-        name = r"C_\ell^{ED} \mathrm{ ratios}"
-        auto_only = False
-        half_only = False
-    elif corr == DD:
-        ymin = 2e-8
-        ymax = 1e-4
-        name = r"C_\ell^{DD} \mathrm{ ratios}"
-        auto_only = True
-        half_only = False
-    elif corr == GAMMAX:
-        ymin = 5e-7
-        ymax = 2e-2
-        name = r"\gamma_X(\theta) \mathrm{ ratios}"
-        auto_only = False
-        half_only = False
-
+    if ratios:
+        name += "\ \mathrm{ ratios}"
+        
     plt.rcParams['font.size'] = 14
     f = fig if fig is not None else plt.figure(figsize=(nx*3.5, ny*3))
     ax = {}
@@ -345,28 +228,55 @@ def make_plot_ratios(corr, obs_data, theory_data, fig=None, xlogscale=True):
                 continue
 
             for index, obs in enumerate(obs_data):
-
                 res = obs[(corr, i, j)]
-                theta_th, xi_th = theory_data[index][(corr, i, j)]
+                if ratios:
+                    res_theory = obs_theory[index][(corr, i, j)]
+                #if ratios:
+                #    theta_th, xi_th = theory_data[index][(corr, i, j)]
                 if len(res) == 2:
                     theta, xi = res
-                    if xlogscale:
-                        l, = a.loglog(theta, xi, 'x', label=obs['name'])
-                        a.loglog(theta, -xi, 's', color=l.get_color())
-                    else:
-                        l, = a.plot(theta, xi, 'x', label=obs['name'])
-                        a.plot(theta, -xi, 's', color=l.get_color())
-                        a.set_yscale('log')
+                    if ratios:
+                        theta_th, xi_th = res_theory
+                        a.plot(theta, xi/xi_th, label='TXPipe Data/CCL Theory')
+                        a.axhline(y=1, color='k', ls = ':')
+                    else: 
+                        if xlogscale:
+                            l, = a.loglog(theta, xi, 'x', label=obs['name'])
+                            a.loglog(theta, -xi, 's', color=l.get_color())
+                        else:
+                            l, = a.plot(theta, xi, 'x', label=obs['name'])
+                            a.plot(theta, -xi, 's', color=l.get_color())
+                            a.set_yscale('log')
                 else:
                     theta, xi, cov = res
                     err = cov.diagonal()**0.5
-                    a.errorbar(theta, xi/xi_th, fmt='.', label='TXPipe Data/CCL Theory')
-                    a.axhline(y=1, color='k', ls = ':')
+                    if ratios:
+                        theta_th, xi_th, cov_th = res_theory
+                        a.errorbar(theta, xi/xi_th, err/xi_th, fmt='.', label='TXPipe Data/CCL Theory')
+                        a.axhline(y=1, color='k', ls = ':')
+                    else:
+                        a.errorbar(theta, xi, err, fmt='.', label=obs['name'], capsize=5)
+                        a.set_yscale('log')
                     if xlogscale:
                         a.set_xscale('log')
 
+            if not ratios:
+                # plot theory
+                for theory in obs_theory:
+                #for theory in theory_data:
+                    if len(res) == 2:
+                        theta, xi = theory[(corr, i, j)]
+                    else:
+                        theta, xi, _ = theory[(corr, i, j)]
+                    if xlogscale:
+                        a.loglog(theta, xi, '-', label=theory['name'])
+                    else:
+                        a.plot(theta, xi, '-', label=theory['name'])
 
-            axis_setup(a, i, j, ny, 0.6, 1.4, name)
+            if ratios:
+                axis_setup(a, i, j, ny, 0.6, 1.4, name)
+            else:
+                axis_setup(a, i, j, ny, ymin, ymax, name)
             if corr in [EE, ED, DD]:
                 a.set_xlim(90, 1500)
 
@@ -499,20 +409,11 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
 
-                if (i==0) & (j==3):
-                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
-                    # double free or corruption (!prev)
-                    # Since there is no lensing for this one, set the prediction to zero.
-                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
-                else:
+                try:
                     theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-
-                    
-                #try:
-                #    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-                #except pyccl.CCLError as err:
-                #    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
-                #    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
+                except pyccl.CCLError as err:
+                    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
+                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
 
     return theory
 

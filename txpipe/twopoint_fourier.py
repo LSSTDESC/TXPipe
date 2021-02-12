@@ -728,6 +728,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
     inputs = [
         ('summary_statistics_fourier', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
+        ('twopoint_theory_fourier', SACCFile),
     ]
     outputs = [
         ('shear_cl_ee', PNGFile),
@@ -764,12 +765,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
-        print("Manually specifying matter_power_spectrum and Neff")
-        #cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        #    matter_power_spectrum='emu', Neff=3.04)
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-            matter_power_spectrum='halofit', Neff=3.04)
-        print(cosmo)
+        filename_theory = self.get_input('twopoint_theory_fourier')
         
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
@@ -785,8 +781,9 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=True)
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures,
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
+                         xi=False, xlogscale=True)
 
         outputs = {
             "galaxy_shear_cl_ee": self.open_output('shear_cl_ee_ratio',
@@ -796,8 +793,9 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=True, ratios=True)
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures, 
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
+                         xi=False, xlogscale=True, ratios=True)
 
         
         for fig in outputs.values():
