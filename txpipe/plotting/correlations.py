@@ -146,7 +146,6 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.set_ylim(ymin, ymax)
 
 
-#def make_plot(corr, obs_data, theory_data, fig=None, xlogscale=True, ratios=False):
 def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False):
     import matplotlib.pyplot as plt
     nbin_source = obs_data[0]['nbin_source']
