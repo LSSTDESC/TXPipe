@@ -6,7 +6,6 @@ import numpy as np
 import random
 import collections
 import sys
-import pdb
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
