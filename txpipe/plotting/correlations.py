@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import yaml
-import pdb
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -326,6 +325,10 @@ def extract_observables_plot_data(data, label):
                     obs[(t, i, j)] = res
     return obs
 
+
+"""
+This whole function below can be removed now since it is not used anymore. 
+"""
 def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=False):
     import pyccl
     
