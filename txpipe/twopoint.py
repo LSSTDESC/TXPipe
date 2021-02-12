@@ -1878,7 +1878,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('lens_photoz_stack', HDFFile),
         ('random_cats_source', RandomsCatalog),
         ('patch_centers', TextFile),
-        #('photoz_pdfs', PhotozPDFFile),
+        ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', FiducialCosmology),
         ('tracer_metadata', HDFFile),
     ]
