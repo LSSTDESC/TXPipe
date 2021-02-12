@@ -109,7 +109,7 @@ TXTwoPoint:
     nbins: 15
     verbose: 0
     use_true_shear: False
-    subtract_mean_shear = True
+    subtract_mean_shear: True
 
 TXTwoPointLensCat:
     binslop: 0.0
@@ -123,7 +123,7 @@ TXTwoPointLensCat:
     nbins: 15
     verbose: 0
     use_true_shear: False
-    subtract_mean_shear = True
+    subtract_mean_shear: True
     
 TXTwoPointFourier:
     chunk_rows: 100000
