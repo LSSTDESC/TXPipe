@@ -1907,6 +1907,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'metric': 'Rperp',
         'use_true_shear': False,
         'subtract_mean_shear':False,
+        'redshift_shearcatalog': False,
         }
 
     def run(self):
@@ -1966,11 +1967,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
             data[col] = g[col][:]
 
         if self.config['3Dcoords']:
-            #h = self.open_input('photoz_pdfs')
-            #g = h['pdf']
-            #data['mu'] = g['mu'][:]
             #Temporary fix for not running PDF's on DES
-            data['mu'] = g['mean_z']
+            if self.config['redshift_shearcatalog']:
+                data['mu'] = g['mean_z']
+            else: 
+                h = self.open_input('photoz_pdfs')
+                g = h['point_estimates']
+                data['mu'] = g['z_mean'][:]
 
     def load_random_catalog(self, data):
         filename = self.get_input('random_cats_source')
