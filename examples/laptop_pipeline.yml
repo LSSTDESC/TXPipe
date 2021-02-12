@@ -95,7 +95,7 @@ inputs:
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # We are not using Random_cat_source for now
-    random_cats_source: None
+    random_cats_source: 
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
