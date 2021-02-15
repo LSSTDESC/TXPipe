@@ -40,7 +40,8 @@ stages:
       nprocess: 2
       nodes: 3
       threads_per_process: 64
-    - name: TXTwoPointTheory
+    - name: TXTwoPointTheoryReal
+    - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
       threads_per_process: 64
@@ -63,7 +64,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/no_shape_noise/feb3_2021_max100arcmin
+output_dir: data/cosmodc2/outputs_redmagic/no_shape_noise/feb3_2021_max100arcmin_ztrue
 config: examples/config/cosmodc2_config_no_shape_noise.yml
 
 # On NERSC, set this before running:

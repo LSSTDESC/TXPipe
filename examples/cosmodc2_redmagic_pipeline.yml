@@ -40,7 +40,8 @@ stages:
       threads_per_process: 64
       nprocess: 2
       nodes: 2
-    - name: TXTwoPointTheory
+    - name: TXTwoPointTheoryReal
+    - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
       threads_per_process: 64
