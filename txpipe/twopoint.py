@@ -869,8 +869,23 @@ class TXTwoPointTheoryReal(PipelineStage):
                 # compute theory
                 cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
                 theta, *_ = s.get_theta_xi('galaxy_shearDensity_xi_t', f'source_{i}' , f'lens_{j}')
-                gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
 
+
+                if ((i==0) & (j==3)) or ((i==0) & (j==4)):
+                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:                                                                                               
+                    # double free or corruption (!prev)                                                                                                                                                     
+                    # Since there is no lensing for this one, set the prediction to zero.                                                                                                                   
+                    gt = np.zeros(len(theta))                                                                                                                                                               
+                else:                                                                                                                                                                                       
+                    gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+
+                # the code below still doesnt work to avoid TXPipe crashing.
+                #try:
+                #    gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+                #except pyccl.CCLError as err:
+                #    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
+                #    gt = np.zeros(len(theta))  
+                    
                 # replace data values in the sacc object for the theory ones
                 ind = s.indices('galaxy_shearDensity_xi_t', (f'source_{i}', f'lens_{j}'))
                 for p, q in enumerate(ind):
