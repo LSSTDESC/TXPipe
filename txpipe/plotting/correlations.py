@@ -229,8 +229,6 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
                 res = obs[(corr, i, j)]
                 if ratios:
                     res_theory = obs_theory[index][(corr, i, j)]
-                #if ratios:
-                #    theta_th, xi_th = theory_data[index][(corr, i, j)]
                 if len(res) == 2:
                     theta, xi = res
                     if ratios:
@@ -249,7 +247,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
                     theta, xi, cov = res
                     err = cov.diagonal()**0.5
                     if ratios:
-                        theta_th, xi_th, cov_th = res_theory
+                        theta_th, xi_th = res_theory
                         a.errorbar(theta, xi/xi_th, err/xi_th, fmt='.', label='TXPipe Data/CCL Theory')
                         a.axhline(y=1, color='k', ls = ':')
                     else:
@@ -261,11 +259,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
             if not ratios:
                 # plot theory
                 for theory in obs_theory:
-                #for theory in theory_data:
-                    if len(res) == 2:
-                        theta, xi = theory[(corr, i, j)]
-                    else:
-                        theta, xi, _ = theory[(corr, i, j)]
+                    theta, xi = theory[(corr, i, j)]
                     if xlogscale:
                         a.loglog(theta, xi, '-', label=theory['name'])
                     else:
@@ -410,12 +404,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-
-                try:
-                    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-                except pyccl.CCLError as err:
-                    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
-                    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
+                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
 
     return theory
 
