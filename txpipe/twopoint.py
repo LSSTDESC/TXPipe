@@ -739,27 +739,24 @@ class TXTwoPointLensCat(TXTwoPoint):
         f.close()
 
 
-class TXTwoPointTheory(PipelineStage):
+class TXTwoPointTheoryReal(PipelineStage):
     """
-    Make n(z) plots
+    Compute theory in CCL in real space and save to a sacc file.
     """
-    name='TXTwoPointTheory'
+    name='TXTwoPointTheoryReal'
     inputs = [
-        ('summary_statistics_real', SACCFile),
-        ('summary_statistics_fourier', SACCFile),
+        ('twopoint_data_real', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
     ]
     outputs = [
         ('twopoint_theory_real', SACCFile),
-        ('twopoint_theory_fourier', SACCFile),
     ]
     
 
     def run(self):
         import sacc
 
-        # Real space
-        filename = self.get_input('summary_statistics_real')
+        filename = self.get_input('twopoint_data_real')
         s = sacc.Sacc.load_fits(filename)
 
         # TODO: when there is a better Cosmology serialization method
@@ -769,19 +766,14 @@ class TXTwoPointTheory(PipelineStage):
         matter_power_spectrum='halofit', Neff=3.04)
         print(cosmo)
 
-        s_theory, tracers, nbin_source, nbin_lens = self.replace_with_theory_real(s, cosmo)
+        s_theory = self.replace_with_theory_real(s, cosmo)
+        
+        # Remove covariance
+        s_theory.covariance = None
+        
         # save the output to Sacc file
         s_theory.save_fits(self.get_output('twopoint_theory_real'), overwrite=True)
 
-        # Fourier space
-        filename = self.get_input('summary_statistics_fourier')
-        s = sacc.Sacc.load_fits(filename)
-
-        s_theory = self.replace_with_theory_fourier(s, cosmo, tracers, nbin_source, nbin_lens)
-        # save the output to Sacc file
-        s_theory.save_fits(self.get_output('twopoint_theory_fourier'), overwrite=True)
-
-        
     def read_nbin(self, s):
         import sacc
 
@@ -877,32 +869,80 @@ class TXTwoPointTheory(PipelineStage):
                 # compute theory
                 cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
                 theta, *_ = s.get_theta_xi('galaxy_shearDensity_xi_t', f'source_{i}' , f'lens_{j}')
-                if (i==0) & (j==3):
-                    # to avoid an error raising for this bin only when trying to call pyccl. The error reads:
-                    # double free or corruption (!prev)
-                    # Since there is no lensing for this one, set the prediction to zero.
-                    gt = np.zeros(len(theta))
-                else:
-                    gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-                    
+                gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+
                 # replace data values in the sacc object for the theory ones
                 ind = s.indices('galaxy_shearDensity_xi_t', (f'source_{i}', f'lens_{j}'))
                 for p, q in enumerate(ind):
                     s.data[q].value = gt[p]
 
 
-                # somehow the exception still gives an error, only the if statement above works.
-                #try:
-                #    theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-                #except pyccl.CCLError as err:
-                #    print(f"WARNING: theory for GGL pair {i},{j} failed with: {type(err)} {err}")
-                #    theory[GAMMA, i, j] = theta, np.zeros(len(theta))
+        return s
 
-        return s, tracers, nbin_source, nbin_lens
 
-    def replace_with_theory_fourier(self, s, cosmo, tracers, nbin_source, nbin_lens):
+class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
+    """
+    Compute theory from CCL in Fourier space and save to a sacc file.
+    """
+    name='TXTwoPointTheoryFourier'
+    inputs = [
+        ('twopoint_data_fourier', SACCFile),
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
+    ]
+    outputs = [
+        ('twopoint_theory_fourier', SACCFile),
+    ]
+    
+
+    def run(self):
+        import sacc
+
+        filename = self.get_input('twopoint_data_fourier')
+        s = sacc.Sacc.load_fits(filename)
+
+        # TODO: when there is a better Cosmology serialization method
+        # switch to that
+        print("Manually specifying matter_power_spectrum and Neff")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+        matter_power_spectrum='halofit', Neff=3.04)
+        print(cosmo)
+
+        s_theory = self.replace_with_theory_fourier(s, cosmo)
+
+        # Remove covariance
+        s_theory.covariance = None
+        
+        # save the output to Sacc file
+        s_theory.save_fits(self.get_output('twopoint_theory_fourier'), overwrite=True)
+
+        
+    def read_nbin(self, s):
+        import sacc
+
+        cl_ee = sacc.standard_types.galaxy_shear_cl_ee
+        cl_density = sacc.standard_types.galaxy_density_cl
+
+        source_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(cl_ee):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        lens_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(cl_density):
+            lens_tracers.add(b1)
+            lens_tracers.add(b2)
+
+
+        return len(source_tracers), len(lens_tracers)
+
+    
+    def replace_with_theory_fourier(self, s, cosmo):
 
         import pyccl
+
+        nbin_source, nbin_lens = self.read_nbin(s)
+        tracers = self.get_ccl_tracers(s, cosmo)
+        
         data_types = s.get_data_types()
         if 'galaxy_shearDensity_cl_b' in data_types:
             # Remove galaxy_shearDensity_cl_b measurement values
