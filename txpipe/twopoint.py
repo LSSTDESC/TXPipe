@@ -1977,8 +1977,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
     def load_random_catalog(self, data):
         # For now we are just bypassing this, since it is not needed
-        pass 
+
         filename = self.get_input('random_cats_source')
+        if filename ='None':
+            filename = None
+
         if filename is None:
             print("Not using randoms")
             return
