@@ -1979,7 +1979,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         # For now we are just bypassing this, since it is not needed
 
         filename = self.get_input('random_cats_source')
-        if filename ='None':
+        if filename =='None':
             filename = None
 
         if filename is None:
