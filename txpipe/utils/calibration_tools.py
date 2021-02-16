@@ -165,9 +165,10 @@ class ParallelCalibratorMetacal:
         """
         self.selector = selector
         self.R = []
-        self.S = []
+        self.weights = []
         self.counts = []
         self.delta_gamma = delta_gamma
+        self.sel_bias_means = ParallelMean(size=8)
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -217,29 +218,34 @@ class ParallelCalibratorMetacal:
         else:
             raise ValueError("Selection function passed to Calibrator return type not known")
 
-        S = np.zeros((2,2))
-        R = np.zeros((n,2,2))
-
         # This is the selection bias, associated with the fact that sometimes different
         # objects would be selected to be put into a bin depending on their shear
-        S[0,0] = (g1[sel_1p].mean() - g1[sel_1m].mean()) / self.delta_gamma
-        S[0,1] = (g1[sel_2p].mean() - g1[sel_2m].mean()) / self.delta_gamma
-        S[1,0] = (g2[sel_1p].mean() - g2[sel_1m].mean()) / self.delta_gamma
-        S[1,1] = (g2[sel_2p].mean() - g2[sel_2m].mean()) / self.delta_gamma
 
         # This is the estimator response, correcting  bias of the shear estimator itself
+        R = np.zeros((n,2,2))
         R[:,0,0] = (data_1p['mcal_g1'][sel_00] - data_1m['mcal_g1'][sel_00]) / self.delta_gamma
         R[:,0,1] = (data_2p['mcal_g1'][sel_00] - data_2m['mcal_g1'][sel_00]) / self.delta_gamma
         R[:,1,0] = (data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]) / self.delta_gamma
         R[:,1,1] = (data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]) / self.delta_gamma
 
-        if n:
-            R_mean = np.average(R,axis=0, weights=weight[sel_00])
-        else:
-            R_mean = 0.0
-        self.R.append(R_mean)
-        self.S.append(S)
+        # Get the values of R weighted by the weight values
+        R = (R.T @ weight[sel_00]).T
+
+
+        self.sel_bias_means.add_data(0, g1[sel_1p], weight[sel_1p])
+        self.sel_bias_means.add_data(1, g1[sel_1m], weight[sel_1m])
+        self.sel_bias_means.add_data(2, g1[sel_2p], weight[sel_2p])
+        self.sel_bias_means.add_data(3, g1[sel_2m], weight[sel_2m])
+        self.sel_bias_means.add_data(4, g2[sel_1p], weight[sel_1p])
+        self.sel_bias_means.add_data(5, g2[sel_1m], weight[sel_1m])
+        self.sel_bias_means.add_data(6, g2[sel_2p], weight[sel_2p])
+        self.sel_bias_means.add_data(7, g2[sel_2m], weight[sel_2m])
+
+
+
+        self.R.append(R)
         self.counts.append(n)
+        self.weights.append(weight[sel_00].sum())
 
         return sel_00
 
@@ -262,26 +268,23 @@ class ParallelCalibratorMetacal:
         # MPI allgather to get full arrays for everyone
         if comm is not None:
             self.R = sum(comm.allgather(self.R), [])
-            self.S = sum(comm.allgather(self.S), [])
             self.counts = sum(comm.allgather(self.counts), [])
+            self.weights = sum(comm.allgather(self.weights), [])
 
-        R_sum = np.zeros((2,2))
-        S_sum = np.zeros((2,2))
-        N = 0
+        _, S = self.sel_bias_means.collect(comm)
 
-        # Find the correctly weighted averages of all the values we have
-        for R, S, n in zip(self.R, self.S, self.counts):
-            # This deals with cases where n is 0 and R/S are NaN
-            if n == 0:
-                continue
-            R_sum += R*n
-            S_sum += S*n
-            N += n
+        R_mean = np.sum(self.R, axis=0) / np.sum(self.weights, axis=0)
+        count_sum  = np.sum(self.counts)
 
-        R = R_sum / N
-        S = S_sum / N
-        
-        return R, S, N
+        S_mean = np.zeros((2,2))
+        S_mean[0, 0] = S[0] - S[1]
+        S_mean[0, 1] = S[2] - S[3]
+        S_mean[1, 0] = S[4] - S[5]
+        S_mean[1, 1] = S[6] - S[7]
+        S_mean /= self.delta_gamma
+
+        return R_mean, S_mean, count_sum
+
 
 
 class ParallelCalibratorNonMetacal:

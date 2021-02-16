@@ -1,5 +1,94 @@
-from ..utils.calibration_tools import MeanShearInBins
+from ..utils.calibration_tools import MeanShearInBins, ParallelCalibratorMetacal
 import numpy as np
+import mockmpi
+
+
+
+def select_all_bool(data):
+    return np.repeat(True, data['mcal_g2'].size)
+
+def select_all_index(data):
+    np.arange(data['mcal_g2'].size)
+
+def select_all_where(data):
+    return np.where(data['mcal_g2'] != 68754337.86543434)
+
+
+
+def core_metacal(comm):
+    delta_gamma = 0.02
+
+    nproc = 1 if comm is None else comm.size
+
+    N = 10
+    g1_true = np.random.normal(0, 0.1, size=N)
+    g2_true = np.random.normal(0, 0.1, size=N)
+    g_true = np.array([g1_true, g2_true])
+    R_true = np.array([[0.9, 0.1], [0.07, 0.8]])
+    g = R_true @ g_true
+    g_1p = R_true @ (g_true + 0.5*delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_true @ (g_true + 0.5*delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    g_2p = R_true @ (g_true + 0.5*delta_gamma * np.array([0, +1])[:, np.newaxis])
+    g_2m = R_true @ (g_true + 0.5*delta_gamma * np.array([0, -1])[:, np.newaxis])
+    weight = np.ones(N)
+
+    data = {
+        "mcal_g1": g[0],
+        "mcal_g1_1p": g_1p[0],
+        "mcal_g1_1m": g_1m[0],
+        "mcal_g1_2p": g_2p[0],
+        "mcal_g1_2m": g_2m[0],
+        "mcal_g2": g[1],
+        "mcal_g2_1p": g_1p[1],
+        "mcal_g2_1m": g_1m[1],
+        "mcal_g2_2p": g_2p[1],
+        "mcal_g2_2m": g_2m[1],
+        "weight": weight,
+    }
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal.add_data(data)
+        R, S, n = cal.collect(comm)
+
+        assert np.allclose(R, R_true)
+        assert np.allclose(S, 0.0)
+        assert n == N * nproc
+
+    # equal non-unit weights - everything should be the same.
+    data["weight"] *= 0.5
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal.add_data(data)
+        R, S, n = cal.collect(comm)
+        print("R = ", R)
+
+        assert np.allclose(R, R_true)
+        assert np.allclose(S, 0.0)
+        assert n == N * nproc
+
+    # random weights.  since R is constant this should still be the same
+    data["weight"] = np.random.uniform(0, 1, size=N)
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal.add_data(data)
+        R, S, n = cal.collect(comm)
+        print("R = ", R)
+
+        assert np.allclose(R, R_true)
+        assert np.allclose(S, 0.0)
+        assert n == N * nproc
+
+def test_metacalibrator_serial():
+    core_metacal(None)
+
+def test_metacalibrator_parallel():
+    mockmpi.mock_mpiexec(2, core_metacal)
+    mockmpi.mock_mpiexec(10, core_metacal)
+
 
 def test_mean_shear():
     name = "x"
@@ -44,6 +133,10 @@ def test_mean_shear():
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
+def test_mean_shear_weights():
+    name = "x"
+    limits = [-1., 0., 1.]
+    delta_gamma = 0.02
     # downweighting half of samples
     b1 = MeanShearInBins(name, limits, delta_gamma)
 
@@ -72,6 +165,7 @@ def test_mean_shear():
 
     mu, g1, g2, sigma1, sigma2 = b1.collect()
     # Now we have downweighted some of the samples some of these values change.
+    # Update - the calibration changes too, so this test is wrong
     assert np.allclose(mu, [-0.5, 0.5])
     assert np.allclose(g1, [-0.65, 0.35])
     assert np.allclose(g2, [-1.3, 0.7])
@@ -83,4 +177,7 @@ def test_mean_shear():
 
 
 if __name__ == '__main__':
-    test_mean_shear()
+    test_metacalibrator_serial()
+    test_metacalibrator_parallel()
+    #test_mean_shear()
+    # test_mean_shear_weights()
