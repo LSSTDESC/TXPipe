@@ -16,7 +16,7 @@ TXCosmoDC2Mock:
     flip_g2: True # to match metacal
 
 TXIngestRedmagic:
-    lens_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9]
+    lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
 
 TXSourceTrueNumberDensity:
     nz: 301
@@ -75,18 +75,9 @@ TXSourceSelector:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.3, 0.55, 0.8, 1.05, 2.0]
+    source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.]
     chunk_rows: 100000
-    # Mag cuts
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 19.6
-    i_lo_cut: 17.5
-    i_hi_cut: 19.9
-    r_i_cut: 2.0
-    # may also need one for r_cpar_cut
-    true_z: True
+    true_z: False
     shear_prefix: mcal_
 
 TXRandomCat:
@@ -99,10 +90,14 @@ TXJackknifeCenters:
 TXDiagnosticPlots:
     shear_prefix: mcal_
 
+TXFourierGaussianCovariance:
+    use_true_shear: True
+
 TXRealGaussianCovariance:
     min_sep: 2.5
-    max_sep: 250.
-    nbins: 20
+    max_sep: 100.
+    nbins: 15
+    use_true_shear: True
 
 TXTwoPoint:
     binslop: 0.0
@@ -112,10 +107,11 @@ TXTwoPoint:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 250
-    nbins: 20
+    max_sep: 100
+    nbins: 15
     verbose: 0
     use_true_shear: True
+    subtract_mean_shear: True
 
 TXTwoPointLensCat:
     binslop: 0.0
@@ -125,10 +121,11 @@ TXTwoPointLensCat:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 250
-    nbins: 20
+    max_sep: 100
+    nbins: 15
     verbose: 0
     use_true_shear: True
+    subtract_mean_shear: True
     
 TXTwoPointFourier:
     chunk_rows: 100000
@@ -137,12 +134,10 @@ TXTwoPointFourier:
     apodization_size: 0.0
     cache_dir: ./cache
     true_shear: True
-    n_ell: 25
+    n_ell: 20
     ell_max: 3000
     nside: 2048
     
-TXRealGaussianCovariance:
-    use_true_shear: True
 
 TXClusteringNoiseMaps:
     n_realization: 30
