@@ -165,7 +165,6 @@ def test_mean_shear_weights():
 
     mu, g1, g2, sigma1, sigma2 = b1.collect()
     # Now we have downweighted some of the samples some of these values change.
-    # Update - the calibration changes too, so this test is wrong
     assert np.allclose(mu, [-0.5, 0.5])
     assert np.allclose(g1, [-0.65, 0.35])
     assert np.allclose(g2, [-1.3, 0.7])
@@ -179,5 +178,5 @@ def test_mean_shear_weights():
 if __name__ == '__main__':
     test_metacalibrator_serial()
     test_metacalibrator_parallel()
-    #test_mean_shear()
-    # test_mean_shear_weights()
+    test_mean_shear()
+    test_mean_shear_weights()
