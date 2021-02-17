@@ -164,10 +164,9 @@ class ParallelCalibratorMetacal:
             The difference in applied g between 1p and 1m metacal variants
         """
         self.selector = selector
-        self.R = []
-        self.weights = []
-        self.counts = []
+        self.count = 0
         self.delta_gamma = delta_gamma
+        self.cal_bias_means = ParallelMean(size=4)
         self.sel_bias_means = ParallelMean(size=8)
 
     def add_data(self, data, *args, **kwargs):
@@ -184,13 +183,19 @@ class ParallelCalibratorMetacal:
         
         """
         # These all wrap the catalog such that lookups find the variant
-        # column if available
+        # column if available.
+        # For example, if I look up data_1p["x"] then it will check if
+        # data["x_1p"] exists and return that if so.  Otherwise it will
+        # fall back to "x"
         data_00 = _DataWrapper(data, '')
         data_1p = _DataWrapper(data, '_1p')
         data_1m = _DataWrapper(data, '_1m')
         data_2p = _DataWrapper(data, '_2p')
         data_2m = _DataWrapper(data, '_2m')
 
+        # These are the selections from this chunk of data
+        # that we would make under different shears, the baseline
+        # and all the others
         sel_00 = self.selector(data_00, *args, **kwargs)
         sel_1p = self.selector(data_1p, *args, **kwargs)
         sel_1m = self.selector(data_1m, *args, **kwargs)
@@ -200,14 +205,13 @@ class ParallelCalibratorMetacal:
         g1 = data_00['mcal_g1']
         g2 = data_00['mcal_g2']
         weight = data_00['weight']
-
         # TODO:
         # Use different weights for different variants!
 
         # Selector can return several reasonable ways to choose
-        # objects - where result, boolean mask, integer indices
+        # objects - an np.where result, a boolean mask, or integer indices
         if isinstance(sel_00, tuple):
-            # tupe returned from np.where
+            # tuple returned from np.where
             n = len(sel_00[0])
         elif np.issubdtype(sel_00.dtype, np.integer):
             # integer array
@@ -218,19 +222,30 @@ class ParallelCalibratorMetacal:
         else:
             raise ValueError("Selection function passed to Calibrator return type not known")
 
-        # This is the selection bias, associated with the fact that sometimes different
-        # objects would be selected to be put into a bin depending on their shear
+        # Record the count for this chunk, for summation later
+        self.count += n
 
         # This is the estimator response, correcting  bias of the shear estimator itself
-        R = np.zeros((n,2,2))
-        R[:,0,0] = (data_1p['mcal_g1'][sel_00] - data_1m['mcal_g1'][sel_00]) / self.delta_gamma
-        R[:,0,1] = (data_2p['mcal_g1'][sel_00] - data_2m['mcal_g1'][sel_00]) / self.delta_gamma
-        R[:,1,0] = (data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]) / self.delta_gamma
-        R[:,1,1] = (data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]) / self.delta_gamma
+        # We have four components, and want the weighted mean of each, which we use
+        # the ParallelMean class to get
+        w00 = weight[sel_00]
+        R00 = data_1p['mcal_g1'][sel_00] - data_1m['mcal_g1'][sel_00]
+        R01 = data_2p['mcal_g1'][sel_00] - data_2m['mcal_g1'][sel_00]
+        R10 = data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]
+        R11 = data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]
 
-        # Get the values of R weighted by the weight values
-        R = (R.T @ weight[sel_00]).T
+        self.cal_bias_means.add_data(0, R00, w00)
+        self.cal_bias_means.add_data(1, R01, w00)
+        self.cal_bias_means.add_data(2, R10, w00)
+        self.cal_bias_means.add_data(3, R11, w00)
 
+        # Now we handle the selection bias.  This value is given by the
+        # difference in the (weighted) means of the shears under two selections,
+        # the positive and negative shear, divided by the applied shear
+        # See the second term in equation 14 of https://arxiv.org/pdf/1702.02601
+        # We need to calculate eight means:
+        # (g1 or g2) X (shear applied to 1 or 2) X (plus or minus shear)
+        # We again use the ParallelMean class to handle this for us.
 
         self.sel_bias_means.add_data(0, g1[sel_1p], weight[sel_1p])
         self.sel_bias_means.add_data(1, g1[sel_1m], weight[sel_1m])
@@ -241,12 +256,7 @@ class ParallelCalibratorMetacal:
         self.sel_bias_means.add_data(6, g2[sel_2p], weight[sel_2p])
         self.sel_bias_means.add_data(7, g2[sel_2m], weight[sel_2m])
 
-
-
-        self.R.append(R)
-        self.counts.append(n)
-        self.weights.append(weight[sel_00].sum())
-
+        # The user of this class may need the base selection, so return it
         return sel_00
 
     def collect(self, comm=None):
@@ -265,17 +275,25 @@ class ParallelCalibratorMetacal:
         S: 2x2 array
             Selection bias matrix
         """
-        # MPI allgather to get full arrays for everyone
+        # collect all the things we need
         if comm is not None:
-            self.R = sum(comm.allgather(self.R), [])
-            self.counts = sum(comm.allgather(self.counts), [])
-            self.weights = sum(comm.allgather(self.weights), [])
+            count = comm.allreduce(self.count)
 
+        # Collect the mean values we need
         _, S = self.sel_bias_means.collect(comm)
+        _, R = self.cal_bias_means.collect(comm)
 
-        R_mean = np.sum(self.R, axis=0) / np.sum(self.weights, axis=0)
-        count_sum  = np.sum(self.counts)
+        # Unpack the flat mean R and S values into
+        # matrices
+        R_mean = np.zeros((2, 2))
+        R_mean[0, 0] = R[0]
+        R_mean[0, 1] = R[1]
+        R_mean[1, 0] = R[2]
+        R_mean[1, 1] = R[3]
+        R_mean /= self.delta_gamma
 
+        # Need to take all the diffs to compute the
+        # S term
         S_mean = np.zeros((2,2))
         S_mean[0, 0] = S[0] - S[1]
         S_mean[0, 1] = S[2] - S[3]
@@ -283,7 +301,7 @@ class ParallelCalibratorMetacal:
         S_mean[1, 1] = S[6] - S[7]
         S_mean /= self.delta_gamma
 
-        return R_mean, S_mean, count_sum
+        return R_mean, S_mean, count
 
 
 
