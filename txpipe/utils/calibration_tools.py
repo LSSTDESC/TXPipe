@@ -206,22 +206,7 @@ class ParallelCalibratorMetacal:
         g1 = data_00['mcal_g1']
         g2 = data_00['mcal_g2']
         weight = data_00['weight']
-        # TODO:
-        # Use different weights for different variants!
-
-        # Selector can return several reasonable ways to choose
-        # objects - an np.where result, a boolean mask, or integer indices
-        if isinstance(sel_00, tuple):
-            # tuple returned from np.where
-            n = len(sel_00[0])
-        elif np.issubdtype(sel_00.dtype, np.integer):
-            # integer array
-            n = len(sel_00)
-        elif np.issubdtype(sel_00.dtype, np.bool_):
-            # boolean selection
-            n = sel_00.sum()
-        else:
-            raise ValueError("Selection function passed to Calibrator return type not known")
+        n = g1.size
 
         # Record the count for this chunk, for summation later
         self.count += n
@@ -235,6 +220,8 @@ class ParallelCalibratorMetacal:
         R10 = data_1p['mcal_g2'][sel_00] - data_1m['mcal_g2'][sel_00]
         R11 = data_2p['mcal_g2'][sel_00] - data_2m['mcal_g2'][sel_00]
 
+        # TODO: if there is a weight per variant would we use that here?
+        # Not currently used though.
         self.cal_bias_means.add_data(0, R00, w00)
         self.cal_bias_means.add_data(1, R01, w00)
         self.cal_bias_means.add_data(2, R10, w00)
