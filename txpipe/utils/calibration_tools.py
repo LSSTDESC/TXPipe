@@ -195,7 +195,8 @@ class ParallelCalibratorMetacal:
 
         # These are the selections from this chunk of data
         # that we would make under different shears, the baseline
-        # and all the others
+        # and all the others.  self.selector is a function that the user
+        # supplied in init, not a method
         sel_00 = self.selector(data_00, *args, **kwargs)
         sel_1p = self.selector(data_1p, *args, **kwargs)
         sel_1m = self.selector(data_1m, *args, **kwargs)
