@@ -8,7 +8,7 @@ def select_all_bool(data):
     return np.repeat(True, data['mcal_g2'].size)
 
 def select_all_index(data):
-    np.arange(data['mcal_g2'].size)
+    return np.arange(data['mcal_g2'].size)
 
 def select_all_where(data):
     return np.where(data['mcal_g2'] != 68754337.86543434)
@@ -60,7 +60,7 @@ def core_metacal(comm):
     data["weight"] *= 0.5
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal = ParallelCalibratorMetacal(sel, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
         print("R = ", R)
@@ -73,7 +73,7 @@ def core_metacal(comm):
     data["weight"] = np.random.uniform(0, 1, size=N)
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal = ParallelCalibratorMetacal(sel, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
         print("R = ", R)
