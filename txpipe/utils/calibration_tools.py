@@ -279,6 +279,9 @@ class ParallelCalibratorMetacal:
         # collect all the things we need
         if comm is not None:
             count = comm.allreduce(self.count)
+        else:
+            count = self.count
+
 
         # Collect the mean values we need
         _, S = self.sel_bias_means.collect(comm)
