@@ -11,7 +11,8 @@ def select_all_index(data):
     return np.arange(data['mcal_g2'].size)
 
 def select_all_where(data):
-    return np.where(data['mcal_g2'] != 68754337.86543434)
+    # we just want to select everything here too
+    return np.where(data['mcal_g2'] * 0 == 0)
 
 
 
