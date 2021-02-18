@@ -19,6 +19,7 @@ stages:
       threads_per_process: 2
     - name: TXBlinding           # Blind the data following Muir et al
       threads_per_process: 2
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots      # Make plots of 2pt correlations
     - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points

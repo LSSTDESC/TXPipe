@@ -328,9 +328,10 @@ class TXPhotozPlots(PipelineStage):
         ('nz_lens', PNGFile),
         ('nz_source', PNGFile),
     ]
-    config_options = {
 
+    config_options = {
     }
+
 
     def run(self):
         import matplotlib
@@ -340,15 +341,17 @@ class TXPhotozPlots(PipelineStage):
         
         out1 = self.open_output('nz_lens', wrapper=True)
         f.plot('lens')
-        plt.legend()
+        plt.legend(frameon=False)
         plt.title("Lens n(z)")
+        plt.xlim(xmin=0)
         out1.close()
 
         f = self.open_input('shear_photoz_stack', wrapper=True)
         out2 = self.open_output('nz_source', wrapper=True)
         f.plot('source')
-        plt.legend()
+        plt.legend(frameon=False)
         plt.title("Source n(z)")
+        plt.xlim(xmin=0)
         out2.close()
 
 

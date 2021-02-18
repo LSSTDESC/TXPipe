@@ -728,11 +728,13 @@ class TXTwoPointPlotsFourier(PipelineStage):
     inputs = [
         ('summary_statistics_fourier', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
+        ('twopoint_theory_fourier', SACCFile),
     ]
     outputs = [
         ('shear_cl_ee', PNGFile),
         ('shearDensity_cl', PNGFile),
         ('density_cl', PNGFile),
+        ('shear_cl_ee_ratio', PNGFile),
     ]
 
     config_options = {
@@ -763,8 +765,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
-
+        filename_theory = self.get_input('twopoint_theory_fourier')
+        
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
                 figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
@@ -779,9 +781,23 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=True)
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures,
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
+                         xi=False, xlogscale=True)
 
+        outputs = {
+            "galaxy_shear_cl_ee": self.open_output('shear_cl_ee_ratio',
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+
+        }
+
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures, 
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
+                         xi=False, xlogscale=True, ratios=True)
+
+        
         for fig in outputs.values():
             fig.close()
 
