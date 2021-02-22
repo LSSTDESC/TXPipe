@@ -83,8 +83,8 @@ class CLMagnificationBackgroundSelector(PipelineStage):
     config_options = {
         "ra_range": [50.0, 73.1],
         "dec_range": [-45.0, -27.0],
-        "mag_cut": 1.5.
-        "zmin": 1.5.
+        "mag_cut": 26.0,
+        "zmin": 1.5,
         "nside": 2048,
         "initial_size": 100_000
     }
@@ -157,7 +157,7 @@ class CLMagnificationBackgroundSelector(PipelineStage):
             pix = np.where(hit_map > 0)[0]
             val = np.ones(footprint_pix.size, dtype=np.int8)
 
-            f = self.open_output("cluster_mag_footprint", wrapper=True)
+            with  self.open_output("cluster_mag_footprint", wrapper=True) as f:
                 f.write_map("footprint", pix, val, self.config)
 
 
@@ -226,12 +226,15 @@ class CLMagnificationRandoms(PipelineStage):
 
         output_file.close()
 
+
+
 class CLMagnificationPatches(PipelineStage):
     """
 
     This is currently copied from the in-progress treecorr-mpi branch.
     Think later how to 
     """
+    name = "CLMagnificationPatches"
     inputs = [("cluster_mag_randoms", HDFFile)]
     outputs = [("cluster_mag_patches", TextFile)]
     config_options = {
@@ -274,6 +277,7 @@ class CLMagnificationCorrelations(PipelineStage):
         ("cluster_mag_halo_catalog", HDFFile),
         ("cluster_mag_background", HDFFile),
         ("cluster_mag_patches", TextFile),
+        ("cluster_mag_randoms", HDFFile),
     ]
     outputs = []
     config_options = {
@@ -292,44 +296,44 @@ class CLMagnificationCorrelations(PipelineStage):
         import treecorr
 
         halo_file = self.get_input("cluster_mag_halo_catalog")
-        source_file = self.get_input("cluster_mag_background")
+        background_file = self.get_input("cluster_mag_background")
+        randoms_file = self.get_input("cluster_mag_randoms")
         patch_centers = self.get_input("cluster_mag_patches")
 
         # create foreground catalog
-        halo_cat = treecorr.Catalog(halo_file, self.config, patch_centers=patch_centers)
-        source_cat = treecorr.Catalog(source_file, self.config, patch_centers=patch_centers, ext="randoms")
-        random_cat = 
+        halo_cat = treecorr.Catalog(halo_file, self.config, patch_centers=patch_centers, ext="halos", ra_col="ra", dec_col="dec", ra_unit="degrees", dec_unit="degrees")
+
         # create background catalog
+        bg_cat = treecorr.Catalog(background_file, self.config, patch_centers=patch_centers, ext="sample", ra_col="ra", dec_col="dec", ra_unit="degrees", dec_unit="degrees")
 
-        # create random catalog
+        #  ... ADD randoms ... 
+        ran_cat = treecorr.Catalog(randoms_file, self.config, patch_centers=patch_centers, ext="randoms", ra_col="ra", dec_col="dec", ra_unit="degrees", dec_unit="degrees")
 
-        # run under MPI
-    cat_rand_halo =  rand_cat(cat_halo, Nobj = cat_halo.ra.size, patch_centers=patch_centers)
+
+        ls = treecorr.NNCorrelation(**self.config)
+        ls.process(halo_cat, bg_cat, low_mem=True)
     
-    ls = treecorr.NNCorrelation(**bin_dict)
-    ls.process(cat_halo, cat)
+    # ll = treecorr.NNCorrelation(**bin_dict)
+    # ll.process(cat_halo, cat_halo)
     
-    ll = treecorr.NNCorrelation(**bin_dict)
-    ll.process(cat_halo, cat_halo)
+    # lr = treecorr.NNCorrelation(**bin_dict)
+    # lr.process(cat_halo, rand)
     
-    lr = treecorr.NNCorrelation(**bin_dict)
-    lr.process(cat_halo, rand)
+    # xi, varxi = ls.calculateXi(rr, lr, rd)
+    # r = np.exp(ls.meanlogr)
+    # sigxi = np.sqrt(varxi)
+    # covxi = ls.estimate_cov(bin_dict['var_method'])
     
-    xi, varxi = ls.calculateXi(rr, lr, rd)
-    r = np.exp(ls.meanlogr)
-    sigxi = np.sqrt(varxi)
-    covxi = ls.estimate_cov(bin_dict['var_method'])
+    # ls_rand = treecorr.NNCorrelation(**bin_dict)
+    # ls_rand.process(cat_rand_halo, cat)
     
-    ls_rand = treecorr.NNCorrelation(**bin_dict)
-    ls_rand.process(cat_rand_halo, cat)
+    # lr_rand = treecorr.NNCorrelation(**bin_dict)
+    # lr_rand.process(cat_rand_halo, rand)
     
-    lr_rand = treecorr.NNCorrelation(**bin_dict)
-    lr_rand.process(cat_rand_halo, rand)
-    
-    xi_rand, varxi_rand = ls_rand.calculateXi(rr, lr_rand, rd)
-    r_rand = np.exp(ls_rand.meanlogr)
-    sigxi_rand = np.sqrt(varxi_rand)
-    covxi_rand = ls_rand.estimate_cov(bin_dict['var_method'])
+    # xi_rand, varxi_rand = ls_rand.calculateXi(rr, lr_rand, rd)
+    # r_rand = np.exp(ls_rand.meanlogr)
+    # sigxi_rand = np.sqrt(varxi_rand)
+    # covxi_rand = ls_rand.estimate_cov(bin_dict['var_method'])
 
 
 
