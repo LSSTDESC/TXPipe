@@ -32,3 +32,7 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
+from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
+from .calibrate import TXShearCalibrationMetacal
+from .jackknife import TXJackknifeCenters
+from .twopoint_null_tests import TXGammaTFieldCenters
