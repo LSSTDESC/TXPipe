@@ -117,7 +117,7 @@ class CLMagnificationBackgroundSelector(PipelineStage):
 
         s = 0
         # Loop through the data
-        for _, _, data in it:
+        for s1, e1, data in it:
             # make selection
             sel = (
                     (data['ra'] > ra_min)
@@ -132,9 +132,14 @@ class CLMagnificationBackgroundSelector(PipelineStage):
             dec_sel = data['dec'][sel]
             pix = healpy.ang2pix(nside, ra_sel, dec_sel, lonlat=True)
             hit_map[pix] = 1
+            n = ra_sel.size
+            f = n / (e1 - s1)
 
-            e = s + ra_sel.size
+            print(f"Read data chunk {s1:,} - {e1:,} and selected {n:,} objects ({f:.1%})")
+
+            e = s + n
             if e > sz:
+                print(f"Resizing output to {sz}")
                 sz = int(1.5 * e)
                 ra.resize((sz,))
                 dec.resize((sz,))
