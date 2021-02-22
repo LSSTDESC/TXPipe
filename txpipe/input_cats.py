@@ -201,13 +201,13 @@ class TXCosmoDC2Mock(PipelineStage):
         if self.rank == 0:
             # all files should now be closed for all procs
             print(f"Resizing all outupts to size {n}")
-            f = h5py.File(self.get_output('photometry_catalog'))
+            f = h5py.File(self.get_output('photometry_catalog'), 'r+')
             g = f['photometry']
             for col in list(g.keys()):
                 g[col].resize((n,))
             f.close()
 
-            f = h5py.File(self.get_output('shear_catalog'))
+            f = h5py.File(self.get_output('shear_catalog'), 'r+')
             g = f['shear']
             for col in g.keys():
                 g[col].resize((n,))
