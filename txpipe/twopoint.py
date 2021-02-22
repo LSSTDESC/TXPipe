@@ -2195,7 +2195,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         }
 
     def run(self):
-
+        rmean = []
         super().run()
 
     def select_calculations(self, data):
@@ -2432,7 +2432,15 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
-        ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+        if self.config['metric'] == 'Rlens':
+            config = self.config
+            rmean[i] = np.mean(cat_i.r) 
+            config['min_sep'] = rmean * np.sin(self.config['min_sep']/60)
+            config['max_sep'] = rmean * np.sin(self.config['max_sep']/60)
+            ng = treecorr.NGCorrelation(config, max_rpar = 0.0)
+        else:
+            ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+
         ng.process(cat_j, cat_i)
 
         if rancat_j:
@@ -2457,7 +2465,16 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
-        ng = treecorr.NGCorrelation(self.config)
+
+        # Idea here is that we want to use the Rlens metric to get at the seperation angle
+        if self.config['metric'] == 'Rlens':
+            config = self.config
+            rmean = np.mean(cat_i.r) 
+            config['min_sep'] = rmean * np.sin(self.config['min_sep']/60)
+            config['max_sep'] = rmean * np.sin(self.config['max_sep']/60)
+            ng = treecorr.NGCorrelation(config, max_rpar = 0.0)
+        else:
+            ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
         ng.process(cat_j, cat_i)
 
         if rancat_j:
@@ -2592,7 +2609,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 tracer2 = f'source_{d.j}'    
                 
                 if d.corr_type == GAMMAT:
-                    theta = np.exp(d.object.meanlogr)
+                    theta = np.arcsin(np.exp(d.object.meanlogr)/rmean[d.i])*60
                     npair = d.object.npairs
                     weight = d.object.weight
                     xi_x = d.object.xi_im
@@ -2604,7 +2621,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                         S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
                             theta=theta[i], error=err[i], weight=weight[i])
                 if d.corr_type == GAMMATS:
-                    theta = np.exp(d.object.meanlogr)
+                    theta = np.arcsin(np.exp(d.object.meanlogr)/rmean[d.i])*60
                     npair = d.object.npairs
                     weight = d.object.weight
                     xi_x = d.object.xi_im
