@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, MapsFile
+from .data_types import HDFFile, MapsFile, TextFile
 import numpy as np
 import GCRCatalogs
 
@@ -76,6 +76,7 @@ class CLIngestHalosCosmoDC2(PipelineStage):
 
 
 class CLMagnificationBackgroundSelector(PipelineStage):
+    parallel = False
     name = "CLMagnificationBackgroundSelector"
     inputs = [("photometry_catalog", HDFFile)]
     outputs = [("cluster_mag_background", HDFFile), ("cluster_mag_footprint", MapsFile)]
@@ -85,6 +86,7 @@ class CLMagnificationBackgroundSelector(PipelineStage):
         "mag_cut": 1.5.
         "zmin": 1.5.
         "nside": 2048,
+        "initial_size": 100_000
     }
 
     def run(self):
@@ -96,7 +98,9 @@ class CLMagnificationBackgroundSelector(PipelineStage):
         # Open and set up the columns in the output
         f = self.open_output("cluster_mag_background", "w", parallel=True)
         g = f.create_group("sample")
-        g.create_dataset("bin", (N,), dtype=np.int8)
+        sz = self.config['initial_size']
+        ra = g.create_dataset("ra", (sz,), maxshape=(None,))
+        dec = g.create_dataset("dec", (sz,), maxshape=(None,))
 
         # Extract inputs from the user configutation
         ra_min, ra_max = self.config['ra_range']
@@ -108,11 +112,12 @@ class CLMagnificationBackgroundSelector(PipelineStage):
         npix = healpy.nside2npix(nside)
         hit_map = np.zeros(npix)
 
-        # Prepare a (parallel) iterator
+        # Prepare an iterator
         it = self.iterate_hdf5("photometry_catalog", "photometry", ["ra", "dec", "mag_i", "redshift_true"])
 
+        s = 0
         # Loop through the data
-        for s, e, data in it:
+        for _, _, data in it:
             # make selection
             sel = (
                     (data['ra'] > ra_min)
@@ -123,11 +128,23 @@ class CLMagnificationBackgroundSelector(PipelineStage):
                     & (data['redshift_true'] > 1.5)
                 )
 
-            pix = healpy.ang2pix(nside, ra[sel], dec[sel], lonlat=True)
+            ra_sel = data['ra'][sel]
+            dec_sel = data['dec'][sel]
+            pix = healpy.ang2pix(nside, ra_sel, dec_sel, lonlat=True)
             hit_map[pix] = 1
 
-            # write output.  This is in parallel automatically.
-            g["bin"][s:e] = sel.astype(np.int8)
+            e = s + ra_sel.size
+            if e > sz:
+                sz = int(1.5 * e)
+                ra.resize((sz,))
+                dec.resize((sz,))
+
+            # write output.
+            ra[s:e] = ra_sel
+            dec[s:e] = dec_sel
+
+            # update start for next point
+            s = e
 
         f.close()
 
@@ -208,12 +225,111 @@ class CLMagnificationRandoms(PipelineStage):
             dec_out[s:e] = dec
 
         output_file.close()
-        
+
+class CLMagnificationPatches(PipelineStage):
+    """
+
+    This is currently copied from the in-progress treecorr-mpi branch.
+    Think later how to 
+    """
+    inputs = [("cluster_mag_randoms", HDFFile)]
+    outputs = [("cluster_mag_patches", TextFile)]
+    config_options = {
+        'npatch' : 32,
+        'every_nth': 100,
+    }
+
+    def run(self):
+        import treecorr
+        import matplotlib
+        matplotlib.use('agg')
+
+        input_filename = self.get_input('random_cats')
+        output_filename = self.get_output('patch_centers')
+
+        # Build config info
+        npatch = self.config['npatch']
+        every_nth = self.config['every_nth']
+        config = {
+            'ext': 'randoms',
+            'ra_col': 'ra',
+            'dec_col': 'dec',
+            'ra_units': 'degree',
+            'dec_units': 'degree',
+            'every_nth': every_nth,
+            'npatch': npatch,
+        }
+
+        #Create the catalog
+        cat = treecorr.Catalog(input_filename, config)
+
+        # Generate and write the output patch centres
+        print(f"generating {npatch} centers")
+        cat.write_patch_centers(output_filename)
+
 
 class CLMagnificationCorrelations(PipelineStage):
     name = "CLMagnificationCorrelations"
-    inputs = [("halo_catalog", HDFFile)]
+    inputs = [
+        ("cluster_mag_halo_catalog", HDFFile),
+        ("cluster_mag_background", HDFFile),
+        ("cluster_mag_patches", TextFile),
+    ]
     outputs = []
-    config_options = {}
+    config_options = {
+        'min_sep':0.5,
+        'max_sep':300.,
+        'nbins':9,
+        'bin_slop':0.1,
+        'sep_units':'arcmin',
+        'flip_g2':True,
+        'cores_per_task':32,
+        'verbose':1,
+        'var_method': 'jackknife',
+        }
+
     def run(self):
-        pass
+        import treecorr
+
+        halo_file = self.get_input("cluster_mag_halo_catalog")
+        source_file = self.get_input("cluster_mag_background")
+        patch_centers = self.get_input("cluster_mag_patches")
+
+        # create foreground catalog
+        halo_cat = treecorr.Catalog(halo_file, self.config, patch_centers=patch_centers)
+        source_cat = treecorr.Catalog(source_file, self.config, patch_centers=patch_centers, ext="randoms")
+        random_cat = 
+        # create background catalog
+
+        # create random catalog
+
+        # run under MPI
+    cat_rand_halo =  rand_cat(cat_halo, Nobj = cat_halo.ra.size, patch_centers=patch_centers)
+    
+    ls = treecorr.NNCorrelation(**bin_dict)
+    ls.process(cat_halo, cat)
+    
+    ll = treecorr.NNCorrelation(**bin_dict)
+    ll.process(cat_halo, cat_halo)
+    
+    lr = treecorr.NNCorrelation(**bin_dict)
+    lr.process(cat_halo, rand)
+    
+    xi, varxi = ls.calculateXi(rr, lr, rd)
+    r = np.exp(ls.meanlogr)
+    sigxi = np.sqrt(varxi)
+    covxi = ls.estimate_cov(bin_dict['var_method'])
+    
+    ls_rand = treecorr.NNCorrelation(**bin_dict)
+    ls_rand.process(cat_rand_halo, cat)
+    
+    lr_rand = treecorr.NNCorrelation(**bin_dict)
+    lr_rand.process(cat_rand_halo, rand)
+    
+    xi_rand, varxi_rand = ls_rand.calculateXi(rr, lr_rand, rd)
+    r_rand = np.exp(ls_rand.meanlogr)
+    sigxi_rand = np.sqrt(varxi_rand)
+    covxi_rand = ls_rand.estimate_cov(bin_dict['var_method'])
+
+
+
