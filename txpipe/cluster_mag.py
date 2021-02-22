@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, MapsFile, TextFile
 import numpy as np
-import GCRCatalogs
 
 
 class CLIngestHalosCosmoDC2(PipelineStage):
@@ -16,6 +15,7 @@ class CLIngestHalosCosmoDC2(PipelineStage):
     }
 
     def run(self):
+        import GCRCatalogs
         # Configuration options
         mass_min = self.config['halo_mass_min']
         cat_name = self.config['cat_name']
