@@ -1,0 +1,36 @@
+launcher:
+    name: mini
+    interval: 1.0
+
+# These site options tell the launcher to use shifter
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+    volume: ${PWD}:/opt/txpipe
+
+modules: txpipe
+
+
+stages:
+    - name: CLIngestHalosCosmoDC2
+    - name: CLMagnificationBackgroundSelector
+    - name: CLMagnificationRandoms
+    - name: CLMagnificationPatches
+    - name: CLMagnificationPatches
+    - name: CLMagnificationCorrelations
+
+output_dir: data/cluster_mag/outputs
+config: examples/config/cluster_mag_config.yml
+
+
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+
+resume: True
+log_dir: data/cluster_mag/logs
+pipeline_log: data/cluster_mag/log.txt
+

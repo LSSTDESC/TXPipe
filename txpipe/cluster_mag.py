@@ -169,7 +169,7 @@ class CLMagnificationRandoms(PipelineStage):
     inputs = [("cluster_mag_halo_catalog", HDFFile), ("cluster_mag_footprint", MapsFile)]
     outputs = [("cluster_mag_randoms", HDFFile)]
     config_options = {
-        "density": 30 # per sq arcmin
+        "density": 30. # per sq arcmin
     }
     def run(self):
 
