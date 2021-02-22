@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile
+from .data_types import HDFFile, MapsFile
 import numpy as np
 import GCRCatalogs
 
@@ -8,7 +8,7 @@ class CLIngestHalosCosmoDC2(PipelineStage):
     name = "CLIngestHalosCosmoDC2"
     parallel = False
     inputs = []
-    outputs = [("halo_catalog", HDFFile)]
+    outputs = [("cluster_mag_halo_catalog", HDFFile)]
     config_options = {
         "cat_name": "cosmoDC2_v1.1.4_image",
         "halo_mass_min": 0.5e13,
@@ -30,7 +30,7 @@ class CLIngestHalosCosmoDC2(PipelineStage):
         filters = [f'halo_mass > {mass_min}','is_central==True']
 
         # Create output data file with extensible data sets 
-        f = self.open_output("halo_catalog")
+        f = self.open_output("cluster_mag_halo_catalog")
         g = f.create_group("halos")
         g.create_dataset('halo_mass', (sz,), maxshape=(None,), dtype='f8', chunks=True)
         g.create_dataset('redshift', (sz,), maxshape=(None,), dtype='f8', chunks=True)
@@ -78,18 +78,137 @@ class CLIngestHalosCosmoDC2(PipelineStage):
 class CLMagnificationBackgroundSelector(PipelineStage):
     name = "CLMagnificationBackgroundSelector"
     inputs = [("photometry_catalog", HDFFile)]
-    outputs = []
-    config_options = {}
+    outputs = [("cluster_mag_background", HDFFile), ("cluster_mag_footprint", MapsFile)]
+    config_options = {
+        "ra_range": [50.0, 73.1],
+        "dec_range": [-45.0, -27.0],
+        "mag_cut": 1.5.
+        "zmin": 1.5.
+        "nside": 2048,
+    }
+
     def run(self):
-        pass
+
+        # Count the max number of objects we will look at
+        with self.open_input("photometry_catalog") as f:
+            N = f['photometry/ra'].size
+
+        # Open and set up the columns in the output
+        f = self.open_output("cluster_mag_background", "w", parallel=True)
+        g = f.create_group("sample")
+        g.create_dataset("bin", (N,), dtype=np.int8)
+
+        # Extract inputs from the user configutation
+        ra_min, ra_max = self.config['ra_range']
+        dec_min, dec_max = self.config['dec_range']
+        mag_cut = self.config['mag_cut']
+        zmin = self.config['zmin']
+        nside = self.config['nside']
+
+        npix = healpy.nside2npix(nside)
+        hit_map = np.zeros(npix)
+
+        # Prepare a (parallel) iterator
+        it = self.iterate_hdf5("photometry_catalog", "photometry", ["ra", "dec", "mag_i", "redshift_true"])
+
+        # Loop through the data
+        for s, e, data in it:
+            # make selection
+            sel = (
+                    (data['ra'] > ra_min)
+                    & (data['ra'] < ra_max)
+                    & (data['dec'] > dec_min) 
+                    & (data['dec'] < dec_max)
+                    & (data['mag_i'] < mag_cut)
+                    & (data['redshift_true'] > 1.5)
+                )
+
+            pix = healpy.ang2pix(nside, ra[sel], dec[sel], lonlat=True)
+            hit_map[pix] = 1
+
+            # write output.  This is in parallel automatically.
+            g["bin"][s:e] = sel.astype(np.int8)
+
+        f.close()
+
+        # Collate the overall footprint from all the processors
+        if self.comm is not None:
+            hit_map = self.comm.Reduce(hit_map).clip(0, 1)
+
+        # Save the footprint on one processor
+        if self.rank == 0:
+            pix = np.where(hit_map > 0)[0]
+            val = np.ones(footprint_pix.size, dtype=np.int8)
+
+            f = self.open_output("cluster_mag_footprint", wrapper=True)
+                f.write_map("footprint", pix, val, self.config)
+
+
+
+
 
 class CLMagnificationRandoms(PipelineStage):
     name = "CLMagnificationRandoms"
-    inputs = [("halo_catalog", HDFFile)]
-    outputs = []
-    config_options = {}
+    inputs = [("cluster_mag_halo_catalog", HDFFile), ("cluster_mag_footprint", MapsFile)]
+    outputs = [("cluster_mag_randoms", HDFFile)]
+    config_options = {
+        "density": 30 # per sq arcmin
+    }
     def run(self):
-        pass
+
+        # open the footprint catalog and read in the things we need
+        # from it - the list of hit pixels, and the map scheme
+        with self.open_input("cluster_mag_footprint") as f:
+            hit_map = f.read_map("footprint")
+            info = f.read_map_info("footprint")
+            nside = info['nside']
+            scheme = choose_pixelization(**info)
+
+        # Hit pixels and the coordinates of their vertices
+        pix = np.where(hit_map > 0)[0]
+        vertices = scheme.vertices(pix)
+
+        # Randomly select the number of objects per pixel, using a poisson distribution with
+        # the specified mean density, for now
+        area = scheme.pixel_area(degrees=True) * 60. * 60.
+        density = np.repeat(self.config['density'], pix.size)
+        counts = scipy.stats.poisson.rvs(density*area, 1)
+
+        # Use the same counts for all the processors
+        if self.comm is not None:
+            counts = self.comm.bcast(counts)
+
+        # total number of objects to be generated over all the pixels
+        total_count = counts.sum()
+
+        # The starting index of each pixel in the array, so we can parallelize
+        starts = np.concatenate([0, np.cumsum(counts)])
+
+        # Open the output data and create the necessary columns
+        output_file = self.open_output('cluster_mag_randoms')
+        group = output_file.create_group('randoms')
+        ra_out = group.create_dataset('ra', (total_count,), dtype=np.float64)
+        dec_out = group.create_dataset('dec', (total_count,), dtype=np.float64)
+
+
+        # Each processor now does a subset of the pixels, generating and saving
+        # points in each
+        for i, vertex in self.split_tasks_by_rank(enumerate(vertices)):
+            # Generate random points in this pixel
+            p1, p2, p3, p4 = vertex.T
+            P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
+
+            # This is not healpy-specific so we just use it as a convenience function
+            ra, dec = healpy.vec2ang(P, lonlat=True)
+
+            # Write output
+            s = starts[i]
+            e = starts[i + 1]
+            ra_out[s:e] = ra
+            dec_out[s:e] = dec
+
+        output_file.close()
+        
 
 class CLMagnificationCorrelations(PipelineStage):
     name = "CLMagnificationCorrelations"
