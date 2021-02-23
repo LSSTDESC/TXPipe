@@ -3,7 +3,7 @@ from .data_types import ShearCatalog, HDFFile
 from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 from .utils.timer import Timer
-import pdb
+
 
 class TXCosmoDC2Mock(PipelineStage):
     """
