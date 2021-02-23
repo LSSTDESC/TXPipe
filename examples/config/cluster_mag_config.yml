@@ -28,7 +28,6 @@ CLMagnificationCorrelations:
     nbins: 9
     bin_slop: 0.1
     sep_units: arcmin
-    flip_g2: True
     cores_per_task: 32
     verbose: 1
     var_method': jackknife

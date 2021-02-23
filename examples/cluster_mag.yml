@@ -15,7 +15,7 @@ stages:
     - name: CLIngestHalosCosmoDC2
     - name: CLMagnificationBackgroundSelector
     - name: CLMagnificationRandoms
-    - name: CLMagnificationPatches
+      nprocess: 16
     - name: CLMagnificationPatches
     - name: CLMagnificationCorrelations
 

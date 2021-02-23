@@ -173,6 +173,9 @@ class MapsFile(HDFFile):
         if not pixel.shape == value.shape:
             raise ValueError(f"Map pixels and values should be same shape "
                              f"but are {pixel.shape} vs {value.shape}")
+
+        if not 'maps' in self.file.keys():
+            self.file.create_group('maps')
         subgroup = self.file['maps'].create_group(map_name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)

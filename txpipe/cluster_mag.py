@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, MapsFile, TextFile
+from .utils import choose_pixelization
 import numpy as np
 
 
@@ -86,17 +87,19 @@ class CLMagnificationBackgroundSelector(PipelineStage):
         "mag_cut": 26.0,
         "zmin": 1.5,
         "nside": 2048,
-        "initial_size": 100_000
+        "initial_size": 100_000,
+        "chunk_rows": 100_000,
     }
 
     def run(self):
+        import healpy
 
         # Count the max number of objects we will look at
         with self.open_input("photometry_catalog") as f:
             N = f['photometry/ra'].size
 
         # Open and set up the columns in the output
-        f = self.open_output("cluster_mag_background", "w", parallel=True)
+        f = self.open_output("cluster_mag_background", parallel=True)
         g = f.create_group("sample")
         sz = self.config['initial_size']
         ra = g.create_dataset("ra", (sz,), maxshape=(None,))
@@ -108,12 +111,13 @@ class CLMagnificationBackgroundSelector(PipelineStage):
         mag_cut = self.config['mag_cut']
         zmin = self.config['zmin']
         nside = self.config['nside']
+        chunk_rows = self.config["chunk_rows"]
 
         npix = healpy.nside2npix(nside)
         hit_map = np.zeros(npix)
 
         # Prepare an iterator
-        it = self.iterate_hdf5("photometry_catalog", "photometry", ["ra", "dec", "mag_i", "redshift_true"])
+        it = self.iterate_hdf("photometry_catalog", "photometry", ["ra", "dec", "mag_i", "redshift_true"], chunk_rows)
 
         s = 0
         # Loop through the data
@@ -133,9 +137,9 @@ class CLMagnificationBackgroundSelector(PipelineStage):
             pix = healpy.ang2pix(nside, ra_sel, dec_sel, lonlat=True)
             hit_map[pix] = 1
             n = ra_sel.size
-            f = n / (e1 - s1)
+            frac = n / (e1 - s1)
 
-            print(f"Read data chunk {s1:,} - {e1:,} and selected {n:,} objects ({f:.1%})")
+            print(f"Read data chunk {s1:,} - {e1:,} and selected {n:,} objects ({frac:.1%})")
 
             e = s + n
             if e > sz:
@@ -160,10 +164,11 @@ class CLMagnificationBackgroundSelector(PipelineStage):
         # Save the footprint on one processor
         if self.rank == 0:
             pix = np.where(hit_map > 0)[0]
-            val = np.ones(footprint_pix.size, dtype=np.int8)
-
+            val = np.ones(pix.size, dtype=np.int8)
+            metadata = {'pixelization': 'healpix', 'nside': nside}
+            
             with  self.open_output("cluster_mag_footprint", wrapper=True) as f:
-                f.write_map("footprint", pix, val, self.config)
+                f.write_map("footprint", pix, val, metadata)
 
 
 
@@ -177,10 +182,13 @@ class CLMagnificationRandoms(PipelineStage):
         "density": 30. # per sq arcmin
     }
     def run(self):
-
+        import scipy.stats
+        from .randoms import random_points_in_quadrilateral
+        import healpy
+        
         # open the footprint catalog and read in the things we need
         # from it - the list of hit pixels, and the map scheme
-        with self.open_input("cluster_mag_footprint") as f:
+        with self.open_input("cluster_mag_footprint", wrapper=True) as f:
             hit_map = f.read_map("footprint")
             info = f.read_map_info("footprint")
             nside = info['nside']
@@ -204,21 +212,23 @@ class CLMagnificationRandoms(PipelineStage):
         total_count = counts.sum()
 
         # The starting index of each pixel in the array, so we can parallelize
-        starts = np.concatenate([0, np.cumsum(counts)])
+        starts = np.concatenate([[0], np.cumsum(counts)])
 
         # Open the output data and create the necessary columns
-        output_file = self.open_output('cluster_mag_randoms')
+        output_file = self.open_output('cluster_mag_randoms', parallel=True)
         group = output_file.create_group('randoms')
         ra_out = group.create_dataset('ra', (total_count,), dtype=np.float64)
         dec_out = group.create_dataset('dec', (total_count,), dtype=np.float64)
 
-
         # Each processor now does a subset of the pixels, generating and saving
         # points in each
         for i, vertex in self.split_tasks_by_rank(enumerate(vertices)):
+            if (i % (10_000 * self.size)) == self.rank:
+                print(f"Rank {self.rank} done {i//self.size:,} of its {counts.size//self.size:,} pixels")
             # Generate random points in this pixel
             p1, p2, p3, p4 = vertex.T
-            P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
+            N= counts[i]
+            P = random_points_in_quadrilateral(p1, p2, p3, p4, N)
 
             # This is not healpy-specific so we just use it as a convenience function
             ra, dec = healpy.vec2ang(P, lonlat=True)
@@ -252,8 +262,8 @@ class CLMagnificationPatches(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
 
-        input_filename = self.get_input('random_cats')
-        output_filename = self.get_output('patch_centers')
+        input_filename = self.get_input('cluster_mag_randoms')
+        output_filename = self.get_output('cluster_mag_patches')
 
         # Build config info
         npatch = self.config['npatch']
@@ -291,7 +301,6 @@ class CLMagnificationCorrelations(PipelineStage):
         'nbins':9,
         'bin_slop':0.1,
         'sep_units':'arcmin',
-        'flip_g2':True,
         'cores_per_task':32,
         'verbose':1,
         'var_method': 'jackknife',
@@ -306,16 +315,17 @@ class CLMagnificationCorrelations(PipelineStage):
         patch_centers = self.get_input("cluster_mag_patches")
 
         # create foreground catalog
-        halo_cat = treecorr.Catalog(halo_file, self.config, patch_centers=patch_centers, ext="halos", ra_col="ra", dec_col="dec", ra_unit="degrees", dec_unit="degrees")
+        halo_cat = treecorr.Catalog(halo_file, self.config, patch_centers=patch_centers, ext="halos", ra_col="ra", dec_col="dec", ra_units="degrees", dec_units="degrees")
 
         # create background catalog
-        bg_cat = treecorr.Catalog(background_file, self.config, patch_centers=patch_centers, ext="sample", ra_col="ra", dec_col="dec", ra_unit="degrees", dec_unit="degrees")
+        bg_cat = treecorr.Catalog(background_file, self.config, patch_centers=patch_centers, ext="sample", ra_col="ra", dec_col="dec", ra_units="degrees", dec_units="degrees")
 
         #  ... ADD randoms ... 
-        ran_cat = treecorr.Catalog(randoms_file, self.config, patch_centers=patch_centers, ext="randoms", ra_col="ra", dec_col="dec", ra_unit="degrees", dec_unit="degrees")
+        ran_cat = treecorr.Catalog(randoms_file, self.config, patch_centers=patch_centers, ext="randoms", ra_col="ra", dec_col="dec", ra_units="degrees", dec_units="degrees")
 
+        config = {x:y for x,y in self.config.items() if x in treecorr.NNCorrelation._valid_params}
 
-        ls = treecorr.NNCorrelation(**self.config)
+        ls = treecorr.NNCorrelation(**config)
         ls.process(halo_cat, bg_cat, low_mem=True)
     
     # ll = treecorr.NNCorrelation(**bin_dict)
