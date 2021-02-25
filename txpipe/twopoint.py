@@ -2436,7 +2436,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             config = self.config
             rmean[i] = np.mean(cat_i.r) 
             config['min_sep'] = rmean * np.sin(self.config['min_sep']/60)
-            config['max_sep'] = rmean * np.sin(self.config['max_sep']/60)
+            config['max_sep'] = rmean * abs(np.sin(self.config['max_sep']/60))
             ng = treecorr.NGCorrelation(config, max_rpar = 0.0)
         else:
             ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
@@ -2471,7 +2471,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             config = self.config
             rmean = np.mean(cat_i.r) 
             config['min_sep'] = rmean * np.sin(self.config['min_sep']/60)
-            config['max_sep'] = rmean * np.sin(self.config['max_sep']/60)
+            config['max_sep'] = rmean * abs(np.sin(self.config['max_sep']/60))
             ng = treecorr.NGCorrelation(config, max_rpar = 0.0)
         else:
             ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
@@ -2609,7 +2609,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 tracer2 = f'source_{d.j}'    
                 
                 if d.corr_type == GAMMAT:
-                    theta = np.arcsin(np.exp(d.object.meanlogr)/rmean[d.i])*60
+                    if self.config['metric'] == 'Rlens':
+                        theta = np.arcsin(np.exp(d.object.meanlogr)/rmean[d.i])*60
+                    else:
+                        theta = np.exp(d.object.meanlogr)
                     npair = d.object.npairs
                     weight = d.object.weight
                     xi_x = d.object.xi_im
@@ -2621,7 +2624,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
                         S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
                             theta=theta[i], error=err[i], weight=weight[i])
                 if d.corr_type == GAMMATS:
-                    theta = np.arcsin(np.exp(d.object.meanlogr)/rmean[d.i])*60
+                    if self.config['metric'] == 'Rlens':
+                        theta = np.arcsin(np.exp(d.object.meanlogr)/rmean[d.i])*60
+                    else:
+                        theta = np.exp(d.object.meanlogr)
                     npair = d.object.npairs
                     weight = d.object.weight
                     xi_x = d.object.xi_im
