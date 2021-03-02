@@ -6,7 +6,6 @@ import numpy as np
 import random
 import collections
 import sys
-
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -272,7 +271,7 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-
+            ipdb.set_trace()
             # account for double-counting
             if d.i == d.j:
                 npair = npair/2
@@ -466,6 +465,7 @@ class TXTwoPoint(PipelineStage):
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
         elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
+            print('Not using JK.', len(g1))
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -545,7 +545,8 @@ class TXTwoPoint(PipelineStage):
 
         gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i, cat_j)
-
+        print(treecorr.__version__)
+        print(i,j,gg.npairs, gg.weight, gg.xip)
         return gg
 
     def calculate_shear_pos(self, data, meta, i, j):
@@ -763,7 +764,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
         cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        matter_power_spectrum='halofit', Neff=3.04)
+            matter_power_spectrum='halofit', Neff=3.046)
         print(cosmo)
 
         s_theory = self.replace_with_theory_real(s, cosmo)
@@ -903,7 +904,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
         cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        matter_power_spectrum='halofit', Neff=3.04)
+            matter_power_spectrum='halofit', Neff=3.046)
         print(cosmo)
 
         s_theory = self.replace_with_theory_fourier(s, cosmo)
