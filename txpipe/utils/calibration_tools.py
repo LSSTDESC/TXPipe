@@ -206,7 +206,7 @@ class ParallelCalibratorMetacal:
         g1 = data_00['mcal_g1']
         g2 = data_00['mcal_g2']
         weight = data_00['weight']
-        n = g1.size
+        n = g1[sel_00].size
 
         # Record the count for this chunk, for summation later
         self.count += n

@@ -12,13 +12,13 @@ modules: txpipe
 
 
 stages:
-    - name: CLIngestHalosCosmoDC2
-    - name: CLMagnificationBackgroundSelector
-    - name: CLMagnificationRandoms
-      nprocess: 16
-    - name: CLMagnificationPatches
-    - name: CLMagnificationCorrelations
-
+    - name: CMIngestHalosCosmoDC2
+    - name: CMSelectHalos
+    - name: CMBackgroundSelector
+    - name: CMRandoms
+    - name: CMPatches
+    - name: CMRedshifts
+    - name: CMCorrelations
 output_dir: data/cluster_mag/outputs
 config: examples/config/cluster_mag_config.yml
 

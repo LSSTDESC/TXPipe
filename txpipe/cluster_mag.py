@@ -1,11 +1,92 @@
 from .base_stage import PipelineStage
-from .data_types import HDFFile, MapsFile, TextFile
-from .utils import choose_pixelization
+from .data_types import HDFFile, MapsFile, TextFile, SACCFile
+from .utils import choose_pixelization, multi_where
+import re
+import time
 import numpy as np
+import itertools
 
 
-class CLIngestHalosCosmoDC2(PipelineStage):
-    name = "CLIngestHalosCosmoDC2"
+class HDFSplitter:
+    """
+    Helper class to write out data that is split into bins
+
+    """
+    def __init__(self, group, name, columns, bins, initial_size, dtypes=None):
+        self.bins = bins
+        self.group = group
+        self.columns = columns
+        self.index = {b: 0 for b in bins}
+        self.sizes = {b: initial_size for b in bins}
+        self.subgroups = {b: group.create_group(f"{name}_{b}") for b in bins}
+
+        for i, b in enumerate(bins):
+            group.attrs[f'bin_{i}'] = b
+
+        dtypes = dtypes or {}
+
+        for b in bins:
+            sub = self.subgroups[b]
+            for col in columns:
+                dt = dtypes.get(col, 'f8')
+                sub.create_dataset(col, (initial_size,), maxshape=(None,), dtype=dt, chunks=True)
+
+    def write(self, data, bins):
+
+        wheres = multi_where(bins, self.bins)
+
+        for b in self.bins:
+            # Get the index of objects that fall in this bin
+            w = wheres[b]
+            if w.size == 0:
+                continue
+
+            # Make the right subsets of the data according to this index
+            bin_data = {col: data[col][w] for col in self.columns}
+
+            # Save this chunk of data
+            self.write_bin(bin_data, b)
+
+        return wheres
+
+    def check_enlarge(self, b, e):
+        if e > self.sizes[b]:
+            group = self.subgroups[b]
+            sz = int(1.5 * e)
+            self.sizes[b] = sz
+            for col in self.columns:
+                group[col].resize((sz,))
+
+
+    def write_bin(self, data, b):
+        # Length of this chunk
+        n = len(data[self.columns[0]])
+        # Group where we will write the data
+        group = self.subgroups[b]
+        # Indices of this output
+        s = self.index[b]
+        e = s + n
+
+        # Enlarge columns if needed
+        self.check_enlarge(b, e)
+
+        # Write to columns
+        for col in self.columns:
+            group[col][s:e] = data[col]
+
+        # Update overall index
+        self.index[b] = e
+
+    def finalize(self):
+        for b, sub in self.subgroups.items():
+            for col in self.columns:
+                sub[col].resize((self.index[b],))
+
+
+
+
+class CMIngestHalosCosmoDC2(PipelineStage):
+    name = "CMIngestHalosCosmoDC2"
     parallel = False
     inputs = []
     outputs = [("cluster_mag_halo_catalog", HDFFile)]
@@ -39,7 +120,8 @@ class CLIngestHalosCosmoDC2(PipelineStage):
             f"halo_mass > {mass_min}",
             "is_central == True",
             f"ra > {ra_range[0]}",
-            f"ra < {ra_range[1]}" f"dec > {dec_range[0]}",
+            f"ra < {ra_range[1]}",
+            f"dec > {dec_range[0]}",
             f"dec < {dec_range[1]}",
         ]
 
@@ -86,10 +168,80 @@ class CLIngestHalosCosmoDC2(PipelineStage):
         # And that's all.
         f.close()
 
-
-class CLMagnificationBackgroundSelector(PipelineStage):
+class CMSelectHalos(PipelineStage):
+    name = "CMSelectHalos"
     parallel = False
-    name = "CLMagnificationBackgroundSelector"
+    inputs = [("cluster_mag_halo_catalog", HDFFile)]
+    outputs = [("cluster_mag_halo_tomography", HDFFile)]
+    config_options = {
+        "zedge": [0.2, 0.4, 0.6, 0.8, 1.0, 1.2],
+        "medge": [20, 30, 45, 70, 120, 220]
+
+    }
+    def run(self):
+        
+        zedge = np.array(self.config['zedge'])
+        # where does this number 45 come from?
+        medge = np.array(self.config['medge']) * (1e14 / 45)
+
+        nz = len(zedge) - 1
+        nm = len(medge) - 1
+
+        # add infinities to either end to catch objects that spill out
+        zedge = np.concatenate([[-np.inf], zedge, [np.inf]])
+        medge = np.concatenate([[-np.inf], medge, [np.inf]])
+
+        # all pairs of z bin, m bin indices
+        bins = list(itertools.product(range(nz), range(nm)))
+        bin_names = [f"{i}_{j}" for i,j in bins]
+
+        # my_bins = [i, pair for pair in self.split_tasks_by_rank(enumerate(bins))]
+        cols = ["halo_mass", "redshift", "ra", "dec"]
+        chunk_rows = 100_000
+        it = self.iterate_hdf("cluster_mag_halo_catalog", "halos", cols, chunk_rows)
+
+        f = self.open_output("cluster_mag_halo_tomography")
+        g = f.create_group("tomography")
+        initial_size = 100_000
+        splitter = HDFSplitter(g, "bin", cols, bin_names, initial_size)
+
+        for _, _, data in it:
+            n = len(data["redshift"])
+            zbin = np.digitize(data['redshift'], zedge)
+            mbin = np.digitize(data['halo_mass'], medge)
+
+            # Find which bin each object is in, or None
+            sel_bins = []
+            for i in range(n):
+                zi = zbin[i]
+                mi = mbin[i]
+                if (zi == 0) or (zi == nz + 1) or (mi == 0) or (mi == nm + 1):
+                    b = None
+                else:
+                    b = f"{zi-1}_{mi-1}"
+                sel_bins.append(b)
+
+            # Save data to the correct subgroup
+            splitter.write(data, sel_bins)
+
+        # Truncate arrays to correct size
+        splitter.finalize()
+
+        # Save metadata
+        for (i, j), name in zip(bins, bin_names):
+            metadata = splitter.subgroups[name].attrs
+            metadata['mass_min'] = medge[i+1]
+            metadata['mass_max'] = medge[i+2]
+            metadata['z_min'] = zedge[i+1]
+            metadata['z_max'] = zedge[i+2]
+
+        f.close()
+
+
+
+class CMBackgroundSelector(PipelineStage):
+    name = "CMBackgroundSelector"
+    parallel = False
     inputs = [("photometry_catalog", HDFFile)]
     outputs = [("cluster_mag_background", HDFFile), ("cluster_mag_footprint", MapsFile)]
 
@@ -205,8 +357,8 @@ class CLMagnificationBackgroundSelector(PipelineStage):
             f.write_map("footprint", pix, val, metadata)
 
 
-class CLMagnificationRandoms(PipelineStage):
-    name = "CLMagnificationRandoms"
+class CMRandoms(PipelineStage):
+    name = "CMRandoms"
     inputs = [
         ("cluster_mag_halo_catalog", HDFFile),
         ("cluster_mag_footprint", MapsFile),
@@ -277,14 +429,14 @@ class CLMagnificationRandoms(PipelineStage):
         output_file.close()
 
 
-class CLMagnificationPatches(PipelineStage):
+class CMPatches(PipelineStage):
     """
 
     This is currently copied from the in-progress treecorr-mpi branch.
     Think later how to
     """
 
-    name = "CLMagnificationPatches"
+    name = "CMPatches"
     inputs = [("cluster_mag_randoms", HDFFile)]
     outputs = [("cluster_mag_patches", TextFile)]
     config_options = {
@@ -294,9 +446,6 @@ class CLMagnificationPatches(PipelineStage):
 
     def run(self):
         import treecorr
-        import matplotlib
-
-        matplotlib.use("agg")
 
         input_filename = self.get_input("cluster_mag_randoms")
         output_filename = self.get_output("cluster_mag_patches")
@@ -322,23 +471,20 @@ class CLMagnificationPatches(PipelineStage):
         cat.write_patch_centers(output_filename)
 
 
-class CLMagnificationRedshifts(PipelineStage):
+class CMRedshifts(PipelineStage):
+    name = "CMRedshifts"
     pass
 
 
-class CLMagnificationCorrelations(PipelineStage):
-    name = "CLMagnificationCorrelations"
+class CMCorrelations(PipelineStage):
+    name = "CMCorrelations"
     inputs = [
-        ("cluster_mag_halo_catalog", HDFFile),
+        ("cluster_mag_halo_tomography", HDFFile),
         ("cluster_mag_background", HDFFile),
         ("cluster_mag_patches", TextFile),
         ("cluster_mag_randoms", HDFFile),
-        ("cluster_mag_halo_halo_xi", TextFile),
-        ("cluster_mag_halo_background_xi", TextFile),
-        ("cluster_mag_halo_halo_cov", TextFile),
-        ("cluster_mag_halo_background_cov", TextFile),
     ]
-    outputs = []
+    outputs = [("cluster_mag_correlations", SACCFile),]
     config_options = {
         "min_sep": 0.5,
         "max_sep": 300.0,
@@ -352,24 +498,31 @@ class CLMagnificationCorrelations(PipelineStage):
 
     def run(self):
         import treecorr
+        import sacc
 
         #  the names of the input files we will need
-        halo_file = self.get_input("cluster_mag_halo_catalog")
         background_file = self.get_input("cluster_mag_background")
         randoms_file = self.get_input("cluster_mag_randoms")
         patch_centers = self.get_input("cluster_mag_patches")
 
-        # create foreground catalog
-        halo_cat = treecorr.Catalog(
-            halo_file,
-            self.config,
-            patch_centers=patch_centers,
-            ext="halos",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degrees",
-            dec_units="degrees",
-        )
+        with self.open_input("cluster_mag_halo_tomography") as f:
+            metadata = dict(f['tomography'].attrs)
+            halo_bins = []
+            for key, value in metadata.items():
+                if re.match('bin_[0-9]', key):
+                    halo_bins.append(value)
+        print("Using halo bins: ", halo_bins)
+
+
+        with self.open_input("cluster_mag_background") as f:
+            sz = f['sample/ra'].size
+            print(f"Background catalog size: {sz}")
+
+        with self.open_input("cluster_mag_randoms") as f:
+            sz = f['randoms/ra'].size
+            print(f"Random catalog size: {sz}")
+
+
 
         # create background catalog
         bg_cat = treecorr.Catalog(
@@ -395,6 +548,119 @@ class CLMagnificationCorrelations(PipelineStage):
             dec_units="degrees",
         )
 
+
+
+
+        S = sacc.Sacc()
+        S.add_tracer('misc', 'background')
+        for halo_bin in halo_bins:
+            S.add_tracer('misc', f'halo_{halo_bin}')
+
+        t = time.time()
+        print("Computing randoms x randoms")
+        random_random = self.measure(ran_cat, ran_cat)
+        t1 = time.time()
+        print(f"took {t1 - t:.1f} seconds")
+
+        t = time.time()
+        print("Computing random x background")
+        random_bg = self.measure(ran_cat, bg_cat)
+        t1 = time.time()
+        print(f"took {t1 - t:.1f} seconds")
+
+
+        print("Computing background x background")
+        t = time.time()
+        bg_bg = self.measure(bg_cat, bg_cat)
+        t1 = time.time()
+        print(f"took {t1 - t:.1f} seconds")
+
+        bg_bg.calculateXi(random_random, random_bg)
+
+        self.add_sacc_data(S, 'background', 'background', "galaxy_density_xi", bg_bg)
+
+        comb = [bg_bg]
+
+        for halo_bin in halo_bins:
+            print(f"Computing with halo bin {halo_bin}")
+            tracer1 = f'halo_{halo_bin}'
+            tracer2 = f'background'
+            halo_halo, halo_bg, metadata = self.measure_halo_bin(bg_cat, ran_cat, halo_bin, random_random, random_bg)
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
+            comb.append(halo_halo)
+            comb.append(halo_bg)
+
+            self.add_sacc_data(S, tracer1, tracer2, "halo_halo_density_xi", halo_halo, **metadata)
+            self.add_sacc_data(S, tracer1, tracer2, "halo_galaxy_density_xi", halo_bg, **metadata)
+
+
+        cov = treecorr.estimate_multi_cov(comb, self.config['var_method'])
+
+        S.add_covariance(cov)
+
+
+        S.save_fits(self.get_output("cluster_mag_correlations"))
+
+
+    def add_sacc_data(self, S, tracer1, tracer2, corr_type, corr, **tags):
+        theta = np.exp(corr.meanlogr)
+        npair = corr.npairs
+        weight = corr.weight
+
+        xi = corr.xi
+        err = np.sqrt(corr.varxi)
+        n = len(xi)
+        for i in range(n):
+            S.add_data_point(corr_type, (tracer1, tracer2), xi[i],
+                theta=theta[i], error=err[i], weight=weight[i], **tags)
+
+
+    def measure_halo_bin(self, bg_cat, ran_cat, halo_bin, random_random, random_bg):
+        import treecorr
+        halo_tomo_file = self.get_input("cluster_mag_halo_tomography")
+        patch_centers = self.get_input("cluster_mag_patches")
+
+
+        with self.open_input("cluster_mag_halo_tomography") as f:
+            sz = f[f'tomography/bin_{halo_bin}/ra'].size
+            metadata = dict(f[f'tomography/bin_{halo_bin}'].attrs)
+            print(f"Halo bin {halo_bin} catalog size: {sz}")
+            print("Metadata: ", metadata)
+
+        # create foreground catalog using a specific foreground bin
+        halo_cat = treecorr.Catalog(
+            halo_tomo_file,
+            self.config,
+            patch_centers=patch_centers,
+            ext=f"tomography/bin_{halo_bin}",
+            ra_col="ra",
+            dec_col="dec",
+            ra_units="degrees",
+            dec_units="degrees",
+        )
+
+        t = time.time()
+        print(f"Computing {halo_bin} x {halo_bin}")
+        halo_halo = self.measure(halo_cat, halo_cat)
+
+        print(f"Computing {halo_bin} x randoms")
+        halo_random = self.measure(halo_cat, ran_cat)
+
+        print(f"Computing {halo_bin} x background")
+        halo_bg = self.measure(halo_cat, bg_cat)
+        t = time.time() - t
+        print(f"Bin {halo_bin} took {t:.1f} seconds")
+
+        # Use these combinations to calculate the correlations functions
+        halo_halo.calculateXi(random_random, halo_random)
+        halo_bg.calculateXi(random_random, halo_random, random_bg)
+
+        return halo_halo, halo_bg, metadata
+
+
+    def measure(self, cat1, cat2):
+        import treecorr
         # Get any treecorr-related params from our config, while leaving out any that are intended
         # for this code
         config = {
@@ -403,31 +669,6 @@ class CLMagnificationCorrelations(PipelineStage):
             if x in treecorr.NNCorrelation._valid_params
         }
 
-        #  Get the various combinations that we need
-        def measure(cat1, cat2):
-            p = treecorr.NNCorrelation(**config)
-            p.process(cat1, cat2, low_mem=True)
-            return p
-
-        halo_halo = measure(halo_cat, halo_cat)
-        halo_random = measure(halo_cat, ran_cat)
-        random_random = measure(ran_cat, ran_cat)
-        bg_bg = measure(bg_cat, bg_cat)
-        random_bg = measure(random_cat, bg_cat)
-        halo_bg = measure(halo_cat, bg_cat)
-
-        # Use these combinations to calculate the correlations functions
-        halo_halo.calculateXi(random_random, halo_random)
-        bg_halo.calculateXi(random_random, halo_random, random_bg)
-
-        # Save the xi values as tables in the TreeCorr format
-        halo_halo_file = self.get_output("cluster_mag_halo_halo_xi")
-        halo_bg_file = self.get_output("cluster_mag_halo_bg_xi")
-        halo_halo.write(halo_halo_file, random_random, halo_random)
-        bg_halo.write(file_name, random_random, halo_random, random_bg)
-
-        # Save the covariances too
-        halo_halo_cov_file = self.get_output("cluster_mag_halo_halo_cov")
-        halo_bg_cov_file = self.get_output("cluster_mag_halo_bg_cov")
-        np.savetxt(halo_halo_cov_file, halo_halo.cov)
-        np.savetxt(halo_bg_cov_file, halo_bg.cov)
+        p = treecorr.NNCorrelation(**config)
+        p.process(cat1, cat2, low_mem=False)
+        return p

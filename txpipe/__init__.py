@@ -32,4 +32,4 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
-from .cluster_mag import CLIngestHalosCosmoDC2
+from .cluster_mag import CMIngestHalosCosmoDC2
