@@ -32,3 +32,4 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
+from .twopoint_scia import TXSelfCalibrationIA
