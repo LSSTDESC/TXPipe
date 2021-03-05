@@ -22,7 +22,7 @@ TXIngestRedmagic:
     lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
 
 TXSourceTrueNumberDensity:
-    nz: 301
+    nz: 601
     zmax: 3.0
     chunk_rows: 100000
 
@@ -88,7 +88,7 @@ TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXJackknifeCenters:
-    npatch: 1
+    npatch: 40
 
 TXDiagnosticPlots:
     shear_prefix: mcal_
@@ -129,7 +129,7 @@ TXTwoPointLensCat:
     verbose: 0
     use_true_shear: True
     subtract_mean_shear: True
-    var_method: shot
+    var_method: jackknife
     
 TXTwoPointFourier:
     chunk_rows: 100000

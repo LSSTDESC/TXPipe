@@ -68,7 +68,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2021/no_shape_noise/mag_sel_4sbins_ztrue
+output_dir: data/cosmodc2/outputs_redmagic/2021/no_shape_noise/mag_sel_compare_descqa
 config: examples/config/cosmodc2_config_no_shape_noise.yml
 
 # On NERSC, set this before running:
