@@ -36,6 +36,7 @@ class TXCosmoDC2Mock(PipelineStage):
         'max_npix':99999999999999,
         'unit_response': False,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
+        'apply_mag_cut': False, #used when comparing to descqa measurements
         }
 
     def data_iterator(self, gc):
@@ -159,18 +160,18 @@ class TXCosmoDC2Mock(PipelineStage):
                 for name in list(data.keys()):
                     data[name] = data[name][select]
 
+            # Simulate the various output data sets
+            mock_photometry = self.make_mock_photometry(data)
 
             # Cut out any objects too faint to be detected and measured.
             # We have to do this after the photometry, so that we know if
             # the object is detected, but we can do it before making the mock
             # metacal info, saving us some time simulating un-needed objects
+            self.remove_undetected(data, mock_photometry)
             
-            #self.remove_undetected(data, mock_photometry)
-            
-            self.apply_magnitude_cut(data)
+            if self.config['apply_mag_cut']:
+                self.apply_magnitude_cut(data)
 
-            # Simulate the various output data sets
-            mock_photometry = self.make_mock_photometry(data)
             mock_metacal = self.make_mock_metacal(data, mock_photometry)
             
             # The chunk size has now changed

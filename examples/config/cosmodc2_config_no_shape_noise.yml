@@ -14,9 +14,10 @@ TXCosmoDC2Mock:
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2 Mag_true_r_sdss_z0 
     flip_g2: True # to match metacal
-    snr_limit: 0.0
+    snr_limit: 4.0
     Mag_r_limit: -19
     unit_response: True
+    apply_mag_cut: False
 
 TXIngestRedmagic:
     lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
