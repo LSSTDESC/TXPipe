@@ -271,9 +271,6 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-            if d.i == d.j:
-                npair = npair/2
-                weight = weight/2
             # xip / xim is a special case because it has two observables.
             # the other two are together below
             if d.corr_type == XI:
@@ -536,15 +533,14 @@ class TXTwoPoint(PipelineStage):
 
         gg = treecorr.GGCorrelation(self.config)
         if i==j:
-            #gg.process(cat_i)
-            cat_j = cat_i
+            gg.process(cat_i)
             n_j = n_i
         else:
             cat_j = self.get_shear_catalog(data, meta, j)
             n_j = cat_j.nobj
+            gg.process(cat_i, cat_j)
 
-        print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
-        gg.process(cat_i, cat_j)
+        print(f"Rank {self.rank} calculated shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
         print(gg.npairs, gg.weight, gg.xip, gg.xim)
         return gg
 
@@ -581,29 +577,30 @@ class TXTwoPoint(PipelineStage):
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
-        if i==j:
-            cat_j = cat_i
-            rancat_j = rancat_i
-            n_j = n_i
-            n_rand_j = n_rand_i
-        else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
-            n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
-
-        print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
-            f"{n_rand_i} x {n_rand_j} randoms")
-
-
         nn = treecorr.NNCorrelation(self.config)
         rn = treecorr.NNCorrelation(self.config)
         nr = treecorr.NNCorrelation(self.config)
         rr = treecorr.NNCorrelation(self.config)
+        
+        if i==j:
+            n_j = n_i
+            n_rand_j = n_rand_i
+            nn.process(cat_i)
+            nr.process(cat_i, rancat_i)
+            rn.process(rancat_i, cat_i)
+            rr.process(rancat_i)
+            
+        else:
+            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+            nn.process(cat_i,    cat_j)
+            nr.process(cat_i,    rancat_j)
+            rn.process(rancat_i, cat_j)
+            rr.process(rancat_i, rancat_j)
 
-        nn.process(cat_i,    cat_j)
-        nr.process(cat_i,    rancat_j)
-        rn.process(rancat_i, cat_j)
-        rr.process(rancat_i, rancat_j)
+        print(f"Rank {self.rank} calculated position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
+            f"{n_rand_i} x {n_rand_j} randoms")
 
         nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
