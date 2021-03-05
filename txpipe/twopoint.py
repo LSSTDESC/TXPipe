@@ -41,7 +41,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.5,
         'max_sep':300.,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0.0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -271,8 +271,6 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-            ipdb.set_trace()
-            # account for double-counting
             if d.i == d.j:
                 npair = npair/2
                 weight = weight/2
@@ -423,10 +421,14 @@ class TXTwoPoint(PipelineStage):
             mu1 = g1.mean()
             mu2 = g2.mean()
 
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            g1 -= meta['mean_e1'][i]
-            g2 -= meta['mean_e2'][i]
+            if self.config['use_true_shear']:
+                g1 -= g1.mean()
+                g2 -= g2.mean()
+            else:
+                # If we flip g2 we also have to flip the sign
+                # of what we subtract
+                g1 -= meta['mean_e1'][i]
+                g2 -= meta['mean_e2'][i]
 
             # Compare to final means.
             nu1 = g1.mean()
@@ -532,21 +534,18 @@ class TXTwoPoint(PipelineStage):
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
-
+        gg = treecorr.GGCorrelation(self.config)
         if i==j:
+            #gg.process(cat_i)
             cat_j = cat_i
             n_j = n_i
         else:
             cat_j = self.get_shear_catalog(data, meta, j)
             n_j = cat_j.nobj
 
-
         print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
-
-        gg = treecorr.GGCorrelation(self.config)
         gg.process(cat_i, cat_j)
-        print(treecorr.__version__)
-        print(i,j,gg.npairs, gg.weight, gg.xip)
+        print(gg.npairs, gg.weight, gg.xip, gg.xim)
         return gg
 
     def calculate_shear_pos(self, data, meta, i, j):
