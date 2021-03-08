@@ -1,64 +1,84 @@
-from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme, ParallelStatsCalculator
+from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme
+from parallel_statistics import ParallelMeanVariance, ParallelSum
+
 import numpy as np
 
 class Mapper:
-    def __init__(self, pixel_scheme, lens_bins, source_bins, tasks=(0,1,2), sparse=False):
+    def __init__(self, pixel_scheme, lens_bins, source_bins, do_g=True, do_lens=True, sparse=False):
         self.pixel_scheme = pixel_scheme
-        self.source_bins = source_bins
-        self.lens_bins = lens_bins
-        self.tasks = tasks
+        self.source_bins = source_bins + ['2D']
+        self.lens_bins = lens_bins + ['2D']
+        self.do_g = do_g if len(source_bins) else False
+        self.do_lens = do_lens if len(lens_bins) else False
         self.sparse = sparse
+        # TODO - replace this with arrays for faster lookup
+        # We index this with (bin_index, quantity) where
+        # quantity = 0 (lens weight), 1 (g1), 2 (g2), and
+        # 'weight' (source weight)
         self.stats = {}
         for b in self.lens_bins:
+            # We construct galaxy density maps by summing up weights
+            # among galaxies in bins per pixel
             t = 0
-            self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+            self.stats[(b,t)] = ParallelSum(self.pixel_scheme.npix)
 
+        # We make maps of each bin independently, and also of the
+        # combined 2D case, for all selected objects.
         for b in self.source_bins:
+            # For the lensing we are interested in both the mean and
+            # the variance of the g1 and g2 signals in each pixel, in
+            # each bin
             for t in [1,2]:
-                self.stats[(b,t)] = ParallelStatsCalculator(self.pixel_scheme.npix)
+                self.stats[(b,t)] = ParallelMeanVariance(self.pixel_scheme.npix)
+            self.stats[(b,'weight')] = ParallelSum(self.pixel_scheme.npix)
 
-    def add_data(self, shear_data, bin_data, m_data):
+    def add_data(self, data):
         npix = self.pixel_scheme.npix
+        do_lens = self.do_lens
+        do_g = self.do_g
+
+        n = len(data['ra'])
 
         # Get pixel indices
-        pix_nums = self.pixel_scheme.ang2pix(shear_data['ra'], shear_data['dec'])
+        pix_nums = self.pixel_scheme.ang2pix(data['ra'], data['dec'])
 
-        # TODO: change from unit weights for lenses
-        lens_weights = np.ones_like(shear_data['ra'])
+        if do_g:
+            source_weights = data['weight'] 
+            source_bins = data['source_bin']
+            g1 = data['g1']
+            g2 = data['g2']
 
-        # In advance make the mask indicating which tomographic bin
-        # Each galaxy is in.  Later we will AND this with the selection
-        # for each pixel.
-        masks_lens = [bin_data['lens_bin'] == b for b in self.lens_bins]
-        masks_source = [bin_data['source_bin'] == b for b in self.source_bins]
+        if do_lens:
+            lens_weights = data['lens_weight']
+            lens_bins = data['lens_bin']
 
-        for p in np.unique(pix_nums):  # Loop through pixels
+        for i in range(n):
+            p = pix_nums[i]
+
             if p < 0 or p >= npix:
                 continue
 
-            # All the data points that hit this pixel
-            mask_pix = (pix_nums == p)
+            if do_lens:
+                lens_bin = lens_bins[i]
+                # accumulate lens weight
+                if lens_bin >= 0:
+                    lw = lens_weights[i]
+                    self.stats[(lens_bin, 0)].add_datum(p, lw)
+                    self.stats[('2D', 0)].add_datum(p, lw)
 
-            # Number counts.
-            t = 0
-            if t in self.tasks:
-                # Loop through the tomographic lens bins
-                for i,b in enumerate(self.lens_bins):
-                    mask_bins = masks_lens[i]
-                    w = lens_weights
-                    # Loop through tasks (number counts, gamma_x)
-                    self.stats[(b,t)].add_data(p, w[mask_pix & mask_bins])
-
-            # Shears
-            for t in (1,2):
-                # We may be skipping tasks in future
-                if not t in self.tasks:
-                    continue
-                # Loop through tomographic source bins
-                for i,b in enumerate(self.source_bins):
-                    mask_bins = masks_source[i]
-                    g = shear_data[f'g{t}']
-                    self.stats[(b,t)].add_data(p, g[mask_pix & mask_bins])
+            if do_g:
+                # accumulate weighted g1, g2
+                # and overall weight
+                source_bin = source_bins[i]
+                if source_bin >= 0:
+                    sw = source_weights[i]
+                    self.stats[(source_bin, 1)].add_datum(p, g1[i], sw)
+                    self.stats[(source_bin, 2)].add_datum(p, g2[i], sw)
+                    self.stats[(source_bin,'weight')].add_datum(p, sw)
+                    # Also save 2D case
+                    self.stats[("2D", 1)].add_datum(p, g1[i], sw)
+                    self.stats[("2D", 2)].add_datum(p, g2[i], sw)
+                    self.stats[("2D",'weight')].add_datum(p, sw)
 
 
     def finalize(self, comm=None):
@@ -68,6 +88,8 @@ class Mapper:
         g2 = {}
         var_g1 = {}
         var_g2 = {}
+        source_weight = {}
+        lens_weight = {}
 
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
@@ -78,11 +100,16 @@ class Mapper:
         mask = np.zeros(self.pixel_scheme.npix, dtype=np.bool)
 
         is_master = (comm is None) or (comm.Get_rank()==0)
+        
         for b in self.lens_bins:
             if rank==0:
                 print(f"Collating density map for lens bin {b}")
-            stats = self.stats[(b,0)]
-            count, mean, _ = stats.collect(comm)
+
+            # Collect together galaxy counts from each processor.
+            # This class lets us collect both the raw number and
+            # the total weight in each pixel. We save both maps
+            lens_stats = self.stats[(b,0)]
+            count, weight = lens_stats.collect(comm)
 
             if not is_master:
                 continue
@@ -95,65 +122,67 @@ class Mapper:
             # higher, to the point where we don't have this issue.
             # So we use UNSEEN for shear and 0 for counts.
             count[np.isnan(count)] = 0
-            mean[np.isnan(mean)] = 0
+            weight[np.isnan(weight)] = 0
 
-            count = count.reshape(self.pixel_scheme.shape)
-            mean = mean.reshape(self.pixel_scheme.shape)
-
-            ngal[b] = (mean * count).flatten()
-            mask[count>0] = True
+            ngal[b] = count.flatten()
+            lens_weight[b] = weight.flatten()
+            mask[lens_weight[b] > 0] = True
 
         for b in self.source_bins:
             if rank==0:
                 print(f"Collating shear map for source bin {b}")
+
+            # Now for sourc maps, we get the weighted mean and
+            # and variance for each bin, and the total weight
+            # (same for g1 and g2) separately.
             stats_g1 = self.stats[(b,1)]
             stats_g2 = self.stats[(b,2)]
+            stats_weight = self.stats[(b, 'weight')]
+
             count_g1, mean_g1, v_g1 = stats_g1.collect(comm)
             count_g2, mean_g2, v_g2 = stats_g2.collect(comm)
+            _, weight  = stats_weight.collect(comm)
 
             if not is_master:
                 continue
 
-            # Convert variance of value to variance of mean,
-            # Since that is what we want for noise estimation
-            v_g1 /= count_g1
-            v_g2 /= count_g2
-
-            # Update the mask
-            mask[count_g1>0] = True
-            mask[count_g2>0] = True
-
-            #  Don't think we want to save these at the moment
-            del count_g1
+            # The counts should be the same - if not, something has
+            # gone wrong.  Check, then delete to save memory
+            assert np.all(count_g1==count_g2)
             del count_g2
 
+            # Convert variance-of-value to variance-of-mean,
+            # Since that is what we want for noise estimation
+            v_g1 /= count_g1
+            v_g2 /= count_g1
+
+            # Update the mask
+            mask[weight>0] = True
+
+            # Repalce NaNs with the Healpix unseen sentinel value
+            # -1.6375e30
             mean_g1[np.isnan(mean_g1)] = UNSEEN
             mean_g2[np.isnan(mean_g2)] = UNSEEN
-
-
             v_g1[np.isnan(v_g1)] = UNSEEN
             v_g2[np.isnan(v_g2)] = UNSEEN
+            weight[np.isnan(weight)] = UNSEEN
 
-            mean_g1 = mean_g1.reshape(self.pixel_scheme.shape)
-            mean_g2 = mean_g2.reshape(self.pixel_scheme.shape)
+            # Save the maps for this tomographic bin
+            g1[b] = mean_g1
+            g2[b] = mean_g2
+            source_weight[b] = weight
+            var_g1[b] = v_g1
+            var_g2[b] = v_g2
 
-            v_g1 = v_g1.reshape(self.pixel_scheme.shape)
-            v_g2 = v_g2.reshape(self.pixel_scheme.shape)
-
-            g1[b] = mean_g1.flatten()
-            g2[b] = mean_g2.flatten()
-
-            var_g1[b] = v_g1.flatten()
-            var_g2[b] = v_g2.flatten()
 
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2]:
+            for d in [ngal, g1, g2, var_g1, var_g2, source_weight, lens_weight]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, g1, g2, var_g1, var_g2
+        return pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight
 
 
 class FlagMapper:
@@ -163,11 +192,14 @@ class FlagMapper:
         self.maps = [np.zeros(self.pixel_scheme.npix, dtype=np.int32) for i in range(flag_exponent_max)]
         self.flag_exponent_max = flag_exponent_max
 
-    def add_data(self, ra, dec, flags):
+    def add_data(self, data):
+        ra = data['ra']
+        dec = data['dec']
+        flags = data['flags']
         pix_nums = self.pixel_scheme.ang2pix(ra, dec)
         for i, m in enumerate(self.maps):
             f = 2**i
-            w = np.where(f & flags > 0)
+            w = np.where(f & (flags > 0))
             for p in pix_nums[w]:
                 m[p] += 1
 

@@ -6,6 +6,8 @@ import warnings
 import pathlib
 import yaml
 import shutil
+import pickle
+from io import UnsupportedOperation
 
 class FileValidationError(Exception):
     pass
@@ -32,6 +34,10 @@ class DataFile:
     def __init__(self, path, mode, extra_provenance=None, validate=True, **kwargs):
         self.path = path
         self.mode = mode
+
+        if mode not in ["r", "w"]:
+            raise ValueError(f"File 'mode' argument must be 'r' or 'w' not '{mode}'")
+
         self.file = self.open(path, mode, **kwargs)
 
         if validate and mode == 'r':
@@ -44,7 +50,7 @@ class DataFile:
             self.provenance = self.read_provenance()
 
     @staticmethod
-    def generate_provenance(extra_provenance):
+    def generate_provenance(extra_provenance=None):
         """
         Generate provenance information - a dictionary
         of useful information about the origina 
@@ -128,6 +134,12 @@ class DataFile:
         else:
             return tag
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
 class HDFFile(DataFile):
     supports_parallel_write = True
     """
@@ -155,7 +167,9 @@ class HDFFile(DataFile):
         called 'provenance'
         """
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read-only mode")
+            raise UnsupportedOperation("Cannot write provenance to an HDF5 "
+                                      f"file opened in read-only mode "
+                                      f"({self.mode}")
 
         # This method *must* be called by all the processes in a parallel
         # run.  
@@ -232,7 +246,9 @@ class FitsFile(DataFile):
         """
         # Call the sub-method to do each item
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read mode")
+            raise UnsupportedOperation("Cannot write provenance to a FITS file opened "
+                                      f"in read-only mode ({self.mode}")
+
 
         for key, value in self.provenance.items():
             if isinstance(value, str) and '\n' in value:
@@ -278,8 +294,56 @@ class TextFile(DataFile):
 class YamlFile(DataFile):
     """
     A data file in yaml format.
+    The top-level object in TXPipe YAML
+    files should always be a dictionary.
     """
     suffix = 'yml'
+
+    def __init__(self, path, mode, extra_provenance=None, validate=True, load_mode='full'):
+        self.path = path
+        self.mode = mode
+        self.file = self.open(path, mode)
+
+        if mode == "r":
+            if load_mode == 'safe':
+                self.content = yaml.safe_load(self.file)
+            elif load_mode == 'full':
+                self.content = yaml.full_load(self.file)
+            elif load_mode == 'unsafe':
+                self.content = yaml.unsafe_load(self.file)
+            else:
+                raise ValueError(f"Unknown value {yaml_load} of load_mode. "
+                                  "Should be 'safe', 'full', or 'unsafe'")
+            # get provenance
+            self.provenance = self.read_provenance()
+
+        else:
+            self.provenance = self.generate_provenance(extra_provenance)
+            self.write_provenance()
+
+    def read(self, key):
+        return self.content[key]
+
+    def write(self, d):
+        if not isinstance(d, dict):
+            raise ValueError("Only dicts should be passed to YamlFile.write")
+        yaml.dump(d, self.file)
+
+    def write_provenance(self):
+        d = {'provenance': self.provenance}
+        self.write(d)
+
+    def read_provenance(self):
+        prov = self.content.pop('provenance', {})
+        req_provenance = {
+                'uuid':     prov.get('uuid', "UNKNOWN"),
+                'creation': prov.get('creation', "UNKNOWN"),
+                'domain':   prov.get('domain', "UNKNOWN"),
+                'username': prov.get('username', "UNKNOWN"),
+        }
+        prov.update(req_provenance)
+        return prov
+
 
 class Directory(DataFile):
     suffix = ''
@@ -305,7 +369,8 @@ class Directory(DataFile):
         # This method *must* be called by all the processes in a parallel
         # run.  
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a directory opened in read-only mode")
+            raise UnsupportedOperation("Cannot write provenance to a directory opened "
+                                       f"in read-only mode ({self.mode})")
 
         self._provenance_file = open(self.file / 'provenance.yml', 'w')
 
@@ -334,6 +399,38 @@ class Directory(DataFile):
 
         return provenance
 
+class FileCollection(Directory):
+    """
+    Represents a grouped bundle of files, for cases where you don't
+    know the exact list in advance.
+    """
+    suffix = ''
+
+    def write_listing(self, filenames):
+        """
+        Write a listing file in the directory recording
+        (presumably) the filenames put in it.
+        """
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            yaml.dump(filenames, f)
+
+    def read_listing(self):
+        """
+        Read a listing file from the directory.
+        """
+        fn = self.path_for_file('txpipe_listing.txt')
+        with open(fn, 'w') as f:
+            filenames = yaml.safe_load(f)
+        return filenames
+
+    def path_for_file(self, filename):
+        """
+        Get the path for a file inside the collection.
+        Does not check if the file exists or anything like
+        that.
+        """
+        return str(self.file / filename)
 
 
 class PNGFile(DataFile):
@@ -359,3 +456,29 @@ class PNGFile(DataFile):
 
     def read_provenance(self):
         raise ValueError("Reading existing PNG files is not supported")
+
+class PickleFile(DataFile):
+    suffix = "pkl"
+
+    @classmethod
+    def open(self, path, mode, **kwargs):
+        return open(path, mode + "b")
+
+    def write_provenance(self):
+        self.write(self.provenance)
+
+    def read_provenance(self):
+        return self.read()
+
+    def write(self, obj):
+        if self.mode != "w":
+            raise UnsupportedOperation("Cannot write to pickle file opened in "
+                                      f"read-only ({self.mode})")
+        pickle.dump(obj, self.file)
+
+    def read(self):
+        if self.mode != "r":
+            raise UnsupportedOperation("Cannot read from pickle file opened in "
+                                      f"write-only ({self.mode})")
+        return pickle.load(self.file)
+

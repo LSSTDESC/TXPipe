@@ -2,6 +2,7 @@ from ceci import PipelineStage as PipelineStageBase
 from .data_types import HDFFile
 from textwrap import dedent
 from .utils.provenance import find_module_versions, git_diff, git_current_revision
+import sys
 
 class PipelineStage(PipelineStageBase):
     name = "Error"
@@ -12,6 +13,27 @@ class PipelineStage(PipelineStageBase):
     def run(self):
         print("Please do not execute this stage again.")
 
+
+    def combined_iterators(self, rows, *inputs):
+        if not len(inputs) % 3 == 0:
+            raise ValueError("Arguments to combined_iterators should be in threes: "
+                "tag, group, value"
+            )
+        n = len(inputs) // 3
+
+        iterators = []
+        for i in range(n):
+            tag = inputs[3 * i]
+            section = inputs[3 * i + 1]
+            cols = inputs[3 * i + 2]
+            iterators.append(self.iterate_hdf(tag, section, cols, rows))
+
+        for it in zip(*iterators):
+            data = {}
+            for (s, e, d) in it:
+                data.update(d)
+            yield s, e, data
+
     def gather_provenance(self):
         provenance = {}
 
@@ -19,10 +41,14 @@ class PipelineStage(PipelineStageBase):
             provenance[f"config/{key}"] = str(value)
 
         for name, tag_cls in self.inputs:
-            f = self.open_input(name, wrapper=True)
-            input_id = f.provenance['uuid']
+            try:
+                f = self.open_input(name, wrapper=True)
+                input_id = f.provenance['uuid']
+                f.close()
+            except (OSError, IOError, KeyError):
+                input_id = "UNKNOWN"
+
             provenance[f"input/{name}"] = input_id
-            f.close()
 
         provenance["gitdiff"] = git_diff()
         provenance['githead'] = git_current_revision()
@@ -82,6 +108,7 @@ class PipelineStage(PipelineStageBase):
                 raise RuntimeError("h5py module is not MPI-enabled.")
 
         extra_provenance = self.gather_provenance()
+
         # Return an opened object representing the file
         obj = output_class(path, 'w', extra_provenance=extra_provenance, **kwargs)
 

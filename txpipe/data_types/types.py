@@ -1,4 +1,9 @@
-from .base import FitsFile, HDFFile, DataFile, YamlFile, TextFile, Directory, PNGFile
+"""
+This file contains TXPipe-specific file types, subclassing the more
+generic types in base.py
+"""
+from .base import HDFFile, DataFile, YamlFile
+import yaml
 
 def metacalibration_names(names):
     """
@@ -12,16 +17,41 @@ def metacalibration_names(names):
         out += [name + '_' + s for s in suffices]
     return out
 
-class MetacalCatalog(HDFFile):
+class ShearCatalog(HDFFile):
     """
-    A metacal output catalog
+    A generic shear catalog 
     """
     # These are columns
-    required_datasets = ['metacal/mcal_g1', 'metacal/mcal_g1_1p', 
-        'metacal/mcal_g2', 'metacal/mcal_flags', 'metacal/ra',
-        'metacal/mcal_T']
 
-    # Add methods for handling here ...
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._catalog_type = None
+    
+    def read_catalog_info(self):
+        try:
+            group = self.file['shear']
+            info = dict(group.attrs)
+        except:
+            raise ValueError(f"Unable to read shear catalog")
+        shear_catalog_type = info.get('catalog_type')
+        return shear_catalog_type
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is not None:
+            return self._catalog_type
+
+        if 'catalog_type' in self.file['shear'].attrs:
+            t = self.file['shear'].attrs['catalog_type']
+        elif 'mcal_g1' in self.file['shear'].keys():
+            t = 'metacal'
+        elif 'c1' in self.file['shear'].keys():
+            t = 'lensfit'
+        else:
+            raise ValueError("Could not figure out catalog format")
+
+        self._catalog_type = t
+        return t
 
 
 class TomographyCatalog(HDFFile):
@@ -43,25 +73,40 @@ class TomographyCatalog(HDFFile):
 
 
 
+
 class RandomsCatalog(HDFFile):
-    required_datasets = ['randoms/ra', 'randoms/dec', 'randoms/e1', 'randoms/e2']
+    required_datasets = ['randoms/ra', 'randoms/dec']
 
 
 
 
-class DiagnosticMaps(HDFFile):
-    required_datasets = [
-        'maps/depth/value',
-        'maps/depth/pixel',
-        ]
+class MapsFile(HDFFile):
+    required_datasets = []
 
-    def get_nbins(self):
-        group = self.file['maps']
-        info = dict(group.attrs)
-        nbin_lens = info.get('nbin_lens', 0)
-        nbin_source = info.get('nbin_source', 0)
-        return nbin_source, nbin_lens
+    def list_maps(self):
+        import h5py
+        maps = []
 
+        # h5py uses this visititems method to walk through
+        # a file, looking at everything underneath a path.
+        # We use it here to search through everything in the
+        # "maps" section of a maps file looking for any groups
+        # that seem to be a map.  You have to pass a function
+        # like this to visititems.
+        def visit(name, obj):
+            if isinstance(obj, h5py.Group):
+                keys = obj.keys()
+                # we save maps with these two data sets,
+                # so if they are both there then this will
+                # be a map
+                if 'pixel' in keys and 'value' in keys:
+                    maps.append(name)
+
+        # Now actually run this
+        self.file['maps'].visititems(visit)
+
+        # return the accumulated list
+        return maps
 
     def read_healpix(self, map_name, return_all=False):
         import healpy
@@ -81,6 +126,9 @@ class DiagnosticMaps(HDFFile):
     def read_map_info(self, map_name):
         group = self.file[f'maps/{map_name}']
         info = dict(group.attrs)
+        if not 'pixelization' in info:
+            raise ValueError(f"Map '{map_name}' not found, "
+                             f"or not saved properly in file {self.path}")
         return info
 
     def read_map(self, map_name):
@@ -93,6 +141,42 @@ class DiagnosticMaps(HDFFile):
         else:
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
+
+    def read_mask(self):
+        mask = self.read_map('mask')
+        mask[mask<0] = 0
+        return mask
+
+
+    def write_map(self, map_name, pixel, value, metadata):
+        """
+        Save an output map to an HDF5 subgroup.
+
+        The pixel numbering and the metadata are also saved.
+
+        Parameters
+        ----------
+
+        group: H5Group
+            The h5py Group object in which to store maps
+        name: str
+            The name of this map, used as the name of a subgroup in the group where the data is stored.
+        pixel: array
+            Array of indices of observed pixels
+        value: array
+            Array of values of observed pixels
+        metadata: mapping
+            Dict or other mapping of metadata to store along with the map
+        """
+        if not 'pixelization' in metadata:
+            raise ValueError("Map metadata should include pixelization")
+        if not pixel.shape == value.shape:
+            raise ValueError(f"Map pixels and values should be same shape "
+                             f"but are {pixel.shape} vs {value.shape}")
+        subgroup = self.file['maps'].create_group(map_name)
+        subgroup.attrs.update(metadata)
+        subgroup.create_dataset("pixel", data=pixel)
+        subgroup.create_dataset("value", data=value)
 
 
     def plot_healpix(self, map_name, view='cart', **kwargs):
@@ -170,6 +254,37 @@ class DiagnosticMaps(HDFFile):
         return m
 
 
+class LensingNoiseMaps(MapsFile):
+    required_datasets = [
+        ]
+
+    def read_rotation(self, realization_index, bin_index):
+        g1_name = f'rotation_{realization_index}/g1_{bin_index}'
+        g2_name = f'rotation_{realization_index}/g2_{bin_index}'
+
+        g1 = self.read_map(g1_name)
+        g2 = self.read_map(g2_name)
+
+        return g1, g2
+
+    def number_of_realizations(self):
+        info = self.file['maps'].attrs
+        lensing_realizations = info['lensing_realizations']
+        return lensing_realizations
+
+class ClusteringNoiseMaps(MapsFile):
+    def read_density_split(self, realization_index, bin_index):
+        rho1_name = f'split_{realization_index}/rho1_{bin_index}'
+        rho2_name = f'split_{realization_index}/rho2_{bin_index}'
+        rho1 = self.read_map(rho1_name)
+        rho2 = self.read_map(rho2_name)
+        return rho1, rho2
+
+    def number_of_realizations(self):
+        info = self.file['maps'].attrs
+        clustering_realizations = info['clustering_realizations']
+        return clustering_realizations
+
 
 class PhotozPDFFile(HDFFile):
     required_datasets = []
@@ -207,19 +322,12 @@ class SACCFile(DataFile):
 
 
 
+
+
 class NOfZFile(HDFFile):
+
     # Must have at least one bin in
-    required_datasets = ['n_of_z/lens/z', 'n_of_z/source/bin_0']
-
-    def validate(self):
-        super().validate()
-
-        for kind in ('lens', 'source'):
-            nbin = self.get_nbin(kind)
-            for b in range(nbin):
-                col_name = 'bin_{}'.format(b)
-                if not col_name in self.file[f'n_of_z/{kind}']:
-                    raise FileValidationError(f"Expected to find {nbin} bins in NOfZFile but was missing at least {col_name}")
+    required_datasets = []
 
     def get_nbin(self, kind):
         return self.file['n_of_z'][kind].attrs['nbin']
@@ -249,3 +357,42 @@ class NOfZFile(HDFFile):
         for b in range(self.get_nbin(kind)):
             z, nz = self.get_n_of_z(kind, b)
             plt.plot(z, nz, label=f'Bin {b}')
+
+class FiducialCosmology(YamlFile):
+
+    # TODO replace when CCL has more complete serialization tools.
+    def to_ccl(self, **kwargs):
+        import pyccl as ccl
+        with open(self.path, 'r') as fp:
+            params = yaml.load(fp, Loader=yaml.Loader)
+
+        # Now we assemble an init for the object since the CCL YAML has
+        # extra info we don't need and different formatting.
+        inits = dict(
+            Omega_c=params['Omega_c'],
+            Omega_b=params['Omega_b'],
+            h=params['h'],
+            n_s=params['n_s'],
+            sigma8=None if params['sigma8'] == 'nan' else params['sigma8'],
+            A_s=None if params['A_s'] == 'nan' else params['A_s'],
+            Omega_k=params['Omega_k'],
+            Neff=params['Neff'],
+            w0=params['w0'],
+            wa=params['wa'],
+            bcm_log10Mc=params['bcm_log10Mc'],
+            bcm_etab=params['bcm_etab'],
+            bcm_ks=params['bcm_ks'],
+            mu_0=params['mu_0'],
+            sigma_0=params['sigma_0'])
+
+        if 'z_mg' in params:
+            inits['z_mg'] = params['z_mg']
+            inits['df_mg'] = params['df_mg']
+
+        if 'm_nu' in params:
+            inits['m_nu'] = params['m_nu']
+            inits['m_nu_type'] = 'list'
+
+        inits.update(kwargs)
+
+        return ccl.Cosmology(**inits)

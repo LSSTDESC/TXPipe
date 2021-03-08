@@ -1,10 +1,9 @@
-
 from .base_stage import PipelineStage
-from .data_types import MetacalCatalog, HDFFile, YamlFile, SACCFile, TomographyCatalog, CSVFile
-from .data_types import DiagnosticMaps
+from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile
 import numpy as np
 import warnings
 import os
+import pickle
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
@@ -14,10 +13,9 @@ d2r=np.pi/180
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
     do_xi=False
-
+    
     inputs = [
-        ('fiducial_cosmology', YamlFile),    # For the cosmological parameters
-        ('photoz_stack', HDFFile),           # For the n(z)
+        ('fiducial_cosmology', FiducialCosmology),    # For the cosmological parameters
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata', HDFFile),        # For metadata
     ]
@@ -27,6 +25,9 @@ class TXFourierGaussianCovariance(PipelineStage):
     ]
 
     config_options = {
+        'pickled_wigner_transform': '',
+        'use_true_shear': False,
+        
     }
 
 
@@ -66,14 +67,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
 
-    def read_cosmology(self):
-        import pyccl as ccl
-        filename = self.get_input('fiducial_cosmology')
-        cosmo = ccl.Cosmology.read_yaml(filename)
 
-        print("COSMOLOGY OBJECT:")
-        print(cosmo)
-        return cosmo
+    def read_cosmology(self):
+        return self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
 
     def read_sacc(self):
         import sacc
@@ -102,12 +98,16 @@ class TXFourierGaussianCovariance(PipelineStage):
         # per-bin quantities
         N_eff = input_data['tracers/N_eff'][:]
         N_lens = input_data['tracers/lens_counts'][:]
-        sigma_e = input_data['tracers/sigma_e'][:]
+        if self.config['use_true_shear']:
+            nbins = len(input_data['tracers/sigma_e'][:])
+            sigma_e = np.array([0. for i in range(nbins)])
+        else:
+            sigma_e = input_data['tracers/sigma_e'][:]
 
         # area in sq deg
         area_deg2 = input_data['tracers'].attrs['area']
         area_unit = input_data['tracers'].attrs['area_unit']
-        if area_unit != 'sq deg':
+        if area_unit != 'deg^2':
             raise ValueError("Units of area have changed")
 
         input_data.close()
@@ -134,7 +134,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         print(f"n_eff:  {n_eff} / steradian")
         print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
         print(f"lens density: {n_lens} / steradian")
-        print(f"            = {n_lens} / arcmiin")
+        print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
 
         # Pass all this back as a dictionary
         meta = {
@@ -329,30 +329,19 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         return np.array(ell_edges)
 
-    #compute all the covariances and then combine them into one single giant matrix
-    def compute_covariance(self, cosmo, meta, two_point_data):
-        from tjpcov import bin_cov, wigner_transform
+    def make_wigner_transform(self, meta):
         import threadpoolctl
+        from tjpcov import wigner_transform
 
-        ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
-        # we will loop over all these
-        tracer_combs = two_point_data.get_tracer_combinations() 
-        N2pt = len(tracer_combs)
-        
-        # the bit below is just counting the number of 2pt functions, and accounting 
-        # for the fact that xi needs to be double counted
-        N2pt0 = 0
-        if self.do_xi:
-            N2pt0 = N2pt
-            tracer_combs_temp = tracer_combs.copy()
-            for combo in tracer_combs:
-                if ('source' in combo[0]) and ('source' in combo[1]):
-                    N2pt += 1
-                    tracer_combs_temp += [combo]
-            tracer_combs = tracer_combs_temp.copy()
-
-        ell_bins = self.get_angular_bins(two_point_data)
-        Nell_bins = len(ell_bins) - 1
+        path = self.config['pickled_wigner_transform']
+        if path:
+            if os.path.exists(path):
+                print(f"Loading precomputed wigner transform from {path}")
+                WT = pickle.load(open(path, 'rb'))
+                return WT
+            else:
+                print(f"Precomputed wigner transform {path} not found.")
+                print("Will compute it and then save it.")
 
         # We don't want to use n processes with n threads each by accident,
         # where n is the number of CPUs we have
@@ -369,7 +358,43 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2 = [(2,2), (2,-2), (0,2), (2,0), (0,0)],
                 ncpu = num_processes,
                 )
-            print("Computed Wigner Transformer")
+            print("Computed Wigner Transform.")
+
+        if path:
+            try:
+                pickle.dump(WT, open(path, 'wb'))
+            except OSError:
+                sys.stderr.write(f"Could not save wigner transform to {path}")
+        return WT
+
+
+    #compute all the covariances and then combine them into one single giant matrix
+    def compute_covariance(self, cosmo, meta, two_point_data):
+        from tjpcov import bin_cov
+
+        ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
+        # we will loop over all these
+        tracer_combs = two_point_data.get_tracer_combinations() 
+        N2pt = len(tracer_combs)
+
+
+        WT = self.make_wigner_transform(meta)
+        
+        # the bit below is just counting the number of 2pt functions, and accounting 
+        # for the fact that xi needs to be double counted
+        N2pt0 = 0
+        if self.do_xi:
+            N2pt0 = N2pt
+            tracer_combs_temp = tracer_combs.copy()
+            for combo in tracer_combs:
+                if ('source' in combo[0]) and ('source' in combo[1]):
+                    N2pt += 1
+                    tracer_combs_temp += [combo]
+            tracer_combs = tracer_combs_temp.copy()
+
+        ell_bins = self.get_angular_bins(two_point_data)
+        Nell_bins = len(ell_bins) - 1
+
 
         cov_full=np.zeros((Nell_bins*N2pt, Nell_bins*N2pt))
         count_xi_pm1 = 0
@@ -447,8 +472,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     do_xi = True
 
     inputs = [
-        ('fiducial_cosmology', YamlFile),     # For the cosmological parameters
-        ('photoz_stack', HDFFile),            # For the n(z)
+        ('fiducial_cosmology', FiducialCosmology),     # For the cosmological parameters
         ('twopoint_data_real', SACCFile),     # For the binning information
         ('tracer_metadata', HDFFile),         # For metadata
 
@@ -462,7 +486,8 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         'min_sep':2.5,  # arcmin
         'max_sep':250,
         'nbins':20,
-            }
+        'pickled_wigner_transform': '',
+    }
 
     def run(self):
         super().run()

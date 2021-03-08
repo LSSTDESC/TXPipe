@@ -1,0 +1,13 @@
+[submodule "FlexZPipe"]
+	path = submodules/FlexZPipe
+	url = https://github.com/LSSTDESC/FlexZPipe
+	branch = tx-integration
+[submodule "WLMassMap"]
+	path = submodules/WLMassMap
+	url = https://github.com/LSSTDESC/WLMassMap
+[submodule "submodules/TJPCov"]
+	path = submodules/TJPCov
+	url = https://github.com/LSSTDESC/TJPCov
+[submodule "submodules/RAIL"]
+	path = submodules/RAIL
+	url = https://github.com/LSSTDESC/RAIL

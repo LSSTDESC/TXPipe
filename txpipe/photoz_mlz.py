@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, MetacalCatalog, YamlFile, HDFFile, DataFile
+from .data_types import PhotozPDFFile, ShearCatalog, YamlFile, HDFFile, DataFile
 import sys
 import numpy as np
 
@@ -51,7 +51,7 @@ class PZPDFMLZ(PipelineStage):
         bands = self.config['bands']
         # The columns we need to calculate the photo-z.
         # Note that we need all the metacalibrated variants too.
-        cols = [f'{band}_mag' for band in bands]
+        cols = [f'mag_{band}' for band in bands]
 
         # Loop through chunks of the data.
         # Parallelism is handled in the iterate_input function - 
@@ -122,7 +122,7 @@ class PZPDFMLZ(PipelineStage):
 
         # Number of z points we will be using
         nbin = len(z) - 1
-        nrow = len(data['i_mag'])
+        nrow = len(data['mag_i'])
 
 
         # These are the old names for the features
@@ -138,13 +138,13 @@ class PZPDFMLZ(PipelineStage):
             'mag_r_lsst-mag_i_lsst',
             'mag_i_lsst-mag_z_lsst',
             'mag_z_lsst-mag_y_lsst']:
-            x =  [data[f'{b}_mag'] for b in 'ugrizy']
+            x =  [data[f'mag_{b}'] for b in 'ugrizy']
 
-            ug = data['u_mag'] - data['g_mag']
-            gr = data['g_mag'] - data['r_mag']
-            ri = data['r_mag'] - data['i_mag']
-            iz = data['i_mag'] - data['z_mag']
-            zy = data['z_mag'] - data['y_mag']
+            ug = data['mag_u'] - data['mag_g']
+            gr = data['mag_g'] - data['mag_r']
+            ri = data['mag_r'] - data['mag_i']
+            iz = data['mag_i'] - data['mag_z']
+            zy = data['mag_z'] - data['mag_y']
             x += [ug, gr, ri, iz, zy]
 
         elif features == [
@@ -157,12 +157,12 @@ class PZPDFMLZ(PipelineStage):
          'mag_r_lsst-mag_i_lsst',
          'mag_i_lsst-mag_z_lsst',
          'mag_z_lsst-mag_y_lsst']:
-            x =  [data[f'{b}_mag'] for b in 'ugriz']
-            ug = data['u_mag'] - data['g_mag']
-            gr = data['g_mag'] - data['r_mag']
-            ri = data['r_mag'] - data['i_mag']
-            iz = data['i_mag'] - data['z_mag']
-            zy = data['z_mag'] - data['y_mag']
+            x =  [data[f'mag_{b}'] for b in 'ugriz']
+            ug = data['mag_u'] - data['mag_g']
+            gr = data['mag_g'] - data['mag_r']
+            ri = data['mag_r'] - data['mag_i']
+            iz = data['mag_i'] - data['mag_z']
+            zy = data['mag_z'] - data['mag_y']
             x += [ug, gr, ri, iz, zy]
         else:
             raise ValueError("Need to re-code for the features you used")
@@ -205,13 +205,10 @@ class PZPDFMLZ(PipelineStage):
             Point-estimated photo-zs for each of the 5 metacalibrated variants
 
         """
-        group = output_file['pdf']
-        group['pdf'][start:end] = pdfs
-        group['mu'][start:end] = point_estimates
-
-
-
-
+        group1 = output_file['pdf']
+        group1['pdf'][start:end] = pdfs
+        group2 = output_file['point_estimates']
+        group2['z_mean'][start:end] = point_estimates
 
     def prepare_output(self, nobj, z):
         """
@@ -243,14 +240,15 @@ class PZPDFMLZ(PipelineStage):
         z_mid = 0.5*(z[1:] + z[:-1])
         # Create the space for output data
         nz = len(z_mid)
-        group = f.create_group('pdf')
-        group.create_dataset("z", (nz,), dtype='f4')
-        group.create_dataset("pdf", (nobj,nz), dtype='f4')
-        group.create_dataset("mu", (nobj,), dtype='f4')
+        group1 = f.create_group('pdf')
+        group1.create_dataset("zgrid", (nz,), dtype='f4')
+        group1.create_dataset("pdf", (nobj,nz), dtype='f4')
+        group2 = f.create_group('point_estimates')
+        group2.create_dataset("z_mean", (nobj,), dtype='f4')
 
         # One processor writes the redshift axis to output.
         if self.rank==0:
-            group['z'][:] = z_mid
+            group1['zgrid'][:] = z_mid
 
         return f
 
