@@ -130,7 +130,7 @@ class _DataWrapper:
     def __contains__(self, name):
         return (name in self.data)
 
-class ParallelCalibratorMetacal:
+class MetacalCalculator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
@@ -206,7 +206,7 @@ class ParallelCalibratorMetacal:
         g1 = data_00['mcal_g1']
         g2 = data_00['mcal_g2']
         weight = data_00['weight']
-        n = g1.size
+        n = g1[sel_00].size
 
         # Record the count for this chunk, for summation later
         self.count += n
@@ -296,7 +296,7 @@ class ParallelCalibratorMetacal:
 
 
 
-class ParallelCalibratorNonMetacal:
+class LensfitCalculator:
     """
     This class builds up the total response calibration
     factors for NonMetacalibration shears from each chunk of data it is given.
@@ -398,6 +398,49 @@ class ParallelCalibratorNonMetacal:
         
         return R, K, C, N 
 
+class NullCalibrator:
+    def apply(self, g1, g2):
+        # for consistency with the other calibrators which return
+        # copies we do the same here
+        return g1.copy(), g2.copy()
+
+class MetacalCalibrator:
+    def __init__(self, R, mu, mu_is_calibrated=True):
+        self.R = R
+        self.Rinv = np.linalg.inv(R)
+        if mu_is_calibrated:
+            self.mu = np.array(mu)
+        else:
+            self.mu = self.Rinv @ mu
+
+    def apply(self, g1, g2):
+        if np.isscalar(g1):
+            g1, g2 = self.Rinv @ [g1, g2]
+        else:
+            g1, g2 = self.Rinv @ [g1, g2] - self.mu[:, np.newaxis]
+        return g1, g2
+
+    @classmethod
+    def calibrators_from_tomography_file(cls, tomo_file, subtract_mean_shear=True):
+        import h5py
+        R = tomo_file['metacal_response/R_total'][:]
+        R_2d = tomo_file['metacal_response/R_total_2d'][:]
+        n = len(R)
+        if subtract_mean_shear:
+            mu1 = tomo_file['tomography/mean_e1'][:]
+            mu2 = tomo_file['tomography/mean_e2'][:]
+            mu1_2d = tomo_file['tomography/mean_e1_2d'][0]
+            mu2_2d = tomo_file['tomography/mean_e2_2d'][0]
+        else:
+            mu1 = np.zeros(n)
+            mu2 = np.zeros(n)
+            mu1_2d = 0
+            mu2_2d = 0
+
+
+        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
+        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        return calibrators, calibrator2d
 
 class MeanShearInBins:
     def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type='metacal'):
@@ -414,9 +457,9 @@ class MeanShearInBins:
         self.x  = ParallelMean(self.size)
 
         if shear_catalog_type=='metacal':
-            self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
+            self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
-            self.calibrators = [ParallelCalibratorNonMetacal(self.selector) for i in range(self.size)]
+            self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
 
 
     def selector(self, data, i):

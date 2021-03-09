@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile
 from .utils import LensNumberDensityStats
+from .utils import Splitter
 import numpy as np
 import warnings
 
@@ -17,7 +18,7 @@ class TXBaseLensSelector(PipelineStage):
     name='TXBaseLensSelector'
 
     outputs = [
-        ('lens_tomography_catalog', TomographyCatalog)
+        ('lens_tomography_catalog', TomographyCatalog),
     ]
 
     config_options = {
@@ -312,9 +313,97 @@ class TXModeLensSelector(TXBaseLensSelector):
 
 
 
-def flatten_list(lst):
-    return [item for sublist in lst for item in sublist]
 
+class TXLensCatalogSplitter(PipelineStage):
+    """
+    Take a lens catalog 
+    """
+    name='TXLensCatalogSplitter'
+
+    inputs = [
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('photometry_catalog', HDFFile),
+    ]
+
+    outputs = [
+        ("calibrated_lens_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "initial_size": 100_000,
+        "chunk_rows": 100_000,
+    }
+
+    lens_cat_tag = "photometry_catalog"
+
+    def run(self):
+
+        with self.open_input("lens_tomography_catalog") as f:
+            nbin = f["tomography"].attrs["nbin_lens"]
+            counts = f["tomography/lens_counts"][:]
+            count2d = f["tomography/lens_counts_2d"][:]
+
+        cols = ["ra", "dec", "weight"]
+
+        # Object we use to make the separate lens bins catalog
+        cat_output = self.open_output("calibrated_lens_catalog")
+        cat_group = cat_output.create_group("lens")
+        cat_group.attrs['nbin'] = len(counts)
+        cat_group.attrs['nbin_lens'] = len(counts)
+
+
+        bins = {b:c for b,c in enumerate(counts)}
+        bins["all"] = count2d
+        splitter = Splitter(cat_group, "bin", cols, bins)
+
+        my_bins = list(self.split_tasks_by_rank(bins))
+        if my_bins:
+            my_bins_text = ", ".join(str(x) for x in my_bins)
+            print(f"Process {self.rank} collating bins: [{my_bins_text}]")
+        else:
+            print(f"Note: Process {self.rank} will not do anything.")
+
+
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            self.lens_cat_tag,
+            "photometry",
+            ["ra", "dec"],
+            parallel=False,
+        )
+
+        for s, e, data in it:
+            if self.rank == 0:
+                print(f"Process 0 binning data in range {s:,} - {e:,}")
+
+            data["weight"] = data["lens_weight"]
+            for b in my_bins:
+                if b == "all":
+                    w = np.where(data["lens_bin"] >= 0)
+                else:
+                    w = np.where(data["lens_bin"] == b)
+                d = {name: col[w] for name, col in data.items()}
+                splitter.write_bin(d, b)
+
+        splitter.finish(my_bins)
+        cat_output.close()                
+
+
+class TXExternalLensCatalogSplitter(PipelineStage):
+    name = "TXExternalLensCatalogSplitter"
+    """
+    Split an external lens catalog into bins
+    """
+    inputs = [
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_catalog', HDFFile),
+    ]
+    lens_cat_tag = "lens_catalog"
 
 
 if __name__ == '__main__':

@@ -22,12 +22,11 @@ POS_POS = 2
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
+        ('calibrated_shear_catalog', ShearCatalog),
+        ('calibrated_lens_catalog', HDFFile),
+        ('binned_random_cats', HDFFile),
         ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
         ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
         ('patch_centers', TextFile),
         ('tracer_metadata', HDFFile),
     ]
@@ -55,7 +54,9 @@ class TXTwoPoint(PipelineStage):
         'do_pos_pos': True,
         'var_method': 'jackknife',
         'use_true_shear': False,
-        'subtract_mean_shear':False
+        'subtract_mean_shear':False,
+        'use_randoms': True,
+        'low_mem': False,
         }
 
     def run(self):
@@ -65,24 +66,15 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import healpy
         import treecorr
-        # Load the different pieces of data we need into
-        # one large dictionary which we accumulate
-        data = {}
-        self.load_shear_catalog(data)
-        self.load_tomography(data)
-        self.load_random_catalog(data)
-        # This one is optional - this class does nothing with it
-        self.load_lens_catalog(data)
         # Binning information
-        self.read_nbin(data)
+        source_list, lens_list = self.read_nbin()
 
         # Calculate metadata like the area and related
         # quantities
         meta = self.read_metadata()
 
         # Choose which pairs of bins to calculate
-        calcs = self.select_calculations(data)
-
+        calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
         # This splits the calculations among the parallel bins
@@ -91,7 +83,7 @@ class TXTwoPoint(PipelineStage):
         # but for this case I would expect it to be mostly fine
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
-            result = self.call_treecorr(data, meta, i, j, k)
+            result = self.call_treecorr(i, j, k)
             results.append(result)
 
         # If we are running in parallel this collects the results together
@@ -99,12 +91,10 @@ class TXTwoPoint(PipelineStage):
 
         # Save the results
         if self.rank==0:
-            self.write_output(data, meta, results)
+            self.write_output(source_list, lens_list, meta, results)
 
 
-    def select_calculations(self, data):
-        source_list = data['source_list']
-        lens_list = data['lens_list']
+    def select_calculations(self, source_list, lens_list):
         calcs = []
 
         # For shear-shear we omit pairs with j>i
@@ -124,7 +114,7 @@ class TXTwoPoint(PipelineStage):
 
         # For position-position we omit pairs with j>i
         if self.config['do_pos_pos']:
-            if not 'random_bin' in data:
+            if not self.config['use_randoms']:
                 raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             for i in lens_list:
@@ -149,7 +139,7 @@ class TXTwoPoint(PipelineStage):
 
         return results
 
-    def read_nbin(self, data):
+    def read_nbin(self):
         """
         Determine the bins to use in this analysis, either from the input file
         or from the configuration.
@@ -163,22 +153,20 @@ class TXTwoPoint(PipelineStage):
         nl = len(lens_list)
         print(f'Running with {ns} source bins and {nl} lens bins')
 
-        data['source_list']  =  source_list
-        data['lens_list']  =  lens_list
+        return source_list, lens_list
 
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        tomo = self.open_input('shear_tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
-        tomo.close()
-        nbin_source = d['nbin_source']
-        tomo = self.open_input('lens_tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
-        tomo.close()
-        nbin_lens = d['nbin_lens']
+        with self.open_input('calibrated_shear_catalog') as f:
+            nbin_source = f['shear'].attrs['nbin_source']
+
+        with self.open_input('calibrated_lens_catalog') as f:
+            nbin_lens = f['lens'].attrs['nbin_lens']
+
         source_list = range(nbin_source)
         lens_list = range(nbin_lens)
+
         return source_list, lens_list
 
     def _read_nbin_from_config(self):
@@ -219,7 +207,7 @@ class TXTwoPoint(PipelineStage):
 
 
 
-    def write_output(self, data, meta, results):
+    def write_output(self, source_list, lens_list, meta, results):
         import sacc
         import treecorr
         XI = "combined"
@@ -239,7 +227,7 @@ class TXTwoPoint(PipelineStage):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        for i in data['source_list']:
+        for i in source_list:
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
@@ -248,7 +236,7 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
-        for i in data['lens_list']:
+        for i in lens_list:
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
@@ -366,7 +354,7 @@ class TXTwoPoint(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-    def call_treecorr(self, data, meta, i, j, k):
+    def call_treecorr(self, i, j, k):
         """
         This is a wrapper for interaction with treecorr.
         """
@@ -374,13 +362,13 @@ class TXTwoPoint(PipelineStage):
 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, meta, i, j)
+            xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(data, meta, i, j)
+            xx = self.calculate_shear_pos(i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, i, j)
+            xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
@@ -391,170 +379,88 @@ class TXTwoPoint(PipelineStage):
         return result
 
 
-    def get_calibrated_catalog_bin(self, data, meta, i):
-        """
-        Calculate the metacal correction factor for this tomographic bin.
-        """
 
-        mask = (data['source_bin'] == i)
-
-        if self.config['use_true_shear']:
-            g1 = data[f'true_g1'][mask]
-            g2 = data[f'true_g2'][mask]
-
-        elif self.config['shear_catalog_type']=='metacal':
-            # We use S=0 here because we have already included it in R_total
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask], data['mcal_g2'][mask])
-
-        elif self.config['shear_catalog_type']=='lensfit':
-            #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
-
-        else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-            
-        # Subtract mean shears, if needed.  These are calculated in source_selector,
-        # and have already been calibrated, so subtract them after calibrated our sample.
-        # Right now we are loading the full catalog here, so we could just take the mean
-        # at this point, but in future we would like to move to just loading part of the
-        # catalog.
-        if self.config['subtract_mean_shear']:
-            # Cross-check: print out the new mean.
-            # In the weighted case these won't actually be equal
-            mu1 = g1.mean()
-            mu2 = g2.mean()
-
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            g1 -= meta['mean_e1'][i]
-            g2 -= meta['mean_e2'][i]
-
-            # Compare to final means.
-            nu1 = g1.mean()
-            nu2 = g2.mean()
-            print(f"Subtracting mean shears for bin {i}")
-            print(f"Means before: {mu1}  and  {mu2}")
-            print(f"Means after:  {nu1}  and  {nu2}")
-            print("(In the weighted case the latter may not be exactly zero)")
-
-        if self.config['flip_g2']:
-            g2 *= -1
-
-        return g1, g2, mask
-
-    def get_shear_catalog(self, data, meta, i):
+    def get_shear_catalog(self, i):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
-
-        if self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='metacal':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                w = data['weight'][mask],
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                w = data['weight'][mask],
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-        else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+        cat = treecorr.Catalog(
+            self.get_input("calibrated_shear_catalog"),
+            ext = f"/shear/bin_{i}",
+            g1_col = "g1",
+            g2_col = "g2",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers')
+        )
         return cat
 
 
-    def get_lens_catalog(self, data, i):
+    def get_lens_catalog(self, i):
         import treecorr
 
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            self.get_input("calibrated_lens_catalog"),
+            ext = f"/lens/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers')
+        )
+        return cat
 
-        mask = data['lens_bin'] == i
+    def get_random_catalog(self, i):
+        import treecorr
+        if not self.config["use_randoms"]:
+            return None
 
-        if 'lens_ra' in data:
-            ra = data['lens_ra'][mask]
-            dec = data['lens_dec'][mask]
-        else:
-            ra = data['ra'][mask]
-            dec = data['dec'][mask]
-
-        if self.config['var_method']=='jackknife':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec,
-                ra_units='degree', dec_units='degree',
-                patch_centers=patch_centers)
-        else:
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec,
-                ra_units='degree', dec_units='degree')
-
-        if 'random_bin' in data:
-            random_mask = data['random_bin']==i
-            if self.config['var_method']=='jackknife':
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    ra_units='degree', dec_units='degree',
-                    patch_centers=patch_centers)
-            else:
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    ra_units='degree', dec_units='degree')
-        else:
-            rancat = None
-
-        return cat, rancat
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_cats"),
+            ext = f"/randoms/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers')
+        ) 
+        return rancat
 
 
-    def calculate_shear_shear(self, data, meta, i, j):
+    def calculate_shear_shear(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
-
         if i==j:
-            cat_j = cat_i
+            cat_j = None
             n_j = n_i
         else:
-            cat_j = self.get_shear_catalog(data, meta, j)
+            cat_j = self.get_shear_catalog(j)
             n_j = cat_j.nobj
-
 
         print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
 
         gg = treecorr.GGCorrelation(self.config)
-        gg.process(cat_i, cat_j)
+        gg.process(cat_i, cat_j, low_mem = self.config["low_mem"])
 
         return gg
 
-    def calculate_shear_pos(self, data, meta, i, j):
+    def calculate_shear_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
-        cat_j, rancat_j = self.get_lens_catalog(data, j)
+        cat_j = self.get_lens_catalog(j)
+        rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -574,20 +480,22 @@ class TXTwoPoint(PipelineStage):
         return ng
 
 
-    def calculate_pos_pos(self, data, i, j):
+    def calculate_pos_pos(self, i, j):
         import treecorr
 
-        cat_i, rancat_i = self.get_lens_catalog(data, i)
+        cat_i = self.get_lens_catalog(i)
+        rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
         if i==j:
-            cat_j = cat_i
-            rancat_j = rancat_i
+            cat_j = None
+            rancat_j = None
             n_j = n_i
             n_rand_j = n_rand_i
         else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            cat_j = self.get_lens_catalog(j)
+            rancat_j = self.get_random_catalog(j)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -596,90 +504,25 @@ class TXTwoPoint(PipelineStage):
 
 
         nn = treecorr.NNCorrelation(self.config)
-        rn = treecorr.NNCorrelation(self.config)
-        nr = treecorr.NNCorrelation(self.config)
-        rr = treecorr.NNCorrelation(self.config)
-
         nn.process(cat_i,    cat_j)
+
+        nr = treecorr.NNCorrelation(self.config)
         nr.process(cat_i,    rancat_j)
-        rn.process(rancat_i, cat_j)
+
+        rr = treecorr.NNCorrelation(self.config)
         rr.process(rancat_i, rancat_j)
+
+        if i==j:
+            rn = None
+        else:
+            rn = treecorr.NNCorrelation(self.config)
+            rn.process(rancat_i, cat_j)
 
         nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
-    def load_tomography(self, data):
-
-        # Columns we need from the tomography catalog
-        f = self.open_input('shear_tomography_catalog')
-        source_bin = f['tomography/source_bin'][:]
-        if self.config['shear_catalog_type']=='metacal':
-            r_total = f['metacal_response/R_total'][:]
-        else:
-            r_total = f['response/R'][:]
-        f.close()
-
-        f = self.open_input('lens_tomography_catalog')
-        lens_bin = f['tomography/lens_bin'][:]
-        f.close()
-
-        data['source_bin']  =  source_bin
-        data['lens_bin']  =  lens_bin
-        data['R']  =  r_total
-
-    def load_lens_catalog(self, data):
-        # Subclasses can load an external lens catalog
-        pass
 
 
-
-    def load_shear_catalog(self, data):
-
-        # Columns we need from the shear catalog
-        read_shear_catalog_type(self)
-
-        if self.config['shear_catalog_type']=='metacal':
-            if self.config['use_true_shear']:
-                cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
-            else:
-                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
-                
-        else:
-            cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
-        print(f"Loading shear catalog columns: {cat_cols}")
-
-        f = self.open_input('shear_catalog')
-        g = f['shear']
-        for col in cat_cols:
-            print(f"Loading {col}")
-            data[col] = g[col][:]
-
-
-    def load_random_catalog(self, data):
-        filename = self.get_input('random_cats')
-        if filename is None:
-            print("Not using randoms")
-            return
-
-        # Columns we need from the tomography catalog
-        randoms_cols = ['dec','ra','bin']
-        print(f"Loading random catalog columns: {randoms_cols}")
-
-        f = self.open_input('random_cats')
-        group = f['randoms']
-
-        cut = self.config['reduce_randoms_size']
-        if 0.0<cut<1.0:
-            N = group['dec'].size
-            sel = np.random.uniform(size=N) < cut
-        else:
-            sel = slice(None)
-
-        data['random_ra'] =  group['ra'][sel]
-        data['random_dec'] = group['dec'][sel]
-        data['random_bin'] = group['bin'][sel]
-
-        f.close()
 
     def calculate_area(self, data):
         import healpy as hp

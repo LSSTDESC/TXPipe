@@ -1,89 +1,155 @@
+from .base_stage import PipelineStage
+from .data_types import ShearCatalog, TomographyCatalog
+from .utils import SourceNumberDensityStats
+from .utils.calibration_tools import read_shear_catalog_type, MetacalCalibrator
+from .utils import Splitter
+import numpy as np
 
 
-class TXShearCalibrationMetacal(PipelineStage):
+class TXShearCalibration(PipelineStage):
+    """Split the shear catalog into calibrated bins suitable for 2pt analysis."""
+
+    name = "TXShearCalibration"
     inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
+        ("shear_catalog", ShearCatalog),
+        ("shear_tomography_catalog", TomographyCatalog),
     ]
 
-    output = [
-        ('calibrated_shear_catalog', ShearCatalog),
+    outputs = [
+        ("calibrated_shear_catalog", ShearCatalog),
     ]
 
     config_options = {
+        "use_true_shear": False,
+        "chunk_rows": 100_000,
         "subtract_mean_shear": True,
     }
 
     def run(self):
-        # load global calibration parameters
-        # loop through data selecting
 
-        output = self.setup_output(nbin)
+        #  Extract the configuration parameters
+        cat_type = read_shear_catalog_type(self)
+        use_true = self.config["use_true_shear"]
+        subtract_mean_shear = self.config["subtract_mean_shear"]
 
-        if self.rank > nbin:
-            print(f"NOTE: Processor {self.rank} will be idle as parallelization is by bin in TXShearCalibration")
+        # Prepare the output file, and
+        output_file, splitter, nbin = self.setup_output()
 
-
-        for s, e, data in it:
-
-            # Parallelization is by tomographic here, because
-            # otherwise we don't know how the 
-            for i in self.split_tasks_by_rank(range(nbin)):
-
-
-
-
-    def get_calibrated_catalog_bin(self, data, meta, i):
-        """
-        Calculate the metacal correction factor for this tomographic bin.
-        """
-
-        mask = (data['source_bin'] == i)
-
-        if self.config['use_true_shear']:
-            g1 = data[f'true_g1'][mask]
-            g2 = data[f'true_g2'][mask]
-
-        elif self.config['shear_catalog_type']=='metacal':
-            # We use S=0 here because we have already included it in R_total
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask], data['mcal_g2'][mask])
-
-        elif self.config['shear_catalog_type']=='lensfit':
-            #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(
-                g1 = data['g1'][mask],
-                g2 = data['g2'][mask],
-                weight = data['weight'][mask],
-                sigma_e = data['sigma_e'][mask], 
-                m = data['m'][mask]
-            )
-
+        #  Load the calibrators
+        if use_true:
+            cals = [NullCalibrator() for i in range(nbin)]
+            cal2d = NullCalibrator()
         else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-            
-        # Subtract mean shears, if needed.  These are calculated in source_selector,
-        # and have already been calibrated, so subtract them after calibrated our sample.
-        # Right now we are loading the full catalog here, so we could just take the mean
-        # at this point, but in future we would like to move to just loading part of the
-        # catalog.
-        if self.config['subtract_mean_shear']:
-            # Cross-check: print out the new mean.
-            # In the weighted case these won't actually be equal
-            mu1 = g1.mean()
-            mu2 = g2.mean()
+            with self.open_input("shear_tomography_catalog") as f:
+                (cals, cal2d,) = MetacalCalibrator.calibrators_from_tomography_file(
+                    f, subtract_mean_shear=subtract_mean_shear
+                )
 
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            g1 -= meta['mean_e1'][i]
-            g2 -= meta['mean_e2'][i]
+        # These are always named the same
+        cat_cols = ["ra", "dec", "weight"]
+        # The catalog columns are named differently in different cases
+        #  Get the correct shear catalogs
+        if use_true:
+            cat_cols += ["true_g1", "true_g2"]
+        elif cat_type == "metacal":
+            cat_cols += ["mcal_g1", "mcal_g2"]
+        else:
+            cat_cols += ["g1", "g2"]
 
-            # Compare to final means.
-            nu1 = g1.mean()
-            nu2 = g2.mean()
-            print(f"Subtracting mean shears for bin {i}")
-            print(f"Means before: {mu1}  and  {mu2}")
-            print(f"Means after:  {nu1}  and  {nu2}")
-            print("(In the weighted case the latter may not be exactly zero)")
+        output_cols = ["ra", "dec", "g1", "g2", "weight"]
 
+        # We parallelize by bin.  This isn't ideal but we don't know the number
+        # of objects in each bin per chunk, so we can't parallelize in full.  This
+        #  is a quick stage though.
+        bins = list(range(nbin)) + ["all"]
+        my_bins = list(self.split_tasks_by_rank(bins))
 
-        return g1, g2, mask
+        # Print out which bins this proc will do, also as a prompt to the user
+        #  in case they're wondering why adding procs doesn't help
+        if my_bins:
+            my_bins_text = ", ".join(str(x) for x in my_bins)
+            print(f"Process {self.rank} collating bins: [{my_bins_text}]")
+        else:
+            print(f"Note: Process {self.rank} will not do anything.")
+
+        # make the iterator that loops through data
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "shear_catalog",
+            "shear",
+            cat_cols,
+            "shear_tomography_catalog",
+            "tomography",
+            ["source_bin"],
+            parallel=False,
+        )
+
+        #  Main loop
+        for s, e, data in it:
+            # Rename mcal_g1 -> g1 etc
+            self.rename_metacal(data)
+
+            #  Now output the calibrated bin data for this processor
+            for b in my_bins:
+
+                # Select objects to go in this bin
+                if b == "all":
+                    # the 2D case is any object from any other bin
+                    w = np.where(data["source_bin"] >= 0)
+                    cal = cal2d
+                else:
+                    # otherwise just objects in this bin
+                    w = np.where(data["source_bin"] == b)
+                    cal = cals[b]
+
+                # Cut down the data to just this selection for output
+                d = {name: data[name][w] for name in output_cols}
+
+                # Calibrate the shear columns
+                d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"])
+
+                # Write output, keeping track of sizes
+                splitter.write_bin(d, b)
+
+        splitter.finish(my_bins)
+        output_file.close()
+
+    def setup_output(self):
+        # count the expected number of objects per bin from the tomo data
+        with self.open_input("shear_tomography_catalog") as f:
+            counts = f["tomography/source_counts"][:]
+            count2d = f["tomography/source_counts_2d"][0]
+            nbin = len(counts)
+
+        # Prepare the calibrated output catalog
+        f = self.open_output("calibrated_shear_catalog", parallel=True)
+
+        #  we only retain these columns
+        cols = ["ra", "dec", "weight", "g1", "g2"]
+
+        # structure is /shear/bin_1, /shear/bin_2, etc
+        g = f.create_group("shear")
+        g.attrs["nbin"] = nbin
+        g.attrs["nbin_source"] = nbin
+
+        bins = {b: c for b, c in enumerate(counts)}
+        bins["all"] = count2d
+        splitter = Splitter(g, "bin", cols, bins)
+
+        return f, splitter, nbin
+
+    def rename_metacal(self, d):
+        #  rename the columns so they're always just g1, g2.
+        #  First determine the renaming we should do
+        if "true_g1" in d:
+            prefix = "true"
+        elif "mcal_g1" in d:
+            prefix = "mcal"
+        else:
+            return
+
+        #  Then rename
+        d["g1"] = d[f"{prefix}_g1"]
+        d["g2"] = d[f"{prefix}_g2"]
+        del d[f"{prefix}_g1"], d[f"{prefix}_g2"]

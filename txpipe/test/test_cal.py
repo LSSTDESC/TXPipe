@@ -1,4 +1,4 @@
-from ..utils.calibration_tools import MeanShearInBins, ParallelCalibratorMetacal
+from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator
 import numpy as np
 import mockmpi
 
@@ -49,7 +49,7 @@ def core_metacal(comm):
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal = MetacalCalculator(select_all_bool, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
 
@@ -61,7 +61,7 @@ def core_metacal(comm):
     data["weight"] *= 0.5
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(sel, delta_gamma)
+        cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
         print("R = ", R)
@@ -74,7 +74,7 @@ def core_metacal(comm):
     data["weight"] = np.random.uniform(0, 1, size=N)
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(sel, delta_gamma)
+        cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
         print("R = ", R)

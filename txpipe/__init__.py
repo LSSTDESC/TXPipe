@@ -20,8 +20,6 @@ from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
-from .twopoint import TXGammaTDimStars
-from .twopoint import TXGammaTBrightStars
 from .noise_maps import TXNoiseMaps
 from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
@@ -33,6 +31,6 @@ from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
-from .calibrate import TXShearCalibrationMetacal
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
+from .calibrate import TXShearCalibration
