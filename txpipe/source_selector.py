@@ -385,6 +385,7 @@ class TXSourceSelector(PipelineStage):
         group.create_dataset('N_eff_2d', (1,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
+        group.attrs['catalog_type'] = self.config["shear_catalog_type"]
         for i in range(nbin_source):
             group.attrs[f'source_zmin_{i}'] = zbins[i]
             group.attrs[f'source_zmax_{i}'] = zbins[i+1]

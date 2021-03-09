@@ -1,4 +1,5 @@
 from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator
+from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
 import numpy as np
 import mockmpi
 
@@ -174,6 +175,31 @@ def test_mean_shear_weights():
     print(sigma1, expected_sigma1)
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
+
+
+
+def test_apply():
+    R = np.array([[2, 3], [4, 5]])
+    g1 = 0.2
+    g2 = -0.3
+    g_obs = R @ [g1, g2]
+    mu = np.zeros(2)
+    cal = MetaCalibrator(R, mu)
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == float
+    assert type(g2) == float
+
+    R = np.eye(2)
+    g_obs = R @ [g1, g2]
+    cal = NullCalibrator()
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == float
+    assert type(g2) == float
+
 
 
 if __name__ == '__main__':
