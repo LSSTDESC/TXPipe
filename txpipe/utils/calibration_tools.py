@@ -356,7 +356,7 @@ class LensfitCalculator:
         self.R.add_data(0, R, w)
         self.K.add_data(0, K, w)
         self.C.add_data(0, c1, w)
-        self.C.add_data(1, c1, w)
+        self.C.add_data(1, c2, w)
         self.count.append(w.size)
 
         return sel
