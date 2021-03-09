@@ -2,7 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
-from .utils.calibration_tools import metacal_variants, band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
+from .utils.calibration_tools import metacal_variants, band_variants, MetacalCalculator, LensfitCalculator
 import numpy as np
 import warnings
 
@@ -132,12 +132,12 @@ class TXSourceSelector(PipelineStage):
         number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm,shear_type=self.config['shear_catalog_type'])
 
         if shear_catalog_type == 'metacal':
-            calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
+            calibrators = [MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)]
             # 2d calibrator
-            calibrators.append(ParallelCalibratorMetacal(self.select_2d, delta_gamma))
+            calibrators.append(MetacalCalculator(self.select_2d, delta_gamma))
         else:
-            calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
-            calibrators.append(ParallelCalibratorNonMetacal(self.select_2d))
+            calibrators = [LensfitCalculator(self.select) for i in range(nbin_source)]
+            calibrators.append(LensfitCalculator(self.select_2d))
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data) in iter_shear:

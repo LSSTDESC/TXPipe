@@ -130,7 +130,7 @@ class _DataWrapper:
     def __contains__(self, name):
         return (name in self.data)
 
-class ParallelCalibratorMetacal:
+class MetacalCalculator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
@@ -296,7 +296,7 @@ class ParallelCalibratorMetacal:
 
 
 
-class ParallelCalibratorNonMetacal:
+class LensfitCalculator:
     """
     This class builds up the total response calibration
     factors for NonMetacalibration shears from each chunk of data it is given.
@@ -323,10 +323,10 @@ class ParallelCalibratorNonMetacal:
             Function that selects objects
         """
         self.selector = selector
-        self.R = []
-        self.K = []
-        self.C = []
-        self.counts = []
+        self.M_plus_1 = ParallelMean(1)
+        self.R = ParallelMean(1)
+        self.C = ParallelMean(2)
+        self.count = 0
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -344,43 +344,27 @@ class ParallelCalibratorNonMetacal:
         """
         # These all wrap the catalog such that lookups find the variant
         # column if available
-        data_00 = _DataWrapper(data, '')
 
-        sel_00 = self.selector(data_00, *args, **kwargs)
+        sel = self.selector(data, *args, **kwargs)
+        w = data['weight'][sel]
+        K = 1 + data['m'][sel]
+        R = 1 - data['sigma_e'][sel]
+        c1 = data['c1'][sel]
+        c2 = data['c2'][sel]
 
-        g1 = data_00['g1']
-        g2 = data_00['g2']
 
-        # Selector can return several reasonable ways to choose
-        # objects - where result, boolean mask, integer indices
-        if isinstance(sel_00, tuple):
-            # tupe returned from np.where
-            n = len(sel_00[0])
-        elif np.issubdtype(sel_00.dtype, np.integer):
-            # integer array
-            n = len(sel_00)
-        elif np.issubdtype(sel_00.dtype, np.bool_):
-            # boolean selection
-            n = sel_00.sum()
-        else:
-            raise ValueError("Selection function passed to Calibrator return type not known")
-        w_tot = np.sum(data_00['weight'])
-        m = np.sum(data_00['weight']*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
-        K = 1.+m
-        R = 1. - np.sum(data_00['weight']*data_00['sigma_e'])/w_tot
-        C = np.stack([data_00['c1'],data_00['c2']],axis=1)
+        self.R.add_data(0, R, w)
+        self.K.add_data(0, K, w)
+        self.C.add_data(0, c1, w)
+        self.C.add_data(1, c1, w)
+        self.count.append(w.size)
 
-        self.R.append(R)
-        self.K.append(K)
-        self.C.append(C.mean(axis=0))
-        self.counts.append(n)
-
-        return sel_00
+        return sel
 
     def collect(self, comm=None):
         """
-        Finalize and sum up all the response values, returning separate
-        R (estimator response) and S (selection bias) 2x2 matrices
+        Finalize and sum up all the response values, returning calibration
+        quantities.
 
         Parameters
         ----------
@@ -390,8 +374,14 @@ class ParallelCalibratorNonMetacal:
 
         Returns
         -------
-        R: 2x2 array
-            Estimator response matrix
+        R: float
+            R calibration factor
+
+        K: float
+            K = (1+m) calibration
+
+        C: float array
+            c1, c2 additive biases
 
         S: 2x2 array
             Selection bias matrix
@@ -399,37 +389,58 @@ class ParallelCalibratorNonMetacal:
         """
         # MPI allgather to get full arrays for everyone
         if comm is not None:
-            self.R = sum(comm.allgather(self.R), [])
-            self.K = sum(comm.allgather(self.K), [])
-            self.C = sum(comm.allgather(self.C), [])
-            self.counts = sum(comm.allgather(self.counts), [])
+            self.count = comm.reduce(self.count)
 
-        R_sum = 0
-        K_sum = 0
-        C_sum = np.zeros((1,2))
-        N = 0
-
-        # Find the correctly weighted averages of all the values we have
-        for R, K, C, n in zip(self.R, self.K, self.C, self.counts):
-            # This deals with cases where n is 0 and R/S are NaN
-            if n == 0:
-                continue
-            R_sum += R*n
-            K_sum += K*n
-            C_sum += C*n
-            N += n
-
-        if N == 0:
-            R = np.nan
-            K = np.nan
-        else:
-            R = R_sum / N
-            K = K_sum / N
-
-        C = C_sum / N
+        _, R = self.R.collect(comm)
+        _ ,K = self.K.collect(comm)
+        _, C = self.C.collect(comm)
+        N = self.count
         
         return R, K, C, N 
 
+class NullCalibrator:
+    def apply(self, g1, g2):
+        # for consistency with the other calibrators which return
+        # copies we do the same here
+        return g1.copy(), g2.copy()
+
+class MetacalCalibrator:
+    def __init__(self, R, mu, mu_is_calibrated=True):
+        self.R = R
+        self.Rinv = np.linalg.inv(R)
+        if mu_is_calibrated:
+            self.mu = np.array(mu)
+        else:
+            self.mu = self.Rinv @ mu
+
+    def apply(self, g1, g2):
+        if np.isscalar(g1):
+            g1, g2 = self.Rinv @ [g1, g2]
+        else:
+            g1, g2 = self.Rinv @ [g1, g2] - self.mu[:, np.newaxis]
+        return g1, g2
+
+    @classmethod
+    def calibrators_from_tomography_file(cls, tomo_file, subtract_mean_shear=True):
+        import h5py
+        R = tomo_file['metacal_response/R_total'][:]
+        R_2d = tomo_file['metacal_response/R_total_2d'][:]
+        n = len(R)
+        if subtract_mean_shear:
+            mu1 = tomo_file['tomography/mean_e1'][:]
+            mu2 = tomo_file['tomography/mean_e2'][:]
+            mu1_2d = tomo_file['tomography/mean_e1_2d'][0]
+            mu2_2d = tomo_file['tomography/mean_e2_2d'][0]
+        else:
+            mu1 = np.zeros(n)
+            mu2 = np.zeros(n)
+            mu1_2d = 0
+            mu2_2d = 0
+
+
+        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
+        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        return calibrators, calibrator2d
 
 class MeanShearInBins:
     def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type='metacal'):
@@ -446,9 +457,9 @@ class MeanShearInBins:
         self.x  = ParallelMean(self.size)
 
         if shear_catalog_type=='metacal':
-            self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
+            self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
-            self.calibrators = [ParallelCalibratorNonMetacal(self.selector) for i in range(self.size)]
+            self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
 
 
     def selector(self, data, i):

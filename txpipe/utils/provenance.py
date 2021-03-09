@@ -3,6 +3,7 @@ import sys
 import inspect
 import pathlib
 import subprocess
+from .misc import hex_escape
 
 def find_module_versions():
     """
@@ -70,7 +71,8 @@ def git_diff():
     if diff.returncode:
         return "ERROR_GIT_FAIL"
 
-    return diff.stdout
+    # Escape any non-printable characters. 
+    return hex_escape(diff.stdout)
 
 def git_current_revision():
     """Run git diff in the caller's directory, and return stdout+stderr
