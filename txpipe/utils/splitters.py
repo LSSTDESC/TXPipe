@@ -4,10 +4,49 @@ from .misc import multi_where
 
 class Splitter:
     """
-    Helper class to write out data that is split into bins
+    Helper class to split a catalog into bins
+
+    This class is used to automate the case where you want
+    to split a catalog in single large columns into different
+    subsets, for example tomographic bins.  The splitters handle
+    setting up the structure of the new file, and copying data into
+    it in the right places.
+
+    There are two classes, for two cases:
+    - Splitter, for when you know the sizes of the subsets in advance
+    - DynamicSplitter, for when you don't.
+
+    Splitter can be used in parallel by bin; DynamicSplitter cannot, as it
+    has to resize the arrays as it goes along, which doesn't work with
+    parallel HDF5.
+
+    In each case the lifecycle is:
+    1. open the output file and create the group you want
+    2. pass this group and setup information to init the splitter
+    3. write data to the splitter in chunks
+    4. finalize the splitter
+
+    The bins don't have to be non-overlapping.
+
     """
 
     def __init__(self, group, name, columns, bin_sizes, dtypes=None):
+        """Create a fixed-size splitter
+
+        Parameters
+        ----------
+        group: h5py.Group
+            The group where the output data will be written
+        name: str
+            The base name of the different bins to write
+        columns: list
+            The str names of the columns to be split
+        bin_sizes: dict
+            Maps bin_name (can be anything printable) to final_bin_size (int)
+        dtypes: dict or None
+            Maps bins to HDF5 data types for the output columns.  Bins default
+            to 8 byte floats if not found in this.
+        """
         self.bins = list(bin_sizes.keys())
         self.group = group
         self.columns = columns
@@ -18,17 +57,38 @@ class Splitter:
         for i, b in enumerate(self.bins):
             self.group.attrs[f"bin_{i}"] = b
 
-        self.setup_columns(dtypes or {})
+        self._setup_columns(dtypes or {})
 
-    def setup_columns(self, dtypes):
+    def _setup_columns(self, dtypes):
+        # set up the columns with fixed sizes according to the
+        # bin and column names.
+        # Do this for each bin
         for b, sz in self.bin_sizes.items():
             sub = self.subgroups[b]
+            # and for each column
             for col in self.columns:
                 dt = dtypes.get(col, "f8")
                 sub.create_dataset(col, (sz,), dtype=dt)
 
     def write(self, data, bins):
+        """
+        Write a chunk of data to the output, using an array of bin values
+        saying which bin to assign each object to.
 
+        Bin values that are not one of those specified in the init will be
+        ignored.
+
+        This will not work in parallel.
+
+        Parameters
+        ----------
+        data: dict
+            Maps column names specified for output to arrays of those values
+            to be split up. All must have the same size.
+        bins: array
+            An array of bin indices matching the type(s) of those specified
+            in the init.  Must be same length as data arrays.
+        """
         wheres = multi_where(bins, self.bins)
 
         for b in self.bins:
@@ -46,6 +106,22 @@ class Splitter:
         return wheres
 
     def write_bin(self, data, b):
+        """
+        Write a single chunk of data to the output, all to the same bin
+
+        The bin value must be one of those specified on init.
+
+        This will work in parallel provided each process only adds data
+        to a single bin.
+
+        Parameters
+        ----------
+        data: dict
+            Maps column names specified for output to arrays of those values
+            to be split up. All must have the same size.
+        b: any
+            A single value of the bin to look up.  Must be in self.bins
+        """
         # Length of this chunk
         n = len(data[self.columns[0]])
         # Group where we will write the data
@@ -54,7 +130,7 @@ class Splitter:
         s = self.index[b]
         e = s + n
 
-        self.size_check(b, e)
+        self._size_check(b, e)
 
         # Write to columns
         for col in self.columns:
@@ -63,12 +139,27 @@ class Splitter:
         # Update overall index
         self.index[b] = e
 
-    def size_check(self, b, e):
+    def _size_check(self, b, e):
         n = self.bin_sizes[b]
         if e > n:
             raise ValueError(f"Too much data added bin {b}: got {e}, expected max {n}")
 
-    def finish(self, my_bins):
+    def finish(self, my_bins=None):
+        """
+        Finish up by checking that the right amount of data has been written to the file.
+
+        If running in parallel, only bins used by this process will have the correct sizes
+        in this object.  In that case, specify my_bins for the list of bins this process
+        should check
+
+        Parameters
+        ----------
+        my_bins: list or None
+            The list of bins that this process has saved data for.
+        """
+        if bins is None:
+            bins = self.bins
+
         for b in my_bins:
             c = self.bin_sizes[b]
             n = self.index[b]
@@ -84,18 +175,45 @@ class DynamicSplitter(Splitter):
     chunking, so you don't need to know the sizes in advance.  The cost is that it
     can't be used in parallel.
 
-    The sizes pased to the data
+    The sizes pased to the initialization in this case represent
+
+    See the Splitter docstring for more detail.
     """
 
-    def setup_columns(self, dtypes):
+    def __init__(self, group, name, columns, bin_sizes, dtypes=None):
+        """Create a dynamic splitter.
+
+
+        Parameters
+        ----------
+        group: h5py.Group
+            The group where the output data will be written
+        name: str
+            The base name of the different bins to write
+        columns: list
+            The str names of the columns to be split
+        bin_sizes: dict
+            Maps bin_name (can be anything printable) to an initial guess
+            of the size.  Bins will be expanded as needed above this.
+        dtypes: dict or None
+            Maps bins to HDF5 data types for the output columns.  Bins default
+            to 8 byte floats if not found in this.
+        """
+        super().__init__(group, name, columns, bin_sizes, dtypes=dtypes)
+
+    def _setup_columns(self, dtypes):
+        # same as in the parent class except we make them extensible by
+        # setting maxshape
         for b, sz in self.bin_sizes.items():
             sub = self.subgroups[b]
             for col in self.columns:
                 dt = dtypes.get(col, "f8")
                 sub.create_dataset(col, (sz,), dtype=dt, maxshape=(None,))
 
-    def size_check(self, b, e):
+    def _size_check(self, b, e):
         n = self.bin_sizes[b]
+
+        # Expand the columns by 50% if needed
         if e > n:
             sub = self.subgroups[b]
             new_size = int(n * 1.5)
@@ -104,6 +222,10 @@ class DynamicSplitter(Splitter):
             self.bin_sizes[b] = new_size
 
     def finish(self):
+        """
+        Finish up by resizing all the bin columns to the correct size, stripping off
+        any excess space.  It's important to call this.
+        """
         # resize everything to actual size
         for b, sub in self.subgroups.items():
             sz = self.index[b]
