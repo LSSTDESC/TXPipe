@@ -65,12 +65,24 @@ def multi_where(x, matches):
     #  avoids doing the hash twice per object in the bin
     index = {b: i for i, b in enumerate(matches)}
 
+    # the maximum possible length of these where results
+    # is the full length of the array.  at the risk of being
+    # wasteful, allocate these for each bin
     wheres = [np.empty(n, dtype=int) for b in matches]
+    # we will track how many results are actually found for
+    # each
     counts = [0 for b in matches]
     for i, v in enumerate(x):
         j = index.get(v)
+        # if this is one of the matches we are looking for,
+        # record it
         if j is not None:
+            # record the index in the current position
+            # for this match
             c = counts[j]
             wheres[j][c] = i
+            # and update so the next match goes in the
+            # next cell
             counts[j] += 1
+    # finally, cut down to just the valid parts
     return {b: wheres[i][: counts[i]] for i, b in enumerate(matches)}
