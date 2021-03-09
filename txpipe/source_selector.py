@@ -595,6 +595,7 @@ class TXSourceSelector(PipelineStage):
 
         if verbose:
             print(f"{f4:.2%} z for bin {bin_index}")
+            print("total tomo", sel.sum())
 
         return sel
 
@@ -619,6 +620,8 @@ class TXSourceSelector(PipelineStage):
         f2 = sel.sum() / n0
         sel &= s2n>s2n_cut
         f3 = sel.sum() / n0
+        sel &= data['zbin'] >= 0
+        f4 = sel.sum() / n0
 
         # Print out a message.  If we are selecting a 2D sample
         # this is the complete message.  Otherwise if we are about
@@ -626,7 +629,8 @@ class TXSourceSelector(PipelineStage):
         # as above
         if verbose and is_2d:
             print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR")
+                  f"{f3:.2%} SNR, {f4:.2%} any z bin")
+            print("total 2D", sel.sum())
         elif verbose:
             print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
                   f"{f3:.2%} SNR, ", end="")
