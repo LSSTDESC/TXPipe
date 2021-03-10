@@ -48,9 +48,12 @@ def hex_escape(s, replace_newlines=False):
     ----------
     s: str
         The initial string
+
     replace_newlines: bool
-    Whether to include newline characters in the replacement
+        Whether to include newline characters in the replacement
+
     Returns
+    -------
     str
         Same string with unprintable chars replaced with hex codes, e.g.
         the bell character becomes "\x07"
