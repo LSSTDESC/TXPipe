@@ -498,6 +498,8 @@ class MeanShearInBins:
             else:
                 g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0])
                 g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][1])
+                # JZ should the C be in here? It's a variance so seems
+                # a bit odd to subtract something off
                 sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0])
                 sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][1])
 
