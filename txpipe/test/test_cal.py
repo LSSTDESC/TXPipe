@@ -208,6 +208,8 @@ def test_apply():
 
     # lensfit calibrator
     R = np.eye(2)
+    g1 = 0.2
+    g2 = -0.3
     g_obs = R @ [g1, g2]
     cal = NullCalibrator()
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
