@@ -64,10 +64,15 @@ class TXStarCatalogSplitter(PipelineStage):
             print(f"Process 0 binning data in range {s:,} - {e:,}")
             r = data["mag_r"]
             mag_bins = np.repeat("      ", r.size)
-            mag_bins[(r > 18.2) & (r < 22.0)] = "dim"
-            mag_bins[(r > 14.0) & (r < 18.2)] = "bright"
+            mag_bins = np.zeros(r.size, dtype=int)
+            dim_cut = (r > 18.2) & (r < 22.0)
+            bright_cut = (r > 14.0) & (r < 18.2)
 
-            splitter.write(data, mag_bins)
+            dim = {name: col[dim_cut] for name, col in data.items()}
+            bright = {name: col[bright_cut] for name, col in data.items()}
+
+            splitter.write_bin(dim, "dim")
+            splitter.write_bin(bright, "bright")
 
         splitter.finish()
         output.close()
