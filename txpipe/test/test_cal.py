@@ -179,6 +179,8 @@ def test_mean_shear_weights():
 
 
 def test_apply():
+
+    # metacal calibrator
     R = np.array([[2, 3], [4, 5]])
     g1 = 0.2
     g2 = -0.3
@@ -186,11 +188,25 @@ def test_apply():
     mu = np.zeros(2)
     cal = MetaCalibrator(R, mu)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
     assert type(g1) == float
     assert type(g2) == float
 
+    # array version
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
+
+    # lensfit calibrator
     R = np.eye(2)
     g_obs = R @ [g1, g2]
     cal = NullCalibrator()
@@ -199,6 +215,16 @@ def test_apply():
     assert np.allclose(g2_, g2)
     assert type(g1) == float
     assert type(g2) == float
+    
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
 
 
 
