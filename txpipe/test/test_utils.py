@@ -22,13 +22,3 @@ def test_unique_list():
     x = [-1, "cat", -1, "cat", "dog"]
     assert unique_list(x) == [-1, "cat", "dog"]
 
-def test_multi_where():
-    x = np.random.randint(0, 10, 100)
-    w = [1, 2, 3]
-
-    a = multi_where(x, w)
-
-    for m in w:
-        assert np.array_equal(np.where(x==m)[0], a[m])
-
-    assert a.keys() == set(w)
