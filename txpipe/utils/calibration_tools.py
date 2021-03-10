@@ -130,7 +130,7 @@ class _DataWrapper:
     def __contains__(self, name):
         return (name in self.data)
 
-class ParallelCalibratorMetacal:
+class MetacalCalculator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
@@ -296,7 +296,7 @@ class ParallelCalibratorMetacal:
 
 
 
-class ParallelCalibratorNonMetacal:
+class LensfitCalculator:
     """
     This class builds up the total response calibration
     factors for NonMetacalibration shears from each chunk of data it is given.
@@ -323,10 +323,14 @@ class ParallelCalibratorNonMetacal:
             Function that selects objects
         """
         self.selector = selector
-        self.R = []
-        self.K = []
-        self.C = []
-        self.counts = []
+        # Create a set of calculators that will calculate (in parallel)
+        # the three quantities we need to compute the overall calibration
+        # We create these, then add data to them below, then collect them
+        # together over all the processes
+        self.M_plus_1 = ParallelMean(1)
+        self.R = ParallelMean(1)
+        self.C = ParallelMean(2)
+        self.count = 0
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -344,43 +348,30 @@ class ParallelCalibratorNonMetacal:
         """
         # These all wrap the catalog such that lookups find the variant
         # column if available
-        data_00 = _DataWrapper(data, '')
 
-        sel_00 = self.selector(data_00, *args, **kwargs)
+        sel = self.selector(data, *args, **kwargs)
 
-        g1 = data_00['g1']
-        g2 = data_00['g2']
+        # Extract the calibration quantities for the selected objects
+        w = data['weight'][sel]
+        K = 1 + data['m'][sel]
+        R = 1 - data['sigma_e'][sel]
+        c1 = data['c1'][sel]
+        c2 = data['c2'][sel]
 
-        # Selector can return several reasonable ways to choose
-        # objects - where result, boolean mask, integer indices
-        if isinstance(sel_00, tuple):
-            # tupe returned from np.where
-            n = len(sel_00[0])
-        elif np.issubdtype(sel_00.dtype, np.integer):
-            # integer array
-            n = len(sel_00)
-        elif np.issubdtype(sel_00.dtype, np.bool_):
-            # boolean selection
-            n = sel_00.sum()
-        else:
-            raise ValueError("Selection function passed to Calibrator return type not known")
-        w_tot = np.sum(data_00['weight'])
-        m = np.sum(data_00['weight']*data_00['m'])/w_tot        #if m not provided, default is m=0, so one_plus_K=1
-        K = 1.+m
-        R = 1. - np.sum(data_00['weight']*data_00['sigma_e'])/w_tot
-        C = np.stack([data_00['c1'],data_00['c2']],axis=1)
+        # Accumulate the calibration quantities so that later we
+        # can compute the weighted mean of the values
+        self.R.add_data(0, R, w)
+        self.K.add_data(0, K, w)
+        self.C.add_data(0, c1, w)
+        self.C.add_data(1, c2, w)
+        self.count.append(w.size)
 
-        self.R.append(R)
-        self.K.append(K)
-        self.C.append(C.mean(axis=0))
-        self.counts.append(n)
-
-        return sel_00
+        return sel
 
     def collect(self, comm=None):
         """
-        Finalize and sum up all the response values, returning separate
-        R (estimator response) and S (selection bias) 2x2 matrices
+        Finalize and sum up all the response values, returning calibration
+        quantities.
 
         Parameters
         ----------
@@ -390,45 +381,35 @@ class ParallelCalibratorNonMetacal:
 
         Returns
         -------
-        R: 2x2 array
-            Estimator response matrix
+        R: float
+            R calibration factor
+
+        K: float
+            K = (1+m) calibration
+
+        C: float array
+            c1, c2 additive biases
 
         S: 2x2 array
             Selection bias matrix
 
         """
-        # MPI allgather to get full arrays for everyone
+        # The total number of objects is just the
+        # number from all the processes summed together.
         if comm is not None:
-            self.R = sum(comm.allgather(self.R), [])
-            self.K = sum(comm.allgather(self.K), [])
-            self.C = sum(comm.allgather(self.C), [])
-            self.counts = sum(comm.allgather(self.counts), [])
+            self.count = comm.reduce(self.count)
 
-        R_sum = 0
-        K_sum = 0
-        C_sum = np.zeros((1,2))
-        N = 0
-
-        # Find the correctly weighted averages of all the values we have
-        for R, K, C, n in zip(self.R, self.K, self.C, self.counts):
-            # This deals with cases where n is 0 and R/S are NaN
-            if n == 0:
-                continue
-            R_sum += R*n
-            K_sum += K*n
-            C_sum += C*n
-            N += n
-
-        if N == 0:
-            R = np.nan
-            K = np.nan
-        else:
-            R = R_sum / N
-            K = K_sum / N
-
-        C = C_sum / N
+        # Collect the weighted means of these numbers.
+        # this collects all the values from the different
+        # processes and over all the chunks of data
+        _, R = self.R.collect(comm)
+        _ ,K = self.K.collect(comm)
+        _, C = self.C.collect(comm)
+        N = self.count
         
         return R, K, C, N 
+
+
 
 
 class MeanShearInBins:
@@ -446,9 +427,9 @@ class MeanShearInBins:
         self.x  = ParallelMean(self.size)
 
         if shear_catalog_type=='metacal':
-            self.calibrators = [ParallelCalibratorMetacal(self.selector, delta_gamma) for i in range(self.size)]
+            self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
-            self.calibrators = [ParallelCalibratorNonMetacal(self.selector) for i in range(self.size)]
+            self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
 
 
     def selector(self, data, i):

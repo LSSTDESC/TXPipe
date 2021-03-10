@@ -1,4 +1,5 @@
-from ..utils.calibration_tools import MeanShearInBins, ParallelCalibratorMetacal
+from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator
+from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
 import numpy as np
 import mockmpi
 
@@ -49,7 +50,7 @@ def core_metacal(comm):
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal = MetacalCalculator(select_all_bool, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
 
@@ -61,7 +62,7 @@ def core_metacal(comm):
     data["weight"] *= 0.5
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(sel, delta_gamma)
+        cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
         print("R = ", R)
@@ -74,7 +75,7 @@ def core_metacal(comm):
     data["weight"] = np.random.uniform(0, 1, size=N)
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(sel, delta_gamma)
+        cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
         R, S, n = cal.collect(comm)
         print("R = ", R)
@@ -174,6 +175,31 @@ def test_mean_shear_weights():
     print(sigma1, expected_sigma1)
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
+
+
+
+def test_apply():
+    R = np.array([[2, 3], [4, 5]])
+    g1 = 0.2
+    g2 = -0.3
+    g_obs = R @ [g1, g2]
+    mu = np.zeros(2)
+    cal = MetaCalibrator(R, mu)
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == float
+    assert type(g2) == float
+
+    R = np.eye(2)
+    g_obs = R @ [g1, g2]
+    cal = NullCalibrator()
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == float
+    assert type(g2) == float
+
 
 
 if __name__ == '__main__':
