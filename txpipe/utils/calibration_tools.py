@@ -349,7 +349,9 @@ class LensfitCalculator:
         # These all wrap the catalog such that lookups find the variant
         # column if available
 
-        sel = self.selector(data, *args, **kwargs)
+        # This is just to let the selection tools access data.variant for feedback
+        data = _DataWrapper(data, '')
+        sel = self.selector(, *args, **kwargs)
 
         # Extract the calibration quantities for the selected objects
         w = data['weight'][sel]
