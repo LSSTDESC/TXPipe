@@ -327,7 +327,7 @@ class LensfitCalculator:
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them
         # together over all the processes
-        self.M_plus_1 = ParallelMean(1)
+        self.K = ParallelMean(1)
         self.R = ParallelMean(1)
         self.C = ParallelMean(2)
         self.count = 0
@@ -351,7 +351,7 @@ class LensfitCalculator:
 
         # This is just to let the selection tools access data.variant for feedback
         data = _DataWrapper(data, '')
-        sel = self.selector(, *args, **kwargs)
+        sel = self.selector(data, *args, **kwargs)
 
         # Extract the calibration quantities for the selected objects
         w = data['weight'][sel]
@@ -366,7 +366,7 @@ class LensfitCalculator:
         self.K.add_data(0, K, w)
         self.C.add_data(0, c1, w)
         self.C.add_data(1, c2, w)
-        self.count.append(w.size)
+        self.count += w.size
 
         return sel
 
@@ -496,10 +496,10 @@ class MeanShearInBins:
                 g1[i], g2[i] = R_inv @ g
                 sigma1[i], sigma2[i] = R_inv @ sigma
             else:
-                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0][0])       
-                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][0][1])
-                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0][0])       
-                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][0][1])
+                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0])
+                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][1])
+                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0])
+                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][1])
 
 
         return mu, g1, g2, sigma1, sigma2

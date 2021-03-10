@@ -503,6 +503,7 @@ class TXSourceSelector(PipelineStage):
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
 
                 # should probably use one of the calibration_tools functions
+                # JZ should K be in here?
                 mean_e1[i] = mu1 / R_scalar[i]
                 mean_e2[i] = mu2 / R_scalar[i]
 
