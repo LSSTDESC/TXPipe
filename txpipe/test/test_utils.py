@@ -1,4 +1,4 @@
-from ..utils.misc import unique_list, hex_escape, multi_where
+from ..utils.misc import unique_list, hex_escape
 import numpy as np
 
 def test_escape():
