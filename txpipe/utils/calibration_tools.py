@@ -149,7 +149,7 @@ class MetacalCalculator:
         the chunk of data to select on.  It should look up the original
         names of the columns to select on, without the metacal suffix.
 
-        The ParallelCalibrator will then wrap the data passed to it so that
+        The MetacalCalculator will then wrap the data passed to it so that
         when a metacalibrated column is used for selection then the appropriate
         variant column is selected instead.
 
