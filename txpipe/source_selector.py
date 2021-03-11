@@ -385,6 +385,7 @@ class TXSourceSelector(PipelineStage):
         group.create_dataset('N_eff_2d', (1,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
+        group.attrs['catalog_type'] = self.config["shear_catalog_type"]
         for i in range(nbin_source):
             group.attrs[f'source_zmin_{i}'] = zbins[i]
             group.attrs[f'source_zmax_{i}'] = zbins[i+1]
@@ -502,6 +503,7 @@ class TXSourceSelector(PipelineStage):
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
 
                 # should probably use one of the calibration_tools functions
+                # JZ should K be in here?
                 mean_e1[i] = mu1 / R_scalar[i]
                 mean_e2[i] = mu2 / R_scalar[i]
 

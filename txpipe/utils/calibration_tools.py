@@ -149,7 +149,7 @@ class MetacalCalculator:
         the chunk of data to select on.  It should look up the original
         names of the columns to select on, without the metacal suffix.
 
-        The ParallelCalibrator will then wrap the data passed to it so that
+        The MetacalCalculator will then wrap the data passed to it so that
         when a metacalibrated column is used for selection then the appropriate
         variant column is selected instead.
 
@@ -323,7 +323,11 @@ class LensfitCalculator:
             Function that selects objects
         """
         self.selector = selector
-        self.M_plus_1 = ParallelMean(1)
+        # Create a set of calculators that will calculate (in parallel)
+        # the three quantities we need to compute the overall calibration
+        # We create these, then add data to them below, then collect them
+        # together over all the processes
+        self.K = ParallelMean(1)
         self.R = ParallelMean(1)
         self.C = ParallelMean(2)
         self.count = 0
@@ -345,19 +349,24 @@ class LensfitCalculator:
         # These all wrap the catalog such that lookups find the variant
         # column if available
 
+        # This is just to let the selection tools access data.variant for feedback
+        data = _DataWrapper(data, '')
         sel = self.selector(data, *args, **kwargs)
+
+        # Extract the calibration quantities for the selected objects
         w = data['weight'][sel]
         K = 1 + data['m'][sel]
         R = 1 - data['sigma_e'][sel]
         c1 = data['c1'][sel]
         c2 = data['c2'][sel]
 
-
+        # Accumulate the calibration quantities so that later we
+        # can compute the weighted mean of the values
         self.R.add_data(0, R, w)
         self.K.add_data(0, K, w)
         self.C.add_data(0, c1, w)
-        self.C.add_data(1, c1, w)
-        self.count.append(w.size)
+        self.C.add_data(1, c2, w)
+        self.count += w.size
 
         return sel
 
@@ -387,10 +396,14 @@ class LensfitCalculator:
             Selection bias matrix
 
         """
-        # MPI allgather to get full arrays for everyone
+        # The total number of objects is just the
+        # number from all the processes summed together.
         if comm is not None:
             self.count = comm.reduce(self.count)
 
+        # Collect the weighted means of these numbers.
+        # this collects all the values from the different
+        # processes and over all the chunks of data
         _, R = self.R.collect(comm)
         _ ,K = self.K.collect(comm)
         _, C = self.C.collect(comm)
@@ -441,6 +454,8 @@ class MetacalCalibrator:
         calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
         calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
         return calibrators, calibrator2d
+
+
 
 class MeanShearInBins:
     def __init__(self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type='metacal'):
@@ -524,10 +539,12 @@ class MeanShearInBins:
                 g1[i], g2[i] = R_inv @ g
                 sigma1[i], sigma2[i] = R_inv @ sigma
             else:
-                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0][0])       
-                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][0][1])
-                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0][0])       
-                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][0][1])
+                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0])
+                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][1])
+                # JZ should the C be in here? It's a variance so seems
+                # a bit odd to subtract something off
+                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0])
+                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][1])
 
 
         return mu, g1, g2, sigma1, sigma2
