@@ -11,7 +11,7 @@ class Calibrator:
     they apply the calibrations after they have been calculated.
 
     Subclasses do the actual work.  The base classis only useful for
-    the load_calibrators class method, which chooses the correct subclass
+    the load class method, which chooses the correct subclass
     depending on the file it is given.
     """
 
