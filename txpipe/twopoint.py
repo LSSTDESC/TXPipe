@@ -586,8 +586,8 @@ class TXTwoPoint(PipelineStage):
             n_rand_j = n_rand_i
             nn.process(cat_i)
             nr.process(cat_i, rancat_i)
-            rn.process(rancat_i, cat_i)
             rr.process(rancat_i)
+            nn.calculateXi(rr, dr=nr)
             
         else:
             cat_j, rancat_j = self.get_lens_catalog(data, j)
@@ -597,11 +597,11 @@ class TXTwoPoint(PipelineStage):
             nr.process(cat_i,    rancat_j)
             rn.process(rancat_i, cat_j)
             rr.process(rancat_i, rancat_j)
+            nn.calculateXi(rr, dr=nr, rd=rn)
 
         print(f"Rank {self.rank} calculated position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
             f"{n_rand_i} x {n_rand_j} randoms")
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
     def load_tomography(self, data):
