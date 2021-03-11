@@ -541,7 +541,6 @@ class TXTwoPoint(PipelineStage):
             gg.process(cat_i, cat_j)
 
         print(f"Rank {self.rank} calculated shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
-        print(gg.npairs, gg.weight, gg.xip, gg.xim)
         return gg
 
     def calculate_shear_pos(self, data, meta, i, j):

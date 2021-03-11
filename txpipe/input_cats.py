@@ -30,13 +30,13 @@ class TXCosmoDC2Mock(PipelineStage):
         'cat_name':'cosmoDC2',
         'visits_per_band':165,  # used in the noise simulation
         'snr_limit': 4.0,  # used to decide what objects to cut out
-        'Mag_r_limit': -19, # used to decide what objects to cut out  
         'max_size': 99999999999999,  #for testing on smaller catalogs
         'extra_cols': "", # string-separated list of columns to include
         'max_npix':99999999999999,
         'unit_response': False,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
         'apply_mag_cut': False, #used when comparing to descqa measurements
+        'Mag_r_limit': -19, # used to decide what objects to cut out  
         }
 
     def data_iterator(self, gc):
