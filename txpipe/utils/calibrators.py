@@ -19,7 +19,7 @@ class Calibrator:
         raise NotImplementedError("Use a subclass of Calibrator not the base")
 
     @classmethod
-    def load_calibrators(cls, tomo_file, null=False):
+    def load(cls, tomo_file, null=False):
         """
         Load a set of Calibrator objects from a tomography file.
         These will be instances of a subclass of Calibrator, depending on the file
