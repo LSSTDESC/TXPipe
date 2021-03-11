@@ -1,5 +1,4 @@
 import numpy as np
-from .misc import multi_where
 
 
 class Splitter:
@@ -54,6 +53,7 @@ class Splitter:
         self.bin_sizes = bin_sizes
         self.subgroups = {b: self.group.create_group(f"{name}_{b}") for b in self.bins}
 
+        self.group.attrs['nbin'] = len(self.bins)
         for i, b in enumerate(self.bins):
             self.group.attrs[f"bin_{i}"] = b
 
@@ -70,40 +70,6 @@ class Splitter:
                 dt = dtypes.get(col, "f8")
                 sub.create_dataset(col, (sz,), dtype=dt)
 
-    def write(self, data, bins):
-        """
-        Write a chunk of data to the output, using an array of bin values
-        saying which bin to assign each object to.
-
-        Bin values that are not one of those specified in the init will be
-        ignored.
-
-        This will not work in parallel.
-
-        Parameters
-        ----------
-        data: dict
-            Maps column names specified for output to arrays of those values
-            to be split up. All must have the same size.
-        bins: array
-            An array of bin indices matching the type(s) of those specified
-            in the init.  Must be same length as data arrays.
-        """
-        wheres = multi_where(bins, self.bins)
-
-        for b in self.bins:
-            # Get the index of objects that fall in this bin
-            w = wheres[b]
-            if w.size == 0:
-                continue
-
-            # Make the right subsets of the data according to this index
-            bin_data = {col: data[col][w] for col in self.columns}
-
-            # Save this chunk of data
-            self.write_bin(bin_data, b)
-
-        return wheres
 
     def write_bin(self, data, b):
         """
@@ -144,7 +110,7 @@ class Splitter:
         if e > n:
             raise ValueError(f"Too much data added bin {b}: got {e}, expected max {n}")
 
-    def finish(self, my_bins=None):
+    def finish(self, bins=None):
         """
         Finish up by checking that the right amount of data has been written to the file.
 
@@ -154,13 +120,13 @@ class Splitter:
 
         Parameters
         ----------
-        my_bins: list or None
+        bins: list or None
             The list of bins that this process has saved data for.
         """
         if bins is None:
             bins = self.bins
 
-        for b in my_bins:
+        for b in bins:
             c = self.bin_sizes[b]
             n = self.index[b]
             if c != n:
