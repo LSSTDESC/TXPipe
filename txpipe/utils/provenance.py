@@ -71,7 +71,7 @@ def git_diff():
     if diff.returncode:
         return "ERROR_GIT_FAIL"
 
-    # Escape any non-printable characters. 
+    # Escape any non-printable characters.
     return hex_escape(diff.stdout)
 
 def git_current_revision():
