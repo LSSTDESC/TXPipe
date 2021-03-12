@@ -2,6 +2,9 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
     - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
     - name: TXTracerMetadata
@@ -23,11 +26,9 @@ stages:
     - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
       threads_per_process: 2
-    - name: TXGammaTBrightStars  # Compute and plot gamma_t around bright stars
-      threads_per_process: 2
     - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       threads_per_process: 2
-    - name: TXGammaTDimStars     # Compute and plot gamma_t around dim stars
+    - name: TXGammaTStars     # Compute and plot gamma_t around dim stars
       threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
