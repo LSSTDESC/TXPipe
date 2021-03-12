@@ -151,7 +151,7 @@ class TXRandomCat(PipelineStage):
 
         output_file.close()
         splitter.finish(numbers)
-        binned_output.close()                
+        binned_output.close()
 
 
 if __name__ == '__main__':

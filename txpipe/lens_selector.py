@@ -316,7 +316,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 
 class TXLensCatalogSplitter(PipelineStage):
     """
-    Take a lens catalog 
+    Split a lens catalog file into a new file with separate bins.
     """
     name='TXLensCatalogSplitter'
 
@@ -391,7 +391,7 @@ class TXLensCatalogSplitter(PipelineStage):
                 splitter.write_bin(d, b)
 
         splitter.finish(my_bins)
-        cat_output.close()                
+        cat_output.close()
 
 
 class TXExternalLensCatalogSplitter(PipelineStage):
