@@ -11,7 +11,7 @@ class Calibrator:
     they apply the calibrations after they have been calculated.
 
     Subclasses do the actual work.  The base classis only useful for
-    the load_calibrators class method, which chooses the correct subclass
+    the load class method, which chooses the correct subclass
     depending on the file it is given.
     """
 
@@ -19,7 +19,7 @@ class Calibrator:
         raise NotImplementedError("Use a subclass of Calibrator not the base")
 
     @classmethod
-    def load_calibrators(cls, tomo_file, null=False):
+    def load(cls, tomo_file, null=False):
         """
         Load a set of Calibrator objects from a tomography file.
         These will be instances of a subclass of Calibrator, depending on the file
