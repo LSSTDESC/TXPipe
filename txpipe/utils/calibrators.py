@@ -198,6 +198,7 @@ class LensfitCalibrator(Calibrator):
         self.K = K
         self.c = c
 
+    @classmethod
     def load(cls, tomo_file):
         """
         Make a set of Lensfit calibrators using the info in a tomography file.
@@ -253,9 +254,9 @@ class LensfitCalibrator(Calibrator):
             whether to subtract the constant c term (default True)
         """
         if subtract_mean:
-            g1 = (g1 / R - self.c[0]) / (1 + K)
-            g2 = (g2 / R - self.c[1]) / (1 + K)
+            g1 = (g1 / self.R - self.c[0]) / (1 + self.K)
+            g2 = (g2 / self.R - self.c[1]) / (1 + self.K)
         else:
-            g1 = (g1 / R) / (1 + K)
-            g2 = (g2 / R) / (1 + K)
+            g1 = (g1 / self.R) / (1 + self.K)
+            g2 = (g2 / self.R) / (1 + self.K)
         return g1, g2
