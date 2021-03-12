@@ -1,6 +1,9 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZRailTrain
     - name: PZRailEstimate
@@ -17,13 +20,12 @@ stages:
       threads_per_process: 2
     - name: TXBlinding
       threads_per_process: 2
+    - name: TXTwoPointTheoryReal      
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
       threads_per_process: 2
-    - name: TXGammaTBrightStars
-      threads_per_process: 2
-    - name: TXGammaTDimStars
+    - name: TXGammaTStars
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
@@ -50,7 +52,8 @@ launcher:
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
-    max_threads: 1
+    max_threads: 2
+    max_processes: 2
 
 # modules and packages to import that have pipeline
 # stages defined in them
@@ -73,7 +76,8 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
+    photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
