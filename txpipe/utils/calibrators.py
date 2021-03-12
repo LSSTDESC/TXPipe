@@ -45,7 +45,7 @@ class Calibrator:
 
         # Check the catalog type
         with h5py.File(tomo_file, "r") as f:
-            cat_type = f["tomography"].attrs["shear_catalog_type"]
+            cat_type = f["tomography"].attrs["catalog_type"]
 
         # choose a subclass based on this
         if null:
@@ -174,16 +174,17 @@ class MetaCalibrator(Calibrator):
         """
         import h5py
 
-        # Load the response values
-        R = tomo_file["metacal_response/R_total"][:]
-        R_2d = tomo_file["metacal_response/R_total_2d"][:]
-        n = len(R)
+        with h5py.File(tomo_file, "r") as f:
+            # Load the response values
+            R = f["metacal_response/R_total"][:]
+            R_2d = f["metacal_response/R_total_2d"][:]
+            n = len(R)
 
-        # Load the mean shear values
-        mu1 = tomo_file["tomography/mean_e1"][:]
-        mu2 = tomo_file["tomography/mean_e2"][:]
-        mu1_2d = tomo_file["tomography/mean_e1_2d"][0]
-        mu2_2d = tomo_file["tomography/mean_e2_2d"][0]
+            # Load the mean shear values
+            mu1 = f["tomography/mean_e1"][:]
+            mu2 = f["tomography/mean_e2"][:]
+            mu1_2d = f["tomography/mean_e1_2d"][0]
+            mu2_2d = f["tomography/mean_e2_2d"][0]
 
         # make the calibrator objects
         calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
@@ -218,14 +219,15 @@ class LensfitCalibrator(Calibrator):
         """
         import h5py
 
-        K = tomo_file["response/K"][:]
-        K_2d = tomo_file["response/K_2d"][0]
+        with h5py.File(tomo_file, "r") as f:
+            K = f["response/K"][:]
+            K_2d = f["response/K_2d"][0]
 
-        R = tomo_file["response/R_mean"][:]
-        R_2d = tomo_file["response/R_mean_2d"][0]
+            R = f["response/R_mean"][:]
+            R_2d = f["response/R_mean_2d"][0]
 
-        C = tomo_file["response/C"][:, 0, :]
-        C_2d = tomo_file["response/C_2d"][0]
+            C = f["response/C"][:, 0, :]
+            C_2d = f["response/C_2d"][0]
 
         n = len(K)
         calibrators = [cls(R[i], K[i], C[i]) for i in range(n)]

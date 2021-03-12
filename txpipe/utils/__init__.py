@@ -5,3 +5,5 @@ from .healpix import dilated_healpix_map
 from .splitters import Splitter, DynamicSplitter
 from .calibrators import Calibrator, NullCalibrator, MetaCalibrator, LensfitCalibrator
 from .splitters import Splitter, DynamicSplitter
+from .calibration_tools import read_shear_catalog_type, band_variants, metacal_variants
+from .calibration_tools import MetacalCalculator, LensfitCalculator, MeanShearInBins
