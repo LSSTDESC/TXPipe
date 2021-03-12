@@ -27,7 +27,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
-            matter_power_spectrum="halofit", Neff=3.04
+            matter_power_spectrum="halofit", Neff=3.046
         )
         print(cosmo)
 
@@ -185,7 +185,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
-            matter_power_spectrum="halofit", Neff=3.04
+            matter_power_spectrum="halofit", Neff=3.046
         )
         print(cosmo)
 

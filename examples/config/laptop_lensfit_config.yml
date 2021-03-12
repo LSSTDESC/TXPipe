@@ -101,7 +101,7 @@ TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
-    binslop: 0.1
+    bin_slop: 0.1
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True

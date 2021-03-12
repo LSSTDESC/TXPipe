@@ -6,7 +6,6 @@ import numpy as np
 import random
 import collections
 import sys
-
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -41,7 +40,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.5,
         'max_sep':300.,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0.0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -260,11 +259,6 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-
-            # account for double-counting
-            if d.i == d.j:
-                npair = npair/2
-                weight = weight/2
             # xip / xim is a special case because it has two observables.
             # the other two are together below
             if d.corr_type == XI:
@@ -379,7 +373,6 @@ class TXTwoPoint(PipelineStage):
         return result
 
 
-
     def get_shear_catalog(self, i):
         import treecorr
 
@@ -488,20 +481,17 @@ class TXTwoPoint(PipelineStage):
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
+        nn = treecorr.NNCorrelation(self.config)
+        rn = treecorr.NNCorrelation(self.config)
+        nr = treecorr.NNCorrelation(self.config)
+        rr = treecorr.NNCorrelation(self.config)
+        
         if i==j:
             cat_j = None
             rancat_j = None
-            n_j = n_i
-            n_rand_j = n_rand_i
         else:
             cat_j = self.get_lens_catalog(j)
             rancat_j = self.get_random_catalog(j)
-            n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
-
-        print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
-            f"{n_rand_i} x {n_rand_j} randoms")
-
 
         nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i,    cat_j)
@@ -580,7 +570,6 @@ class TXTwoPointLensCat(TXTwoPoint):
         f = self.open_input('lens_tomography_catalog')
         data['lens_bin'] = f['tomography/lens_bin'][:] 
         f.close()
-
 
 
     
