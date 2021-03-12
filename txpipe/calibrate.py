@@ -1,8 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog
-from .utils import SourceNumberDensityStats
-from .utils.calibration_tools import read_shear_catalog_type, MetacalCalibrator
-from .utils import Splitter
+from .utils import read_shear_catalog_type, Calibrator, Splitter, SourceNumberDensityStats
 import numpy as np
 
 
@@ -35,15 +33,10 @@ class TXShearCalibration(PipelineStage):
         # Prepare the output file, and
         output_file, splitter, nbin = self.setup_output()
 
-        #  Load the calibrators
-        if use_true:
-            cals = [NullCalibrator() for i in range(nbin)]
-            cal2d = NullCalibrator()
-        else:
-            with self.open_input("shear_tomography_catalog") as f:
-                (cals, cal2d,) = MetacalCalibrator.calibrators_from_tomography_file(
-                    f, subtract_mean_shear=subtract_mean_shear
-                )
+        #  Load the calibrators.  If using the true shear no calibration
+        # is needed
+        tomo_file = self.get_input("shear_tomography_catalog")
+        cals, cal2d = Calibrator.load(tomo_file, null=use_true)
 
         # These are always named the same
         cat_cols = ["ra", "dec", "weight"]
@@ -107,7 +100,7 @@ class TXShearCalibration(PipelineStage):
                 d = {name: data[name][w] for name in output_cols}
 
                 # Calibrate the shear columns
-                d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"])
+                d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)
