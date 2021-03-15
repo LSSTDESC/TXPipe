@@ -1,86 +1,11 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, MapsFile, TextFile, SACCFile
-from .utils import choose_pixelization, multi_where
+from .utils import choose_pixelization, multi_where, DynamicSplitter
 import re
 import time
 import numpy as np
 import itertools
 
-
-class HDFSplitter:
-    """
-    Helper class to write out data that is split into bins
-
-    """
-    def __init__(self, group, name, columns, bins, initial_size, dtypes=None):
-        self.bins = bins
-        self.group = group
-        self.columns = columns
-        self.index = {b: 0 for b in bins}
-        self.sizes = {b: initial_size for b in bins}
-        self.subgroups = {b: group.create_group(f"{name}_{b}") for b in bins}
-
-        for i, b in enumerate(bins):
-            group.attrs[f'bin_{i}'] = b
-
-        dtypes = dtypes or {}
-
-        for b in bins:
-            sub = self.subgroups[b]
-            for col in columns:
-                dt = dtypes.get(col, 'f8')
-                sub.create_dataset(col, (initial_size,), maxshape=(None,), dtype=dt, chunks=True)
-
-    def write(self, data, bins):
-
-        wheres = multi_where(bins, self.bins)
-
-        for b in self.bins:
-            # Get the index of objects that fall in this bin
-            w = wheres[b]
-            if w.size == 0:
-                continue
-
-            # Make the right subsets of the data according to this index
-            bin_data = {col: data[col][w] for col in self.columns}
-
-            # Save this chunk of data
-            self.write_bin(bin_data, b)
-
-        return wheres
-
-    def check_enlarge(self, b, e):
-        if e > self.sizes[b]:
-            group = self.subgroups[b]
-            sz = int(1.5 * e)
-            self.sizes[b] = sz
-            for col in self.columns:
-                group[col].resize((sz,))
-
-
-    def write_bin(self, data, b):
-        # Length of this chunk
-        n = len(data[self.columns[0]])
-        # Group where we will write the data
-        group = self.subgroups[b]
-        # Indices of this output
-        s = self.index[b]
-        e = s + n
-
-        # Enlarge columns if needed
-        self.check_enlarge(b, e)
-
-        # Write to columns
-        for col in self.columns:
-            group[col][s:e] = data[col]
-
-        # Update overall index
-        self.index[b] = e
-
-    def finalize(self):
-        for b, sub in self.subgroups.items():
-            for col in self.columns:
-                sub[col].resize((self.index[b],))
 
 
 
@@ -179,6 +104,8 @@ class CMSelectHalos(PipelineStage):
 
     }
     def run(self):
+        initial_size = 100_000
+        chunk_rows = 100_000
         
         zedge = np.array(self.config['zedge'])
         # where does this number 45 come from?
@@ -193,17 +120,15 @@ class CMSelectHalos(PipelineStage):
 
         # all pairs of z bin, m bin indices
         bins = list(itertools.product(range(nz), range(nm)))
-        bin_names = [f"{i}_{j}" for i,j in bins]
+        bin_names = {f"{i}_{j}":initial_size for i,j in bins}
 
         # my_bins = [i, pair for pair in self.split_tasks_by_rank(enumerate(bins))]
         cols = ["halo_mass", "redshift", "ra", "dec"]
-        chunk_rows = 100_000
         it = self.iterate_hdf("cluster_mag_halo_catalog", "halos", cols, chunk_rows)
 
         f = self.open_output("cluster_mag_halo_tomography")
         g = f.create_group("tomography")
-        initial_size = 100_000
-        splitter = HDFSplitter(g, "bin", cols, bin_names, initial_size)
+        splitter = DynamicSplitter(g, "bin", cols, bin_names)
 
         for _, _, data in it:
             n = len(data["redshift"])
