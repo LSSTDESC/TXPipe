@@ -30,8 +30,8 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
-from .cluster_mag import CMIngestHalosCosmoDC2
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
 from .calibrate import TXShearCalibration
+from .cluster_mag import *
