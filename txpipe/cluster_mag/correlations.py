@@ -1,7 +1,9 @@
 import numpy as np
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, MapsFile, TextFile, SACCFile
+from ..data_types import HDFFile, TextFile, SACCFile, PNGFile
 import re
+import time
+import traceback
 
 class CMPatches(PipelineStage):
     """
@@ -156,19 +158,26 @@ class CMCorrelations(PipelineStage):
             print(f"Computing with halo bin {halo_bin}")
             tracer1 = f'halo_{halo_bin}'
             tracer2 = f'background'
-            halo_halo, halo_bg, metadata = self.measure_halo_bin(bg_cat, ran_cat, halo_bin, random_random, random_bg)
+            try:
+                halo_halo, halo_bg, meta = self.measure_halo_bin(bg_cat, ran_cat, halo_bin, random_random, random_bg)
+            except:
+                traceback.print_exc()
+                print(f"FAILED to calculate bin {halo_bin}.  Error above.  Continuing.")
+                continue
             # We build up the comb list to get the covariance of it later
             # in the same order as our data points
             comb.append(halo_halo)
             comb.append(halo_bg)
 
-            self.add_sacc_data(S, tracer1, tracer2, "halo_halo_density_xi", halo_halo, **metadata)
-            self.add_sacc_data(S, tracer1, tracer2, "halo_galaxy_density_xi", halo_bg, **metadata)
+            self.add_sacc_data(S, tracer1, tracer1, "halo_halo_density_xi", halo_halo, **meta)
+            self.add_sacc_data(S, tracer1, tracer2, "halo_galaxy_density_xi", halo_bg, **meta)
 
 
         cov = treecorr.estimate_multi_cov(comb, self.config['var_method'])
 
         S.add_covariance(cov)
+        S.metadata['nm'] = metadata['nm']
+        S.metadata['nz'] = metadata['nz']
 
 
         S.save_fits(self.get_output("cluster_mag_correlations"))
@@ -213,7 +222,7 @@ class CMCorrelations(PipelineStage):
 
         t = time.time()
         print(f"Computing {halo_bin} x {halo_bin}")
-        halo_halo = self.measure(halo_cat, halo_cat)
+        halo_halo = self.measure(halo_cat, None)
 
         print(f"Computing {halo_bin} x randoms")
         halo_random = self.measure(halo_cat, ran_cat)
@@ -239,7 +248,58 @@ class CMCorrelations(PipelineStage):
             for x, y in self.config.items()
             if x in treecorr.NNCorrelation._valid_params
         }
+        print(config)
 
         p = treecorr.NNCorrelation(**config)
         p.process(cat1, cat2, low_mem=False)
         return p
+
+
+
+class CMCorrelationsPlot(PipelineStage):
+    name = "CMCorrelationsPlot"
+    inputs = [("cluster_mag_correlations", SACCFile),]
+    outputs = [
+        ("cluster_mag_halo_halo_plot", PNGFile),
+        ("cluster_mag_halo_bg_plot", PNGFile)
+
+    ]
+    config_options = {}
+    def run(self):
+        import sacc
+        import matplotlib
+        matplotlib.use('agg')
+        import matplotlib.pyplot as plt
+        S = sacc.Sacc.load_fits(self.get_input("cluster_mag_correlations"))
+
+        nm = S.metadata['nm']
+        nz = S.metadata['nz']
+
+        f = self.open_output('cluster_mag_halo_halo_plot', wrapper=True, figsize=(nm*5,nz*5))
+        fig = f.file
+        axes = fig.subplots(nm, nz, sharex='col', sharey=False, squeeze=False)
+        for i in range(nz):
+            for j in range(nm):
+                ax = axes[i, j]
+                # ax.axhline(0, color='k')                
+                tracer = f'halo_{i}_{j}'
+                theta = S.get_tag('theta', 'halo_halo_density_xi', (tracer, tracer))
+                error = S.get_tag('error', 'halo_halo_density_xi', (tracer, tracer))
+                if not len(theta):
+                    continue
+                xi = S.get_mean('halo_halo_density_xi', (tracer, tracer))
+
+                ax.errorbar(theta, xi, error, fmt='r.')
+                ax.set_xscale('log')
+                ax.axhline(0, color='k')
+                # ax.plot([theta[0], theta[-1]], [0, 0], 'k-')
+                # print(i, j, xi)
+                # ax.set_xlim(theta[0], theta[-1])
+                ax.set_title(tracer)
+                if j == 0:
+                    ax.set_ylabel("xi")
+                if i == nm - 1:
+                    ax.set_xlabel("theta")
+        plt.tight_layout()
+        f.close()
+

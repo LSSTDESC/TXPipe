@@ -39,6 +39,8 @@ class CMSelectHalos(PipelineStage):
 
         f = self.open_output("cluster_mag_halo_tomography")
         g = f.create_group("tomography")
+        g.attrs['nm'] = nm
+        g.attrs['nz'] = nz
         splitter = DynamicSplitter(g, "bin", cols, bin_names)
 
         for _, _, data in it:
@@ -56,7 +58,7 @@ class CMSelectHalos(PipelineStage):
                     splitter.write_bin(d, f"{zi - 1}_{mi - 1}")
 
         # Truncate arrays to correct size
-        splitter.finalize()
+        splitter.finish()
 
         # Save metadata
         for (i, j), name in zip(bins, bin_names):

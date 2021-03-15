@@ -1,10 +1,10 @@
-CLIngestHalosCosmoDC2:
+CMIngestHalosCosmoDC2:
     cat_name: cosmoDC2_v1.1.4_image
     halo_mass_min: 0.5e+13
     initial_size: 100_000
 
 
-CLMagnificationBackgroundSelector:
+CMBackgroundSelector:
     ra_range: [50.0, 73.1]
     dec_range: [-45.0, -27.0]
     mag_cut: 26.0
@@ -13,21 +13,23 @@ CLMagnificationBackgroundSelector:
     initial_size: 100_000
 
 
-CLMagnificationRandoms:
-    density: 30.
+CMRandoms:
+    density: 5.
 
 
-CLMagnificationPatches:
+CMPatches:
     npatch : 32
     every_nth: 100
 
 
-CLMagnificationCorrelations:
+CMCorrelations:
     min_sep: 0.5
     max_sep: 300.
     nbins: 9
     bin_slop: 0.1
     sep_units: arcmin
-    cores_per_task: 8
+    cores_per_task: 2
     verbose: 1
     var_method': jackknife
+
+CMCorrelationsPlot: {}

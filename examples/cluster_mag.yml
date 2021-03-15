@@ -19,6 +19,7 @@ stages:
     - name: CMPatches
     - name: CMRedshifts
     - name: CMCorrelations
+    - name: CMCorrelationsPlot
 output_dir: data/cluster_mag/outputs
 config: examples/config/cluster_mag_config.yml
 
