@@ -180,12 +180,13 @@ class DynamicSplitter(Splitter):
         n = self.bin_sizes[b]
 
         # Expand the columns by 50% if needed
-        if e > n:
+        while e > n:
             sub = self.subgroups[b]
             new_size = int(n * 1.5)
             for col in self.columns:
-                sub[col].resize(new_size)
+                sub[col].resize((new_size,))
             self.bin_sizes[b] = new_size
+            n = new_size
 
     def finish(self):
         """

@@ -68,8 +68,9 @@ def test_dynamic_splitter():
     y = np.random.normal(size=100)
     z = np.random.randint(0, 1000, size=100)
 
-    # get counts
-    counts = {b: (bins==b).sum() for b in range(6)}
+    # get counts - this is an initial count size,
+    # will be increased
+    counts = {b: 5 for b in range(6)}
 
 
     with tempfile.TemporaryDirectory() as dirname:
