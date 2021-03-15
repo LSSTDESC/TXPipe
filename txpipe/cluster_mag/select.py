@@ -47,18 +47,13 @@ class CMSelectHalos(PipelineStage):
             mbin = np.digitize(data['halo_mass'], medge)
 
             # Find which bin each object is in, or None
-            sel_bins = []
-            for i in range(n):
-                zi = zbin[i]
-                mi = mbin[i]
-                if (zi == 0) or (zi == nz + 1) or (mi == 0) or (mi == nm + 1):
-                    b = None
-                else:
-                    b = f"{zi-1}_{mi-1}"
-                sel_bins.append(b)
-
-            # Save data to the correct subgroup
-            splitter.write(data, sel_bins)
+            for zi in range(1, nz + 1):
+                for mi in range(1, nm + 1):
+                    w = np.where((zbin == zi) & (mbin == mi))
+                    if w[0].size == 0:
+                        continue
+                    d = {name:col[w] for name, col in data.items()}
+                    splitter.write_bin(d, f"{zi - 1}_{mi - 1}")
 
         # Truncate arrays to correct size
         splitter.finalize()

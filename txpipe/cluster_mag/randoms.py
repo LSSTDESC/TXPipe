@@ -15,7 +15,7 @@ class CMRandoms(PipelineStage):
 
     def run(self):
         import scipy.stats
-        from .randoms import random_points_in_quadrilateral
+        from ..randoms import random_points_in_quadrilateral
         import healpy
 
         # open the footprint catalog and read in the things we need
@@ -25,6 +25,9 @@ class CMRandoms(PipelineStage):
             info = f.read_map_info("footprint")
             nside = info["nside"]
             scheme = choose_pixelization(**info)
+
+        if self.rank == 0:
+            print(f"Generating randoms at nside = {nside}")
 
         #  Hit pixels and the coordinates of their vertices
         pix = np.where(hit_map > 0)[0]
