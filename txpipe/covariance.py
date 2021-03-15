@@ -487,6 +487,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         'max_sep':250,
         'nbins':20,
         'pickled_wigner_transform': '',
+        'use_true_shear': False,
     }
 
     def run(self):

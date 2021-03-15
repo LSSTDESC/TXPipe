@@ -6,7 +6,6 @@ import numpy as np
 import random
 import collections
 import sys
-
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -22,12 +21,11 @@ POS_POS = 2
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
+        ('calibrated_shear_catalog', ShearCatalog),
+        ('calibrated_lens_catalog', HDFFile),
+        ('binned_random_cats', HDFFile),
         ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
         ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
         ('patch_centers', TextFile),
         ('tracer_metadata', HDFFile),
     ]
@@ -42,7 +40,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.5,
         'max_sep':300.,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0.0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -55,7 +53,9 @@ class TXTwoPoint(PipelineStage):
         'do_pos_pos': True,
         'var_method': 'jackknife',
         'use_true_shear': False,
-        'subtract_mean_shear':False
+        'subtract_mean_shear':False,
+        'use_randoms': True,
+        'low_mem': False,
         }
 
     def run(self):
@@ -65,24 +65,15 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import healpy
         import treecorr
-        # Load the different pieces of data we need into
-        # one large dictionary which we accumulate
-        data = {}
-        self.load_shear_catalog(data)
-        self.load_tomography(data)
-        self.load_random_catalog(data)
-        # This one is optional - this class does nothing with it
-        self.load_lens_catalog(data)
         # Binning information
-        self.read_nbin(data)
+        source_list, lens_list = self.read_nbin()
 
         # Calculate metadata like the area and related
         # quantities
         meta = self.read_metadata()
 
         # Choose which pairs of bins to calculate
-        calcs = self.select_calculations(data)
-
+        calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
         # This splits the calculations among the parallel bins
@@ -91,7 +82,7 @@ class TXTwoPoint(PipelineStage):
         # but for this case I would expect it to be mostly fine
         results = []
         for i,j,k in self.split_tasks_by_rank(calcs):
-            result = self.call_treecorr(data, meta, i, j, k)
+            result = self.call_treecorr(i, j, k)
             results.append(result)
 
         # If we are running in parallel this collects the results together
@@ -99,12 +90,10 @@ class TXTwoPoint(PipelineStage):
 
         # Save the results
         if self.rank==0:
-            self.write_output(data, meta, results)
+            self.write_output(source_list, lens_list, meta, results)
 
 
-    def select_calculations(self, data):
-        source_list = data['source_list']
-        lens_list = data['lens_list']
+    def select_calculations(self, source_list, lens_list):
         calcs = []
 
         # For shear-shear we omit pairs with j>i
@@ -124,7 +113,7 @@ class TXTwoPoint(PipelineStage):
 
         # For position-position we omit pairs with j>i
         if self.config['do_pos_pos']:
-            if not 'random_bin' in data:
+            if not self.config['use_randoms']:
                 raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             for i in lens_list:
@@ -149,7 +138,7 @@ class TXTwoPoint(PipelineStage):
 
         return results
 
-    def read_nbin(self, data):
+    def read_nbin(self):
         """
         Determine the bins to use in this analysis, either from the input file
         or from the configuration.
@@ -163,22 +152,20 @@ class TXTwoPoint(PipelineStage):
         nl = len(lens_list)
         print(f'Running with {ns} source bins and {nl} lens bins')
 
-        data['source_list']  =  source_list
-        data['lens_list']  =  lens_list
+        return source_list, lens_list
 
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        tomo = self.open_input('shear_tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
-        tomo.close()
-        nbin_source = d['nbin_source']
-        tomo = self.open_input('lens_tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
-        tomo.close()
-        nbin_lens = d['nbin_lens']
+        with self.open_input('calibrated_shear_catalog') as f:
+            nbin_source = f['shear'].attrs['nbin_source']
+
+        with self.open_input('calibrated_lens_catalog') as f:
+            nbin_lens = f['lens'].attrs['nbin_lens']
+
         source_list = range(nbin_source)
         lens_list = range(nbin_lens)
+
         return source_list, lens_list
 
     def _read_nbin_from_config(self):
@@ -219,7 +206,7 @@ class TXTwoPoint(PipelineStage):
 
 
 
-    def write_output(self, data, meta, results):
+    def write_output(self, source_list, lens_list, meta, results):
         import sacc
         import treecorr
         XI = "combined"
@@ -239,7 +226,7 @@ class TXTwoPoint(PipelineStage):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        for i in data['source_list']:
+        for i in source_list:
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
@@ -248,7 +235,7 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
-        for i in data['lens_list']:
+        for i in lens_list:
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
@@ -272,11 +259,6 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-
-            # account for double-counting
-            if d.i == d.j:
-                npair = npair/2
-                weight = weight/2
             # xip / xim is a special case because it has two observables.
             # the other two are together below
             if d.corr_type == XI:
@@ -366,7 +348,7 @@ class TXTwoPoint(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-    def call_treecorr(self, data, meta, i, j, k):
+    def call_treecorr(self, i, j, k):
         """
         This is a wrapper for interaction with treecorr.
         """
@@ -374,13 +356,13 @@ class TXTwoPoint(PipelineStage):
 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, meta, i, j)
+            xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(data, meta, i, j)
+            xx = self.calculate_shear_pos(i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, i, j)
+            xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
@@ -391,170 +373,87 @@ class TXTwoPoint(PipelineStage):
         return result
 
 
-    def get_calibrated_catalog_bin(self, data, meta, i):
-        """
-        Calculate the metacal correction factor for this tomographic bin.
-        """
-
-        mask = (data['source_bin'] == i)
-
-        if self.config['use_true_shear']:
-            g1 = data[f'true_g1'][mask]
-            g2 = data[f'true_g2'][mask]
-
-        elif self.config['shear_catalog_type']=='metacal':
-            # We use S=0 here because we have already included it in R_total
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask], data['mcal_g2'][mask])
-
-        elif self.config['shear_catalog_type']=='lensfit':
-            #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
-
-        else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-            
-        # Subtract mean shears, if needed.  These are calculated in source_selector,
-        # and have already been calibrated, so subtract them after calibrated our sample.
-        # Right now we are loading the full catalog here, so we could just take the mean
-        # at this point, but in future we would like to move to just loading part of the
-        # catalog.
-        if self.config['subtract_mean_shear']:
-            # Cross-check: print out the new mean.
-            # In the weighted case these won't actually be equal
-            mu1 = g1.mean()
-            mu2 = g2.mean()
-
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            g1 -= meta['mean_e1'][i]
-            g2 -= meta['mean_e2'][i]
-
-            # Compare to final means.
-            nu1 = g1.mean()
-            nu2 = g2.mean()
-            print(f"Subtracting mean shears for bin {i}")
-            print(f"Means before: {mu1}  and  {mu2}")
-            print(f"Means after:  {nu1}  and  {nu2}")
-            print("(In the weighted case the latter may not be exactly zero)")
-
-        if self.config['flip_g2']:
-            g2 *= -1
-
-        return g1, g2, mask
-
-    def get_shear_catalog(self, data, meta, i):
+    def get_shear_catalog(self, i):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
-
-        if self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='metacal':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                w = data['weight'][mask],
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                w = data['weight'][mask],
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-        else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+        cat = treecorr.Catalog(
+            self.get_input("calibrated_shear_catalog"),
+            ext = f"/shear/bin_{i}",
+            g1_col = "g1",
+            g2_col = "g2",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers')
+        )
         return cat
 
 
-    def get_lens_catalog(self, data, i):
+    def get_lens_catalog(self, i):
         import treecorr
 
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            self.get_input("calibrated_lens_catalog"),
+            ext = f"/lens/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers')
+        )
+        return cat
 
-        mask = data['lens_bin'] == i
+    def get_random_catalog(self, i):
+        import treecorr
+        if not self.config["use_randoms"]:
+            return None
 
-        if 'lens_ra' in data:
-            ra = data['lens_ra'][mask]
-            dec = data['lens_dec'][mask]
-        else:
-            ra = data['ra'][mask]
-            dec = data['dec'][mask]
-
-        if self.config['var_method']=='jackknife':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec,
-                ra_units='degree', dec_units='degree',
-                patch_centers=patch_centers)
-        else:
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec,
-                ra_units='degree', dec_units='degree')
-
-        if 'random_bin' in data:
-            random_mask = data['random_bin']==i
-            if self.config['var_method']=='jackknife':
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    ra_units='degree', dec_units='degree',
-                    patch_centers=patch_centers)
-            else:
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    ra_units='degree', dec_units='degree')
-        else:
-            rancat = None
-
-        return cat, rancat
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_cats"),
+            ext = f"/randoms/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers')
+        ) 
+        return rancat
 
 
-    def calculate_shear_shear(self, data, meta, i, j):
+    def calculate_shear_shear(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
-
         if i==j:
-            cat_j = cat_i
+            cat_j = None
             n_j = n_i
         else:
-            cat_j = self.get_shear_catalog(data, meta, j)
+            cat_j = self.get_shear_catalog(j)
             n_j = cat_j.nobj
-
 
         print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
 
         gg = treecorr.GGCorrelation(self.config)
-        gg.process(cat_i, cat_j)
+        gg.process(cat_i, cat_j, low_mem = self.config["low_mem"])
 
         return gg
 
-    def calculate_shear_pos(self, data, meta, i, j):
+    def calculate_shear_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
-        cat_j, rancat_j = self.get_lens_catalog(data, j)
+        cat_j = self.get_lens_catalog(j)
+        rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -574,112 +473,46 @@ class TXTwoPoint(PipelineStage):
         return ng
 
 
-    def calculate_pos_pos(self, data, i, j):
+    def calculate_pos_pos(self, i, j):
         import treecorr
 
-        cat_i, rancat_i = self.get_lens_catalog(data, i)
+        cat_i = self.get_lens_catalog(i)
+        rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-
-        if i==j:
-            cat_j = cat_i
-            rancat_j = rancat_i
-            n_j = n_i
-            n_rand_j = n_rand_i
-        else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
-            n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
-
-        print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
-            f"{n_rand_i} x {n_rand_j} randoms")
-
 
         nn = treecorr.NNCorrelation(self.config)
         rn = treecorr.NNCorrelation(self.config)
         nr = treecorr.NNCorrelation(self.config)
         rr = treecorr.NNCorrelation(self.config)
+        
+        if i==j:
+            cat_j = None
+            rancat_j = None
+        else:
+            cat_j = self.get_lens_catalog(j)
+            rancat_j = self.get_random_catalog(j)
 
+        nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i,    cat_j)
+
+        nr = treecorr.NNCorrelation(self.config)
         nr.process(cat_i,    rancat_j)
-        rn.process(rancat_i, cat_j)
+
+        rr = treecorr.NNCorrelation(self.config)
         rr.process(rancat_i, rancat_j)
+
+        if i==j:
+            rn = None
+        else:
+            rn = treecorr.NNCorrelation(self.config)
+            rn.process(rancat_i, cat_j)
 
         nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
-    def load_tomography(self, data):
-
-        # Columns we need from the tomography catalog
-        f = self.open_input('shear_tomography_catalog')
-        source_bin = f['tomography/source_bin'][:]
-        if self.config['shear_catalog_type']=='metacal':
-            r_total = f['metacal_response/R_total'][:]
-        else:
-            r_total = f['response/R'][:]
-        f.close()
-
-        f = self.open_input('lens_tomography_catalog')
-        lens_bin = f['tomography/lens_bin'][:]
-        f.close()
-
-        data['source_bin']  =  source_bin
-        data['lens_bin']  =  lens_bin
-        data['R']  =  r_total
-
-    def load_lens_catalog(self, data):
-        # Subclasses can load an external lens catalog
-        pass
 
 
-
-    def load_shear_catalog(self, data):
-
-        # Columns we need from the shear catalog
-        read_shear_catalog_type(self)
-
-        if self.config['shear_catalog_type']=='metacal':
-            if self.config['use_true_shear']:
-                cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
-            else:
-                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
-                
-        else:
-            cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
-        print(f"Loading shear catalog columns: {cat_cols}")
-
-        f = self.open_input('shear_catalog')
-        g = f['shear']
-        for col in cat_cols:
-            print(f"Loading {col}")
-            data[col] = g[col][:]
-
-
-    def load_random_catalog(self, data):
-        filename = self.get_input('random_cats')
-        if filename is None:
-            print("Not using randoms")
-            return
-
-        # Columns we need from the tomography catalog
-        randoms_cols = ['dec','ra','bin']
-        print(f"Loading random catalog columns: {randoms_cols}")
-
-        f = self.open_input('random_cats')
-        group = f['randoms']
-
-        cut = self.config['reduce_randoms_size']
-        if 0.0<cut<1.0:
-            N = group['dec'].size
-            sel = np.random.uniform(size=N) < cut
-        else:
-            sel = slice(None)
-
-        data['random_ra'] =  group['ra'][sel]
-        data['random_dec'] = group['dec'][sel]
-        data['random_bin'] = group['bin'][sel]
-
-        f.close()
 
     def calculate_area(self, data):
         import healpy as hp
@@ -706,294 +539,6 @@ class TXTwoPoint(PipelineStage):
         meta["mean_e2"] = mean_e2
 
         return meta
-
-class TXTwoPointLensCat(TXTwoPoint):
-    """
-    This subclass of the standard TXTwoPoint takes its
-    lens sample from an external source instead of using
-    the photometric sample.
-    """
-    name='TXTwoPointLensCat'
-    inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
-        ('lens_catalog', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
-    ]
-    def load_lens_catalog(self, data):
-        filename = self.get_input('lens_catalog')
-        print(f"Loading lens sample from {filename}")
-
-        f = self.open_input('lens_catalog')
-        data['lens_ra']  = f['lens/ra'][:]
-        data['lens_dec'] = f['lens/dec'][:]
-        f.close()
-
-        f = self.open_input('lens_tomography_catalog')
-        data['lens_bin'] = f['tomography/lens_bin'][:] 
-        f.close()
-
-
-class TXTwoPointTheoryReal(PipelineStage):
-    """
-    Compute theory in CCL in real space and save to a sacc file.
-    """
-    name='TXTwoPointTheoryReal'
-    inputs = [
-        ('twopoint_data_real', SACCFile),
-        ('fiducial_cosmology', FiducialCosmology),  # For example lines
-    ]
-    outputs = [
-        ('twopoint_theory_real', SACCFile),
-    ]
-    
-
-    def run(self):
-        import sacc
-
-        filename = self.get_input('twopoint_data_real')
-        s = sacc.Sacc.load_fits(filename)
-
-        # TODO: when there is a better Cosmology serialization method
-        # switch to that
-        print("Manually specifying matter_power_spectrum and Neff")
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        matter_power_spectrum='halofit', Neff=3.04)
-        print(cosmo)
-
-        s_theory = self.replace_with_theory_real(s, cosmo)
-        
-        # Remove covariance
-        s_theory.covariance = None
-        
-        # save the output to Sacc file
-        s_theory.save_fits(self.get_output('twopoint_theory_real'), overwrite=True)
-
-    def read_nbin(self, s):
-        import sacc
-
-        xip = sacc.standard_types.galaxy_shear_xi_plus
-        wtheta = sacc.standard_types.galaxy_density_xi
-
-        source_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(xip):
-            source_tracers.add(b1)
-            source_tracers.add(b2)
-
-        lens_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(wtheta):
-            lens_tracers.add(b1)
-            lens_tracers.add(b2)
-
-
-        return len(source_tracers), len(lens_tracers)
-
-    def get_ccl_tracers(self, s, cosmo, smooth=False):
-        
-        # ccl tracers object
-        import pyccl
-        tracers = {}
-
-        nbin_source, nbin_lens = self.read_nbin(s)
-        
-        # Make the lensing tracers
-        for i in range(nbin_source):
-            name = f'source_{i}'
-            Ti = s.get_tracer(name)
-            nz = smooth_nz(Ti.nz) if smooth else Ti.nz
-            print("smooth:",  smooth)
-            # Convert to CCL form
-            tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
-
-        # And the clustering tracers
-        for i in range(nbin_lens):
-            name = f'lens_{i}'
-            Ti = s.get_tracer(name)
-            nz = smooth_nz(Ti.nz) if smooth else Ti.nz
-
-            # Convert to CCL form
-            tracers[name] = pyccl.NumberCountsTracer(cosmo, has_rsd=False, 
-                dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z)))
-            
-        return tracers
-    
-    def replace_with_theory_real(self, s, cosmo):
-
-        import pyccl
-        nbin_source, nbin_lens = self.read_nbin(s)
-        ell = np.unique(np.logspace(np.log10(2),5,400).astype(int))
-        tracers = self.get_ccl_tracers(s, cosmo)
-
-        for i in range(nbin_source):
-            for j in range(i+1):
-                print(f"Computing theory lensing-lensing ({i},{j})")
-
-                # compute theory 
-                print(tracers[f'source_{i}'], tracers[f'source_{j}'])
-                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
-                theta, *_  = s.get_theta_xi('galaxy_shear_xi_plus', f'source_{i}' , f'source_{j}')
-                xip = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+')
-                xim = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-')
-
-                # replace data values in the sacc object for the theory ones
-                ind_xip = s.indices('galaxy_shear_xi_plus', (f'source_{i}', f'source_{j}'))
-                ind_xim = s.indices('galaxy_shear_xi_minus', (f'source_{i}', f'source_{j}'))
-                for p, q in enumerate(ind_xip):
-                    s.data[q].value = xip[p]
-                for p, q in enumerate(ind_xim):
-                    s.data[q].value = xim[p]
-
-        for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
-
-            # compute theory
-            cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{i}'], ell)
-            theta, *_  = s.get_theta_xi('galaxy_density_xi', f'lens_{i}' , f'lens_{i}')
-            wtheta = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
-
-            # replace data values in the sacc object for the theory ones
-            ind = s.indices('galaxy_density_xi', (f'lens_{i}', f'lens_{i}'))
-            for p, q in enumerate(ind):
-                s.data[q].value = wtheta[p]
-
-        for i in range(nbin_source):
-
-            for j in range(nbin_lens):
-                print(f"Computing theory lensing-density (S{i},L{j})")
-
-                # compute theory
-                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
-                theta, *_ = s.get_theta_xi('galaxy_shearDensity_xi_t', f'source_{i}' , f'lens_{j}')
-                gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
-
-                ind = s.indices('galaxy_shearDensity_xi_t', (f'source_{i}', f'lens_{j}'))
-                for p, q in enumerate(ind):
-                    s.data[q].value = gt[p]
-
-
-        return s
-
-
-class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
-    """
-    Compute theory from CCL in Fourier space and save to a sacc file.
-    """
-    name='TXTwoPointTheoryFourier'
-    inputs = [
-        ('twopoint_data_fourier', SACCFile),
-        ('fiducial_cosmology', FiducialCosmology),  # For example lines
-    ]
-    outputs = [
-        ('twopoint_theory_fourier', SACCFile),
-    ]
-    
-
-    def run(self):
-        import sacc
-
-        filename = self.get_input('twopoint_data_fourier')
-        s = sacc.Sacc.load_fits(filename)
-
-        # TODO: when there is a better Cosmology serialization method
-        # switch to that
-        print("Manually specifying matter_power_spectrum and Neff")
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        matter_power_spectrum='halofit', Neff=3.04)
-        print(cosmo)
-
-        s_theory = self.replace_with_theory_fourier(s, cosmo)
-
-        # Remove covariance
-        s_theory.covariance = None
-        
-        # save the output to Sacc file
-        s_theory.save_fits(self.get_output('twopoint_theory_fourier'), overwrite=True)
-
-        
-    def read_nbin(self, s):
-        import sacc
-
-        cl_ee = sacc.standard_types.galaxy_shear_cl_ee
-        cl_density = sacc.standard_types.galaxy_density_cl
-
-        source_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(cl_ee):
-            source_tracers.add(b1)
-            source_tracers.add(b2)
-
-        lens_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(cl_density):
-            lens_tracers.add(b1)
-            lens_tracers.add(b2)
-
-
-        return len(source_tracers), len(lens_tracers)
-
-    
-    def replace_with_theory_fourier(self, s, cosmo):
-
-        import pyccl
-
-        nbin_source, nbin_lens = self.read_nbin(s)
-        tracers = self.get_ccl_tracers(s, cosmo)
-        
-        data_types = s.get_data_types()
-        if 'galaxy_shearDensity_cl_b' in data_types:
-            # Remove galaxy_shearDensity_cl_b measurement values
-            ind_b = s.indices('galaxy_shearDensity_cl_b')
-            s.remove_indices(ind_b)
-        if 'galaxy_shear_cl_bb' in data_types:
-            # Remove galaxy_shear_cl_bb  measurement values
-            ind_bb = s.indices('galaxy_shear_cl_bb')
-            s.remove_indices(ind_bb)
-
-        for i in range(nbin_source):
-            for j in range(i+1):
-                print(f"Computing theory lensing-lensing ({i},{j})")
-
-                # compute theory 
-                print(tracers[f'source_{i}'], tracers[f'source_{j}'])
-                ell, *_  = s.get_ell_cl('galaxy_shear_cl_ee', f'source_{i}' , f'source_{j}')
-                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
-
-                # replace data values in the sacc object for the theory ones
-                ind = s.indices('galaxy_shear_cl_ee', (f'source_{i}', f'source_{j}'))
-                for p, q in enumerate(ind):
-                    s.data[q].value = cl[p]
-                    
-                    
-        for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
-
-            # compute theory
-            ell, *_  = s.get_ell_cl('galaxy_density_cl', f'lens_{i}' , f'lens_{i}')
-            cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{i}'], ell)
-
-            # replace data values in the sacc object for the theory ones
-            ind = s.indices('galaxy_density_cl', (f'lens_{i}', f'lens_{i}'))
-            for p, q in enumerate(ind):
-                s.data[q].value = cl[p]
-
-        for i in range(nbin_source):
-
-            for j in range(nbin_lens):
-                print(f"Computing theory lensing-density (S{i},L{j})")
-
-                # compute theory
-                ell, *_ = s.get_ell_cl('galaxy_shearDensity_cl_e', f'source_{i}' , f'lens_{j}')
-                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
-
-                # replace data values in the sacc object for the theory ones
-                ind = s.indices('galaxy_shearDensity_cl_e', (f'source_{i}', f'lens_{j}'))
-                for p, q in enumerate(ind):
-                    s.data[q].value = cl[p]
-
-        return s
 
     
 
@@ -1420,729 +965,6 @@ class TXTwoPointPlots(PipelineStage):
             plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
             plot_output.close()
 
-
-class TXGammaTFieldCenters(TXTwoPoint):
-    """
-    This subclass of the standard TXTwoPoint uses the centers
-    of exposure fields as "lenses", as a systematics test.
-    """
-    name = "TXGammaTFieldCenters"
-    inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
-        ('exposures', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
-    ]
-    outputs = [
-        ('gammat_field_center', SACCFile),
-        ('gammat_field_center_plot', PNGFile),
-    ]
-    # Add values to the config file that are not previously defined
-    config_options = {
-        'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':250,
-        'nbins':20,
-        'bin_slop':0.1,
-        'sep_units':'arcmin',
-        'flip_g2':True,
-        'cores_per_task':20,
-        'verbose':1,
-        'reduce_randoms_size':1.0,
-        'var_method': 'shot',
-        'npatch': 5,
-        'use_true_shear': False,
-        'subtract_mean_shear':False
-        }
-
-    def run(self):
-        # Before running the parent class we add source_bins and lens_bins
-        # options that it is expecting, both set to -1 to indicate that we
-        # will choose them automatically (below).
-        import matplotlib
-        matplotlib.use('agg')
-        self.config['source_bins'] = [-1]
-        self.config['lens_bins'] = [-1]
-        super().run()
-
-    def read_nbin(self, data):
-        # We use only a single source and lens bin in this case -
-        # the source is the complete 2D field and the lens is the
-        # field centers
-        data['source_list'] = [0]
-        data['lens_list'] = [0]
-
-    def load_lens_catalog(self, data):
-        # We load our lenses from the exposures input.
-        filename = self.get_input('exposures')
-        print(f"Loading lens sample from {filename}")
-
-        f = self.open_input('exposures')
-        data['lens_ra']  = f['exposures/ratel'][:]
-        data['lens_dec'] = f['exposures/dectel'][:]
-        f.close()
-
-        npoint = data['lens_ra'].size
-        data['lens_bin'] = np.zeros(npoint)
-
-    def load_tomography(self, data):
-        # We run the parent class tomography selection but then
-        # overrided it to squash all of the bins  0 .. nbin -1
-        # down to the zero bin.  This means that any selected
-        # objects (from any tomographic bin) are now in the same
-        # bin, and unselected objects still have bin -1
-        super().load_tomography(data)
-        data['source_bin'][:] = data['source_bin'].clip(-1,0)
-
-    def select_calculations(self, data):
-        # We only want a single calculation, the gamma_T around
-        # the field centers
-        return [(0,0,SHEAR_POS)]
-
-    def write_output(self, data, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        self.write_output_sacc(data, meta, results)
-        self.write_output_plot(results)
-
-    def write_output_plot(self, results):
-        import matplotlib.pyplot as plt
-        d = results[0]
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-
-        fig = self.open_output('gammat_field_center_plot', wrapper=True)
-
-        plt.errorbar(dtheta,  dtheta*dvalue, derror, fmt='ro', capsize=3)
-        plt.xscale('log')
-
-        plt.xlabel(r"$\theta$ / arcmin")
-        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
-        plt.title("Field Center Tangential Shear")
-
-        fig.close()
-
-    def write_output_sacc(self, data, meta, results):
-        # We write out the results slightly differently here
-        # beause they go to a different file and have different
-        # tracers and tags.
-        import sacc
-        dt = "galaxyFieldCenter_shearDensity_xi_t"
-
-        S = sacc.Sacc()
-
-        f = self.open_input('shear_photoz_stack')
-        z = f['n_of_z/source2d/z'][:]
-        Nz = f[f'n_of_z/source2d/bin_0'][:]
-        f.close()
-
-        # Add the data points that we have one by one, recording which
-        # tracer they each require
-        S.add_tracer('misc', 'fieldcenter')
-        S.add_tracer('NZ', 'source2d', z, Nz)
-
-        d = results[0]
-        assert len(results)==1
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-        dnpair = d.object.npairs
-        dweight = d.object.weight
-
-        # Each of our Measurement objects contains various theta values,
-        # and we loop through and add them all
-        n = len(dvalue)
-        for i in range(n):
-            S.add_data_point(dt, ('source2d', 'fieldcenter'), dvalue[i],
-                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
-
-        #self.write_metadata(S, meta)
-
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('gammat_field_center'), overwrite=True)
-
-        # Also make a plot of the data
-
-class TXGammaTBrightStars(TXTwoPoint):
-    """
-    This subclass of the standard TXTwoPoint uses the centers
-    of stars as "lenses", as a systematics test.
-    """
-    name = "TXGammaTBrightStars"
-    inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
-    ]
-    outputs = [
-        ('gammat_bright_stars', SACCFile),
-        ('gammat_bright_stars_plot', PNGFile),
-    ]
-    # Add values to the config file that are not previously defined
-    config_options = {
-        'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':100,
-        'nbins':20,
-        'bin_slop':0.1,
-        'sep_units':'arcmin',
-        'flip_g2':True,
-        'cores_per_task':20,
-        'verbose':1,
-        'reduce_randoms_size':1.0,
-        'var_method': 'shot',
-        'npatch': 5,
-        'use_true_shear': False,
-        'subtract_mean_shear': False,
-        }
-
-    def run(self):
-        # Before running the parent class we add source_bins and lens_bins
-        # options that it is expecting, both set to -1 to indicate that we
-        # will choose them automatically (below).
-        import matplotlib
-        matplotlib.use('agg')
-        self.config['source_bins'] = [-1]
-        self.config['lens_bins'] = [-1]
-        super().run()
-
-    def read_nbin(self, data):
-        # We use only a single source and lens bin in this case -
-        # the source is the complete 2D field and the lens is the
-        # field centers
-        data['source_list'] = [0]
-        data['lens_list'] = [0]
-
-    def load_lens_catalog(self, data):
-        # We load our lenses from the exposures input.
-        # TODO break up bright and dim stars
-        #14<mi <18.3forthebrightsampleand18.3<mi <22 in DES
-        filename = self.get_input('star_catalog')
-        print(f"Loading lens sample from {filename}")
-
-        f = self.open_input('star_catalog')
-
-        mags = f['stars/mag_r'][:]
-        bright_cut = mags>14
-        bright_cut &= mags<18.3
-
-        data['lens_ra']  = f['stars/ra'][:][bright_cut]
-        data['lens_dec'] = f['stars/dec'][:][bright_cut]
-        f.close()
-
-        npoint = data['lens_ra'].size
-        data['lens_bin'] = np.zeros(npoint)
-
-    def load_tomography(self, data):
-        # We run the parent class tomography selection but then
-        # overrided it to squash all of the bins  0 .. nbin -1
-        # down to the zero bin.  This means that any selected
-        # objects (from any tomographic bin) are now in the same
-        # bin, and unselected objects still have bin -1
-        super().load_tomography(data)
-        data['source_bin'][:] = data['source_bin'].clip(-1,0)
-
-    def select_calculations(self, data):
-        # We only want a single calculation, the gamma_T around
-        # the field centers
-        return [(0,0,SHEAR_POS)]
-
-    def write_output(self, data, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        self.write_output_sacc(data, meta, results)
-        self.write_output_plot(results)
-
-    def write_output_plot(self, results):
-        import matplotlib.pyplot as plt
-        d = results[0]
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-
-        fig = self.open_output('gammat_bright_stars_plot', wrapper=True)
-
-        # compute the mean and the chi^2/dof
-        z = (dvalue) / derror
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(dtheta) - 1)
-        print('error,',derror)
-
-        plt.errorbar(dtheta,  dtheta*dvalue, dtheta*derror, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
-        plt.legend(loc='best')
-        plt.xscale('log')
-
-        plt.xlabel(r"$\theta$ / arcmin")
-        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
-        plt.title("Bright Star Centers Tangential Shear")
-
-        print('type',type(fig))
-        fig.close()
-
-    def write_output_sacc(self, data, meta, results):
-        # We write out the results slightly differently here
-        # beause they go to a different file and have different
-        # tracers and tags.
-        import sacc
-        dt = "galaxyStarCenters_shearDensity_xi_t"
-
-        S = sacc.Sacc()
-
-        f = self.open_input('shear_photoz_stack')
-        z = f['n_of_z/source2d/z'][:]
-        Nz = f[f'n_of_z/source2d/bin_0'][:]
-        f.close()
-
-        # Add the data points that we have one by one, recording which
-        # tracer they each require
-        S.add_tracer('misc', 'starcenter')
-        S.add_tracer('NZ', 'source2d', z, Nz)
-
-        d = results[0]
-        assert len(results)==1
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-        dnpair = d.object.npairs
-        dweight = d.object.weight
-
-        # Each of our Measurement objects contains various theta values,
-        # and we loop through and add them all
-        n = len(dvalue)
-        for i in range(n):
-            S.add_data_point(dt, ('source2d', 'starcenter'), dvalue[i],
-                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
-
-        self.write_metadata(S, meta)
-
-        print(S)
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('gammat_bright_stars'), overwrite=True)
-
-        # Also make a plot of the data
-
-class TXGammaTDimStars(TXTwoPoint):
-    """
-    This subclass of the standard TXTwoPoint uses the centers
-    of stars as "lenses", as a systematics test.
-    """
-    name = "TXGammaTDimStars"
-    inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
-    ]
-    outputs = [
-        ('gammat_dim_stars', SACCFile),
-        ('gammat_dim_stars_plot', PNGFile),
-    ]
-    # Add values to the config file that are not previously defined
-    config_options = {
-        'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':100,
-        'nbins':20,
-        'bin_slop':0.1,
-        'sep_units':'arcmin',
-        'flip_g2':True,
-        'cores_per_task':20,
-        'verbose':1,
-        'reduce_randoms_size':1.0,
-        'var_method': 'shot',
-        'npatch': 5,
-        'use_true_shear': False,
-        'subtract_mean_shear': False,        
-        }
-
-    def run(self):
-        # Before running the parent class we add source_bins and lens_bins
-        # options that it is expecting, both set to -1 to indicate that we
-        # will choose them automatically (below).
-        import matplotlib
-        matplotlib.use('agg')
-        self.config['source_bins'] = [-1]
-        self.config['lens_bins'] = [-1]
-        super().run()
-
-    def read_nbin(self, data):
-        # We use only a single source and lens bin in this case -
-        # the source is the complete 2D field and the lens is the
-        # field centers
-        data['source_list'] = [0]
-        data['lens_list'] = [0]
-
-    def load_lens_catalog(self, data):
-        # We load our lenses from the exposures input.
-        # TODO break up bright and dim stars
-        #14<mi <18.3forthebrightsampleand18.3<mi <22 in DES
-        filename = self.get_input('star_catalog')
-        print(f"Loading lens sample from {filename}")
-
-        f = self.open_input('star_catalog')
-        mags = f['stars/mag_r'][:]
-        dim_cut = mags>18.2
-        dim_cut &= mags<22
-
-        data['lens_ra']  = f['stars/ra'][:][dim_cut]
-        data['lens_dec'] = f['stars/dec'][:][dim_cut]
-        f.close()
-
-        npoint = data['lens_ra'].size
-        data['lens_bin'] = np.zeros(npoint)
-
-    def load_tomography(self, data):
-        # We run the parent class tomography selection but then
-        # overrided it to squash all of the bins  0 .. nbin -1
-        # down to the zero bin.  This means that any selected
-        # objects (from any tomographic bin) are now in the same
-        # bin, and unselected objects still have bin -1
-        super().load_tomography(data)
-        data['source_bin'][:] = data['source_bin'].clip(-1,0)
-
-    def select_calculations(self, data):
-        # We only want a single calculation, the gamma_T around
-        # the field centers
-        return [(0,0,SHEAR_POS)]
-
-    def write_output(self, data, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        self.write_output_sacc(data, meta, results)
-        self.write_output_plot(results)
-
-    def write_output_plot(self, results):
-        import matplotlib.pyplot as plt
-        d = results[0]
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-
-        fig = self.open_output('gammat_dim_stars_plot', wrapper=True)
-
-        # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (dvalue - flat1) / derror
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(dtheta) - 1)
-        print('error,',derror)
-
-        plt.errorbar(dtheta,  dtheta*dvalue, dtheta*derror, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
-        plt.legend(loc='best')
-        plt.xscale('log')
-
-        plt.xlabel(r"$\theta$ / arcmin")
-        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
-        plt.title("Dim Star Centers Tangential Shear")
-
-        print('type',type(fig))
-        fig.close()
-
-    def write_output_sacc(self, data, meta, results):
-        # We write out the results slightly differently here
-        # beause they go to a different file and have different
-        # tracers and tags.
-        import sacc
-        dt = "galaxyStarCenters_shearDensity_xi_t"
-
-        S = sacc.Sacc()
-
-        f = self.open_input('shear_photoz_stack')
-        z = f['n_of_z/source2d/z'][:]
-        Nz = f[f'n_of_z/source2d/bin_0'][:]
-        f.close()
-
-        # Add the data points that we have one by one, recording which
-        # tracer they each require
-        S.add_tracer('misc', 'starcenter')
-        S.add_tracer('NZ', 'source2d', z, Nz)
-
-        d = results[0]
-        assert len(results)==1
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-        dnpair = d.object.npairs
-        dweight = d.object.weight
-
-
-        # Each of our Measurement objects contains various theta values,
-        # and we loop through and add them all
-        n = len(dvalue)
-        for i in range(n):
-            S.add_data_point(dt, ('source2d', 'starcenter'), dvalue[i],
-                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
-
-        self.write_metadata(S, meta)
-
-        print(S)
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('gammat_dim_stars'), overwrite=True)
-
-        # Also make a plot of the data
-
-class TXGammaTRandoms(TXTwoPoint):
-    """
-    This subclass of the standard TXTwoPoint uses the centers
-    of stars as "lenses", as a systematics test.
-    """
-    name = "TXGammaTRandoms"
-    inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
-        ('star_catalog', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
-    ]
-    outputs = [
-        ('gammat_randoms', SACCFile),
-        ('gammat_randoms_plot', PNGFile),
-    ]
-    # Add values to the config file that are not previously defined
-    config_options = {
-        'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':100,
-        'nbins':20,
-        'bin_slop':0.1,
-        'sep_units':'arcmin',
-        'flip_g2':True,
-        'cores_per_task':20,
-        'verbose':1,
-        'reduce_randoms_size':1.0,
-        'var_method': 'shot',
-        'npatch': 5,
-        'use_true_shear': False,
-        'subtract_mean_shear': False,
-        }
-
-    def run(self):
-        # Before running the parent class we add source_bins and lens_bins
-        # options that it is expecting, both set to -1 to indicate that we
-        # will choose them automatically (below).
-        import matplotlib
-        matplotlib.use('agg')
-        self.config['source_bins'] = [-1]
-        self.config['lens_bins'] = [-1]
-        super().run()
-
-    def read_nbin(self, data):
-        # We use only a single source and lens bin in this case -
-        # the source is the complete 2D field and the lens is the
-        # field centers
-        data['source_list'] = [0]
-        data['lens_list'] = [0]
-
-    def load_random_catalog(self, data):
-        # override the parent method
-        # so that we don't load the randoms here,
-        # because if we subtract randoms from randoms
-        # we get nothing.
-        pass
-
-    def load_lens_catalog(self, data):
-        # We load the randoms to use as lenses
-        f = self.open_input('random_cats')
-        group = f['randoms']
-        data['lens_ra'] = group['ra'][:]
-        data['lens_dec'] = group['dec'][:]
-        f.close()
-
-        npoint = data['lens_ra'].size
-        data['lens_bin'] = np.zeros(npoint)
-
-    def load_tomography(self, data):
-        # We run the parent class tomography selection but then
-        # overrided it to squash all of the bins  0 .. nbin -1
-        # down to the zero bin.  This means that any selected
-        # objects (from any tomographic bin) are now in the same
-        # bin, and unselected objects still have bin -1
-        super().load_tomography(data)
-        data['source_bin'][:] = data['source_bin'].clip(-1,0)
-
-    def select_calculations(self, data):
-        # We only want a single calculation, the gamma_T around
-        # the field centers
-        return [(0,0,SHEAR_POS)]
-
-    def write_output(self, data, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        self.write_output_sacc(data, meta, results)
-        self.write_output_plot(results)
-
-    def write_output_plot(self, results):
-        import matplotlib.pyplot as plt
-        d = results[0]
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-
-        fig = self.open_output('gammat_randoms_plot', wrapper=True)
-
-        # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (dvalue - flat1) / derror
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(dtheta) - 1)
-        print('error,',derror)
-
-        plt.errorbar(dtheta,  dtheta*dvalue, dtheta*derror, fmt='ro', capsize=3,label='$\chi^2/dof = $'+str(chi2dof))
-        plt.legend(loc='best')
-        plt.xscale('log')
-
-        plt.xlabel(r"$\theta$ / arcmin")
-        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
-        plt.title("Randoms Tangential Shear")
-
-        print('type',type(fig))
-        fig.close()
-
-    def write_output_sacc(self, data, meta, results):
-        # We write out the results slightly differently here
-        # beause they go to a different file and have different
-        # tracers and tags.
-        import sacc
-        dt = "galaxyRandoms_shearDensity_xi_t"
-
-        S = sacc.Sacc()
-
-        f = self.open_input('shear_photoz_stack')
-        z = f['n_of_z/source2d/z'][:]
-        Nz = f[f'n_of_z/source2d/bin_0'][:]
-        f.close()
-
-        # Add the data points that we have one by one, recording which
-        # tracer they each require
-        S.add_tracer('misc', 'randoms')
-        S.add_tracer('NZ', 'source2d', z, Nz)
-
-        d = results[0]
-        assert len(results)==1
-        dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
-        dtheta = np.exp(d.object.meanlogr)
-        dnpair = d.object.npairs
-        dweight = d.object.weight
-
-
-        # Each of our Measurement objects contains various theta values,
-        # and we loop through and add them all
-        n = len(dvalue)
-        for i in range(n):
-            S.add_data_point(dt, ('source2d', 'randoms'), dvalue[i],
-                theta=dtheta[i], error=derror[i], npair=dnpair[i], weight=dweight[i])
-
-        self.write_metadata(S, meta)
-
-        print(S)
-        # Our data points may currently be in any order depending on which processes
-        # ran which calculations.  Re-order them.
-        S.to_canonical_order()
-
-        # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('gammat_randoms'), overwrite=True)
-
-        # Also make a plot of the data
-
-class TXJackknifeCenters(PipelineStage):
-    """
-    This is the pipeline stage that is run to generate the patch centers for
-    the Jackknife method.
-    """
-    name = 'TXJackknifeCenters'
-
-    inputs = [
-        ('random_cats', RandomsCatalog),
-    ]
-    outputs = [
-        ('patch_centers', TextFile),
-        ('jk', PNGFile),
-    ]
-    config_options = {
-        'npatch' : 10,
-        'every_nth': 1,
-    }
-
-    def plot(self, ra, dec, patch):
-        """
-        Plot the jackknife regions.
-        """
-        import matplotlib
-        matplotlib.rcParams["xtick.direction"]='in'
-        matplotlib.rcParams["ytick.direction"]='in'
-        import matplotlib.pyplot as plt
-
-
-        jk_plot = self.open_output('jk', wrapper=True, figsize=(6.,4.5))
-        # Choose colormap
-        cm = plt.cm.get_cmap('magma')
-        sc = plt.scatter(ra, dec, c = patch, cmap = cm,  s=20, vmin = 0)
-        plt.xlabel('RA')
-        plt.ylabel('DEC')
-        plt.tight_layout()
-        jk_plot.close()
-
-
-    def run(self):
-        import treecorr
-        import matplotlib
-        matplotlib.use('agg')
-
-        filename = self.get_input('random_cats')
-
-        # Columns we need from the tomography catalog
-        randoms_cols = ['dec','ra']
-        print(f"Loading random catalog columns: {randoms_cols}")
-
-        f = self.open_input('random_cats')
-        group = f['randoms']
-        npatch=self.config['npatch']
-        every_nth = self.config['every_nth']
-        print(f"generating {npatch} centers")
-        ra = group['ra'][::every_nth]
-        dec = group['dec'][::every_nth]
-        cat = treecorr.Catalog(ra = ra,
-                                dec = dec,
-                                ra_units='degree', dec_units = 'degree',
-                                #every_nth = self.config['every_nth'],
-                                npatch=self.config['npatch'])
-        cat.write_patch_centers(self.get_output('patch_centers'))
-
-        self.plot(np.degrees(cat.ra), np.degrees(cat.dec), cat.patch)
 
 
 if __name__ == '__main__':

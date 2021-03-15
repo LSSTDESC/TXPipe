@@ -1,5 +1,7 @@
 import hashlib
+import string
 import numpy as np
+
 
 def array_hash(x):
     b = x.tobytes()
@@ -31,35 +33,32 @@ def unique_list(seq):
     return [x for x in seq if not (x in seen or seen_add(x))]
 
 
-def multi_where(x, matches):
+PRINTABLE_CHARS = string.ascii_letters + string.digits + string.punctuation + " "
+PRINTABLE_CHARS_INC_NEWLINES = PRINTABLE_CHARS + "\r\n"
+
+def hex_escape(s, replace_newlines=False):
     """
-    Return the equivalent of {m: np.where(x==m)[0] for m in matches}
-    but requiring only a single pass through x and so faster in some
-    cases
-    
+    Replace non-printable characters in a string with hex-code equivalents
+    so they can be printed or saved to a FITS file header.  Newline characters
+    will be replaced if replace_newlines is set to true
+
+    Based on:  https://stackoverflow.com/a/13935582
+
     Parameters
     ----------
-    x: array
-        Values to be matches
+    s: str
+        The initial string
 
-    matches: collection
-        Values against which each item in x will be compared
+    replace_newlines: bool
+        Whether to include newline characters in the replacement
 
     Returns
     -------
-    w: dict
-        
+    str
+        Same string with unprintable chars replaced with hex codes, e.g.
+        the bell character becomes "\x07"
     """
-    n = len(x)
-    # avoids doing the hash twice per object in the bin
-    index = {b: i for i, b in enumerate(matches)}
-
-    wheres = [np.empty(n, dtype=int) for b in matches]
-    counts = [0 for b in matches]
-    for i, v in enumerate(x):
-        j = index.get(v)
-        if j is not None:
-            c = counts[j]
-            wheres[j][c] = i
-            counts[j] += 1
-    return {b: wheres[i][:counts[i]] for i, b in enumerate(matches)}
+    chars = PRINTABLE_CHARS if replace_newlines else PRINTABLE_CHARS_INC_NEWLINES
+    return "".join(
+        c if c in chars else r"\x{0:02x}".format(ord(c)) for c in s
+    )

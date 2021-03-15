@@ -2,6 +2,9 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZRailTrain
     - name: PZRailEstimate
@@ -23,11 +26,9 @@ stages:
     - name: TXDiagnosticPlots
     - name: TXGammaTFieldCenters
       threads_per_process: 2
-    - name: TXGammaTBrightStars
+    - name: TXGammaTStars
       threads_per_process: 2
     - name: TXGammaTRandoms
-      threads_per_process: 2
-    - name: TXGammaTDimStars
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
