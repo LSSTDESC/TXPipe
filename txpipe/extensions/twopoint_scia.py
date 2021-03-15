@@ -1,8 +1,8 @@
-from .base_stage import PipelineStage
-from .twopoint import TXTwoPoint 
-from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
-from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
-from .utils.calibration_tools import read_shear_catalog_type
+from ..base_stage import PipelineStage
+from ..twopoint import TXTwoPoint 
+from ..data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from ..utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
+from ..utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
 import collections
@@ -24,6 +24,12 @@ class TXSelfCalibrationIA(TXTwoPoint):
     This is the subclass of the Twopoint class that will handle calculating the
     correlations needed for doing the Self-calibration Intrinsic alignment
     estimation. 
+
+    It requires estimating 3d two-point correlations. We calculate the 
+    galaxy - galaxy lensing auto-correlation in each source bin.
+    We do this twice, once we add a selection-function, such that we only selects 
+    the pairs where we have the shear object in front of the object used for density. 
+    Once without imposing this selection funciton. 
     """
     name = 'TXSCIA'
     inputs = [
