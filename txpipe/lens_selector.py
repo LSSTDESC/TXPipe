@@ -335,6 +335,7 @@ class TXLensCatalogSplitter(PipelineStage):
     }
 
     lens_cat_tag = "photometry_catalog"
+    lens_cat_sec = "photometry"
 
     def run(self):
 
@@ -363,7 +364,6 @@ class TXLensCatalogSplitter(PipelineStage):
         else:
             print(f"Note: Process {self.rank} will not do anything.")
 
-
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
@@ -372,7 +372,7 @@ class TXLensCatalogSplitter(PipelineStage):
             ["lens_bin", "lens_weight"],
             # second file
             self.lens_cat_tag,
-            "photometry",
+            self.lens_cat_sec,
             ["ra", "dec"],
             parallel=False,
         )
@@ -394,7 +394,7 @@ class TXLensCatalogSplitter(PipelineStage):
         cat_output.close()
 
 
-class TXExternalLensCatalogSplitter(PipelineStage):
+class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
     name = "TXExternalLensCatalogSplitter"
     """
     Split an external lens catalog into bins
@@ -404,6 +404,8 @@ class TXExternalLensCatalogSplitter(PipelineStage):
         ('lens_catalog', HDFFile),
     ]
     lens_cat_tag = "lens_catalog"
+
+    lens_cat_sec = "lens"
 
 
 if __name__ == '__main__':

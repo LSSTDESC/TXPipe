@@ -3,7 +3,7 @@
 stages:
     - name: TXSourceSelector
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
+    - name: TXExternalLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
@@ -17,7 +17,7 @@ stages:
     - name: TXRandomCat
     - name: TXJackknifeCenters
     - name: TXPhotozPlots
-    - name: TXTwoPointLensCat
+    - name: TXTwoPoint
       threads_per_process: 2
     - name: TXBlinding           # Blind the data following Muir et al
       threads_per_process: 2

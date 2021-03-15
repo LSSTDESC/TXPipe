@@ -540,38 +540,6 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
-class TXTwoPointLensCat(TXTwoPoint):
-    """
-    This subclass of the standard TXTwoPoint takes its
-    lens sample from an external source instead of using
-    the photometric sample.
-    """
-    name='TXTwoPointLensCat'
-    inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
-        ('lens_catalog', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
-    ]
-    def load_lens_catalog(self, data):
-        filename = self.get_input('lens_catalog')
-        print(f"Loading lens sample from {filename}")
-
-        f = self.open_input('lens_catalog')
-        data['lens_ra']  = f['lens/ra'][:]
-        data['lens_dec'] = f['lens/dec'][:]
-        f.close()
-
-        f = self.open_input('lens_tomography_catalog')
-        data['lens_bin'] = f['tomography/lens_bin'][:] 
-        f.close()
-
-
     
 
     
