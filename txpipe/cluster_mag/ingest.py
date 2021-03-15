@@ -22,6 +22,8 @@ class CMIngestHalosCosmoDC2(PipelineStage):
         mass_min = self.config["halo_mass_min"]
         cat_name = self.config["cat_name"]
         sz = self.config["initial_size"]
+        ra_range = self.config['ra_range']
+        dec_range = self.config['dec_range']
 
         # Open the cosmoDC2 catalog
         overwrite = {
