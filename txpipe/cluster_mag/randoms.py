@@ -1,7 +1,7 @@
 import numpy as np
-from .base_stage import PipelineStage
-from .data_types import HDFFile, MapsFile
-from .utils import choose_pixelization
+from ..base_stage import PipelineStage
+from ..data_types import HDFFile, MapsFile
+from ..utils import choose_pixelization
 
 
 class CMRandoms(PipelineStage):
