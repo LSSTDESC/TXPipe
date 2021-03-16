@@ -21,6 +21,8 @@ stages:
     - name: TXTruthLensSelector
       nodes: 8
       nprocess: 256
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
     - name: TXTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXTwoPointFourier
@@ -35,6 +37,7 @@ stages:
       nodes: 2
       nprocess: 16
     - name: TXDensityMaps
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXNoiseMaps
       nprocess: 32
       nodes: 8
