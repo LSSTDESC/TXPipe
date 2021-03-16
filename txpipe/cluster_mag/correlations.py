@@ -131,7 +131,7 @@ class CMCorrelations(PipelineStage):
 
         t = time.time()
         print("Computing randoms x randoms")
-        random_random = self.measure(ran_cat, ran_cat)
+        random_random = self.measure(ran_cat, None)
         t1 = time.time()
         print(f"took {t1 - t:.1f} seconds")
 
@@ -144,7 +144,7 @@ class CMCorrelations(PipelineStage):
 
         print("Computing background x background")
         t = time.time()
-        bg_bg = self.measure(bg_cat, bg_cat)
+        bg_bg = self.measure(bg_cat, None)
         t1 = time.time()
         print(f"took {t1 - t:.1f} seconds")
 

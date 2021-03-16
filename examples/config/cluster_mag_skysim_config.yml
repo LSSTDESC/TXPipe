@@ -1,0 +1,37 @@
+CMIngestHalosCosmoDC2:
+    cat_name: skysim5000_v1.1.1
+    halo_mass_min: 0.5e+13
+    initial_size: 1_000_000
+    chunk_rows: 10_000_000
+    ra_range: [5.0, 85.0]
+    dec_range: [-75.0, -5.0]
+
+CMBackgroundSelector:
+    ra_range: [5.0, 85.0]
+    dec_range: [-75.0, -5.0]
+    mag_cut: 26.0
+    zmin: 1.5
+    nside: 2048
+    initial_size: 1_000_000
+    chunk_rows: 10_000_000
+
+CMRandoms:
+    density: 5.
+
+
+CMPatches:
+    npatch : 32
+    every_nth: 100
+
+
+CMCorrelations:
+    min_sep: 0.5
+    max_sep: 300.
+    nbins: 9
+    bin_slop: 0.1
+    sep_units: arcmin
+    cores_per_task: 2
+    verbose: 1
+    var_method': jackknife
+
+CMCorrelationsPlot: {}
