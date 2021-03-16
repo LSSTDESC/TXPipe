@@ -2,7 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
-from .utils.calibration_tools import metacal_variants, band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
+from .utils.calibration_tools import metacal_variants, band_variants, MetacalCalculator, LensfitCalculator
 import numpy as np
 import warnings
 
@@ -132,12 +132,12 @@ class TXSourceSelector(PipelineStage):
         number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm,shear_type=self.config['shear_catalog_type'])
 
         if shear_catalog_type == 'metacal':
-            calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
+            calibrators = [MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)]
             # 2d calibrator
-            calibrators.append(ParallelCalibratorMetacal(self.select_2d, delta_gamma))
+            calibrators.append(MetacalCalculator(self.select_2d, delta_gamma))
         else:
-            calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
-            calibrators.append(ParallelCalibratorNonMetacal(self.select_2d))
+            calibrators = [LensfitCalculator(self.select) for i in range(nbin_source)]
+            calibrators.append(LensfitCalculator(self.select_2d))
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data) in iter_shear:
@@ -385,6 +385,7 @@ class TXSourceSelector(PipelineStage):
         group.create_dataset('N_eff_2d', (1,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
+        group.attrs['catalog_type'] = self.config["shear_catalog_type"]
         for i in range(nbin_source):
             group.attrs[f'source_zmin_{i}'] = zbins[i]
             group.attrs[f'source_zmax_{i}'] = zbins[i+1]
@@ -502,6 +503,7 @@ class TXSourceSelector(PipelineStage):
                 R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
 
                 # should probably use one of the calibration_tools functions
+                # JZ should K be in here?
                 mean_e1[i] = mu1 / R_scalar[i]
                 mean_e2[i] = mu2 / R_scalar[i]
 
@@ -595,6 +597,7 @@ class TXSourceSelector(PipelineStage):
 
         if verbose:
             print(f"{f4:.2%} z for bin {bin_index}")
+            print("total tomo", sel.sum())
 
         return sel
 
@@ -619,6 +622,8 @@ class TXSourceSelector(PipelineStage):
         f2 = sel.sum() / n0
         sel &= s2n>s2n_cut
         f3 = sel.sum() / n0
+        sel &= data['zbin'] >= 0
+        f4 = sel.sum() / n0
 
         # Print out a message.  If we are selecting a 2D sample
         # this is the complete message.  Otherwise if we are about
@@ -626,7 +631,8 @@ class TXSourceSelector(PipelineStage):
         # as above
         if verbose and is_2d:
             print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR")
+                  f"{f3:.2%} SNR, {f4:.2%} any z bin")
+            print("total 2D", sel.sum())
         elif verbose:
             print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
                   f"{f3:.2%} SNR, ", end="")

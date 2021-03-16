@@ -75,7 +75,7 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     """
     import pyccl as ccl
 
-    cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='emu', Neff=3.04)
+    cosmo = ccl_read_yaml(cosmology_file, matter_power_spectrum='halofit', Neff=3.04)
 
     ell_max = 3000 if fourier else 100_000
     n_ell = 100 if fourier else 200

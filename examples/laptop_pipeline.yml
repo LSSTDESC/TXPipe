@@ -2,6 +2,9 @@
 # Stages to run
 stages:
     - name: TXSourceSelector     # select and split objects into source bins
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
     - name: TXMeanLensSelector  # select objects for lens bins
     - name: PZRailTrain
       threads_per_process: 2
@@ -19,15 +22,14 @@ stages:
       threads_per_process: 2
     - name: TXBlinding           # Blind the data following Muir et al
       threads_per_process: 2
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots      # Make plots of 2pt correlations
     - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
       threads_per_process: 2
-    - name: TXGammaTBrightStars  # Compute and plot gamma_t around bright stars
+    - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
       threads_per_process: 2
     - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
-      threads_per_process: 2
-    - name: TXGammaTDimStars     # Compute and plot gamma_t around dim stars
       threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2

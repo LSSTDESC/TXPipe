@@ -1,10 +1,11 @@
 from .base_stage import PipelineStage
 from .data_types import MapsFile, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile
-from .utils import choose_pixelization
+from .utils import choose_pixelization, Splitter
 import numpy as np
 
 
 class TXRandomCat(PipelineStage):
+    parallel = False
     name='TXRandomCat'
     inputs = [
         ('aux_maps', MapsFile),
@@ -13,6 +14,7 @@ class TXRandomCat(PipelineStage):
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
+        ('binned_random_cats', RandomsCatalog),
     ]
     config_options = {
         'density': 100.,  # number per square arcmin at median depth depth.  Not sure if this is right.
@@ -77,9 +79,12 @@ class TXRandomCat(PipelineStage):
         ### Loop over the tomographic bins to find number of galaxies in each pixel/zbin
         ### When the density changes per redshift bin, this can go into the main Ntomo loop
         numbers = {}
+        bins = {}
         for j in range(Ntomo):
             # Poisson distribution about mean
             numbers[j] = scipy.stats.poisson.rvs(density*area, 1)
+            bins[j] = numbers[j].sum()
+
 
         ### Get total number of randoms in all zbins
         ### Once the density gets updated per redshift bin, the output file will need to 
@@ -92,6 +97,13 @@ class TXRandomCat(PipelineStage):
         dec_out = group.create_dataset('dec', (n_total,), dtype=np.float64)
         z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
         bin_out = group.create_dataset('bin', (n_total,), dtype=np.float64)
+
+
+        binned_output = self.open_output("binned_random_cats")
+        binned_group = binned_output.create_group("randoms")
+        splitter = Splitter(binned_group, "bin", ["ra", "dec", "weight"], bins)
+        print("NOTE: Randoms will have uniform weight")
+
 
         ### Counter for total number of randoms
         index = 0
@@ -134,9 +146,12 @@ class TXRandomCat(PipelineStage):
                 bin_out[index:index+N] = bin_index
                 index += N
 
+                d = {"ra": ra, "dec": dec, "weight": np.ones_like(ra)}
+                splitter.write_bin(d, j)
+
         output_file.close()
-
-
+        splitter.finish(numbers)
+        binned_output.close()
 
 
 if __name__ == '__main__':

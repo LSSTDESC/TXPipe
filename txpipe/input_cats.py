@@ -4,6 +4,7 @@ from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 from .utils.timer import Timer
 
+
 class TXCosmoDC2Mock(PipelineStage):
     """
     This stage simulates metacal data and metacalibrated
@@ -28,13 +29,15 @@ class TXCosmoDC2Mock(PipelineStage):
     config_options = {
         'cat_name':'cosmoDC2',
         'visits_per_band':165,  # used in the noise simulation
-        'snr_limit':4.0,  # used to decide what objects to cut out
+        'snr_limit': 4.0,  # used to decide what objects to cut out
         'max_size': 99999999999999,  #for testing on smaller catalogs
         'extra_cols': "", # string-separated list of columns to include
         'max_npix':99999999999999,
         'unit_response': False,
         'cat_size': 0,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
+        'apply_mag_cut': False, #used when comparing to descqa measurements
+        'Mag_r_limit': -19, # used to decide what objects to cut out  
         }
 
     def data_iterator(self, gc):
@@ -129,8 +132,12 @@ class TXCosmoDC2Mock(PipelineStage):
             # the object is detected, but we can do it before making the mock
             # metacal info, saving us some time simulating un-needed objects
             self.remove_undetected(data, mock_photometry)
+            
+            if self.config['apply_mag_cut']:
+                self.apply_magnitude_cut(data)
 
             mock_metacal = self.make_mock_metacal(data, mock_photometry)
+            
             # The chunk size has now changed
             some_col = list(mock_photometry.keys())[0]
             chunk_size = len(mock_photometry[some_col])
@@ -165,13 +172,14 @@ class TXCosmoDC2Mock(PipelineStage):
         if self.rank == 0:
             # all files should now be closed for all procs
             print(f"Resizing all outupts to size {n}")
-            f = h5py.File(self.get_output('photometry_catalog'))
+            f = h5py.File(self.get_output('photometry_catalog'), 'r+')
             g = f['photometry']
             for col in list(g.keys()):
+                print(col)
                 g[col].resize((n,))
             f.close()
 
-            f = h5py.File(self.get_output('shear_catalog'))
+            f = h5py.File(self.get_output('shear_catalog'), 'r+')
             g = f['shear']
             for col in g.keys():
                 g[col].resize((n,))
@@ -229,7 +237,7 @@ class TXCosmoDC2Mock(PipelineStage):
             + ['weight']
         )
 
-        cols += ['true_g1', 'true_g2']
+        cols += ['true_g1', 'true_g2', 'redshift_true']
 
         # Make group for all the photometry
         group = metacal_file.create_group('shear')
@@ -432,6 +440,9 @@ class TXCosmoDC2Mock(PipelineStage):
             # Keep the truth value just in case
             "true_g1": g1,
             "true_g2": g2,
+            # add true redshift since it is used in source selector
+            "redshift_true":photo['redshift_true'],
+            
 
             # g1
             "mcal_g1": e1*R,
@@ -524,6 +535,21 @@ class TXCosmoDC2Mock(PipelineStage):
 
         return output
 
+    def apply_magnitude_cut(self, data):
+        """
+        Allow for a cut in absolute magnitude.
+        """
+        mag_limit = self.config['Mag_r_limit']
+        sel = data['Mag_true_r_sdss_z0']< mag_limit
+        
+        ndet = sel.sum()
+        ntot = sel.size
+        fract = ndet*100./ntot
+        print(f"{ndet} objects pass magnitude cut out of {ntot} objects ({fract:.1f}%)")
+
+        # Remove all objects not selected
+        for key in list(data.keys()):
+            data[key] = data[key][sel]
 
 
     def remove_undetected(self, data, photo):
