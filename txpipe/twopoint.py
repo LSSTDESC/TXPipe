@@ -439,9 +439,6 @@ class TXTwoPoint(PipelineStage):
         if self.config['flip_g2']:
             g2 *= -1
 
-        if self.config['flip_g2']:
-            g2 *= -1
-
         return g1, g2, mask
 
     def get_shear_catalog(self, data, meta, i):
