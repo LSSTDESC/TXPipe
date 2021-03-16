@@ -1,6 +1,6 @@
 import numpy as np
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, TextFile, SACCFile, PNGFile
+from ..data_types import HDFFile, TextFile, SACCFile
 import re
 import time
 import traceback
@@ -78,6 +78,13 @@ class CMCorrelations(PipelineStage):
         randoms_file = self.get_input("cluster_mag_randoms")
         patch_centers = self.get_input("cluster_mag_patches")
 
+
+        treecorr_config = {
+            x: y
+            for x, y in self.config.items()
+            if x in treecorr.NNCorrelation._valid_params
+        }
+
         with self.open_input("cluster_mag_halo_tomography") as f:
             metadata = dict(f['tomography'].attrs)
             halo_bins = []
@@ -131,20 +138,20 @@ class CMCorrelations(PipelineStage):
 
         t = time.time()
         print("Computing randoms x randoms")
-        random_random = self.measure(ran_cat, None)
+        random_random = self.measure(ran_cat, None, treecorr_config)
         t1 = time.time()
         print(f"took {t1 - t:.1f} seconds")
 
         t = time.time()
         print("Computing random x background")
-        random_bg = self.measure(ran_cat, bg_cat)
+        random_bg = self.measure(ran_cat, bg_cat, treecorr_config)
         t1 = time.time()
         print(f"took {t1 - t:.1f} seconds")
 
 
         print("Computing background x background")
         t = time.time()
-        bg_bg = self.measure(bg_cat, None)
+        bg_bg = self.measure(bg_cat, None, treecorr_config)
         t1 = time.time()
         print(f"took {t1 - t:.1f} seconds")
 
@@ -159,7 +166,7 @@ class CMCorrelations(PipelineStage):
             tracer1 = f'halo_{halo_bin}'
             tracer2 = f'background'
             try:
-                halo_halo, halo_bg, meta = self.measure_halo_bin(bg_cat, ran_cat, halo_bin, random_random, random_bg)
+                halo_halo, halo_bg, meta = self.measure_halo_bin(bg_cat, ran_cat, halo_bin, random_random, random_bg, treecorr_config)
             except:
                 traceback.print_exc()
                 print(f"FAILED to calculate bin {halo_bin}.  Error above.  Continuing.")
@@ -196,7 +203,7 @@ class CMCorrelations(PipelineStage):
                 theta=theta[i], error=err[i], weight=weight[i], **tags)
 
 
-    def measure_halo_bin(self, bg_cat, ran_cat, halo_bin, random_random, random_bg):
+    def measure_halo_bin(self, bg_cat, ran_cat, halo_bin, random_random, random_bg, treecorr_config):
         import treecorr
         halo_tomo_file = self.get_input("cluster_mag_halo_tomography")
         patch_centers = self.get_input("cluster_mag_patches")
@@ -222,13 +229,13 @@ class CMCorrelations(PipelineStage):
 
         t = time.time()
         print(f"Computing {halo_bin} x {halo_bin}")
-        halo_halo = self.measure(halo_cat, None)
+        halo_halo = self.measure(halo_cat, None, treecorr_config)
 
         print(f"Computing {halo_bin} x randoms")
-        halo_random = self.measure(halo_cat, ran_cat)
+        halo_random = self.measure(halo_cat, ran_cat, treecorr_config)
 
         print(f"Computing {halo_bin} x background")
-        halo_bg = self.measure(halo_cat, bg_cat)
+        halo_bg = self.measure(halo_cat, bg_cat, treecorr_config)
         t = time.time() - t
         print(f"Bin {halo_bin} took {t:.1f} seconds")
 
@@ -239,67 +246,14 @@ class CMCorrelations(PipelineStage):
         return halo_halo, halo_bg, metadata
 
 
-    def measure(self, cat1, cat2):
+    def measure(self, cat1, cat2, treecorr_config):
         import treecorr
         # Get any treecorr-related params from our config, while leaving out any that are intended
         # for this code
-        config = {
-            x: y
-            for x, y in self.config.items()
-            if x in treecorr.NNCorrelation._valid_params
-        }
-        print(config)
 
-        p = treecorr.NNCorrelation(**config)
+        p = treecorr.NNCorrelation(**treecorr_config)
         p.process(cat1, cat2, low_mem=False)
         return p
 
 
-
-class CMCorrelationsPlot(PipelineStage):
-    name = "CMCorrelationsPlot"
-    inputs = [("cluster_mag_correlations", SACCFile),]
-    outputs = [
-        ("cluster_mag_halo_halo_plot", PNGFile),
-        ("cluster_mag_halo_bg_plot", PNGFile)
-
-    ]
-    config_options = {}
-    def run(self):
-        import sacc
-        import matplotlib
-        matplotlib.use('agg')
-        import matplotlib.pyplot as plt
-        S = sacc.Sacc.load_fits(self.get_input("cluster_mag_correlations"))
-
-        nm = S.metadata['nm']
-        nz = S.metadata['nz']
-
-        f = self.open_output('cluster_mag_halo_halo_plot', wrapper=True, figsize=(nm*5,nz*5))
-        fig = f.file
-        axes = fig.subplots(nm, nz, sharex='col', sharey=False, squeeze=False)
-        for i in range(nz):
-            for j in range(nm):
-                ax = axes[i, j]
-                # ax.axhline(0, color='k')                
-                tracer = f'halo_{i}_{j}'
-                theta = S.get_tag('theta', 'halo_halo_density_xi', (tracer, tracer))
-                error = S.get_tag('error', 'halo_halo_density_xi', (tracer, tracer))
-                if not len(theta):
-                    continue
-                xi = S.get_mean('halo_halo_density_xi', (tracer, tracer))
-
-                ax.errorbar(theta, xi, error, fmt='r.')
-                ax.set_xscale('log')
-                ax.axhline(0, color='k')
-                # ax.plot([theta[0], theta[-1]], [0, 0], 'k-')
-                # print(i, j, xi)
-                # ax.set_xlim(theta[0], theta[-1])
-                ax.set_title(tracer)
-                if j == 0:
-                    ax.set_ylabel("xi")
-                if i == nm - 1:
-                    ax.set_xlabel("theta")
-        plt.tight_layout()
-        f.close()
 
