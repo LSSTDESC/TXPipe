@@ -6,6 +6,8 @@ import numpy as np
 import random
 import collections
 import sys
+from time import perf_counter
+
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -81,12 +83,12 @@ class TXTwoPoint(PipelineStage):
         # as it's not dynamic, just a round-robin assignment,
         # but for this case I would expect it to be mostly fine
         results = []
-        for i,j,k in self.split_tasks_by_rank(calcs):
+        for i,j,k in calcs:
             result = self.call_treecorr(i, j, k)
             results.append(result)
 
         # If we are running in parallel this collects the results together
-        results = self.collect_results(results)
+        #results = self.collect_results(results)
 
         # Save the results
         if self.rank==0:
@@ -442,7 +444,11 @@ class TXTwoPoint(PipelineStage):
         print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
 
         gg = treecorr.GGCorrelation(self.config)
-        gg.process(cat_i, cat_j, low_mem = self.config["low_mem"])
+        t1 = perf_counter()
+        gg.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
+        t2 = perf_counter()
+        if self.rank == 0:
+            print(f"Processing took {t2 - t1:.1f} seconds")
 
         return gg
 
@@ -460,15 +466,16 @@ class TXTwoPoint(PipelineStage):
         print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
         ng = treecorr.NGCorrelation(self.config)
-        ng.process(cat_j, cat_i)
+        ng.process(cat_j, cat_i, comm=self.comm)
 
         if rancat_j:
             rg = treecorr.NGCorrelation(self.config)
-            rg.process(rancat_j, cat_i)
+            rg.process(rancat_j, cat_i, comm=self.comm)
         else:
             rg = None
 
-        ng.calculateXi(rg=rg)
+        if self.rank == 0:
+            ng.calculateXi(rg=rg)
 
         return ng
 
@@ -494,21 +501,22 @@ class TXTwoPoint(PipelineStage):
             rancat_j = self.get_random_catalog(j)
 
         nn = treecorr.NNCorrelation(self.config)
-        nn.process(cat_i,    cat_j)
+        nn.process(cat_i, cat_j, comm=self.comm)
 
         nr = treecorr.NNCorrelation(self.config)
-        nr.process(cat_i,    rancat_j)
+        nr.process(cat_i, rancat_j, comm=self.comm)
 
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j)
+        rr.process(rancat_i, rancat_j, comm=self.comm)
 
         if i==j:
             rn = None
         else:
             rn = treecorr.NNCorrelation(self.config)
-            rn.process(rancat_i, cat_j)
+            rn.process(rancat_i, cat_j, comm=self.comm)
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        if self.rank == 0:
+            nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
 

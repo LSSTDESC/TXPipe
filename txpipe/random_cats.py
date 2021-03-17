@@ -132,8 +132,10 @@ class TXRandomCat(PipelineStage):
             subgroups.append(g)
 
 
+        pixels_per_proc = npix // self.size
+
+
         for j in range(Ntomo):
-            print(f"Simulating tomographic bin {j}")
             ### Load pdf of ith lens redshift bin pz
             n_hist = pz_stack[f'n_of_z/lens/bin_{j}'][:]
 
@@ -142,12 +144,12 @@ class TXRandomCat(PipelineStage):
             z_cdf_norm = z_cdf / np.float(max(z_cdf))
 
             subgroup = subgroups[j]
-
             # Generate the random points in each pixel
+            ndone = 0
             for i, (vertices_i) in self.split_tasks_by_rank(enumerate(vertices)):
-                if (i % (10_000 * self.size)) == self.rank:
+                if (ndone % 1000 == 0):
                     print(
-                        f"Rank {self.rank} done {i//self.size:,} of its {vertices[j].size//self.size:,} pixels for bin {j}"
+                        f"Rank {self.rank} done {ndone:,} of its {pixels_per_proc:,} pixels for bin {j}"
                     )                # Use the pixel vertices to generate the points
                 ### This likely wont work for curved sky maps since healpy pixels aren't 
                 ### fully quadrilateral... not sure how big of a difference (if any) this
@@ -182,6 +184,8 @@ class TXRandomCat(PipelineStage):
                 subgroup['ra'][index:index+N] = ra
                 subgroup['dec'][index:index+N] = dec
                 subgroup['z'][index:index+N] = z_photo_rand
+
+                ndone += 1
 
         if self.comm is not None:
             self.comm.Barrier()

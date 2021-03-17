@@ -1,3 +1,6 @@
+global:
+    chunk_rows: 1000000
+
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
@@ -21,10 +24,8 @@ TXIngestRedmagic:
 TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXMainMaps:
-    chunk_rows:  100000
     pixelization: healpix
     nside: 512
     sparse: True
@@ -32,19 +33,16 @@ TXMainMaps:
 TXSourceMaps:
     nside: 512
     sparse: True
-    chunk_rows:  100000
     pixelization: healpix
     true_shear: False
 
 TXExternalLensMaps:
     nside: 512
     sparse: True
-    chunk_rows:  100000
     pixelization: healpix
 
 
 TXAuxiliaryMaps:
-    chunk_rows:  100000
     sparse:  True
     psf_prefix:  psf_
     bright_obj_threshold:  22.0
@@ -57,16 +55,13 @@ TXSimpleMask:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXPhotozStack:
-    chunk_rows: 100000
 
 # Mock version of stacking:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXSourceSelector:
     input_pz: False
@@ -76,21 +71,11 @@ TXSourceSelector:
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.3, 0.55, 0.8, 1.05, 2.0]
-    chunk_rows: 100000
-    # Mag cuts
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 19.6
-    i_lo_cut: 17.5
-    i_hi_cut: 19.9
-    r_i_cut: 2.0
     # may also need one for r_cpar_cut
     true_z: False
     shear_prefix: mcal_
 
 TXRandomCat:
-    chunk_rows: 100000
     density: 10 # gals per sq arcmin
 
 TXJackknifeCenters:
@@ -131,7 +116,6 @@ TXTwoPointLensCat:
     use_true_shear: False
     
 TXTwoPointFourier:
-    chunk_rows: 100000
     flip_g2: True
     flip_g1: True
     apodization_size: 0.0
@@ -149,7 +133,6 @@ TXLensingNoiseMaps:
 
 TXTruthLensSelector:
     # Mag cuts
-    chunk_rows: 100000
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5

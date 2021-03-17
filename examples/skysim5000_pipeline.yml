@@ -22,8 +22,14 @@ stages:
       nodes: 8
       nprocess: 256
     - name: TXShearCalibration
+      nodes: 1
+      nprocess: 8
     - name: TXLensCatalogSplitter
+      nodes: 1
+      nprocess: 8
     - name: TXTrueNumberDensity
+      nodes: 8
+      nprocess: 64
     - name: TXPhotozPlots
     - name: TXTwoPointFourier
       nprocess: 8
