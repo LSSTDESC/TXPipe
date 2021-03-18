@@ -1,8 +1,6 @@
 from ..base_stage import PipelineStage
 from ..twopoint import TXTwoPoint 
 from ..data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
-from ..utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
-from ..utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
 import collections
@@ -31,18 +29,15 @@ class TXSelfCalibrationIA(TXTwoPoint):
     the pairs where we have the shear object in front of the object used for density. 
     Once without imposing this selection funciton. 
     """
-    name = 'TXSCIA'
+    name = 'TXSelfCalibrationIA'
     inputs = [
         ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_photoz_stack', HDFFile),
         ('random_cats_source', RandomsCatalog),
         ('patch_centers', TextFile),
         ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', FiducialCosmology),
-        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('twopoint_data_SCIA', SACCFile),
@@ -403,13 +398,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             if self.config['do_shear_pos'] == True:
                 S2.add_tracer('NZ', f'source_{i}', z, Nz)
 
-        # f = self.open_input('lens_photoz_stack')
-        # For both source and lens
-        # for i in data['lens_list']:
-        #    z = f['n_of_z/lens/z'][:]
-        #    Nz = f[f'n_of_z/lens/bin_{i}'][:]
-        #    S.add_tracer('NZ', f'lens_{i}', z, Nz)
-        # Closing n(z) file
+
         f.close()
 
         # Now build up the collection of data points, adding them all to
