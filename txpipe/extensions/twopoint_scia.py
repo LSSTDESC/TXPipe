@@ -35,6 +35,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('shear_tomography_catalog', TomographyCatalog),
         ('shear_photoz_stack', HDFFile),
         ('random_cats_source', RandomsCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
         ('patch_centers', TextFile),
         ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', FiducialCosmology),
