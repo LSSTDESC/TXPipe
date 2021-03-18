@@ -1,6 +1,6 @@
-from ..base_stage import PipelineStage
 from ..twopoint import TXTwoPoint 
 from ..data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from ..utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
 import collections
