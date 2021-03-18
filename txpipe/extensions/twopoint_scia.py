@@ -39,6 +39,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('patch_centers', TextFile),
         ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', FiducialCosmology),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ('twopoint_data_SCIA', SACCFile),
