@@ -298,7 +298,7 @@ class TXTwoPoint(PipelineStage):
                 n = len(xi)
                 for i in range(n):
                     S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
-                        theta=theta[i], error=err[i], weight=weight[i])
+                        theta=theta[i], error=err[i], npair=npair[i], weight=weight[i])
 
                 
 
@@ -436,7 +436,7 @@ class TXTwoPoint(PipelineStage):
             print(f"Means before: {mu1}  and  {mu2}")
             print(f"Means after:  {nu1}  and  {nu2}")
             print("(In the weighted case the latter may not be exactly zero)")
-            
+
         if self.config['flip_g2']:
             g2 *= -1
 

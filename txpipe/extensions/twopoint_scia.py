@@ -443,7 +443,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 n = len(xi)
                 for i in range(n):
                     S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
-                        theta=theta[i], error=err[i], weight=weight[i])
+                        theta=theta[i], error=err[i], npair=npair[i], weight=weight[i])
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
