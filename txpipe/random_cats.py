@@ -139,27 +139,5 @@ class TXRandomCat(PipelineStage):
 
 
 
-
-
-def pixel_boundaries(props, pixel):
-    scheme = choose_pixelization(**dict(props))
-    # area in arcmin^2
-    area = scheme.pixel_area(degrees=True) * 60 * 60
-    boundaries = scheme.pixel_boundaries()
-
-
-    if props['pixelization']=='healpix':
-        boundaries = healpy.boundaries(props['nside'], pixel)
-        area = healpy.nside2pixarea(nside, degrees=True) * 60.*60.
-    elif props['pixelization'] == 'gnomonic':
-        boundaries = pixel_boundaries(maps_file['maps/depth'].attrs)
-        pix_size_deg = maps_file['maps/depth'].attrs['pixel_size']
-        area = (pix_size_deg*60.*60.)**2
-
-    else:
-        raise ValueError(f"Unknown pixelization scheme: {pixelization}")
-
-
-
 if __name__ == '__main__':
     PipelineStage.main()
