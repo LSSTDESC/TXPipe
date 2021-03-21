@@ -52,23 +52,13 @@ class TXFourierGaussianCovariance(PipelineStage):
         meta = self.read_number_statistics()
 
         # read the mask
-        #f = self.get_input('mask')
-        with self.open_input("mask", wrapper=True) as map_file:
-             m = map_file.read_map("mask")
-        #pix = np.array(h5py.File(f)['maps/mask/pixel'])
-        #m = np.array(h5py.File(f)['mMps/mask/value'])
-        #M = np.zeros(hp.nside2npix(2048))
-        #M[pix] = m
-        #m = hp.ud_grade(m,1024)
-        #mask = nmt.mask_apodization(m, 1., apotype="Smooth")
-        #self.get_workspace(mask)
-        w = nmt.NmtWorkspace()
-        w.read_from('/global/u1/z/zhzhuoqi/5x2/cov/cov/w_dc2.fits')
-        self.w = w
-        
-        cw = nmt.NmtCovarianceWorkspace()
-        cw.read_from('/global/u1/z/zhzhuoqi/5x2/cov/cov/cw_dc2.fits')
-        self.cw = cw
+        f = self.open_input('mask', wrapper=True)
+        m = f.read_map('mask')
+        m = hp.ud_grade(m,1024)
+        msk = 1*(m == 1)
+        msk = nmt.mask_apodization(msk, 1., apotype="Smooth")
+        self.get_workspace(msk)
+
         
         # Binning choices. The ell binning is a linear piece with all the
         # integer values up to 500 -- these are from firecrown, might need 
@@ -181,18 +171,38 @@ class TXFourierGaussianCovariance(PipelineStage):
         # Spin-0 field
         f0 = nmt.NmtField(msk, [msk], n_iter=0)
         # Spin-2 field
-        #f2 = nmt.NmtField(msk, [msk, msk], n_iter=2)
+        f2 = nmt.NmtField(msk, [msk, msk], n_iter=2)
         # Binning
         b = nmt.NmtBin.from_nside_linear(nside, 48)
+
+        # Workspace
+        self.w00 = nmt.NmtWorkspace()
+        self.w00.compute_coupling_matrix(f0, f0, b)
+
+        self.w20 = nmt.NmtWorkspace()
+        self.w20.compute_coupling_matrix(f2, f0, b)
+
+        self.w22 = nmt.NmtWorkspace()
+        self.w22.compute_coupling_matrix(f2, f2, b)
+
+        # Covariance workspace
+        self.cw0000 = nmt.NmtCovarianceWorkspace()
+        self.cw0000.compute_coupling_coefficients(f0, f0, f0, f0)
         
-        w = nmt.NmtWorkspace()
-        w.compute_coupling_matrix(f0, f0, b)
-        
-        cw = nmt.NmtCovarianceWorkspace()
-        cw.compute_coupling_coefficients(f0, f0, f0, f0)
-        
-        self.w = w
-        self.cw = cw
+        self.cw0020 = nmt.NmtCovarianceWorkspace()
+        self.cw0020.compute_coupling_coefficients(f0, f0, f2, f0)
+
+        self.cw0022 = nmt.NmtCovarianceWorkspace()
+        self.cw0022.compute_coupling_coefficients(f0, f0, f2, f2)
+
+        self.cw2020 = nmt.NmtCovarianceWorkspace()
+        self.cw2020.compute_coupling_coefficients(f2, f0, f2, f0)
+
+        self.cw2022 = nmt.NmtCovarianceWorkspace()
+        self.cw2022.compute_coupling_coefficients(f2, f0, f2, f2)
+
+        self.cw2222 = nmt.NmtCovarianceWorkspace()
+        self.cw2222.compute_coupling_coefficients(f2, f2, f2, f2)
         pass
         
 
@@ -353,14 +363,23 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
         # The nmt part of the covariance:
-        w = self.w
-        cw = self.cw
-        nmt_cov = nmt.gaussian_covariance(cw, 0, 0, 0, 0, 
-                                      [cl_nmt[13]+SN[13]],  
-                                      [cl_nmt[14]+SN[14]],    
-                                      [cl_nmt[23]+SN[23]],  
-                                      [cl_nmt[24]+SN[24]],  
-                                      wa=w, wb=w, coupled=True)
+        w1spin, w2spin, nmtspin = self.get_nmt_spin(tracer_comb1, tracer_comb2)        
+        w1 = getattr(self, 'w'+w1spin)
+        w2 = getattr(self, 'w'+w2spin)
+        cw = getattr(self, 'cw'+nmtspin)
+        
+        shape = self.get_nmt_shape(tracer_comb1, tracer_comb2, meta)
+        
+        nmt_input = self.get_nmt_input(tracer_comb1, tracer_comb2, cl_nmt, SN)
+        
+        nmt_input_bmode = self.get_nmt_input_bmode(tracer_comb1, tracer_comb2, cl_nmt, SN)
+        
+        nmt_cov = nmt.gaussian_covariance(cw, int(nmtspin[0]), int(nmtspin[1]), int(nmtspin[2]), int(nmtspin[3]), 
+                                      nmt_input[13],  
+                                      nmt_input[14],    
+                                      nmt_input[23],  
+                                      nmt_input[24],  
+                                      wa=w1, wb=w2, coupled=True).reshape(shape)[:, 0, :, 0]
 
         # for shear-shear components we also add a B-mode contribution
         first_is_shear_shear = ('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])
@@ -371,12 +390,12 @@ class TXFourierGaussianCovariance(PipelineStage):
             if xi_plus_minus1 != xi_plus_minus2:
                 Bmode_F=-1 
 
-            nmt_cov += nmt.gaussian_covariance(cw, 0, 0, 0, 0, 
-                                      [cl_nmt[13]*0+SN[13]],  
-                                      [cl_nmt[14]*0+SN[14]],    
-                                      [cl_nmt[23]*0+SN[23]],  
-                                      [cl_nmt[24]*0+SN[24]],  
-                                      wa=w, wb=w, coupled=True) * Bmode_F
+            nmt_cov += nmt.gaussian_covariance(cw, int(nmtspin[0]), int(nmtspin[1]), int(nmtspin[2]), int(nmtspin[3]),
+                                      nmt_input_bmode[13],  
+                                      nmt_input_bmode[14],    
+                                      nmt_input_bmode[23],  
+                                      nmt_input_bmode[24],  
+                                      wa=w1, wb=w2, coupled=True).reshape(shape)[:, 0, :, 0] * Bmode_F
 
         # Transform nmt part covariance back to the un-normalized
         # tjp part to combine them together
@@ -433,6 +452,111 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb, cov['final_b'] = bin_cov(r=ell, r_bins=ell_bins, cov=cov['final'])
         return cov
+    
+    def get_nmt_spin(self, tracer_comb1, tracer_comb2):
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        w1spin = str(abs(s1_s2_1[0]))+str(abs(s1_s2_1[1]))
+        w2spin = str(abs(s1_s2_2[0]))+str(abs(s1_s2_2[1]))
+        nmtspin = str(abs(s1_s2_1[0]))+str(abs(s1_s2_1[1]))+str(abs(s1_s2_2[0]))+str(abs(s1_s2_2[1]))
+        return w1spin, w2spin, nmtspin
+        
+    def get_nmt_shape(self, tracer_comb1, tracer_comb2, meta):
+        nell = len(meta['ell_nmt0'])
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        s1 = (abs(s1_s2_1[0]),abs(s1_s2_1[1]))
+        s2 = (abs(s1_s2_2[0]),abs(s1_s2_2[1]))
+        dim2 = sum(s1)+1 if sum(s1)==0 else sum(s1)
+        dim4 = sum(s2)+1 if sum(s2)==0 else sum(s2)
+        return [nell, dim2, nell, dim4]
+    
+    def get_nmt_input(self, tracer_comb1, tracer_comb2, cl_nmt, SN):
+        
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        s1 = abs(s1_s2_1[0])
+        s2 = abs(s1_s2_1[1])
+        s3 = abs(s1_s2_2[0])
+        s4 = abs(s1_s2_2[1])
+        
+        cl130 = 0*cl_nmt[13]
+        cl13 = [cl_nmt[13]+SN[13],cl130,cl130,cl130+SN[13]]
+        
+        cl140 = 0*cl_nmt[14]
+        cl14 = [cl_nmt[14]+SN[14],cl140,cl140,cl140+SN[14]]
+        
+        cl230 = 0*cl_nmt[23]
+        cl23 = [cl_nmt[23]+SN[23],cl230,cl230,cl230+SN[23]]
+        
+        cl240 = 0*cl_nmt[24]
+        cl24 = [cl_nmt[24]+SN[24],cl240,cl240,cl240+SN[24]]
+        
+        n13 = 1 if s1+s3==0 else s1+s3
+        n14 = 1 if s1+s4==0 else s1+s4
+        n23 = 1 if s2+s3==0 else s2+s3
+        n24 = 1 if s2+s4==0 else s2+s4
+        
+        nmt_input = {}
+        nmt_input[13] = cl13[:n13]
+        nmt_input[14] = cl14[:n14]
+        nmt_input[23] = cl23[:n23]
+        nmt_input[24] = cl24[:n24]
+        
+        return nmt_input
+    
+    def get_nmt_input_bmode(self, tracer_comb1, tracer_comb2, cl_nmt, SN):
+        
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        s1 = abs(s1_s2_1[0])
+        s2 = abs(s1_s2_1[1])
+        s3 = abs(s1_s2_2[0])
+        s4 = abs(s1_s2_2[1])
+        
+        cl130 = 0*cl_nmt[13]
+        cl13 = [cl130+SN[13],cl130,cl130,cl130+SN[13]]
+        
+        cl140 = 0*cl_nmt[14]
+        cl14 = [cl140+SN[14],cl140,cl140,cl140+SN[14]]
+        
+        cl230 = 0*cl_nmt[23]
+        cl23 = [cl230+SN[23],cl230,cl230,cl230+SN[23]]
+        
+        cl240 = 0*cl_nmt[24]
+        cl24 = [cl240+SN[24],cl240,cl240,cl240+SN[24]]
+        
+        n13 = 1 if s1+s3==0 else s1+s3
+        n14 = 1 if s1+s4==0 else s1+s4
+        n23 = 1 if s2+s3==0 else s2+s3
+        n24 = 1 if s2+s4==0 else s2+s4
+        
+        nmt_input = {}
+        nmt_input[13] = cl13[:n13]
+        nmt_input[14] = cl14[:n14]
+        nmt_input[23] = cl23[:n23]
+        nmt_input[24] = cl24[:n24]
+        
+        return nmt_input
+        
+        
+    
     
     def get_angular_bins(self, two_point_data):
         # Assume that the ell binning is the same for each of the bins.
