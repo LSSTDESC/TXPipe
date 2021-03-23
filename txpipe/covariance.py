@@ -1,9 +1,13 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile
+from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile, MapsFile
 import numpy as np
 import warnings
 import os
 import pickle
+import pymaster as nmt
+import h5py
+import healpy as hp
+import scipy
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
@@ -18,6 +22,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         ('fiducial_cosmology', FiducialCosmology),    # For the cosmological parameters
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata', HDFFile),        # For metadata
+        ('mask', MapsFile), #For the mask
     ]
 
     outputs = [
@@ -45,6 +50,15 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # read the n(z) and f_sky from the source summary stats        
         meta = self.read_number_statistics()
+
+        # read the mask
+        f = self.open_input('mask', wrapper=True)
+        m = f.read_map('mask')
+        m = hp.ud_grade(m,1024)
+        msk = 1*(m == 1)
+        msk = nmt.mask_apodization(msk, 1., apotype="Smooth")
+        self.get_workspace(msk)
+
         
         # Binning choices. The ell binning is a linear piece with all the
         # integer values up to 500 -- these are from firecrown, might need 
@@ -54,12 +68,18 @@ class TXFourierGaussianCovariance(PipelineStage):
              np.logspace(np.log10(500), np.log10(6e4), 500))
             )
 
+        # creating ell arrays for the tjp-block and nmt-block
+        tjp_ell_mask = meta['ell']>1024*3
+        meta['ell_tjp'] = meta['ell'][tjp_ell_mask]
+        meta['ell_nmt0'] = np.linspace(0, 3*1024-1, 3*1024)
+        meta['ell_nmt'] = meta['ell'][np.invert(tjp_ell_mask)]
+
         # Theta binning - log spaced between 1 .. 300 arcmin.
         meta['theta'] = np.logspace(np.log10(1/60), np.log10(300./60), 3000) 
 
         #C_ell covariance
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
-        
+
         self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
@@ -145,6 +165,47 @@ class TXFourierGaussianCovariance(PipelineStage):
         }
 
         return meta
+    
+    def get_workspace(self,msk):
+        nside = 1024
+        # Spin-0 field
+        f0 = nmt.NmtField(msk, [msk], n_iter=0)
+        # Spin-2 field
+        f2 = nmt.NmtField(msk, [msk, msk], n_iter=2)
+        # Binning
+        b = nmt.NmtBin.from_nside_linear(nside, 48)
+
+        # Workspace
+        self.w00 = nmt.NmtWorkspace()
+        self.w00.compute_coupling_matrix(f0, f0, b)
+
+        self.w20 = nmt.NmtWorkspace()
+        self.w20.compute_coupling_matrix(f2, f0, b)
+
+        self.w22 = nmt.NmtWorkspace()
+        self.w22.compute_coupling_matrix(f2, f2, b)
+
+        # Covariance workspace
+        self.cw0000 = nmt.NmtCovarianceWorkspace()
+        self.cw0000.compute_coupling_coefficients(f0, f0, f0, f0)
+        
+        self.cw0020 = nmt.NmtCovarianceWorkspace()
+        self.cw0020.compute_coupling_coefficients(f0, f0, f2, f0)
+
+        self.cw0022 = nmt.NmtCovarianceWorkspace()
+        self.cw0022.compute_coupling_coefficients(f0, f0, f2, f2)
+
+        self.cw2020 = nmt.NmtCovarianceWorkspace()
+        self.cw2020.compute_coupling_coefficients(f2, f0, f2, f0)
+
+        self.cw2022 = nmt.NmtCovarianceWorkspace()
+        self.cw2022.compute_coupling_coefficients(f2, f0, f2, f2)
+
+        self.cw2222 = nmt.NmtCovarianceWorkspace()
+        self.cw2222.compute_coupling_coefficients(f2, f2, f2, f2)
+        pass
+        
+
 
     def get_tracer_info(self, cosmo, meta, two_point_data):
         # Generates CCL tracers from n(z) information in the data file
@@ -218,6 +279,9 @@ class TXFourierGaussianCovariance(PipelineStage):
         }
 
         ell = meta['ell']
+        ell_tjp = meta['ell_tjp']
+        ell_nmt = meta['ell_nmt'] # interpolate nmt covariance to this ell
+        ell_nmt0 = meta['ell_nmt0'] # ell for calculating nmt covariance
 
         # Getting all the C_ell that we need, saving the results in a cache
         # for later re-use
@@ -241,6 +305,17 @@ class TXFourierGaussianCovariance(PipelineStage):
                     cache[cache_key1] = c
                     cl[local_key] = c
 
+
+        # create cl's for tjp and nmt separately
+        cl_tjp = {} 
+        for label in [13,14,23,24]:
+            cl_tjp[label] = np.interp(ell_tjp, ell, cl[label])
+
+        cl_nmt = {}
+        for label in [13,14,23,24]:
+            cl_nmt[label] = np.interp(ell_nmt0, ell, cl[label])
+
+
         # The shape noise C_ell values.
         # These are zero for cross bins and as computed earlier for auto bins
         SN={}
@@ -250,22 +325,21 @@ class TXFourierGaussianCovariance(PipelineStage):
         SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
 
 
-        # The overall normalization factor at the front of the matrix
-        if self.do_xi:
-            norm = np.pi * 4 * meta['f_sky']
-        else: 
-            norm = (2*ell + 1) * np.gradient(ell) * meta['f_sky']
+
+        # The tjp part of the covariance
 
         # The coupling is an identity matrix at least when we neglect
         # the mask
         coupling_mat = {}
-        coupling_mat[1324] = np.eye(len(ell))
-        coupling_mat[1423] = np.eye(len(ell))
+        coupling_mat[1324] = np.eye(len(ell_tjp))
+        coupling_mat[1423] = np.eye(len(ell_tjp))
 
         # Initial covariance of C_ell components
-        cov = {}
-        cov[1324] = np.outer(cl[13] + SN[13], cl[24] + SN[24]) * coupling_mat[1324]
-        cov[1423] = np.outer(cl[14] + SN[14], cl[23] + SN[23]) * coupling_mat[1423]
+        cov_tjp = {}
+
+        cov_tjp[1324] = np.outer(cl_tjp[13] + SN[13], cl_tjp[24] + SN[24]) * coupling_mat[1324]
+        cov_tjp[1423] = np.outer(cl_tjp[14] + SN[14], cl_tjp[23] + SN[23]) * coupling_mat[1423]
+
 
         # for shear-shear components we also add a B-mode contribution
         first_is_shear_shear = ('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])
@@ -281,11 +355,67 @@ class TXFourierGaussianCovariance(PipelineStage):
                 Bmode_F=-1 
             # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
             # B-modes
-            cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
-            cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
+            cov_tjp[1324] += np.outer(cl_tjp[13]*0 + SN[13], cl_tjp[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
+            cov_tjp[1423] += np.outer(cl_tjp[14]*0 + SN[14], cl_tjp[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
-        cov['final']=cov[1423]+cov[1324]
+        cov_tjp['final']=cov_tjp[1423]+cov_tjp[1324]
 
+
+
+        # The nmt part of the covariance:
+        w1spin, w2spin, nmtspin = self.get_nmt_spin(tracer_comb1, tracer_comb2)        
+        w1 = getattr(self, 'w'+w1spin)
+        w2 = getattr(self, 'w'+w2spin)
+        cw = getattr(self, 'cw'+nmtspin)
+        
+        shape = self.get_nmt_shape(tracer_comb1, tracer_comb2, meta)
+        
+        nmt_input = self.get_nmt_input(tracer_comb1, tracer_comb2, cl_nmt, SN)
+        
+        nmt_input_bmode = self.get_nmt_input_bmode(tracer_comb1, tracer_comb2, cl_nmt, SN)
+        
+        nmt_cov = nmt.gaussian_covariance(cw, int(nmtspin[0]), int(nmtspin[1]), int(nmtspin[2]), int(nmtspin[3]), 
+                                      nmt_input[13],  
+                                      nmt_input[14],    
+                                      nmt_input[23],  
+                                      nmt_input[24],  
+                                      wa=w1, wb=w2, coupled=True).reshape(shape)[:, 0, :, 0]
+
+        # for shear-shear components we also add a B-mode contribution
+        first_is_shear_shear = ('source' in tracer_comb1[0]) and ('source' in tracer_comb1[1])
+        second_is_shear_shear = ('source' in tracer_comb2[0]) and ('source' in tracer_comb2[1])
+
+        if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
+            Bmode_F = 1
+            if xi_plus_minus1 != xi_plus_minus2:
+                Bmode_F=-1 
+
+            nmt_cov += nmt.gaussian_covariance(cw, int(nmtspin[0]), int(nmtspin[1]), int(nmtspin[2]), int(nmtspin[3]),
+                                      nmt_input_bmode[13],  
+                                      nmt_input_bmode[14],    
+                                      nmt_input_bmode[23],  
+                                      nmt_input_bmode[24],  
+                                      wa=w1, wb=w2, coupled=True).reshape(shape)[:, 0, :, 0] * Bmode_F
+
+        # Transform nmt part covariance back to the un-normalized
+        # tjp part to combine them together
+        nmt_cov *= 1./(meta['f_sky']**2)
+        norm_nmt = (2*ell_nmt0+1)*np.gradient(ell_nmt0)
+        nmt_cov *= norm_nmt
+
+        # interpolate nmt-part covariance to the original ell
+        f = scipy.interpolate.interp2d(ell_nmt0, ell_nmt0, nmt_cov, kind='cubic')
+        nmt_cov = f(ell_nmt,ell_nmt)
+
+            
+        #Combining tjp and nmt parts together
+        cov = {}
+        cov['final'] = np.zeros((len(ell),len(ell)))
+        cov['final'][:len(ell_nmt),:len(ell_nmt)] = nmt_cov
+        cov['final'][len(ell_nmt):,len(ell_nmt):] = cov_tjp['final']
+
+
+        # Normalization and/or wigner transform
         if self.do_xi:
             s1_s2_1 = self.get_spins(tracer_comb1)
             s1_s2_2 = self.get_spins(tracer_comb2)
@@ -303,6 +433,13 @@ class TXFourierGaussianCovariance(PipelineStage):
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
 
         # Normalize
+
+        # The overall normalization factor at the front of the matrix
+        if self.do_xi:
+            norm = np.pi * 4 * meta['f_sky']
+        else: 
+            norm = (2*ell + 1) * np.gradient(ell) * meta['f_sky']
+
         cov['final'] /= norm
 
         # Put the covariance into bins. 
@@ -315,6 +452,111 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb, cov['final_b'] = bin_cov(r=ell, r_bins=ell_bins, cov=cov['final'])
         return cov
+    
+    def get_nmt_spin(self, tracer_comb1, tracer_comb2):
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        w1spin = str(abs(s1_s2_1[0]))+str(abs(s1_s2_1[1]))
+        w2spin = str(abs(s1_s2_2[0]))+str(abs(s1_s2_2[1]))
+        nmtspin = str(abs(s1_s2_1[0]))+str(abs(s1_s2_1[1]))+str(abs(s1_s2_2[0]))+str(abs(s1_s2_2[1]))
+        return w1spin, w2spin, nmtspin
+        
+    def get_nmt_shape(self, tracer_comb1, tracer_comb2, meta):
+        nell = len(meta['ell_nmt0'])
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        s1 = (abs(s1_s2_1[0]),abs(s1_s2_1[1]))
+        s2 = (abs(s1_s2_2[0]),abs(s1_s2_2[1]))
+        dim2 = sum(s1)+1 if sum(s1)==0 else sum(s1)
+        dim4 = sum(s2)+1 if sum(s2)==0 else sum(s2)
+        return [nell, dim2, nell, dim4]
+    
+    def get_nmt_input(self, tracer_comb1, tracer_comb2, cl_nmt, SN):
+        
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        s1 = abs(s1_s2_1[0])
+        s2 = abs(s1_s2_1[1])
+        s3 = abs(s1_s2_2[0])
+        s4 = abs(s1_s2_2[1])
+        
+        cl130 = 0*cl_nmt[13]
+        cl13 = [cl_nmt[13]+SN[13],cl130,cl130,cl130+SN[13]]
+        
+        cl140 = 0*cl_nmt[14]
+        cl14 = [cl_nmt[14]+SN[14],cl140,cl140,cl140+SN[14]]
+        
+        cl230 = 0*cl_nmt[23]
+        cl23 = [cl_nmt[23]+SN[23],cl230,cl230,cl230+SN[23]]
+        
+        cl240 = 0*cl_nmt[24]
+        cl24 = [cl_nmt[24]+SN[24],cl240,cl240,cl240+SN[24]]
+        
+        n13 = 1 if s1+s3==0 else s1+s3
+        n14 = 1 if s1+s4==0 else s1+s4
+        n23 = 1 if s2+s3==0 else s2+s3
+        n24 = 1 if s2+s4==0 else s2+s4
+        
+        nmt_input = {}
+        nmt_input[13] = cl13[:n13]
+        nmt_input[14] = cl14[:n14]
+        nmt_input[23] = cl23[:n23]
+        nmt_input[24] = cl24[:n24]
+        
+        return nmt_input
+    
+    def get_nmt_input_bmode(self, tracer_comb1, tracer_comb2, cl_nmt, SN):
+        
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1['plus']
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2['plus']
+        s1 = abs(s1_s2_1[0])
+        s2 = abs(s1_s2_1[1])
+        s3 = abs(s1_s2_2[0])
+        s4 = abs(s1_s2_2[1])
+        
+        cl130 = 0*cl_nmt[13]
+        cl13 = [cl130+SN[13],cl130,cl130,cl130+SN[13]]
+        
+        cl140 = 0*cl_nmt[14]
+        cl14 = [cl140+SN[14],cl140,cl140,cl140+SN[14]]
+        
+        cl230 = 0*cl_nmt[23]
+        cl23 = [cl230+SN[23],cl230,cl230,cl230+SN[23]]
+        
+        cl240 = 0*cl_nmt[24]
+        cl24 = [cl240+SN[24],cl240,cl240,cl240+SN[24]]
+        
+        n13 = 1 if s1+s3==0 else s1+s3
+        n14 = 1 if s1+s4==0 else s1+s4
+        n23 = 1 if s2+s3==0 else s2+s3
+        n24 = 1 if s2+s4==0 else s2+s4
+        
+        nmt_input = {}
+        nmt_input[13] = cl13[:n13]
+        nmt_input[14] = cl14[:n14]
+        nmt_input[23] = cl23[:n23]
+        nmt_input[24] = cl24[:n24]
+        
+        return nmt_input
+        
+        
+    
     
     def get_angular_bins(self, two_point_data):
         # Assume that the ell binning is the same for each of the bins.
@@ -475,6 +717,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         ('fiducial_cosmology', FiducialCosmology),     # For the cosmological parameters
         ('twopoint_data_real', SACCFile),     # For the binning information
         ('tracer_metadata', HDFFile),         # For metadata
+        ('mask', MapsFile),
 
     ]
 
