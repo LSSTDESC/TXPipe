@@ -389,7 +389,7 @@ class TXTwoPoint(PipelineStage):
             w_col = "weight",
             ra_units='degree',
             dec_units='degree',
-            patch_centers=self.get_input('patch_centers')
+            patch_centers=self.get_input('patch_centers'),
         )
         return cat
 
@@ -406,7 +406,7 @@ class TXTwoPoint(PipelineStage):
             w_col = "weight",
             ra_units='degree',
             dec_units='degree',
-            patch_centers=self.get_input('patch_centers')
+            patch_centers=self.get_input('patch_centers'),
         )
         return cat
 
@@ -420,10 +420,9 @@ class TXTwoPoint(PipelineStage):
             ext = f"/randoms/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
-            w_col = "weight",
             ra_units='degree',
             dec_units='degree',
-            patch_centers=self.get_input('patch_centers')
+            patch_centers=self.get_input('patch_centers'),
         ) 
         return rancat
 
@@ -441,7 +440,8 @@ class TXTwoPoint(PipelineStage):
             cat_j = self.get_shear_catalog(j)
             n_j = cat_j.nobj
 
-        print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
+        if self.rank == 0:
+            print(f"Calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects using MPI")
 
         gg = treecorr.GGCorrelation(self.config)
         t1 = perf_counter()
@@ -463,9 +463,11 @@ class TXTwoPoint(PipelineStage):
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+        if self.rank == 0:
+            print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
         ng = treecorr.NGCorrelation(self.config)
+        t1 = perf_counter()
         ng.process(cat_j, cat_i, comm=self.comm)
 
         if rancat_j:
@@ -474,9 +476,13 @@ class TXTwoPoint(PipelineStage):
         else:
             rg = None
 
+
         if self.rank == 0:
             ng.calculateXi(rg=rg)
+            t2 = perf_counter()
+            print(f"Processing took {t2 - t1:.1f} seconds")
 
+        
         return ng
 
 
@@ -487,6 +493,9 @@ class TXTwoPoint(PipelineStage):
         rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
+
+        if self.rank == 0:
+            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_i} objects,  {n_rand_i} randoms")
 
         nn = treecorr.NNCorrelation(self.config)
         rn = treecorr.NNCorrelation(self.config)
@@ -499,6 +508,8 @@ class TXTwoPoint(PipelineStage):
         else:
             cat_j = self.get_lens_catalog(j)
             rancat_j = self.get_random_catalog(j)
+
+        t1 = perf_counter()
 
         nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i, cat_j, comm=self.comm)
@@ -516,7 +527,9 @@ class TXTwoPoint(PipelineStage):
             rn.process(rancat_i, cat_j, comm=self.comm)
 
         if self.rank == 0:
+            t2 = perf_counter()
             nn.calculateXi(rr, dr=nr, rd=rn)
+            print(f"Processing took {t2 - t1:.1f} seconds")            
         return nn
 
 
