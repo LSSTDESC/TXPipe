@@ -113,6 +113,7 @@ class NullCalibrator:
         cal2D: NullCalibrator
             A single Calibrator for the 2D bin
         """
+        import h5py
         with h5py.File(tomo_file, "r") as f:
             nbin = f["tomography"].attrs["nbin_source"]
 
