@@ -49,7 +49,7 @@ class Calibrator:
 
         # choose a subclass based on this
         if null:
-            subclss = NullCalibrator
+            subcls = NullCalibrator
         elif cat_type == "metacal":
             subcls = MetaCalibrator
         elif cat_type == "lensfit":
