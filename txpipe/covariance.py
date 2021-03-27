@@ -76,6 +76,10 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # Theta binning - log spaced between 1 .. 300 arcmin.
         meta['theta'] = np.logspace(np.log10(1/60), np.log10(300./60), 3000) 
+        
+        comm = MPI.COMM_WORLD
+        size = comm.Get_size()
+        rank = comm.Get_rank()
 
         #C_ell covariance
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
@@ -177,32 +181,32 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # Workspace
         self.w00 = nmt.NmtWorkspace()
-        self.w00.compute_coupling_matrix(f0, f0, b)
+        self.w00.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/w00.fits')
 
         self.w20 = nmt.NmtWorkspace()
-        self.w20.compute_coupling_matrix(f2, f0, b)
+        self.w20.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/w20.fits')
 
         self.w22 = nmt.NmtWorkspace()
-        self.w22.compute_coupling_matrix(f2, f2, b)
+        self.w22.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/w22.fits')
 
         # Covariance workspace
         self.cw0000 = nmt.NmtCovarianceWorkspace()
-        self.cw0000.compute_coupling_coefficients(f0, f0, f0, f0)
+        self.cw0000.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/cw0000.fits')
         
         self.cw0020 = nmt.NmtCovarianceWorkspace()
-        self.cw0020.compute_coupling_coefficients(f0, f0, f2, f0)
+        self.cw0020.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/cw0020.fits')
 
         self.cw0022 = nmt.NmtCovarianceWorkspace()
-        self.cw0022.compute_coupling_coefficients(f0, f0, f2, f2)
+        self.cw0022.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/cw0022.fits')
 
         self.cw2020 = nmt.NmtCovarianceWorkspace()
-        self.cw2020.compute_coupling_coefficients(f2, f0, f2, f0)
+        self.cw2020.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/cw2020.fits')
 
         self.cw2022 = nmt.NmtCovarianceWorkspace()
-        self.cw2022.compute_coupling_coefficients(f2, f0, f2, f2)
+        self.cw2022.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/cw2022.fits')
 
         self.cw2222 = nmt.NmtCovarianceWorkspace()
-        self.cw2222.compute_coupling_coefficients(f2, f2, f2, f2)
+        self.cw2222.read_from('/global/cscratch1/sd/zhzhuoqi/TXpipe/data/cosmodc2/dev/cw2222.fits')
         pass
         
 
