@@ -75,8 +75,8 @@ TXSourceSelector:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    # source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3. ] # 7 bins
-    source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3. ] # 7 bins
+    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     chunk_rows: 100000
     true_z: False
     shear_prefix: mcal_
@@ -98,7 +98,7 @@ TXRealGaussianCovariance:
     use_true_shear: False
 
 TXTwoPoint:
-    binslop: 0.0
+    bin_slop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -112,7 +112,7 @@ TXTwoPoint:
     subtract_mean_shear: True
 
 TXTwoPointLensCat:
-    binslop: 0.0
+    bin_slop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -124,6 +124,7 @@ TXTwoPointLensCat:
     verbose: 0
     use_true_shear: False
     subtract_mean_shear: True
+    var_method: jackknife
     
 TXTwoPointFourier:
     chunk_rows: 100000

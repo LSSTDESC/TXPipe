@@ -1,5 +1,5 @@
-Omega_c: 2.199960e-01
-Omega_b: 4.479270e-02
+Omega_c: 2.199999e-01
+Omega_b: 4.48e-02
 Omega_m: 2.647887e-01
 Omega_k: 0.000000e+00
 k_sign: 0
@@ -27,3 +27,6 @@ Omega_l: 7.351283e-01
 z_star: nan
 has_mgrowth: 0
 nz_mgrowth: 0
+c1_mg: 1.0
+c2_mg: 1.0
+lambda_mg: 0.0

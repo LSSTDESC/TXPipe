@@ -6,7 +6,6 @@ import numpy as np
 import random
 import collections
 import sys
-
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -42,7 +41,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.5,
         'max_sep':300.,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0.0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -272,11 +271,6 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-
-            # account for double-counting
-            if d.i == d.j:
-                npair = npair/2
-                weight = weight/2
             # xip / xim is a special case because it has two observables.
             # the other two are together below
             if d.corr_type == XI:
@@ -424,10 +418,14 @@ class TXTwoPoint(PipelineStage):
             mu1 = g1.mean()
             mu2 = g2.mean()
 
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            g1 -= meta['mean_e1'][i]
-            g2 -= meta['mean_e2'][i]
+            if self.config['use_true_shear']:
+                g1 -= g1.mean()
+                g2 -= g2.mean()
+            else:
+                # If we flip g2 we also have to flip the sign
+                # of what we subtract
+                g1 -= meta['mean_e1'][i]
+                g2 -= meta['mean_e2'][i]
 
             # Compare to final means.
             nu1 = g1.mean()
@@ -466,6 +464,7 @@ class TXTwoPoint(PipelineStage):
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
         elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
+            print('Not using JK.', len(g1))
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -532,20 +531,16 @@ class TXTwoPoint(PipelineStage):
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
-
+        gg = treecorr.GGCorrelation(self.config)
         if i==j:
-            cat_j = cat_i
+            gg.process(cat_i)
             n_j = n_i
         else:
             cat_j = self.get_shear_catalog(data, meta, j)
             n_j = cat_j.nobj
+            gg.process(cat_i, cat_j)
 
-
-        print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
-
-        gg = treecorr.GGCorrelation(self.config)
-        gg.process(cat_i, cat_j)
-
+        print(f"Rank {self.rank} calculated shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
         return gg
 
     def calculate_shear_pos(self, data, meta, i, j):
@@ -581,31 +576,32 @@ class TXTwoPoint(PipelineStage):
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
-        if i==j:
-            cat_j = cat_i
-            rancat_j = rancat_i
-            n_j = n_i
-            n_rand_j = n_rand_i
-        else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
-            n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
-
-        print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
-            f"{n_rand_i} x {n_rand_j} randoms")
-
-
         nn = treecorr.NNCorrelation(self.config)
         rn = treecorr.NNCorrelation(self.config)
         nr = treecorr.NNCorrelation(self.config)
         rr = treecorr.NNCorrelation(self.config)
+        
+        if i==j:
+            n_j = n_i
+            n_rand_j = n_rand_i
+            nn.process(cat_i)
+            nr.process(cat_i, rancat_i)
+            rr.process(rancat_i)
+            nn.calculateXi(rr, dr=nr)
+            
+        else:
+            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+            nn.process(cat_i,    cat_j)
+            nr.process(cat_i,    rancat_j)
+            rn.process(rancat_i, cat_j)
+            rr.process(rancat_i, rancat_j)
+            nn.calculateXi(rr, dr=nr, rd=rn)
 
-        nn.process(cat_i,    cat_j)
-        nr.process(cat_i,    rancat_j)
-        rn.process(rancat_i, cat_j)
-        rr.process(rancat_i, rancat_j)
+        print(f"Rank {self.rank} calculated position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
+            f"{n_rand_i} x {n_rand_j} randoms")
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
     def load_tomography(self, data):
@@ -763,7 +759,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
         cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        matter_power_spectrum='halofit', Neff=3.04)
+            matter_power_spectrum='halofit', Neff=3.046)
         print(cosmo)
 
         s_theory = self.replace_with_theory_real(s, cosmo)
@@ -903,7 +899,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
         cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
-        matter_power_spectrum='halofit', Neff=3.04)
+            matter_power_spectrum='halofit', Neff=3.046)
         print(cosmo)
 
         s_theory = self.replace_with_theory_fourier(s, cosmo)

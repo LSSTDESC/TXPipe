@@ -5,7 +5,7 @@ sacc
 pyccl
 numpy
 matplotlib
-#fitsio
+fitsio
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
@@ -15,7 +15,7 @@ astropy
 healpy
 camb
 threadpoolctl
-#pymaster
+pymaster
 cosmosis-standalone
 git+https://github.com/LSSTDESC/firecrown@v0.4
 psutil

@@ -4,10 +4,6 @@ import numpy as np
 import warnings
 import os
 import pickle
-import pymaster as nmt
-import h5py
-import healpy as hp
-import scipy
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
@@ -37,6 +33,10 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
     def run(self):
+        import pymaster as nmt
+        import h5py
+        import healpy as hp
+        import scipy
         import pyccl as ccl
         import sacc
         import tjpcov
@@ -171,6 +171,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         return meta
     
     def get_workspace(self,msk):
+        import pymaster as nmt
+
         nside = 1024
         # Spin-0 field
         f0 = nmt.NmtField(msk, [msk], n_iter=0)
@@ -214,6 +216,8 @@ class TXFourierGaussianCovariance(PipelineStage):
     def get_tracer_info(self, cosmo, meta, two_point_data):
         # Generates CCL tracers from n(z) information in the data file
         import pyccl as ccl
+        import scipy
+        
         ccl_tracers={}
         tracer_noise={}
 
@@ -269,6 +273,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         ):
         import pyccl as ccl
         from tjpcov import bin_cov
+        import pymaster as nmt
+        import scipy
 
         cl = {}
 
