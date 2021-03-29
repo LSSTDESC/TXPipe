@@ -80,6 +80,9 @@ class TXShearCalibration(PipelineStage):
 
         #  Main loop
         for s, e, data in it:
+
+            if self.rank == 0:
+                print(f"Rank 0 processing data {s:,} - {e:,}")
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
 
