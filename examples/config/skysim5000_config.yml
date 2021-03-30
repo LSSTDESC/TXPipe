@@ -90,7 +90,7 @@ TXRealGaussianCovariance:
     nbins: 20
 
 TXTwoPoint:
-    binslop: 0.0
+    bin_slop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -103,7 +103,7 @@ TXTwoPoint:
     use_true_shear: False
 
 TXTwoPointLensCat:
-    binslop: 0.0
+    bin_slop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
