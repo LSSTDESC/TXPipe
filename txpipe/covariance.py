@@ -508,8 +508,8 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         # Transform nmt part covariance back to the un-normalized
         # tjp part to combine them together
-        nmt_cov *= 1./(meta['f_sky']**2)
-        norm_nmt = (2*ell_nmt0+1)*np.gradient(ell_nmt0)
+        nmt_cov *= 1./(meta['f_sky']**3)
+        norm_nmt = (2*ell_nmt0+1)*np.gradient(ell_nmt0)*meta['f_sky']
         nmt_cov *= norm_nmt
 
         # interpolate nmt-part covariance to the original ell
