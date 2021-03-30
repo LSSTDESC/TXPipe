@@ -96,6 +96,9 @@ TXDiagnosticPlots:
     shear_prefix: mcal_
 
 TXFourierGaussianCovariance:
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
     use_true_shear: True
 
 TXRealGaussianCovariance:
@@ -103,6 +106,9 @@ TXRealGaussianCovariance:
     max_sep: 100.
     nbins: 15
     use_true_shear: True
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
 
 TXTwoPoint:
     bin_slop: 0.0
