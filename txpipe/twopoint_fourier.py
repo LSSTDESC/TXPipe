@@ -68,6 +68,7 @@ class TXTwoPointFourier(PipelineStage):
         "ell_spacing": 'log',
         "true_shear": False,
         "analytic_noise": True,
+        "ell_edges": [float],
     }
 
     def run(self):
@@ -451,11 +452,14 @@ class TXTwoPointFourier(PipelineStage):
         # Can feed these back upstream if useful.
 
         # Creating the ell binning from the edges using this Namaster constructor.
-        if self.config['ell_spacing'] == 'log': 
+        if (self.config['ell_spacing'] == 'log') & (len(self.config['ell_edges']) < 2): 
             edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
-        else:
+        elif (len(self.config['ell_edges']) < 2) & (self.config['ell_spacing']!='log'):
             edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
-            
+        elif len(self.config['ell_edges'])>=2:
+            edges = self.config['ell_edges']
+        else:
+            raise ValueError('ell_spacing or ell_edges must be specified')
         ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
 
