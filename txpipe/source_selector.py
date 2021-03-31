@@ -589,7 +589,7 @@ class TXSourceSelector(PipelineStage):
         zbin = data['zbin']
         verbose = self.config['verbose']
 
-        sel = self.select_2d(data, is_2d=False)
+        sel = self.select_2d(data, calling_from_select=True)
         sel &= zbin==bin_index
         f4 = sel.sum() / sel.size
 
@@ -599,8 +599,12 @@ class TXSourceSelector(PipelineStage):
 
         return sel
 
-    def select_2d(self, data, is_2d=True):
+    def select_2d(self, data, calling_from_select=False):
         # Select any objects that pass general WL cuts
+        # The calling_from_select option just specifies whether we
+        # are calling this function from within the select
+        # method above, because the useful printed verbose
+        # output is different in each case
         shear_prefix = self.config['shear_prefix']
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
@@ -627,13 +631,13 @@ class TXSourceSelector(PipelineStage):
         # this is the complete message.  Otherwise if we are about
         # to also apply a redshift bin cut about then the message will continue
         # as above
-        if verbose and is_2d:
+        if verbose and calling_from_select:
+            print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
+                  f"{f3:.2%} SNR, ", end="")
+        elif verbose:
             print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
                   f"{f3:.2%} SNR, {f4:.2%} any z bin")
             print("total 2D", sel.sum())
-        elif verbose:
-            print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR, ", end="")
         return sel
 
 
