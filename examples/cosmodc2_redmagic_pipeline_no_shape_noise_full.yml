@@ -14,32 +14,36 @@ python_paths:
     - submodules/FlexZPipe
 
 stages:
+    - name: TXCosmoDC2Mock
+      nprocess: 1
+      threads_per_process: 20
+      nodes: 1
     - name: TXRandomCat
     - name: TXIngestRedmagic
     - name: TXSourceSelector
       nprocess: 64
-      nodes: 2 
+      nodes: 2
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXSourceMaps
-      nprocess: 8
+      nprocess: 12
       threads_per_process: 1
-      nodes: 1
+      nodes: 2
     - name: TXExternalLensMaps
     - name: TXAuxiliaryMaps
-      nprocess: 8
+      nprocess: 16
       threads_per_process: 1
-      nodes: 1
+      nodes: 2
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
     - name: TXTwoPointLensCat
-      threads_per_process: 64
       nprocess: 2
       nodes: 2
+      threads_per_process: 64
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
@@ -55,7 +59,7 @@ stages:
       threads_per_process: 1
     - name: TXTwoPointFourier
       nprocess: 2
-      nodes: 2
+      nodes: 3
       threads_per_process: 64
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
@@ -64,23 +68,23 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/
-config: examples/config/cosmodc2_config.yml
+output_dir: data/cosmodc2/outputs_redmagic/2021/no_shape_noise/mag_sel_compare_descqa
+config: examples/config/cosmodc2_config_no_shape_noise.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/shear_catalog.hdf5
-    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
-    shear_photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
-    lens_photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    #shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/shear_catalog.hdf5
+    #photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    #shear_photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    #lens_photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
     photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
     redmagic_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
-
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
 
 resume: True
 log_dir: data/cosmodc2/logs_redmagic

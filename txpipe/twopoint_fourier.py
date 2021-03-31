@@ -548,14 +548,22 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
         else:
             cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky)
-        print('Noise power-spectrum', cl_noise) 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        print('noise subtraced power spectrum', c, c.shape)
+
+        def window_pixel(ell, nside):
+            r_theta=1/(np.sqrt(3.)*nside)
+            x=ell*r_theta
+            f=0.532+0.006*(x-0.5)**2
+            y=f*x
+            return np.exp(-y**2/2)
+
+        c_beam = c/(window_pixel(ls, self.config['nside']))**2
+        
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
-            self.results.append(Measurement(name, ls, c[index], win, i, j))
+            self.results.append(Measurement(name, ls, c_beam[index], win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
@@ -756,11 +764,13 @@ class TXTwoPointPlotsFourier(PipelineStage):
     inputs = [
         ('summary_statistics_fourier', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
+        ('twopoint_theory_fourier', SACCFile),
     ]
     outputs = [
         ('shear_cl_ee', PNGFile),
         ('shearDensity_cl', PNGFile),
         ('density_cl', PNGFile),
+        ('shear_cl_ee_ratio', PNGFile),
     ]
 
     config_options = {
@@ -791,8 +801,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)  
  
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
-
+        filename_theory = self.get_input('twopoint_theory_fourier')
+        
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
                 figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
@@ -807,9 +817,23 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], 
-                         figures=figures, cosmo=cosmo, theory_labels=['Fiducial'], xi=False, xlogscale=True)
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures,
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
+                         xi=False, xlogscale=True)
 
+        outputs = {
+            "galaxy_shear_cl_ee": self.open_output('shear_cl_ee_ratio',
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+
+        }
+
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures, 
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
+                         xi=False, xlogscale=True, ratios=True)
+
+        
         for fig in outputs.values():
             fig.close()
 

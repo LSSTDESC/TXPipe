@@ -3,6 +3,7 @@ This file contains TXPipe-specific file types, subclassing the more
 generic types in base.py
 """
 from .base import HDFFile, DataFile, YamlFile
+import yaml
 
 def metacalibration_names(names):
     """
@@ -358,7 +359,40 @@ class NOfZFile(HDFFile):
             plt.plot(z, nz, label=f'Bin {b}')
 
 class FiducialCosmology(YamlFile):
-    def to_ccl(self):
-        import pyccl as ccl
-        return ccl.Cosmology.read_yaml(self.path)
 
+    # TODO replace when CCL has more complete serialization tools.
+    def to_ccl(self, **kwargs):
+        import pyccl as ccl
+        with open(self.path, 'r') as fp:
+            params = yaml.load(fp, Loader=yaml.Loader)
+
+        # Now we assemble an init for the object since the CCL YAML has
+        # extra info we don't need and different formatting.
+        inits = dict(
+            Omega_c=params['Omega_c'],
+            Omega_b=params['Omega_b'],
+            h=params['h'],
+            n_s=params['n_s'],
+            sigma8=None if params['sigma8'] == 'nan' else params['sigma8'],
+            A_s=None if params['A_s'] == 'nan' else params['A_s'],
+            Omega_k=params['Omega_k'],
+            Neff=params['Neff'],
+            w0=params['w0'],
+            wa=params['wa'],
+            bcm_log10Mc=params['bcm_log10Mc'],
+            bcm_etab=params['bcm_etab'],
+            bcm_ks=params['bcm_ks'],
+            mu_0=params['mu_0'],
+            sigma_0=params['sigma_0'])
+
+        if 'z_mg' in params:
+            inits['z_mg'] = params['z_mg']
+            inits['df_mg'] = params['df_mg']
+
+        if 'm_nu' in params:
+            inits['m_nu'] = params['m_nu']
+            inits['m_nu_type'] = 'list'
+
+        inits.update(kwargs)
+
+        return ccl.Cosmology(**inits)

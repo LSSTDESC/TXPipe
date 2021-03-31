@@ -6,7 +6,6 @@ import numpy as np
 import random
 import collections
 import sys
-
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -42,7 +41,7 @@ class TXTwoPoint(PipelineStage):
         'min_sep':0.5,
         'max_sep':300.,
         'nbins':9,
-        'bin_slop':0.1,
+        'bin_slop':0.0,
         'sep_units':'arcmin',
         'flip_g2':True,
         'cores_per_task':20,
@@ -53,7 +52,7 @@ class TXTwoPoint(PipelineStage):
         'do_shear_shear': True,
         'do_shear_pos': True,
         'do_pos_pos': True,
-        'var_methods': 'jackknife',
+        'var_method': 'jackknife',
         'use_true_shear': False,
         'subtract_mean_shear':False
         }
@@ -272,11 +271,6 @@ class TXTwoPoint(PipelineStage):
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
-
-            # account for double-counting
-            if d.i == d.j:
-                npair = npair/2
-                weight = weight/2
             # xip / xim is a special case because it has two observables.
             # the other two are together below
             if d.corr_type == XI:
@@ -304,7 +298,7 @@ class TXTwoPoint(PipelineStage):
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
-        cov = treecorr.estimate_multi_cov(comb, self.config['var_methods'])
+        cov = treecorr.estimate_multi_cov(comb, self.config['var_method'])
         S.add_covariance(cov)
 
         # Our data points may currently be in any order depending on which processes
@@ -399,8 +393,8 @@ class TXTwoPoint(PipelineStage):
         mask = (data['source_bin'] == i)
 
         if self.config['use_true_shear']:
-            g1 = data[f'{prefix}_g1'][mask]
-            g2 = data[f'{prefix}_g2'][mask]
+            g1 = data[f'true_g1'][mask]
+            g2 = data[f'true_g2'][mask]
 
         elif self.config['shear_catalog_type']=='metacal':
             # We use S=0 here because we have already included it in R_total
@@ -423,18 +417,18 @@ class TXTwoPoint(PipelineStage):
         # at this point, but in future we would like to move to just loading part of the
         # catalog.
         if self.config['subtract_mean_shear']:
-            flip = self.config['flip_g2']
             # Cross-check: print out the new mean.
             # In the weighted case these won't actually be equal
             mu1 = g1.mean()
             mu2 = g2.mean()
 
-            # If we flip g2 we also have to flip the sign
-            # of what we subtract
-            g1 -= meta['mean_e1'][i]
-            if flip:
-                g2 += meta['mean_e2'][i]
+            if self.config['use_true_shear']:
+                g1 -= g1.mean()
+                g2 -= g2.mean()
             else:
+                # If we flip g2 we also have to flip the sign
+                # of what we subtract
+                g1 -= meta['mean_e1'][i]
                 g2 -= meta['mean_e2'][i]
 
             # Compare to final means.
@@ -445,6 +439,9 @@ class TXTwoPoint(PipelineStage):
             print(f"Means after:  {nu1}  and  {nu2}")
             print("(In the weighted case the latter may not be exactly zero)")
 
+        if self.config['flip_g2']:
+            g2 *= -1
+
         return g1, g2, mask
 
     def get_shear_catalog(self, data, meta, i):
@@ -453,7 +450,7 @@ class TXTwoPoint(PipelineStage):
         # Load and calibrate the appropriate bin data
         g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
 
-        if self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='metacal':
+        if self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='metacal':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -461,7 +458,7 @@ class TXTwoPoint(PipelineStage):
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_methods']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
+        elif self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 g1 = g1,
@@ -470,14 +467,15 @@ class TXTwoPoint(PipelineStage):
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='metacal':
+        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
+            print('Not using JK.', len(g1))
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
                 ra = data['ra'][mask],
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
-        elif self.config['var_methods']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
+        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
             cat = treecorr.Catalog(
                 g1 = g1,
                 g2 = g2,
@@ -503,7 +501,7 @@ class TXTwoPoint(PipelineStage):
             ra = data['ra'][mask]
             dec = data['dec'][mask]
 
-        if self.config['var_methods']=='jackknife':
+        if self.config['var_method']=='jackknife':
             patch_centers = self.get_input('patch_centers')
             cat = treecorr.Catalog(
                 ra=ra, dec=dec,
@@ -516,7 +514,7 @@ class TXTwoPoint(PipelineStage):
 
         if 'random_bin' in data:
             random_mask = data['random_bin']==i
-            if self.config['var_methods']=='jackknife':
+            if self.config['var_method']=='jackknife':
                 rancat  = treecorr.Catalog(
                     ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
                     ra_units='degree', dec_units='degree',
@@ -537,20 +535,16 @@ class TXTwoPoint(PipelineStage):
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
-
+        gg = treecorr.GGCorrelation(self.config)
         if i==j:
-            cat_j = cat_i
+            gg.process(cat_i)
             n_j = n_i
         else:
             cat_j = self.get_shear_catalog(data, meta, j)
             n_j = cat_j.nobj
+            gg.process(cat_i, cat_j)
 
-
-        print(f"Rank {self.rank} calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
-
-        gg = treecorr.GGCorrelation(self.config)
-        gg.process(cat_i, cat_j)
-
+        print(f"Rank {self.rank} calculated shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
         return gg
 
     def calculate_shear_pos(self, data, meta, i, j):
@@ -586,31 +580,32 @@ class TXTwoPoint(PipelineStage):
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
-        if i==j:
-            cat_j = cat_i
-            rancat_j = rancat_i
-            n_j = n_i
-            n_rand_j = n_rand_i
-        else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
-            n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
-
-        print(f"Rank {self.rank} calculating position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
-            f"{n_rand_i} x {n_rand_j} randoms")
-
-
         nn = treecorr.NNCorrelation(self.config)
         rn = treecorr.NNCorrelation(self.config)
         nr = treecorr.NNCorrelation(self.config)
         rr = treecorr.NNCorrelation(self.config)
+        
+        if i==j:
+            n_j = n_i
+            n_rand_j = n_rand_i
+            nn.process(cat_i)
+            nr.process(cat_i, rancat_i)
+            rr.process(rancat_i)
+            nn.calculateXi(rr, dr=nr)
+            
+        else:
+            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+            nn.process(cat_i,    cat_j)
+            nr.process(cat_i,    rancat_j)
+            rn.process(rancat_i, cat_j)
+            rr.process(rancat_i, rancat_j)
+            nn.calculateXi(rr, dr=nr, rd=rn)
 
-        nn.process(cat_i,    cat_j)
-        nr.process(cat_i,    rancat_j)
-        rn.process(rancat_i, cat_j)
-        rr.process(rancat_i, rancat_j)
+        print(f"Rank {self.rank} calculated position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
+            f"{n_rand_i} x {n_rand_j} randoms")
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
         return nn
 
     def load_tomography(self, data):
@@ -658,15 +653,6 @@ class TXTwoPoint(PipelineStage):
         for col in cat_cols:
             print(f"Loading {col}")
             data[col] = g[col][:]
-
-        if self.config['flip_g2']:
-            if self.config['shear_catalog_type']=='metacal':
-                if self.config['use_true_shear']:
-                    data['true_g2'] *= -1
-                else:
-                    data['mcal_g2'] *= -1
-            else:
-                data['g2'] *= -1
 
 
     def load_random_catalog(self, data):
@@ -753,6 +739,265 @@ class TXTwoPointLensCat(TXTwoPoint):
         f.close()
 
 
+class TXTwoPointTheoryReal(PipelineStage):
+    """
+    Compute theory in CCL in real space and save to a sacc file.
+    """
+    name='TXTwoPointTheoryReal'
+    inputs = [
+        ('twopoint_data_real', SACCFile),
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
+    ]
+    outputs = [
+        ('twopoint_theory_real', SACCFile),
+    ]
+    
+
+    def run(self):
+        import sacc
+
+        filename = self.get_input('twopoint_data_real')
+        s = sacc.Sacc.load_fits(filename)
+
+        # TODO: when there is a better Cosmology serialization method
+        # switch to that
+        print("Manually specifying matter_power_spectrum and Neff")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+            matter_power_spectrum='halofit', Neff=3.046)
+        print(cosmo)
+
+        s_theory = self.replace_with_theory_real(s, cosmo)
+        
+        # Remove covariance
+        s_theory.covariance = None
+        
+        # save the output to Sacc file
+        s_theory.save_fits(self.get_output('twopoint_theory_real'), overwrite=True)
+
+    def read_nbin(self, s):
+        import sacc
+
+        xip = sacc.standard_types.galaxy_shear_xi_plus
+        wtheta = sacc.standard_types.galaxy_density_xi
+
+        source_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(xip):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        lens_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(wtheta):
+            lens_tracers.add(b1)
+            lens_tracers.add(b2)
+
+
+        return len(source_tracers), len(lens_tracers)
+
+    def get_ccl_tracers(self, s, cosmo, smooth=False):
+        
+        # ccl tracers object
+        import pyccl
+        tracers = {}
+
+        nbin_source, nbin_lens = self.read_nbin(s)
+        
+        # Make the lensing tracers
+        for i in range(nbin_source):
+            name = f'source_{i}'
+            Ti = s.get_tracer(name)
+            nz = smooth_nz(Ti.nz) if smooth else Ti.nz
+            print("smooth:",  smooth)
+            # Convert to CCL form
+            tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
+
+        # And the clustering tracers
+        for i in range(nbin_lens):
+            name = f'lens_{i}'
+            Ti = s.get_tracer(name)
+            nz = smooth_nz(Ti.nz) if smooth else Ti.nz
+
+            # Convert to CCL form
+            tracers[name] = pyccl.NumberCountsTracer(cosmo, has_rsd=False, 
+                dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z)))
+            
+        return tracers
+    
+    def replace_with_theory_real(self, s, cosmo):
+
+        import pyccl
+        nbin_source, nbin_lens = self.read_nbin(s)
+        ell = np.unique(np.logspace(np.log10(2),5,400).astype(int))
+        tracers = self.get_ccl_tracers(s, cosmo)
+
+        for i in range(nbin_source):
+            for j in range(i+1):
+                print(f"Computing theory lensing-lensing ({i},{j})")
+
+                # compute theory 
+                print(tracers[f'source_{i}'], tracers[f'source_{j}'])
+                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
+                theta, *_  = s.get_theta_xi('galaxy_shear_xi_plus', f'source_{i}' , f'source_{j}')
+                xip = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+')
+                xim = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-')
+
+                # replace data values in the sacc object for the theory ones
+                ind_xip = s.indices('galaxy_shear_xi_plus', (f'source_{i}', f'source_{j}'))
+                ind_xim = s.indices('galaxy_shear_xi_minus', (f'source_{i}', f'source_{j}'))
+                for p, q in enumerate(ind_xip):
+                    s.data[q].value = xip[p]
+                for p, q in enumerate(ind_xim):
+                    s.data[q].value = xim[p]
+
+        for i in range(nbin_lens):
+            print(f"Computing theory density-density ({i},{i})")
+
+            # compute theory
+            cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{i}'], ell)
+            theta, *_  = s.get_theta_xi('galaxy_density_xi', f'lens_{i}' , f'lens_{i}')
+            wtheta = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
+
+            # replace data values in the sacc object for the theory ones
+            ind = s.indices('galaxy_density_xi', (f'lens_{i}', f'lens_{i}'))
+            for p, q in enumerate(ind):
+                s.data[q].value = wtheta[p]
+
+        for i in range(nbin_source):
+
+            for j in range(nbin_lens):
+                print(f"Computing theory lensing-density (S{i},L{j})")
+
+                # compute theory
+                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
+                theta, *_ = s.get_theta_xi('galaxy_shearDensity_xi_t', f'source_{i}' , f'lens_{j}')
+                gt = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GL')
+
+                ind = s.indices('galaxy_shearDensity_xi_t', (f'source_{i}', f'lens_{j}'))
+                for p, q in enumerate(ind):
+                    s.data[q].value = gt[p]
+
+
+        return s
+
+
+class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
+    """
+    Compute theory from CCL in Fourier space and save to a sacc file.
+    """
+    name='TXTwoPointTheoryFourier'
+    inputs = [
+        ('twopoint_data_fourier', SACCFile),
+        ('fiducial_cosmology', FiducialCosmology),  # For example lines
+    ]
+    outputs = [
+        ('twopoint_theory_fourier', SACCFile),
+    ]
+    
+
+    def run(self):
+        import sacc
+
+        filename = self.get_input('twopoint_data_fourier')
+        s = sacc.Sacc.load_fits(filename)
+
+        # TODO: when there is a better Cosmology serialization method
+        # switch to that
+        print("Manually specifying matter_power_spectrum and Neff")
+        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl(
+            matter_power_spectrum='halofit', Neff=3.046)
+        print(cosmo)
+
+        s_theory = self.replace_with_theory_fourier(s, cosmo)
+
+        # Remove covariance
+        s_theory.covariance = None
+        
+        # save the output to Sacc file
+        s_theory.save_fits(self.get_output('twopoint_theory_fourier'), overwrite=True)
+
+        
+    def read_nbin(self, s):
+        import sacc
+
+        cl_ee = sacc.standard_types.galaxy_shear_cl_ee
+        cl_density = sacc.standard_types.galaxy_density_cl
+
+        source_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(cl_ee):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        lens_tracers = set()
+        for b1, b2 in s.get_tracer_combinations(cl_density):
+            lens_tracers.add(b1)
+            lens_tracers.add(b2)
+
+
+        return len(source_tracers), len(lens_tracers)
+
+    
+    def replace_with_theory_fourier(self, s, cosmo):
+
+        import pyccl
+
+        nbin_source, nbin_lens = self.read_nbin(s)
+        tracers = self.get_ccl_tracers(s, cosmo)
+        
+        data_types = s.get_data_types()
+        if 'galaxy_shearDensity_cl_b' in data_types:
+            # Remove galaxy_shearDensity_cl_b measurement values
+            ind_b = s.indices('galaxy_shearDensity_cl_b')
+            s.remove_indices(ind_b)
+        if 'galaxy_shear_cl_bb' in data_types:
+            # Remove galaxy_shear_cl_bb  measurement values
+            ind_bb = s.indices('galaxy_shear_cl_bb')
+            s.remove_indices(ind_bb)
+
+        for i in range(nbin_source):
+            for j in range(i+1):
+                print(f"Computing theory lensing-lensing ({i},{j})")
+
+                # compute theory 
+                print(tracers[f'source_{i}'], tracers[f'source_{j}'])
+                ell, *_  = s.get_ell_cl('galaxy_shear_cl_ee', f'source_{i}' , f'source_{j}')
+                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
+
+                # replace data values in the sacc object for the theory ones
+                ind = s.indices('galaxy_shear_cl_ee', (f'source_{i}', f'source_{j}'))
+                for p, q in enumerate(ind):
+                    s.data[q].value = cl[p]
+                    
+                    
+        for i in range(nbin_lens):
+            print(f"Computing theory density-density ({i},{i})")
+
+            # compute theory
+            ell, *_  = s.get_ell_cl('galaxy_density_cl', f'lens_{i}' , f'lens_{i}')
+            cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{i}'], ell)
+
+            # replace data values in the sacc object for the theory ones
+            ind = s.indices('galaxy_density_cl', (f'lens_{i}', f'lens_{i}'))
+            for p, q in enumerate(ind):
+                s.data[q].value = cl[p]
+
+        for i in range(nbin_source):
+
+            for j in range(nbin_lens):
+                print(f"Computing theory lensing-density (S{i},L{j})")
+
+                # compute theory
+                ell, *_ = s.get_ell_cl('galaxy_shearDensity_cl_e', f'source_{i}' , f'lens_{j}')
+                cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'lens_{j}'], ell)
+
+                # replace data values in the sacc object for the theory ones
+                ind = s.indices('galaxy_shearDensity_cl_e', (f'source_{i}', f'lens_{j}'))
+                for p, q in enumerate(ind):
+                    s.data[q].value = cl[p]
+
+        return s
+
+    
+
+    
 class TXTwoPointPlots(PipelineStage):
     """
     Make n(z) plots
@@ -762,12 +1007,17 @@ class TXTwoPointPlots(PipelineStage):
         ('twopoint_data_real', SACCFile),
         ('fiducial_cosmology', FiducialCosmology),  # For example lines
         ('twopoint_gamma_x', SACCFile),
+        ('twopoint_theory_real', SACCFile),
     ]
     outputs = [
         ('shear_xi_plus', PNGFile),
         ('shear_xi_minus', PNGFile),
         ('shearDensity_xi', PNGFile),
         ('density_xi', PNGFile),
+        ('shear_xi_plus_ratio', PNGFile),
+        ('shear_xi_minus_ratio', PNGFile),
+        ('shearDensity_xi_ratio', PNGFile),
+        ('density_xi_ratio', PNGFile),
         ('shearDensity_xi_x', PNGFile),
     ]
 
@@ -790,7 +1040,7 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        cosmo = self.open_input('fiducial_cosmology', wrapper=True).to_ccl()
+        filename_theory = self.get_input('twopoint_theory_real')
 
         outputs = {
             "galaxy_density_xi": self.open_output('density_xi',
@@ -809,12 +1059,36 @@ class TXTwoPointPlots(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_real'], 
-            figures=figures, cosmo=cosmo, theory_labels=['Fiducial'])
+        full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures, 
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'])
 
         for fig in outputs.values():
             fig.close()
 
+        outputs = {
+            "galaxy_density_xi": self.open_output('density_xi_ratio',
+                figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
+
+            "galaxy_shearDensity_xi_t": self.open_output('shearDensity_xi_ratio',
+                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_xi_plus": self.open_output('shear_xi_plus_ratio',
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+
+            "galaxy_shear_xi_minus": self.open_output('shear_xi_minus_ratio',
+                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
+            
+        }
+
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures,
+                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'], ratios=True)
+
+        for fig in outputs.values():
+            fig.close()
+
+            
         filename = self.get_input('twopoint_gamma_x')
 
         outputs = {
@@ -1180,7 +1454,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear':False
@@ -1332,7 +1606,7 @@ class TXGammaTBrightStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'shot',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,
@@ -1500,7 +1774,7 @@ class TXGammaTDimStars(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,        
@@ -1669,7 +1943,7 @@ class TXGammaTRandoms(TXTwoPoint):
         'cores_per_task':20,
         'verbose':1,
         'reduce_randoms_size':1.0,
-        'var_methods': 'jackknife',
+        'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
         'subtract_mean_shear': False,

@@ -34,6 +34,23 @@ PZPDFMLZ:
     nz: 301
     zmax: 3.0
 
+PZRailTrain:
+    class_name: FZBoost
+    zmin: 0.0
+    zmax: 2.0
+    nzbins: 201
+    trainfrac: 0.75
+    bumpmin: 0.02
+    bumpmax: 0.35
+    nbump: 20
+    sharpmin: 0.7
+    sharpmax: 2.1
+    nsharp: 15
+    max_basis: 35
+    basis_system: cosine
+    regression_params: {'max_depth': 8,'objective':'reg:squarederror'}
+
+
 FlexZPipe:
     chunk_rows: 1000
     bands: ["u","g","r","i","z","y"]
@@ -95,11 +112,22 @@ TXMeanLensSelector:
     i_hi_cut: 21.9
     r_i_cut: 2.0
 
+TXModeLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
 TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
-    binslop: 0.1
+    bin_slop: 0.1
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
