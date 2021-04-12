@@ -408,7 +408,13 @@ class TXSourceSelector(PipelineStage):
             group.create_dataset('R_S_2d', (2,2), dtype='f')
             group.create_dataset('R_gamma_mean_2d', (2,2), dtype='f')
             group.create_dataset('R_total_2d', (2,2), dtype='f')
-        else:
+        elif self.config['shear_catalog_type']=='lensfit':
+            group = outfile.create_group('response')
+            group.create_dataset('K', (nbin_source,), dtype='f')
+            group.create_dataset('C', (nbin_source,1,2), dtype='f')
+            group.create_dataset('K_2d', (1,), dtype='f')
+            group.create_dataset('C_2d', (1,2), dtype='f')
+        else self.config['shear_catalog_type']=='hsc':
             group = outfile.create_group('response')
             group.create_dataset('R', (n,), dtype='f')
             group.create_dataset('K', (nbin_source,), dtype='f')
