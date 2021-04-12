@@ -134,7 +134,7 @@ class MetacalCalculator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
-    At the end an MPI communuicator can be supplied to collect together
+    At the end an MPI communicator can be supplied to collect together
     the results from the different processes.
 
     To do this we need the function used to select the data, and the instance
@@ -358,7 +358,12 @@ class LensfitCalculator:
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
-        self.K.add_data(0, K, w)
+        if input_m_is_weighted==True:
+            # if the m values are already weighted don't use the weights here
+            self.K.add_data(0, K)
+        else:
+            # if not apply the weights
+            self.K.add_data(0, K, w)
         self.C.add_data(0, g1, w)
         self.C.add_data(1, g2, w)
         self.count += w.size
