@@ -196,8 +196,7 @@ class MetaCalibrator(Calibrator):
 
 
 class LensfitCalibrator(Calibrator):
-    def __init__(self, R, K, c):
-        self.R = R
+    def __init__(self, K, c):
         self.K = K
         self.c = c
 
@@ -227,21 +226,22 @@ class LensfitCalibrator(Calibrator):
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][0]
 
-            R = f["response/R_mean"][:]
-            R_2d = f["response/R_mean_2d"][0]
-
             C = f["response/C"][:, 0, :]
             C_2d = f["response/C_2d"][0]
 
         n = len(K)
-        calibrators = [cls(R[i], K[i], C[i]) for i in range(n)]
-        calibrator2d = cls(R_2d, K_2d, C_2d)
+        calibrators = [cls(K[i], C[i]) for i in range(n)]
+        calibrator2d = cls(K_2d, C_2d)
         return calibrators, calibrator2d
 
     def apply(self, g1, g2, subtract_mean=True):
         """
-        Calibrate a set of shears using the lensfit R, K, and c terms:
-        g -> (g/R - c) / (1 + K)
+        For KiDS (see Joachimi et al., 2020, arXiv:2007.01844):
+        Appendix C, equation C.4 and C.5
+        Correcting for multiplicative shear calibration.
+        Additionally optionally correct for residual additive bias (true
+        for KiDS-1000 and KV450.)
+
 
         The c term is only included if subtract_mean = True
 
@@ -258,11 +258,11 @@ class LensfitCalibrator(Calibrator):
         """
 
         if subtract_mean:
-            g1 = (g1 / self.R - self.c[0]) / (1 + self.K)
-            g2 = (g2 / self.R - self.c[1]) / (1 + self.K)
+            g1 = (g1 - self.c[0]) / (1 + self.K)
+            g2 = (g2 - self.c[1]) / (1 + self.K)
         else:
-            g1 = (g1 / self.R) / (1 + self.K)
-            g2 = (g2 / self.R) / (1 + self.K)
+            g1 = (g1) / (1 + self.K)
+            g2 = (g2) / (1 + self.K)
         return g1, g2
 
 class HSCCalibrator(Calibrator):
