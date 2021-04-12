@@ -236,7 +236,7 @@ class LensfitCalibrator(Calibrator):
         calibrator2d = cls(R_2d, K_2d, C_2d)
         return calibrators, calibrator2d
 
-    def apply(self, g1, g2, subtract_mean=True):
+    def apply(self, g1, g2, subtract_mean=True, convention=None):
         """
         Calibrate a set of shears using the lensfit R, K, and c terms:
         g -> (g/R - c) / (1 + K)
@@ -254,10 +254,16 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
-        if subtract_mean:
-            g1 = (g1 / self.R - self.c[0]) / (1 + self.K)
-            g2 = (g2 / self.R - self.c[1]) / (1 + self.K)
+        if convention=='hsc':
+            fac = 2
+        elif convention=='lensfit':
+            fac = 1
         else:
-            g1 = (g1 / self.R) / (1 + self.K)
-            g2 = (g2 / self.R) / (1 + self.K)
+
+        if subtract_mean:
+            g1 = (g1 / fac*self.R - self.c[0]) / (1 + self.K)
+            g2 = (g2 / fac*self.R - self.c[1]) / (1 + self.K)
+        else:
+            g1 = (g1 / fac*self.R) / (1 + self.K)
+            g2 = (g2 / fac*self.R) / (1 + self.K)
         return g1, g2
