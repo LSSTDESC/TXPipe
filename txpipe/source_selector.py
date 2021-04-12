@@ -348,6 +348,8 @@ class TXSourceSelector(PipelineStage):
             R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
             R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
             R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        elif self.config['shear_catalog_type']=='lensfit':
+            R = 1.0
         else:
             w_tot = np.sum(data['weight'])
             R[:] =  np.array([1. - np.sum(data['weight']*data['sigma_e'])/w_tot]*len(data['weight']))
@@ -455,7 +457,7 @@ class TXSourceSelector(PipelineStage):
         if self.config['shear_catalog_type']=='metacal':
             group = outfile['metacal_response']
             group['R_gamma'][start:end,:,:] = R
-        else:
+        elif self.config['shear_catalog_type']=='hsc':
             group = outfile['response']
             group['R'][start:end] = R
 
@@ -514,8 +516,8 @@ class TXSourceSelector(PipelineStage):
                 # Collect the overall calibration
                 K[i], C[i], N[i] = cal.collect(self.comm)
 
-                mean_e1[i] = C[i,0]
-                mean_e2[i] = C[i,1]
+                mean_e1[i] = C[i][0][0]
+                mean_e2[i] = C[i][0][1]
 
                 # This also needs checking.
                 sigma_e[i] = np.sqrt(
@@ -547,8 +549,8 @@ class TXSourceSelector(PipelineStage):
             K_2d, C_2d, N_2d = cal2d.collect(self.comm)
 
             # should probably use one of the calibration_tools functions
-            mean_e1_2d = K_2d[i,0]
-            mean_e2_2d = K_2d[i,1]
+            mean_e1_2d = C_2d[0]
+            mean_e2_2d = C_2d[1]
             # non-tomo sigma_e in lensfit
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))
@@ -560,8 +562,8 @@ class TXSourceSelector(PipelineStage):
             R_scalar_2d, K_2d, C_2d, N_2d = cal2d.collect(self.comm)
 
             # should probably use one of the calibration_tools functions
-            mean_e1_2d = K_2d[i,0]
-            mean_e2_2d = K_2d[i,1]
+            mean_e1_2d = C_2d[0][0]
+            mean_e2_2d = C_2d[0][1]
             # non-tomo sigma_e in lensfit
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))

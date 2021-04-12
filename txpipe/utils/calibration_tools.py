@@ -306,7 +306,7 @@ class LensfitCalculator:
     the results from the different processes.
 
     """
-    def __init__(self, selector):
+    def __init__(self, selector, input_m_is_weighted=True):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -328,6 +328,7 @@ class LensfitCalculator:
         self.K = ParallelMean(1)
         self.C = ParallelMean(2)
         self.count = 0
+        self.input_m_is_weighted = input_m_is_weighted
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -358,7 +359,7 @@ class LensfitCalculator:
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
-        if input_m_is_weighted==True:
+        if self.input_m_is_weighted==True:
             # if the m values are already weighted don't use the weights here
             self.K.add_data(0, K)
         else:
