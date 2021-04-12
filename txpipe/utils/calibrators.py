@@ -334,6 +334,6 @@ class HSCCalibrator(Calibrator):
             g1 = (g1 / (2 * self.R) - self.c[0]) / (1 + self.K)
             g2 = (g2 / (2 * self.R) - self.c[1]) / (1 + self.K)
         else:
-            g1 = (g1 / (2 * self.R) / (1 + self.K)
-            g2 = (g2 / (2 * self.R) / (1 + self.K)
+            g1 = (g1 / (2 * self.R) )/ (1 + self.K)
+            g2 = (g2 / (2 * self.R) )/ (1 + self.K)
         return g1, g2
