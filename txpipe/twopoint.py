@@ -44,6 +44,7 @@ class TXTwoPoint(PipelineStage):
         'nbins':9,
         'bin_slop':0.0,
         'sep_units':'arcmin',
+        'flip_g1':False,
         'flip_g2':True,
         'cores_per_task':20,
         'verbose':1,
@@ -390,6 +391,8 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            flip_g1 = self.config["flip_g1"],
+            flip_g2 = self.config["flip_g2"],
         )
         return cat
 
