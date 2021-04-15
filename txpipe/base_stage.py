@@ -13,6 +13,20 @@ class PipelineStage(PipelineStageBase):
     def run(self):
         print("Please do not execute this stage again.")
 
+    def memory_report(self, tag=None):
+        import psutil
+        import datetime
+        import socket
+        t = datetime.datetime.now()
+        mem = psutil.virtual_memory()
+        avail = mem.available / 1024**3
+        total = mem.total / 1024**3
+        if tag is None:
+            tag = ""
+        else:
+            tag = f" {tag}:"
+        host = socket.gethostname()
+        print(f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB")
 
     def combined_iterators(self, rows, *inputs, parallel=True):
         if not len(inputs) % 3 == 0:

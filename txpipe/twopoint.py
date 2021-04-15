@@ -6,6 +6,7 @@ import numpy as np
 import random
 import collections
 import sys
+import pathlib
 from time import perf_counter
 
 # This creates a little mini-type, like a struct,
@@ -17,7 +18,6 @@ Measurement = collections.namedtuple(
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
-
 
 
 class TXTwoPoint(PipelineStage):
@@ -77,6 +77,13 @@ class TXTwoPoint(PipelineStage):
         # Choose which pairs of bins to calculate
         calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
+
+
+        #self.prepare_patches(calcs)
+        #print("Early exit.")
+        #return
+        #print("OVERRIDING CALCS")
+        #calcs = [(0, 0, SHEAR_POS), (0, 0, POS_POS)]
 
         # This splits the calculations among the parallel bins
         # It's not necessarily the most optimal way of doing it
@@ -355,8 +362,9 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
+        import gc
 
-
+        self.memory_report(f"Starting calculation {i},{j},{k}")
         if k==SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -368,15 +376,49 @@ class TXTwoPoint(PipelineStage):
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
+        gc.collect()
+        self.memory_report(f"Done calculation {i},{j},{k}")
 
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
         return result
 
+    def prepare_patches(self, calcs):
+        if self.rank != 0:
+            return
+        done = set()
+        def do(h, k):
+            if (h, k) in done:
+                return
+            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+            if k == SHEAR_SHEAR:
+                cat = self.get_shear_catalog(h)
+                cat.get_patches(low_mem=False)
+            else:
+                cat = self.get_lens_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
+                ran_cat = self.get_random_catalog(h)
+                ran_cat.get_patches(low_mem=False)
+            done.add((h, k))
+
+        for i, j, k in calcs:
+            if k == SHEAR_SHEAR:
+                do(i, SHEAR_SHEAR)
+                do(j, SHEAR_SHEAR)
+            elif k == SHEAR_POS:
+                do(i, SHEAR_SHEAR)
+                do(j, SHEAR_POS)
+            elif k == POS_POS:
+                do(i, POS_POS)
+                do(j, POS_POS)
 
     def get_shear_catalog(self, i):
         import treecorr
+
+        patch_dir = f'patches/shear/{i}'
+        pathlib.Path(patch_dir).mkdir(exist_ok=True)
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
@@ -390,12 +432,17 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=patch_dir,
         )
+        
         return cat
 
 
     def get_lens_catalog(self, i):
         import treecorr
+
+        patch_dir = f'patches/lens/{i}'
+        pathlib.Path(patch_dir).mkdir(exist_ok=True)
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
@@ -407,6 +454,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=patch_dir,
         )
         return cat
 
@@ -414,6 +462,9 @@ class TXTwoPoint(PipelineStage):
         import treecorr
         if not self.config["use_randoms"]:
             return None
+
+        patch_dir = f'patches/randoms/{i}'
+        pathlib.Path(patch_dir).mkdir(exist_ok=True)
 
         rancat = treecorr.Catalog(
             self.get_input("binned_random_cats"),
@@ -423,6 +474,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=patch_dir,
         ) 
         return rancat
 
@@ -468,11 +520,11 @@ class TXTwoPoint(PipelineStage):
 
         ng = treecorr.NGCorrelation(self.config)
         t1 = perf_counter()
-        ng.process(cat_j, cat_i, comm=self.comm)
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
 
         if rancat_j:
             rg = treecorr.NGCorrelation(self.config)
-            rg.process(rancat_j, cat_i, comm=self.comm)
+            rg.process(rancat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
         else:
             rg = None
 
@@ -482,7 +534,6 @@ class TXTwoPoint(PipelineStage):
             t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
-        
         return ng
 
 
@@ -512,24 +563,25 @@ class TXTwoPoint(PipelineStage):
         t1 = perf_counter()
 
         nn = treecorr.NNCorrelation(self.config)
-        nn.process(cat_i, cat_j, comm=self.comm)
+        nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         nr = treecorr.NNCorrelation(self.config)
-        nr.process(cat_i, rancat_j, comm=self.comm)
+        nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm)
+        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if i==j:
             rn = None
         else:
             rn = treecorr.NNCorrelation(self.config)
-            rn.process(rancat_i, cat_j, comm=self.comm)
+            rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if self.rank == 0:
             t2 = perf_counter()
             nn.calculateXi(rr, dr=nr, rd=rn)
             print(f"Processing took {t2 - t1:.1f} seconds")            
+
         return nn
 
 
