@@ -13,6 +13,8 @@ python_paths:
 
 stages:
     - name: TXSourceSelector
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
     - name: TXSourceMaps
     - name: TXAuxiliaryMaps
     - name: TXSimpleMask
@@ -22,14 +24,14 @@ stages:
     - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
-    - name: TXTwoPointLensCat
+    - name: TXTwoPoint
     - name: TXNullBlinding
     - name: TXRealGaussianCovariance
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointPlots
 
-output_dir: examples/comparison/old_output
-config: examples/comparison/old_config.yml
+output_dir: examples/comparison/new_output
+config: examples/comparison/new_config.yml
 
 
 inputs:
@@ -38,8 +40,9 @@ inputs:
     photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
     redmagic_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
     fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
 
 
 resume: True
-log_dir: examples/comparison/old_logs
-pipeline_log: examples/comparison/old_log.txt
+log_dir: examples/comparison/new_logs
+pipeline_log: examples/comparison/new_log.txt

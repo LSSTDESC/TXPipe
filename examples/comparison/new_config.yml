@@ -18,6 +18,14 @@ TXSourceSelector:
     true_z: False
     shear_prefix: mcal_
 
+
+TXShearCalibration:
+    use_true_shear: True
+    subtract_mean_shear: False
+
+TXLensCatalogSplitter: {}
+
+
 TXSourceMaps: {}
 
 
