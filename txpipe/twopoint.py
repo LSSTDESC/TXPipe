@@ -845,18 +845,19 @@ class TXTwoPointTheoryReal(PipelineStage):
                     s.data[q].value = xim[p]
 
         for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
+            for j in range(i+1):
+                print(f"Computing theory density-density ({i},{j})")
 
-            # compute theory
-            cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{i}'], ell)
-            theta, *_  = s.get_theta_xi('galaxy_density_xi', f'lens_{i}' , f'lens_{i}')
-            wtheta = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
+                # compute theory
+                cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{j}'], ell)
+                theta, *_  = s.get_theta_xi('galaxy_density_xi', f'lens_{i}' , f'lens_{j}')
+                wtheta = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
 
-            # replace data values in the sacc object for the theory ones
-            ind = s.indices('galaxy_density_xi', (f'lens_{i}', f'lens_{i}'))
-            for p, q in enumerate(ind):
-                s.data[q].value = wtheta[p]
-
+                # replace data values in the sacc object for the theory ones
+                ind = s.indices('galaxy_density_xi', (f'lens_{i}', f'lens_{j}'))
+                for p, q in enumerate(ind):
+                    s.data[q].value = wtheta[p]
+ 
         for i in range(nbin_source):
 
             for j in range(nbin_lens):
