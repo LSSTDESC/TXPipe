@@ -4,7 +4,6 @@ from .utils.mpi_utils import in_place_reduce
 import numpy as np
 import warnings
 
-
 class Stack:
     def __init__(self, name, z, nbin):
         """
@@ -54,13 +53,17 @@ class Stack:
         z: array[float]
             The redshift per object
         """
+        # here self.z are the edges of the bins the nz will have. 
         stack_bin = np.digitize(z, self.z)
         for b in range(self.nbin):
             w = np.where(bins==b)
             stack_bin_b = stack_bin[w]
             for i in stack_bin_b:
                 if 0 <= i < self.nz:
-                    self.stack[b][i] += 1
+                    # digitize returns numbers between 1 and len(self.z)-1
+                    # that is why we need to subtract 1 here, since the
+                    # minimum value of i will be 1. 
+                    self.stack[b][i-1] += 1
                     self.counts[b] += 1
 
     def save(self, outfile, comm=None):
@@ -97,13 +100,15 @@ class Stack:
         group.attrs["nbin"] = self.nbin
         group.attrs["nz"] = len(self.z)
 
-        # Save the redshift sampling
-        group.create_dataset("z", data=self.z)
+        # Save the redshift sampling. Adding half a bin here to save the mean z.
+        # remove the last item when converting from edges to mean.
+        group.create_dataset("z", data=self.z[:-1]+(self.z[2]-self.z[1])/2.)
         
         # And all the bins separately
         for b in range(self.nbin):
             group.attrs[f"count_{b}"] = self.counts[b]
-            group.create_dataset(f"bin_{b}", data=self.stack[b])
+            # remove the last item
+            group.create_dataset(f"bin_{b}", data=self.stack[b][:-1])
 
 
 
