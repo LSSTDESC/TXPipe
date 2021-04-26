@@ -26,7 +26,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
     It requires estimating 3d two-point correlations. We calculate the 
     galaxy - galaxy lensing auto-correlation in each source bin.
     We do this twice, once we add a selection-function, such that we only selects 
-    the pairs where we have the shear object in front of the object used for density. 
+    the pairs where we have the shear object in front of the object used for density,
+    these are the pairs we would expect should not contribute to the actual signal.  
     Once without imposing this selection funciton. 
     """
     name = 'TXSelfCalibrationIA'
@@ -79,7 +80,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         
         if self.config['do_shear_pos']:
             k = SHEAR_POS
-            l = SHEAR_POS_SELECT
+            l = SHEAR_POS_SELECT # adding extra calls to do the selection function version for the shear_position. 
             for i in source_list:
                 calcs.append((i,i,k))
                 calcs.append((i,i,l))
@@ -174,7 +175,6 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import pyccl as ccl
 
         #Note that we are here actually loading the source bin as the lens bin!
-        #mask = data['source_bin'] == i
         g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
 
         
@@ -265,7 +265,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                     dec = data['dec'][mask],
                     ra_units='degree', dec_units='degree',
                     patch_centers=patch_centers)
-                    #npatch=self.config['npatch'])
+
             else:
                 cat = treecorr.Catalog(
                     g1 = g1,
@@ -284,7 +284,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                     dec = data['dec'][mask],
                     ra_units='degree', dec_units='degree',
                     patch_centers=patch_centers)
-                    #npatch=self.config['npatch'])
+
             else:
                 cat = treecorr.Catalog(
                     g1 = g1,
@@ -298,6 +298,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
     def calculate_shear_pos_select(self,data, meta, i, j):
         # This is the added calculation that uses the selection function, as defined in our paper. it picks
         # out all the pairs where the object in the source catalog is in front of the lens object. 
+        # Again the pairs picked out, are the pairs that should not be there. 
         # note we are looking at auto-correlations for the source bins!
         import treecorr 
 
@@ -308,9 +309,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
-
-        ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+        print(f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+        
+        ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)    # The max_rpar = 0.0, is in fact the same as our selection function. 
         ng.process(cat_j, cat_i)
 
         if rancat_j:
@@ -357,7 +358,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         elif k==SHEAR_POS:
             xx = self.calculate_shear_pos(data, meta, i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
-        elif k==SHEAR_POS_SELECT:
+        elif k==SHEAR_POS_SELECT: #added the call to the selection function calculation.
             xx = self.calculate_shear_pos_select(data, meta, i, j)
             xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
@@ -378,9 +379,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        # We define a new sacc data type for our selection function results.
         GAMMATS = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         WTHETA = sacc.standard_types.galaxy_density_xi
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
+        # We must add these new data types for both the ts result and the xs. 
         GAMMAXS = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='xs')
 
         S = sacc.Sacc()
@@ -453,10 +456,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
-
+        self.write_metadata(S,meta)
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output('twopoint_data_SCIA'), overwrite=True)
 
+        # In the case we do shear_position we can also look at the gamma_x product,
+        # We expect this to be a null test, but it should still be saved. To not mess with
+        # how the covariance is structured we save these in a seperate file here.  
         if self.config['do_shear_pos'] == True:
             comb = []
             for d in results:
