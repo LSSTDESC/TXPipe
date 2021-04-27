@@ -311,11 +311,21 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         print(f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
         
-        ng = treecorr.NGCorrelation(self.config, max_rpar = 0.0)    # The max_rpar = 0.0, is in fact the same as our selection function. 
+        # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
+        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
+        r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
+        a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
+        Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
+        config = self.config # copying the cofiguration options, so we don't overwrite the original configuration!
+        config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
+        config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+        #Notice we are now calling config instead of self.config!
+        ng = treecorr.NGCorrelation(config, max_rpar = 0.0)    # The max_rpar = 0.0, is in fact the same as our selection function. 
         ng.process(cat_j, cat_i)
 
         if rancat_j:
-            rg = treecorr.NGCorrelation(self.config, max_rpar = 0.0)
+            rg = treecorr.NGCorrelation(config, max_rpar = 0.0)
             rg.process(rancat_j, cat_i)
         else:
             rg = None
@@ -336,11 +346,21 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
-        ng = treecorr.NGCorrelation(self.config)
+        # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
+        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
+        r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
+        a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
+        Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
+        config = self.config # copying the cofiguration options, so we don't overwrite the original configuration!
+        config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
+        config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+        #Notice we are now calling config instead of self.config!
+        ng = treecorr.NGCorrelation(config)
         ng.process(cat_j, cat_i)
 
         if rancat_j:
-            rg = treecorr.NGCorrelation(self.config)
+            rg = treecorr.NGCorrelation(config)
             rg.process(rancat_j, cat_i)
         else:
             rg = None
