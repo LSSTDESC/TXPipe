@@ -310,8 +310,6 @@ class TXSelfCalibrationIA(TXTwoPoint):
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
-        
         # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
         cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
         r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
@@ -320,6 +318,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
         config = self.config # copying the cofiguration options, so we don't overwrite the original configuration!
         config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+
+        print(f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms 
+                \nWith seperations min {config['min_sep']} and max {config['max_sep']}")
 
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config, max_rpar = 0.0)    # The max_rpar = 0.0, is in fact the same as our selection function. 
@@ -338,7 +340,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
     def calculate_shear_pos(self, data, meta, i, j):
         import treecorr
         import pyccl as ccl 
-        
+
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
@@ -346,7 +348,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+        
 
         # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
         cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
@@ -356,6 +358,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
         config = self.config # copying the cofiguration options, so we don't overwrite the original configuration!
         config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms
+                \nWith seperations min {config['min_sep']} and max {config['max_sep']}")
 
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config)
