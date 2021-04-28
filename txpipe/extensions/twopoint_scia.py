@@ -301,6 +301,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         # Again the pairs picked out, are the pairs that should not be there. 
         # note we are looking at auto-correlations for the source bins!
         import treecorr 
+        import pyccl as ccl
 
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
@@ -336,7 +337,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
     def calculate_shear_pos(self, data, meta, i, j):
         import treecorr
-
+        import pyccl as ccl 
+        
         cat_i = self.get_shear_catalog(data, meta, i)
         n_i = cat_i.nobj
 
