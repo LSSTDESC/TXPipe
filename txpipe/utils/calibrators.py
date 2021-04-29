@@ -256,10 +256,11 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
+        print(self.c)
 
         if subtract_mean:
-            g1 = (g1 - self.c[0]) / (1 + self.K)
-            g2 = (g2 - self.c[1]) / (1 + self.K)
+            g1 = (g1 - self.c[0][0]) / (1 + self.K)
+            g2 = (g2 - self.c[0][1]) / (1 + self.K)
         else:
             g1 = (g1) / (1 + self.K)
             g2 = (g2) / (1 + self.K)
@@ -304,7 +305,7 @@ class HSCCalibrator(Calibrator):
         calibrator2d = cls(R_2d, K_2d)
         return calibrators, calibrator2d
 
-    def apply(self, g1, g2):
+    def apply(self, g1, g2, c1, c2):
         """
         For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
         gi = 1/(1 + mhat)[ei/(2R) - ci] (Eq. (A6) in Mandelbaum et al., 2018)

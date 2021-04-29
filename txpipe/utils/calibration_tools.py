@@ -529,9 +529,12 @@ class MeanShearInBins:
 
         if shear_catalog_type=='metacal':
             self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
-        else:
+        elif shear_catalog_type=='lensfit':
             self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
-
+        elif shear_catalog_type=='hsc':
+            self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
+        else:
+            raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
         x = data[self.x_name]
@@ -548,12 +551,15 @@ class MeanShearInBins:
             if self.shear_catalog_type=='metacal':
                 self.g1.add_data(i, data['mcal_g1'][w], weight)
                 self.g2.add_data(i, data['mcal_g2'][w], weight)
-            else:
+            elif self.shear_catalog_type=='lensfit':
+                self.g1.add_data(i, data['g1'][w], weight)
+                self.g2.add_data(i, data['g2'][w], weight)
+            elif self.shear_catalog_type=='hsc':
                 self.g1.add_data(i, data['g1'][w], weight)
                 self.g2.add_data(i, data['g2'][w], weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
-    def collect(self, comm=None):
+    def collect(self, data, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode='gather')
         count2, g2, var2 = self.g2.collect(comm, mode='gather')
         _, mu = self.x.collect(comm, mode='gather')
@@ -569,9 +575,12 @@ class MeanShearInBins:
                 r, s, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r+s)
+            elif self.shear_catalog_type=='lensfit':
+                k, c, _ = self.calibrators[i].collect(comm)
+                K.append(k)
+                C.append(c)
             else:
-                r, k, c, _ = self.calibrators[i].collect(comm)
-                R.append(r)
+                r, k, _ = self.calibrators[i].collect(comm)
                 K.append(k)
                 C.append(c)
 
@@ -594,9 +603,16 @@ class MeanShearInBins:
                 # Apply the matrix in full to the shears and errors
                 g1[i], g2[i] = R_inv @ g
                 sigma1[i], sigma2[i] = R_inv @ sigma
-            else:
-                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0])
-                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][1])
+            elif self.shear_catalog_type=='lensfit':
+                g1[i] = g1[i]*(1./(1+K[i]))
+                g2[i] = g2[i]*(1./(1+K[i]))
+                # JZ should the C be in here? It's a variance so seems
+                # a bit odd to subtract something off
+                sigma1[i] = (1./(1+K[i]))*(sigma[0])
+                sigma2[i] = (1./(1+K[i]))*(sigma[1])
+            elif self.shear_catalog_type=='hsc':
+                g1[i] = (g1[i] / (2 * R[i]) - data['c1'][w])/ (1 + self.K)
+                g2[i] = (g2[i] / (2 * R[i]) - data['c2'][w])/ (1 + self.K)
                 # JZ should the C be in here? It's a variance so seems
                 # a bit odd to subtract something off
                 sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0])
