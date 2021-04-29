@@ -320,8 +320,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
 
 
-        print(f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms" \ 
-                f"With seperations min {config['min_sep']} and max {config['max_sep']}, mean redshift of bin {1/(1+ a_i)}")
+        print(f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms" 
+                f"\n With seperations min {config['min_sep']} and max {config['max_sep']}, mean redshift of bin {1/(1+ a_i)}")
 
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config, max_rpar = 0.0)    # The max_rpar = 0.0, is in fact the same as our selection function. 
@@ -359,8 +359,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
 
-        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms" \
-                f"With seperations min {config['min_sep']} and max {config['max_sep']}, mean redshift of bin {1/(1+ a_i)}")
+        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms" 
+                f"\n With seperations min {config['min_sep']} and max {config['max_sep']}, mean redshift of bin {1/(1+ a_i)}")
 
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config)
