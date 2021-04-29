@@ -266,10 +266,9 @@ class LensfitCalibrator(Calibrator):
         return g1, g2
 
 class HSCCalibrator(Calibrator):
-    def __init__(self, R, K, c):
+    def __init__(self, R, K):
         self.R = R
         self.K = K
-        self.c = c
 
     @classmethod
     def load(cls, tomo_file):
@@ -300,15 +299,12 @@ class HSCCalibrator(Calibrator):
             R = f["response/R_mean"][:]
             R_2d = f["response/R_mean_2d"][0]
 
-            C = f["response/C"][:, 0, :]
-            C_2d = f["response/C_2d"][0]
-
         n = len(K)
-        calibrators = [cls(R[i], K[i], C[i]) for i in range(n)]
-        calibrator2d = cls(R_2d, K_2d, C_2d)
+        calibrators = [cls(R[i], K[i]) for i in range(n)]
+        calibrator2d = cls(R_2d, K_2d)
         return calibrators, calibrator2d
 
-    def apply(self, g1, g2, subtract_mean=True):
+    def apply(self, g1, g2):
         """
         For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
         gi = 1/(1 + mhat)[ei/(2R) - ci] (Eq. (A6) in Mandelbaum et al., 2018)
@@ -326,14 +322,16 @@ class HSCCalibrator(Calibrator):
         g2: array or float
             Shear 2 component
 
+        c1: array or float
+            Shear 1 additive bias component
+
+        c2: array or float
+            Shear 2 additive bias component
+
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
 
-        if subtract_mean:
-            g1 = (g1 / (2 * self.R) - self.c[0]) / (1 + self.K)
-            g2 = (g2 / (2 * self.R) - self.c[1]) / (1 + self.K)
-        else:
-            g1 = (g1 / (2 * self.R) )/ (1 + self.K)
-            g2 = (g2 / (2 * self.R) )/ (1 + self.K)
+        g1 = (g1 / (2 * self.R) - c1)/ (1 + self.K)
+        g2 = (g2 / (2 * self.R) - c2)/ (1 + self.K)
         return g1, g2

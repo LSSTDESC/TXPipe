@@ -437,7 +437,6 @@ class HSCCalculator:
         # together over all the processes
         self.K = ParallelMean(1)
         self.R = ParallelMean(1)
-        self.C = ParallelMean(2)
         self.count = 0
 
     def add_data(self, data, *args, **kwargs):
@@ -465,15 +464,11 @@ class HSCCalculator:
         w = data['weight'][sel]
         K = 1 + data['m'][sel]
         R = 1 - data['sigma_e'][sel] ** 2
-        c1 = data['c1'][sel]
-        c2 = data['c2'][sel]
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
         self.R.add_data(0, R, w)
         self.K.add_data(0, K, w)
-        self.C.add_data(0, c1, w)
-        self.C.add_data(1, c2, w)
         self.count += w.size
 
         return sel
@@ -497,9 +492,6 @@ class HSCCalculator:
         K: float
             K = (1+m) calibration
 
-        C: float array
-            c1, c2 additive biases
-
         S: 2x2 array
             Selection bias matrix
 
@@ -514,10 +506,9 @@ class HSCCalculator:
         # processes and over all the chunks of data
         _, R = self.R.collect(comm)
         _ ,K = self.K.collect(comm)
-        _, C = self.C.collect(comm)
         N = self.count
 
-        return R, K, C, N
+        return R, K, N
 
 
 
