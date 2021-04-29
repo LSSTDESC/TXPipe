@@ -129,7 +129,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         if self.config['3Dcoords']:
             #Temporary fix for not running PDF's on DES
             if self.config['redshift_shearcatalog']:
-                data['mu'] = g['mean_z']
+                data['mu'] = g['mean_z'][:]
             else: 
                 h = self.open_input('photoz_pdfs')
                 g = h['point_estimates']
