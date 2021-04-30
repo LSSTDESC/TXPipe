@@ -315,7 +315,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
         a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
         Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
-        config = self.config # copying the cofiguration options, so we don't overwrite the original configuration!
+        config = self.config.copy() # copying the cofiguration options, so we don't overwrite the original configuration!
         config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
 
@@ -355,7 +355,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
         a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
         Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
-        config = self.config # copying the cofiguration options, so we don't overwrite the original configuration!
+        config = self.config.copy() # copying the cofiguration options, so we don't overwrite the original configuration!
         config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
 
