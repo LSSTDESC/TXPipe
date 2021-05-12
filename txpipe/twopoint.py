@@ -1,3 +1,4 @@
+from multiprocessing import Value
 from .base_stage import PipelineStage
 from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
@@ -564,7 +565,113 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
-    
+# Aperture Mass class that inherits from TXTwoPoint
+class TXApertureMass(TXTwoPoint):
+
+    name='TXApertureMass'
+    inputs = [
+        ('calibrated_shear_catalog', ShearCatalog),
+        ('calibrated_lens_catalog', HDFFile),
+        ('shear_photoz_stack', HDFFile),
+        ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
+    ]
+    outputs = [
+        ('aperturemass_data', SACCFile),
+    ]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        'calcs': [0,1,2],
+        'min_sep': 0.5,
+        'max_sep': 300.,
+        'nbins': 15, # MEAD: Changed default from 9 -> 15
+        'bin_slop': 0.02,
+        'sep_units': 'arcmin',
+        'flip_g1': False,
+        'flip_g2': True,
+        'cores_per_task': 20,
+        'verbose': 1,
+        'source_bins': [-1],
+        'lens_bins': [-1],
+        'reduce_randoms_size': 1.0,
+        'var_method': 'jackknife',
+        'use_true_shear': False,
+        'subtract_mean_shear': False,
+        'use_randoms': False,
+        'low_mem': False,
+        }
+
+    def select_calculations(self, source_list, lens_list):
+
+        # For shear-shear we omit pairs with j>i
+        calcs = []
+        k = SHEAR_SHEAR
+        for i in source_list:
+            for j in range(i+1):
+                if j in source_list:
+                    calcs.append((i,j,k))
+
+        if self.rank==0:
+            print(f"Running these calculations: {calcs}")
+
+        return calcs
+
+    def calculate_shear_shear(self, i, j):
+
+        gg = TXTwoPoint.calculate_shear_shear(self, i, j)
+        gg.Map = gg.calculateMapSq() # MEAD: Rename gg.Map to something more informative
+
+        return gg
+
+    def write_output(self, source_list, lens_list, meta, results):
+
+        import sacc
+
+        # Names for aperture-mass correlation functions
+        MAPSQ = "mapsq"
+        MAPSQ_IM = "mapsq_im"
+        MXSQ = "mxsq"
+        MXSQ_IM = "mxsq_im"
+
+        # Initialise SACC object
+        S = sacc.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
+        f = self.open_input('shear_photoz_stack')
+        for i in source_list:
+            z = f['n_of_z/source/z'][:]
+            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            S.add_tracer('NZ', f'source_{i}', z, Nz)
+        f.close()
+
+        # Now build up the collection of data points, adding them all to the sacc
+        for d in results:
+
+            # First the tracers and generic tags
+            tracer1 = f'source_{d.i}'
+            tracer2 = f'source_{d.j}'
+
+            theta = np.exp(d.object.meanlogr) # MEAD: Double check that this is correct for Map
+            weight = d.object.weight
+            err = np.sqrt(d.object.Map[4])
+            n = len(theta)
+            for j, CORR in enumerate([MAPSQ, MAPSQ_IM, MXSQ, MXSQ_IM]):
+                map = d.object.Map[j]
+                for i in range(n):
+                    S.add_data_point(CORR, (tracer1, tracer2), map[i],
+                        theta=theta[i], error=err[i], weight=weight[i])
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        self.write_metadata(S, meta)
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('aperturemass_data'), overwrite=True)
 
     
 class TXTwoPointPlots(PipelineStage):
