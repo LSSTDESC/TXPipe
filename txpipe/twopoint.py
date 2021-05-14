@@ -2129,12 +2129,12 @@ class TXJackknifeCenters(PipelineStage):
         npatch=self.config['npatch']
         every_nth = self.config['every_nth']
         print(f"generating {npatch} centers")
-        ra = group['ra'][::every_nth]
-        dec = group['dec'][::every_nth]
+        #ra = group['ra'][::every_nth]
+        #dec = group['dec'][::every_nth]
         cat = treecorr.Catalog(ra = ra,
                                 dec = dec,
                                 ra_units='degree', dec_units = 'degree',
-                                #every_nth = self.config['every_nth'],
+                                every_nth = self.config['every_nth'],
                                 npatch=self.config['npatch'])
         cat.write_patch_centers(self.get_output('patch_centers'))
 
