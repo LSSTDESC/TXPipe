@@ -306,7 +306,7 @@ class LensfitCalculator:
     the results from the different processes.
 
     """
-    def __init__(self, selector, input_m_is_weighted=True):
+    def __init__(self, selector, input_m_is_weighted=False):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -353,7 +353,7 @@ class LensfitCalculator:
 
         # Extract the calibration quantities for the selected objects
         w = data['weight'][sel]
-        K = 1 + data['m'][sel]
+        K = data['m'][sel]
         g1 = data['g1'][sel]
         g2 = data['g2'][sel]
 
@@ -462,8 +462,8 @@ class HSCCalculator:
 
         # Extract the calibration quantities for the selected objects
         w = data['weight'][sel]
-        K = 1 + data['m'][sel]
-        R = 1 - data['sigma_e'][sel] ** 2
+        K = data['m'][sel]
+        R = 1.0 - data['sigma_e'][sel] ** 2
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
@@ -555,8 +555,8 @@ class MeanShearInBins:
                 self.g1.add_data(i, data['g1'][w], weight)
                 self.g2.add_data(i, data['g2'][w], weight)
             elif self.shear_catalog_type=='hsc':
-                self.g1.add_data(i, data['g1'][w], weight)
-                self.g2.add_data(i, data['g2'][w], weight)
+                self.g1.add_data(i, data['g1'][w]-data['c1'][w], weight)
+                self.g2.add_data(i, data['g2'][w]-data['c2'][w], weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
     def collect(self, data, comm=None):
@@ -606,17 +606,15 @@ class MeanShearInBins:
             elif self.shear_catalog_type=='lensfit':
                 g1[i] = g1[i]*(1./(1+K[i]))
                 g2[i] = g2[i]*(1./(1+K[i]))
-                # JZ should the C be in here? It's a variance so seems
-                # a bit odd to subtract something off
+
                 sigma1[i] = (1./(1+K[i]))*(sigma[0])
                 sigma2[i] = (1./(1+K[i]))*(sigma[1])
             elif self.shear_catalog_type=='hsc':
-                g1[i] = (g1[i] / (2 * R[i]) - data['c1'][w])/ (1 + self.K)
-                g2[i] = (g2[i] / (2 * R[i]) - data['c2'][w])/ (1 + self.K)
-                # JZ should the C be in here? It's a variance so seems
-                # a bit odd to subtract something off
-                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0])
-                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][1])
+                g1[i] = (g1[i] / (2 * R[i]))/ (1 + self.K[i])
+                g2[i] = (g2[i] / (2 * R[i]))/ (1 + self.K[i])
+
+                sigma1[i] = (sigma1[i] / (2 * R[i]))/ (1 + self.K[i])
+                sigma2[i] = (sigma2[i] / (2 * R[i]))/ (1 + self.K[i])
 
 
         return mu, g1, g2, sigma1, sigma2
