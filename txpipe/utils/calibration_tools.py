@@ -492,8 +492,8 @@ class HSCCalculator:
         K: float
             K = (1+m) calibration
 
-        S: 2x2 array
-            Selection bias matrix
+        N: int
+            Total object count
 
         """
         # The total number of objects is just the
