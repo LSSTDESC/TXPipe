@@ -559,7 +559,7 @@ class MeanShearInBins:
                 self.g2.add_data(i, data['g2'][w]-data['c2'][w], weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
-    def collect(self, data, comm=None):
+    def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode='gather')
         count2, g2, var2 = self.g2.collect(comm, mode='gather')
         _, mu = self.x.collect(comm, mode='gather')

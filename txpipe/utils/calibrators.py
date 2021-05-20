@@ -256,7 +256,6 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
-        print(self.c)
 
         if subtract_mean:
             g1 = (g1 - self.c[0][0]) / (1 + self.K)
