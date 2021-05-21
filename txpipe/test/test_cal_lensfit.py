@@ -21,7 +21,7 @@ def core_lensfit(comm):
 
     nproc = 1 if comm is None else comm.size
 
-    N = 100
+    N = 10
     g1_true = np.random.normal(0, 0.1, size=N)
     g2_true = np.random.normal(0, 0.1, size=N)
     K_true = np.array([0.11])
@@ -31,7 +31,7 @@ def core_lensfit(comm):
     weight = np.random.uniform(0, 1, size=N)
     C1_true = np.average(g1,weights=weight)
     C2_true = np.average(g2,weights=weight)
-    C_true = np.array([C1_true,C2_true]) # mean of g1, g2, which we are setting to 0
+    C_true = np.array([C1_true,C2_true]) # mean of g1, g2
 
     data = {
         "g1": g1,
@@ -42,16 +42,10 @@ def core_lensfit(comm):
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        print(sel)
         cal = LensfitCalculator(sel)
         cal.add_data(data)
 
         K, C, n = cal.collect(comm)
-
-        print('C',C)
-        print('C_true',C_true)
-        print('K',K)
-        print('K_true',K_true)
 
         assert np.allclose(C, C_true)
         assert np.allclose(K, K_true)
@@ -80,12 +74,13 @@ def test_mean_shear():
         "x": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "g1": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "g2": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "m": np.array([1., 1., 1., 1., 1., 1., 1., 1.]),
+        "m": np.array([0., 0., 0., 0., 0., 0., 0., 0.]),
         "weight": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
     b1.add_data(data)
 
     mu, g1, g2, sigma1, sigma2 = b1.collect()
+
     assert np.allclose(mu, [-0.5, 0.5])
     assert np.allclose(g1, [-0.5, 0.5])
     assert np.allclose(g2, [-1.0, 1.0])
@@ -94,6 +89,7 @@ def test_mean_shear():
     # this should equal the sigma (error on the mean) from the numbers above.
     expected_sigma1 = np.std([-0.2, -0.1, 0.1, 0.2]) / np.sqrt(4)
     expected_sigma2 = 2*expected_sigma1
+
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
@@ -123,7 +119,7 @@ def test_mean_shear_weights():
     assert np.allclose(g2, [-1.3, 0.7])
     expected_sigma1 = np.std([-0.2, -0.1]) / np.sqrt(2)
     expected_sigma2 = 2*expected_sigma1
-    print(sigma1, expected_sigma1)
+
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
@@ -156,11 +152,6 @@ def test_lensfit_array():
     g2_obs = (g2)*(1+K[0])+C[0][1]
     g_obs = [g1_obs,g2_obs]
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
-
-    print('g1 true',g1)
-    print('g2 true',g2)
-    print('g1 calc',g1_)
-    print('g2 calc',g2_)
 
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)

@@ -352,22 +352,25 @@ class LensfitCalculator:
         sel = self.selector(data, *args, **kwargs)
 
         # Extract the calibration quantities for the selected objects
-        w = data['weight'][sel]
-        K = data['m'][sel]
-        g1 = data['g1'][sel]
-        g2 = data['g2'][sel]
+        w = data['weight']
+        K = data['m']
+        g1 = data['g1']
+        g2 = data['g2']
+        n = g1[sel].size
+
+         # Record the count for this chunk, for summation later
+        self.count += n
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
         if self.input_m_is_weighted==True:
             # if the m values are already weighted don't use the weights here
-            self.K.add_data(0, K)
+            self.K.add_data(0, K[sel])
         else:
             # if not apply the weights
-            self.K.add_data(0, K, w)
-        self.C.add_data(0, g1, w)
-        self.C.add_data(1, g2, w)
-        self.count += w.size
+            self.K.add_data(0, K[sel], w[sel])
+        self.C.add_data(0, g1[sel], w[sel])
+        self.C.add_data(1, g2[sel], w[sel])
 
         return sel
 
@@ -395,16 +398,17 @@ class LensfitCalculator:
         # The total number of objects is just the
         # number from all the processes summed together.
         if comm is not None:
-            self.count = comm.reduce(self.count)
+            count = comm.allreduce(self.count)
+        else:
+            count = self.count
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
         _ ,K = self.K.collect(comm)
         _, C = self.C.collect(comm)
-        N = self.count
 
-        return K, C, N
+        return K, C, count
 
 
 class HSCCalculator:
@@ -461,15 +465,18 @@ class HSCCalculator:
         sel = self.selector(data, *args, **kwargs)
 
         # Extract the calibration quantities for the selected objects
-        w = data['weight'][sel]
-        K = data['m'][sel]
-        R = 1.0 - data['sigma_e'][sel] ** 2
+        w = data['weight']
+        K = data['m']
+        R = 1.0 - data['sigma_e'] ** 2
+        n = w[sel].size
+        self.count += w.size
+
+        w = w[sel]
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
-        self.R.add_data(0, R, w)
-        self.K.add_data(0, K, w)
-        self.count += w.size
+        self.R.add_data(0, R[sel], w)
+        self.K.add_data(0, K[sel], w)
 
         return sel
 
@@ -499,16 +506,17 @@ class HSCCalculator:
         # The total number of objects is just the
         # number from all the processes summed together.
         if comm is not None:
-            self.count = comm.reduce(self.count)
+            count = comm.reduce(self.count)
+        else:
+            count = self.count
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
         _, R = self.R.collect(comm)
         _ ,K = self.K.collect(comm)
-        N = self.count
 
-        return R, K, N
+        return R, K, count
 
 
 
@@ -562,6 +570,7 @@ class MeanShearInBins:
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode='gather')
         count2, g2, var2 = self.g2.collect(comm, mode='gather')
+
         _, mu = self.x.collect(comm, mode='gather')
 
         # Now we have the complete sample we can get the calibration matrix
@@ -582,7 +591,7 @@ class MeanShearInBins:
             else:
                 r, k, _ = self.calibrators[i].collect(comm)
                 K.append(k)
-                C.append(c)
+                R.append(r)
 
         # Only the root processor does the rest
         if (comm is not None) and (comm.Get_rank() != 0):
@@ -609,12 +618,12 @@ class MeanShearInBins:
 
                 sigma1[i] = (1./(1+K[i]))*(sigma[0])
                 sigma2[i] = (1./(1+K[i]))*(sigma[1])
-            elif self.shear_catalog_type=='hsc':
-                g1[i] = (g1[i] / (2 * R[i]))/ (1 + self.K[i])
-                g2[i] = (g2[i] / (2 * R[i]))/ (1 + self.K[i])
+            else:
+                g1[i] = (g1[i] / (2 * R[i]))/ (1 + K[i])
+                g2[i] = (g2[i] / (2 * R[i]))/ (1 + K[i])
 
-                sigma1[i] = (sigma1[i] / (2 * R[i]))/ (1 + self.K[i])
-                sigma2[i] = (sigma2[i] / (2 * R[i]))/ (1 + self.K[i])
+                sigma1[i] = (sigma[0] / (2 * R[i]))/ (1 + K[i])
+                sigma2[i] = (sigma[1] / (2 * R[i]))/ (1 + K[i])
 
 
         return mu, g1, g2, sigma1, sigma2

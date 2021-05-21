@@ -224,7 +224,7 @@ class LensfitCalibrator(Calibrator):
 
         with h5py.File(tomo_file, "r") as f:
             K = f["response/K"][:]
-            K_2d = f["response/K_2d"][0]
+            K_2d = f["response/K_2d"][:]
 
             C = f["response/C"][:, 0, :]
             C_2d = f["response/C_2d"][0]

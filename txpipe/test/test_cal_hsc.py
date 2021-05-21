@@ -76,6 +76,9 @@ def test_hsc_parallel():
     mockmpi.mock_mpiexec(2, core_hsc)
     mockmpi.mock_mpiexec(10, core_hsc)
 
+#def test_hsc_parallel():
+#    mockmpi.mock_mpiexec(2, core_hsc)
+#    mockmpi.mock_mpiexec(10, core_hsc)
 
 def test_mean_shear():
     name = "x"
@@ -94,7 +97,7 @@ def test_mean_shear():
         "g2": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "c1": np.array([-0.07, -0.06, -0.04, -0.03, 0.07, 0.06, 0.04, 0.03]),
         "c2": 2*np.array([-0.07, -0.06, -0.04, -0.03, 0.07, 0.06, 0.04, 0.03]),
-        "m": np.array([1., 1., 1., 1., 1., 1., 1., 1.]),
+        "m": np.array([0., 0., 0., 0., 0., 0., 0., 0.]),
         "sigma_e": np.array([0., 0., 0., 0., 0., 0., 0., 0.]),
         "weight": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
@@ -103,14 +106,15 @@ def test_mean_shear():
     b1.add_data(data)
 
     mu, g1, g2, sigma1, sigma2 = b1.collect()
-    assert np.allclose(mu, [-0.5, 0.5])
-    assert np.allclose(g1, [-0.5, 0.5])
-    assert np.allclose(g2, [-1.0, 1.0])
 
-    # using var([0.7, 0.6, 0.4, 0.3]) == var([-0.2, -0.1, 0.1, 0.2])
-    # this should equal the sigma (error on the mean) from the numbers above.
-    expected_sigma1 = np.std([-0.2, -0.1, 0.1, 0.2]) / np.sqrt(4)
+    assert np.allclose(mu, [-0.5, 0.5])
+    assert np.allclose(g1, [-0.25, 0.25])
+    assert np.allclose(g2, [-.5, .5])
+
+    expected_sigma1 = np.std([-0.35, -0.3, -0.2, -0.15]) / np.sqrt(4)
     expected_sigma2 = 2*expected_sigma1
+    print(sigma1, expected_sigma1)
+    print(sigma2, expected_sigma2)
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
@@ -132,20 +136,21 @@ def test_mean_shear_weights():
         "x": x,
         "g1": g1,
         "g2":    g2,
-        "c1": np.array([0, 0, 0, 0, 0, 0, 0, 0]),
-        "c2": np.array([0, 0, 0, 0, 0, 0, 0, 0]),
+        "c1": c1,
+        "c2": c2,
         "weight": np.array([1, 1, 0, 0, 0, 0, 1, 1]),
-        "m": np.array([1., 1., 1., 1., 1., 1., 1., 1.]),
+        "m": np.array([0., 0., 0., 0., 0., 0., 0., 0.]),
         "sigma_e": np.array([0., 0., 0., 0., 0., 0., 0., 0.])
     }
     b1.add_data(data)
 
     mu, g1, g2, sigma1, sigma2 = b1.collect()
     # Now we have downweighted some of the samples some of these values change.
+
     assert np.allclose(mu, [-0.5, 0.5])
-    assert np.allclose(g1, [-0.65, 0.35])
-    assert np.allclose(g2, [-1.3, 0.7])
-    expected_sigma1 = np.std([-0.2, -0.1]) / np.sqrt(2)
+    assert np.allclose(g1, [-0.325,  0.175])
+    assert np.allclose(g2, [-0.65,  0.35])
+    expected_sigma1 = np.std([-0.35, -0.3]) / np.sqrt(2)
     expected_sigma2 = 2*expected_sigma1
     print(sigma1, expected_sigma1)
     assert np.allclose(sigma1, expected_sigma1)
@@ -197,39 +202,6 @@ def test_hsc_array():
     assert np.allclose(g2_, g2)
     assert type(g1) == np.ndarray
     assert type(g2) == np.ndarray
-
-
-#def test_null():
-    # null calibrator
-#    R = 1
-#    K = 1
-#    g1 = 0.2
-#    g2 = -0.3
-#    c1 = 0
-#    c2 = 0
-#    g1 = (g1+c1)*(1+K)*(2*R)
-#    g2 = (g2+c2)*(1+K)*(2*R)
-#    g_obs = np.array([g1, g2])
-#    assert g_obs.shape == (2,)
-#    cal = NullCalibrator()
-#    g1_, g2_ = cal.apply(float(g_obs[0]), float(g_obs[1]), c1, c2)
-#    assert np.allclose(g1_, g1)
-#    assert np.allclose(g2_, g2)
-#    assert type(g1) == float
-#    assert type(g2) == float
-
-#    g1 = np.random.normal(size=10)
-#    g2 = np.random.normal(size=10)
-#    g1 = (g1+c1)*(1+K)*(2*R)
-#    g2 = (g2+c2)*(1+K)*(2*R)
-#    g_obs = np.array([g1, g2])
-#    g1_, g2_ = cal.apply(g_obs[0], g_obs[1], c1, c2)
-
-#    assert np.allclose(g1_, g1)
-#    assert np.allclose(g2_, g2)
-#    assert type(g1) == np.ndarray
-#    assert type(g2) == np.ndarray
-
 
 
 if __name__ == '__main__':
