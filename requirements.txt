@@ -1,4 +1,4 @@
-ceci==1.1
+ceci>=1.3
 h5py
 pandas
 sacc
@@ -22,4 +22,4 @@ psutil
 parallel_statistics
 healsparse
 flexcode
-xgboost
+xgboost==1.1.0
