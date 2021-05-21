@@ -55,8 +55,6 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_method': 'jackknife',
-        'use_true_shear': False,
-        'subtract_mean_shear':False,
         'use_randoms': True,
         'low_mem': False,
         }
