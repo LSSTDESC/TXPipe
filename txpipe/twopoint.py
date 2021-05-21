@@ -88,8 +88,6 @@ class TXTwoPoint(PipelineStage):
             result = self.call_treecorr(i, j, k)
             results.append(result)
 
-        # If we are running in parallel this collects the results together
-        #results = self.collect_results(results)
 
         # Save the results
         if self.rank==0:
@@ -106,7 +104,7 @@ class TXTwoPoint(PipelineStage):
                 for j in range(i+1):
                     if j in source_list:
                         calcs.append((i,j,k))
-
+        
         # For shear-position we use all pairs
         if self.config['do_shear_pos']:
             k = SHEAR_POS
@@ -125,21 +123,10 @@ class TXTwoPoint(PipelineStage):
                         calcs.append((i,j,k))
 
         if self.rank==0:
-            print(f"Running these calculations: {calcs}")
+            print(f"Running {len(calcs)} calculations: {calcs}")
 
         return calcs
 
-    def collect_results(self, results):
-        if self.comm is None:
-            return results
-
-        results = self.comm.gather(results, root=0)
-
-        # Concatenate results on master
-        if self.rank==0:
-            results = sum(results, [])
-
-        return results
 
     def read_nbin(self):
         """
@@ -153,7 +140,8 @@ class TXTwoPoint(PipelineStage):
 
         ns = len(source_list)
         nl = len(lens_list)
-        print(f'Running with {ns} source bins and {nl} lens bins')
+        if self.rank == 0:
+            print(f'Running with {ns} source bins and {nl} lens bins')
 
         return source_list, lens_list
 
@@ -469,6 +457,7 @@ class TXTwoPoint(PipelineStage):
         if self.rank == 0:
             print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
+
         ng = treecorr.NGCorrelation(self.config)
         t1 = perf_counter()
         ng.process(cat_j, cat_i, comm=self.comm)
@@ -500,29 +489,31 @@ class TXTwoPoint(PipelineStage):
         if self.rank == 0:
             print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_i} objects,  {n_rand_i} randoms")
 
-        nn = treecorr.NNCorrelation(self.config)
-        rn = treecorr.NNCorrelation(self.config)
-        nr = treecorr.NNCorrelation(self.config)
-        rr = treecorr.NNCorrelation(self.config)
         
         if i==j:
             cat_j = None
-            rancat_j = None
+            rancat_j = rancat_i
+        
         else:
             cat_j = self.get_lens_catalog(j)
             rancat_j = self.get_random_catalog(j)
 
         t1 = perf_counter()
-
+        
         nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i, cat_j, comm=self.comm)
-
+        
         nr = treecorr.NNCorrelation(self.config)
         nr.process(cat_i, rancat_j, comm=self.comm)
 
+        # The next calculation is faster if we explicitly tell TreeCorr
+        # that its two catalogs here are the same one.
+        if i == j:
+            rancat_j = None
+        
         rr = treecorr.NNCorrelation(self.config)
         rr.process(rancat_i, rancat_j, comm=self.comm)
-
+        
         if i==j:
             rn = None
         else:
@@ -533,6 +524,7 @@ class TXTwoPoint(PipelineStage):
             t2 = perf_counter()
             nn.calculateXi(rr, dr=nr, rd=rn)
             print(f"Processing took {t2 - t1:.1f} seconds")            
+
         return nn
 
 
