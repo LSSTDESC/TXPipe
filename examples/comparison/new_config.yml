@@ -58,19 +58,17 @@ TXJackknifeCenters:
     npatch: 40
 
 
-TXTwoPointLensCat:
+TXTwoPoint:
     bin_slop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
+    flip_g2: True
     min_sep: 2.5
     max_sep: 100
     nbins: 15
     verbose: 0
-    use_true_shear: True
-    subtract_mean_shear: True
     var_method: jackknife
 
 TXNullBlinding: {}
