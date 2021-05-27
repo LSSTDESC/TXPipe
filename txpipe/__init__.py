@@ -33,3 +33,6 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
+# Here are the stages that mostly will be used for other projects
+# such as the self-calibration of Intrinsic alignment.
+from .extensions.twopoint_scia import TXSelfCalibrationIA
