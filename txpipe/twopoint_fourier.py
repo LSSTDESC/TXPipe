@@ -21,7 +21,7 @@ NAMES = {SHEAR_SHEAR:"shear-shear", SHEAR_POS:"shear-position", POS_POS:"positio
 
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'l', 'value', 'win', 'i', 'j'])
+    ['corr_type', 'l', 'value', 'noise', 'win', 'i', 'j'])
 
 class TXTwoPointFourier(PipelineStage):
     """This Pipeline Stage computes all auto- and cross-correlations
@@ -668,7 +668,12 @@ class TXTwoPointFourier(PipelineStage):
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-
+        
+        if cl_noise is None:
+            noise_out = np.zeros(len(ls))
+        else:
+            noise_out = workspace.decouple_cell(workspace.couple_cell(cl_noise))[0]
+        
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
             x=ell*r_theta
@@ -680,7 +685,7 @@ class TXTwoPointFourier(PipelineStage):
         
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
-            self.results.append(Measurement(name, ls, c_beam[index], win, i, j))
+            self.results.append(Measurement(name, ls, c_beam[index], noise_out, win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
@@ -855,7 +860,7 @@ class TXTwoPointFourier(PipelineStage):
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
-                    ell=d.l[i], window=win, i=d.i, j=d.j)
+                    ell=d.l[i], window=win, i=d.i, j=d.j, nl=d.noise[i])
 
         # Save provenance information
         provenance = self.gather_provenance()

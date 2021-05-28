@@ -498,13 +498,13 @@ class MeanShearInBins:
     def add_data(self, data):
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
-            weight = data['weight'][w]
+            weight = data['weight'][w].astype('<f4')
             if self.shear_catalog_type=='metacal':
                 self.g1.add_data(i, data['mcal_g1'][w], weight)
                 self.g2.add_data(i, data['mcal_g2'][w], weight)
             else:
-                self.g1.add_data(i, data['g1'][w], weight)
-                self.g2.add_data(i, data['g2'][w], weight)
+                self.g1.add_data(i, data['g1'][w].astype('<f4'), weight)
+                self.g2.add_data(i, data['g2'][w].astype('<f4'), weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
     def collect(self, comm=None):

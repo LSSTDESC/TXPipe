@@ -24,10 +24,10 @@ class SourceNumberDensityStats:
                 self.shear_stats_2d.add_data(0, shear_data['mcal_g1'][w], shear_data['weight'][w])
                 self.shear_stats_2d.add_data(1, shear_data['mcal_g2'][w], shear_data['weight'][w])
             else:
-                self.shear_stats[i].add_data(0, shear_data['g1'][w], shear_data['weight'][w])
-                self.shear_stats[i].add_data(1, shear_data['g2'][w], shear_data['weight'][w])
-                self.shear_stats_2d.add_data(0, shear_data['g1'][w], shear_data['weight'][w])
-                self.shear_stats_2d.add_data(1, shear_data['g2'][w], shear_data['weight'][w])
+                self.shear_stats[i].add_data(0, shear_data['g1'][w].astype('<f4'), shear_data['weight'][w].astype('<f4'))
+                self.shear_stats[i].add_data(1, shear_data['g2'][w].astype('<f4'), shear_data['weight'][w].astype('<f4'))
+                self.shear_stats_2d.add_data(0, shear_data['g1'][w].astype('<f4'), shear_data['weight'][w].astype('<f4'))
+                self.shear_stats_2d.add_data(1, shear_data['g2'][w].astype('<f4'), shear_data['weight'][w].astype('<f4'))
 
 
     def collect(self):
