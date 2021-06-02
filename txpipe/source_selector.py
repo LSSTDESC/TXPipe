@@ -553,7 +553,7 @@ class TXSourceSelector(PipelineStage):
             # non-tomo sigma_e in lensfit
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))
-            ) / ((1 + K_2d)**2)
+            ) / (1 + K_2d)
 
         # Non-tomo lensfit
         elif self.config['shear_catalog_type']=='hsc':
@@ -566,7 +566,7 @@ class TXSourceSelector(PipelineStage):
             # non-tomo sigma_e in hsc
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))
-            ) / ((1 + K_2d[0])**2)
+            ) / (1 + K_2d[0])
 
 
 
