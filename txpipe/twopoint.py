@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
-from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
+from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
@@ -192,7 +192,7 @@ class TXTwoPoint(PipelineStage):
         tomo_nbin_lens = len(tomo_lens_list)
 
         nbin_source = len(source_list)
-        nbin_lens = len(lens_list) 
+        nbin_lens = len(lens_list)
 
         if source_list == [-1]:
             source_list = tomo_source_list
@@ -283,7 +283,7 @@ class TXTwoPoint(PipelineStage):
                 for i in range(n):
                     S.add_data_point(XIP, (tracer1,tracer2), xip[i],
                         theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
-                for i in range(n):                    
+                for i in range(n):
                     S.add_data_point(XIM, (tracer1,tracer2), xim[i],
                         theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
             else:
@@ -292,9 +292,9 @@ class TXTwoPoint(PipelineStage):
                 n = len(xi)
                 for i in range(n):
                     S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
-                        theta=theta[i], error=err[i], weight=weight[i])
+                        theta=theta[i], error=err[i], npair=npair[i], weight=weight[i])
 
-                
+
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
@@ -309,15 +309,15 @@ class TXTwoPoint(PipelineStage):
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output('twopoint_data_real_raw'), overwrite=True)
-        
+
         # Adding the gammaX calculation:
-        
+
         if self.config['do_shear_pos'] == True:
             comb = []
             for d in results:
                 tracer1 = f'source_{d.i}' if d.corr_type in [XI, GAMMAT] else f'lens_{d.i}'
-                tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'   
-                
+                tracer2 = f'source_{d.j}' if d.corr_type in [XI] else f'lens_{d.j}'
+
                 if d.corr_type == GAMMAT:
                     theta = np.exp(d.object.meanlogr)
                     npair = d.object.npairs
@@ -405,8 +405,8 @@ class TXTwoPoint(PipelineStage):
             g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
 
         else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-            
+            raiseValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
+
         # Subtract mean shears, if needed.  These are calculated in source_selector,
         # and have already been calibrated, so subtract them after calibrated our sample.
         # Right now we are loading the full catalog here, so we could just take the mean
@@ -480,7 +480,7 @@ class TXTwoPoint(PipelineStage):
                 dec = data['dec'][mask],
                 ra_units='degree', dec_units='degree')
         else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+            raiseValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
         return cat
 
 
@@ -580,7 +580,7 @@ class TXTwoPoint(PipelineStage):
         rn = treecorr.NNCorrelation(self.config)
         nr = treecorr.NNCorrelation(self.config)
         rr = treecorr.NNCorrelation(self.config)
-        
+
         if i==j:
             n_j = n_i
             n_rand_j = n_rand_i
@@ -588,7 +588,7 @@ class TXTwoPoint(PipelineStage):
             nr.process(cat_i, rancat_i)
             rr.process(rancat_i)
             nn.calculateXi(rr, dr=nr)
-            
+
         else:
             cat_j, rancat_j = self.get_lens_catalog(data, j)
             n_j = cat_j.nobj
@@ -611,6 +611,8 @@ class TXTwoPoint(PipelineStage):
         source_bin = f['tomography/source_bin'][:]
         if self.config['shear_catalog_type']=='metacal':
             r_total = f['metacal_response/R_total'][:]
+        elif self.config['shear_catalog_type']=='lensfit':
+            r_total = f['response/K'][:]
         else:
             r_total = f['response/R'][:]
         f.close()
@@ -639,7 +641,7 @@ class TXTwoPoint(PipelineStage):
                 cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
             else:
                 cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
-                
+
         else:
             cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
         print(f"Loading shear catalog columns: {cat_cols}")
@@ -731,7 +733,7 @@ class TXTwoPointLensCat(TXTwoPoint):
         f.close()
 
         f = self.open_input('lens_tomography_catalog')
-        data['lens_bin'] = f['tomography/lens_bin'][:] 
+        data['lens_bin'] = f['tomography/lens_bin'][:]
         f.close()
 
 
@@ -747,7 +749,7 @@ class TXTwoPointTheoryReal(PipelineStage):
     outputs = [
         ('twopoint_theory_real', SACCFile),
     ]
-    
+
 
     def run(self):
         import sacc
@@ -763,10 +765,10 @@ class TXTwoPointTheoryReal(PipelineStage):
         print(cosmo)
 
         s_theory = self.replace_with_theory_real(s, cosmo)
-        
+
         # Remove covariance
         s_theory.covariance = None
-        
+
         # save the output to Sacc file
         s_theory.save_fits(self.get_output('twopoint_theory_real'), overwrite=True)
 
@@ -790,13 +792,13 @@ class TXTwoPointTheoryReal(PipelineStage):
         return len(source_tracers), len(lens_tracers)
 
     def get_ccl_tracers(self, s, cosmo, smooth=False):
-        
+
         # ccl tracers object
         import pyccl
         tracers = {}
 
         nbin_source, nbin_lens = self.read_nbin(s)
-        
+
         # Make the lensing tracers
         for i in range(nbin_source):
             name = f'source_{i}'
@@ -813,11 +815,11 @@ class TXTwoPointTheoryReal(PipelineStage):
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
             # Convert to CCL form
-            tracers[name] = pyccl.NumberCountsTracer(cosmo, has_rsd=False, 
+            tracers[name] = pyccl.NumberCountsTracer(cosmo, has_rsd=False,
                 dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z)))
-            
+
         return tracers
-    
+
     def replace_with_theory_real(self, s, cosmo):
 
         import pyccl
@@ -829,7 +831,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             for j in range(i+1):
                 print(f"Computing theory lensing-lensing ({i},{j})")
 
-                # compute theory 
+                # compute theory
                 print(tracers[f'source_{i}'], tracers[f'source_{j}'])
                 cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
                 theta, *_  = s.get_theta_xi('galaxy_shear_xi_plus', f'source_{i}' , f'source_{j}')
@@ -887,7 +889,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     outputs = [
         ('twopoint_theory_fourier', SACCFile),
     ]
-    
+
 
     def run(self):
         import sacc
@@ -906,11 +908,11 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
         # Remove covariance
         s_theory.covariance = None
-        
+
         # save the output to Sacc file
         s_theory.save_fits(self.get_output('twopoint_theory_fourier'), overwrite=True)
 
-        
+
     def read_nbin(self, s):
         import sacc
 
@@ -930,14 +932,14 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
         return len(source_tracers), len(lens_tracers)
 
-    
+
     def replace_with_theory_fourier(self, s, cosmo):
 
         import pyccl
 
         nbin_source, nbin_lens = self.read_nbin(s)
         tracers = self.get_ccl_tracers(s, cosmo)
-        
+
         data_types = s.get_data_types()
         if 'galaxy_shearDensity_cl_b' in data_types:
             # Remove galaxy_shearDensity_cl_b measurement values
@@ -952,7 +954,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
             for j in range(i+1):
                 print(f"Computing theory lensing-lensing ({i},{j})")
 
-                # compute theory 
+                # compute theory
                 print(tracers[f'source_{i}'], tracers[f'source_{j}'])
                 ell, *_  = s.get_ell_cl('galaxy_shear_cl_ee', f'source_{i}' , f'source_{j}')
                 cl = pyccl.angular_cl(cosmo, tracers[f'source_{i}'], tracers[f'source_{j}'], ell)
@@ -961,8 +963,8 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 ind = s.indices('galaxy_shear_cl_ee', (f'source_{i}', f'source_{j}'))
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
-                    
-                    
+
+
         for i in range(nbin_lens):
             print(f"Computing theory density-density ({i},{i})")
 
@@ -991,9 +993,9 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
         return s
 
-    
 
-    
+
+
 class TXTwoPointPlots(PipelineStage):
     """
     Make n(z) plots
@@ -1050,12 +1052,12 @@ class TXTwoPointPlots(PipelineStage):
 
             "galaxy_shear_xi_minus": self.open_output('shear_xi_minus',
                 figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
-            
+
         }
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures, 
+        full_3x2pt_plots([filename], ['twopoint_data_real'], figures=figures,
                          theory_sacc_files=[filename_theory], theory_labels=['Fiducial'])
 
         for fig in outputs.values():
@@ -1073,7 +1075,7 @@ class TXTwoPointPlots(PipelineStage):
 
             "galaxy_shear_xi_minus": self.open_output('shear_xi_minus_ratio',
                 figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
-            
+
         }
 
         figures = {key: val.file for key, val in outputs.items()}
@@ -1084,17 +1086,17 @@ class TXTwoPointPlots(PipelineStage):
         for fig in outputs.values():
             fig.close()
 
-            
+
         filename = self.get_input('twopoint_gamma_x')
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output('shearDensity_xi_x',
                 figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
         }
-        
+
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['twopoint_gamma_x'], 
+        full_3x2pt_plots([filename], ['twopoint_gamma_x'],
             figures=figures)
 
         for fig in outputs.values():
@@ -1140,7 +1142,7 @@ class TXTwoPointPlots(PipelineStage):
 
         return sources, lenses
 
-    
+
     def get_theta_xi_err(self, D):
         """
         For a given datapoint D, returns theta, xi, err,
@@ -1173,11 +1175,11 @@ class TXTwoPointPlots(PipelineStage):
         theta_jk = theta_jk[w_jk]
         xi_jk = xi_jk[w_jk]
         err_jk = err_jk[w_jk]
-        
+
         return theta_jk, xi_jk, err_jk
 
 
-    
+
     def plot_shear_shear(self, s, sources):
         import sacc
         import matplotlib.pyplot as plt
@@ -1252,7 +1254,7 @@ class TXTwoPointPlots(PipelineStage):
                             plt.plot(theta_jk, err_jk, label = 'Jackknife', lw = 2., color = self.colors[1])
                             ylabel_xim = r'$\sigma\, (\xi_{-})$'
                             ylabel_xip = r'$\sigma\, (\xi_{-})$'
-                            
+
                         plt.xscale('log')
                         plt.xlim(tmin, tmax)
 
@@ -1285,7 +1287,7 @@ class TXTwoPointPlots(PipelineStage):
             plt.subplots_adjust(hspace=self.config['hspace'],wspace=self.config['wspace'])
             plot_output.close()
 
-            
+
     def plot_shear_density(self, s, sources, lenses):
         import sacc
         import matplotlib.pyplot as plt
@@ -1304,12 +1306,12 @@ class TXTwoPointPlots(PipelineStage):
 
             for i,src1 in enumerate(sources):
                 for j,src2 in enumerate(lenses):
-                    
+
                     D = s.get_data_points(gammat, (src1,src2))
 
                     if len(D)==0:
                         continue
-                    
+
                     ax = plt.subplot2grid((nsource, nlens), (i,j))
 
                     if plot == 'xi':
@@ -1319,14 +1321,14 @@ class TXTwoPointPlots(PipelineStage):
                                      capsize=1.5, color = self.colors[0])
                         plt.ylim(-2,2)
                         ylabel = r"$\theta \cdot \gamma_t \cdot 10^2$"
-                            
+
                     if plot == 'xi_err':
                         theta, xi, err = self.get_theta_xi_err(D)
                         theta_jk, xi_jk, err_jk = self.get_theta_xi_err_jk(s, gammat, src1, src2)
                         plt.plot(theta, err, label = 'Shape noise', lw =2., color = self.colors[0])
                         plt.plot(theta_jk, err_jk, label = 'Jackknife', lw =2., color = self.colors[1])
                         ylabel = r"$\sigma\,(\gamma_t)$"
-                    
+
                     plt.xscale('log')
                     plt.xlim(tmin, tmax)
 
@@ -1366,7 +1368,7 @@ class TXTwoPointPlots(PipelineStage):
         plots = ['xi', 'xi_err']
         for plot in plots:
             plot_output = self.open_output(f'density_{plot}', wrapper=True, figsize=(3*nlens,2*nlens))
-         
+
             for i,src1 in enumerate(lenses[:]):
                 for j,src2 in enumerate(lenses[:]):
 
@@ -1384,7 +1386,7 @@ class TXTwoPointPlots(PipelineStage):
                                      capsize=1.5, color = self.colors[0])
                         ylabel = r"$\theta \cdot w$"
                         plt.ylim(-1,1)
-                            
+
                     if plot == 'xi_err':
                         theta, xi, err = self.get_theta_xi_err(D)
                         theta, xi, err = self.get_theta_xi_err(D)
@@ -1773,7 +1775,7 @@ class TXGammaTDimStars(TXTwoPoint):
         'var_method': 'shot',
         'npatch': 5,
         'use_true_shear': False,
-        'subtract_mean_shear': False,        
+        'subtract_mean_shear': False,
         }
 
     def run(self):
