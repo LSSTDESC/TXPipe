@@ -522,7 +522,7 @@ class TXSourceSelector(PipelineStage):
                 # This also needs checking.
                 sigma_e[i] = np.sqrt(
                     (0.5 * (variances[i, 0] + variances[i, 1]))
-                ) / K[i]
+                ) / (1 + K[i])
 
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")
@@ -545,7 +545,6 @@ class TXSourceSelector(PipelineStage):
 
         # Non-tomo lensfit
         elif self.config['shear_catalog_type']=='lensfit':
-            print("(also check in the 2D bit!)")
             K_2d, C_2d, N_2d = cal2d.collect(self.comm)
 
             # should probably use one of the calibration_tools functions
@@ -554,7 +553,7 @@ class TXSourceSelector(PipelineStage):
             # non-tomo sigma_e in lensfit
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))
-            )
+            ) / (1 + K_2d)
 
         # Non-tomo lensfit
         elif self.config['shear_catalog_type']=='hsc':
@@ -564,10 +563,10 @@ class TXSourceSelector(PipelineStage):
             # should probably use one of the calibration_tools functions
             mean_e1_2d = C_2d[0][0]
             mean_e2_2d = C_2d[0][1]
-            # non-tomo sigma_e in lensfit
+            # non-tomo sigma_e in hsc
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))
-            ) / R_scalar_2d
+            ) / (1 + K_2d[0])
 
 
 
