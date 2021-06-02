@@ -247,7 +247,7 @@ class MetacalCalculator:
         # The user of this class may need the base selection, so return it
         return sel_00
 
-    def collect(self, comm=None):
+    def collect(self, comm=None, allgather=False):
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) and S (selection bias) 2x2 matrices
@@ -265,14 +265,18 @@ class MetacalCalculator:
         """
         # collect all the things we need
         if comm is not None:
-            count = comm.allreduce(self.count)
+            if allgather:
+                count = comm.allreduce(self.count)
+            else:
+                count = comm.reduce(self.count)
         else:
             count = self.count
 
 
         # Collect the mean values we need
-        _, S = self.sel_bias_means.collect(comm)
-        _, R = self.cal_bias_means.collect(comm)
+        mode = ("allgather" if allgather else "gather")
+        _, S = self.sel_bias_means.collect(comm, mode)
+        _, R = self.cal_bias_means.collect(comm, mode)
 
         # Unpack the flat mean R and S values into
         # matrices
@@ -363,7 +367,7 @@ class LensfitCalculator:
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
-        if self.input_m_is_weighted==True:
+        if self.input_m_is_weighted:
             # if the m values are already weighted don't use the weights here
             self.K.add_data(0, K[sel])
         else:
@@ -374,7 +378,7 @@ class LensfitCalculator:
 
         return sel
 
-    def collect(self, comm=None):
+    def collect(self, comm=None, allgather=False):
         """
         Finalize and sum up all the response values, returning calibration
         quantities.
@@ -398,15 +402,19 @@ class LensfitCalculator:
         # The total number of objects is just the
         # number from all the processes summed together.
         if comm is not None:
-            count = comm.allreduce(self.count)
+            if allgather:
+                count = comm.allreduce(self.count)
+            else:
+                count = comm.reduce(self.count)
         else:
             count = self.count
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
-        _ ,K = self.K.collect(comm)
-        _, C = self.C.collect(comm)
+        mode = ("allgather" if allgather else "gather")
+        _ ,K = self.K.collect(comm, mode)
+        _, C = self.C.collect(comm, mode)
 
         return K, C, count
 
@@ -480,7 +488,7 @@ class HSCCalculator:
 
         return sel
 
-    def collect(self, comm=None):
+    def collect(self, comm=None, allgather=False):
         """
         Finalize and sum up all the response values, returning calibration
         quantities.
@@ -506,16 +514,19 @@ class HSCCalculator:
         # The total number of objects is just the
         # number from all the processes summed together.
         if comm is not None:
-            count = comm.reduce(self.count)
+            if allgather:
+                count = comm.allreduce(self.count)
+            else:
+                count = comm.reduce(self.count)
         else:
             count = self.count
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
-        _, R = self.R.collect(comm)
-        _ ,K = self.K.collect(comm)
-
+        mode = ("allgather" if allgather else "gather")
+        _, R = self.R.collect(comm, mode)
+        _ ,K = self.K.collect(comm, mode)
         return R, K, count
 
 

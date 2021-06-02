@@ -29,9 +29,24 @@ def core_lensfit(comm):
     g1 = ((g1_true)*(1+K_true[0]))
     g2 = ((g1_true)*(1+K_true[0]))
     weight = np.random.uniform(0, 1, size=N)
-    C1_true = np.average(g1,weights=weight)
-    C2_true = np.average(g2,weights=weight)
+
+
+    if comm is None:
+        C1_true = np.average(g1,weights=weight)
+        C2_true = np.average(g2,weights=weight)
+    else:
+        wsum = np.zeros_like(g1)
+        comm.Allreduce(weight, wsum)
+        csum = np.zeros_like(g1)
+        comm.Allreduce(g1 * weight, csum)
+        C1_true = csum.sum() / wsum.sum()
+        comm.Allreduce(g2 * weight, csum)
+        C2_true = csum.sum() / wsum.sum()
+
+
+
     C_true = np.array([C1_true,C2_true]) # mean of g1, g2
+
 
     data = {
         "g1": g1,
@@ -45,8 +60,7 @@ def core_lensfit(comm):
         cal = LensfitCalculator(sel)
         cal.add_data(data)
 
-        K, C, n = cal.collect(comm)
-
+        K, C, n = cal.collect(comm, allgather=True)
         assert np.allclose(C, C_true)
         assert np.allclose(K, K_true)
         assert n == N * nproc

@@ -46,7 +46,7 @@ def core_hsc(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = HSCCalculator(select_all_bool)
         cal.add_data(data)
-        R, K, n = cal.collect(comm)
+        R, K, n = cal.collect(comm, allgather=True)
         print('K_true',K_true)
         print('K',K)
         print('R_true',R_true)
@@ -59,7 +59,7 @@ def core_hsc(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = HSCCalculator(sel)
         cal.add_data(data)
-        R, K, n = cal.collect(comm)
+        R, K, n = cal.collect(comm, allgather=True)
         print('K_true',K_true)
         print('K',K)
         print('R_true',R_true)
@@ -76,9 +76,6 @@ def test_hsc_parallel():
     mockmpi.mock_mpiexec(2, core_hsc)
     mockmpi.mock_mpiexec(10, core_hsc)
 
-#def test_hsc_parallel():
-#    mockmpi.mock_mpiexec(2, core_hsc)
-#    mockmpi.mock_mpiexec(10, core_hsc)
 
 def test_mean_shear():
     name = "x"
@@ -206,6 +203,6 @@ def test_hsc_array():
 
 if __name__ == '__main__':
     test_hsccalibrator_serial()
-    test_hsccalibrator_parallel()
+    test_hsc_parallel()
     test_mean_shear()
     test_mean_shear_weights()
