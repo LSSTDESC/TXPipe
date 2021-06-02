@@ -43,7 +43,10 @@ stages:
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
-    - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+
+    # Disabled since not yet synchronised with new Treecorr MPI
+    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
