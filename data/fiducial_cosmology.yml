@@ -27,3 +27,6 @@ Omega_l: 7.351283e-01
 z_star: nan
 has_mgrowth: 0
 nz_mgrowth: 0
+c1_mg: 1.0
+c2_mg: 1.0
+lambda_mg: 0.0
