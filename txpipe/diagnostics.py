@@ -52,7 +52,7 @@ class TXDiagnosticPlots(PipelineStage):
         # They are all expected to be python coroutines - generators that
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
-        
+
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith('plot_')]
 
         # Start off each of the plotters.  This will make them all run up to the
@@ -87,12 +87,19 @@ class TXDiagnosticPlots(PipelineStage):
                                          'shear_tomography_catalog','tomography',shear_tomo_cols,
                                          'shear_tomography_catalog','metacal_response', ['R_gamma'],
                                          'lens_tomography_catalog','tomography',lens_tomo_cols)
+        elif self.config['shear_catalog_type']=='lensfit':
+            it = self.combined_iterators(chunk_rows,
+                                         'shear_catalog', 'shear', shear_cols,
+                                         'photometry_catalog', 'photometry', photo_cols,
+                                         'shear_tomography_catalog','tomography',shear_tomo_cols,
+                                         'shear_tomography_catalog','response',['K'],
+                                         'lens_tomography_catalog','tomography',lens_tomo_cols)
         else:
             it = self.combined_iterators(chunk_rows,
                                          'shear_catalog', 'shear', shear_cols,
                                          'photometry_catalog', 'photometry', photo_cols,
                                          'shear_tomography_catalog','tomography',shear_tomo_cols,
-                                         'shear_tomography_catalog','response', ['R'],
+                                         'shear_tomography_catalog','response',['R'],
                                          'lens_tomography_catalog','tomography',lens_tomo_cols)
 
 
@@ -122,7 +129,7 @@ class TXDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         from .utils.fitting import fit_straight_line
-        
+
         delta_gamma = self.config['delta_gamma']
         size = 5
         gr = np.logspace(-3,-2, size//2)
@@ -172,7 +179,7 @@ class TXDiagnosticPlots(PipelineStage):
         line22 = slope22*(mu2)+intercept22
 
         plt.subplot(2,1,1)
-        
+
         plt.plot(mu1,line11,color='red',label=r"$m=%.4f \pm %.4f$" %(slope11, std_err11))
         plt.plot(mu1,[0]*len(line11),color='black')
 
@@ -207,9 +214,9 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making PSF size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        
+
         psf_prefix = self.config['psf_prefix']
-        
+
         delta_gamma = self.config['delta_gamma']
         size = 5
         T_min = self.config['T_min']
@@ -217,7 +224,7 @@ class TXDiagnosticPlots(PipelineStage):
         psf_T_edges = np.linspace(T_min, T_max, size+1)
 
         binnedShear = MeanShearInBins(f'{psf_prefix}T_mean', psf_T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
-            
+
         while True:
             data = yield
 
@@ -225,7 +232,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
 
             binnedShear.add_data(data)
-            
+
 
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
 
@@ -271,14 +278,14 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making mean shear SNR plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        
+
         # Parameters of the binning in SNR
         size = 5
         delta_gamma = self.config['delta_gamma']
         shear_prefix = self.config['shear_prefix']
         snr_edges = np.logspace(.1,2.5,size+1)
 
-        # This class includes all the cutting and calibration, both for 
+        # This class includes all the cutting and calibration, both for
         # estimator and selection biases
         binnedShear = MeanShearInBins(f'{shear_prefix}s2n', snr_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
 
@@ -292,7 +299,7 @@ class TXDiagnosticPlots(PipelineStage):
 
             binnedShear.add_data(data)
 
-        
+
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
 
         if self.rank != 0:
@@ -308,7 +315,7 @@ class TXDiagnosticPlots(PipelineStage):
         slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu[good]),mean2[good])
         line2 = slope2*(np.log10(mu))+intercept2
         fig = self.open_output('g_snr', wrapper=True)
-        
+
         plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
         plt.plot(mu,[0]*len(mu),color='black')
         plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
@@ -329,12 +336,12 @@ class TXDiagnosticPlots(PipelineStage):
         print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        
+
         delta_gamma = self.config['delta_gamma']
         psf_prefix = self.config['psf_prefix']
-        
+
         size = 5
-        
+
         T_edges = np.linspace(0.1,2.1,size+1)
         shear_prefix = self.config['shear_prefix']
         binnedShear = MeanShearInBins(f'{shear_prefix}T', T_edges, delta_gamma, cut_source_bin=True, shear_catalog_type=self.config['shear_catalog_type'])
@@ -351,7 +358,7 @@ class TXDiagnosticPlots(PipelineStage):
 
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
 
-        
+
         if self.rank != 0:
             return
 
@@ -361,11 +368,11 @@ class TXDiagnosticPlots(PipelineStage):
         slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(np.log10(mu),mean2)
         line2 = slope2*(np.log10(mu))+intercept2
         fig = self.open_output('g_T', wrapper=True)
-        
+
         plt.plot(mu,line1,color='red',label=r"$m=%.4f \pm %.4f$" %(slope1, std_err1))
         plt.plot(mu,[0]*len(mu),color='black')
         plt.errorbar(mu+dx, mean1, std1, label='g1', fmt='+',color='red')
-        
+
         plt.plot(mu,line2,color='blue',label=r"$m=%.4f \pm %.4f$" %(slope2, std_err2))
         plt.plot(mu,[0]*len(mu),color='black')
         plt.errorbar(mu-dx, mean2, std2, label='g2', fmt='+',color='blue')
@@ -382,15 +389,15 @@ class TXDiagnosticPlots(PipelineStage):
         print('plotting histogram')
         import matplotlib.pyplot as plt
         from scipy import stats
-        
+
         delta_gamma = self.config['delta_gamma']
         bins = 10
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelMeanVariance(bins)
         calc2 = ParallelMeanVariance(bins)
-        
-        
+
+
         while True:
             data = yield
 
@@ -398,28 +405,28 @@ class TXDiagnosticPlots(PipelineStage):
                 break
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
-        
+
             if self.config['shear_catalog_type']=='metacal':
                 b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
-                b1_1p = np.digitize(data['mcal_g1_1p'][qual_cut], edges) - 1 
+                b1_1p = np.digitize(data['mcal_g1_1p'][qual_cut], edges) - 1
                 b1_2p = np.digitize(data['mcal_g1_2p'][qual_cut], edges) - 1
-                b1_1m = np.digitize(data['mcal_g1_1m'][qual_cut], edges) - 1 
+                b1_1m = np.digitize(data['mcal_g1_1m'][qual_cut], edges) - 1
                 b1_2m = np.digitize(data['mcal_g1_2m'][qual_cut], edges) - 1
             else:
-                b1 = np.digitize(data['g1'][qual_cut], edges) - 1 
-            
+                b1 = np.digitize(data['g1'][qual_cut], edges) - 1
+
             if self.config['shear_catalog_type']=='metacal':
                 b2 = np.digitize(data['mcal_g2'][qual_cut], edges) - 1
-                b2_1p = np.digitize(data['mcal_g2_1p'][qual_cut], edges) - 1 
+                b2_1p = np.digitize(data['mcal_g2_1p'][qual_cut], edges) - 1
                 b2_2p = np.digitize(data['mcal_g2_2p'][qual_cut], edges) - 1
-                b2_1m = np.digitize(data['mcal_g2_1m'][qual_cut], edges) - 1 
+                b2_1m = np.digitize(data['mcal_g2_1m'][qual_cut], edges) - 1
                 b2_2m = np.digitize(data['mcal_g2_2m'][qual_cut], edges) - 1
             else:
                 b2 = np.digitize(data['g2'][qual_cut], edges) - 1
 
             for i in range(bins):
                 w1 = np.where(b1==i)
-                
+
                 if self.config['shear_catalog_type']=='metacal':
                     w1_1p = np.where(b1_1p==i)
                     w1_2p = np.where(b1_2p==i)
@@ -432,13 +439,13 @@ class TXDiagnosticPlots(PipelineStage):
                 elif self.config['shear_catalog_type']=='lensfit':
                     g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
                 else:
-                    raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+                    raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
                 # Do more things here to establish
                 calc1.add_data(i, g1)
-                
-                
+
+
                 w2 = np.where(b2==i)
-                
+
                 if self.config['shear_catalog_type']=='metacal':
                     w2_1p = np.where(b2_1p==i)
                     w2_2p = np.where(b2_2p==i)
@@ -451,7 +458,7 @@ class TXDiagnosticPlots(PipelineStage):
                 elif self.config['shear_catalog_type']=='lensfit':
                     g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
                 else:
-                    raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+                    raiseValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
                 calc2.add_data(i, g2)
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
@@ -478,20 +485,20 @@ class TXDiagnosticPlots(PipelineStage):
     def plot_snr_histogram(self):
         print('plotting snr histogram')
         import matplotlib.pyplot as plt
-        
+
         delta_gamma = self.config['delta_gamma']
         shear_prefix = self.config['shear_prefix']
         bins = 10
         edges = np.logspace(1, 3, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
         calc1 = ParallelMeanVariance(bins)
-        
+
         while True:
             data = yield
 
             if data is None:
                 break
-            
+
             qual_cut = data['source_bin'] !=-1
 #            qual_cut |= data['lens_bin'] !=-1
 
@@ -559,6 +566,14 @@ class TXDiagnosticPlots(PipelineStage):
                                 counts[i, j, bij] += 1
                                 if s:
                                     counts_s[i, j, bij] += 1
+            elif self.config['shear_catalog_type']=='lensfit':
+                B = np.digitize(data['K'], edges) - 1
+                # loop through this chunk of data.
+                for s, b in zip(in_shear_sample, B):
+                    if (b >= 0) and (b < size):
+                        counts[b] +=1
+                        if s:
+                            counts_s[b] += 1
             else:
                 B = np.digitize(data['R'], edges) - 1
                 # loop through this chunk of data.
@@ -681,5 +696,3 @@ def reduce(comm, H):
         comm.Reduce(h, hsum)
         H2.append(hsum)
     return H2
-
-
