@@ -184,16 +184,20 @@ class DynamicSplitter(Splitter):
                 sub.create_dataset(col, (sz,), dtype=dt, maxshape=(None,))
 
     def _size_check(self, b, e):
-        n = self.bin_sizes[b]
+        # If the sizes are already large enough then no
+        # resizing is needed
+        if e <= self.bin_sizes[b]:
+            return
 
-        # Expand the columns by 50% if needed
-        while e > n:
-            sub = self.subgroups[b]
-            new_size = int(n * 1.5)
-            for col in self.columns:
-                sub[col].resize((new_size,))
-            self.bin_sizes[b] = new_size
-            n = new_size
+        # Otherwise resize the column to be 50%
+        # larger than the current maximum size.
+        new_size = int(e * 1.5)
+        sub = self.subgroups[b]
+        for col in self.columns:
+            sub[col].resize((new_size,))
+
+        # and update the stored size for next time
+        self.bin_sizes[b] = new_size
 
     def finish(self):
         """
