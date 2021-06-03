@@ -756,7 +756,6 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
 
 
 def generate_mock_metacal_mag_responses(bands, nobj):
-    print("WARNING: getting oddly large S/N variation from mock metacal mags")
     nband = len(bands)
     mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
     rho = 0.25  #  approx correlation between response in bands, from HSC tract
