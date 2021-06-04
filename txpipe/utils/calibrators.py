@@ -226,8 +226,8 @@ class LensfitCalibrator(Calibrator):
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][:]
 
-            C = f["response/C"][:, 0, :]
-            C_2d = f["response/C_2d"][0]
+            C = f["response/C"][:, :]
+            C_2d = f["response/C_2d"][:]
 
         n = len(K)
         calibrators = [cls(K[i], C[i]) for i in range(n)]
@@ -259,7 +259,7 @@ class LensfitCalibrator(Calibrator):
 
         if subtract_mean:
             g1 = (g1 - self.c[0]) / (1 + self.K)
-            g2 = (g2 - self.c[0]) / (1 + self.K)
+            g2 = (g2 - self.c[1]) / (1 + self.K)
         else:
             g1 = g1 / (1 + self.K)
             g2 = g2 / (1 + self.K)
