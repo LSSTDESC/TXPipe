@@ -561,7 +561,7 @@ class TXApertureMass(TXTwoPoint):
     name='TXApertureMass'
     inputs = [
         ('calibrated_shear_catalog', ShearCatalog),
-        ('calibrated_lens_catalog', HDFFile),
+        ('calibrated_lens_catalog', HDFFile), # MEAD: I don't think I can remove this due to inheritance
         ('shear_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
         ('tracer_metadata', HDFFile),
