@@ -567,14 +567,14 @@ class TXApertureMass(TXTwoPoint):
         ('tracer_metadata', HDFFile),
     ]
     outputs = [
-        ('aperturemass_data', SACCFile),
+        ('aperture_mass_data', SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
         'calcs': [0,1,2],
         'min_sep': 0.5,
         'max_sep': 300.,
-        'nbins': 15, # MEAD: Changed default from 9 -> 15
+        'nbins': 15,
         'bin_slop': 0.02,
         'sep_units': 'arcmin',
         'flip_g1': False,
@@ -594,6 +594,7 @@ class TXApertureMass(TXTwoPoint):
     def select_calculations(self, source_list, lens_list):
 
         # For shear-shear we omit pairs with j>i
+        # MEAD: 'lens_list' not accessed here, can I remove it or is it needed due to inheritance?
         calcs = []
         k = SHEAR_SHEAR
         for i in source_list:
@@ -608,20 +609,22 @@ class TXApertureMass(TXTwoPoint):
 
     def calculate_shear_shear(self, i, j):
 
-        gg = TXTwoPoint.calculate_shear_shear(self, i, j)
-        gg.Map = gg.calculateMapSq() # MEAD: Rename gg.Map to something more informative
+        # MEAD: 'self' not accessed here, can I remove this or is it needed by super()?
+        gg = super().calculate_shear_shear(i, j)
+        gg.mapsq = gg.calculateMapSq()
 
         return gg
 
     def write_output(self, source_list, lens_list, meta, results):
 
+        # MEAD: 'lens_list' not accessed here, can I remove it or is it needed due to inheritance?
         import sacc
 
         # Names for aperture-mass correlation functions
-        MAPSQ = "mapsq"
-        MAPSQ_IM = "mapsq_im"
-        MXSQ = "mxsq"
-        MXSQ_IM = "mxsq_im"
+        MAPSQ = "galaxy_shear_apmass2"
+        MAPSQ_IM = "galaxy_shear_apmass2_im"
+        MXSQ = "galaxy_shear_apmass2_cross"
+        MXSQ_IM = "galaxy_shear_apmass2_im_cross"
 
         # Initialise SACC object
         S = sacc.Sacc()
@@ -644,12 +647,12 @@ class TXApertureMass(TXTwoPoint):
             tracer1 = f'source_{d.i}'
             tracer2 = f'source_{d.j}'
 
-            theta = np.exp(d.object.meanlogr) # MEAD: Double check that this is correct for Map
+            theta = np.exp(d.object.meanlogr)
             weight = d.object.weight
-            err = np.sqrt(d.object.Map[4])
+            err = np.sqrt(d.object.mapsq[4])
             n = len(theta)
             for j, CORR in enumerate([MAPSQ, MAPSQ_IM, MXSQ, MXSQ_IM]):
-                map = d.object.Map[j]
+                map = d.object.mapsq[j]
                 for i in range(n):
                     S.add_data_point(CORR, (tracer1, tracer2), map[i],
                         theta=theta[i], error=err[i], weight=weight[i])
@@ -661,7 +664,7 @@ class TXApertureMass(TXTwoPoint):
         self.write_metadata(S, meta)
 
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('aperturemass_data'), overwrite=True)
+        S.save_fits(self.get_output('aperture_mass_data'), overwrite=True)
 
     
 class TXTwoPointPlots(PipelineStage):
