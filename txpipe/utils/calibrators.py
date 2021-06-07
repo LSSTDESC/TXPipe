@@ -226,8 +226,8 @@ class LensfitCalibrator(Calibrator):
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][:]
 
-            C = f["response/C"][:, 0, :]
-            C_2d = f["response/C_2d"][0]
+            C = f["response/C"][:, :]
+            C_2d = f["response/C_2d"][:]
 
         n = len(K)
         calibrators = [cls(K[i], C[i]) for i in range(n)]
@@ -258,11 +258,11 @@ class LensfitCalibrator(Calibrator):
         """
 
         if subtract_mean:
-            g1 = (g1 - self.c[0][0]) / (1 + self.K)
-            g2 = (g2 - self.c[0][1]) / (1 + self.K)
+            g1 = (g1 - self.c[0]) / (1 + self.K)
+            g2 = (g2 - self.c[1]) / (1 + self.K)
         else:
-            g1 = (g1) / (1 + self.K)
-            g2 = (g2) / (1 + self.K)
+            g1 = g1 / (1 + self.K)
+            g2 = g2 / (1 + self.K)
         return g1, g2
 
 class HSCCalibrator(Calibrator):
@@ -312,8 +312,6 @@ class HSCCalibrator(Calibrator):
         mhat = < m >w (Eq. (A2) in Mandelbaum et al., 2018) (we call this K)
 
 
-        The c term is only included if subtract_mean = True
-
         Parameters
         ----------
         g1: array or float
@@ -327,9 +325,6 @@ class HSCCalibrator(Calibrator):
 
         c2: array or float
             Shear 2 additive bias component
-
-        subtract_mean: bool
-            whether to subtract the constant c term (default True)
         """
 
         g1 = (g1 / (2 * self.R) - c1)/ (1 + self.K)

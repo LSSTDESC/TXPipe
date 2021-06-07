@@ -415,7 +415,6 @@ class LensfitCalculator:
         mode = ("allgather" if allgather else "gather")
         _ ,K = self.K.collect(comm, mode)
         _, C = self.C.collect(comm, mode)
-
         return K, C, count
 
 

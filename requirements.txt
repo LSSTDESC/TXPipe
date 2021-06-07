@@ -9,7 +9,7 @@ fitsio
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
-git+https://github.com/rmjarvis/treecorr@main
+treecorr>=4.2.2
 sklearn
 astropy
 healpy
