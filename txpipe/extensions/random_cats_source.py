@@ -9,7 +9,7 @@ class TXRandomCat_source(PipelineStage):
     inputs = [
         ('aux_maps', MapsFile),
         ('tracer_metadata', HDFFile),       
-        ('source_photoz_stack', HDFFile),
+        ('shear_photoz_stack', HDFFile),
     ]
     outputs = [
         ('random_cats_source', RandomsCatalog),
