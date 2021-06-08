@@ -24,7 +24,7 @@ class TXRandomCat_source(PipelineStage):
         import scipy.special
         import scipy.stats
         import healpy
-        from . import randoms
+        from .. import randoms
         # Load the input depth map
         with self.open_input('aux_maps', wrapper=True) as maps_file:
             depth = maps_file.read_map('depth/depth')
