@@ -376,6 +376,51 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return ng
 
+    def calculate_pos_pos(self, data, i, j):
+        import treecorr
+
+        cat_i, rancat_i = self.get_lens_catalog(data, i)
+        n_i = cat_i.nobj
+        n_rand_i = rancat_i.nobj if rancat_i is not None else 0
+
+        # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
+        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
+        r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
+        a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
+        Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
+        config = self.config.copy() # copying the cofiguration options, so we don't overwrite the original configuration!
+        config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
+        config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+        nn = treecorr.NNCorrelation(config)
+        rn = treecorr.NNCorrelation(config)
+        nr = treecorr.NNCorrelation(config)
+        rr = treecorr.NNCorrelation(config)
+        
+        if i==j:
+            n_j = n_i
+            n_rand_j = n_rand_i
+            nn.process(cat_i)
+            nr.process(cat_i, rancat_i)
+            rr.process(rancat_i)
+            nn.calculateXi(rr, dr=nr)
+            
+        else:
+            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+            nn.process(cat_i,    cat_j)
+            nr.process(cat_i,    rancat_j)
+            rn.process(rancat_i, cat_j)
+            rr.process(rancat_i, rancat_j)
+            nn.calculateXi(rr, dr=nr, rd=rn)
+
+        print(f"Rank {self.rank} calculated position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
+            f"{n_rand_i} x {n_rand_j} randoms")
+
+        return nn
+
+
     def call_treecorr(self, data, meta, i, j, k):
         import sacc 
 
