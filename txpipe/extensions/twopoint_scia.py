@@ -434,7 +434,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             xx = self.calculate_shear_pos_select(data, meta, i, j)
             xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, meta, i, j)
+            xx = self.calculate_pos_pos(data, i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
