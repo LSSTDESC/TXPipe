@@ -376,10 +376,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return ng
 
-    def calculate_pos_pos(self, data, i, j):
+    def calculate_pos_pos(self, data, meta, i, j):
         import treecorr
 
-        cat_i, rancat_i = self.get_lens_catalog(data, i)
+        cat_i, rancat_i = self.get_lens_catalog(data, meta, i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
@@ -406,7 +406,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             nn.calculateXi(rr, dr=nr)
             
         else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            cat_j, rancat_j = self.get_lens_catalog(data, meta, j)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj if rancat_j is not None else 0
             nn.process(cat_i,    cat_j)
@@ -434,7 +434,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             xx = self.calculate_shear_pos_select(data, meta, i, j)
             xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, i, j)
+            xx = self.calculate_pos_pos(data, meta, i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
