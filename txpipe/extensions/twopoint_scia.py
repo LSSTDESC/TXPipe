@@ -377,6 +377,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         return ng
 
     def calculate_pos_pos(self, data, meta, i, j):
+        import pyccl as ccl
         import treecorr
 
         cat_i, rancat_i = self.get_lens_catalog(data, meta, i)
