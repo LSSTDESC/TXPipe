@@ -20,8 +20,6 @@ from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
-from .twopoint import TXGammaTDimStars
-from .twopoint import TXGammaTBrightStars
 from .noise_maps import TXNoiseMaps
 from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
@@ -32,6 +30,11 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail_pz import PZRailTrain
+from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
+from .jackknife import TXJackknifeCenters
+from .twopoint_null_tests import TXGammaTFieldCenters
+from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier
+from .calibrate import TXShearCalibration
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA

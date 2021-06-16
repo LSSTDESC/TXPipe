@@ -458,7 +458,7 @@ class TXDiagnosticPlots(PipelineStage):
                 elif self.config['shear_catalog_type']=='lensfit':
                     g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
                 else:
-                    raiseValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
+                    raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
                 calc2.add_data(i, g2)
 
         count1, mean1, var1 = calc1.collect(self.comm, mode='gather')

@@ -14,7 +14,7 @@ class PipelineStage(PipelineStageBase):
         print("Please do not execute this stage again.")
 
 
-    def combined_iterators(self, rows, *inputs):
+    def combined_iterators(self, rows, *inputs, parallel=True):
         if not len(inputs) % 3 == 0:
             raise ValueError("Arguments to combined_iterators should be in threes: "
                 "tag, group, value"
@@ -26,7 +26,7 @@ class PipelineStage(PipelineStageBase):
             tag = inputs[3 * i]
             section = inputs[3 * i + 1]
             cols = inputs[3 * i + 2]
-            iterators.append(self.iterate_hdf(tag, section, cols, rows))
+            iterators.append(self.iterate_hdf(tag, section, cols, rows, parallel=parallel))
 
         for it in zip(*iterators):
             data = {}

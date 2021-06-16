@@ -141,11 +141,11 @@ def test_mean_shear_weights():
 def test_lensfit_scalar():
     # lensfit calibrator
     K = np.array([0.9])
-    C = np.array([[0.11,0.22]])
+    C = np.array([0.11,0.22])
     g1 = 0.2
     g2 = -0.3
-    g1_obs = (g1)*(1+K[0])+C[0][0]
-    g2_obs = (g2)*(1+K[0])+C[0][1]
+    g1_obs = (g1)*(1+K[0])+C[0]
+    g2_obs = (g2)*(1+K[0])+C[1]
     g_obs = np.array([g1_obs,g2_obs])
     cal = LensfitCalibrator(K, C)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1], subtract_mean=True)
@@ -158,12 +158,12 @@ def test_lensfit_scalar():
 def test_lensfit_array():
     # array version
     K = np.array([0.9])
-    C = np.array([[0.11,0.22]])
+    C = np.array([0.11,0.22])
     cal = LensfitCalibrator(K, C)
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
-    g1_obs = (g1)*(1+K[0])+C[0][0]
-    g2_obs = (g2)*(1+K[0])+C[0][1]
+    g1_obs = (g1)*(1+K[0])+C[0]
+    g2_obs = (g2)*(1+K[0])+C[1]
     g_obs = [g1_obs,g2_obs]
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
 
@@ -176,11 +176,11 @@ def test_lensfit_array():
 def test_null():
     # null calibrator
     K = 1.
-    C = [[0., 0.]]
+    C = [0., 0.]
     g1 = 0.2
     g2 = -0.3
-    g1 = (g1+C[0][0])*(K)
-    g2 = (g2+C[0][1])*(K)
+    g1 = (g1+C[0])*(K)
+    g2 = (g2+C[1])*(K)
     g_obs = np.array([g1, g2])
     assert g_obs.shape == (2,)
     cal = NullCalibrator()
@@ -192,8 +192,8 @@ def test_null():
 
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
-    g1 = (g1+C[0][0])*(K)
-    g2 = (g2+C[0][1])*(K)
+    g1 = (g1+C[0])*(K)
+    g2 = (g2+C[1])*(K)
     g_obs = [g1, g2]
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
 

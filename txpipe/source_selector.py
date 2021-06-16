@@ -413,17 +413,17 @@ class TXSourceSelector(PipelineStage):
         elif self.config['shear_catalog_type']=='lensfit':
             group = outfile.create_group('response')
             group.create_dataset('K', (nbin_source,), dtype='f')
-            group.create_dataset('C', (nbin_source,1,2), dtype='f')
+            group.create_dataset('C', (nbin_source,2), dtype='f')
             group.create_dataset('K_2d', (1,), dtype='f')
-            group.create_dataset('C_2d', (1,2), dtype='f')
+            group.create_dataset('C_2d', (2), dtype='f')
         else:
             group = outfile.create_group('response')
             group.create_dataset('R', (n,), dtype='f')
             group.create_dataset('K', (nbin_source,), dtype='f')
-            group.create_dataset('C', (nbin_source,1,2), dtype='f')
+            group.create_dataset('C', (nbin_source,2), dtype='f')
             group.create_dataset('R_mean', (nbin_source,), dtype='f')
             group.create_dataset('K_2d', (1,), dtype='f')
-            group.create_dataset('C_2d', (1,2), dtype='f')
+            group.create_dataset('C_2d', (2), dtype='f')
             group.create_dataset('R_mean_2d', (1,), dtype='f')
 
         return outfile
@@ -478,7 +478,7 @@ class TXSourceSelector(PipelineStage):
         R = np.zeros((nbin_source, 2, 2))
         S = np.zeros((nbin_source, 2, 2))
         K = np.zeros(nbin_source)
-        C = np.zeros((nbin_source,1,2))
+        C = np.zeros((nbin_source, 2))
         N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
         mean_e1 = np.zeros(nbin_source)
@@ -512,12 +512,11 @@ class TXSourceSelector(PipelineStage):
                 sigma_e[i] = np.sqrt(0.5 * P @ variances[i])
 
             elif self.config['shear_catalog_type']=='lensfit' or self.config['shear_catalog_type']=='hsc':
-
                 # Collect the overall calibration
                 K[i], C[i], N[i] = cal.collect(self.comm)
 
-                mean_e1[i] = C[i][0][0]
-                mean_e2[i] = C[i][0][1]
+                mean_e1[i] = C[i][0]
+                mean_e2[i] = C[i][1]
 
                 # This also needs checking.
                 sigma_e[i] = np.sqrt(
