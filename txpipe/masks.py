@@ -36,6 +36,9 @@ class TXSimpleMask(PipelineStage):
         # Overall mask
         mask = np.logical_and.reduce([mask for _, mask in masks])
 
+        # Total survey area calculation. This is simplistic:
+        # TODO: account for weights / hit fractions here, and allow
+        # for different lens and shear survey areas
         num_hit = (mask.sum() * 1.0)
         area = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = area / 41252.96125
