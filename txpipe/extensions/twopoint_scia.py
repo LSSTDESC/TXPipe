@@ -63,7 +63,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'do_pos_pos': False,
         'do_shear_shear': False, 
         'var_method': 'jackknife',
-        'low_mem': False
+        'low_mem': False,
         'metric': 'Rperp',
         }
 

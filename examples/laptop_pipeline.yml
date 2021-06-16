@@ -43,6 +43,7 @@ stages:
     - name: TXMapCorrelations    # plot the correlations between systematics and data
 
     # Disabled since not yet synchronised with new Treecorr MPI
+    - name: TXRandomCat_source
     - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
