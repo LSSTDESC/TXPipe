@@ -313,16 +313,16 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import sacc 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, meta, i, j)
+            xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(data, meta, i, j)
+            xx = self.calculate_shear_pos(i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==SHEAR_POS_SELECT: #added the call to the selection function calculation.
-            xx = self.calculate_shear_pos_select(data, meta, i, j)
+            xx = self.calculate_shear_pos_select( i, j)
             xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, meta, i, j)
+            xx = self.calculate_pos_pos( i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
@@ -332,7 +332,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         sys.stdout.flush()
         return result
 
-    def write_output(self, data, meta, results):
+    def write_output(self, source_list, lens_list, meta, results):
         import sacc
         import treecorr
         XI = "combined"
@@ -356,7 +356,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        for i in data['source_list']:
+        for i in source_list:
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
