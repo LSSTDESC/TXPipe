@@ -309,7 +309,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         return nn
 
 
-    def call_treecorr(self, data, meta, i, j, k):
+    def call_treecorr(self, i, j, k):
         import sacc 
 
         if k==SHEAR_SHEAR:
