@@ -238,7 +238,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
                 weight=dweight[i],
             )
 
-        # self.write_metadata(S, meta)
+        self.write_metadata(S, meta)
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
@@ -246,8 +246,6 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("gammat_field_center"), overwrite=True)
-
-        # Also make a plot of the data
 
 
 class TXGammaTStars(TXTwoPoint):
@@ -340,14 +338,10 @@ class TXGammaTStars(TXTwoPoint):
     def select_calculations(self, source_list, lens_list):
         # We only want a single calculation, the gamma_T around
         # the field centers
-        print(source_list)
-        print(lens_list)
         return [("all", "bright", SHEAR_POS), ("all", "dim", SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        print()
+        # we write output both to file for later and to a plot
         self.write_output_sacc(meta, results[0], "gammat_bright_stars", "Bright")
         self.write_output_sacc(meta, results[1], "gammat_dim_stars", "Dim")
         self.write_output_plot(results[0], "gammat_bright_stars_plot", "Bright")
@@ -373,7 +367,7 @@ class TXGammaTStars(TXTwoPoint):
             dtheta * derror,
             fmt="ro",
             capsize=3,
-            label=r"$\chi^2/dof = $" + str(chi2dof),
+            label=rf"$\chi^2/dof = {chi2dof:.2f}$",
         )
         plt.legend(loc="best")
         plt.xscale("log")
@@ -427,15 +421,12 @@ class TXGammaTStars(TXTwoPoint):
 
         self.write_metadata(S, meta)
 
-        print(S)
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output(sacc_file), overwrite=True)
-
-        # Also make a plot of the data
 
 
 class TXGammaTRandoms(TXTwoPoint):
@@ -547,7 +538,7 @@ class TXGammaTRandoms(TXTwoPoint):
             dtheta * derror,
             fmt="ro",
             capsize=3,
-            label="$\chi^2/dof = $" + str(chi2dof),
+            label=r"$\chi^2/dof = $" + str(chi2dof),
         )
         plt.legend(loc="best")
         plt.xscale("log")
@@ -603,12 +594,9 @@ class TXGammaTRandoms(TXTwoPoint):
 
         self.write_metadata(S, meta)
 
-        print(S)
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("gammat_randoms"), overwrite=True)
-
-        # Also make a plot of the data

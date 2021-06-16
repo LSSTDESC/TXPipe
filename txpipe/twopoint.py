@@ -24,7 +24,7 @@ class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
         ('calibrated_shear_catalog', ShearCatalog),
-        ('calibrated_lens_catalog', HDFFile),
+        ('binned_lens_catalog', HDFFile),
         ('binned_random_cats', HDFFile),
         ('shear_photoz_stack', HDFFile),
         ('lens_photoz_stack', HDFFile),
@@ -149,7 +149,7 @@ class TXTwoPoint(PipelineStage):
         with self.open_input('calibrated_shear_catalog') as f:
             nbin_source = f['shear'].attrs['nbin_source']
 
-        with self.open_input('calibrated_lens_catalog') as f:
+        with self.open_input('binned_lens_catalog') as f:
             nbin_lens = f['lens'].attrs['nbin_lens']
 
         source_list = range(nbin_source)
@@ -388,7 +388,7 @@ class TXTwoPoint(PipelineStage):
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
-            self.get_input("calibrated_lens_catalog"),
+            self.get_input("binned_lens_catalog"),
             ext = f"/lens/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
@@ -526,17 +526,6 @@ class TXTwoPoint(PipelineStage):
         return nn
 
 
-
-
-    def calculate_area(self, data):
-        import healpy as hp
-        pix=hp.ang2pix(4096, np.pi/2.-np.radians(data['dec']),np.radians(data['ra']), nest=True)
-        area=hp.nside2pixarea(4096)*(180./np.pi)**2
-        mask=np.bincount(pix)>0
-        area=np.sum(mask)*area
-        area=float(area) * 60. * 60.
-        return area
-
     def read_metadata(self):
         meta_data = self.open_input('tracer_metadata')
         area = meta_data['tracers'].attrs['area']
@@ -559,7 +548,8 @@ class TXTwoPoint(PipelineStage):
     
 class TXTwoPointPlots(PipelineStage):
     """
-    Make n(z) plots
+    Make plots of the correlation functions and their ratios to
+    a fiducial theory prediction.
     """
     name='TXTwoPointPlots'
     inputs = [
