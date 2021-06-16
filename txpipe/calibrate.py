@@ -82,6 +82,7 @@ class TXShearCalibration(PipelineStage):
                 raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
 
             output_cols = ["ra", "dec", "g1", "g2", "weight", 'mean_z']
+            print("Using 3D coords, hopefully a mean readshift is defined")
         else:
             output_cols = ["ra", "dec", "g1", "g2", "weight"]
 
