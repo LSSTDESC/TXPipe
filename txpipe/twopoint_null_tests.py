@@ -9,7 +9,7 @@ from .data_types import (
     TextFile,
 )
 import numpy as np
-from .twopoint import TXTwoPoint, SHEAR_POS
+from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS
 from .utils import DynamicSplitter
 
 
