@@ -41,6 +41,8 @@ class TXShearCalibration(PipelineStage):
         "use_true_shear": False,
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
+        'redshift_shearcatalog': False,
+        '3Dcoords': False,
     }
 
     def run(self):
@@ -49,6 +51,8 @@ class TXShearCalibration(PipelineStage):
         cat_type = read_shear_catalog_type(self)
         use_true = self.config["use_true_shear"]
         subtract_mean_shear = self.config["subtract_mean_shear"]
+        Dcoords = self.config['3Dcoords']
+        redshift_shearcatalog = self.config["redshift_shearcatalog"]
 
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
@@ -71,7 +75,15 @@ class TXShearCalibration(PipelineStage):
         else:
             cat_cols += ["g1", "g2"]
 
-        output_cols = ["ra", "dec", "g1", "g2", "weight"]
+        if Dcoords:
+            if redshift_shearcatalog:
+                cat_cols += ["mean_z"]
+            else:
+                raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
+
+            output_cols = ["ra", "dec", "g1", "g2", "weight", 'mean_z']
+        else:
+            output_cols = ["ra", "dec", "g1", "g2", "weight"]
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -145,7 +157,10 @@ class TXShearCalibration(PipelineStage):
         f = self.open_output("calibrated_shear_catalog", parallel=True)
 
         #  we only retain these columns
-        cols = ["ra", "dec", "weight", "g1", "g2"]
+        if Dcoords: 
+            cols = ["ra", "dec", "mean_z", "weight", "g1", "g2"]
+        else:
+            cols = ["ra", "dec", "weight", "g1", "g2"]
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
@@ -179,3 +194,5 @@ class TXShearCalibration(PipelineStage):
         d["g1"] = d[f"{prefix}_g1"]
         d["g2"] = d[f"{prefix}_g2"]
         del d[f"{prefix}_g1"], d[f"{prefix}_g2"]
+
+
