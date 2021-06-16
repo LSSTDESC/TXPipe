@@ -203,8 +203,8 @@ class TXShearCalibration(PipelineStage):
     
     def rename_redshift(self, d, name):
         #renaming the redshift name
-        d["z"] = d[z_name]
-        del d[z_name]
+        d["z"] = d[name]
+        del d[name]
 
 
 
