@@ -147,6 +147,7 @@ class TXShearCalibration(PipelineStage):
         output_file.close()
 
     def setup_output(self):
+        Dcoords = self.config['3Dcoords']
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["tomography/source_counts"][:]
