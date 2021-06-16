@@ -62,3 +62,42 @@ def hex_escape(s, replace_newlines=False):
     return "".join(
         c if c in chars else r"\x{0:02x}".format(ord(c)) for c in s
     )
+
+
+def chi2_ignoring_zeros(d, C):
+    """
+    Compute the chi^2 value of a vector and its covariance matrix, but
+    ignore elements that are zero in both the data vector and rows and
+    columns of the matrix.
+
+    Parameters
+    ----------
+    d: array
+        1D data - model
+    C: array
+        2D covariance
+
+    Returns
+    -------
+    chi2: float
+        total chi2 value
+    n: int
+        number of data points included
+    """
+    x = C.diagonal()
+    # Find elements to be cut
+    cut = (x == 0)
+
+    # If the diagonal is zero then the off-diagonals must be too, and the data vector
+    if (d[cut] != 0).any() or (C[cut, :] != 0).any() or (C[:, cut] != 0).any():
+        raise ValueError("In chi2_ignoring_zeros, some data points with zero "
+                         "variance had non-zero data points")
+
+    # Cut down the the good data points
+    keep = ~cut
+    d = d[keep]
+    C = C[keep][:, keep]
+
+    # Get the chi2 of the remaining points
+    P = np.linalg.inv(C)
+    return d @ P @ d, keep.sum()

@@ -10,7 +10,7 @@ from .data_types import (
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_POS
-from .utils import DynamicSplitter
+from .utils import DynamicSplitter, chi2_ignoring_zeros
 
 
 class TXStarCatalogSplitter(PipelineStage):
@@ -349,17 +349,19 @@ class TXGammaTStars(TXTwoPoint):
 
     def write_output_plot(self, d, image_file, text):
         import matplotlib.pyplot as plt
+        import treecorr
+
+        cov = treecorr.estimate_multi_cov([d.object], self.config['var_method'])
 
         dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
+        derror = np.sqrt(cov.diagonal())
         dtheta = np.exp(d.object.meanlogr)
 
         fig = self.open_output(image_file, wrapper=True)
 
         # compute the mean and the chi^2/dof
-        z = (dvalue) / derror
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(dtheta) - 1)
+        chi2, nd = chi2_ignoring_zeros(dvalue, cov)
+        chi2dof = chi2 / (nd - 1)
 
         plt.errorbar(
             dtheta,
@@ -510,27 +512,26 @@ class TXGammaTRandoms(TXTwoPoint):
         return [("all", 0, SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        self.write_output_sacc(meta, results)
+        # we write output both to file for later and to a plot
+        import treecorr
+        cov = treecorr.estimate_multi_cov([results[0].object], 
+                                          self.config['var_method'])
+        self.write_output_sacc(meta, results, cov)
         self.write_output_plot(results)
 
-    def write_output_plot(self, results):
+    def write_output_plot(self, results, cov):
         import matplotlib.pyplot as plt
 
         d = results[0]
         dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
+        derror = np.sqrt(cov.diagonal())
         dtheta = np.exp(d.object.meanlogr)
 
         fig = self.open_output("gammat_randoms_plot", wrapper=True)
 
         # compute the mean and the chi^2/dof
-        flat1 = 0
-        z = (dvalue - flat1) / derror
-        chi2 = np.sum(z ** 2)
-        chi2dof = chi2 / (len(dtheta) - 1)
-        print("error,", derror)
+        chi2, nd = chi2_ignoring_zeros(dvalue, cov)
+        chi2dof = chi2 / (nd - 1)
 
         plt.errorbar(
             dtheta,
@@ -547,10 +548,9 @@ class TXGammaTRandoms(TXTwoPoint):
         plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
         plt.title("Randoms Tangential Shear")
 
-        print("type", type(fig))
         fig.close()
 
-    def write_output_sacc(self, meta, results):
+    def write_output_sacc(self, meta, results, cov):
         # We write out the results slightly differently here
         # beause they go to a different file and have different
         # tracers and tags.
@@ -573,7 +573,7 @@ class TXGammaTRandoms(TXTwoPoint):
         d = results[0]
         assert len(results) == 1
         dvalue = d.object.xi
-        derror = np.sqrt(d.object.varxi)
+        derror = np.sqrt(d.diagonal())
         dtheta = np.exp(d.object.meanlogr)
         dnpair = d.object.npairs
         dweight = d.object.weight
