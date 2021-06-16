@@ -43,6 +43,7 @@ class TXShearCalibration(PipelineStage):
         "subtract_mean_shear": True,
         'redshift_shearcatalog': False,
         '3Dcoords': False,
+        'redshift_name': 'redshift_true'
     }
 
     def run(self):
@@ -53,6 +54,7 @@ class TXShearCalibration(PipelineStage):
         subtract_mean_shear = self.config["subtract_mean_shear"]
         Dcoords = self.config['3Dcoords']
         redshift_shearcatalog = self.config["redshift_shearcatalog"]
+        z_name = self.config['redshift_name']
 
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
@@ -77,11 +79,11 @@ class TXShearCalibration(PipelineStage):
 
         if Dcoords:
             if redshift_shearcatalog:
-                cat_cols += ["mean_z"]
+                cat_cols += [z_name]
             else:
                 raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
 
-            output_cols = ["ra", "dec", "g1", "g2", "weight", 'mean_z']
+            output_cols = ["ra", "dec", "g1", "g2", "weight", "z"]
             print("Using 3D coords, hopefully a mean readshift is defined")
         else:
             output_cols = ["ra", "dec", "g1", "g2", "weight"]
@@ -122,6 +124,8 @@ class TXShearCalibration(PipelineStage):
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
 
+            self.rename_redshift(data, z_name)
+
             #  Now output the calibrated bin data for this processor
             for b in my_bins:
 
@@ -160,7 +164,7 @@ class TXShearCalibration(PipelineStage):
 
         #  we only retain these columns
         if Dcoords: 
-            cols = ["ra", "dec", "mean_z", "weight", "g1", "g2"]
+            cols = ["ra", "dec", "z", "weight", "g1", "g2"]
         else:
             cols = ["ra", "dec", "weight", "g1", "g2"]
 
@@ -196,5 +200,11 @@ class TXShearCalibration(PipelineStage):
         d["g1"] = d[f"{prefix}_g1"]
         d["g2"] = d[f"{prefix}_g2"]
         del d[f"{prefix}_g1"], d[f"{prefix}_g2"]
+    
+    def rename_redshift(self, d, name):
+        #renaming the redshift name
+        d["z"] = d[z_name]
+        del d[z_name]
+
 
 

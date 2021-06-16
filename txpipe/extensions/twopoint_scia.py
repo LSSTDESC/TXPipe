@@ -113,7 +113,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         cat_0 = treecorr.Catalog(
             self.get_input("calibrated_shear_catalog"),
             ext = f"/shear/bin_{i}",
-            z_col = "mean_z",
+            z_col = "z",
         )
         r = ccl.background.comoving_radial_distance(cosmo, 1/(1+cat_0.z))
         # Load and calibrate the appropriate bin data
