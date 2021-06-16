@@ -27,13 +27,20 @@ stages:
       nprocess: 32
     - name: TXSourceSelector
       nprocess: 32
-    - name: TXMeanLensSelector
+    - name: TXShearCalibration
+      nodes: 1
+      nprocess: 8
+    - name: TXLensCatalogSplitter
+      nodes: 1
+      nprocess: 8
+    - name: TXTruthLensSelector
       nprocess: 32
-    - name: PZPDFMLZ
-      nprocess: 64
+    - name: TXTrueNumberDensity
+      nprocess: 32
       nodes: 2
-    - name: TXPhotozStack
-      nprocess: 16
+    - name: TXTwoPointTheoryReal
+      nprocess: 1
+      threads_per_process: 8
     - name: TXPhotozPlots
       nprocess: 8
     - name: TXMainMaps
@@ -47,31 +54,32 @@ stages:
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXRandomCat
-      nodes: 1
+      nprocess: 32
+      nodes: 2
     - name: TXTwoPoint
       nprocess: 2
       nodes: 2
       threads_per_process: 32
     - name: TXNullBlinding
       threads_per_process: 32
-    - name: TXTwoPointFourier
-      nprocess: 2
-      nodes: 2
-      threads_per_process: 32
+#    - name: TXTwoPointFourier
+#      nprocess: 2
+#      nodes: 2
+#      threads_per_process: 32
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
       nprocess: 16
-    - name: TXGammaTBrightStars
-      threads_per_process: 32
-    - name: TXGammaTDimStars
-      threads_per_process: 32
+    - name:  TXStarCatalogSplitter
+      nprocess: 1
+#    - name: TXGammaTStars
+#      threads_per_process: 32
     - name: TXBrighterFatterPlot
     - name: TXRoweStatistics
     - name: TXPSFDiagnostics
     - name: TXConvergenceMaps
       threads_per_process: 32
     - name: TXConvergenceMapPlots
-    - name: TXMapCorrelations
+#    - name: TXMapCorrelations
 
 output_dir: data/2.2i_dr6/outputs
 config: examples/config/2.2i_config.yml
