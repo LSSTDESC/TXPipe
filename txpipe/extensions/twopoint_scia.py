@@ -34,10 +34,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
     name = 'TXSelfCalibrationIA'
     inputs = [
         ('calibrated_shear_catalog', ShearCatalog),
+        ('binned_lens_catalog', HDFFile),
         ('binned_random_cats_source', HDFFile),
         ('shear_photoz_stack', HDFFile),
+        ('lens_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
-        ('photoz_pdfs', PhotozPDFFile),
         ('fiducial_cosmology', FiducialCosmology),
         ('tracer_metadata', HDFFile),
     ]
@@ -71,8 +72,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         super().run()
 
-    def select_calculations(self, data):
-        source_list = data['source_list']
+    def select_calculations(self, source_list, lens_list):
         calcs = []
         
         if self.config['do_shear_pos']:
@@ -102,6 +102,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         
         return calcs
 
+    def get_lens_catalog(self, i):
+        raise ValueError(f"Something broke and TXPipe tried to load a lens catalog.")
 
     def get_shear_catalog(self, i):
         import treecorr
