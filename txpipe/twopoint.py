@@ -1,4 +1,3 @@
-from multiprocessing import Value
 from .base_stage import PipelineStage
 from .data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration 
