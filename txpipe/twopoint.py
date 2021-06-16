@@ -560,7 +560,6 @@ class TXApertureMass(TXTwoPoint):
     name='TXApertureMass'
     inputs = [
         ('calibrated_shear_catalog', ShearCatalog),
-        ('calibrated_lens_catalog', HDFFile), # MEAD: I don't think I can remove this due to inheritance
         ('shear_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
         ('tracer_metadata', HDFFile),
@@ -590,10 +589,20 @@ class TXApertureMass(TXTwoPoint):
         'low_mem': False,
         }
 
+    # These two functions can be combined into a single one.
+    def _read_nbin_from_tomography(self):
+        with self.open_input('calibrated_shear_catalog') as f:
+            nbin_source = f['shear'].attrs['nbin_source']
+
+        source_list = range(nbin_source)
+        lens_list = [] # Not necessary in this subclass
+
+        return source_list, lens_list
+
     def select_calculations(self, source_list, lens_list):
 
         # For shear-shear we omit pairs with j>i
-        # MEAD: 'lens_list' not accessed here, can I remove it or is it needed due to inheritance?
+        # Lens list is an empty list here, and is unused
         calcs = []
         k = SHEAR_SHEAR
         for i in source_list:
@@ -608,7 +617,6 @@ class TXApertureMass(TXTwoPoint):
 
     def calculate_shear_shear(self, i, j):
 
-        # MEAD: 'self' not accessed here, can I remove this or is it needed by super()?
         gg = super().calculate_shear_shear(i, j)
         gg.mapsq = gg.calculateMapSq()
 
@@ -616,7 +624,7 @@ class TXApertureMass(TXTwoPoint):
 
     def write_output(self, source_list, lens_list, meta, results):
 
-        # MEAD: 'lens_list' not accessed here, can I remove it or is it needed due to inheritance?
+        # lens_list is unused in this function, but should always be passed as an empty list
         import sacc
 
         # Names for aperture-mass correlation functions
