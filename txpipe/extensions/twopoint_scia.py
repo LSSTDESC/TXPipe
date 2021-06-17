@@ -39,7 +39,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('shear_photoz_stack', HDFFile),
         ('lens_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
-        ('fiducial_cosmology', FiducialCosmology),
+        ("fiducial_cosmology", FiducialCosmology),
         ('tracer_metadata', HDFFile),
     ]
     outputs = [
@@ -66,6 +66,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'var_method': 'jackknife',
         'low_mem': False,
         'metric': 'Rperp',
+        'use_randoms': True,
         }
 
     def run(self):
