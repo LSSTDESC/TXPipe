@@ -143,7 +143,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         
         cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
         cat_0 = treecorr.Catalog(
-            self.get_input("binned_random_cats"),,
+            self.get_input("binned_random_cats"),
             ext = f"/randoms/bin_{i}",
             z_col = "z",
         )
