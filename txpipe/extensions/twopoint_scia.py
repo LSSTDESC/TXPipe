@@ -66,7 +66,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'var_method': 'jackknife',
         'low_mem': False,
         'metric': 'Rperp',
-        'use_randoms': True,
+        'use_randoms': False,
         }
 
     def run(self):
@@ -84,8 +84,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 calcs.append((i,i,l))
         
         if self.config['do_pos_pos']:
-            if not 'random_bin' in data:
-                raise ValueError('You need to have a random catalog to calculate position-position correlations')
+            if not self.config['use_randoms']:
+                raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             for i in source_list:
                 calcs.append((i,i,k))
@@ -219,7 +219,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         if self.rank == 0:
             print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
             print(config)
-            
+
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config)
         t1 = perf_counter()
