@@ -185,7 +185,7 @@ class TXRandomCat_source(PipelineStage):
                 bin_out[index:index+N] = bin_index
 
                 #Added comoving conversion
-                r_out[index:index+N] = ccl.background.comoving_radial_distance(cosmo,1/(z_photo_rand))
+                r_out[index:index+N] = ccl.background.comoving_radial_distance(cosmo,1/(1+z_photo_rand))
                 # Save to the bit that is specific to this bin
                 index = pix_starts[j, i]
                 subgroup['ra'][index:index+N] = ra
