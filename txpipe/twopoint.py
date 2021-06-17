@@ -23,9 +23,9 @@ POS_POS = 2
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('calibrated_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', ShearCatalog),
         ('binned_lens_catalog', HDFFile),
-        ('binned_random_cats', HDFFile),
+        ('binned_random_catalog', HDFFile),
         ('shear_photoz_stack', HDFFile),
         ('lens_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
@@ -146,7 +146,7 @@ class TXTwoPoint(PipelineStage):
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        with self.open_input('calibrated_shear_catalog') as f:
+        with self.open_input('binned_shear_catalog') as f:
             nbin_source = f['shear'].attrs['nbin_source']
 
         with self.open_input('binned_lens_catalog') as f:
@@ -367,7 +367,7 @@ class TXTwoPoint(PipelineStage):
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
-            self.get_input("calibrated_shear_catalog"),
+            self.get_input("binned_shear_catalog"),
             ext = f"/shear/bin_{i}",
             g1_col = "g1",
             g2_col = "g2",
@@ -405,7 +405,7 @@ class TXTwoPoint(PipelineStage):
             return None
 
         rancat = treecorr.Catalog(
-            self.get_input("binned_random_cats"),
+            self.get_input("binned_random_catalog"),
             ext = f"/randoms/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
