@@ -206,7 +206,7 @@ class TXShearCalibration(PipelineStage):
         import pyccl as ccl
         cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) 
         #renaming the redshift name
-        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d["z"]))
+        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d[name]))
         del d[name]
 
 
