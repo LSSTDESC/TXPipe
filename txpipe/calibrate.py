@@ -31,6 +31,7 @@ class TXShearCalibration(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
+        ('fiducial_cosmology', FiducialCosmology),
     ]
 
     outputs = [
@@ -83,7 +84,7 @@ class TXShearCalibration(PipelineStage):
             else:
                 raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
 
-            output_cols = ["ra", "dec", "g1", "g2", "weight", "z"]
+            output_cols = ["ra", "dec", "g1", "g2", "weight", "r"]
             print("Using 3D coords, hopefully a mean readshift is defined")
         else:
             output_cols = ["ra", "dec", "g1", "g2", "weight"]
@@ -123,8 +124,8 @@ class TXShearCalibration(PipelineStage):
 
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
-
-            self.rename_redshift(data, z_name)
+            if Dcoords:
+                self.redshift_to_comoving(data, z_name)
 
             #  Now output the calibrated bin data for this processor
             for b in my_bins:
@@ -164,7 +165,7 @@ class TXShearCalibration(PipelineStage):
 
         #  we only retain these columns
         if Dcoords: 
-            cols = ["ra", "dec", "z", "weight", "g1", "g2"]
+            cols = ["ra", "dec", "r", "weight", "g1", "g2"]
         else:
             cols = ["ra", "dec", "weight", "g1", "g2"]
 
@@ -201,10 +202,13 @@ class TXShearCalibration(PipelineStage):
         d["g2"] = d[f"{prefix}_g2"]
         del d[f"{prefix}_g1"], d[f"{prefix}_g2"]
     
-    def rename_redshift(self, d, name):
+    def redshift_to_comoving(self, d, name):
+        import pyccl as ccl
+        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) 
         #renaming the redshift name
-        d["z"] = d[name]
+        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d["z"]))
         del d[name]
+
 
 
 

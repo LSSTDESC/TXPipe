@@ -10,6 +10,7 @@ class TXRandomCat_source(PipelineStage):
         ('aux_maps', MapsFile),
         ('tracer_metadata', HDFFile),       
         ('shear_photoz_stack', HDFFile),
+        ('fiducial_cosmology', FiducialCosmology),
     ]
     outputs = [
         ('random_cats_source', RandomsCatalog),
@@ -26,6 +27,7 @@ class TXRandomCat_source(PipelineStage):
         import scipy.stats
         import healpy
         from .. import randoms
+        import pyccl as ccl
         # Load the input depth map
         with self.open_input('aux_maps', wrapper=True) as maps_file:
             depth = maps_file.read_map('depth/depth')
@@ -116,6 +118,7 @@ class TXRandomCat_source(PipelineStage):
         dec_out = group.create_dataset('dec', (n_total,), dtype=np.float64)
         z_out = group.create_dataset('z', (n_total,), dtype=np.float64)
         bin_out = group.create_dataset('bin', (n_total,), dtype=np.int16)
+        r_out = group.create_dataset('r', (n_total,), dtype=np.float64)
 
         # Second output is specific to an individual bin, so we can just load
         # a single bin as needed
@@ -129,12 +132,14 @@ class TXRandomCat_source(PipelineStage):
             g.create_dataset('ra', (bin_counts[i],))
             g.create_dataset('dec', (bin_counts[i],))
             g.create_dataset('z', (bin_counts[i],))
+            g.create_dataset('r', (bin_counts[i],))
             subgroups.append(g)
 
 
         pixels_per_proc = npix // self.size
 
-
+        # Loading the cosmology from the fiducial
+        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
         for j in range(Ntomo):
             ### Load pdf of ith lens redshift bin pz
             n_hist = pz_stack[f'n_of_z/source/bin_{j}'][:]
@@ -179,6 +184,8 @@ class TXRandomCat_source(PipelineStage):
                 z_out[index:index+N] = z_photo_rand
                 bin_out[index:index+N] = bin_index
 
+                #Added comoving conversion
+                r_out[index:index+N] = ccl.background.comoving_radial_distance(cosmo,1/(z_photo_rand))
                 # Save to the bit that is specific to this bin
                 index = pix_starts[j, i]
                 subgroup['ra'][index:index+N] = ra

@@ -107,22 +107,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
     def get_shear_catalog(self, i):
         import treecorr
-        import pyccl as ccl
-
-        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
-        cat_0 = treecorr.Catalog(
-            self.get_input("calibrated_shear_catalog"),
-            ext = f"/shear/bin_{i}",
-            z_col = "z",
-        )
-        r = ccl.background.comoving_radial_distance(cosmo, 1/(1+cat_0.z))
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             self.get_input("calibrated_shear_catalog"),
             ext = f"/shear/bin_{i}",
             g1_col = "g1",
             g2_col = "g2",
-            r = r, 
+            r_col = "r", 
             ra_col = "ra",
             dec_col = "dec",
             w_col = "weight",
@@ -140,21 +131,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import pyccl as ccl
         if not self.config["use_randoms"]:
             return None
-        
-        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology'))
-        cat_0 = treecorr.Catalog(
-            self.get_input("binned_random_cats"),
-            ext = f"/randoms/bin_{i}",
-            z_col = "z",
-        )
-        r = ccl.background.comoving_radial_distance(cosmo, 1/(1+cat_0.z))
 
         rancat = treecorr.Catalog(
             self.get_input("binned_random_cats"),
             ext = f"/randoms/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
-            r = r,
+            r_col = "r",
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
