@@ -543,5 +543,6 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
+
 if __name__ == '__main__':
     PipelineStage.main()
