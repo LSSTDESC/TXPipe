@@ -17,7 +17,7 @@ class TXRandomCat_source(PipelineStage):
         ('binned_random_cats_source', RandomsCatalog),
     ]
     config_options = {
-        'density': 2.,  # number per square arcmin at median depth depth.  Not sure if this is right.
+        'density': 10.,  # number per square arcmin at median depth depth.  Not sure if this is right.
         'Mstar': 23.0,  # Schecther distribution Mstar parameter
         'alpha': -1.25,  # Schecther distribution alpha parameter
     }
