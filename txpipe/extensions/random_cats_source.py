@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import MapsFile, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile
+from ..data_types import MapsFile, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile, FiducialCosmology
 from ..utils import choose_pixelization
 import numpy as np
 

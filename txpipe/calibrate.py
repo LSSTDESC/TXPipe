@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, TomographyCatalog
+from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
 from .utils import read_shear_catalog_type, Calibrator, Splitter, SourceNumberDensityStats
 import numpy as np
 
@@ -31,7 +31,7 @@ class TXShearCalibration(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
-        ('fiducial_cosmology', FiducialCosmology),
+        ("fiducial_cosmology", FiducialCosmology),
     ]
 
     outputs = [
