@@ -218,7 +218,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         if self.rank == 0:
             print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
-
+            print(config)
+            
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config)
         t1 = perf_counter()
