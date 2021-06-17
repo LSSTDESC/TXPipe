@@ -134,7 +134,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             return None
 
         rancat = treecorr.Catalog(
-            self.get_input("binned_random_cats"),
+            self.get_input('binned_random_cats_source'),
             ext = f"/randoms/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
