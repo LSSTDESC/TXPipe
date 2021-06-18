@@ -86,7 +86,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
     name = "TXGammaTFieldCenters"
     inputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
         ("shear_photoz_stack", HDFFile),
         ("lens_tomography_catalog", TomographyCatalog),
         ("lens_photoz_stack", HDFFile),
@@ -256,7 +256,7 @@ class TXGammaTStars(TXTwoPoint):
 
     name = "TXGammaTStars"
     inputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
         ("shear_photoz_stack", HDFFile),
         ("lens_tomography_catalog", TomographyCatalog),
@@ -265,7 +265,7 @@ class TXGammaTStars(TXTwoPoint):
         ("binned_star_catalog", HDFFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
-        ("binned_random_cats", HDFFile),
+        ("binned_random_catalog", HDFFile),
     ]
     outputs = [
         ("gammat_bright_stars", SACCFile),
@@ -437,7 +437,7 @@ class TXGammaTRandoms(TXTwoPoint):
 
     name = "TXGammaTRandoms"
     inputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
         ("shear_photoz_stack", HDFFile),
         ("random_cats", RandomsCatalog),
         ("patch_centers", TextFile),
@@ -607,7 +607,7 @@ class TXApertureMass(TXTwoPoint):
 
     name='TXApertureMass'
     inputs = [
-        ('calibrated_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', ShearCatalog),
         ('shear_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
         ('tracer_metadata', HDFFile),
@@ -639,7 +639,7 @@ class TXApertureMass(TXTwoPoint):
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        with self.open_input('calibrated_shear_catalog') as f:
+        with self.open_input('binned_shear_catalog') as f:
             nbin_source = f['shear'].attrs['nbin_source']
 
         source_list = range(nbin_source)
