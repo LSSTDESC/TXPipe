@@ -13,7 +13,7 @@ class TXRandomCat(PipelineStage):
     ]
     outputs = [
         ('random_cats', RandomsCatalog),
-        ('binned_random_cats', RandomsCatalog),
+        ('binned_random_catalog', RandomsCatalog),
     ]
     config_options = {
         'density': 100.,  # number per square arcmin at median depth depth.  Not sure if this is right.
@@ -119,7 +119,7 @@ class TXRandomCat(PipelineStage):
 
         # Second output is specific to an individual bin, so we can just load
         # a single bin as needed
-        binned_output = self.open_output("binned_random_cats", parallel=True)
+        binned_output = self.open_output("binned_random_catalog", parallel=True)
         binned_group = binned_output.create_group("randoms")
 
         subgroups = []

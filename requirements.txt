@@ -1,4 +1,4 @@
-ceci==1.1
+ceci>=1.3
 h5py
 pandas
 sacc
@@ -9,7 +9,7 @@ fitsio
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
-git+https://github.com/rmjarvis/treecorr@main
+treecorr>=4.2.2
 sklearn
 astropy
 healpy
@@ -22,4 +22,4 @@ psutil
 parallel_statistics
 healsparse
 flexcode
-xgboost
+xgboost==1.1.0

@@ -52,7 +52,7 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(select_all_bool, delta_gamma)
         cal.add_data(data)
-        R, S, n = cal.collect(comm)
+        R, S, n = cal.collect(comm, allgather=True)
 
         assert np.allclose(R, R_true)
         assert np.allclose(S, 0.0)
@@ -64,7 +64,7 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n = cal.collect(comm)
+        R, S, n = cal.collect(comm, allgather=True)
         print("R = ", R)
 
         assert np.allclose(R, R_true)
@@ -77,7 +77,7 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n = cal.collect(comm)
+        R, S, n = cal.collect(comm, allgather=True)
         print("R = ", R)
 
         assert np.allclose(R, R_true)

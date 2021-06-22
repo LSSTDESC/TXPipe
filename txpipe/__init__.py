@@ -33,4 +33,8 @@ from .rail_pz import PZRailTrain
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
+from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier
 from .calibrate import TXShearCalibration
+# Here are the stages that mostly will be used for other projects
+# such as the self-calibration of Intrinsic alignment.
+from .extensions.twopoint_scia import TXSelfCalibrationIA

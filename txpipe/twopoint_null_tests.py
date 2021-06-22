@@ -9,7 +9,7 @@ from .data_types import (
     TextFile,
 )
 import numpy as np
-from .twopoint import TXTwoPoint, SHEAR_POS
+from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS
 from .utils import DynamicSplitter
 
 
@@ -86,7 +86,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
     name = "TXGammaTFieldCenters"
     inputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
         ("shear_photoz_stack", HDFFile),
         ("lens_tomography_catalog", TomographyCatalog),
         ("lens_photoz_stack", HDFFile),
@@ -238,7 +238,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
                 weight=dweight[i],
             )
 
-        # self.write_metadata(S, meta)
+        self.write_metadata(S, meta)
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
@@ -246,8 +246,6 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("gammat_field_center"), overwrite=True)
-
-        # Also make a plot of the data
 
 
 class TXGammaTStars(TXTwoPoint):
@@ -258,7 +256,7 @@ class TXGammaTStars(TXTwoPoint):
 
     name = "TXGammaTStars"
     inputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
         ("shear_photoz_stack", HDFFile),
         ("lens_tomography_catalog", TomographyCatalog),
@@ -267,7 +265,7 @@ class TXGammaTStars(TXTwoPoint):
         ("binned_star_catalog", HDFFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
-        ("binned_random_cats", HDFFile),
+        ("binned_random_catalog", HDFFile),
     ]
     outputs = [
         ("gammat_bright_stars", SACCFile),
@@ -340,14 +338,10 @@ class TXGammaTStars(TXTwoPoint):
     def select_calculations(self, source_list, lens_list):
         # We only want a single calculation, the gamma_T around
         # the field centers
-        print(source_list)
-        print(lens_list)
         return [("all", "bright", SHEAR_POS), ("all", "dim", SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
-        # we write output both to file for later and to
-        # a plot
-        print()
+        # we write output both to file for later and to a plot
         self.write_output_sacc(meta, results[0], "gammat_bright_stars", "Bright")
         self.write_output_sacc(meta, results[1], "gammat_dim_stars", "Dim")
         self.write_output_plot(results[0], "gammat_bright_stars_plot", "Bright")
@@ -373,7 +367,7 @@ class TXGammaTStars(TXTwoPoint):
             dtheta * derror,
             fmt="ro",
             capsize=3,
-            label=r"$\chi^2/dof = $" + str(chi2dof),
+            label=rf"$\chi^2/dof = {chi2dof:.2f}$",
         )
         plt.legend(loc="best")
         plt.xscale("log")
@@ -427,15 +421,12 @@ class TXGammaTStars(TXTwoPoint):
 
         self.write_metadata(S, meta)
 
-        print(S)
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output(sacc_file), overwrite=True)
-
-        # Also make a plot of the data
 
 
 class TXGammaTRandoms(TXTwoPoint):
@@ -446,7 +437,7 @@ class TXGammaTRandoms(TXTwoPoint):
 
     name = "TXGammaTRandoms"
     inputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
         ("shear_photoz_stack", HDFFile),
         ("random_cats", RandomsCatalog),
         ("patch_centers", TextFile),
@@ -547,7 +538,7 @@ class TXGammaTRandoms(TXTwoPoint):
             dtheta * derror,
             fmt="ro",
             capsize=3,
-            label="$\chi^2/dof = $" + str(chi2dof),
+            label=r"$\chi^2/dof = $" + str(chi2dof),
         )
         plt.legend(loc="best")
         plt.xscale("log")
@@ -603,7 +594,6 @@ class TXGammaTRandoms(TXTwoPoint):
 
         self.write_metadata(S, meta)
 
-        print(S)
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
@@ -611,4 +601,122 @@ class TXGammaTRandoms(TXTwoPoint):
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("gammat_randoms"), overwrite=True)
 
-        # Also make a plot of the data
+
+# Aperture Mass class that inherits from TXTwoPoint
+class TXApertureMass(TXTwoPoint):
+
+    name='TXApertureMass'
+    inputs = [
+        ('binned_shear_catalog', ShearCatalog),
+        ('shear_photoz_stack', HDFFile),
+        ('patch_centers', TextFile),
+        ('tracer_metadata', HDFFile),
+    ]
+    outputs = [
+        ('aperture_mass_data', SACCFile),
+    ]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        'calcs': [0,1,2],
+        'min_sep': 0.5,
+        'max_sep': 300.,
+        'nbins': 15,
+        'bin_slop': 0.02,
+        'sep_units': 'arcmin',
+        'flip_g1': False,
+        'flip_g2': True,
+        'cores_per_task': 20,
+        'verbose': 1,
+        'source_bins': [-1],
+        'lens_bins': [-1],
+        'reduce_randoms_size': 1.0,
+        'var_method': 'jackknife',
+        'use_true_shear': False,
+        'subtract_mean_shear': False,
+        'use_randoms': False,
+        'low_mem': False,
+        }
+
+    # These two functions can be combined into a single one.
+    def _read_nbin_from_tomography(self):
+        with self.open_input('binned_shear_catalog') as f:
+            nbin_source = f['shear'].attrs['nbin_source']
+
+        source_list = range(nbin_source)
+        lens_list = [] # Not necessary in this subclass
+
+        return source_list, lens_list
+
+    def select_calculations(self, source_list, lens_list):
+
+        # For shear-shear we omit pairs with j>i
+        # Lens list is an empty list here, and is unused
+        calcs = []
+        k = SHEAR_SHEAR
+        for i in source_list:
+            for j in range(i+1):
+                if j in source_list:
+                    calcs.append((i,j,k))
+
+        if self.rank==0:
+            print(f"Running these calculations: {calcs}")
+
+        return calcs
+
+    def calculate_shear_shear(self, i, j):
+
+        gg = super().calculate_shear_shear(i, j)
+        gg.mapsq = gg.calculateMapSq()
+
+        return gg
+
+    def write_output(self, source_list, lens_list, meta, results):
+
+        # lens_list is unused in this function, but should always be passed as an empty list
+        import sacc
+
+        # Names for aperture-mass correlation functions
+        MAPSQ = "galaxy_shear_apmass2"
+        MAPSQ_IM = "galaxy_shear_apmass2_im"
+        MXSQ = "galaxy_shear_apmass2_cross"
+        MXSQ_IM = "galaxy_shear_apmass2_im_cross"
+
+        # Initialise SACC object
+        S = sacc.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
+        f = self.open_input('shear_photoz_stack')
+        for i in source_list:
+            z = f['n_of_z/source/z'][:]
+            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            S.add_tracer('NZ', f'source_{i}', z, Nz)
+        f.close()
+
+        # Now build up the collection of data points, adding them all to the sacc
+        for d in results:
+
+            # First the tracers and generic tags
+            tracer1 = f'source_{d.i}'
+            tracer2 = f'source_{d.j}'
+
+            theta = np.exp(d.object.meanlogr)
+            weight = d.object.weight
+            err = np.sqrt(d.object.mapsq[4])
+            n = len(theta)
+            for j, CORR in enumerate([MAPSQ, MAPSQ_IM, MXSQ, MXSQ_IM]):
+                map = d.object.mapsq[j]
+                for i in range(n):
+                    S.add_data_point(CORR, (tracer1, tracer2), map[i],
+                        theta=theta[i], error=err[i], weight=weight[i])
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+        self.write_metadata(S, meta)
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output('aperture_mass_data'), overwrite=True)

@@ -5,7 +5,27 @@ import numpy as np
 
 
 class TXShearCalibration(PipelineStage):
-    """Split the shear catalog into calibrated bins suitable for 2pt analysis."""
+    """Split the shear catalog into calibrated bins suitable for 2pt analysis.
+
+    This class runs after source selection has been done, because the final
+    calibration factor can only be estimated once we have read the entire catalog
+    and chosen tomographic bins (since it is an ensemble average of cal factors).
+
+    Once that stage has run and computed both the tomographic bin for each sample
+    and the calibration factors, this stage takes the full catalog and splits it
+    into one HDF5 group per bin.  This has several advantages:
+    - all the calibration can happen in one place rather than
+      differently in real space and Fourier
+    - we can load just the galaxies we want for a single bin in later TreeCorr
+      stages, rather than loading the full catalog and then splitting and calibrating
+      it.
+    - the low_mem option in TreeCorr can be used because the catalogs are on disc
+      and contiguous.
+    - it opens up other memory saving options planned for TreeCorr.
+
+    We are not (yet) saving per-patch catalogs for TreeCorr here. We might want to
+    do that later.
+    """
 
     name = "TXShearCalibration"
     inputs = [
@@ -14,7 +34,7 @@ class TXShearCalibration(PipelineStage):
     ]
 
     outputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
     ]
 
     config_options = {
@@ -30,7 +50,9 @@ class TXShearCalibration(PipelineStage):
         use_true = self.config["use_true_shear"]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
-        # Prepare the output file, and
+        # Prepare the output file, and create a splitter object,
+        # whose job is to save the separate bins to separate HDF5
+        # extensions depending on the tomographic bin
         output_file, splitter, nbin = self.setup_output()
 
         #  Load the calibrators.  If using the true shear no calibration
@@ -83,6 +105,7 @@ class TXShearCalibration(PipelineStage):
 
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
+
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
 
@@ -119,16 +142,23 @@ class TXShearCalibration(PipelineStage):
             nbin = len(counts)
 
         # Prepare the calibrated output catalog
-        f = self.open_output("calibrated_shear_catalog", parallel=True)
+        f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
         cols = ["ra", "dec", "weight", "g1", "g2"]
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
+
+        # These are both the same here, but there may be some stages
+        # that are still expecting it to be called "nbin_source"
         g.attrs["nbin"] = nbin
         g.attrs["nbin_source"] = nbin
 
+        # This maps the bin numbers (and name, in the case
+        # of the non-tomographic "all" bin) to the number
+        # of objects in each, and is used by the splitter
+        # to initialize the output groups.
         bins = {b: c for b, c in enumerate(counts)}
         bins["all"] = count2d
         splitter = Splitter(g, "bin", cols, bins)

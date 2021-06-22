@@ -54,6 +54,8 @@ class Calibrator:
             subcls = MetaCalibrator
         elif cat_type == "lensfit":
             subcls = LensfitCalibrator
+        elif cat_type == "hsc":
+            subcls = HSCCalibrator
         else:
             raise ValueError(f"Unknown catalog type {cat_type} in tomo file")
 
@@ -194,8 +196,7 @@ class MetaCalibrator(Calibrator):
 
 
 class LensfitCalibrator(Calibrator):
-    def __init__(self, R, K, c):
-        self.R = R
+    def __init__(self, K, c):
         self.K = K
         self.c = c
 
@@ -223,23 +224,24 @@ class LensfitCalibrator(Calibrator):
 
         with h5py.File(tomo_file, "r") as f:
             K = f["response/K"][:]
-            K_2d = f["response/K_2d"][0]
+            K_2d = f["response/K_2d"][:]
 
-            R = f["response/R_mean"][:]
-            R_2d = f["response/R_mean_2d"][0]
-
-            C = f["response/C"][:, 0, :]
-            C_2d = f["response/C_2d"][0]
+            C = f["response/C"][:, :]
+            C_2d = f["response/C_2d"][:]
 
         n = len(K)
-        calibrators = [cls(R[i], K[i], C[i]) for i in range(n)]
-        calibrator2d = cls(R_2d, K_2d, C_2d)
+        calibrators = [cls(K[i], C[i]) for i in range(n)]
+        calibrator2d = cls(K_2d, C_2d)
         return calibrators, calibrator2d
 
     def apply(self, g1, g2, subtract_mean=True):
         """
-        Calibrate a set of shears using the lensfit R, K, and c terms:
-        g -> (g/R - c) / (1 + K)
+        For KiDS (see Joachimi et al., 2020, arXiv:2007.01844):
+        Appendix C, equation C.4 and C.5
+        Correcting for multiplicative shear calibration.
+        Additionally optionally correct for residual additive bias (true
+        for KiDS-1000 and KV450.)
+
 
         The c term is only included if subtract_mean = True
 
@@ -254,10 +256,77 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
+
         if subtract_mean:
-            g1 = (g1 / self.R - self.c[0]) / (1 + self.K)
-            g2 = (g2 / self.R - self.c[1]) / (1 + self.K)
+            g1 = (g1 - self.c[0]) / (1 + self.K)
+            g2 = (g2 - self.c[1]) / (1 + self.K)
         else:
-            g1 = (g1 / self.R) / (1 + self.K)
-            g2 = (g2 / self.R) / (1 + self.K)
+            g1 = g1 / (1 + self.K)
+            g2 = g2 / (1 + self.K)
+        return g1, g2
+
+class HSCCalibrator(Calibrator):
+    def __init__(self, R, K):
+        self.R = R
+        self.K = K
+
+    @classmethod
+    def load(cls, tomo_file):
+        """
+        Make a set of HSC calibrators using the info in a tomography file.
+
+        You can use the parent Calibrator.load to automatically
+        load the correct subclass.
+
+        Parameters
+        ----------
+        tomo_file: str
+            A tomography file name the cal factors are read from
+
+        Returns
+        -------
+        cals: list
+            A set of HSCCalibrators, one per bin
+        cal2D: HSCCalibrator
+            A single HSCalibrator for the 2D bin
+        """
+        import h5py
+
+        with h5py.File(tomo_file, "r") as f:
+            K = f["response/K"][:]
+            K_2d = f["response/K_2d"][0]
+
+            R = f["response/R_mean"][:]
+            R_2d = f["response/R_mean_2d"][0]
+
+        n = len(K)
+        calibrators = [cls(R[i], K[i]) for i in range(n)]
+        calibrator2d = cls(R_2d, K_2d)
+        return calibrators, calibrator2d
+
+    def apply(self, g1, g2, c1, c2):
+        """
+        For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
+        gi = 1/(1 + mhat)[ei/(2R) - ci] (Eq. (A6) in Mandelbaum et al., 2018)
+        R = 1 - < e_rms^2 >w (Eq. (A1) in Mandelbaum et al., 2018)
+        mhat = < m >w (Eq. (A2) in Mandelbaum et al., 2018) (we call this K)
+
+
+        Parameters
+        ----------
+        g1: array or float
+            Shear 1 component
+
+        g2: array or float
+            Shear 2 component
+
+        c1: array or float
+            Shear 1 additive bias component
+
+        c2: array or float
+            Shear 2 additive bias component
+        """
+
+        g1 = (g1 / (2 * self.R) - c1)/ (1 + self.K)
+        g2 = (g2 / (2 * self.R) - c2)/ (1 + self.K)
         return g1, g2
