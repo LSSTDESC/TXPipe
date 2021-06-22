@@ -483,18 +483,21 @@ class TXTwoPoint(PipelineStage):
         rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-
-        if self.rank == 0:
-            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_i} objects,  {n_rand_i} randoms")
-
         
         if i==j:
             cat_j = None
             rancat_j = rancat_i
-        
+            n_j = n_i
+            n_rand_j = n_rand_i
         else:
             cat_j = self.get_lens_catalog(j)
             rancat_j = self.get_random_catalog(j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj
+
+
+        if self.rank == 0:
+            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms")
 
         t1 = perf_counter()
         
