@@ -2,6 +2,9 @@
 # Stages to run
 stages:
     - name: TXSourceSelector
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZRailTrain
     - name: PZRailEstimate
@@ -21,13 +24,9 @@ stages:
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots
     - name: TXDiagnosticPlots
-    - name: TXGammaTFieldCenters
-      threads_per_process: 2
-    - name: TXGammaTBrightStars
+    - name: TXGammaTStars
       threads_per_process: 2
     - name: TXGammaTRandoms
-      threads_per_process: 2
-    - name: TXGammaTDimStars
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
@@ -82,8 +81,7 @@ inputs:
     shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/lensfit_photometry_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    exposures: data/example/inputs/exposures.hdf5
-    star_catalog: data/example/inputs/star_catalog.hdf5
+    star_catalog: data/example/inputs/lensfit_star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
 

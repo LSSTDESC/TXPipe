@@ -3,6 +3,7 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibrators import LensfitCalibrator
 from .mapping import Mapper, FlagMapper
 
 
@@ -172,14 +173,20 @@ class TXSourceMaps(TXBaseMaps):
                 cal = {i:R[i] for i in range(nbin_source)}
                 cal['2D'] = f['/metacal_response/R_total_2d'][:]
             elif shear_catalog_type == "lensfit":
-                R = f['/response/R_mean'][:]
                 K = f['/response/K'][:]
                 c = f['/response/C'][:]
-                cal = {i: (R[i], K[i], c[i]) for i in range(nbin_source)}
+                cal = {i: (K[i], c[i]) for i in range(nbin_source)}
                 cal['2D'] = (
-                    f['/response/R_mean_2d'][0],
                     f['/response/K_2d'][0],
                     f['/response/C_2d'][:],
+                )
+            elif shear_catalog_type == "hsc":
+                R = f['/response/R'][:]
+                K = f['/response/K'][:]
+                cal = {i: (R[i], K[i]) for i in range(nbin_source)}
+                cal['2D'] = (
+                    f['/response/R_2d'][0],
+                    f['/response/K_2d'][:],
                 )
             else:
                 raise ValueError("Unknown calibration")
@@ -237,24 +244,17 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
 
-    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, R, K, c):
-        c1 = c[:, 0]
-        c2 = c[:, 1]
-        one_plus_K = 1 + K
+    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, K, c):
+        calib = LensfitCalibrator(K,c)
 
-        g1 = (1. / one_plus_K) * ((g1 / R) - c1)
-        g2 = (1. / one_plus_K) * ((g2 / R) - c2)
+        g1,g2 = calib.apply(g1,g2,subtract_mean=True)
 
-        std_g1 = np.sqrt(var_g1)
-        std_g2 = np.sqrt(var_g2)
-        # no c here I think because it's a std dev
-        # so it's alread mean-subtracted?
-        std_g1 = (1. / one_plus_K) * (std_g1 / R)
-        std_g2 = (1. / one_plus_K) * (std_g2 / R)
-        var_g1 = std_g1 ** 2
-        var_g2 = std_g2 ** 2
+        var_g1,var_g2 = calib.apply(g1,g2,subtract_mean=False)
 
         return g1, g2, var_g1, var_g2
+
+    def calibrate_map_hsc(self, g1, g2, var_g1, var_g2, K, c):
+        return "need to write calibrate map hsc function"
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
         import healpy
@@ -278,8 +278,11 @@ class TXSourceMaps(TXBaseMaps):
             if self.config['shear_catalog_type'] == 'metacal':
                 out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
+                K, c = cal[i]
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], K, c)
+            elif self.config['shear_catalog_type'] == 'hsc':
                 R, K, c = cal[i]
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
+                out = self.calibrate_map_hsc(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
             else:
                 raise ValueError("Unknown calibration")
 

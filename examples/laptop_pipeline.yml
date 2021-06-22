@@ -2,6 +2,9 @@
 # Stages to run
 stages:
     - name: TXSourceSelector     # select and split objects into source bins
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
     - name: TXMeanLensSelector  # select objects for lens bins
     - name: PZRailTrain
       threads_per_process: 2
@@ -24,11 +27,9 @@ stages:
     - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
       threads_per_process: 2
-    - name: TXGammaTBrightStars  # Compute and plot gamma_t around bright stars
+    - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
       threads_per_process: 2
     - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
-      threads_per_process: 2
-    - name: TXGammaTDimStars     # Compute and plot gamma_t around dim stars
       threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
@@ -40,6 +41,11 @@ stages:
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
+    - name: TXApertureMass        # Compute aperture-mass statistics
+      threads_per_process: 2
+
+    # Disabled since not yet synchronised with new Treecorr MPI
+    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
@@ -93,6 +99,9 @@ inputs:
     star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension we are not using Random_cat_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    random_cats_source: Null
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
