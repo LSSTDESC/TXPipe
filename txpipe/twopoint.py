@@ -57,6 +57,7 @@ class TXTwoPoint(PipelineStage):
         'var_method': 'jackknife',
         'use_randoms': True,
         'low_mem': False,
+        'patch_dir': './cache/patches',
         }
 
     def run(self):
@@ -77,22 +78,13 @@ class TXTwoPoint(PipelineStage):
         calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
+        # Split the catalogs into patch files
+        self.prepare_patches(calcs)
 
-        #self.prepare_patches(calcs)
-        #print("Early exit.")
-        #return
-        #print("OVERRIDING CALCS")
-        #calcs = [(0, 0, SHEAR_POS), (0, 0, POS_POS)]
-
-        # This splits the calculations among the parallel bins
-        # It's not necessarily the most optimal way of doing it
-        # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly fine
         results = []
         for i,j,k in calcs:
             result = self.call_treecorr(i, j, k)
             results.append(result)
-
 
         # Save the results
         if self.rank==0:
@@ -372,41 +364,65 @@ class TXTwoPoint(PipelineStage):
         return result
 
     def prepare_patches(self, calcs):
-        if self.rank != 0:
-            return
-        done = set()
-        def do(h, k):
-            if (h, k) in done:
-                return
+
+        # Make the full list of catalogs to run
+        cats = set()
+        for i, j, k in calcs:
+            if k == SHEAR_SHEAR:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, SHEAR_SHEAR))
+            elif k == SHEAR_POS:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, POS_POS))
+            elif k == POS_POS:
+                cats.add((i, POS_POS))
+                cats.add((j, POS_POS))
+        cats = list(cats)
+        
+        for (h, k) in self.split_tasks_by_rank(cats):
             print(f"Rank {self.rank} making patches for {k}-type bin {h}")
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
                 cat.get_patches(low_mem=False)
+                del cat
             else:
                 cat = self.get_lens_catalog(h)
                 cat.get_patches(low_mem=False)
                 del cat
                 ran_cat = self.get_random_catalog(h)
                 ran_cat.get_patches(low_mem=False)
-            done.add((h, k))
+                del ran_cat
 
-        for i, j, k in calcs:
-            if k == SHEAR_SHEAR:
-                do(i, SHEAR_SHEAR)
-                do(j, SHEAR_SHEAR)
-            elif k == SHEAR_POS:
-                do(i, SHEAR_SHEAR)
-                do(j, SHEAR_POS)
-            elif k == POS_POS:
-                do(i, POS_POS)
-                do(j, POS_POS)
+        if self.comm is not None:
+            # stop other notes trying to load things we have
+            # not written yet
+            self.comm.Barrier()
+
+                
+    def get_patch_dir(self, input_tag, b):
+        # start from a user-specified base directory
+        patch_base = self.config['patch_dir']
+
+        # append the unique identifier for the parent catalog file
+        with self.open_input(input_tag, wrapper=True) as f:
+            p = f.read_provenance()
+            name = p['uuid']
+            print(name)
+            if name == 'UNKNOWN':
+                name = pathlib.Path(f.path).stem
+                warnings.warn(f"No provenance in input file: using file name for patch dir. Using {name}")
+
+        # And finally append the bin name/number
+        patch_dir = pathlib.Path(patch_base) / name / str(b)
+        print(self.rank, input_tag, b, patch_dir)
+        # Make the directory and return it
+        pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
+        return patch_dir
 
     def get_shear_catalog(self, i):
         import treecorr
 
-        patch_dir = f'patches/shear/{i}'
-        pathlib.Path(patch_dir).mkdir(exist_ok=True)
-
+        
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             self.get_input("binned_shear_catalog"),
@@ -419,7 +435,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
-            save_patch_dir=patch_dir,
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
             flip_g1 = self.config["flip_g1"],
             flip_g2 = self.config["flip_g2"],
         )
@@ -429,9 +445,6 @@ class TXTwoPoint(PipelineStage):
 
     def get_lens_catalog(self, i):
         import treecorr
-
-        patch_dir = f'patches/lens/{i}'
-        pathlib.Path(patch_dir).mkdir(exist_ok=True)
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
@@ -443,7 +456,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
-            save_patch_dir=patch_dir,
+            save_patch_dir=self.get_patch_dir('binned_lens_catalog', i),
         )
         return cat
 
@@ -451,9 +464,6 @@ class TXTwoPoint(PipelineStage):
         import treecorr
         if not self.config["use_randoms"]:
             return None
-
-        patch_dir = f'patches/randoms/{i}'
-        pathlib.Path(patch_dir).mkdir(exist_ok=True)
 
         rancat = treecorr.Catalog(
             self.get_input("binned_random_catalog"),
@@ -463,7 +473,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
-            save_patch_dir=patch_dir,
+            save_patch_dir=self.get_patch_dir('binned_random_catalog', i),
         ) 
         return rancat
 
