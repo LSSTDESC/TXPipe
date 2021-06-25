@@ -64,7 +64,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'do_pos_pos': False,
         'do_shear_shear': False, 
         'var_method': 'jackknife',
-        'low_mem': False,
+        'low_mem': True,
         'metric': 'Rperp',
         'use_randoms': False,
         }
@@ -178,11 +178,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config, max_rpar = 0.0)    # The max_rpar = 0.0, is in fact the same as our selection function. 
         t1 = perf_counter()
-        ng.process(cat_j, cat_i, comm=self.comm)
+        ng.process(cat_j, cat_i, low_mem=self.config["low_mem"], comm=self.comm)
 
         if rancat_j:
             rg = treecorr.NGCorrelation(config, max_rpar = 0.0)
-            rg.process(rancat_j, cat_i, comm=self.comm)
+            rg.process(rancat_j, cat_i, low_mem=self.config["low_mem"], comm=self.comm)
         else:
             rg = None
 
@@ -223,11 +223,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config)
         t1 = perf_counter()
-        ng.process(cat_j, cat_i, comm=self.comm)
+        ng.process(cat_j, cat_i, low_mem=self.config["low_mem"], comm=self.comm)
 
         if rancat_j:
             rg = treecorr.NGCorrelation(config)
-            rg.process(rancat_j, cat_i, comm = self.comm)
+            rg.process(rancat_j, cat_i, low_mem=self.config["low_mem"], comm = self.comm)
         else:
             rg = None
 
@@ -267,10 +267,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
 
         nn = treecorr.NNCorrelation(config)
-        nn.process(cat_i, cat_j, comm=self.comm)
+        nn.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
         
         nr = treecorr.NNCorrelation(config)
-        nr.process(cat_i, rancat_j, comm=self.comm)
+        nr.process(cat_i, rancat_j, low_mem=self.config["low_mem"], comm=self.comm)
 
         # The next calculation is faster if we explicitly tell TreeCorr
         # that its two catalogs here are the same one.
