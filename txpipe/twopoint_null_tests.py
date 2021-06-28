@@ -118,6 +118,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "subtract_mean_shear": False,
         "use_randoms": True,
         'patch_dir': './cache/patches',
+        'low_mem': False,
     }
 
     def run(self):
@@ -293,6 +294,7 @@ class TXGammaTStars(TXTwoPoint):
         "subtract_mean_shear": False,
         "use_randoms": True,
         'patch_dir': './cache/patches',
+        'low_mem': False,
     }
 
     def run(self):
@@ -468,6 +470,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "subtract_mean_shear": False,
         "use_randoms": False,
         'patch_dir': './cache/patches',
+        'low_mem': False,
     }
 
     def run(self):
@@ -639,6 +642,7 @@ class TXApertureMass(TXTwoPoint):
         'use_randoms': False,
         'low_mem': False,
         'patch_dir': './cache/patches',
+        'low_mem': False,
         }
 
     # These two functions can be combined into a single one.
