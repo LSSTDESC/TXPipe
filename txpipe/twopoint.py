@@ -391,6 +391,11 @@ class TXTwoPoint(PipelineStage):
                 cat.get_patches(low_mem=False)
                 del cat
                 ran_cat = self.get_random_catalog(h)
+
+                # support use_randoms = False
+                if ran_cat is None:
+                    continue
+
                 ran_cat.get_patches(low_mem=False)
                 del ran_cat
 
