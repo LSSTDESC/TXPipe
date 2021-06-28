@@ -40,6 +40,7 @@ stages:
       nodes: 2
       nprocess: 16
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    - name: TXTwoPointTheoryFourier
     - name: TXSimpleMask
     - name: TXMapPlots
     - name: TXTracerMetadata
@@ -51,22 +52,17 @@ stages:
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
       threads_per_process: 32
-#    - name: TXTwoPointFourier
-#      nprocess: 8
-#      nodes: 8
-#      threads_per_process: 32
-#    - name: TXNoiseMaps
-#      nprocess: 32
-#      nodes: 8
-#      threads_per_process: 1
-#    - name: TXDiagnosticPlots
-#      nprocess: 64
-#      nodes: 4
-#    - name: TXFourierGaussianCovariance
-#      threads_per_process: 32
-#    - name: TXConvergenceMaps
-#      threads_per_process: 32
-#    - name: TXConvergenceMapPlots
+    - name: TXTwoPointFourier
+      nprocess: 8
+      nodes: 8
+      threads_per_process: 32
+    - name: TXNoiseMaps
+      nprocess: 32
+      nodes: 8
+      threads_per_process: 1
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 32
+    - name: TXTwoPointPlotsFourier
 
 output_dir: data/skysim5000_v1.1.1/outputs
 config: examples/config/skysim5000_config.yml
