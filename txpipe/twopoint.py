@@ -343,7 +343,6 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import gc
 
-        self.memory_report(f"Starting calculation {i},{j},{k}")
         if k==SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -355,8 +354,10 @@ class TXTwoPoint(PipelineStage):
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
+
+        # Force garbage Collect ion here to make sure all the
+        # catalogs are definitely freed
         gc.collect()
-        self.memory_report(f"Done calculation {i},{j},{k}")
 
         result = Measurement(xtype, xx, i, j)
 
@@ -406,15 +407,15 @@ class TXTwoPoint(PipelineStage):
         # append the unique identifier for the parent catalog file
         with self.open_input(input_tag, wrapper=True) as f:
             p = f.read_provenance()
-            name = p['uuid']
-            print(name)
-            if name == 'UNKNOWN':
-                name = pathlib.Path(f.path).stem
-                warnings.warn(f"No provenance in input file: using file name for patch dir. Using {name}")
-
+            uuid = p['uuid']
+            stem = pathlib.Path(f.path).stem
+            if uuid == 'UNKNOWN':
+                warnings.warn(f"No provenance in input file: using file name for patch dir. Using {stem}")
+                name = stem
+            else:
+                name = f"{input_tag}_{uuid}"
         # And finally append the bin name/number
         patch_dir = pathlib.Path(patch_base) / name / str(b)
-        print(self.rank, input_tag, b, patch_dir)
         # Make the directory and return it
         pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
         return patch_dir
