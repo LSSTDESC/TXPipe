@@ -162,15 +162,17 @@ class TXTwoPointFourier(PipelineStage):
             area = info['area']
             f_sky = info['f_sky']
             mask = f.read_map('mask')
-            print("Loaded mask")
+            if self.rank == 0:
+                print("Loaded mask")
         # Then the shear maps and weights
         with self.open_input('source_maps', wrapper=True) as f:
             nbin_source = f.file['maps'].attrs['nbin_source']
             g1_maps = [f.read_map(f'g1_{b}') for b in range(nbin_source)]
             g2_maps = [f.read_map(f'g2_{b}') for b in range(nbin_source)]
             lensing_weights = [f.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
-            print(f"Loaded 2 x {nbin_source} shear maps")
-            print(f"Loaded {nbin_source} lensing weight maps")
+            if self.rank == 0:
+                print(f"Loaded 2 x {nbin_source} shear maps")
+                print(f"Loaded {nbin_source} lensing weight maps")
 
         # And finally the density maps
         with self.open_input('density_maps', wrapper=True) as f:
@@ -182,13 +184,14 @@ class TXTwoPointFourier(PipelineStage):
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
 
-        if self.rank == 0:
-            print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
 
         if pixel_scheme.name != 'healpix':
             raise ValueError("TXTwoPointFourier can only run on healpix maps")
 
-
+        if self.rank == 0:
+            print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
+            print(f"Nside = {pixel_scheme.nside}")
+        
         # Using a flat mask as the clustering weight for now, since I need to know
         # how to turn the depth map into a weight
         clustering_weight = mask
@@ -551,7 +554,7 @@ class TXTwoPointFourier(PipelineStage):
             y=f*x
             return np.exp(-y**2/2)
 
-        c_beam = c/(window_pixel(ls, self.config['nside']))**2
+        c_beam = c/(window_pixel(ls, pixel_scheme.nside))**2
         
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
