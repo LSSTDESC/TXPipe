@@ -27,6 +27,10 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
+TXShearCalibration:
+    use_true_shear: True
+    subtract_mean_shear: True
+
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
@@ -45,7 +49,6 @@ TXExternalLensMaps:
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
-
 
 TXAuxiliaryMaps:
     chunk_rows:  100000
@@ -115,24 +118,8 @@ TXTwoPoint:
     max_sep: 100
     nbins: 15
     verbose: 0
-    use_true_shear: True
-    subtract_mean_shear: True
-
-TXTwoPointLensCat:
-    bin_slop: 0.0
-    delta_gamma: 0.02
-    do_pos_pos: True
-    do_shear_shear: True
-    do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
-    min_sep: 2.5
-    max_sep: 100
-    nbins: 15
-    verbose: 0
-    use_true_shear: True
-    subtract_mean_shear: True
     var_method: jackknife
-    
+
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True
@@ -143,7 +130,6 @@ TXTwoPointFourier:
     n_ell: 20
     ell_max: 3000
     nside: 2048
-    
 
 TXClusteringNoiseMaps:
     n_realization: 30

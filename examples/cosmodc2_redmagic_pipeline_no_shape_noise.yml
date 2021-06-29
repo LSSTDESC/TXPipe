@@ -19,6 +19,12 @@ stages:
     - name: TXSourceSelector
       nprocess: 64
       nodes: 3
+    - name: TXShearCalibration
+      nprocess: 7
+      nodes: 1
+    - name: TXExternalLensCatalogSplitter
+      nprocess: 5
+      nodes: 1
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
@@ -36,9 +42,9 @@ stages:
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
-    - name: TXTwoPointLensCat
-      nprocess: 3
-      nodes: 3
+    - name: TXTwoPoint
+      nprocess: 2
+      nodes: 2
       threads_per_process: 64
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
@@ -64,7 +70,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2021/no_shape_noise/7sbins/
+output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins_no_shape_noise/
 config: examples/config/cosmodc2_config_no_shape_noise.yml
 
 # On NERSC, set this before running:
