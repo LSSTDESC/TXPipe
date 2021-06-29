@@ -8,6 +8,7 @@ import collections
 import sys
 import pathlib
 from time import perf_counter
+import gc
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -341,7 +342,6 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
-        import gc
 
         if k==SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
@@ -355,19 +355,37 @@ class TXTwoPoint(PipelineStage):
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
-        # Force garbage Collect ion here to make sure all the
+        # Force garbage collection here to make sure all the
         # catalogs are definitely freed
         gc.collect()
 
+        # The measurement object collects the results and type info.
+        # we use it because the ordering will not be simple if we have
+        # parallelized, so it's good to keep explicit track.
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
         return result
 
     def prepare_patches(self, calcs):
+        """
+        For each catalog to be generated, have one process load the catalog
+        and write its patch files out to disc.  These are then re-used later
+        by all the different processes.
 
+        Parameters
+        ----------
+
+        calcs: list
+            A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
+            or bin labels and bin_type is one of the constants SHEAR_SHEAR,
+            SHEAR_POS, or POS_POS.
+        """
         # Make the full list of catalogs to run
         cats = set()
+
+        # Use shear-shear and pos-pos only here as they represent
+        # catalogs not pairs.
         for i, j, k in calcs:
             if k == SHEAR_SHEAR:
                 cats.add((i, SHEAR_SHEAR))
@@ -380,8 +398,14 @@ class TXTwoPoint(PipelineStage):
                 cats.add((j, POS_POS))
         cats = list(cats)
         
+        # This does a round-robin assignment to processes
         for (h, k) in self.split_tasks_by_rank(cats):
+
             print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+
+            # For shear we just have the one catalog. For position we may
+            # have randoms also. We explicitly delete catalogs after loading
+            # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
                 cat.get_patches(low_mem=False)
@@ -399,13 +423,32 @@ class TXTwoPoint(PipelineStage):
                 ran_cat.get_patches(low_mem=False)
                 del ran_cat
 
+        # stop other processes progressing to the rest of the code and
+        # trying to load things we have not written yet
         if self.comm is not None:
-            # stop other notes trying to load things we have
-            # not written yet
             self.comm.Barrier()
 
                 
     def get_patch_dir(self, input_tag, b):
+        """
+        Select a patch directory for the file  with the given input tag
+        and with a bin number/label.
+
+        To ensure that if you change the catalog the patch dir will also
+        change, the directory path includes the unique ID of the input file.
+
+        Parameters
+        ----------
+        input_tag: str
+            One of the tags in the class's inputs attribute
+        b: any
+            An additional label used as the last component in the returned
+            directory
+
+        Returns
+        -------
+        str: a directory, which has been created if it did not exist already.
+        """
         # start from a user-specified base directory
         patch_base = self.config['patch_dir']
 
@@ -414,13 +457,19 @@ class TXTwoPoint(PipelineStage):
             p = f.read_provenance()
             uuid = p['uuid']
             stem = pathlib.Path(f.path).stem
-            if uuid == 'UNKNOWN':
-                warnings.warn(f"No provenance in input file: using file name for patch dir. Using {stem}")
-                name = stem
-            else:
-                name = f"{input_tag}_{uuid}"
-        # And finally append the bin name/number
+
+        # We expect the input files to be generated within a pipeline and so always
+        # have input files to have a unique ID.  But if for some reason it doesn't
+        # have one we handle that too.
+        if uuid == 'UNKNOWN':
+            warnings.warn(f"No provenance in input file: using file name for patch dir. Using {stem}")
+            name = stem
+        else:
+            name = f"{input_tag}_{uuid}"
+
+        # And finally append the bin name or number
         patch_dir = pathlib.Path(patch_base) / name / str(b)
+
         # Make the directory and return it
         pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
         return patch_dir
@@ -428,7 +477,6 @@ class TXTwoPoint(PipelineStage):
     def get_shear_catalog(self, i):
         import treecorr
 
-        
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             self.get_input("binned_shear_catalog"),

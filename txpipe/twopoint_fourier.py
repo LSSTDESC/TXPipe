@@ -554,7 +554,7 @@ class TXTwoPointFourier(PipelineStage):
             y=f*x
             return np.exp(-y**2/2)
 
-        c_beam = c/(window_pixel(ls, pixel_scheme.nside))**2
+        c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
         
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
