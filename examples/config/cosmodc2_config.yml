@@ -12,14 +12,18 @@ TXExposureInfo:
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
-    extra_cols: redshift_true size_true shear_1 shear_2
+    extra_cols: redshift_true size_true shear_1 shear_2 Mag_true_r_sdss_z0 
     flip_g2: True # to match metacal
+    snr_limit: 4.0
+    Mag_r_limit: -19
+    unit_response: True
+    apply_mag_cut: False
 
 TXIngestRedmagic:
     lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
 
 TXSourceTrueNumberDensity:
-    nz: 301
+    nz: 601
     zmax: 3.0
     chunk_rows: 100000
 
@@ -75,8 +79,8 @@ TXSourceSelector:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    # source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3. ] # 7 bins
-    source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3. ] # 7 bins
+    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     chunk_rows: 100000
     true_z: False
     shear_prefix: mcal_
@@ -96,6 +100,9 @@ TXRealGaussianCovariance:
     max_sep: 100.
     nbins: 15
     use_true_shear: False
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
 
 TXTwoPoint:
     bin_slop: 0.0
@@ -108,23 +115,8 @@ TXTwoPoint:
     max_sep: 100
     nbins: 15
     verbose: 0
-    use_true_shear: False
-    subtract_mean_shear: True
+    var_method: jackknife
 
-TXTwoPointLensCat:
-    bin_slop: 0.0
-    delta_gamma: 0.02
-    do_pos_pos: True
-    do_shear_shear: True
-    do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
-    min_sep: 2.5
-    max_sep: 100
-    nbins: 15
-    verbose: 0
-    use_true_shear: False
-    subtract_mean_shear: True
-    
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True
