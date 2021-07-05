@@ -260,6 +260,33 @@ def test_null():
 
 
 
+def test_null_mean():
+    # null calibrator
+    R = np.eye(2)
+    g1 = 0.2
+    g2 = -0.3
+    g_obs = R @ [g1, g2]
+    mu = [0.05, 0.06]
+    assert g_obs.shape == (2,)
+    cal = NullCalibrator(mu)
+    g1_, g2_ = cal.apply(float(g_obs[0]), float(g_obs[1]), subtract_mean=True)
+    assert np.allclose(g1_, g1 - mu[0])
+    assert np.allclose(g2_, g2 - mu[1])
+    assert type(g1) == float
+    assert type(g2) == float
+
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1], subtract_mean=True)
+
+    assert np.allclose(g1_, g1 - mu[0])
+    assert np.allclose(g2_, g2 - mu[1])
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
+
+
 if __name__ == '__main__':
     test_metacalibrator_serial()
     test_metacalibrator_parallel()

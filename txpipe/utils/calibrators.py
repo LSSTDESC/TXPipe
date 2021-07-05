@@ -67,6 +67,12 @@ class NullCalibrator:
     """
     This calibrator subclass does nothing - it's designed
     """
+    def __init__(self, mu=None):
+        if mu is None:
+            self.mu1 = 0.0
+            self.mu2 = 0.0
+        else:
+            self.mu1, self.mu2 = mu
 
     def apply(self, g1, g2, subtract_mean=False):
         """
@@ -87,10 +93,12 @@ class NullCalibrator:
             classes
         """
         # In the scalar case we just return the same values
-        if np.isscalar(g1):
+        if subtract_mean:
+            return g1 - self.mu1, g2 - self.mu2
+        elif np.isscalar(g1):
             return g1, g2
-
         else:
+            # array case with no subtraction
             # for consistency with the other calibrators and cases
             # we return copies here
             return g1.copy(), g2.copy()
@@ -116,10 +124,17 @@ class NullCalibrator:
             A single Calibrator for the 2D bin
         """
         import h5py
+
         with h5py.File(tomo_file, "r") as f:
             nbin = f["tomography"].attrs["nbin_source"]
 
-        return [NullCalibrator() for i in range(nbin)], NullCalibrator()
+            # Load the mean shear values
+            mu1 = f["tomography/mean_e1"][:]
+            mu2 = f["tomography/mean_e2"][:]
+            mu1_2d = f["tomography/mean_e1_2d"][0]
+            mu2_2d = f["tomography/mean_e2_2d"][0]
+
+        return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator([mu1_2d, mu2_2d])
 
 
 class MetaCalibrator(Calibrator):
