@@ -8,7 +8,6 @@ class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
         ('aux_maps', MapsFile),
-        ('tracer_metadata', HDFFile),       
         ('lens_photoz_stack', HDFFile),
     ]
     outputs = [
