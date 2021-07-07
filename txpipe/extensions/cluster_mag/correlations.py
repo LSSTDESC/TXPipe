@@ -40,13 +40,14 @@ class CMCorrelations(TXTwoPoint):
         'var_method': 'jackknife',
         'use_randoms': True,
         'low_mem': False,
-        }
+        'do_halo_cross': False,
+    }
 
 
     def read_nbin(self):
         # Get the number of halo bins in each axis
         with self.open_input("cluster_mag_halo_tomography") as f:
-            meta = f['tomography'].attrs
+            meta = f['lens'].attrs
             nm = meta['nm']
             nz = meta['nz']
 
@@ -68,20 +69,37 @@ class CMCorrelations(TXTwoPoint):
         # 3x2pt measurements, but here all our measurements are
         # position-position.
         k = POS_POS
-        for b1 in lens_list[:]:
-            for b2 in lens_list:
-                # We don't want to do a pair twice
-                # The lenses in this list are actually
-                # strings, but we can still compare them like this.
-                if b1 <= b2:
-                    calcs.append(b1, b2, k)
+
+        if self.config['do_halo_cross']:
+            # All the cross-correlations - takes ages
+            for b1 in lens_list[:]:
+                for b2 in lens_list:
+                    # We don't want to do a pair twice
+                    # The lenses in this list are actually
+                    # strings, but we can still compare them like this.
+                    if b1 <= b2:
+                        calcs.append([b1, b2, k])
+        else:
+            # If we are not doing correlations between halo bins
+            # then we just want the auto-correlation for the non-bg bins.
+            # We want bg x everything, including bg x bg
+            for b1 in lens_list[:]:
+                if b1 == "bg":
+                    for b2 in lens_list:
+                        calcs.append([b1, b2, k])
+                else:
+                    calcs.append([b1, b1, k])
+                        
+
+        return calcs
 
     def read_metadata(self):
         return {}
 
 
     def get_lens_catalog(self, bins):
-        # We now have two different lens catalogs to choose from/
+        import treecorr
+        # We now have two different lens catalogs to choose from
         if bins == "bg":
             cat = treecorr.Catalog(
                 self.get_input("cluster_mag_background"),
@@ -98,7 +116,6 @@ class CMCorrelations(TXTwoPoint):
                 ext = f"/lens/bin_{bins}",
                 ra_col = "ra",
                 dec_col = "dec",
-                w_col = "weight",
                 ra_units='degree',
                 dec_units='degree',
                 patch_centers=self.get_input('patch_centers'),
@@ -108,6 +125,7 @@ class CMCorrelations(TXTwoPoint):
 
 
     def get_random_catalog(self, bins):
+        import treecorr
         # We get our randoms from cluster_mag_randoms, a single
         # unbinned catalog
         cat = treecorr.Catalog(

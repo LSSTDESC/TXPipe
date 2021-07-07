@@ -15,7 +15,7 @@ class CMRandoms(PipelineStage):
 
     def run(self):
         import scipy.stats
-        from ..randoms import random_points_in_quadrilateral
+        from ...randoms import random_points_in_quadrilateral
         import healpy
 
         # open the footprint catalog and read in the things we need
