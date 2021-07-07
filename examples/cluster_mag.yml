@@ -19,7 +19,7 @@ stages:
     - name: TXJackknifeCenters
     - name: CMRedshifts
     - name: CMCorrelations
-    # - name: CMCorrelationsPlot
+    - name: CMCorrelationsPlot
 
 
 #output_dir: data/cluster_mag_skysim/outputs

@@ -50,7 +50,7 @@ class CMCorrelationsPlot(PipelineStage):
                 ax.errorbar(theta, xi, error, fmt='r.')
                 ax.set_xscale('log')
                 ax.axhline(0, color='k')
-                ax.text(0.5, 0.9, f'z = {zmin:.2f} -- {zmax:.2f}\nM = ({mmin:.2f} -- {mmax:.2f}) $\\times 10^{13}$', transform=ax.transAxes)
+                ax.text(0.5, 0.9, f'z = {zmin:.2f} -- {zmax:.2f}\nM = ({mmin:.2f} -- {mmax:.2f}) $\\times 10^{{13}}$', transform=ax.transAxes)
 
                 ax.set_title(f"Halo bin {i} {j}")
 
@@ -73,15 +73,15 @@ class CMCorrelationsPlot(PipelineStage):
             for j in range(nm):
                 ax = axes[i, j]
                 tracer = f'halo_{i}_{j}'
-                theta = S.get_tag('theta', 'halo_galaxy_density_xi', (tracer, 'background'))
-                error = S.get_tag('error', 'halo_galaxy_density_xi', (tracer, 'background'))
+                theta = S.get_tag('theta', 'halo_galaxy_density_xi', ('background', tracer))
+                error = S.get_tag('error', 'halo_galaxy_density_xi', ('background', tracer))
                 mmin = S.get_tag('mass_min', 'halo_halo_density_xi', (tracer, tracer))[0] / 1e13
                 mmax = S.get_tag('mass_max', 'halo_halo_density_xi', (tracer, tracer))[0] / 1e13
                 zmin = S.get_tag('z_min', 'halo_halo_density_xi', (tracer, tracer))[0]
                 zmax = S.get_tag('z_max', 'halo_halo_density_xi', (tracer, tracer))[0]
                 if not len(theta):
                     continue
-                xi = S.get_mean('halo_galaxy_density_xi', (tracer, 'background'))
+                xi = S.get_mean('halo_galaxy_density_xi', ('background', tracer))
 
                 ax.errorbar(theta, xi, error, fmt='r.')
                 ax.set_xscale('log')

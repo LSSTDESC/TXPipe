@@ -19,7 +19,7 @@ class CMCorrelations(TXTwoPoint):
          ("random_cats", HDFFile),
     ]
     outputs = [
-        ('twopoint_data_real_raw', SACCFile),
+        ('cluster_mag_correlations', SACCFile),
     ]
 
     config_options = {
@@ -94,7 +94,19 @@ class CMCorrelations(TXTwoPoint):
         return calcs
 
     def read_metadata(self):
-        return {}
+        meta = {}
+        # Read per-bin inforation
+        with self.open_input("cluster_mag_halo_tomography") as f:
+            g = f['lens']
+            for key in g.keys():
+                meta[key] = dict(g[key].attrs)
+
+        # And also general information 
+        with self.open_input("cluster_mag_halo_tomography") as f:
+            meta['nm'] = f['lens'].attrs['nm']
+            meta['nz'] = f['lens'].attrs['nz']
+
+        return meta
 
 
     def get_lens_catalog(self, bins):
@@ -140,6 +152,65 @@ class CMCorrelations(TXTwoPoint):
         return cat
 
     def write_output(self, source_list, lens_list, meta, results):
-        breakpoint()
+        import sacc
+        import treecorr
+
+        # Create a sacc for our output data and
+        # save some metadata in it
+        S = sacc.Sacc()
+        S.metadata['nm'] = meta['nm']
+        S.metadata['nz'] = meta['nz']
+
+        # Record the names of all our bins. At some point we may
+        # want to load the n(z) here and put it in the output too
+        for bins in lens_list:
+            bin_output_name = "background" if bins == "bg" else f'halo_{bins}'
+            S.add_tracer('misc', bin_output_name)
 
 
+        for d in results:
+            # Name of the pair of bins used here. Probably the same
+            # unless we have set do_halo_cross=True
+            tracer1 = f'background' if d.i == "bg" else f'halo_{d.i}'
+            tracer2 = f'background' if d.j == "bg" else f'halo_{d.j}'
+
+            # select name of the data type, and any metadata to store
+            if d.i == "bg" and d.j == "bg":
+                corr_type = "galaxy_density_xi"
+                tags = {}
+            elif d.i == "bg":
+                corr_type = "halo_galaxy_density_xi"
+                tags = meta[f'bin_{d.j}']
+            elif d.i == d.j:
+                corr_type = "halo_halo_density_xi"
+                tags = meta[f'bin_{d.i}']
+            else:
+                corr_type = "halo_halo_density_xi"
+                # combined metadata for both
+                tags = {
+                    **{"{k}_bin2": "{v}_bin2" for k, v in meta[f'bin_{d.i}'].items()},
+                    **{"{k}_bin2": "{v}_bin2" for k, v in meta[f'bin_{d.j}'].items()},
+                }
+
+            # Other numbers to save
+            theta = np.exp(d.object.meanlogr)
+            npair = d.object.npairs
+            weight = d.object.weight
+            xi = d.object.xi
+            err = np.sqrt(d.object.varxi)
+            n = len(xi)
+
+            # Add all our data points to the output file
+            for i in range(n):
+                S.add_data_point(corr_type, (tracer1, tracer2), xi[i],
+                    theta=theta[i], error=err[i], weight=weight[i], **tags)         
+
+        # Compute the covariance with treecorr and add it to the output
+        cov = treecorr.estimate_multi_cov(
+            [d.object for d in results],
+            self.config['var_method']
+        )
+        S.add_covariance(cov)
+
+        # Save results to FITS format
+        S.save_fits(self.get_output("cluster_mag_correlations"))
