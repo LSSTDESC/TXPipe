@@ -4,8 +4,6 @@ import tempfile
 import os
 
 
-# We can't test this under mockmpi because the
-# comm objects gets passed down to the C level
 def test_fixed_splitter():
     import h5py
     # make some data
@@ -31,6 +29,7 @@ def test_fixed_splitter():
         f = h5py.File(filename, "w")
         g = f.create_group("ggg")
 
+        # run splitter
         splitter = Splitter(g, name, cols, counts, dtypes=dtypes)
 
         for i in range(10):
@@ -44,6 +43,8 @@ def test_fixed_splitter():
         splitter.finish()
 
         assert g.attrs['nbin'] == np.unique(bins).size
+
+        # load data from split file and compare to expected
         for b in bins:
             assert np.allclose(g[f'subset_{b}/x'][:], x[bins==b])
             assert np.allclose(g[f'subset_{b}/y'][:], y[bins==b])
@@ -51,9 +52,6 @@ def test_fixed_splitter():
             assert g[f'subset_{b}/x'].dtype == np.float64
             assert g[f'subset_{b}/y'].dtype == np.float64
             assert g[f'subset_{b}/z'].dtype == np.int32
-    # run splitter
-    # load data from split file
-    # compare to expected
 
 def test_dynamic_splitter():
     import h5py
@@ -88,9 +86,15 @@ def test_dynamic_splitter():
                 w = np.where(bins[s:e]==b)
                 data = {"x": x[s:e][w], "y":y[s:e][w], "z":z[s:e][w]}
                 splitter.write_bin(data, b)
-        # does checks internally on size
+
+        # splitter.finish() resizes the bins.
+        # Check that the intitial sizes are all large enough; the final
+        # sizes are checked in the next set of assertions
+        for b in range(6):
+            assert splitter.bin_sizes[b] >= np.count_nonzero(bins==b)
         splitter.finish()
 
+        # load data from split file and compare to expected
         assert g.attrs['nbin'] == np.unique(bins).size
         for b in bins:
             assert np.allclose(g[f'subset_{b}/x'][:], x[bins==b])

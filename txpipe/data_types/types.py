@@ -26,7 +26,6 @@ class ShearCatalog(HDFFile):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._catalog_type = None
-        self._calibration_status = None
     
     def read_catalog_info(self):
         try:
@@ -53,20 +52,6 @@ class ShearCatalog(HDFFile):
 
         self._catalog_type = t
         return t
-
-    @property
-    def calibration_status(self):
-        if self._calibration_status is not None:
-            return self._calibration_status
-        if 'catalog_status' in self.file['shear'].attrs:
-            t = self.file['shear'].attrs['calibration_status']
-        else:
-            t = "uncalibrated"
-
-        self._calibration_status = t
-        return t
-
-    
 
 
 class TomographyCatalog(HDFFile):

@@ -1,0 +1,22 @@
+#!/bin/bash
+#SBATCH --qos=debug
+#SBATCH --time=00:30:00
+#SBATCH --nodes=8
+#SBATCH --constraint=haswell
+#SBATCH --account=m1727
+#SBATCH --job-name=skysim5000-analysis
+#SBATCH --output=%x.log
+#SBATCH --mail-type=END
+
+# You can create this environment as described in the readme.
+source env/bin/activate
+
+# You do not need to set OMP_NUM_THREADS here.
+# It is set inside ceci
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+
+# This should not be called with srun.
+# srun is called inside ceci
+echo "Running ceci"
+ceci examples/skysim5000_pipeline.yml

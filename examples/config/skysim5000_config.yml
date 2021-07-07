@@ -1,3 +1,6 @@
+global:
+    chunk_rows: 1000000
+
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
@@ -12,43 +15,34 @@ TXExposureInfo:
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
-    extra_cols: redshift_true size_true shear_1 shear_2 Mag_true_r_sdss_z0 
+    extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
-    snr_limit: 4.0
-    Mag_r_limit: -19
-    unit_response: True
-    apply_mag_cut: False
 
 TXIngestRedmagic:
-    lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
+    lens_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9]
 
 TXSourceTrueNumberDensity:
-    nz: 601
+    nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXMainMaps:
-    chunk_rows:  100000
     pixelization: healpix
-    nside: 2048
+    nside: 512
     sparse: True
 
 TXSourceMaps:
-    nside: 2048
+    nside: 512
     sparse: True
-    chunk_rows:  100000
     pixelization: healpix
     true_shear: False
 
 TXExternalLensMaps:
-    nside: 2048
+    nside: 512
     sparse: True
-    chunk_rows:  100000
     pixelization: healpix
 
 
 TXAuxiliaryMaps:
-    chunk_rows:  100000
     sparse:  True
     psf_prefix:  psf_
     bright_obj_threshold:  22.0
@@ -61,16 +55,13 @@ TXSimpleMask:
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXPhotozStack:
-    chunk_rows: 100000
 
 # Mock version of stacking:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
-    chunk_rows: 100000
 
 TXSourceSelector:
     input_pz: False
@@ -79,14 +70,12 @@ TXSourceSelector:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3. ] # 7 bins
-    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
-    chunk_rows: 100000
+    source_zbin_edges: [0.3, 0.55, 0.8, 1.05, 2.0]
+    # may also need one for r_cpar_cut
     true_z: False
     shear_prefix: mcal_
 
 TXRandomCat:
-    chunk_rows: 100000
     density: 10 # gals per sq arcmin
 
 TXJackknifeCenters:
@@ -97,12 +86,8 @@ TXDiagnosticPlots:
 
 TXRealGaussianCovariance:
     min_sep: 2.5
-    max_sep: 100.
-    nbins: 15
-    use_true_shear: False
-    nprocess: 4
-    threads_per_process: 2
-    nodes: 4
+    max_sep: 250.
+    nbins: 20
 
 TXTwoPoint:
     bin_slop: 0.0
@@ -112,22 +97,34 @@ TXTwoPoint:
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 100
-    nbins: 15
+    max_sep: 250
+    nbins: 20
     verbose: 0
-    var_method: jackknife
+    use_true_shear: False
 
+TXTwoPointLensCat:
+    bin_slop: 0.0
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    use_true_shear: False
+    
 TXTwoPointFourier:
-    chunk_rows: 100000
     flip_g2: True
     flip_g1: True
     apodization_size: 0.0
     cache_dir: ./cache
     true_shear: False
-    n_ell: 20
-    ell_max: 3000
-    nside: 2048
     
+TXRealGaussianCovariance:
+    use_true_shear: False
+
 TXClusteringNoiseMaps:
     n_realization: 30
 
@@ -136,7 +133,6 @@ TXLensingNoiseMaps:
 
 TXTruthLensSelector:
     # Mag cuts
-    chunk_rows: 100000
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5

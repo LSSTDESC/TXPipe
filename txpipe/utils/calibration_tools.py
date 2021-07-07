@@ -38,36 +38,36 @@ def band_variants(bands, *names, shear_catalog_type='metacal'):
 
 def calculate_selection_response(g1, g2, sel_1p, sel_2p, sel_1m, sel_2m, delta_gamma):
     import numpy as np
-    
+
     S = np.ones((2,2))
     S_11 = (g1[sel_1p].mean() - g1[sel_1m].mean()) / delta_gamma
     S_12 = (g1[sel_2p].mean() - g1[sel_2m].mean()) / delta_gamma
     S_21 = (g2[sel_1p].mean() - g2[sel_1m].mean()) / delta_gamma
     S_22 = (g2[sel_2p].mean() - g2[sel_2m].mean()) / delta_gamma
-    
+
     # Also save the selection biases as a matrix.
     S[0,0] = S_11
     S[0,1] = S_12
     S[1,0] = S_21
     S[1,1] = S_22
-    
+
     return S
 
 def calculate_shear_response(g1_1p,g1_2p,g1_1m,g1_2m,g2_1p,g2_2p,g2_1m,g2_2m,delta_gamma):
-    import numpy as np 
-    
+    import numpy as np
+
     n = len(g1_1p)
     R =  R = np.zeros((n,2,2))
     R_11 = (g1_1p - g1_1m) / delta_gamma
     R_12 = (g1_2p - g1_2m) / delta_gamma
     R_21 = (g2_1p - g2_1m) / delta_gamma
     R_22 = (g2_2p - g2_2m) / delta_gamma
-    
+
     R[:,0,0] = R_11
     R[:,0,1] = R_12
     R[:,1,0] = R_21
     R[:,1,1] = R_22
-    
+
     R = np.mean(R, axis=0)
     return R
 
@@ -76,15 +76,15 @@ def apply_metacal_response(R, S, g1, g2):
     # have had appropriate weights included
     from numpy.linalg import pinv
     import numpy as np
-    
+
     mcal_g = np.stack([g1,g2], axis=1)
-    
+
     R_total = R+S
-    
+
     # Invert the responsivity matrix
     Rinv = pinv(R_total)
     mcal_g = (Rinv @ mcal_g.T)
-    
+
     return mcal_g[0], mcal_g[1]
 
 
@@ -93,7 +93,7 @@ def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
     m = np.sum(weight*m)/w_tot        #if m not provided, default is m=0, so one_plus_K=1
     one_plus_K = 1.+m
     R = 1. - np.sum(weight*sigma_e)/w_tot
-    g1 = (1./(one_plus_K))*((g1/R)-c1)       
+    g1 = (1./(one_plus_K))*((g1/R)-c1)
     g2 = (1./(one_plus_K))*((g2/R)-c2)
     return g1, g2, weight, one_plus_K
 
@@ -109,7 +109,7 @@ class _DataWrapper:
     and returns that if so.
     """
     def __init__(self, data, suffix):
-        """Create 
+        """Create
 
         Parameters
         ----------
@@ -134,7 +134,7 @@ class MetacalCalculator:
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
-    At the end an MPI communuicator can be supplied to collect together
+    At the end an MPI communicator can be supplied to collect together
     the results from the different processes.
 
     To do this we need the function used to select the data, and the instance
@@ -180,7 +180,7 @@ class MetacalCalculator:
             Positional arguments to be passed to the selection function
         **kwargs
             Keyword arguments to be passed to the selection function
-        
+
         """
         # These all wrap the catalog such that lookups find the variant
         # column if available.
@@ -247,7 +247,7 @@ class MetacalCalculator:
         # The user of this class may need the base selection, so return it
         return sel_00
 
-    def collect(self, comm=None):
+    def collect(self, comm=None, allgather=False):
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) and S (selection bias) 2x2 matrices
@@ -265,14 +265,18 @@ class MetacalCalculator:
         """
         # collect all the things we need
         if comm is not None:
-            count = comm.allreduce(self.count)
+            if allgather:
+                count = comm.allreduce(self.count)
+            else:
+                count = comm.reduce(self.count)
         else:
             count = self.count
 
 
         # Collect the mean values we need
-        _, S = self.sel_bias_means.collect(comm)
-        _, R = self.cal_bias_means.collect(comm)
+        mode = ("allgather" if allgather else "gather")
+        _, S = self.sel_bias_means.collect(comm, mode)
+        _, R = self.cal_bias_means.collect(comm, mode)
 
         # Unpack the flat mean R and S values into
         # matrices
@@ -298,15 +302,130 @@ class MetacalCalculator:
 
 class LensfitCalculator:
     """
-    This class builds up the total response calibration
-    factors for NonMetacalibration shears from each chunk of data it is given.
+    This class builds up the total calibration
+    factors for lensfit-convention shears from each chunk of data it is given.
+    Note here we derive the c-terms from the data (in constrast to averaging
+    values derived from simulations and stored in the catalog.)
     At the end an MPI communicator can be supplied to collect together
     the results from the different processes.
 
-    To do this we need the function used to select the data, and the instance
-    this function to each of the metacalibrated variants automatically by
-    wrapping the data object passed in to it and modifying the names of columns
-    that are looked up.
+    """
+    def __init__(self, selector, input_m_is_weighted=False):
+        """
+        Initialize the Calibrator using the function you will use to select
+        objects. That function should take at least one argument,
+        the chunk of data to select on.
+
+        The selector can take further *args and **kwargs, passed in when adding
+        data.
+
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects
+        """
+        self.selector = selector
+        # Create a set of calculators that will calculate (in parallel)
+        # the three quantities we need to compute the overall calibration
+        # We create these, then add data to them below, then collect them
+        # together over all the processes
+        self.K = ParallelMean(1)
+        self.C = ParallelMean(2)
+        self.count = 0
+        self.input_m_is_weighted = input_m_is_weighted
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function
+
+        """
+        # These all wrap the catalog such that lookups find the variant
+        # column if available
+
+        # This is just to let the selection tools access data.variant for feedback
+        data = _DataWrapper(data, '')
+        sel = self.selector(data, *args, **kwargs)
+
+        # Extract the calibration quantities for the selected objects
+        w = data['weight']
+        K = data['m']
+        g1 = data['g1']
+        g2 = data['g2']
+        n = g1[sel].size
+
+         # Record the count for this chunk, for summation later
+        self.count += n
+
+        # Accumulate the calibration quantities so that later we
+        # can compute the weighted mean of the values
+        if self.input_m_is_weighted:
+            # if the m values are already weighted don't use the weights here
+            self.K.add_data(0, K[sel])
+        else:
+            # if not apply the weights
+            self.K.add_data(0, K[sel], w[sel])
+        self.C.add_data(0, g1[sel], w[sel])
+        self.C.add_data(1, g2[sel], w[sel])
+
+        return sel
+
+    def collect(self, comm=None, allgather=False):
+        """
+        Finalize and sum up all the response values, returning calibration
+        quantities.
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+
+        Returns
+        -------
+
+        K: float
+            K = (1+m) calibration
+
+        C: float array
+            c1, c2 additive biases (weighted average of g1 and g2)
+
+        """
+        # The total number of objects is just the
+        # number from all the processes summed together.
+        if comm is not None:
+            if allgather:
+                count = comm.allreduce(self.count)
+            else:
+                count = comm.reduce(self.count)
+        else:
+            count = self.count
+
+        # Collect the weighted means of these numbers.
+        # this collects all the values from the different
+        # processes and over all the chunks of data
+        mode = ("allgather" if allgather else "gather")
+        _ ,K = self.K.collect(comm, mode)
+        _, C = self.C.collect(comm, mode)
+        return K, C, count
+
+
+class HSCCalculator:
+    """
+    This class builds up the total response calibration
+    factors for HSC-convention shear-calibration from each chunk of data it is
+    given.
+    At the end an MPI communicator can be supplied to collect together
+    the results from the different processes.
+
     """
     def __init__(self, selector):
         """
@@ -329,7 +448,6 @@ class LensfitCalculator:
         # together over all the processes
         self.K = ParallelMean(1)
         self.R = ParallelMean(1)
-        self.C = ParallelMean(2)
         self.count = 0
 
     def add_data(self, data, *args, **kwargs):
@@ -344,7 +462,7 @@ class LensfitCalculator:
             Positional arguments to be passed to the selection function
         **kwargs
             Keyword arguments to be passed to the selection function
-        
+
         """
         # These all wrap the catalog such that lookups find the variant
         # column if available
@@ -354,23 +472,22 @@ class LensfitCalculator:
         sel = self.selector(data, *args, **kwargs)
 
         # Extract the calibration quantities for the selected objects
-        w = data['weight'][sel]
-        K = 1 + data['m'][sel]
-        R = 1 - data['sigma_e'][sel]
-        c1 = data['c1'][sel]
-        c2 = data['c2'][sel]
+        w = data['weight']
+        K = data['m']
+        R = 1.0 - data['sigma_e'] ** 2
+        n = w[sel].size
+        self.count += w.size
+
+        w = w[sel]
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
-        self.R.add_data(0, R, w)
-        self.K.add_data(0, K, w)
-        self.C.add_data(0, c1, w)
-        self.C.add_data(1, c2, w)
-        self.count += w.size
+        self.R.add_data(0, R[sel], w)
+        self.K.add_data(0, K[sel], w)
 
         return sel
 
-    def collect(self, comm=None):
+    def collect(self, comm=None, allgather=False):
         """
         Finalize and sum up all the response values, returning calibration
         quantities.
@@ -389,27 +506,27 @@ class LensfitCalculator:
         K: float
             K = (1+m) calibration
 
-        C: float array
-            c1, c2 additive biases
-
-        S: 2x2 array
-            Selection bias matrix
+        N: int
+            Total object count
 
         """
         # The total number of objects is just the
         # number from all the processes summed together.
         if comm is not None:
-            self.count = comm.reduce(self.count)
+            if allgather:
+                count = comm.allreduce(self.count)
+            else:
+                count = comm.reduce(self.count)
+        else:
+            count = self.count
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
-        _, R = self.R.collect(comm)
-        _ ,K = self.K.collect(comm)
-        _, C = self.C.collect(comm)
-        N = self.count
-        
-        return R, K, C, N 
+        mode = ("allgather" if allgather else "gather")
+        _, R = self.R.collect(comm, mode)
+        _ ,K = self.K.collect(comm, mode)
+        return R, K, count
 
 
 class MeanShearInBins:
@@ -421,16 +538,19 @@ class MeanShearInBins:
         self.shear_catalog_type = shear_catalog_type
         self.size = len(self.limits) - 1
 
-        # We have to work out the mean g1, g2 
+        # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
         self.g2 = ParallelMeanVariance(self.size)
         self.x  = ParallelMean(self.size)
 
         if shear_catalog_type=='metacal':
             self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
-        else:
+        elif shear_catalog_type=='lensfit':
             self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
-
+        elif shear_catalog_type=='hsc':
+            self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
+        else:
+            raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
         x = data[self.x_name]
@@ -447,14 +567,18 @@ class MeanShearInBins:
             if self.shear_catalog_type=='metacal':
                 self.g1.add_data(i, data['mcal_g1'][w], weight)
                 self.g2.add_data(i, data['mcal_g2'][w], weight)
-            else:
+            elif self.shear_catalog_type=='lensfit':
                 self.g1.add_data(i, data['g1'][w], weight)
                 self.g2.add_data(i, data['g2'][w], weight)
+            elif self.shear_catalog_type=='hsc':
+                self.g1.add_data(i, data['g1'][w]-data['c1'][w], weight)
+                self.g2.add_data(i, data['g2'][w]-data['c2'][w], weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode='gather')
         count2, g2, var2 = self.g2.collect(comm, mode='gather')
+
         _, mu = self.x.collect(comm, mode='gather')
 
         # Now we have the complete sample we can get the calibration matrix
@@ -468,11 +592,14 @@ class MeanShearInBins:
                 r, s, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r+s)
-            else:
-                r, k, c, _ = self.calibrators[i].collect(comm)
-                R.append(r)
+            elif self.shear_catalog_type=='lensfit':
+                k, c, _ = self.calibrators[i].collect(comm)
                 K.append(k)
                 C.append(c)
+            else:
+                r, k, _ = self.calibrators[i].collect(comm)
+                K.append(k)
+                R.append(r)
 
         # Only the root processor does the rest
         if (comm is not None) and (comm.Get_rank() != 0):
@@ -485,7 +612,7 @@ class MeanShearInBins:
             # Get the shears and the errors on their means
             g = [g1[i], g2[i]]
             sigma = np.sqrt([var1[i]/count1[i], var2[i]/count2[i]])
-            
+
             if self.shear_catalog_type=='metacal':
                 # Get the inverse response matrix to apply
                 R_inv = np.linalg.inv(R[i])
@@ -493,14 +620,18 @@ class MeanShearInBins:
                 # Apply the matrix in full to the shears and errors
                 g1[i], g2[i] = R_inv @ g
                 sigma1[i], sigma2[i] = R_inv @ sigma
+            elif self.shear_catalog_type=='lensfit':
+                g1[i] = g1[i]*(1./(1+K[i]))
+                g2[i] = g2[i]*(1./(1+K[i]))
+
+                sigma1[i] = (1./(1+K[i]))*(sigma[0])
+                sigma2[i] = (1./(1+K[i]))*(sigma[1])
             else:
-                g1[i] = (1./(1+K[i]))*((g1[i]/R[i])-C[i][0])
-                g2[i] = (1./(1+K[i]))*((g2[i]/R[i])-C[i][1])
-                # JZ should the C be in here? It's a variance so seems
-                # a bit odd to subtract something off
-                sigma1[i] = (1./(1+K[i]))*((sigma[0]/R[i])-C[i][0])
-                sigma2[i] = (1./(1+K[i]))*((sigma[1]/R[i])-C[i][1])
+                g1[i] = (g1[i] / (2 * R[i]))/ (1 + K[i])
+                g2[i] = (g2[i] / (2 * R[i]))/ (1 + K[i])
+
+                sigma1[i] = (sigma[0] / (2 * R[i]))/ (1 + K[i])
+                sigma2[i] = (sigma[1] / (2 * R[i]))/ (1 + K[i])
 
 
         return mu, g1, g2, sigma1, sigma2
-

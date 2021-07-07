@@ -3,13 +3,15 @@ import numpy as np
 
 class Splitter:
     """
-    Helper class to split a catalog into bins
+    Helper class to split a catalog into bins.
 
     This class is used to automate the case where you want
     to split a catalog in single large columns into different
     subsets, for example tomographic bins.  The splitters handle
     setting up the structure of the new file, and copying data into
     it in the right places.
+
+    All the columns passed to the splitter class must be the same size.
 
     There are two classes, for two cases:
     - Splitter, for when you know the sizes of the subsets in advance
@@ -26,7 +28,6 @@ class Splitter:
     4. finalize the splitter
 
     The bins don't have to be non-overlapping.
-
     """
 
     def __init__(self, group, name, columns, bin_sizes, dtypes=None):
@@ -47,13 +48,18 @@ class Splitter:
             to 8 byte floats if not found in this.
         """
         self.bins = list(bin_sizes.keys())
+
         self.group = group
+        self.group.attrs['nbin'] = len(self.bins)
+
         self.columns = columns
+
+        # self.index will track how much data is written so far
         self.index = {b: 0 for b in self.bins}
         self.bin_sizes = bin_sizes
-        self.subgroups = {b: self.group.create_group(f"{name}_{b}") for b in self.bins}
 
-        self.group.attrs['nbin'] = len(self.bins)
+        # Make a subgroup for each bin in our data
+        self.subgroups = {b: self.group.create_group(f"{name}_{b}") for b in self.bins}
         for i, b in enumerate(self.bins):
             self.group.attrs[f"bin_{i}"] = b
 
@@ -92,7 +98,7 @@ class Splitter:
         n = len(data[self.columns[0]])
         # Group where we will write the data
         group = self.subgroups[b]
-        # Indices of this output
+        # Indices of this output - start and end
         s = self.index[b]
         e = s + n
 
@@ -141,7 +147,8 @@ class DynamicSplitter(Splitter):
     chunking, so you don't need to know the sizes in advance.  The cost is that it
     can't be used in parallel.
 
-    The sizes pased to the initialization in this case represent
+    The sizes pased to the initialization in this case represent an initial guess of
+    the column sizes; data will be resized above this.
 
     See the Splitter docstring for more detail.
     """
@@ -177,16 +184,20 @@ class DynamicSplitter(Splitter):
                 sub.create_dataset(col, (sz,), dtype=dt, maxshape=(None,))
 
     def _size_check(self, b, e):
-        n = self.bin_sizes[b]
+        # If the sizes are already large enough then no
+        # resizing is needed
+        if e <= self.bin_sizes[b]:
+            return
 
-        # Expand the columns by 50% if needed
-        while e > n:
-            sub = self.subgroups[b]
-            new_size = int(n * 1.5)
-            for col in self.columns:
-                sub[col].resize((new_size,))
-            self.bin_sizes[b] = new_size
-            n = new_size
+        # Otherwise resize the column to be 50%
+        # larger than the current maximum size.
+        new_size = int(e * 1.5)
+        sub = self.subgroups[b]
+        for col in self.columns:
+            sub[col].resize((new_size,))
+
+        # and update the stored size for next time
+        self.bin_sizes[b] = new_size
 
     def finish(self):
         """
