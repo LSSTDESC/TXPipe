@@ -10,7 +10,7 @@ class CMRandoms(PipelineStage):
         ("cluster_mag_halo_catalog", HDFFile),
         ("cluster_mag_footprint", MapsFile),
     ]
-    outputs = [("cluster_mag_randoms", HDFFile)]
+    outputs = [("random_cats", HDFFile)]
     config_options = {"density": 30.0}  #  per sq arcmin
 
     def run(self):
@@ -50,7 +50,7 @@ class CMRandoms(PipelineStage):
         starts = np.concatenate([[0], np.cumsum(counts)])
 
         # Open the output data and create the necessary columns
-        output_file = self.open_output("cluster_mag_randoms", parallel=True)
+        output_file = self.open_output("random_cats", parallel=True)
         group = output_file.create_group("randoms")
         ra_out = group.create_dataset("ra", (total_count,), dtype=np.float64)
         dec_out = group.create_dataset("dec", (total_count,), dtype=np.float64)

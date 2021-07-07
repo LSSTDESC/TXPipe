@@ -3,6 +3,9 @@ from ..base_stage import PipelineStage
 from ..data_types import HDFFile
 
 class CMIngestHalosCosmoDC2(PipelineStage):
+    """
+    Load halos from CosmoDC2, by querying the central galaxies.
+    """
     name = "CMIngestHalosCosmoDC2"
     parallel = False
     inputs = []

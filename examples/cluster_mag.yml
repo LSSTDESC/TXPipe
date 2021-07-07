@@ -14,21 +14,18 @@ modules: txpipe
 stages:
     - name: CMIngestHalosCosmoDC2
     - name: CMSelectHalos
-    - name: CMBackgroundSelector
+    - name: CMSelectBackground
     - name: CMRandoms
-    - name: CMPatches
+    - name: TXJackknifeCenters
     - name: CMRedshifts
     - name: CMCorrelations
-    - name: CMCorrelationsPlot
+    # - name: CMCorrelationsPlot
 
 
 output_dir: data/cluster_mag_skysim/outputs
 config: examples/config/cluster_mag_skysim_config.yml
 
 
-
-# On NERSC, set this before running:
-# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
 #    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5

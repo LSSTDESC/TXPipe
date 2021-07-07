@@ -19,7 +19,8 @@ class CMSelectHalos(PipelineStage):
         chunk_rows = 100_000
         
         zedge = np.array(self.config['zedge'])
-        # where does this number 45 come from?
+
+        # TODO: where does this number 45 come from?
         medge = np.array(self.config['medge']) * (1e14 / 45)
 
         nz = len(zedge) - 1
@@ -33,18 +34,25 @@ class CMSelectHalos(PipelineStage):
         bins = list(itertools.product(range(nz), range(nm)))
         bin_names = {f"{i}_{j}":initial_size for i,j in bins}
 
-        # my_bins = [i, pair for pair in self.split_tasks_by_rank(enumerate(bins))]
+        # Columns we want to save for each object
         cols = ["halo_mass", "redshift", "ra", "dec"]
-        it = self.iterate_hdf("cluster_mag_halo_catalog", "halos", cols, chunk_rows)
+
 
         f = self.open_output("cluster_mag_halo_tomography")
-        g = f.create_group("tomography")
+        g = f.create_group("lens")
         g.attrs['nm'] = nm
         g.attrs['nz'] = nz
         splitter = DynamicSplitter(g, "bin", cols, bin_names)
 
+        # Make an iterator that will read a chunk of data at a time
+        it = self.iterate_hdf("cluster_mag_halo_catalog", "halos", cols, chunk_rows)
+
+        # Loop through the chunks of data; each time `data` will be a
+        # dictionary of column names -> numpy arrays
         for _, _, data in it:
             n = len(data["redshift"])
+
+            # Figure out which bin each halo it in, if any
             zbin = np.digitize(data['redshift'], zedge)
             mbin = np.digitize(data['halo_mass'], medge)
 
@@ -52,10 +60,17 @@ class CMSelectHalos(PipelineStage):
             for zi in range(1, nz + 1):
                 for mi in range(1, nm + 1):
                     w = np.where((zbin == zi) & (mbin == mi))
+                    # if there are no objects in this bin in this chunk,
+                    # then we skip the rest
                     if w[0].size == 0:
                         continue
+
+                    # Otherwise we extract the bit of this chunk of
+                    # data that is in this bin and have our splitter
+                    # object write it out.
                     d = {name:col[w] for name, col in data.items()}
-                    splitter.write_bin(d, f"{zi - 1}_{mi - 1}")
+                    bin_name = f"{zi - 1}_{mi - 1}"
+                    splitter.write_bin(d, bin_name)
 
         # Truncate arrays to correct size
         splitter.finish()
@@ -72,8 +87,8 @@ class CMSelectHalos(PipelineStage):
 
 
 
-class CMBackgroundSelector(PipelineStage):
-    name = "CMBackgroundSelector"
+class CMSelectBackground(PipelineStage):
+    name = "CMSelectBackground"
     parallel = False
     inputs = [("photometry_catalog", HDFFile)]
     outputs = [("cluster_mag_background", HDFFile), ("cluster_mag_footprint", MapsFile)]
