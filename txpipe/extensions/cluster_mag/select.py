@@ -1,8 +1,8 @@
 import numpy as np
 import itertools
-from ..base_stage import PipelineStage
-from ..data_types import HDFFile, MapsFile
-from ..utils import DynamicSplitter
+from ...base_stage import PipelineStage
+from ...data_types import HDFFile, MapsFile
+from ...utils import DynamicSplitter
 
 class CMSelectHalos(PipelineStage):
     name = "CMSelectHalos"
