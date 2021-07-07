@@ -3,12 +3,12 @@ CMIngestHalosCosmoDC2:
     halo_mass_min: 0.5e+13
     initial_size: 1_000_000
     chunk_rows: 10_000_000
-    ra_range: [5.0, 85.0]
-    dec_range: [-75.0, -5.0]
+    ra_range: [-1000, 1000.]
+    dec_range: [-1000.0, 1000.0]
 
 CMBackgroundSelector:
-    ra_range: [5.0, 85.0]
-    dec_range: [-75.0, -5.0]
+    ra_range: [-1000., 1000.0]
+    dec_range: [-1000.0, 1000.0]
     mag_cut: 26.0
     zmin: 1.5
     nside: 2048
@@ -20,7 +20,7 @@ CMRandoms:
 
 
 CMPatches:
-    npatch : 32
+    npatch : 64
     every_nth: 100
 
 
