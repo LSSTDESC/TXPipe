@@ -11,12 +11,13 @@ class CMSelectHalos(PipelineStage):
     outputs = [("cluster_mag_halo_tomography", HDFFile)]
     config_options = {
         "zedge": [0.2, 0.4, 0.6, 0.8, 1.0, 1.2],
-        "medge": [20, 30, 45, 70, 120, 220]
-
+        "medge": [20, 30, 45, 70, 120, 220],
+        "initial_size": 100_000,
+        "chunk_rows": 100_000,
     }
     def run(self):
-        initial_size = 100_000
-        chunk_rows = 100_000
+        initial_size = self.config["initial_size"]
+        chunk_rows = self.config["chunk_row"]
         
         zedge = np.array(self.config['zedge'])
 

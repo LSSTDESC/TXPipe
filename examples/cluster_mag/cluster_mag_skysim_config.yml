@@ -16,10 +16,10 @@ CMBackgroundSelector:
     chunk_rows: 10_000_000
 
 CMRandoms:
-    density: 5.
+    density: 1.
 
 
-CMPatches:
+TXJackKnife:
     npatch : 64
     every_nth: 100
 

@@ -29,7 +29,6 @@ class CMCorrelations(TXTwoPoint):
         'nbins': 9,
         'bin_slop': 0.0,
         'sep_units': 'arcmin',
-        'cores_per_task': 32,
         'verbose': 1,
         'source_bins': [-1],
         'lens_bins': [-1],
