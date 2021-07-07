@@ -29,7 +29,7 @@ stages:
 
 output_dir: data/cluster_mag_skysim/outputs
 
-config: examples/config/cluster_mag_skysim_config.yml
+config: examples/cluster_mag/cluster_mag_skysim_config.yml
 
 
 
