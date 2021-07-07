@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, HDFFile, PickleFile, DataFile
+from .utils import rename_iterated
 import numpy as np
 
 
@@ -70,7 +71,7 @@ class PZRailTrain(PipelineStage):
             output.write(estimator)
 
 
-class PZRailEstimate(PipelineStage):
+class PZRailEstimateLens(PipelineStage):
     """Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
 
     We load a redshift Estimator model, typically saved by the PZRailTrain stage,
@@ -89,7 +90,9 @@ class PZRailEstimate(PipelineStage):
     many processors sitting idle or repeating the same training process.
 
     """
-    name = "PZRailEstimate"
+
+    model_input = "photoz_trained_model"
+    pdf_output = "lens_photoz_pdfs"
 
     inputs = [
         ("photometry_catalog", HDFFile),
@@ -97,11 +100,12 @@ class PZRailEstimate(PipelineStage):
     ]
 
     outputs = [
-        ("photoz_pdfs", PhotozPDFFile),
+        ("lens_photoz_pdfs", PhotozPDFFile),
     ]
 
     config_options = {
         "chunk_rows": 10000,
+        "bands": "ugrizy",
     }
 
     def run(self):
@@ -109,25 +113,17 @@ class PZRailEstimate(PipelineStage):
         import rail.estimation
 
         # Load the estimator trained in PZRailTrain
-        with self.open_input("photoz_trained_model", wrapper=True) as f:
-            estimator = f.read()
+        estimator = self.load_model()
 
         # prepare the output data - we will save things to this
         # as we go along.  We also need the z grid becauwe we use
         # it to get the mean z from the PDF
         output, z = self.setup_output_file(estimator)
 
-        # Create the iterator the reads chunks of photometry
-        # The method we use here automatically splits up data when we run in parallel
-        cols = [f"mag_{b}" for b in "ugrizy"] + [f"mag_err_{b}" for b in "ugrizy"]
-        chunk_rows = self.config["chunk_rows"]
-        it = self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows)
 
         # Loop through the chunks of data
-        for s, e, data in it:
+        for s, e, data in self.data_iterator():
             print(f"Process {self.rank} estimating PZ PDF for rows {s:,} - {e:,}")
-            # Rename things so col names match what RAIL expects
-            self.rename_columns(data)
 
             # Run the pre-trained estimator
             pz_data = estimator.estimate(data)
@@ -135,21 +131,42 @@ class PZRailEstimate(PipelineStage):
             # Save the results
             self.write_output_chunk(output, s, e, z, pz_data)
 
-    def rename_columns(self, data):
-        # RAIL expects the magnitudes and errors to have
-        # the suffix _lsst, which we add here
-        for band in "ugrizy":
-            data[f"mag_{band}_lsst"] = data[f"mag_{band}"]
-            data[f"mag_err_{band}_lsst"] = data[f"mag_err_{band}"]
+    def load_model(self):
+        with self.open_input(self.model_input, wrapper=True) as f:
+            estimator = f.read()
+
+    def data_iterator(self):
+        bands = self.config["bands"]
+        chunk_rows = self.config["chunk_rows"]
+
+        # Columns we will load, and the new names we will give them
+        renames = {}
+        for bad in bands:
+            renames[f"mag_{band}"] = f"mag_{band}_lsst"
+            renames[f"mag_err_{band}"] = f"mag_err_{band}_lsst"
+
+        # old names, as loaded from file
+        cols = list(band.keys())
+
+        # Create the iterator the reads chunks of photometry
+        # The method we use here automatically splits up data when we run in parallel
+        it = self.iterate_hdf(self.cat_input, "photometry", cols, chunk_rows)
+
+        # Also rename all the columns as they are loaded
+        return rename_iterated(it, renames)
+
+    def get_catalog_size(self):
+        with self.open_input(self.cat_input) as f:
+            nobj = f["photometry/ra"].size
+
 
     def setup_output_file(self, estimator):
         # Briefly check the size of the catalog so we know how much
         # space to reserve in the output
-        with self.open_input("photometry_catalog") as f:
-            nobj = f["photometry/ra"].size
+        nobj = self.get_input_size()
 
         # open the output file
-        f = self.open_output("photoz_pdfs", parallel=True)
+        f = self.open_output(self.pdf_output, parallel=True)
         # copied from RAIL as it doesn't seem to get saved at least
         # in the flexzboost version.  Need to understand z edges vs z mid
         z = np.linspace(estimator.zmin, estimator.zmax, estimator.nzbins)
@@ -197,3 +214,47 @@ class PZRailEstimate(PipelineStage):
         output_file["pdf/pdf"][start:end] = p
         output_file["point_estimates/z_mode"][start:end] = pz_data["zmode"]
         output_file["point_estimates/z_mean"][start:end] = mu
+
+
+
+class PZRailEstimateSource(PZRailEstimateBase):
+    cat_input = "shear_catalog"
+    pdf_output = "source_photoz_pdfs"
+
+    inputs = [
+        ("shear_catalog", HDFFile),
+        ("photoz_trained_model", PickleFile),
+    ]
+
+    outputs = [
+        ("source_photoz_pdfs", PhotozPDFFile),
+    ]
+
+    config_options = {
+        "chunk_rows": 10000,
+        "bands": "griz",
+    }
+
+    def data_iterator(self):
+        bands = self.config["bands"]
+        chunk_rows = self.config["chunk_rows"]
+
+        # Columns we will load, and the new names we will give them
+        renames = {}
+        for bad in bands:
+            renames[f"mcal_mag_{band}"] = f"mag_{band}_lsst"
+            renames[f"mcal_mag_err_{band}"] = f"mag_err_{band}_lsst"
+
+        # old names, as loaded from file
+        cols = list(band.keys())
+
+        # Create the iterator the reads chunks of photometry
+        # The method we use here automatically splits up data when we run in parallel
+        it = self.iterate_hdf(self.cat_input, "shear", cols, chunk_rows)
+
+        # Also rename all the columns as they are loaded
+        return rename_iterated(it, renames)
+
+    def get_catalog_size(self):
+        with self.open_input(self.cat_input) as f:
+            nobj = f["shear/ra"].size

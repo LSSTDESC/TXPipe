@@ -62,3 +62,26 @@ def hex_escape(s, replace_newlines=False):
     return "".join(
         c if c in chars else r"\x{0:02x}".format(ord(c)) for c in s
     )
+
+def rename_iterated(it, renames):
+    """
+    Rename the items in dictionaries yielded by an interator.
+
+    In several places we load data from catalogs chunk by chunk,
+    yielding a dictionary of data each time. This renames columns
+    in each chunk.
+
+    Parameters
+    ----------
+    it: iterator
+        Must yield dictionaries or equivalent
+    renames: dict
+        dictionary of old names to new names
+    """
+    for data in it:
+        for old, new in renames.items():
+            # rename the column
+            data[new] = old
+            # delete the old column
+            del data[old]
+            yield data
