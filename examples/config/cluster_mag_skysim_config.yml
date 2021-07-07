@@ -30,7 +30,6 @@ CMCorrelations:
     nbins: 9
     bin_slop: 0.1
     sep_units: arcmin
-    cores_per_task: 2
     verbose: 1
     var_method': jackknife
 
