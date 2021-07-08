@@ -48,23 +48,6 @@ Email or Slack Joe Zuntz to be added to the development team.
 
 
 
-Getting the code and some test data
------------------------------------
-
-Get the TXPipe code like this (on NERSC, do this in your scratch space):
-```bash
-git clone https://github.com/LSSTDESC/TXPipe
-cd TXPipe
-```
-
-You can get some input test data like this:
-
-```bash
-curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
-tar -zxvf example.tar.gz
-```
-
-
 
 Getting Dependencies
 --------------------

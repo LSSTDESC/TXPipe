@@ -23,10 +23,16 @@ Most of the dependencies for this code are included in the txpipe shifter image.
 We only need a very minimal environment here:
 
 
+    # you may get an error from this first one. It's not a problem
     source examples/nersc/setup
     python -m venv env
     source env/bin/activate
     pip install ceci numpy scipy parallel_statistics
+
+    # This NERSC-specific command makes a directory which
+    # is split ("striped") across multiple discs for faster I/O
+    mkdir -p data/cluster_mag/outputs
+    stripe_large data/cluster_mag/outputs
 
 
 ## Looking at the pipline
