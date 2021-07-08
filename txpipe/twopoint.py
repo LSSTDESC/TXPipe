@@ -518,7 +518,7 @@ class TXTwoPoint(PipelineStage):
         if (rr is None) or (nr is None):
             if i == j:
                 rancat_j = None
-                n_rand_j = "(cached)"
+                n_rand_j = "(auto)"
             else:
                 rancat_j = self.get_random_catalog(i)
                 n_rand_j = rancat_j.nobj if rancat_j is not None else 0
