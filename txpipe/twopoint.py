@@ -77,13 +77,10 @@ class TXTwoPoint(PipelineStage):
         calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
-        # This splits the calculations among the parallel bins
-        # It's not necessarily the most optimal way of doing it
-        # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly fine
         results = []
+        cache = {}
         for i,j,k in calcs:
-            result = self.call_treecorr(i, j, k)
+            result = self.call_treecorr(i, j, k, cache)
             results.append(result)
 
 
@@ -337,7 +334,7 @@ class TXTwoPoint(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-    def call_treecorr(self, i, j, k):
+    def call_treecorr(self, i, j, k, cache):
         """
         This is a wrapper for interaction with treecorr.
         """
@@ -345,13 +342,13 @@ class TXTwoPoint(PipelineStage):
 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(i, j)
+            xx = self.calculate_shear_shear(i, j, cache)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(i, j)
+            xx = self.calculate_shear_pos(i, j, cache)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(i, j)
+            xx = self.calculate_pos_pos(i, j, cache)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
@@ -416,7 +413,7 @@ class TXTwoPoint(PipelineStage):
         return rancat
 
 
-    def calculate_shear_shear(self, i, j):
+    def calculate_shear_shear(self, i, j, cache):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
@@ -441,16 +438,22 @@ class TXTwoPoint(PipelineStage):
 
         return gg
 
-    def calculate_shear_pos(self, i, j):
+    def calculate_shear_pos(self, i, j, cache):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
         cat_j = self.get_lens_catalog(j)
-        rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
-        n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+
+        tag = f"g_{i}_r_{j}"
+        rg = cache.get(tag)
+        if rg is None:
+            rancat_j = self.get_random_catalog(j)
+            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+        else:
+            n_rand_j = "cached"
 
         if self.rank == 0:
             print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
@@ -460,40 +463,67 @@ class TXTwoPoint(PipelineStage):
         t1 = perf_counter()
         ng.process(cat_j, cat_i, comm=self.comm)
 
-        if rancat_j:
+
+        if rg is None and rancat_j:
             rg = treecorr.NGCorrelation(self.config)
             rg.process(rancat_j, cat_i, comm=self.comm)
         else:
             rg = None
-
 
         if self.rank == 0:
             ng.calculateXi(rg=rg)
             t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
-        
+        cache[tag] = rg        
         return ng
 
 
-    def calculate_pos_pos(self, i, j):
+    def calculate_pos_pos(self, i, j, cache):
         import treecorr
 
         cat_i = self.get_lens_catalog(i)
-        rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
-        n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-        
-        if i==j:
+
+        if i == j:
             cat_j = None
-            rancat_j = rancat_i
             n_j = n_i
-            n_rand_j = n_rand_i
         else:
             cat_j = self.get_lens_catalog(j)
-            rancat_j = self.get_random_catalog(j)
             n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj
+
+        # We may have cached our random corrections already
+        tagrr = f"r_{i}_r_{j}"
+        tagrn = f"r_{i}_n_{j}"
+        tagnr = f"n_{i}_r_{j}"
+
+        rr = cache.get(tagrr)
+        rn = cache.get(tagrn)
+        nr = cache.get(tagnr)
+
+        # When do we need to load the two random catalogs?
+        # if the things they are used to calculate are not found
+        # in the cache.  
+        if (rr is None) or (rn is None):
+            # if we don't have cached results for either
+            # of these then we will need a random catalog
+            rancat_i = self.get_random_catalog(i)
+            n_rand_i = rancat_i.nobj if rancat_i is not None else 0
+        else:
+            # This is only used in the printed message below
+            n_rand_i = "(cached)"
+
+        # Same for the other random catalog, except that if this is
+        # an auto-correlation we also don't need the second catalog
+        if (rr is None) or (nr is None):
+            if i == j:
+                rancat_j = None
+                n_rand_j = "(cached)"
+            else:
+                rancat_j = self.get_random_catalog(i)
+                n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+        else:
+            n_rand_j = "(cached)"
 
 
         if self.rank == 0:
@@ -504,27 +534,39 @@ class TXTwoPoint(PipelineStage):
         nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i, cat_j, comm=self.comm)
         
-        nr = treecorr.NNCorrelation(self.config)
-        nr.process(cat_i, rancat_j, comm=self.comm)
+        if (nr is None) and (rancat_j is not None):
+            nr = treecorr.NNCorrelation(self.config)
+            nr.process(cat_i, rancat_j, comm=self.comm)
 
         # The next calculation is faster if we explicitly tell TreeCorr
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
         
-        rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm)
+        # If we found rr in the cache already, then we don't need
+        # to calculate it again.  It should also be None if we are
+        # not using random cats here
+        if (rr is None) and (rancat_i is not None):
+            rr = treecorr.NNCorrelation(self.config)
+            rr.process(rancat_i, rancat_j, comm=self.comm)
         
-        if i==j:
-            rn = None
-        else:
+        # If we did not find rn in the cache...
+        # if this is an autocorrelation, or if we are not using randoms here, 
+        # then that's fine it is supposed to be None
+        if rn is None and not ((i == j) or (rancat_i is None)):
+            # Otherwise compute it
             rn = treecorr.NNCorrelation(self.config)
             rn.process(rancat_i, cat_j, comm=self.comm)
 
         if self.rank == 0:
             t2 = perf_counter()
             nn.calculateXi(rr, dr=nr, rd=rn)
-            print(f"Processing took {t2 - t1:.1f} seconds")            
+            print(f"Processing took {t2 - t1:.1f} seconds")
+
+        cache[tagrr] = rr
+        cache[tagrn] = rn
+        cache[tagnr] = nr
+
 
         return nn
 
