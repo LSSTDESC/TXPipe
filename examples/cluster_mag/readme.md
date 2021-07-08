@@ -35,6 +35,10 @@ Have a look at [the pipeline file we are going run](cluster_mag_skysim.yml) whic
 
 Also see the [the configuration file for that pipeline](cluster_mag_skysim_config.yml) which makes choices about various configurable parameters in the different parts of the pipeline.
 
+This is the flow chart of the pipeline:
+![Pipeline flow chart](cluster_mag_pipeline.png)
+
+We generated this image using the `bin/flow_chart.py` script.
 
 ## Running the pipeline
 
@@ -71,3 +75,4 @@ If you want to make your own plots the results are all stored in the file `clust
 
 The different pipeline stages are python class in [this directory](../../txpipe/extensions/cluster_mag).  The code machinery configures and runs these files based on the configuration files.
 
+Note that the redshift stage currently does nothing!
