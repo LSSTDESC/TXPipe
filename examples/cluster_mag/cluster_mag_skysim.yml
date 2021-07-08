@@ -12,18 +12,23 @@ modules: txpipe
 
 
 stages:
-    - name: CMIngestHalosCosmoDC2
+## I have commented this first one out because it is pretty slow (it uses GCR)
+## and I've run it already.  If you want to change the minimum halo mass or
+## restrict to a subset of of the area then you it can re-run separately.
+## Delete it from the list of inputs below as well in that case.
+#    - name: CMIngestHalosCosmoDC2
     - name: CMSelectHalos
     - name: CMSelectBackground
     - name: CMRandoms
-      nprocess: 16
-      nodes: 4
+      nprocess: 64
+      nodes: 16
+      threads_per_process: 8
     - name: TXJackknifeCenters
     - name: CMRedshifts
     - name: CMCorrelations
-      nprocess: 4
-      nodes: 4
-      threads_per_process: 64
+      nprocess: 16
+      nodes: 16
+      threads_per_process: 32
     - name: CMCorrelationsPlot
 
 
@@ -36,6 +41,7 @@ config: examples/cluster_mag/cluster_mag_skysim_config.yml
 
 inputs:
     photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/skysim5000_v1.1.1/photometry_catalog.hdf5
+    cluster_mag_halo_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cluster_mag/cluster_mag_halo_catalog.hdf5
 
 resume: True
 log_dir: data/cluster_mag_skysim/logs

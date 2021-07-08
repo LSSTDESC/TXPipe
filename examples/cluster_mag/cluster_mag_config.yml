@@ -14,10 +14,10 @@ CMBackgroundSelector:
 
 
 CMRandoms:
-    density: 5.
+    density: 1.
 
 
-CMPatches:
+TXJackknifeCenters:
     npatch : 32
     every_nth: 100
 
