@@ -40,6 +40,7 @@ class CMCorrelations(TXTwoPoint):
         'use_randoms': True,
         'low_mem': False,
         'do_halo_cross': False,
+        'patch_dir': './cache/patches',
     }
 
 
