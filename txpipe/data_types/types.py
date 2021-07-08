@@ -396,3 +396,19 @@ class FiducialCosmology(YamlFile):
         inits.update(kwargs)
 
         return ccl.Cosmology(**inits)
+
+class FitsFile(DataFile):
+    """
+    A data file in the FITS format.
+    Using these files requires the fitsio package.
+    """
+    suffix = 'fits'
+
+    @classmethod
+    def open(cls, path, mode, **kwargs):
+        import fitsio
+        # Fitsio doesn't have pure 'w' modes, just 'rw'.
+        # Maybe we should check if the file already exists here?
+        if mode == 'w':
+            mode = 'rw'
+        return fitsio.FITS(path, mode=mode, **kwargs)
