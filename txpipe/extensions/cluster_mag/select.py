@@ -17,7 +17,7 @@ class CMSelectHalos(PipelineStage):
     }
     def run(self):
         initial_size = self.config["initial_size"]
-        chunk_rows = self.config["chunk_row"]
+        chunk_rows = self.config["chunk_rows"]
         
         zedge = np.array(self.config['zedge'])
 
