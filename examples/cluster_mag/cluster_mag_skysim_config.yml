@@ -6,13 +6,19 @@ CMIngestHalosCosmoDC2:
     ra_range: [-1000, 1000.]
     dec_range: [-1000.0, 1000.0]
 
-CMBackgroundSelector:
+CMSelectBackground:
     ra_range: [-1000., 1000.0]
     dec_range: [-1000.0, 1000.0]
     mag_cut: 26.0
     zmin: 1.5
     nside: 2048
     initial_size: 1_000_000
+    chunk_rows: 10_000_000
+
+CMSelectHalos:
+    zedge: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    medge: [20, 30, 45, 70, 120, 220]
+    initial_size: 100_000
     chunk_rows: 10_000_000
 
 CMRandoms:
@@ -33,4 +39,5 @@ CMCorrelations:
     verbose: 1
     var_method': jackknife
 
+# no options for this one
 CMCorrelationsPlot: {}
