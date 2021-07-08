@@ -155,7 +155,7 @@ class CMSelectBackground(PipelineStage):
                 & (data["dec"] > dec_min)
                 & (data["dec"] < dec_max)
                 & (data["mag_i"] < mag_cut)
-                & (data["redshift_true"] > 1.5)
+                & (data["redshift_true"] > zmin)
             )
 
             #  Pull out the chunk of data we would like to select

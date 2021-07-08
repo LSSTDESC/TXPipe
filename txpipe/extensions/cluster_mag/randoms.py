@@ -7,7 +7,6 @@ from ...utils import choose_pixelization
 class CMRandoms(PipelineStage):
     name = "CMRandoms"
     inputs = [
-        ("cluster_mag_halo_catalog", HDFFile),
         ("cluster_mag_footprint", MapsFile),
     ]
     outputs = [("random_cats", HDFFile)]
