@@ -38,7 +38,7 @@ Also see the [the configuration file for that pipeline](cluster_mag_skysim_confi
 This is the flow chart of the pipeline:
 ![Pipeline flow chart](cluster_mag_pipeline.png)
 
-We generated this image using the `bin/flow_chart.py` script.
+We generated this image using the `bin/flow_chart.py` script; this includes the ingestion stage that is commented out.
 
 ## Running the pipeline
 
