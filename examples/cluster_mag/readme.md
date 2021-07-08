@@ -14,6 +14,7 @@ Note the perhaps unfamiliar `--recurse-submodules` flag!
 
 and checkout the branch for this work:
 
+    cd TXPipe
     git checkout ricci-clusters
 
 ## Setting up environment
@@ -66,4 +67,7 @@ Results will be put into the directory `data/cluster_mag_skysim/outputs`.  The f
 If you want to make your own plots the results are all stored in the file `cluster_mag_correlations.sacc`.   You can read that file using the `sacc` library, which is available in `pip`. See the [sacc instructions](https://sacc.readthedocs.io/en/latest/intro.html#reading-sacc-objects).
 
 
+## The code
+
+The different pipeline stages are python class in [this directory](../../txpipe/extensions/cluster_mag).  The code machinery configures and runs these files based on the configuration files.
 
