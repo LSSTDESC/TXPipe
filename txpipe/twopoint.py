@@ -77,13 +77,13 @@ class TXTwoPoint(PipelineStage):
         calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
-        # This splits the calculations among the parallel bins
-        # It's not necessarily the most optimal way of doing it
-        # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly fine
+
+        # Compute all the requested correlation functions,
+        # using MPI if available
         results = []
+        cache = {}
         for i,j,k in calcs:
-            result = self.call_treecorr(i, j, k)
+            result = self.call_treecorr(i, j, k, cache)
             results.append(result)
 
 
@@ -337,7 +337,7 @@ class TXTwoPoint(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-    def call_treecorr(self, i, j, k):
+    def call_treecorr(self, i, j, k, cache):
         """
         This is a wrapper for interaction with treecorr.
         """
@@ -345,13 +345,13 @@ class TXTwoPoint(PipelineStage):
 
 
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(i, j)
+            xx = self.calculate_shear_shear(i, j, cache)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(i, j)
+            xx = self.calculate_shear_pos(i, j, cache)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(i, j)
+            xx = self.calculate_pos_pos(i, j, cache)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
@@ -415,8 +415,42 @@ class TXTwoPoint(PipelineStage):
         ) 
         return rancat
 
+    @staticmethod
+    def get_catalog_tag(kind, cat1, cat2):
+        if cat1.name == '' or ((cat2 is not None) and (cat2.name == '')):
+            return None
+        if 'ext' not in cat1.config or ((cat2 is not None) and ('ext' not in cat2.config)):
+            return None
 
-    def calculate_shear_shear(self, i, j):
+        if cat2 is None:
+            return f'{kind}_auto_{cat1.name}_{cat1.config["ext"]}'
+        else:
+            return f'{kind}_{cat1.name}_{cat1.config["ext"]}--{cat2.name}_{cat2.config["ext"]}'
+
+    def process(self, kind, cat_i, cat_j, cache=None):
+
+        key = self.get_catalog_tag(kind, cat_i, cat_j)
+        if key and (cache is not None):
+            return cache[key]
+
+        if kind == 'nn':
+            corr = treecorr.NNCorrelation(self.config)
+        elif kind == 'ng':
+            corr = treecorr.NGCorrelation(self.config)
+        elif kind == 'gg':
+            corr = treecorr.GGCorrelation(self.config)
+        else:
+            raise ValueError(f"Unknown correlation kind {kind}")
+
+        corr.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if key and (cache is not None):
+            cache[key] = corr
+
+        return corr
+
+
+    def calculate_shear_shear(self, i, j, cache=None):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
@@ -432,16 +466,15 @@ class TXTwoPoint(PipelineStage):
         if self.rank == 0:
             print(f"Calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects using MPI")
 
-        gg = treecorr.GGCorrelation(self.config)
         t1 = perf_counter()
-        gg.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
+        gg = self.process('gg', cat_i, cat_j, cache)
         t2 = perf_counter()
         if self.rank == 0:
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return gg
 
-    def calculate_shear_pos(self, i, j):
+    def calculate_shear_pos(self, i, j, cache=None):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
@@ -456,13 +489,11 @@ class TXTwoPoint(PipelineStage):
             print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
 
-        ng = treecorr.NGCorrelation(self.config)
         t1 = perf_counter()
-        ng.process(cat_j, cat_i, comm=self.comm)
+        ng = self.process('ng', cat_j, cat_i, cache)
 
         if rancat_j:
-            rg = treecorr.NGCorrelation(self.config)
-            rg.process(rancat_j, cat_i, comm=self.comm)
+            rg = self.process('ng', rancat_j, cat_i, cache)
         else:
             rg = None
 
@@ -476,7 +507,8 @@ class TXTwoPoint(PipelineStage):
         return ng
 
 
-    def calculate_pos_pos(self, i, j):
+
+    def calculate_pos_pos(self, i, j, cache=None):
         import treecorr
 
         cat_i = self.get_lens_catalog(i)
@@ -501,25 +533,20 @@ class TXTwoPoint(PipelineStage):
 
         t1 = perf_counter()
         
-        nn = treecorr.NNCorrelation(self.config)
-        nn.process(cat_i, cat_j, comm=self.comm)
+        nn = self.process('nn', cat_i, cat_j, cache)
+        nr = self.process('nn', cat_i, rancat_j, cache)
         
-        nr = treecorr.NNCorrelation(self.config)
-        nr.process(cat_i, rancat_j, comm=self.comm)
-
         # The next calculation is faster if we explicitly tell TreeCorr
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
         
-        rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm)
+        rr = self.process('nn', rancat_i, rancat_j, cache)
         
         if i==j:
             rn = None
         else:
-            rn = treecorr.NNCorrelation(self.config)
-            rn.process(rancat_i, cat_j, comm=self.comm)
+            rn = self.process('nn', rancat_i, cat_j, cache)
 
         if self.rank == 0:
             t2 = perf_counter()
