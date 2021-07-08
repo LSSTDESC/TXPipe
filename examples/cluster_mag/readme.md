@@ -35,10 +35,10 @@ Have a look at [the pipeline file we are going run](cluster_mag_skysim.yml) whic
 
 Also see the [the configuration file for that pipeline](cluster_mag_skysim_config.yml) which makes choices about various configurable parameters in the different parts of the pipeline.
 
-This is the flow chart of the pipeline:
+A flow chart of the pipeline is below. Red ellipses are pipeline stages. Blue rectangles are files generaed by the pipeline.  The yellow rectangle is an overall input to the pipeline. 
 ![Pipeline flow chart](cluster_mag_pipeline.png)
 
-We generated this image using the `bin/flow_chart.py` script; this includes the ingestion stage that is commented out.
+We generated this image using the `bin/flow_chart.py` script; it includes the ingestion stage that is commented out.
 
 ## Running the pipeline
 
