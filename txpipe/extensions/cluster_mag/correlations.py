@@ -120,6 +120,7 @@ class CMCorrelations(TXTwoPoint):
                 ra_units='degree',
                 dec_units='degree',
                 patch_centers=self.get_input('patch_centers'),
+                save_patch_dir=self.get_patch_dir('cluster_mag_background', bins),
             )
         else:
             cat = treecorr.Catalog(
@@ -130,6 +131,7 @@ class CMCorrelations(TXTwoPoint):
                 ra_units='degree',
                 dec_units='degree',
                 patch_centers=self.get_input('patch_centers'),
+                save_patch_dir=self.get_patch_dir('cluster_mag_halo_tomography', bins),
             )
 
         return cat
@@ -147,6 +149,7 @@ class CMCorrelations(TXTwoPoint):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('random_cats', bins),
         )
         return cat
 
