@@ -24,7 +24,7 @@ class TXPhotozSourceDIR(PipelineStage):
     ]
     config_options = {'pz_code': 'ephor_ab',
                       'pz_mark': 'best',
-                      'pz_bins': [0.15, 0.50, 0.75, 1.00, 1.50],
+                      'source_zbin_edges': [0.15, 0.50, 0.75, 1.00, 1.50],
                       'nz_bin_num': 200,
                       'nz_bin_max': 3.0
     }
@@ -40,19 +40,26 @@ class TXPhotozSourceDIR(PipelineStage):
         """
 
         logger.info("Getting COSMOS N(z)s.")
-        pzs_cosmos = self.get_nz_cosmos()
+        pzs_cosmos = self.get_nz_cosmos('source')
 
         # Save the stacks
         f = self.open_output("shear_photoz_dir")
         self.save('source', pzs_cosmos, f)
         f.close()
 
-    def get_nz_cosmos(self):
+    def get_nz_cosmos(self, name):
         """
         Get N(z) from weighted COSMOS-30band data
         """
-        zi_arr = self.config['pz_bins'][:-1]
-        zf_arr = self.config['pz_bins'][1:]
+
+        if name == 'source':
+            zi_arr = self.config['source_zbin_edges'][:-1]
+            zf_arr = self.config['source_zbin_edges'][1:]
+        elif name == 'lens':
+            zi_arr = self.config['lens_zbin_edges'][:-1]
+            zf_arr = self.config['lens_zbin_edges'][1:]
+        else:
+            raise NotImplementedError('Only name = source, lens supported. Aborting.')
 
         if self.config['pz_code'] == 'ephor_ab':
             pz_code = 'eab'
@@ -128,7 +135,7 @@ class TXPhotozDIR(TXPhotozSourceDIR):
     This PZ stacking subclass does both source and lens
 
     """
-    name='TXPhotozStack'
+    name='TXPhotozDIR'
 
     inputs = [
         ('cosmos_weights', FitsFile),
@@ -148,16 +155,18 @@ class TXPhotozDIR(TXPhotozSourceDIR):
          - Divide by the counts to get the stacked PDF
         """
 
-        logger.info("Getting COSMOS N(z)s.")
-        pzs_cosmos = self.get_nz_cosmos()
+        logger.info("Getting COSMOS N(z)s for sources.")
+        pzs_cosmos_source = self.get_nz_cosmos('source')
+        logger.info("Getting COSMOS N(z)s for lenses.")
+        pzs_cosmos_lens = self.get_nz_cosmos('lens')
 
         # Save the stacks
         f = self.open_output("shear_photoz_stack")
-        self.save('source', pzs_cosmos, f)
+        self.save('source', pzs_cosmos_source, f)
         f.close()
         logger.info('This is a placeholder for when we get the COSMOS shear weights.')
         f = self.open_output("lens_photoz_stack")
-        self.save('lens', pzs_cosmos, f)
+        self.save('lens', pzs_cosmos_lens, f)
         f.close()
 
 

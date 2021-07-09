@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class COSMOSWeight(TXHSCLensSelector):
-    name = "COSMOSWeight"
+class TXCOSMOSWeight(TXHSCLensSelector):
+    name = "TXCOSMOSWeight"
     inputs = [('cosmos_data', FitsFile),
               ('cosmos_hsc', FitsFile)]
     outputs = [('cosmos_weights', FitsFile)]
