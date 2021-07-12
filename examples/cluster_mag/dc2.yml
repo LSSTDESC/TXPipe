@@ -6,7 +6,7 @@ launcher:
 site:
     name: cc-parallel
     image: txpipe_latest.sif
-    volume: ${PWD}:/opt/TXPipe
+    volume: ${PWD}:/opt/TXPipe,/pbs/throng/lsst/
 
 modules: txpipe
 
@@ -14,11 +14,7 @@ modules: txpipe
 stages:
 #    - name: CMIngestHalosCosmoDC2
     - name: CMSelectHalos
-      nprocess: 16
-      nodes: 1
     - name: CMSelectBackground
-      nprocess: 16
-      nodes: 1
     - name: CMRandoms
       nprocess: 16
       nodes: 1
@@ -29,15 +25,16 @@ stages:
     - name: CMCorrelationsPlot
 
 
-output_dir: data/cluster_mag/outputs
-config: examples/cluster_mag/cluster_mag_config.yml
+output_dir: data/cluster_mag/dc2/outputs
+config: examples/cluster_mag/dc2_config.yml
 
 inputs:
-    photometry_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/from_nersc/photometry_catalog.hdf5
-    cluster_mag_halo_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/from_nersc//cluster_mag_halo_catalog.hdf5
+    photometry_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/dc2/photometry_catalog.hdf5
+    cluster_mag_halo_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/dc2/cluster_mag_halo_catalog.hdf5
+
 
 
 resume: True
-log_dir: data/cluster_mag/logs
-pipeline_log: data/cluster_mag/log.txt
+log_dir: data/cluster_mag/dc2/logs
+pipeline_log: data/cluster_mag/dc2/log.txt
 
