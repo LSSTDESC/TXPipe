@@ -195,6 +195,7 @@ class MapsFile(HDFFile):
             w = None
         lon_range = [lon[w].min()-0.1, lon[w].max()+0.1]
         lat_range = [lat[w].min()-0.1, lat[w].max()+0.1]
+        lat_range = np.clip(lat_range, -90, 90)
         m[m==0] = healpy.UNSEEN
         title = kwargs.pop('title', map_name)
         if view == 'cart':

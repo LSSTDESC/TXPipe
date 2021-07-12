@@ -6,7 +6,9 @@ import numpy as np
 import random
 import collections
 import sys
+import pathlib
 from time import perf_counter
+import gc
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -17,7 +19,6 @@ Measurement = collections.namedtuple(
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
-
 
 
 class TXTwoPoint(PipelineStage):
@@ -57,6 +58,7 @@ class TXTwoPoint(PipelineStage):
         'var_method': 'jackknife',
         'use_randoms': True,
         'low_mem': False,
+        'patch_dir': './cache/patches',
         }
 
     def run(self):
@@ -77,15 +79,13 @@ class TXTwoPoint(PipelineStage):
         calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
-        # This splits the calculations among the parallel bins
-        # It's not necessarily the most optimal way of doing it
-        # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly fine
+        # Split the catalogs into patch files
+        self.prepare_patches(calcs)
+
         results = []
         for i,j,k in calcs:
             result = self.call_treecorr(i, j, k)
             results.append(result)
-
 
         # Save the results
         if self.rank==0:
@@ -343,7 +343,6 @@ class TXTwoPoint(PipelineStage):
         """
         import sacc
 
-
         if k==SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -356,11 +355,124 @@ class TXTwoPoint(PipelineStage):
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
+        # Force garbage collection here to make sure all the
+        # catalogs are definitely freed
+        gc.collect()
+
+        # The measurement object collects the results and type info.
+        # we use it because the ordering will not be simple if we have
+        # parallelized, so it's good to keep explicit track.
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
         return result
 
+    def prepare_patches(self, calcs):
+        """
+        For each catalog to be generated, have one process load the catalog
+        and write its patch files out to disc.  These are then re-used later
+        by all the different processes.
+
+        Parameters
+        ----------
+
+        calcs: list
+            A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
+            or bin labels and bin_type is one of the constants SHEAR_SHEAR,
+            SHEAR_POS, or POS_POS.
+        """
+        # Make the full list of catalogs to run
+        cats = set()
+
+        # Use shear-shear and pos-pos only here as they represent
+        # catalogs not pairs.
+        for i, j, k in calcs:
+            if k == SHEAR_SHEAR:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, SHEAR_SHEAR))
+            elif k == SHEAR_POS:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, POS_POS))
+            elif k == POS_POS:
+                cats.add((i, POS_POS))
+                cats.add((j, POS_POS))
+        cats = list(cats)
+        
+        # This does a round-robin assignment to processes
+        for (h, k) in self.split_tasks_by_rank(cats):
+
+            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+
+            # For shear we just have the one catalog. For position we may
+            # have randoms also. We explicitly delete catalogs after loading
+            # them to ensure we don't have two in memory at once.
+            if k == SHEAR_SHEAR:
+                cat = self.get_shear_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
+            else:
+                cat = self.get_lens_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
+                ran_cat = self.get_random_catalog(h)
+
+                # support use_randoms = False
+                if ran_cat is None:
+                    continue
+
+                ran_cat.get_patches(low_mem=False)
+                del ran_cat
+
+        # stop other processes progressing to the rest of the code and
+        # trying to load things we have not written yet
+        if self.comm is not None:
+            self.comm.Barrier()
+
+                
+    def get_patch_dir(self, input_tag, b):
+        """
+        Select a patch directory for the file  with the given input tag
+        and with a bin number/label.
+
+        To ensure that if you change the catalog the patch dir will also
+        change, the directory path includes the unique ID of the input file.
+
+        Parameters
+        ----------
+        input_tag: str
+            One of the tags in the class's inputs attribute
+        b: any
+            An additional label used as the last component in the returned
+            directory
+
+        Returns
+        -------
+        str: a directory, which has been created if it did not exist already.
+        """
+        # start from a user-specified base directory
+        patch_base = self.config['patch_dir']
+
+        # append the unique identifier for the parent catalog file
+        with self.open_input(input_tag, wrapper=True) as f:
+            p = f.read_provenance()
+            uuid = p['uuid']
+            stem = pathlib.Path(f.path).stem
+
+        # We expect the input files to be generated within a pipeline and so always
+        # have input files to have a unique ID.  But if for some reason it doesn't
+        # have one we handle that too.
+        if uuid == 'UNKNOWN':
+            warnings.warn(f"No provenance in input file: using file name for patch dir. Using {stem}")
+            name = stem
+        else:
+            name = f"{input_tag}_{uuid}"
+
+        # And finally append the bin name or number
+        patch_dir = pathlib.Path(patch_base) / name / str(b)
+
+        # Make the directory and return it
+        pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
+        return patch_dir
 
     def get_shear_catalog(self, i):
         import treecorr
@@ -377,9 +489,11 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
             flip_g1 = self.config["flip_g1"],
             flip_g2 = self.config["flip_g2"],
         )
+        
         return cat
 
 
@@ -396,6 +510,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('binned_lens_catalog', i),
         )
         return cat
 
@@ -412,6 +527,7 @@ class TXTwoPoint(PipelineStage):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('binned_random_catalog', i),
         ) 
         return rancat
 
@@ -458,11 +574,11 @@ class TXTwoPoint(PipelineStage):
 
         ng = treecorr.NGCorrelation(self.config)
         t1 = perf_counter()
-        ng.process(cat_j, cat_i, comm=self.comm)
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
 
         if rancat_j:
             rg = treecorr.NGCorrelation(self.config)
-            rg.process(rancat_j, cat_i, comm=self.comm)
+            rg.process(rancat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
         else:
             rg = None
 
@@ -472,7 +588,6 @@ class TXTwoPoint(PipelineStage):
             t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
-        
         return ng
 
 
@@ -502,10 +617,10 @@ class TXTwoPoint(PipelineStage):
         t1 = perf_counter()
         
         nn = treecorr.NNCorrelation(self.config)
-        nn.process(cat_i, cat_j, comm=self.comm)
-        
+        nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
         nr = treecorr.NNCorrelation(self.config)
-        nr.process(cat_i, rancat_j, comm=self.comm)
+        nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         # The next calculation is faster if we explicitly tell TreeCorr
         # that its two catalogs here are the same one.
@@ -513,13 +628,13 @@ class TXTwoPoint(PipelineStage):
             rancat_j = None
         
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm)
-        
+        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
         if i==j:
             rn = None
         else:
             rn = treecorr.NNCorrelation(self.config)
-            rn.process(rancat_i, cat_j, comm=self.comm)
+            rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if self.rank == 0:
             t2 = perf_counter()
