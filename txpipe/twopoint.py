@@ -397,7 +397,8 @@ class TXTwoPoint(PipelineStage):
                 cats.add((i, POS_POS))
                 cats.add((j, POS_POS))
         cats = list(cats)
-        
+        cats.sort(key=str)
+
         # This does a round-robin assignment to processes
         for (h, k) in self.split_tasks_by_rank(cats):
 
