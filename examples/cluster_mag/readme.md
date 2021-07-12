@@ -17,7 +17,25 @@ and checkout the branch for this work:
     cd TXPipe
     git checkout ricci-clusters
 
-## Setting up environment
+
+## Setting up environment on CC-IN2P3
+
+Most of the dependencies for this code are included in the txpipe singularity image.
+We only need a very minimal environment here:
+
+    # you may get an error from this first one. It's not a problem
+    module load anaconda 3.8
+    python -m venv env
+    source env/bin/activate
+    pip install numpy scipy parallel_statistics
+    # temporary until I complete this version
+    pip install https://github.com/LSSTDESC/ceci@in2p3
+
+**You now need to request access to the parallel queues.  Ask Dominique on #in2p3**
+
+
+
+## Setting up environment on NERSC
 
 Most of the dependencies for this code are included in the txpipe shifter image.
 We only need a very minimal environment here:
@@ -46,7 +64,7 @@ A flow chart of the pipeline is below. Red ellipses are pipeline stages. Blue re
 
 We generated this image using the `bin/flow_chart.py` script; it includes the ingestion stage that is commented out.
 
-## Running the pipeline
+## Running the pipeline at NERSC
 
 Log into NERSC, and go to the TXPipe directory that you cloned above.
 
@@ -68,6 +86,11 @@ have the pipeline run them all for you like this:
     ceci examples/cluster_mag/cluster_mag_skysim.yml
 
 If you do the latter, the logs from the pipeline will be put into files, instead of printed to screen (because multiple commands may be run at once).  You can look at those files while the pipeline is running by opening a new terminal and logging into NERSC from that.
+
+## Running the pipeline at CC-IN2P3
+
+
+
 
 ## Results
 
