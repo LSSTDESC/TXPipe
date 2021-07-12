@@ -1,0 +1,115 @@
+
+# Stages to run
+stages:
+    - name: TXSourceSelector     # select and split objects into source bins
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
+    - name: TXMeanLensSelector  # select objects for lens bins
+    - name: PZRailTrain
+      threads_per_process: 2
+    - name: PZRailEstimate
+    - name: TXPhotozStack        # stack p(z) into n(z)
+    - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
+    - name: TXAuxiliaryMaps      # make PSF, depth, flag, and other maps
+    - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    - name: TXMapPlots           # make pictures of all the maps
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXRandomCat          # generate lens bin random catalogs
+      nprocess: 2
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
+      threads_per_process: 2
+    - name: TXBlinding           # Blind the data following Muir et al
+      threads_per_process: 2
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
+      threads_per_process: 2
+    - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
+      threads_per_process: 2
+    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
+      threads_per_process: 2
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+      threads_per_process: 2
+    - name: TXGalaxyStarDensity
+    - name: TXGalaxyStarShear
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    - name: TXPhotozPlots        # Plot the bin n(z)
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXMapCorrelations    # plot the correlations between systematics and data
+    - name: TXApertureMass        # Compute aperture-mass statistics
+      threads_per_process: 2
+
+    # Disabled since not yet synchronised with new Treecorr MPI
+    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+
+    # Disabling these as they takes too long for a quick test.
+    # The latter two need NaMaster
+    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+    # - name: TXTwoPointFourier          # Compute power spectra C_ell
+    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+    - submodules/RAIL
+
+# Where to put outputs
+output_dir: data/example/outputs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: cc-parallel
+    max_threads: 2
+    image: txpipe_latest.sif
+    volume: ${PWD}:/opt/TXPipe
+
+# python modules to import to search for stages
+modules: txpipe
+
+# configuration settings
+config: examples/config/laptop_config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog: data/example/inputs/shear_catalog.hdf5
+    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    exposures: data/example/inputs/exposures.hdf5
+    star_catalog: data/example/inputs/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension we are not using Random_cat_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    random_cats_source: Null
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+# where to put output logs for individual stages
+log_dir: data/example/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log.txt

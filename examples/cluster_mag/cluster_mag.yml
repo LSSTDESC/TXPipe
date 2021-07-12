@@ -4,21 +4,28 @@ launcher:
 
 # These site options tell the launcher to use shifter
 site:
-    name: cori-interactive
-    image: joezuntz/txpipe
-    volume: ${PWD}:/opt/txpipe
+    name: cc-parallel
+    image: txpipe_latest.sif
+    volume: ${PWD}:/opt/TXPipe
 
 modules: txpipe
 
 
 stages:
-    - name: CMIngestHalosCosmoDC2
+#    - name: CMIngestHalosCosmoDC2
     - name: CMSelectHalos
+      nprocess: 16
+      nodes: 1
     - name: CMSelectBackground
+      nprocess: 16
+      nodes: 1
     - name: CMRandoms
+      nprocess: 16
+      nodes: 1
     - name: TXJackknifeCenters
-    - name: CMRedshifts
     - name: CMCorrelations
+      nprocess: 2
+      threads_per_process: 16
     - name: CMCorrelationsPlot
 
 
@@ -26,7 +33,8 @@ output_dir: data/cluster_mag/outputs
 config: examples/cluster_mag/cluster_mag_config.yml
 
 inputs:
-    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    photometry_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/from_nersc/photometry_catalog.hdf5
+    cluster_mag_halo_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/from_nersc//cluster_mag_halo_catalog.hdf5
 
 
 resume: True
