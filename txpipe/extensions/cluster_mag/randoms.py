@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import HDFFile, MapsFile
@@ -74,6 +75,8 @@ class CMRandoms(PipelineStage):
             e = starts[i + 1]
             ra_out[s:e] = ra
             dec_out[s:e] = dec
+
+            sys.stdout.flush()
 
         output_file.close()
 
