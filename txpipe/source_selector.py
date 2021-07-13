@@ -34,7 +34,6 @@ class TXSourceSelector(PipelineStage):
     inputs = [
         ('shear_catalog', ShearCatalog),
         ('calibration_table', TextFile),
-        ('photometry_catalog', HDFFile),  # this is to get the photo-z, does not necessarily need it
     ]
 
     outputs = [
