@@ -40,7 +40,7 @@ class CMRandoms(PipelineStage):
 
         # Use the same counts for all the processors
         if self.comm is not None:
-            counts = self.comm.bcast(counts)
+            self.comm.Bcast(counts)
 
         # total number of objects to be generated over all the pixels
         total_count = counts.sum()
