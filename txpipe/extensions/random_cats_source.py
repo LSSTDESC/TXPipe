@@ -13,8 +13,8 @@ class TXRandomCat_source(PipelineStage):
         ('fiducial_cosmology', FiducialCosmology),
     ]
     outputs = [
-        ('random_cats_source', RandomsCatalog),
-        ('binned_random_cats_source', RandomsCatalog),
+        ('random_catalog_source', RandomsCatalog),
+        ('binned_random_catalog_source', RandomsCatalog),
     ]
     config_options = {
         'density': 10.,  # number per square arcmin at median depth depth.  Not sure if this is right.

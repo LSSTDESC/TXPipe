@@ -33,9 +33,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
     """
     name = 'TXSelfCalibrationIA'
     inputs = [
-        ('calibrated_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', ShearCatalog),
         ('binned_lens_catalog', HDFFile),
-        ('binned_random_cats_source', HDFFile),
+        ('binned_random_catalog_source', HDFFile),
         ('shear_photoz_stack', HDFFile),
         ('lens_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
@@ -110,7 +110,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import treecorr
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
-            self.get_input("calibrated_shear_catalog"),
+            self.get_input("binned_shear_catalog"),
             ext = f"/shear/bin_{i}",
             g1_col = "g1",
             g2_col = "g2",
