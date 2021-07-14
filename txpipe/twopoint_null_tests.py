@@ -88,7 +88,6 @@ class TXGammaTFieldCenters(TXTwoPoint):
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
         ("shear_photoz_stack", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
         ("lens_photoz_stack", HDFFile),
         ("random_cats", RandomsCatalog),
         ("exposures", HDFFile),
@@ -261,7 +260,6 @@ class TXGammaTStars(TXTwoPoint):
         ("binned_shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
         ("shear_photoz_stack", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
         ("lens_photoz_stack", HDFFile),
         ("random_cats", RandomsCatalog),
         ("binned_star_catalog", HDFFile),
