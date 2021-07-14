@@ -35,7 +35,7 @@ class TXShearCalibration(PipelineStage):
     ]
 
     outputs = [
-        ("calibrated_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", ShearCatalog),
     ]
 
     config_options = {
@@ -161,7 +161,7 @@ class TXShearCalibration(PipelineStage):
             nbin = len(counts)
 
         # Prepare the calibrated output catalog
-        f = self.open_output("calibrated_shear_catalog", parallel=True)
+        f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
         if Dcoords: 

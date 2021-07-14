@@ -23,9 +23,9 @@ POS_POS = 2
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('calibrated_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', ShearCatalog),
         ('binned_lens_catalog', HDFFile),
-        ('binned_random_cats', HDFFile),
+        ('binned_random_catalog', HDFFile),
         ('shear_photoz_stack', HDFFile),
         ('lens_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
@@ -146,7 +146,7 @@ class TXTwoPoint(PipelineStage):
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        with self.open_input('calibrated_shear_catalog') as f:
+        with self.open_input('binned_shear_catalog') as f:
             nbin_source = f['shear'].attrs['nbin_source']
 
         with self.open_input('binned_lens_catalog') as f:
@@ -367,7 +367,7 @@ class TXTwoPoint(PipelineStage):
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
-            self.get_input("calibrated_shear_catalog"),
+            self.get_input("binned_shear_catalog"),
             ext = f"/shear/bin_{i}",
             g1_col = "g1",
             g2_col = "g2",
@@ -405,7 +405,7 @@ class TXTwoPoint(PipelineStage):
             return None
 
         rancat = treecorr.Catalog(
-            self.get_input("binned_random_cats"),
+            self.get_input("binned_random_catalog"),
             ext = f"/randoms/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
@@ -483,18 +483,21 @@ class TXTwoPoint(PipelineStage):
         rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-
-        if self.rank == 0:
-            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_i} objects,  {n_rand_i} randoms")
-
         
         if i==j:
             cat_j = None
             rancat_j = rancat_i
-        
+            n_j = n_i
+            n_rand_j = n_rand_i
         else:
             cat_j = self.get_lens_catalog(j)
             rancat_j = self.get_random_catalog(j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj
+
+
+        if self.rank == 0:
+            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms")
 
         t1 = perf_counter()
         
@@ -542,6 +545,7 @@ class TXTwoPoint(PipelineStage):
         meta["mean_e2"] = mean_e2
 
         return meta
+
 
 if __name__ == '__main__':
     PipelineStage.main()
