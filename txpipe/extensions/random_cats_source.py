@@ -112,7 +112,7 @@ class TXRandomCat_source(PipelineStage):
                 print(f"  - {bin_counts[j]} in bin {j}")
 
         # First output is the all of the 
-        output_file = self.open_output('random_cats_source', parallel=True)
+        output_file = self.open_output('random_catalog_source', parallel=True)
         group = output_file.create_group('randoms')
         ra_out = group.create_dataset('ra', (n_total,), dtype=np.float64)
         dec_out = group.create_dataset('dec', (n_total,), dtype=np.float64)
@@ -122,7 +122,7 @@ class TXRandomCat_source(PipelineStage):
 
         # Second output is specific to an individual bin, so we can just load
         # a single bin as needed
-        binned_output = self.open_output("binned_random_cats_source", parallel=True)
+        binned_output = self.open_output("binned_random_catalog_source", parallel=True)
         binned_group = binned_output.create_group("randoms")
 
         subgroups = []
