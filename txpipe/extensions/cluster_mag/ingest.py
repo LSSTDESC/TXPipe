@@ -2,6 +2,106 @@ import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import HDFFile
 
+
+class SkysimPhotometry(PipelineStage):
+    """
+    Ingest noise-free photometry from SkySim GCR
+
+    """
+
+    config_options = {
+        # this is 10 year 5 sigma depth from https://www.lsst.org/scientists/keynumbers
+        "r_limit": 27.5,
+        # getting the catalog size takes ages in GCR, so
+        # if you know it alreay then better to put it here.
+        # this is a max size before cuts
+        "cat_size": 0,
+        # if you change this then remember to set cat_size above
+        "cat_name": "skysim5000_v1.1.1"
+
+    }
+
+    def run(self):
+        import GCRCatalogs
+        gc = GCRCatalogs.load_catalog(cat_name)
+
+        # avoid measuring cat length if known
+        N = self.config['cat_size']
+        if N == 0:
+            N = len(gc)
+
+
+        # Columns we need from the cosmo simulation,
+        # and the new names we give them
+        cols = {
+            'mag_true_u_lsst': 'u_mag'
+            'mag_true_g_lsst': 'g_mag'
+            'mag_true_r_lsst': 'r_mag'
+            'mag_true_i_lsst': 'i_mag'
+            'mag_true_z_lsst': 'z_mag'
+            'mag_true_y_lsst': 'y_mag'
+            'ra': 'ra'
+            'dec': 'dec'
+            'galaxy_id': 'id'
+            'redshift_true': 'redshift_true'
+        }
+
+        photo_file = self.setup_output()
+        photo_grp = photo_file["photometry"]
+
+        # Set up the iterator to load catalog
+        r_limit = self.config["r_limit"]
+        filters = [f"mag_true_r_lsst < {r_limit}"]
+        it = gc.get_quantities(cols, filters = filters, return_iterator=True)
+        nfile = len(gc._file_list) if hasattr(gc, '_file_list') else "?"
+
+        # Loop through the input data
+        s = 0
+        for i, data in enumerate(it):
+            print(f"Loading chunk {i+1}/{nfile}")
+            # save each chunk of data to output
+            s = self.save_chunk(data, cols, photo_grp, s)
+
+        # Resize all the columns because we filtered
+        # out some objects so the end of the catalog will
+        # be empty
+        for col in photo_grp.keys():
+            photo_grp[col].resize((e,))
+
+
+    def save_chunk(self, data, cols, photo_grp, s):
+
+        # Range of this data chunk
+        n = len(data["ra"])
+        e = s + n
+
+        # rename columns
+        data = {new: data[old] for new, old in cols.items()}
+
+        # Make zero error columns
+        zeros = np.zeros(n)
+        for b in "ugrizy":
+            data[f"{b}_mag_err"] = zeros
+
+        # save outputs to file
+        for col in cols.values():
+            photo_grp[f"{col}"][s:e] = data[col][s:e]
+
+        # new index
+        return e
+
+
+    def setup_output(self, cols, N):
+        f = self.open_output('photometry_catalog')
+        g = f.create_group("photometry")
+        for col in cols.values():
+            dtype = int if col == "id" else float
+            g.create_dataset(col, dtype=dtype, shape=(N,))
+        return f
+
+
+
+
 class CMIngestHalosCosmoDC2(PipelineStage):
     """
     Load halos from CosmoDC2, by querying the central galaxies.
