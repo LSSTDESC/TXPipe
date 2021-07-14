@@ -3,19 +3,22 @@ from ...base_stage import PipelineStage
 from ...data_types import HDFFile
 
 
-class SkysimPhotometry(PipelineStage):
+class CMSkysimPhotometry(PipelineStage):
     """
     Ingest noise-free photometry from SkySim GCR
 
     """
-
+    name = "CMSkysimPhotometry"
+    inputs = []
+    outputs = [("photometry_catalog", HDFFile)]
+    
     config_options = {
         # this is 10 year 5 sigma depth from https://www.lsst.org/scientists/keynumbers
         "r_limit": 27.5,
         # getting the catalog size takes ages in GCR, so
         # if you know it alreay then better to put it here.
         # this is a max size before cuts
-        "cat_size": 0,
+        "cat_size": 8_503_061_280,
         # if you change this then remember to set cat_size above
         "cat_name": "skysim5000_v1.1.1"
 
@@ -23,7 +26,7 @@ class SkysimPhotometry(PipelineStage):
 
     def run(self):
         import GCRCatalogs
-        gc = GCRCatalogs.load_catalog(cat_name)
+        gc = GCRCatalogs.load_catalog(self.config["cat_name"])
 
         # avoid measuring cat length if known
         N = self.config['cat_size']
@@ -34,19 +37,19 @@ class SkysimPhotometry(PipelineStage):
         # Columns we need from the cosmo simulation,
         # and the new names we give them
         cols = {
-            'mag_true_u_lsst': 'u_mag'
-            'mag_true_g_lsst': 'g_mag'
-            'mag_true_r_lsst': 'r_mag'
-            'mag_true_i_lsst': 'i_mag'
-            'mag_true_z_lsst': 'z_mag'
-            'mag_true_y_lsst': 'y_mag'
-            'ra': 'ra'
-            'dec': 'dec'
-            'galaxy_id': 'id'
-            'redshift_true': 'redshift_true'
+            'mag_true_u_lsst': 'u_mag',
+            'mag_true_g_lsst': 'g_mag',
+            'mag_true_r_lsst': 'r_mag',
+            'mag_true_i_lsst': 'i_mag',
+            'mag_true_z_lsst': 'z_mag',
+            'mag_true_y_lsst': 'y_mag',
+            'ra': 'ra',
+            'dec': 'dec',
+            'galaxy_id': 'id',
+            'redshift_true': 'redshift_true',
         }
 
-        photo_file = self.setup_output()
+        photo_file = self.setup_output(cols, N)
         photo_grp = photo_file["photometry"]
 
         # Set up the iterator to load catalog
@@ -76,7 +79,7 @@ class SkysimPhotometry(PipelineStage):
         e = s + n
 
         # rename columns
-        data = {new: data[old] for new, old in cols.items()}
+        data = {new: data[old] for old, new in cols.items()}
 
         # Make zero error columns
         zeros = np.zeros(n)
@@ -85,7 +88,7 @@ class SkysimPhotometry(PipelineStage):
 
         # save outputs to file
         for col in cols.values():
-            photo_grp[f"{col}"][s:e] = data[col][s:e]
+            photo_grp[f"{col}"][s:e] = data[col]
 
         # new index
         return e
@@ -96,7 +99,7 @@ class SkysimPhotometry(PipelineStage):
         g = f.create_group("photometry")
         for col in cols.values():
             dtype = int if col == "id" else float
-            g.create_dataset(col, dtype=dtype, shape=(N,))
+            g.create_dataset(col, dtype=dtype, shape=(N,), maxshape=(N,))
         return f
 
 
