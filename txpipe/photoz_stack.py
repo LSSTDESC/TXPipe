@@ -246,11 +246,11 @@ class TXPhotozLensStack(TXPhotozSourceStack):
     """
     name = "TXPhotozLensStack"
     inputs = [
-        ('source_photoz_pdfs', PhotozPDFFile),
-        ('shear_tomography_catalog', TomographyCatalog),
+        ('lens_photoz_pdfs', PhotozPDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
     ]
     outputs = [
-        ('shear_photoz_stack', NOfZFile),            
+        ('lens_photoz_stack', NOfZFile),            
     ]
     config_options = {
         'chunk_rows': 5000,  # number of rows to read at once

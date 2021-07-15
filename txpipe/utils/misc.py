@@ -78,10 +78,10 @@ def rename_iterated(it, renames):
     renames: dict
         dictionary of old names to new names
     """
-    for data in it:
+    for s, e, data in it:
         for old, new in renames.items():
             # rename the column
             data[new] = old
             # delete the old column
             del data[old]
-            yield data
+            yield s, e, data

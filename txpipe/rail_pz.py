@@ -72,6 +72,7 @@ class PZRailTrain(PipelineStage):
 
 
 class PZRailEstimateLens(PipelineStage):
+    name = "PZRailEstimateLens"
     """Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
 
     We load a redshift Estimator model, typically saved by the PZRailTrain stage,
@@ -134,6 +135,7 @@ class PZRailEstimateLens(PipelineStage):
     def load_model(self):
         with self.open_input(self.model_input, wrapper=True) as f:
             estimator = f.read()
+        return estimator
 
     def data_iterator(self):
         bands = self.config["bands"]
@@ -141,12 +143,12 @@ class PZRailEstimateLens(PipelineStage):
 
         # Columns we will load, and the new names we will give them
         renames = {}
-        for bad in bands:
+        for band in bands:
             renames[f"mag_{band}"] = f"mag_{band}_lsst"
             renames[f"mag_err_{band}"] = f"mag_err_{band}_lsst"
 
         # old names, as loaded from file
-        cols = list(band.keys())
+        cols = list(renames.keys())
 
         # Create the iterator the reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
@@ -158,12 +160,13 @@ class PZRailEstimateLens(PipelineStage):
     def get_catalog_size(self):
         with self.open_input(self.cat_input) as f:
             nobj = f["photometry/ra"].size
+        return nobj
 
 
     def setup_output_file(self, estimator):
         # Briefly check the size of the catalog so we know how much
         # space to reserve in the output
-        nobj = self.get_input_size()
+        nobj = self.get_catalog_size()
 
         # open the output file
         f = self.open_output(self.pdf_output, parallel=True)
@@ -217,7 +220,8 @@ class PZRailEstimateLens(PipelineStage):
 
 
 
-class PZRailEstimateSource(PZRailEstimateBase):
+class PZRailEstimateSource(PZRailEstimateLens):
+    name = "PZRailEstimateSource"
     cat_input = "shear_catalog"
     pdf_output = "source_photoz_pdfs"
 
@@ -232,7 +236,7 @@ class PZRailEstimateSource(PZRailEstimateBase):
 
     config_options = {
         "chunk_rows": 10000,
-        "bands": "griz",
+        "bands": "riz",
     }
 
     def data_iterator(self):
@@ -241,12 +245,12 @@ class PZRailEstimateSource(PZRailEstimateBase):
 
         # Columns we will load, and the new names we will give them
         renames = {}
-        for bad in bands:
+        for band in bands:
             renames[f"mcal_mag_{band}"] = f"mag_{band}_lsst"
             renames[f"mcal_mag_err_{band}"] = f"mag_err_{band}_lsst"
 
         # old names, as loaded from file
-        cols = list(band.keys())
+        cols = list(renames.keys())
 
         # Create the iterator the reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
@@ -258,3 +262,4 @@ class PZRailEstimateSource(PZRailEstimateBase):
     def get_catalog_size(self):
         with self.open_input(self.cat_input) as f:
             nobj = f["shear/ra"].size
+        return nobj

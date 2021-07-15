@@ -10,7 +10,8 @@ stages:
       threads_per_process: 2
     - name: PZRailEstimateLens
     - name: PZRailEstimateSource
-    - name: TXPhotozStack        # stack p(z) into n(z)
+    - name: TXPhotozSourceStack        # stack p(z) into n(z)
+    - name: TXPhotozLensStack        # stack p(z) into n(z)
     - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
     - name: TXAuxiliaryMaps      # make PSF, depth, flag, and other maps
     - name: TXSimpleMask         # combine maps to make a simple mask

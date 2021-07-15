@@ -8,7 +8,7 @@ from .base_stage import PipelineStage
 from .source_selector import TXSourceSelector
 from .lens_selector import TXMeanLensSelector
 from .photoz import TXRandomPhotozPDF
-from .photoz_stack import TXPhotozStack
+from .photoz_stack import TXPhotozSourceStack, TXPhotozLensStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
