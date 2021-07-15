@@ -6,9 +6,12 @@ stages:
     - name: TXLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
-    - name: PZRailTrain
-    - name: PZRailEstimate
-    - name: TXPhotozStack
+    - name: PZRailTrainSource
+    - name: PZRailTrainLens
+    - name: PZRailEstimateSource
+    - name: PZRailEstimateLens
+    - name: TXPhotozSourceStack
+    - name: TXPhotozLensStack
     - name: TXMainMaps
     - name: TXAuxiliaryMaps
     - name: TXSimpleMask
