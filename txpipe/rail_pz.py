@@ -2,9 +2,10 @@ from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, HDFFile, PickleFile, DataFile
 from .utils import rename_iterated
 import numpy as np
+import shutil
 
 
-class PZRailTrain(PipelineStage):
+class PZRailTrainSource(PipelineStage):
     """Train a photo-z model using RAIL.
 
     The Redshift Assessment Infrastructure Layers (RAIL) library provides a uniform
@@ -15,14 +16,17 @@ class PZRailTrain(PipelineStage):
     spectroscopic redshifts) to train and save an Estimator object that a later
     stage can use to measure redshifts of the survey sample.
     """
-    name = "PZRailTrain"
+    name = "PZRailTrainSource"
+    training_tag = "photoz_source_training"
+    testing_tag = "photoz_source_testing"
+    model_tag = "photoz_source_model"
 
     inputs = [
-        ("photoz_training", DataFile),
-        ("photoz_testing", DataFile),
+        (training_tag, DataFile),
+        (testing_tag, DataFile),
     ]
 
-    outputs = [("photoz_trained_model", PickleFile)]
+    outputs = [(model_tag, PickleFile)]
 
     config_options = {
         "class_name": str,
@@ -37,14 +41,17 @@ class PZRailTrain(PipelineStage):
 
     def run(self):
         from rail.estimation.estimator import Estimator
+        from rail.fileIO import load_training_data
 
         # General config information that RAIL wants
+        # TODO: Some of these may not be needed any more
         base_config = {
-            "trainfile": self.get_input("photoz_training"),
-            "testfile": self.get_input("photoz_testing"),
+            "trainfile": self.get_input(self.training_tag),
+            "testfile": self.get_input(self.testing_tag),
             "hdf5_groupname": "photometry",
             "chunk_size": self.config["chunk_rows"],
             "outpath": None,  # should not be used here
+            "output_format": "old",
         }
 
         # Additional confguration specific to this algorithm
@@ -58,8 +65,14 @@ class PZRailTrain(PipelineStage):
         cls = Estimator._find_subclass(self.config["class_name"])
         estimator = cls(base_config, run_dict)
 
+        training_data = load_training_data(
+            self.get_input(self.training_tag),
+            "hdf5",
+            "photometry"
+        )
+
         # Run the main training phase
-        estimator.inform()
+        estimator.inform(training_data)
 
         # If there is any kind of testing/validation to be run we could
         # do so here.
@@ -67,9 +80,44 @@ class PZRailTrain(PipelineStage):
         # Afterwards, save the model.  This assumes that estimator
         # classes can be pickled, which is true for now but see the
         # issue opened on th RAIL repo
-        with self.open_output("photoz_trained_model", wrapper=True) as output:
+        with self.open_output(self.model_tag, wrapper=True) as output:
             output.write(estimator)
 
+
+class PZRailTrainLens(PZRailTrainSource):
+    """Train a photo-z model using RAIL.
+
+    The Redshift Assessment Infrastructure Layers (RAIL) library provides a uniform
+    interface to DESC photo-z code.
+
+    TXPipe uses RAIL across several different pipeline stages.
+    This stage, which would normally be run first, uses a training set (e.g. of
+    spectroscopic redshifts) to train and save an Estimator object that a later
+    stage can use to measure redshifts of the survey sample.
+    """
+    name = "PZRailTrainLens"
+    training_tag = "photoz_lens_training"
+    testing_tag = "photoz_lens_testing"
+    model_tag = "photoz_lens_model"
+
+    inputs = [
+        (training_tag, DataFile),
+        (testing_tag, DataFile),
+    ]
+
+    outputs = [(model_tag, PickleFile)]
+
+class PZRailTrainLensFromSource(PipelineStage):
+    name = "PZRailTrainLensFromSource"
+
+    inputs = [("photoz_source_model", PickleFile)]
+    outputs = [("photoz_lens_model", PickleFile)]
+
+    def run(self):
+        shutil.copy(
+            self.get_input("photoz_source_model"),
+            self.get_output("photoz_len_model"),
+            )
 
 class PZRailEstimateLens(PipelineStage):
     name = "PZRailEstimateLens"
@@ -92,12 +140,13 @@ class PZRailEstimateLens(PipelineStage):
 
     """
 
-    model_input = "photoz_trained_model"
+    model_input = "photoz_lens_model"
     pdf_output = "lens_photoz_pdfs"
+    cat_input = ""
 
     inputs = [
         ("photometry_catalog", HDFFile),
-        ("photoz_trained_model", PickleFile),
+        ("photoz_lens_model", PickleFile),
     ]
 
     outputs = [
@@ -152,13 +201,13 @@ class PZRailEstimateLens(PipelineStage):
 
         # Create the iterator the reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
-        it = self.iterate_hdf(self.cat_input, "photometry", cols, chunk_rows)
+        it = self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows)
 
         # Also rename all the columns as they are loaded
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
-        with self.open_input(self.cat_input) as f:
+        with self.open_input("photometry_catalog") as f:
             nobj = f["photometry/ra"].size
         return nobj
 
@@ -222,12 +271,12 @@ class PZRailEstimateLens(PipelineStage):
 
 class PZRailEstimateSource(PZRailEstimateLens):
     name = "PZRailEstimateSource"
-    cat_input = "shear_catalog"
+    model_input = "photoz_source_model"
     pdf_output = "source_photoz_pdfs"
 
     inputs = [
         ("shear_catalog", HDFFile),
-        ("photoz_trained_model", PickleFile),
+        ("photoz_source_model", PickleFile),
     ]
 
     outputs = [
@@ -254,12 +303,12 @@ class PZRailEstimateSource(PZRailEstimateLens):
 
         # Create the iterator the reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
-        it = self.iterate_hdf(self.cat_input, "shear", cols, chunk_rows)
+        it = self.iterate_hdf("shear_catalog", "shear", cols, chunk_rows)
 
         # Also rename all the columns as they are loaded
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
-        with self.open_input(self.cat_input) as f:
+        with self.open_input("shear_catalog") as f:
             nobj = f["shear/ra"].size
         return nobj

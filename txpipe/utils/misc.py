@@ -81,7 +81,7 @@ def rename_iterated(it, renames):
     for s, e, data in it:
         for old, new in renames.items():
             # rename the column
-            data[new] = old
+            data[new] = data[old]
             # delete the old column
             del data[old]
-            yield s, e, data
+        yield s, e, data
