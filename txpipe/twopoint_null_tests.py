@@ -88,7 +88,6 @@ class TXGammaTFieldCenters(TXTwoPoint):
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
         ("shear_photoz_stack", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
         ("lens_photoz_stack", HDFFile),
         ("random_cats", RandomsCatalog),
         ("exposures", HDFFile),
@@ -117,6 +116,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "use_randoms": True,
+        'patch_dir': './cache/patches',
+        'low_mem': False,
     }
 
     def run(self):
@@ -259,7 +260,6 @@ class TXGammaTStars(TXTwoPoint):
         ("binned_shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
         ("shear_photoz_stack", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
         ("lens_photoz_stack", HDFFile),
         ("random_cats", RandomsCatalog),
         ("binned_star_catalog", HDFFile),
@@ -291,6 +291,8 @@ class TXGammaTStars(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "use_randoms": True,
+        'patch_dir': './cache/patches',
+        'low_mem': False,
     }
 
     def run(self):
@@ -465,6 +467,8 @@ class TXGammaTRandoms(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "use_randoms": False,
+        'patch_dir': './cache/patches',
+        'low_mem': False,
     }
 
     def run(self):
@@ -634,6 +638,8 @@ class TXApertureMass(TXTwoPoint):
         'use_true_shear': False,
         'subtract_mean_shear': False,
         'use_randoms': False,
+        'low_mem': False,
+        'patch_dir': './cache/patches',
         'low_mem': False,
         }
 

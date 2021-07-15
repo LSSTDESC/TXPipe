@@ -612,6 +612,12 @@ class TXTwoPointPlotsFourier(PipelineStage):
             xlogscale=True,
         )
 
+        for fig in outputs.values():
+            fig.close()
+
+
+        # The same but plotting ratios. The key here is not a mistake -
+        # it tells the function calle below what the axis labels etc should be
         outputs = {
             "galaxy_shear_cl_ee": self.open_output(
                 "shear_cl_ee_ratio",
