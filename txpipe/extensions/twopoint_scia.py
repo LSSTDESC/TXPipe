@@ -443,3 +443,65 @@ class TXSelfCalibrationIA(TXTwoPoint):
             S2.to_canonical_order
             self.write_metadata(S2,meta)
             S2.save_fits(self.get_output('gammaX_scia'), overwrite=True)
+
+    def prepare_patches(self, calcs):
+        """
+        For each catalog to be generated, have one process load the catalog
+        and write its patch files out to disc.  These are then re-used later
+        by all the different processes.
+
+        Parameters
+        ----------
+
+        calcs: list
+            A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
+            or bin labels and bin_type is one of the constants SHEAR_SHEAR,
+            SHEAR_POS, or POS_POS.
+        """
+        # Make the full list of catalogs to run
+        cats = set()
+
+        # Use shear-shear and pos-pos only here as they represent
+        # catalogs not pairs.
+        for i, j, k in calcs:
+            if k == SHEAR_SHEAR:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, SHEAR_SHEAR))
+            elif k == SHEAR_POS:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, POS_POS))
+            elif k == POS_POS:
+                cats.add((i, POS_POS))
+                cats.add((j, POS_POS))
+        cats = list(cats)
+        cats.sort(key=str)
+
+        # This does a round-robin assignment to processes
+        for (h, k) in self.split_tasks_by_rank(cats):
+
+            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+
+            # For shear we just have the one catalog. For position we may
+            # have randoms also. We explicitly delete catalogs after loading
+            # them to ensure we don't have two in memory at once.
+            if k == SHEAR_SHEAR:
+                cat = self.get_shear_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
+            else:
+                cat = self.get_shear_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
+                ran_cat = self.get_random_catalog(h)
+
+                # support use_randoms = False
+                if ran_cat is None:
+                    continue
+
+                ran_cat.get_patches(low_mem=False)
+                del ran_cat
+
+        # stop other processes progressing to the rest of the code and
+        # trying to load things we have not written yet
+        if self.comm is not None:
+            self.comm.Barrier()
