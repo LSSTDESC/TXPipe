@@ -26,12 +26,13 @@ PZPDFMLZ:
     nz: 301
     zmax: 3.0
 
-PZRailTrain:
+PZRailTrainSource:
     class_name: FZBoost
     zmin: 0.0
     zmax: 2.0
     nzbins: 201
     trainfrac: 0.75
+    bands: riz
     bumpmin: 0.02
     bumpmax: 0.35
     nbump: 20
@@ -41,6 +42,23 @@ PZRailTrain:
     max_basis: 35
     basis_system: cosine
     regression_params: {'max_depth': 8,'objective':'reg:squarederror'}
+
+PZRailTrainLens:
+    class_name: FZBoost
+    zmin: 0.0
+    zmax: 2.0
+    nzbins: 201
+    trainfrac: 0.75
+    bands: riz
+    bumpmin: 0.02
+    bumpmax: 0.35
+    nbump: 20
+    sharpmin: 0.7
+    sharpmax: 2.1
+    nsharp: 15
+    max_basis: 35
+    basis_system: cosine
+    regression_params: {'max_depth': 8, 'objective': 'reg:squarederror'}
 
 FlexZPipe:
     chunk_rows: 1000

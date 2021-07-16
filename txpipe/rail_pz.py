@@ -286,17 +286,19 @@ class PZRailEstimateSource(PZRailEstimateLens):
     config_options = {
         "chunk_rows": 10000,
         "bands": "riz",
+        "mag_prefix": "mcal_",
     }
 
     def data_iterator(self):
         bands = self.config["bands"]
         chunk_rows = self.config["chunk_rows"]
+        prefix = self.config["mag_prefix"]
 
         # Columns we will load, and the new names we will give them
         renames = {}
         for band in bands:
-            renames[f"mcal_mag_{band}"] = f"mag_{band}_lsst"
-            renames[f"mcal_mag_err_{band}"] = f"mag_err_{band}_lsst"
+            renames[f"{prefix}mag_{band}"] = f"mag_{band}_lsst"
+            renames[f"{prefix}mag_err_{band}"] = f"mag_err_{band}_lsst"
 
         # old names, as loaded from file
         cols = list(renames.keys())
@@ -312,3 +314,15 @@ class PZRailEstimateSource(PZRailEstimateLens):
         with self.open_input("shear_catalog") as f:
             nobj = f["shear/ra"].size
         return nobj
+
+class PZRailEstimateSourceFromLens(PipelineStage):
+    name = "PZRailEstimateSourceFromLens"
+
+    inputs = [("lens_photoz_pdfs", PickleFile)]
+    outputs = [("source_photoz_pdfs", PickleFile)]
+
+    def run(self):
+        shutil.copy(
+            self.get_input("lens_photoz_pdfs"),
+            self.get_output("source_photoz_pdfs"),
+            )
