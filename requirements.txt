@@ -23,4 +23,5 @@ parallel_statistics
 healsparse
 flexcode
 xgboost==1.1.0
-git+https://github.com/LSSTDESC/qp
+# temporary until qp merges my PR or otherwise fixes issue
+git+https://github.com/joezuntz/qp@scm-version
