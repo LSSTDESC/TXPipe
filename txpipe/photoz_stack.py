@@ -472,9 +472,9 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
                 ['source_bin'], # column(s) to read
             )
 
-    def stack_data(self, data, outputs):
+    def stack_data(self, name, data, outputs):
         source_stack, source2d_stack = outputs
-        source_stack.add_delta_function(data['source_bin'], data['redshift_true'])
+        source_stack.add_delta_function(data[f'{name}_bin'], data['redshift_true'])
         bin2d = data['source_bin'].clip(-1, 0)
         source2d_stack.add_delta_function(bin2d, data['redshift_true'])
 
