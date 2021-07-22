@@ -405,16 +405,15 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
 
     def get_metadata(self):
         # Check we are running on a photo file with redshift_true
-        photo_file = self.open_input('photometry_catalog')
-        has_z = 'redshift_true' in photo_file['photometry'].keys()
-        photo_file.close()
-        if not has_z:
-            msg = ("The photometry_catalog file you supplied does not have a redshift_true column. "
-                   "If you're running on sims you need to make sure to ingest that column from GCR. "
-                   "If you're running on real data then sadly this isn't going to work. "
-                   "Use a different stacking stage."
-                )
-            raise ValueError(msg)
+        with self.open_input("shear_catalog") as photo_file:
+            has_z = 'redshift_true' in photo_file['shear'].keys()
+            if not has_z:
+                msg = ("The photometry_catalog file you supplied does not have a redshift_true column. "
+                       "If you're running on sims you need to make sure to ingest that column from GCR. "
+                       "If you're running on real data then sadly this isn't going to work. "
+                       "Use a different stacking stage."
+                    )
+                raise ValueError(msg)
 
         zmax = self.config['zmax']
         nz = self.config['nz']
