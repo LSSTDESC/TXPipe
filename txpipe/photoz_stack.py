@@ -363,82 +363,6 @@ class TXPhotozPlots(PipelineStage):
         plt.xlim(xmin=0)
         out2.close()
 
-
-# class TXTrueNumberDensity(TXPhotozSourceStack):
-#     """
-#     Fake an n(z) by histogramming the true redshift values for each object.
-#     Uses the same method as its parent but loads the data
-#     differently and uses the truth redshift as a delta function PDF
-#     """
-#     name = "TXTrueNumberDensity"
-#     inputs = [
-#         ('photometry_catalog', HDFFile),
-#         ('shear_tomography_catalog', TomographyCatalog),
-#         ('lens_tomography_catalog', TomographyCatalog)
-#     ]
-#     outputs = [
-#         ('shear_photoz_stack', NOfZFile),
-#         ('lens_photoz_stack', NOfZFile)
-#     ]
-#     config_options = {
-#         'chunk_rows': 5000,  # number of rows to read at once
-#         'zmax': float,
-#         'nz': int,
-#     }
-
-
-#     def data_iterator(self):
-#         return self.combined_iterators(
-#                 self.config['chunk_rows'],
-#                 'photometry_catalog', # tag of input file to iterate through
-#                 'photometry', # data group within file to look at
-#                 ['redshift_true'], # column(s) to read
-
-#                 'shear_tomography_catalog', # tag of input file to iterate through
-#                 'tomography', # data group within file to look at
-#                 ['source_bin'], # column(s) to read
-
-#                 'lens_tomography_catalog', # tag of input file to iterate through
-#                 'tomography', # data group within file to look at
-#                 ['lens_bin'], # column(s) to read
-#             )
-
-#     def stack_data(self, data, outputs):
-#         source_stack, source2d_stack, lens_stack = outputs
-#         source_stack.add_delta_function(data['source_bin'], data['redshift_true'])
-#         bin2d = data['source_bin'].clip(-1, 0)
-#         source2d_stack.add_delta_function(bin2d, data['redshift_true'])
-#         lens_stack.add_delta_function(data['lens_bin'], data['redshift_true'])
-
-
-#     def get_metadata(self):
-#         # Check we are running on a photo file with redshift_true
-#         photo_file = self.open_input('photometry_catalog')
-#         has_z = 'redshift_true' in photo_file['photometry'].keys()
-#         photo_file.close()
-#         if not has_z:
-#             msg = ("The photometry_catalog file you supplied does not have a redshift_true column. "
-#                    "If you're running on sims you need to make sure to ingest that column from GCR. "
-#                    "If you're running on real data then sadly this isn't going to work. "
-#                    "Use a different stacking stage."
-#                 )
-#             raise ValueError(msg)
-
-#         zmax = self.config['zmax']
-#         nz = self.config['nz']
-#         z = np.linspace(0, zmax, nz)
-
-#         shear_tomo_file = self.open_input('shear_tomography_catalog')
-#         nbin_source = shear_tomo_file['tomography'].attrs['nbin_source']
-#         shear_tomo_file.close()
-
-#         lens_tomo_file = self.open_input('lens_tomography_catalog')
-#         nbin_lens = lens_tomo_file['tomography'].attrs['nbin_lens']
-#         lens_tomo_file.close()
-
-#         return z, nbin_source, nbin_lens
-
-
 class TXSourceTrueNumberDensity(TXPhotozSourceStack):
     """
     Fake an n(z) by histogramming the true redshift values for each object.
@@ -447,7 +371,7 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
     """
     name = "TXSourceTrueNumberDensity"
     inputs = [
-        ('photometry_catalog', HDFFile),
+        ('shear_catalog', HDFFile),
         ('shear_tomography_catalog', TomographyCatalog),
     ]
     outputs = [
@@ -463,8 +387,8 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
     def data_iterator(self):
         return self.combined_iterators(
                 self.config['chunk_rows'],
-                'photometry_catalog', # tag of input file to iterate through
-                'photometry', # data group within file to look at
+                'shear_catalog', # tag of input file to iterate through
+                'shear', # data group within file to look at
                 ['redshift_true'], # column(s) to read
 
                 'shear_tomography_catalog', # tag of input file to iterate through
@@ -473,10 +397,10 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
             )
 
     def stack_data(self, name, data, outputs):
-        source_stack, source2d_stack = outputs
-        source_stack.add_delta_function(data[f'{name}_bin'], data['redshift_true'])
-        bin2d = data['source_bin'].clip(-1, 0)
-        source2d_stack.add_delta_function(bin2d, data['redshift_true'])
+        stack, stack2d = outputs
+        stack.add_delta_function(data[f'{name}_bin'], data['redshift_true'])
+        bin2d = data[f'{name}_bin'].clip(-1, 0)
+        stack2d.add_delta_function(bin2d, data['redshift_true'])
 
 
     def get_metadata(self):
@@ -501,3 +425,44 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
         shear_tomo_file.close()
 
         return z, nbin_source
+
+
+class TXLensTrueNumberDensity(TXPhotozLensStack, TXSourceTrueNumberDensity):
+    name = "TXLensTrueNumberDensity"
+    inputs = [
+        ('photometry_catalog', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+    ]
+    outputs = [
+        ('lens_photoz_stack', NOfZFile),
+    ]
+    config_options = {
+        'chunk_rows': 5000,  # number of rows to read at once
+        'zmax': float,
+        'nz': int,
+    }
+
+    def data_iterator(self):
+        # This collects together matching inputs from the different
+        # input files and returns an iterator to them which yields
+        # start, end, data
+        return self.combined_iterators(
+                self.config['chunk_rows'],
+                'photometry_catalog', # tag of input file to iterate through
+                'photometry', # data group within file to look at
+                ['redshift_true'], # column(s) to read
+
+                'lens_tomography_catalog', # tag of input file to iterate through
+                'tomography', # data group within file to look at
+                ['lens_bin'], # column(s) to read
+        )
+
+    def get_metadata(self):
+        zmax = self.config['zmax']
+        nz = self.config['nz']
+        z = np.linspace(0, zmax, nz)
+        # Save again but for the number of bins in the tomography catalog
+        with self.open_input('lens_tomography_catalog') as tomo_file:
+            nbin_lens = tomo_file['tomography'].attrs['nbin_lens']
+
+        return z, nbin_lens
