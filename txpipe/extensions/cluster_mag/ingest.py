@@ -69,7 +69,7 @@ class CMSkysimPhotometry(PipelineStage):
         # out some objects so the end of the catalog will
         # be empty
         for col in photo_grp.keys():
-            photo_grp[col].resize((e,))
+            photo_grp[col].resize((s,))
 
 
     def save_chunk(self, data, cols, photo_grp, s):
