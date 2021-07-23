@@ -40,7 +40,7 @@ class TXCosmoDC2Mock(PipelineStage):
         'Mag_r_limit': -19, # used to decide what objects to cut out  
         }
 
-    def data_iterator(self, gc):
+    def data_iterator(self, gc, **kwargs):
 
         # Columns we need from the cosmo simulation
         cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
@@ -56,7 +56,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # Add any extra requestd columns
         cols += self.config['extra_cols'].split()
 
-        it = gc.get_quantities(cols, return_iterator=True)
+        it = gc.get_quantities(cols, return_iterator=True, **kwargs)
         nfile = len(gc._file_list) if hasattr(gc, '_file_list') else 0
 
         for i, data in enumerate(it):
@@ -93,10 +93,8 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
         # Prepare output files
-        metacal_file = self.open_output('shear_catalog', parallel=self.is_mpi())
-        photo_file = self.open_output('photometry_catalog', parallel=self.is_mpi())
-        photo_cols = self.setup_photometry_output(photo_file, target_size)
-        metacal_cols = self.setup_metacal_output(metacal_file, target_size)
+        photo_file, photo_cols = self.setup_photometry_output('photometry_catalog', target_size)
+        metacal_file, metacal_cols = self.setup_metacal_output('shear_catalog', target_size)
 
 
         # Load the metacal response file
@@ -202,7 +200,9 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 
-    def setup_photometry_output(self, photo_file, target_size):
+    def setup_photometry_output(self, tag, target_size):
+        photo_file = self.open_output(tag, parallel=self.is_mpi())
+
         # Get a list of all the column names
         cols = ['ra', 'dec', 'extendedness']
         for band in self.bands:
@@ -228,7 +228,9 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 
-    def setup_metacal_output(self, metacal_file, target_size):
+    def setup_metacal_output(self, tag, target_size):
+        metacal_file = self.open_output(tag, parallel=self.is_mpi())
+
         # Get a list of all the column names
         cols = (
             ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
@@ -606,6 +608,43 @@ class TXCosmoDC2Mock(PipelineStage):
 
         for key in list(data.keys()):
             data[key] = data[key][detected]
+
+
+class TXCosmoDC2MockDeepField(TXCosmoDC2Mock):
+
+    # All the same options as the above except we
+    # change and add a few below
+    config_options = TXCosmoDC2Mock.config_options.copy()
+
+    # The deep field seems to have 30 times more exposures in minions_1016
+    config_options["visits_per_band"] *= 30
+    config_options["ddf_ra"] = [52., 53.25]
+    config_options["ddf_dec"] = [-29., -30.25]
+
+    outputs = [
+        ('deep_shear_catalog', ShearCatalog),
+        ('deep_photometry_catalog', HDFFile),
+    ]
+
+
+    def data_iterator(self, gc):
+        ra_min, ra_max = self.config['ddf_ra']
+        dec_min, dec_max = self.config['ddf_dec']
+        filters = [
+            f"ra > {ra_min}",
+            f"ra < {ra_max}",
+            f"dec > {dec_min}",
+            f"dec < {dec_max}",
+        ]
+        for x in super().data_iterator(gc, filters=filters):
+            yield x
+
+    def setup_photometry_output(self, tag, target_size):
+        super().setup_photometry_output('deep_photometry_catalog', target_size)
+
+    def setup_metacal_output(self, tag, target_size):
+        super().setup_photometry_output('deep_metacal_catalog', target_size)
+
 
 class TXBuzzardMock(TXCosmoDC2Mock):
     """
