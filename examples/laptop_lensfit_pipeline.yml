@@ -6,7 +6,6 @@ stages:
     - name: TXLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
-    - name: PZRailTrainSource
     - name: PZRailTrainLens
     - name: PZRailEstimateSourceFromLens
     - name: PZRailEstimateLens
@@ -79,8 +78,6 @@ config: examples/config/laptop_lensfit_config.yml
 
 inputs:
     # See README for paths to download these files
-    photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     photoz_lens_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
     photoz_lens_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
