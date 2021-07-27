@@ -74,9 +74,9 @@ def rename_iterated(it, renames):
     Parameters
     ----------
     it: iterator
-        Must yield dictionaries or equivalent
+        Must yield triplets of (any, any, data)
     renames: dict
-        dictionary of old names to new names
+        dictionary of old names mapped to new names
     """
     for s, e, data in it:
         for old, new in renames.items():

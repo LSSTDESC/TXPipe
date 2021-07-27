@@ -108,15 +108,19 @@ class PZRailTrainLens(PZRailTrainSource):
     outputs = [(model_tag, PickleFile)]
 
 class PZRailTrainLensFromSource(PipelineStage):
+    """
+    Where the same underlying training data is used for
+    both source and lens samples, copy the PZ trained model
+    for the sources to the one for the lenses.
+    """
     name = "PZRailTrainLensFromSource"
-
     inputs = [("photoz_source_model", PickleFile)]
     outputs = [("photoz_lens_model", PickleFile)]
 
     def run(self):
         shutil.copy(
             self.get_input("photoz_source_model"),
-            self.get_output("photoz_len_model"),
+            self.get_output("photoz_lens_model"),
             )
 
 class PZRailEstimateLens(PipelineStage):
@@ -142,7 +146,6 @@ class PZRailEstimateLens(PipelineStage):
 
     model_input = "photoz_lens_model"
     pdf_output = "lens_photoz_pdfs"
-    cat_input = ""
 
     inputs = [
         ("photometry_catalog", HDFFile),
@@ -199,11 +202,12 @@ class PZRailEstimateLens(PipelineStage):
         # old names, as loaded from file
         cols = list(renames.keys())
 
-        # Create the iterator the reads chunks of photometry
+        # Create the iterator that reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
         it = self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows)
 
         # Also rename all the columns as they are loaded
+        # using a new function.
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
@@ -270,6 +274,13 @@ class PZRailEstimateLens(PipelineStage):
 
 
 class PZRailEstimateSource(PZRailEstimateLens):
+    """
+    Use RAIL to estimate the PDFs of the source sample.
+
+    This is implemented as a subclass of PZRailEstimateLens
+    but with the loaded input data changed - see that class
+    for more details.
+    """
     name = "PZRailEstimateSource"
     model_input = "photoz_source_model"
     pdf_output = "source_photoz_pdfs"
@@ -316,10 +327,14 @@ class PZRailEstimateSource(PZRailEstimateLens):
         return nobj
 
 class PZRailEstimateSourceFromLens(PipelineStage):
+    """
+    In cases where source and lens come from the same base sample
+    we can simply copy the computed PDFs from lens to source.
+    """
     name = "PZRailEstimateSourceFromLens"
 
-    inputs = [("lens_photoz_pdfs", PickleFile)]
-    outputs = [("source_photoz_pdfs", PickleFile)]
+    inputs = [("lens_photoz_pdfs", PhotozPDFFile)]
+    outputs = [("source_photoz_pdfs", PhotozPDFFile)]
 
     def run(self):
         shutil.copy(
