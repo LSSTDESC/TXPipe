@@ -23,7 +23,7 @@ from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .noise_maps import TXNoiseMaps
 from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
-from .auxiliary_maps import TXAuxiliaryMaps
+from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
 from .masks import TXSimpleMask
 from .metadata import TXTracerMetadata
