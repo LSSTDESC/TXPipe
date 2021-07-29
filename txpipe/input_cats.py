@@ -111,6 +111,8 @@ class TXCosmoDC2Mock(PipelineStage):
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
             print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {N}")
+            if chunk_size == 0:
+                continue
             count += chunk_size
             # Select a random fraction of the catalog if we are cutting down
             # We can't just take the earliest galaxies because they are ordered
@@ -124,7 +126,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
             # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
-
+   
             # Cut out any objects too faint to be detected and measured.
             # We have to do this after the photometry, so that we know if
             # the object is detected, but we can do it before making the mock
@@ -162,7 +164,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         self.truncate_outputs(end)
 
-    def truncate_outputs(self, n):
+    def truncate_outputs(self, n, tag1='photometry_catalog', tag2='shear_catalog'):
         import h5py
         if self.comm is not None:
             self.comm.Barrier()
@@ -170,14 +172,14 @@ class TXCosmoDC2Mock(PipelineStage):
         if self.rank == 0:
             # all files should now be closed for all procs
             print(f"Resizing all outupts to size {n}")
-            f = h5py.File(self.get_output('photometry_catalog'), 'r+')
+            f = h5py.File(self.get_output(tag1), 'r+')
             g = f['photometry']
             for col in list(g.keys()):
                 print(col)
                 g[col].resize((n,))
             f.close()
 
-            f = h5py.File(self.get_output('shear_catalog'), 'r+')
+            f = h5py.File(self.get_output(tag2), 'r+')
             g = f['shear']
             for col in g.keys():
                 g[col].resize((n,))
@@ -204,7 +206,7 @@ class TXCosmoDC2Mock(PipelineStage):
         photo_file = self.open_output(tag, parallel=self.is_mpi())
 
         # Get a list of all the column names
-        cols = ['ra', 'dec', 'extendedness']
+        cols = ['ra', 'dec', 'extendedness', 'redshift_true']
         for band in self.bands:
             cols.append(f'mag_{band}')
             cols.append(f'mag_{band}_err')
@@ -224,7 +226,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # The only non-float column for now
         group.create_dataset('id', (target_size,), maxshape=(target_size,), dtype='i8')
 
-        return cols + ['id']
+        return photo_file, cols + ['id']
 
 
 
@@ -255,7 +257,7 @@ class TXCosmoDC2Mock(PipelineStage):
         group.create_dataset('mcal_flags', (target_size,), maxshape=(target_size,), dtype='i8')
 
 
-        return cols + ['id',  'mcal_flags']
+        return metacal_file, cols + ['id',  'mcal_flags']
         
 
     def load_metacal_response_model(self):
@@ -330,7 +332,9 @@ class TXCosmoDC2Mock(PipelineStage):
 
         for col in self.config['extra_cols'].split():
             photo[col] = data[col]
-        
+
+        # Always needed
+        photo['redshift_true'] = data['redshift_true']
         return photo
 
 
@@ -611,7 +615,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 class TXCosmoDC2MockDeepField(TXCosmoDC2Mock):
-
+    name = "TXCosmoDC2MockDeepField"
     # All the same options as the above except we
     # change and add a few below
     config_options = TXCosmoDC2Mock.config_options.copy()
@@ -619,7 +623,7 @@ class TXCosmoDC2MockDeepField(TXCosmoDC2Mock):
     # The deep field seems to have 30 times more exposures in minions_1016
     config_options["visits_per_band"] *= 30
     config_options["ddf_ra"] = [52., 53.25]
-    config_options["ddf_dec"] = [-29., -30.25]
+    config_options["ddf_dec"] = [-30.25, -29.0]
 
     outputs = [
         ('deep_shear_catalog', ShearCatalog),
@@ -640,12 +644,14 @@ class TXCosmoDC2MockDeepField(TXCosmoDC2Mock):
             yield x
 
     def setup_photometry_output(self, tag, target_size):
-        super().setup_photometry_output('deep_photometry_catalog', target_size)
+        return super().setup_photometry_output('deep_photometry_catalog', target_size)
 
     def setup_metacal_output(self, tag, target_size):
-        super().setup_photometry_output('deep_metacal_catalog', target_size)
+        return super().setup_metacal_output('deep_shear_catalog', target_size)
 
-
+    def truncate_outputs(self, n):
+        return super().truncate_outputs(n, tag1='deep_photometry_catalog', tag2='deep_shear_catalog')
+    
 class TXBuzzardMock(TXCosmoDC2Mock):
     """
     This stage simulates metacal data and metacalibrated
