@@ -2,18 +2,24 @@
 # Stages to run
 stages:
     - name: TXSourceSelector     # select and split objects into source bins
-    - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
-    - name: TXStarCatalogSplitter
+    - name: TXShearCalibration   # Calibrate and split the source sample tomographically
+    - name: TXLensCatalogSplitter  # Split the lens sample tomographically
+    - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
     - name: TXMeanLensSelector  # select objects for lens bins
-    - name: PZRailTrainSource
+    - name: PZRailTrainSource   # Train a photo-z estimator for the source sample
       threads_per_process: 2
-    - name: PZRailTrainLens
-      threads_per_process: 2
-    - name: PZRailEstimateLens
-    - name: PZRailEstimateSource
-    - name: TXPhotozSourceStack        # stack p(z) into n(z)
-    - name: TXPhotozLensStack        # stack p(z) into n(z)
+    - name: PZRailEstimateSource # Compute p(z) values for the source sample
+    - name: PZRailEstimateLensFromSource   # Copy the p(z) values from the source to lens values
+    # # If we had separate source and lens samples (as we do in real life) we would
+    # # esimate the lens PZ separately.
+    # # We could use this to train a separate estimator:
+    # - name: PZRailTrainLens     # Train a photo-z estimator for the lens sample
+    #   threads_per_process: 2
+    # # and this to estimate the p(z) for the lenses separately:
+    # # (in this laptop test the samples are the same, as this is faster)
+    # - name: PZRailEstimateLens # Compute p(z) values for the lens sample
+    - name: TXPhotozSourceStack  # Stack p(z) into n(z)
+    - name: TXPhotozLensStack    # Stack p(z) into n(z)
     - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
     - name: TXAuxiliaryMaps      # make PSF, depth, flag, and other maps
     - name: TXSimpleMask         # combine maps to make a simple mask
@@ -37,8 +43,8 @@ stages:
       threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
-    - name: TXGalaxyStarDensity
-    - name: TXGalaxyStarShear
+    - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+    - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)

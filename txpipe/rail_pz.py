@@ -123,11 +123,27 @@ class PZRailTrainLensFromSource(PipelineStage):
             self.get_output("photoz_lens_model"),
             )
 
-class PZRailEstimateLens(PipelineStage):
-    name = "PZRailEstimateLens"
-    """Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
+class PZRailTrainSourceFromLens(PipelineStage):
+    """
+    Where the same underlying training data is used for
+    both source and lens samples, copy the PZ trained model
+    for the sources to the one for the lenses.
+    """
+    name = "PZRailTrainSourceFromLens"
+    inputs = [("photoz_lens_model", PickleFile)]
+    outputs = [("photoz_source_model", PickleFile)]
 
-    We load a redshift Estimator model, typically saved by the PZRailTrain stage,
+    def run(self):
+        shutil.copy(
+            self.get_input("photoz_lens_model"),
+            self.get_output("photoz_source_model"),
+            )
+
+class PZRailEstimateSource(PipelineStage):
+    """
+    Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
+
+    We load a redshift Estimator model, typically saved by the PZRailTrainSource stage,
     and then load chunks of photometry and run the estimator on it, and save the
     result.
 
@@ -141,24 +157,24 @@ class PZRailEstimateLens(PipelineStage):
     The training stage is (currently all) serial, but applying the trained
     model can be done in parallel, so we split into two stages to avoid
     many processors sitting idle or repeating the same training process.
-
     """
-
-    model_input = "photoz_lens_model"
-    pdf_output = "lens_photoz_pdfs"
+    name = "PZRailEstimateSource"
+    model_input = "photoz_source_model"
+    pdf_output = "source_photoz_pdfs"
 
     inputs = [
-        ("photometry_catalog", HDFFile),
-        ("photoz_lens_model", PickleFile),
+        ("shear_catalog", HDFFile),
+        ("photoz_source_model", PickleFile),
     ]
 
     outputs = [
-        ("lens_photoz_pdfs", PhotozPDFFile),
+        ("source_photoz_pdfs", PhotozPDFFile),
     ]
 
     config_options = {
         "chunk_rows": 10000,
-        "bands": "ugrizy",
+        "bands": "riz",
+        "mag_prefix": "mcal_",
     }
 
     def run(self):
@@ -189,30 +205,31 @@ class PZRailEstimateLens(PipelineStage):
             estimator = f.read()
         return estimator
 
+
     def data_iterator(self):
         bands = self.config["bands"]
         chunk_rows = self.config["chunk_rows"]
+        prefix = self.config["mag_prefix"]
 
         # Columns we will load, and the new names we will give them
         renames = {}
         for band in bands:
-            renames[f"mag_{band}"] = f"mag_{band}_lsst"
-            renames[f"mag_err_{band}"] = f"mag_err_{band}_lsst"
+            renames[f"{prefix}mag_{band}"] = f"mag_{band}_lsst"
+            renames[f"{prefix}mag_err_{band}"] = f"mag_err_{band}_lsst"
 
         # old names, as loaded from file
         cols = list(renames.keys())
 
-        # Create the iterator that reads chunks of photometry
+        # Create the iterator the reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
-        it = self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows)
+        it = self.iterate_hdf("shear_catalog", "shear", cols, chunk_rows)
 
         # Also rename all the columns as they are loaded
-        # using a new function.
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
-        with self.open_input("photometry_catalog") as f:
-            nobj = f["photometry/ra"].size
+        with self.open_input("shear_catalog") as f:
+            nobj = f["shear/ra"].size
         return nobj
 
 
@@ -273,58 +290,63 @@ class PZRailEstimateLens(PipelineStage):
 
 
 
-class PZRailEstimateSource(PZRailEstimateLens):
+class PZRailEstimateLens(PZRailEstimateSource):
+    name = "PZRailEstimateLens"
     """
     Use RAIL to estimate the PDFs of the source sample.
 
-    This is implemented as a subclass of PZRailEstimateLens
+    This is implemented as a subclass of PZRailEstimateSource
     but with the loaded input data changed - see that class
     for more details.
+
     """
-    name = "PZRailEstimateSource"
-    model_input = "photoz_source_model"
-    pdf_output = "source_photoz_pdfs"
+
+    model_input = "photoz_lens_model"
+    pdf_output = "lens_photoz_pdfs"
 
     inputs = [
-        ("shear_catalog", HDFFile),
-        ("photoz_source_model", PickleFile),
+        ("photometry_catalog", HDFFile),
+        ("photoz_lens_model", PickleFile),
     ]
 
     outputs = [
-        ("source_photoz_pdfs", PhotozPDFFile),
+        ("lens_photoz_pdfs", PhotozPDFFile),
     ]
 
     config_options = {
         "chunk_rows": 10000,
-        "bands": "riz",
-        "mag_prefix": "mcal_",
+        "bands": "ugrizy",
     }
+
 
     def data_iterator(self):
         bands = self.config["bands"]
         chunk_rows = self.config["chunk_rows"]
-        prefix = self.config["mag_prefix"]
 
         # Columns we will load, and the new names we will give them
         renames = {}
         for band in bands:
-            renames[f"{prefix}mag_{band}"] = f"mag_{band}_lsst"
-            renames[f"{prefix}mag_err_{band}"] = f"mag_err_{band}_lsst"
+            renames[f"mag_{band}"] = f"mag_{band}_lsst"
+            renames[f"mag_err_{band}"] = f"mag_err_{band}_lsst"
 
         # old names, as loaded from file
         cols = list(renames.keys())
 
-        # Create the iterator the reads chunks of photometry
+        # Create the iterator that reads chunks of photometry
         # The method we use here automatically splits up data when we run in parallel
-        it = self.iterate_hdf("shear_catalog", "shear", cols, chunk_rows)
+        it = self.iterate_hdf("photometry_catalog", "photometry", cols, chunk_rows)
 
         # Also rename all the columns as they are loaded
+        # using a new function.
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
-        with self.open_input("shear_catalog") as f:
-            nobj = f["shear/ra"].size
+        with self.open_input("photometry_catalog") as f:
+            nobj = f["photometry/ra"].size
         return nobj
+
+
+
 
 class PZRailEstimateSourceFromLens(PipelineStage):
     """
@@ -340,4 +362,20 @@ class PZRailEstimateSourceFromLens(PipelineStage):
         shutil.copy(
             self.get_input("lens_photoz_pdfs"),
             self.get_output("source_photoz_pdfs"),
+            )
+
+class PZRailEstimateLensFromSource(PipelineStage):
+    """
+    In cases where source and lens come from the same base sample
+    we can simply copy the computed PDFs from lens to source.
+    """
+    name = "PZRailEstimateLensFromSource"
+
+    inputs = [("source_photoz_pdfs", PhotozPDFFile)]
+    outputs = [("lens_photoz_pdfs", PhotozPDFFile)]
+
+    def run(self):
+        shutil.copy(
+            self.get_input("source_photoz_pdfs"),
+            self.get_output("lens_photoz_pdfs"),
             )
