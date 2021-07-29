@@ -21,7 +21,8 @@ stages:
     - name: TXPhotozSourceStack  # Stack p(z) into n(z)
     - name: TXPhotozLensStack    # Stack p(z) into n(z)
     - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
-    - name: TXAuxiliaryMaps      # make PSF, depth, flag, and other maps
+    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     - name: TXMapPlots           # make pictures of all the maps

@@ -136,10 +136,12 @@ TXLensMaps:
 
 TXMainMaps: {}
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     flag_exponent_max: 8
-    dilate: True
     psf_prefix: psf_
+
+
+TXAuxiliaryLensMaps:
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)

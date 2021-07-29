@@ -28,7 +28,9 @@ stages:
     - name: TXJackknifeCenters
     - name: TXMainMaps
       nprocess: 8
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+      nprocess: 8
+    - name: TXAuxiliaryLensMaps
       nprocess: 8
     - name: TXDensityMaps
     - name: TXNoiseMaps
