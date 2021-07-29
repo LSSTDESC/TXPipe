@@ -76,9 +76,6 @@ class TXDiagnosticPlots(PipelineStage):
         photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
         lens_tomo_cols = ['lens_bin']
-        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
-        shear_tomo_cols = ['source_bin']
-        lens_tomo_cols = ['lens_bin']
 
         if self.config['shear_catalog_type']=='metacal':
             response_group = 'metacal_response'
