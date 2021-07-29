@@ -8,7 +8,7 @@ from .base_stage import PipelineStage
 from .source_selector import TXSourceSelector
 from .lens_selector import TXMeanLensSelector
 from .photoz import TXRandomPhotozPDF
-from .photoz_stack import TXPhotozStack
+from .photoz_stack import TXPhotozSourceStack, TXPhotozLensStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
@@ -29,7 +29,8 @@ from .masks import TXSimpleMask
 from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
-from .rail_pz import PZRailTrain
+from .rail import PZRailTrainLens, PZRailTrainSource
+from .rail import PZRailEstimateLens, PZRailEstimateSource
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters

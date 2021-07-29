@@ -23,3 +23,4 @@ parallel_statistics
 healsparse
 flexcode
 xgboost==1.1.0
+git+git://github.com/LSSTDESC/qp
