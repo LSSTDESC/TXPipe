@@ -15,6 +15,7 @@ class PZRailTrainSource(PipelineStage):
     spectroscopic redshifts) to train and save an Estimator object that a later
     stage can use to measure redshifts of the survey sample.
     """
+
     name = "PZRailTrainSource"
     training_tag = "photoz_source_training"
     testing_tag = "photoz_source_testing"
@@ -65,9 +66,7 @@ class PZRailTrainSource(PipelineStage):
         estimator = cls(base_config, run_dict)
 
         training_data = load_training_data(
-            self.get_input(self.training_tag),
-            "hdf5",
-            "photometry"
+            self.get_input(self.training_tag), "hdf5", "photometry"
         )
 
         # Run the main training phase
@@ -94,6 +93,7 @@ class PZRailTrainLens(PZRailTrainSource):
     spectroscopic redshifts) to train and save an Estimator object that a later
     stage can use to measure redshifts of the survey sample.
     """
+
     name = "PZRailTrainLens"
     training_tag = "photoz_lens_training"
     testing_tag = "photoz_lens_testing"
@@ -106,12 +106,14 @@ class PZRailTrainLens(PZRailTrainSource):
 
     outputs = [(model_tag, PickleFile)]
 
+
 class PZRailTrainLensFromSource(PipelineStage):
     """
     Where the same underlying training data is used for
     both source and lens samples, copy the PZ trained model
     for the sources to the one for the lenses.
     """
+
     name = "PZRailTrainLensFromSource"
     inputs = [("photoz_source_model", PickleFile)]
     outputs = [("photoz_lens_model", PickleFile)]
@@ -120,7 +122,8 @@ class PZRailTrainLensFromSource(PipelineStage):
         shutil.copy(
             self.get_input("photoz_source_model"),
             self.get_output("photoz_lens_model"),
-            )
+        )
+
 
 class PZRailTrainSourceFromLens(PipelineStage):
     """
@@ -128,6 +131,7 @@ class PZRailTrainSourceFromLens(PipelineStage):
     both source and lens samples, copy the PZ trained model
     for the sources to the one for the lenses.
     """
+
     name = "PZRailTrainSourceFromLens"
     inputs = [("photoz_lens_model", PickleFile)]
     outputs = [("photoz_source_model", PickleFile)]
@@ -136,5 +140,4 @@ class PZRailTrainSourceFromLens(PipelineStage):
         shutil.copy(
             self.get_input("photoz_lens_model"),
             self.get_output("photoz_source_model"),
-            )
-
+        )

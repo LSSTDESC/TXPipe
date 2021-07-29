@@ -5,7 +5,6 @@ import numpy as np
 import shutil
 
 
-
 class PZRailEstimateSource(PipelineStage):
     """
     Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
@@ -25,6 +24,7 @@ class PZRailEstimateSource(PipelineStage):
     model can be done in parallel, so we split into two stages to avoid
     many processors sitting idle or repeating the same training process.
     """
+
     name = "PZRailEstimateSource"
     model_input = "photoz_source_model"
     pdf_output = "source_photoz_pdfs"
@@ -56,7 +56,6 @@ class PZRailEstimateSource(PipelineStage):
         # it to get the mean z from the PDF
         output, z = self.setup_output_file(estimator)
 
-
         # Loop through the chunks of data
         for s, e, data in self.data_iterator():
             print(f"Process {self.rank} estimating PZ PDF for rows {s:,} - {e:,}")
@@ -71,7 +70,6 @@ class PZRailEstimateSource(PipelineStage):
         with self.open_input(self.model_input, wrapper=True) as f:
             estimator = f.read()
         return estimator
-
 
     def data_iterator(self):
         bands = self.config["bands"]
@@ -98,7 +96,6 @@ class PZRailEstimateSource(PipelineStage):
         with self.open_input("shear_catalog") as f:
             nobj = f["shear/ra"].size
         return nobj
-
 
     def setup_output_file(self, estimator):
         # Briefly check the size of the catalog so we know how much
@@ -148,13 +145,12 @@ class PZRailEstimateSource(PipelineStage):
         """
         # RAIL does not currently output the mean z by default, so
         # we compute it here
-        p = pz_data['pz_pdf']
+        p = pz_data["pz_pdf"]
         mu = (p @ z) / p.sum(axis=1)
 
         output_file["pdf/pdf"][start:end] = p
         output_file["point_estimates/z_mode"][start:end] = pz_data["zmode"]
         output_file["point_estimates/z_mean"][start:end] = mu
-
 
 
 class PZRailEstimateLens(PZRailEstimateSource):
@@ -185,7 +181,6 @@ class PZRailEstimateLens(PZRailEstimateSource):
         "bands": "ugrizy",
     }
 
-
     def data_iterator(self):
         bands = self.config["bands"]
         chunk_rows = self.config["chunk_rows"]
@@ -213,13 +208,12 @@ class PZRailEstimateLens(PZRailEstimateSource):
         return nobj
 
 
-
-
 class PZRailEstimateSourceFromLens(PipelineStage):
     """
     In cases where source and lens come from the same base sample
     we can simply copy the computed PDFs from lens to source.
     """
+
     name = "PZRailEstimateSourceFromLens"
 
     inputs = [("lens_photoz_pdfs", PhotozPDFFile)]
@@ -229,13 +223,15 @@ class PZRailEstimateSourceFromLens(PipelineStage):
         shutil.copy(
             self.get_input("lens_photoz_pdfs"),
             self.get_output("source_photoz_pdfs"),
-            )
+        )
+
 
 class PZRailEstimateLensFromSource(PipelineStage):
     """
     In cases where source and lens come from the same base sample
     we can simply copy the computed PDFs from lens to source.
     """
+
     name = "PZRailEstimateLensFromSource"
 
     inputs = [("source_photoz_pdfs", PhotozPDFFile)]
@@ -245,4 +241,4 @@ class PZRailEstimateLensFromSource(PipelineStage):
         shutil.copy(
             self.get_input("source_photoz_pdfs"),
             self.get_output("lens_photoz_pdfs"),
-            )
+        )
