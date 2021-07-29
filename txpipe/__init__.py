@@ -29,8 +29,8 @@ from .masks import TXSimpleMask
 from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
-from .rail_pz import PZRailTrainLens, PZRailTrainSource
-from .rail_pz import PZRailEstimateLens, PZRailEstimateSource
+from .rail import PZRailTrainLens, PZRailTrainSource
+from .rail import PZRailEstimateLens, PZRailEstimateSource
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters

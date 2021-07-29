@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import PickleFile, DataFile
+from ..base_stage import PipelineStage
+from ..data_types import PickleFile, DataFile
 import numpy as np
 import shutil
 
