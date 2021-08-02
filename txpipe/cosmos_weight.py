@@ -96,10 +96,7 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         keys_t2 = ['gcmodel_mag', 'rcmodel_mag', 'icmodel_mag', 'zcmodel_mag',
                    'ycmodel_mag', 'pz_mean_eab', 'pz_mode_eab', 'pz_best_eab',
                    'pz_mc_eab', 'shear_cat']
-        t2 = Table.from_pandas(pd.DataFrame(np.transpose([np.array(cat_photo_good[k])
-                                                          for k in keys_t2]),
-                                            index=range(len(cat_photo_good)),
-                                            columns=keys_t2))
+        t2 = cat_photo_good[keys_t2]
         cat_photo_matched = hstack([t1, t2])
 
         ####
@@ -136,7 +133,7 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         t1 = Table.from_pandas(pd.DataFrame(np.transpose([cat_source_matched[k]
                                                           for k in keys_t1]),
                                             columns=keys_t1))
-        t2 = Table.from_pandas(pd.DataFrame(np.transpose(weights_source*weights_dir_source),
+        t2 = Table.from_pandas(pd.DataFrame(np.transpose(weights_source*weights_dir_source[cat_source_index]),
                                             columns=['weight']))
         t3 = Table.from_pandas(pd.DataFrame(np.transpose(cosmos_source_index_matched),
                                             columns=['cosmos_index_matched']))
@@ -181,7 +178,7 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         weights = np.true_divide(num_photoz*len(train_sample),
                                  self.config['n_neighbors'] *
                                  len(photoz_sample))
-        logger.info('Sum of COSMOS weights = {}.', np.sum(weights))
+        logger.info('Sum of COSMOS weights = {}.'.format(np.sum(weights)))
 
         return weights
 
@@ -228,20 +225,9 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         # Cut everything further than 1 arcsec
         mask = dist_2d.degree*60*60 < 1
         cat_source_weights_good = cat_source_weights[mask]
-        cat_source_good = cat_source[cat_source_index[mask]]
         cat_source_index = cat_source_index[mask]
 
-        t1 = Table.from_pandas(pd.DataFrame(cat_source_weights_good))
-        keys_t2 = ['gcmodel_mag', 'rcmodel_mag', 'icmodel_mag', 'zcmodel_mag',
-                   'ycmodel_mag', 'pz_mean_eab', 'pz_mode_eab', 'pz_best_eab',
-                   'pz_mc_eab', 'shear_cat']
-        t2 = Table.from_pandas(pd.DataFrame(np.transpose([np.array(cat_source_good[k])
-                                                          for k in keys_t2]),
-                                            index=range(len(cat_source_good)),
-                                            columns=keys_t2))
-        cat_source_matched = hstack([t1, t2])
-
-        return cat_source_matched, cat_source_index
+        return cat_source_weights_good, cat_source_index
 
 if __name__ == '__main__':
     cls = PipelineStage.main()
