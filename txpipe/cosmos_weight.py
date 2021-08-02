@@ -11,13 +11,14 @@ import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 import scipy.spatial as spatial
 from .lens_selector_hsc import TXHSCLensSelector
+from .lens_selector import TXBaseLensSelector
 
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class TXCOSMOSWeight(TXHSCLensSelector):
+class TXCOSMOSWeight(TXBaseLensSelector):
     name = "TXCOSMOSWeight"
     inputs = [('cosmos_data', FitsFile),
               ('cosmos_hsc', FitsFile),
