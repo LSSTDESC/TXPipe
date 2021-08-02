@@ -2,7 +2,7 @@ from ceci import PipelineStage
 from .data_types import FitsFile
 from astropy.table import Table, hstack
 import numpy as np
-from .plot_utils import plot_histo
+# from .plot_utils import plot_histo
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.io import fits
