@@ -54,7 +54,8 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         cat_photo.remove_columns(isnull_names)
         cat_photo.remove_rows(~sel)
         # Select lens objects
-        cat_photo = self.select_lens(cat_photo)
+        lens_cat = self.select_lens(cat_photo)
+        cat_photo = cat_photo[lens_cat]
 
         # Define shear catalog
         cat_photo['shear_cat'] = self.shear_cut(cat_photo)
