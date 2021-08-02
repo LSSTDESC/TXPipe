@@ -170,44 +170,4 @@ class TXPhotozDIR(TXPhotozSourceDIR):
         f.close()
 
 
-class TXPhotozPlots(PipelineStage):
-    """
-    Make n(z) plots
-
-    """
-    name='TXPhotozPlots'
-    inputs = [
-        ('shear_photoz_stack', NOfZFile),
-        ('lens_photoz_stack', NOfZFile)
-    ]
-    outputs = [
-        ('nz_lens', PNGFile),
-        ('nz_source', PNGFile),
-    ]
-
-    config_options = {
-    }
-
-
-    def run(self):
-        import matplotlib
-        matplotlib.use('agg')
-        import matplotlib.pyplot as plt
-        f = self.open_input('lens_photoz_stack', wrapper=True)
-        
-        out1 = self.open_output('nz_lens', wrapper=True)
-        f.plot('lens')
-        plt.legend(frameon=False)
-        plt.title("Lens n(z)")
-        plt.xlim(xmin=0)
-        out1.close()
-
-        f = self.open_input('shear_photoz_stack', wrapper=True)
-        out2 = self.open_output('nz_source', wrapper=True)
-        f.plot('source')
-        plt.legend(frameon=False)
-        plt.title("Source n(z)")
-        plt.xlim(xmin=0)
-        out2.close()
-
 

@@ -10,7 +10,7 @@ import os
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 import scipy.spatial as spatial
-from .lens_selector_hsc import TXHSCLensSelector
+# from .lens_selector_hsc import TXHSCLensSelector
 from .lens_selector import TXBaseLensSelector
 
 import logging
