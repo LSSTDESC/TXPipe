@@ -198,7 +198,7 @@ class TXHSCLensSelector(TXBaseLensSelector):
         # Magnitude cut
         mag_i_cut = self.config['mag_i_cut']
 
-        mag_i = phot_data['mag_i']
+        mag_i = phot_data['icmodel_mag']
         a_i = phot_data['a_i']
 
         n = len(mag_i)
@@ -215,7 +215,7 @@ class TXHSCLensSelector(TXBaseLensSelector):
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
     
         nbin = len(self.config['lens_zbin_edges']) - 1
-        n = len(phot_data['mag_i'])
+        n = len(phot_data['icmodel_mag'])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
@@ -230,59 +230,6 @@ class TXHSCLensSelector(TXBaseLensSelector):
             counts[i] = sel_00.sum()
 
         return tomo_bin, counts
-
-
-class TXTruthLensSelector(TXBaseLensSelector):
-    name = "TXTruthLensSelector"
-
-    inputs = [
-        ('photometry_catalog', HDFFile),
-    ]
-
-    def data_iterator(self):
-        print(f"We are cheating and using the true redshift.")
-        chunk_rows = self.config['chunk_rows']
-        if self.config['true_z']:
-            phot_cols = ['mag_i','mag_r','mag_g', 'redshift_true']
-        else:
-            phot_cols = ['mag_i','mag_r','mag_g', 'mean_z']
-
-        # Input data.  These are iterators - they lazily load chunks
-        # of the data one by one later when we do the for loop.
-        # This code can be run in parallel, and different processes will
-        # each get different chunks of the data 
-        for s, e, data in self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows):
-            if self.config['true_z']:
-                data['z'] = data['redshift_true']
-            elif self.config['input_pz']:
-                data['z'] = data['mean_z']
-            yield s, e, data
-
-
-
-class TXMeanLensSelector(TXBaseLensSelector):
-    name = "TXMeanLensSelector"
-    inputs = [
-        ('photometry_catalog', HDFFile),
-        ('photoz_pdfs', HDFFile),
-    ]
-
-
-    def data_iterator(self):
-        chunk_rows = self.config['chunk_rows']
-        phot_cols = ['mag_i','mag_r','mag_g']
-        z_cols = ['z_mean']
-        iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-        iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
-        for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data['z'] = z_data['z_mean']
-            yield s, e, data
-
-
-
-def flatten_list(lst):
-    return [item for sublist in lst for item in sublist]
-
 
 
 if __name__ == '__main__':
