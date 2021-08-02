@@ -26,7 +26,8 @@ class TXCOSMOSWeight(TXHSCLensSelector):
     outputs = [('cosmos_photo_weights', FitsFile),
                ('cosmos_source_weights', FitsFile)]
     config_options = {'mag_i_cut': 24.5,
-                      'n_neighbors': 10}
+                      'n_neighbors': 10,
+                      'mask_type': 'arcturus'}
 
     def run(self):
         """
