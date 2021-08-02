@@ -133,7 +133,8 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         t1 = Table.from_pandas(pd.DataFrame(np.transpose([cat_source_matched[k]
                                                           for k in keys_t1]),
                                             columns=keys_t1))
-        t2 = Table.from_pandas(pd.DataFrame(np.transpose(weights_source['weight_source']*weights_dir_source[cat_source_index]),
+        weights_source_temp = np.array(weights_source['weight_source'])*weights_dir_source[cat_source_index]
+        t2 = Table.from_pandas(pd.DataFrame(weights_source_temp,
                                             columns=['weight']))
         t3 = Table.from_pandas(pd.DataFrame(np.transpose(cosmos_source_index_matched),
                                             columns=['cosmos_index_matched']))
