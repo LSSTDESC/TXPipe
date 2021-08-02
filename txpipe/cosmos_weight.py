@@ -141,19 +141,19 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         cat_weights.write(self.get_output('cosmos_source_weights'),
                           overwrite=True)
 
-        # Plot magnitude distribution
-        for b in ['g', 'r', 'i', 'z', 'y']:
-            plot_histo(self.config, '%s_mag_COSMOS' % b,
-                       [cat_weights['%scmodel_mag' % b],
-                        cat['%scmodel_mag' % b]],
-                       ['COSMOS', 'HSC'],
-                       weights=[cat_weights['weight'],
-                                np.ones(len(cat))],
-                       density=True, logy=True, bins=50)
-        # Plot weights distribution
-        plot_histo(self.config, 'COSMOS_weights',
-                   [cat_weights['weight']], ['weights'],
-                   density=True, logy=True, bins=50)
+        # # Plot magnitude distribution
+        # for b in ['g', 'r', 'i', 'z', 'y']:
+        #     plot_histo(self.config, '%s_mag_COSMOS' % b,
+        #                [cat_weights['%scmodel_mag' % b],
+        #                 cat['%scmodel_mag' % b]],
+        #                ['COSMOS', 'HSC'],
+        #                weights=[cat_weights['weight'],
+        #                         np.ones(len(cat))],
+        #                density=True, logy=True, bins=50)
+        # # Plot weights distribution
+        # plot_histo(self.config, 'COSMOS_weights',
+        #            [cat_weights['weight']], ['weights'],
+        #            density=True, logy=True, bins=50)
 
         # Permissions on NERSC
         # os.system('find /global/cscratch1/sd/damonge/GSKY/ -type d -exec chmod -f 777 {} \;')
