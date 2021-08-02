@@ -15,7 +15,7 @@ class TXHSCLensSelector(TXBaseLensSelector):
     shear-position calibrations.
     """
 
-    name='TXBaseLensSelector'
+    name='TXHSCLensSelector'
 
     outputs = [
         ('lens_tomography_catalog', TomographyCatalog)
