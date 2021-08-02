@@ -200,7 +200,7 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         ishape_shear_mod_mask = (cat['ishape_hsm_regauss_e1'] ** 2 + cat['ishape_hsm_regauss_e2'] ** 2) < 2
         ishape_sigma_mask *= (cat['ishape_hsm_regauss_sigma'] >= 0.) * (cat['ishape_hsm_regauss_sigma'] <= 0.4)
 
-        shearmask = ishape_flags_mask * ishape_sigma_mask * ishape_resolution_mask * ishape_shear_mod_mask 
+        shearmask = ishape_flags_mask * ishape_sigma_mask * ishape_resolution_mask * ishape_shear_mod_mask
 
         return shearmask
 
