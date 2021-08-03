@@ -12,7 +12,6 @@ from sklearn.neighbors import NearestNeighbors
 import scipy.spatial as spatial
 from .lens_selector_hsc import TXHSCLensSelector
 
-
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,8 +25,7 @@ class TXCOSMOSWeight(TXHSCLensSelector):
     outputs = [('cosmos_photo_weights', FitsFile),
                ('cosmos_source_weights', FitsFile)]
     config_options = {'mag_i_cut': 24.5,
-                      'n_neighbors': 10,
-                      'mask_type': 'arcturus'}
+                      'n_neighbors': 10}
 
     def run(self):
         """
