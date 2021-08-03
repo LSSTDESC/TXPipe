@@ -119,7 +119,10 @@ class TXPhotozSourceDIR(PipelineStage):
         group = outfile.create_group(f"n_of_z/{name}")
 
         # HDF has "attributes" which are for small metadata like this
-        nbin = len(self.config['pz_bins']) - 1
+        try:
+            nbin = len(self.config['source_zbin_edges']) - 1
+        except:
+            nbin = len(self.config['lens_zbin_edges']) - 1
         z_grid = 0.5 * (pzs[0, 0, :] + pzs[0, 1, :])
         group.attrs["nbin"] = nbin
         group.attrs["nz"] = len(z_grid)
