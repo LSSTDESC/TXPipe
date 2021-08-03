@@ -175,10 +175,10 @@ class TXPhotozDIR(TXPhotozSourceDIR):
 
         # Save the stacks
         logger.info('This is a placeholder for when we get the COSMOS shear weights.')
-        f = self.open_output("shear_photoz_stack")
+        f = self.open_output("shear_photoz_dir")
         self.save('source', pzs_cosmos_source, f)
         f.close()
-        f = self.open_output("lens_photoz_stack")
+        f = self.open_output("lens_photoz_dir")
         self.save('lens', pzs_cosmos_lens, f)
         f.close()
 
