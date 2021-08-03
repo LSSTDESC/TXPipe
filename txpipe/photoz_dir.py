@@ -17,7 +17,7 @@ class TXPhotozSourceDIR(PipelineStage):
     """
     name='TXPhotozSourceDIR'
     inputs = [
-        ('cosmos_weights', FitsFile),
+        ('cosmos_source_weights', FitsFile),
     ]
     outputs = [
         ('shear_photoz_dir', NOfZFile),
@@ -78,7 +78,12 @@ class TXPhotozSourceDIR(PipelineStage):
 
         self.column_mark = 'pz_'+self.config['pz_mark']+'_'+pz_code
 
-        weights_file = fits.open(self.get_input('cosmos_weights'))[1].data
+        if name == 'source':
+            weights_file = fits.open(self.get_input('cosmos_source_weights'))[1].data
+        elif name == 'lens':
+            weights_file = fits.open(self.get_input('cosmos_photo_weights'))[1].data
+        else:
+            raise NotImplementedError('Only name = source, lens supported. Aborting.')
 
         pzs = []
         for zi, zf in zip(zi_arr, zf_arr):
@@ -138,7 +143,8 @@ class TXPhotozDIR(TXPhotozSourceDIR):
     name='TXPhotozDIR'
 
     inputs = [
-        ('cosmos_weights', FitsFile),
+        ('cosmos_photo_weights', FitsFile),
+        ('cosmos_source_weights', FitsFile),
     ]
     outputs = [
         ('shear_photoz_dir', NOfZFile),
