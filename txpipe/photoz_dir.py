@@ -24,7 +24,7 @@ class TXPhotozSourceDIR(PipelineStage):
     ]
     config_options = {'pz_code': 'ephor_ab',
                       'pz_mark': 'best',
-                      'source_zbin_edges': [0.15, 0.50, 0.75, 1.00, 1.50],
+                      'source_zbin_edges': [0.3, 0.6, 0.9, 1.2, 1.5],
                       'nz_bin_num': 200,
                       'nz_bin_max': 3.0
     }
@@ -150,6 +150,13 @@ class TXPhotozDIR(TXPhotozSourceDIR):
         ('shear_photoz_dir', NOfZFile),
         ('lens_photoz_dir', NOfZFile)
     ]
+    config_options = {'pz_code': 'ephor_ab',
+                      'pz_mark': 'best',
+                      'source_zbin_edges': [0.3, 0.6, 0.9, 1.2, 1.5],
+                      'lens_zbin_edges': [0.15, 0.50, 0.75, 1.00, 1.50],
+                      'nz_bin_num': 200,
+                      'nz_bin_max': 3.0
+    }
 
     def run(self):
         """
