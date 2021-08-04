@@ -36,3 +36,6 @@ from .rail_pz import PZRailTrain
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
+from .cosmos_weight import TXCOSMOSWeight
+from .photoz_dir import TXPhotozSourceDIR
+from .photoz_dir import TXPhotozDIR
