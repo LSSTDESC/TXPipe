@@ -153,11 +153,20 @@ TXBlinding:
     b0: 0.95  ## we use bias of the form b0/g
     delete_unblinded: True
 
-TXDiagnosticPlots:
+TXSourceDiagnosticPlots:
     psf_prefix: psf_
     shear_prefix: ''
     T_min: 0.5
     T_max: 1.0
+    bands: ri
+
+TXLensDiagnosticPlots:
+    psf_prefix: psf_
+    shear_prefix: ''
+    T_min: 0.5
+    T_max: 1.0
+    bands: ri
+
 
 TXMapPlots:
     projection: moll

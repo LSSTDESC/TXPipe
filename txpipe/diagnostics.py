@@ -6,16 +6,14 @@ from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
 
-class TXDiagnosticPlots(PipelineStage):
+class TXSourceDiagnosticPlots(PipelineStage):
     """
     """
-    name='TXDiagnosticPlots'
+    name='TXSourceDiagnosticPlots'
 
     inputs = [
-        ('photometry_catalog', HDFFile),
         ('shear_catalog', ShearCatalog),
         ('shear_tomography_catalog', TomographyCatalog),
-        ('lens_tomography_catalog', TomographyCatalog),
     ]
 
     outputs = [
@@ -25,8 +23,8 @@ class TXDiagnosticPlots(PipelineStage):
         ('g2_hist', PNGFile),
         ('g_snr', PNGFile),
         ('g_T', PNGFile),
-        ('snr_hist', PNGFile),
-        ('mag_hist', PNGFile),
+        ('source_snr_hist', PNGFile),
+        ('source_mag_hist', PNGFile),
         ('response_hist', PNGFile),
 
     ]
@@ -38,6 +36,7 @@ class TXDiagnosticPlots(PipelineStage):
         'psf_prefix': 'mcal_psf_',
         'T_min': 0.2,
         'T_max': 0.28,
+        'bands': 'riz',
     }
 
     def run(self):
@@ -66,16 +65,15 @@ class TXDiagnosticPlots(PipelineStage):
         chunk_rows = self.config['chunk_rows']
         psf_prefix = self.config['psf_prefix']
         shear_prefix = self.config['shear_prefix']
+
         if self.config['shear_catalog_type']=='metacal':
             shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', f'{psf_prefix}T_mean', 'mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
-                     'mcal_s2n_2m', 'weight']
+                     'mcal_s2n_2m', 'weight'] + [f'mcal_mag_{b}' for b in self.config['bands']]
         else:
             shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2']
 
-        photo_cols = ['mag_u', 'mag_g', 'mag_r', 'mag_i', 'mag_z', 'mag_y']
         shear_tomo_cols = ['source_bin']
-        lens_tomo_cols = ['lens_bin']
 
         if self.config['shear_catalog_type']=='metacal':
             response_group = 'metacal_response'
@@ -89,11 +87,9 @@ class TXDiagnosticPlots(PipelineStage):
 
         it = self.combined_iterators(
             chunk_rows,
-            'photometry_catalog', 'photometry', photo_cols,
             'shear_catalog', 'shear', shear_cols,
             'shear_tomography_catalog','tomography',shear_tomo_cols,
             'shear_tomography_catalog', response_group, response_cols,
-            'lens_tomography_catalog','tomography',lens_tomo_cols
         )
 
         # Now loop through each chunk of input data, one at a time.
@@ -506,7 +502,7 @@ class TXDiagnosticPlots(PipelineStage):
         if self.rank != 0:
             return
         std1 = np.sqrt(var1/count1)
-        fig = self.open_output('snr_hist', wrapper=True)
+        fig = self.open_output('source_snr_hist', wrapper=True)
         plt.bar(mids, count1, width=edges[1:]-edges[:-1],edgecolor='black',align='center',color='blue')
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
         plt.xscale('log')
@@ -621,13 +617,12 @@ class TXDiagnosticPlots(PipelineStage):
         plt.tight_layout()
         fig.close()
 
-
-
     def plot_mag_histograms(self):
         if self.comm:
             import mpi4py.MPI
         # mean shear in bins of PSF
         print("Making mag histogram")
+        prefix = self.config['shear_prefix']
         import matplotlib.pyplot as plt
         size = 10
         mag_min = 20
@@ -635,7 +630,8 @@ class TXDiagnosticPlots(PipelineStage):
         edges = np.linspace(mag_min, mag_max, size+1)
         mid = 0.5*(edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
-        bands = 'ugrizy'
+        bands = self.config['bands']
+        shear_prefix = self.config['shear_prefix']
         nband = len(bands)
         full_hists = [np.zeros(size, dtype=int) for b in bands]
         source_hists = [np.zeros(size, dtype=int) for b in bands]
@@ -648,7 +644,7 @@ class TXDiagnosticPlots(PipelineStage):
                 break
 
             for (b, h1,h2) in zip(bands, full_hists, source_hists):
-                b1 = np.digitize(data[f'mag_{b}'], edges) - 1
+                b1 = np.digitize(data[f'{shear_prefix}mag_{b}'], edges) - 1
 
 
                 for i in range(size):
@@ -665,7 +661,7 @@ class TXDiagnosticPlots(PipelineStage):
             source_hists = reduce(self.comm, source_hists)
 
         if self.rank == 0:
-            fig = self.open_output('mag_hist', wrapper=True, figsize=(4,nband*3))
+            fig = self.open_output('source_mag_hist', wrapper=True, figsize=(4,nband*3))
             for i, (b,h1,h2) in enumerate(zip(bands, full_hists, source_hists)):
                 plt.subplot(nband, 1, i+1)
                 plt.bar(mid, h1, width=width, fill=False,  label='Complete', edgecolor='r')
@@ -676,6 +672,126 @@ class TXDiagnosticPlots(PipelineStage):
                     plt.legend()
             plt.tight_layout()
             fig.close()
+
+
+
+class TXLensDiagnosticPlots(PipelineStage):
+    """
+    """
+    name='TXLensDiagnosticPlots'
+
+    inputs = [
+        ('photometry_catalog', HDFFile),
+        ('lens_tomography_catalog', TomographyCatalog),
+    ]
+
+    outputs = [
+        ('lens_snr_hist', PNGFile),
+        ('lens_mag_hist', PNGFile),
+
+    ]
+
+    config_options = {
+        'chunk_rows': 100000,
+        'delta_gamma': 0.02,
+        'mag_min': 20,
+        'mag_max': 30,
+        'snr_min': 5,
+        'snr_max': 200,
+        'bands': 'ugrizy',
+    }
+
+    def run(self):
+        # PSF tests
+        import dask.array as da
+        # import dask_mpi
+        import matplotlib
+        matplotlib.use('agg')
+
+        f, g, data = self.load_data()
+        self.plot_mag_histograms(data)
+        self.plot_snr_histograms(data)
+
+        # These need to stay open until the end
+        f.close()
+        g.close()
+
+
+    def setup_dask(self):
+        # import dask_mpi
+        import multiprocessing.popen_spawn_posix
+        import dask.distributed
+        # Connect this local process to remote workers
+        self.dask_client = dask.distributed.Client()
+        print("Initializing DASK:")
+        print(self.dask_client)
+
+    def load_data(self):
+        import dask.array as da
+
+
+        bands = self.config['bands']
+        # These need to stay open until dask has finished
+        # with them.
+        f = self.open_input("photometry_catalog")
+        g = self.open_input("lens_tomography_catalog")
+
+        # magnitudes
+        data = {}
+        for b in bands:
+            data[f'mag_{b}'] = da.from_array(f[f'photometry/mag_{b}'])
+            data[f'snr_{b}'] = da.from_array(f[f'photometry/snr_{b}'])
+
+        data['bin']: da.from_array(f['tomography/lens_bin'])
+
+        return f, g, data
+
+    def plot_mag_histograms(self, data):
+        import dask.array as da
+        import matplotlib.pyplot as plt
+
+        mmin = self.config['mag_min']
+        mmax = self.config['mag_max']
+        # let's do this in 0.5 mag bins
+        bins = np.arange(mmin, mmax+1e-6, 0.5)
+
+        bands = self.config['bands']
+        nband = len(bands)
+        # overall version for all bins
+
+        with self.open_output('lens_mag_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
+            axes = fig.file.subplots(1, nband)
+            for i,b in enumerate(bands):
+                heights, edges = da.histogram(data[f'mag_{b}'], bins=bins)
+                manual_step_histogram(edges, heights, ax=axes[i])
+                axes[i].set_xlabel(f"{b}-band mag")
+            axes[0].set_ylabel(f"Count")
+            fig.file.tight_layout()
+
+
+    def plot_snr_histograms(self, data):
+        import dask.array as da
+        import matplotlib.pyplot as plt
+
+        smin = self.config['snr_min']
+        smax = self.config['snr_max']
+        # let's do this in 0.5 mag bins
+        bins = np.geomspace(smin, smax, 50)
+
+        bands = self.config['bands']
+        nband = len(bands)
+        # overall version for all bins
+
+        with self.open_output('lens_snr_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
+            axes = fig.file.subplots(1, nband)
+            for i,b in enumerate(bands):
+                heights, edges = da.histogram(data[f'snr_{b}'], bins=bins)
+                manual_step_histogram(edges, heights, ax=axes[i])
+                axes[i].set_xscale('log')
+                axes[i].set_xlabel(f"{b}-Band SNR")
+            axes[0].set_ylabel("Count")
+            fig.file.tight_layout()
+
 
 
 def reduce(comm, H):
