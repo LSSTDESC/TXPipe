@@ -25,7 +25,15 @@ class TXCOSMOSWeight(TXHSCLensSelector):
     outputs = [('cosmos_photo_weights', FitsFile),
                ('cosmos_source_weights', FitsFile)]
     config_options = {'mag_i_cut': 24.5,
-                      'n_neighbors': 10}
+                      'n_neighbors': 10,
+                      'hsc_cat_keys': ['gcmodel_mag', 'rcmodel_mag', 'icmodel_mag', 'zcmodel_mag',
+                                       'ycmodel_mag', 'pz_mean_eab', 'pz_mode_eab', 'pz_best_eab',
+                                       'pz_mc_eab', 'shear_cat'],
+                      'comb_cat_keys': ['ALPHA_J2000', 'DELTA_J2000', 'gcmodel_mag', 'rcmodel_mag',
+                                       'icmodel_mag', 'zcmodel_mag', 'ycmodel_mag',
+                                       'pz_best_eab', 'PHOTOZ', 'MNUV', 'MU', 'MB',
+                                       'MV', 'MR', 'MI', 'MZ', 'MY', 'MJ', 'MH', 'MK']
+                      }
 
     def run(self):
         """
@@ -91,10 +99,7 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         cosmos_photo_index_matched = cosmos_index[mask]
 
         t1 = Table.from_pandas(pd.DataFrame(cat30_good))
-        keys_t2 = ['gcmodel_mag', 'rcmodel_mag', 'icmodel_mag', 'zcmodel_mag',
-                   'ycmodel_mag', 'pz_mean_eab', 'pz_mode_eab', 'pz_best_eab',
-                   'pz_mc_eab', 'shear_cat']
-        t2 = cat_photo_good[keys_t2]
+        t2 = cat_photo_good[self.config['hsc_cat_keys']]
         cat_photo_matched = hstack([t1, t2])
 
         ####
@@ -112,13 +117,9 @@ class TXCOSMOSWeight(TXHSCLensSelector):
         ####
         # Write output
         logger.info('Writing weights for photo catalog.')
-        keys_t1 = ['ALPHA_J2000', 'DELTA_J2000', 'gcmodel_mag', 'rcmodel_mag',
-                   'icmodel_mag', 'zcmodel_mag', 'ycmodel_mag',
-                   'pz_best_eab', 'PHOTOZ', 'MNUV', 'MU', 'MB',
-                   'MV', 'MR', 'MI', 'MZ', 'MY', 'MJ', 'MH', 'MK']
         t1 = Table.from_pandas(pd.DataFrame(np.transpose([cat_photo_matched[k]
-                                                          for k in keys_t1]),
-                                            columns=keys_t1))
+                                                          for k in self.config['comb_cat_keys']]),
+                                            columns=self.config['comb_cat_keys']))
         t2 = Table.from_pandas(pd.DataFrame(np.transpose(weights_dir_photo),
                                             columns=['weight']))
         t3 = Table.from_pandas(pd.DataFrame(np.transpose(cosmos_photo_index_matched),
@@ -129,8 +130,8 @@ class TXCOSMOSWeight(TXHSCLensSelector):
 
         logger.info('Writing weights for shear catalog.')
         t1 = Table.from_pandas(pd.DataFrame(np.transpose([cat_source_matched[k]
-                                                          for k in keys_t1]),
-                                            columns=keys_t1))
+                                                          for k in self.config['comb_cat_keys']]),
+                                            columns=self.config['comb_cat_keys']))
         weights_source_temp = np.array(weights_source['weight_source'])*weights_dir_source[cat_source_index]
         t2 = Table.from_pandas(pd.DataFrame(weights_source_temp,
                                             columns=['weight']))

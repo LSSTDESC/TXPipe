@@ -97,8 +97,8 @@ class TXPhotozSourceDIR(PipelineStage):
                                     bins=self.config['nz_bin_num'],
                                     range=[0., self.config['nz_bin_max']])
             ehz = np.zeros(len(hnz))
-            ehz[hnz > 0] = (hz[hnz > 0]+0.)/np.sqrt(hnz[hnz > 0]+0.)
-            pzs.append([bz[:-1], bz[1:], hnz, (hz+0.)/np.sum(hz+0.), ehz])
+            ehz[hnz > 0] = hz[hnz > 0]/np.sqrt(hnz[hnz > 0])
+            pzs.append([bz[:-1], bz[1:], hnz, hz/np.sum(hz), ehz])
         return np.array(pzs)
 
     def save(self, name, pzs, outfile):
@@ -156,7 +156,7 @@ class TXPhotozDIR(TXPhotozSourceDIR):
     config_options = {'pz_code': 'ephor_ab',
                       'pz_mark': 'best',
                       'source_zbin_edges': [0.3, 0.6, 0.9, 1.2, 1.5],
-                      'lens_zbin_edges': [0.15, 0.50, 0.75, 1.00, 1.50],
+                      'lens_zbin_edges': [0.3, 0.6, 0.9, 1.2, 1.5],
                       'nz_bin_num': 200,
                       'nz_bin_max': 3.0
     }
