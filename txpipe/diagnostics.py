@@ -674,11 +674,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
             fig.close()
 
 
-
 class TXLensDiagnosticPlots(PipelineStage):
     """
     """
     name='TXLensDiagnosticPlots'
+    dask_parallel = True
 
     inputs = [
         ('photometry_catalog', HDFFile),
@@ -692,7 +692,7 @@ class TXLensDiagnosticPlots(PipelineStage):
     ]
 
     config_options = {
-        'chunk_rows': 100000,
+        'chunk_rows': 50000,
         'delta_gamma': 0.02,
         'mag_min': 20,
         'mag_max': 30,
@@ -703,28 +703,17 @@ class TXLensDiagnosticPlots(PipelineStage):
 
     def run(self):
         # PSF tests
-        import dask.array as da
-        # import dask_mpi
         import matplotlib
         matplotlib.use('agg')
 
-        f, g, data = self.load_data()
+        files, data = self.load_data()
         self.plot_mag_histograms(data)
         self.plot_snr_histograms(data)
 
         # These need to stay open until the end
-        f.close()
-        g.close()
+        for f in files:
+            f.close()
 
-
-    def setup_dask(self):
-        # import dask_mpi
-        import multiprocessing.popen_spawn_posix
-        import dask.distributed
-        # Connect this local process to remote workers
-        self.dask_client = dask.distributed.Client()
-        print("Initializing DASK:")
-        print(self.dask_client)
 
     def load_data(self):
         import dask.array as da
@@ -735,16 +724,18 @@ class TXLensDiagnosticPlots(PipelineStage):
         # with them.
         f = self.open_input("photometry_catalog")
         g = self.open_input("lens_tomography_catalog")
+        block = self.config['chunk_rows']
+        block = "auto"
 
         # magnitudes
         data = {}
         for b in bands:
-            data[f'mag_{b}'] = da.from_array(f[f'photometry/mag_{b}'])
-            data[f'snr_{b}'] = da.from_array(f[f'photometry/snr_{b}'])
+            data[f'mag_{b}'] = da.from_array(f[f'photometry/mag_{b}'], block)
+            data[f'snr_{b}'] = da.from_array(f[f'photometry/snr_{b}'], block)
 
-        data['bin']: da.from_array(f['tomography/lens_bin'])
+        data['bin']: da.from_array(f['tomography/lens_bin'], block)
 
-        return f, g, data
+        return [f, g], data
 
     def plot_mag_histograms(self, data):
         import dask.array as da
@@ -753,18 +744,25 @@ class TXLensDiagnosticPlots(PipelineStage):
         mmin = self.config['mag_min']
         mmax = self.config['mag_max']
         # let's do this in 0.5 mag bins
-        bins = np.arange(mmin, mmax+1e-6, 0.5)
+        bins = da.arange(mmin, mmax+1e-6, 0.5)
 
         bands = self.config['bands']
         nband = len(bands)
-        # overall version for all bins
 
+
+        # Opens 
         with self.open_output('lens_mag_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
             axes = fig.file.subplots(1, nband)
             for i,b in enumerate(bands):
                 heights, edges = da.histogram(data[f'mag_{b}'], bins=bins)
+                heights = heights.compute()
+                edges = edges.compute()
+
+                # This is my histogram drawer for when we want to draw
+                # it ourselves
                 manual_step_histogram(edges, heights, ax=axes[i])
                 axes[i].set_xlabel(f"{b}-band mag")
+
             axes[0].set_ylabel(f"Count")
             fig.file.tight_layout()
 
@@ -791,7 +789,6 @@ class TXLensDiagnosticPlots(PipelineStage):
                 axes[i].set_xlabel(f"{b}-Band SNR")
             axes[0].set_ylabel("Count")
             fig.file.tight_layout()
-
 
 
 def reduce(comm, H):
