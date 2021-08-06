@@ -71,25 +71,23 @@ class TXSourceDiagnosticPlots(PipelineStage):
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
                      'mcal_s2n_2m', 'weight'] + [f'mcal_mag_{b}' for b in self.config['bands']]
         else:
-            shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2']
+            shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2',
+                         ] + [f'{shear_prefix}mag_{b}' for b in self.config['bands']]
 
         shear_tomo_cols = ['source_bin']
 
         if self.config['shear_catalog_type']=='metacal':
-            response_group = 'metacal_response'
-            response_cols = ['R_gamma']
+            more_iters = ['shear_tomography_catalog', 'metacal_response', ['R_gamma']]
         elif self.config['shear_catalog_type']=='lensfit':
-            response_cols = ['K']
-            response_group = 'response'
+            more_iters = []
         else:
-            response_cols = ['R']
-            response_group = 'response'
+            more_iters = ['shear_tomography_catalog', 'response', ['R']]
 
         it = self.combined_iterators(
             chunk_rows,
             'shear_catalog', 'shear', shear_cols,
             'shear_tomography_catalog','tomography',shear_tomo_cols,
-            'shear_tomography_catalog', response_group, response_cols,
+            *more_iters
         )
 
         # Now loop through each chunk of input data, one at a time.
@@ -556,7 +554,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                                 if s:
                                     counts_s[i, j, bij] += 1
             elif self.config['shear_catalog_type']=='lensfit':
-                B = np.digitize(data['K'], edges) - 1
+                B = np.digitize(data['m'], edges) - 1
                 # loop through this chunk of data.
                 for s, b in zip(in_shear_sample, B):
                     if (b >= 0) and (b < size):
@@ -596,7 +594,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         else:
             manual_step_histogram(edges, counts, label='R', color='#1f77b4')
         plt.ylim(0, counts.max()*1.1)
-        plt.xlabel("R_gamma")
+        plt.xlabel("Response")
         plt.ylabel("Count")
         plt.title("All flag=0")
 
