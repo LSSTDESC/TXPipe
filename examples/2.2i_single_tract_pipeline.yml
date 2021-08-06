@@ -40,7 +40,8 @@ stages:
     - name: TXTwoPoint
     - name: TXNullBlinding
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXSourceDiagnosticPlots
+    - name: TXLensDiagnosticPlots
     - name: TXGammaTBrightStars
     - name: TXGammaTDimStars
     - name: TXBrighterFatterPlot

@@ -96,7 +96,7 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXDiagnosticPlots:
+TXSourceDiagnosticPlots:
     shear_prefix: mcal_
 
 TXRealGaussianCovariance:
