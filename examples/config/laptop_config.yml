@@ -40,18 +40,18 @@ PZRailTrainSource:
     zmin: 0.0
     zmax: 2.0
     dz: 0.01
-    columns_file: ./submodules/RAIL/examples/estimation/configs/test_bpz.columns
+    columns_file: ./examples/config/bpz_riz.columns
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
     prior_file: hdfn_gen
     p_min: 0.005
     gauss_kernel: 0.0
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     mag_err_min: 0.005
     inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
     madau_reddening: no
     bands: riz
+    zp_errors: [0.01, 0.01, 0.01]
 
 
 PZRailTrainLens:
