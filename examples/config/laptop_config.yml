@@ -53,25 +53,8 @@ PZRailTrainSource:
     bands: riz
     zp_errors: [0.01, 0.01, 0.01]
 
-
-PZRailTrainLens:
-    class_name: FZBoost
-    zmin: 0.0
-    zmax: 2.0
-    nzbins: 201
-    trainfrac: 0.75
-    bands: riz
-    bumpmin: 0.02
-    bumpmax: 0.35
-    nbump: 20
-    sharpmin: 0.7
-    sharpmax: 2.1
-    nsharp: 15
-    max_basis: 35
-    basis_system: cosine
-    regression_params: {'max_depth': 8, 'objective': 'reg:squarederror'}
-
-
+PZRailEstimateSource:
+    convert_unseen: True # needed for BPZ
 
 
 FlexZPipe:
