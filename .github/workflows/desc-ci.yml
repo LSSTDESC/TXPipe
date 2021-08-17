@@ -1,4 +1,4 @@
-name: Tests in DESC analysis env
+name: Continuous Integration
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  test:
+  Test:
 
     runs-on: ubuntu-latest
 
@@ -29,17 +29,17 @@ jobs:
       run: |
         pytest txpipe
 
-    # - name: Run more pipelines
-    #   run: |
-    #     ceci examples/laptop_redmagic_pipeline.yml
-    #     ceci examples/laptop_lensfit_pipeline.yml
-    #     test -f data/example/outputs/shear_xi_plus.png
-    #     test -f data/example/outputs_redmagic/shear_xi_plus.png
-    #     test -f data/example/outputs_lensfit/shear_xi_plus.png
+    - name: Run more pipelines
+      run: |
+        ceci examples/laptop_redmagic_pipeline.yml
+        ceci examples/laptop_lensfit_pipeline.yml
+        test -f data/example/outputs/shear_xi_plus.png
+        test -f data/example/outputs_redmagic/shear_xi_plus.png
+        test -f data/example/outputs_lensfit/shear_xi_plus.png
 
-    # - name: Failure logs
-    #   if: ${{ always() }}
-    #   run: |
-    #     tail -n +1 data/example/logs/*
-    #     tail -n +1 data/example/logs_redmagic/*
-    #     tail -n +1 data/example/logs_lensfit/*
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs/*
+        tail -n +1 data/example/logs_redmagic/*
+        tail -n +1 data/example/logs_lensfit/*
