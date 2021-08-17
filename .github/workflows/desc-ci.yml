@@ -9,6 +9,8 @@ on:
 jobs:
   test:
 
+    runs-on: ubuntu-latest
+
     container:
       image: joezuntz/txpipe
 
