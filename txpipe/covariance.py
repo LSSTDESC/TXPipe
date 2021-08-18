@@ -297,13 +297,19 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_1 = s1_s2_1[xi_plus_minus1]
             if isinstance(s1_s2_2, dict):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
-
+                
+            print('xi_plus_minus1, xi_plus_minus2:', xi_plus_minus1, xi_plus_minus2)
+            print("tracer_comb1, tracer_comb2", tracer_comb1, tracer_comb2)
+            print("s1_s2_1:", s1_s2_1)
+            print("s1_s2_2:", s1_s2_2)
             # Use these terms to project the covariance from C_ell to xi(theta)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
+            print('sqrt diag cov[final]', np.sqrt(np.diag(cov['final'])))
 
         # Normalize
         cov['final'] /= norm
+        print('sqrt diag cov[final]/norm', np.sqrt(np.diag(cov['final'])))
 
         # Put the covariance into bins. 
         # This is optional in the case of a C_ell covariance (only if bins in ell are
@@ -402,21 +408,45 @@ class TXFourierGaussianCovariance(PipelineStage):
         cl_cache = {}
         xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
 
+        print("N2pt", N2pt)
+        print("N2pt0", N2pt0)
+        
         # Look through the chunk of matrix, tracer pair by tracer pair
+        # Order of the covariance needs to be the cannonical order of saac. For a 3x2pt matrix that is:
+        # -galaxy_density_xi
+        # -galaxy_shearDensity_xi_t
+        # -galaxy_shear_xi_minus
+        # -galaxy_shear_xi_plus
+
+
         for i in range(N2pt):
             tracer_comb1 = tracer_combs[i]
 
-            if i == N2pt0:
+            # reset variable in the new loop
+            count_xi_pm2 = 0 
+
+            if i == N2pt0-(N2pt-N2pt0):
+                # xim starts here
                 count_xi_pm1 = 1
+            if i == N2pt0:
+                # let's go back to xip
+                count_xi_pm1 = 0
 
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
 
-                if j == N2pt0:
+                if j == N2pt0-(N2pt-N2pt0):
+                    # xim starts here
                     count_xi_pm2 = 1
 
-                if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
+                if j == N2pt0:
+                    # let's go back to xip
+                    count_xi_pm2 = 0
+
+                #print('i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2]:', i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2])
+                if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
+                    print('IF1')
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
@@ -426,13 +456,14 @@ class TXFourierGaussianCovariance(PipelineStage):
                         ccl_tracers=ccl_tracers,
                         tracer_Noise=tracer_Noise, 
                         two_point_data=two_point_data,
-                        xi_plus_minus1=xi_pm[count_xi_pm1, count_xi_pm2][0],
-                        xi_plus_minus2=xi_pm[count_xi_pm1, count_xi_pm2][1],
+                        xi_plus_minus1=xi_pm[count_xi_pm1][count_xi_pm2][0],
+                        xi_plus_minus2=xi_pm[count_xi_pm1][count_xi_pm2][1],
                         cache=cl_cache,
                         WT=WT,
                     )
 
                 else:
+                    print('ELSE')
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
@@ -456,6 +487,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 # and fill it in, and the transpose component
                 cov_full[start_i:end_i, start_j:end_j] = cov_ij
                 cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
+                print("start_i, end_i, start_j, end_j", start_i, end_i, start_j, end_j)
 
         try:
             np.linalg.cholesky(cov_full)
