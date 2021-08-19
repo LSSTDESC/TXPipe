@@ -437,11 +437,10 @@ class TXExternalLensMaps(TXLensMaps):
 class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
     Combined source and photometric lens maps, from the
-    same photometry catalog.  Same as running TXSourceMaps
-    and then TXLensMaps but faster as we only do the I/O once.
-
-    Only works if the source and lens catalogs are the same;
-    otherwise use TXSourceMaps and TXLensMaps separately.
+    same photometry catalog. This might be slightly faster than
+    running two maps separately, but it only works if the source 
+    and lens catalogs are the same set of objects. Otherwise use
+    TXSourceMaps and TXLensMaps.
     """
 
     name = "TXMainMaps"
