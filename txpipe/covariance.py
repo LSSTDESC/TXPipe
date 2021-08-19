@@ -278,14 +278,15 @@ class TXFourierGaussianCovariance(PipelineStage):
             if xi_plus_minus1 != xi_plus_minus2:
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
-                Bmode_F=-1 
+                Bmode_F=-1
+                print ("Subtracting")
             # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
             # B-modes
             cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
             cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
         cov['final']=cov[1423]+cov[1324]
-
+        
         if self.do_xi:
             s1_s2_1 = self.get_spins(tracer_comb1)
             s1_s2_2 = self.get_spins(tracer_comb2)
@@ -298,14 +299,9 @@ class TXFourierGaussianCovariance(PipelineStage):
             if isinstance(s1_s2_2, dict):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
                 
-            print('xi_plus_minus1, xi_plus_minus2:', xi_plus_minus1, xi_plus_minus2)
-            print("tracer_comb1, tracer_comb2", tracer_comb1, tracer_comb2)
-            print("s1_s2_1:", s1_s2_1)
-            print("s1_s2_2:", s1_s2_2)
             # Use these terms to project the covariance from C_ell to xi(theta)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
-            print('sqrt diag cov[final]', np.sqrt(np.diag(cov['final'])))
 
         # Normalize
         cov['final'] /= norm
@@ -436,15 +432,15 @@ class TXFourierGaussianCovariance(PipelineStage):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
 
-                if j == N2pt0-(N2pt-N2pt0):
-                    # xim starts here
+                if j >= N2pt0-(N2pt-N2pt0) and j<N2pt0:
+                    # this is the xim range
                     count_xi_pm2 = 1
 
-                if j == N2pt0:
+                if j >= N2pt0:
                     # let's go back to xip
                     count_xi_pm2 = 0
 
-                #print('i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2]:', i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2])
+                print('i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2]:', i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2])
                 if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
                     print('IF1')
                     cov_ij = self.compute_covariance_block(
@@ -479,6 +475,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
                 # Fill in this chunk of the matrix
                 cov_ij = cov_ij['final_b']
+                print('sqrt diag (cov)', np.sqrt(np.diag(cov_ij)))
                 # Find the right location in the matrix
                 start_i = i * Nell_bins
                 start_j = j * Nell_bins
@@ -488,6 +485,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cov_full[start_i:end_i, start_j:end_j] = cov_ij
                 cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
                 print("start_i, end_i, start_j, end_j", start_i, end_i, start_j, end_j)
+                print("-----------------------------------\n")
 
         try:
             np.linalg.cholesky(cov_full)
