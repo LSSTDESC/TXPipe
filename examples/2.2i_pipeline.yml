@@ -46,7 +46,10 @@ stages:
     - name: TXMainMaps
       nprocess: 16
       nodes: 2
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+      nprocess: 16
+      nodes: 2
+    - name: TXAuxiliaryLensMaps
       nprocess: 16
       nodes: 2
     - name: TXSimpleMask

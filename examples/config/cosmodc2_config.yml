@@ -47,10 +47,14 @@ TXExternalLensMaps:
     pixelization: healpix
 
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     chunk_rows:  100000
     sparse:  True
     psf_prefix:  psf_
+
+TXAuxiliaryLensMaps:
+    chunk_rows:  100000
+    sparse:  True
     bright_obj_threshold:  22.0
 
 TXSimpleMask:

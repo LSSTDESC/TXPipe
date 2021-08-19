@@ -30,7 +30,8 @@ stages:
     - name: TXPhotozStack
     - name: TXPhotozPlots
     - name: TXMainMaps
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+    - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXMapPlots

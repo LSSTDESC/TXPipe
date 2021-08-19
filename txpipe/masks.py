@@ -7,7 +7,7 @@ from .data_types import MapsFile
 class TXSimpleMask(PipelineStage):
     name = "TXSimpleMask"
     # make a mask from the auxiliary maps
-    inputs = [("aux_maps", MapsFile)]
+    inputs = [("aux_lens_maps", MapsFile)]
     outputs = [("mask", MapsFile)]
     config_options = {
         "depth_cut": 23.5,
@@ -17,7 +17,7 @@ class TXSimpleMask(PipelineStage):
     def run(self):
         import healpy
 
-        with self.open_input("aux_maps", wrapper=True) as f:
+        with self.open_input("aux_lens_maps", wrapper=True) as f:
             metadata = dict(f.file["maps"].attrs)
             bright_obj = f.read_map("bright_objects/count")
             depth = f.read_map("depth/depth")
