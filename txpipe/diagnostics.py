@@ -732,7 +732,9 @@ class TXLensDiagnosticPlots(PipelineStage):
             data[f'snr_{b}'] = da.from_array(f[f'photometry/snr_{b}'], block)
 
         data['bin'] = da.from_array(g['tomography/lens_bin'], block)
-
+        data['sel'] = da.where(data['bin'] >= 0)
+        for i in range(nbin):
+            data[f'sel{i}'] = da.where(data['bin'] >= 0)
         return [f, g], data, nbin
 
 
@@ -762,13 +764,13 @@ class TXLensDiagnosticPlots(PipelineStage):
 
         # overall version for all bins
         hists = {}
-        sel = [da.where(data['bin'] == j) for j in range(nbin)]
-        sel0 = da.where(data['bin'] >= 0)
         for i,b in enumerate(bands):
             w = (data['bin'] >= 0).astype(int)
-            hists[b, -1] = da.histogram(data[f'{name}_{b}'][sel0], bins=bins)
+            sel = data['sel']
+            hists[b, -1] = da.histogram(data[f'{name}_{b}'][sel], bins=bins)
             for j in range(nbin):
-                hists[b, j] = da.histogram(data[f'{name}_{b}'][sel[j]], bins=bins)
+                sel = data[f'sel{j}']
+                hists[b, j] = da.histogram(data[f'{name}_{b}'][sel], bins=bins)
 
         print(f"Beginning {name} histogram compute")
         hists, = dask.compute(hists)
