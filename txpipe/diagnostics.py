@@ -762,13 +762,13 @@ class TXLensDiagnosticPlots(PipelineStage):
 
         # overall version for all bins
         hists = {}
-        weights = [(data['bin'] == j).astype(int) for j in range(nbin)]
-        weights0 = (data['bin'] >= 0).astype(int)
+        sel = [da.where(data['bin'] == j) for j in range(nbin)]
+        sel0 = da.where(data['bin'] >= 0)
         for i,b in enumerate(bands):
             w = (data['bin'] >= 0).astype(int)
-            hists[b, -1] = da.histogram(data[f'{name}_{b}'], bins=bins, weights=weights0)
+            hists[b, -1] = da.histogram(data[f'{name}_{b}'][sel0], bins=bins)
             for j in range(nbin):
-                hists[b, j] = da.histogram(data[f'{name}_{b}'], bins=bins, weights=weights[j])
+                hists[b, j] = da.histogram(data[f'{name}_{b}'][sel[j]], bins=bins)
 
         print(f"Beginning {name} histogram compute")
         hists, = dask.compute(hists)
