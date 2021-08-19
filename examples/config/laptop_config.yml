@@ -182,9 +182,7 @@ TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
 
-TXLensDiagnosticPlots:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
+TXLensDiagnosticPlots: {}
 
 TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas

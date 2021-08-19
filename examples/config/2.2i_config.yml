@@ -93,8 +93,10 @@ TXSimpleMask:
     depth_cut: 23.0
     bright_object_max: 30
 
-TXDiagnosticPlots:
-    psf_prefix: psf_
+TXSourceDiagnosticPlots:
+    psf_prefix: mcal_psf_
+
+TXLensDiagnosticPlots: {}
 
 TXTwoPointFourier:
     chunk_rows: 100000

@@ -46,7 +46,10 @@ stages:
       nprocess: 2
       nodes: 2
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXLensDiagnosticPlots
+      nprocess: 16
+      nodes: 1
+    - name: TXSourceDiagnosticPlots
       nprocess: 16
       nodes: 1
     - name: TXFourierGaussianCovariance
