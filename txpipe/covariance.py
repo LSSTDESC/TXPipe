@@ -440,7 +440,6 @@ class TXFourierGaussianCovariance(PipelineStage):
 
                 #print('i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2]:', i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2])
                 if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
-                    print('IF1')
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
@@ -457,7 +456,6 @@ class TXFourierGaussianCovariance(PipelineStage):
                     )
 
                 else:
-                    print('ELSE')
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
