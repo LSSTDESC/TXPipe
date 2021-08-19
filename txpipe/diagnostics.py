@@ -694,8 +694,8 @@ class TXLensDiagnosticPlots(PipelineStage):
     config_options = {
         'chunk_rows': 50000,
         'delta_gamma': 0.02,
-        'mag_min': 20,
-        'mag_max': 30,
+        'mag_min': 18,
+        'mag_max': 28,
         'snr_min': 5,
         'snr_max': 200,
         'bands': 'ugrizy',
@@ -706,9 +706,9 @@ class TXLensDiagnosticPlots(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
 
-        files, data = self.load_data()
-        self.plot_mag_histograms(data)
-        self.plot_snr_histograms(data)
+        files, data, nbin = self.load_data()
+        self.plot_snr_histograms(data, nbin)
+        self.plot_mag_histograms(data, nbin)
 
         # These need to stay open until the end
         for f in files:
@@ -724,8 +724,8 @@ class TXLensDiagnosticPlots(PipelineStage):
         # with them.
         f = self.open_input("photometry_catalog")
         g = self.open_input("lens_tomography_catalog")
-        block = self.config['chunk_rows']
-        block = "auto"
+        nbin = g['tomography'].attrs['nbin_lens']
+        block = 1_000_000
 
         # magnitudes
         data = {}
@@ -733,61 +733,61 @@ class TXLensDiagnosticPlots(PipelineStage):
             data[f'mag_{b}'] = da.from_array(f[f'photometry/mag_{b}'], block)
             data[f'snr_{b}'] = da.from_array(f[f'photometry/snr_{b}'], block)
 
-        data['bin']: da.from_array(f['tomography/lens_bin'], block)
+        data['bin'] = da.from_array(g['tomography/lens_bin'], block)
 
-        return [f, g], data
-
-    def plot_mag_histograms(self, data):
-        import dask.array as da
-        import matplotlib.pyplot as plt
-
-        mmin = self.config['mag_min']
-        mmax = self.config['mag_max']
-        # let's do this in 0.5 mag bins
-        bins = da.arange(mmin, mmax+1e-6, 0.5)
-
-        bands = self.config['bands']
-        nband = len(bands)
+        return [f, g], data, nbin
 
 
-        # Opens 
-        with self.open_output('lens_mag_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
-            axes = fig.file.subplots(1, nband)
-            for i,b in enumerate(bands):
-                heights, edges = da.histogram(data[f'mag_{b}'], bins=bins)
-                heights = heights.compute()
-                edges = edges.compute()
-
-                # This is my histogram drawer for when we want to draw
-                # it ourselves
-                manual_step_histogram(edges, heights, ax=axes[i])
-                axes[i].set_xlabel(f"{b}-band mag")
-
-            axes[0].set_ylabel(f"Count")
-            fig.file.tight_layout()
-
-
-    def plot_snr_histograms(self, data):
-        import dask.array as da
-        import matplotlib.pyplot as plt
-
+    def plot_snr_histograms(self, data, nbin):
         smin = self.config['snr_min']
         smax = self.config['snr_max']
-        # let's do this in 0.5 mag bins
         bins = np.geomspace(smin, smax, 50)
+        xlog = True
+        self.plot_histograms(data, nbin, 'snr', xlog, bins)
+
+    def plot_mag_histograms(self, data, nbin):
+        import dask.array as da
+        mmin = self.config['mag_min']
+        mmax = self.config['mag_max']
+        # let's do this in 0.5 mag bins                                                                                                                                                                                            
+        bins = np.arange(mmin, mmax+1e-6, 0.5)
+        xlog = False
+        self.plot_histograms(data, nbin, 'mag', xlog, bins)
+
+    def plot_histograms(self, data, nbin, name, xlog, bins):
+        import dask
+        import dask.array as da
+        import matplotlib.pyplot as plt
 
         bands = self.config['bands']
         nband = len(bands)
-        # overall version for all bins
 
-        with self.open_output('lens_snr_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
-            axes = fig.file.subplots(1, nband)
+        # overall version for all bins
+        hists = {}
+        weights = [(data['bin'] == j).astype(int) for j in range(nbin)]
+        weights0 = (data['bin'] >= 0).astype(int)
+        for i,b in enumerate(bands):
+            w = (data['bin'] >= 0).astype(int)
+            hists[b, -1] = da.histogram(data[f'{name}_{b}'], bins=bins, weights=weights0)
+            for j in range(nbin):
+                hists[b, j] = da.histogram(data[f'{name}_{b}'], bins=bins, weights=weights[j])
+
+        print(f"Beginning {name} histogram compute")
+        hists, = dask.compute(hists)
+        print("Done")
+        
+        with self.open_output(f'lens_{name}_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
+            axes = fig.file.subplots(nbin+1, nband, squeeze=False)
             for i,b in enumerate(bands):
-                heights, edges = da.histogram(data[f'snr_{b}'], bins=bins)
-                manual_step_histogram(edges, heights, ax=axes[i])
-                axes[i].set_xscale('log')
-                axes[i].set_xlabel(f"{b}-Band SNR")
-            axes[0].set_ylabel("Count")
+                for j in range(-1, nbin):
+                    bj = j if j >= 0 else '2D'
+                    heights, edges = hists[b, j]
+                    ax = axes[j+1, i]
+                    manual_step_histogram(edges, heights, ax=ax)
+                    if xlog:
+                        ax.set_xscale('log')
+                    ax.set_xlabel(f"Bin {bj} {b}-{name}")
+            axes[0, 0].set_ylabel("Count")
             fig.file.tight_layout()
 
 
