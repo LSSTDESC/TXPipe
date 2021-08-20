@@ -402,8 +402,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         cl_cache = {}
         xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
 
-        print("N2pt", N2pt)
-        print("N2pt0", N2pt0)
+        print("Total number of 2pt functions:", N2pt)
+        print("Number of 2pt functions without xim:", N2pt0)
         
         # Look through the chunk of matrix, tracer pair by tracer pair
         # Order of the covariance needs to be the cannonical order of saac. For a 3x2pt matrix that is:
@@ -412,33 +412,20 @@ class TXFourierGaussianCovariance(PipelineStage):
         # -galaxy_shear_xi_minus
         # -galaxy_shear_xi_plus
 
-
+        xim_start = N2pt0-(N2pt-N2pt0)
+        xim_end = N2pt0
+        
         for i in range(N2pt):
             tracer_comb1 = tracer_combs[i]
 
-            # reset variable in the new loop
-            count_xi_pm2 = 0 
-
-            if i == N2pt0-(N2pt-N2pt0):
-                # xim starts here
-                count_xi_pm1 = 1
-            if i == N2pt0:
-                # let's go back to xip
-                count_xi_pm1 = 0
-
+            count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
+            
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
+                
+                count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
 
-                if j >= N2pt0-(N2pt-N2pt0) and j<N2pt0:
-                    # this is the xim range
-                    count_xi_pm2 = 1
-
-                if j >= N2pt0:
-                    # let's go back to xip
-                    count_xi_pm2 = 0
-
-                #print('i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2]:', i, j, tracer_comb1, tracer_comb2, xi_pm[count_xi_pm1][count_xi_pm2])
                 if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
                     cov_ij = self.compute_covariance_block(
                         cosmo,
@@ -479,7 +466,6 @@ class TXFourierGaussianCovariance(PipelineStage):
                 # and fill it in, and the transpose component
                 cov_full[start_i:end_i, start_j:end_j] = cov_ij
                 cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
-                #print("start_i, end_i, start_j, end_j", start_i, end_i, start_j, end_j)
 
         try:
             np.linalg.cholesky(cov_full)
