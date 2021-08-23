@@ -27,7 +27,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     config_options = {
         'pickled_wigner_transform': '',
         'use_true_shear': False,
-        
+        'galaxy_bias': None,
     }
 
 
@@ -172,11 +172,16 @@ class TXFourierGaussianCovariance(PipelineStage):
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
             elif 'lens' in tracer:
-                b = 1.0*np.ones(len(z))  # place holder
+                if self.config['galaxy_bias'] is None:
+                    print("Using galaxy bias=1 for all lens bins since you didn't specify any values!")
+                    b = 1.0*np.ones(len(z))  # place holder
+                else:
+                    print("Using galaxy bias= ", self.config['galaxy_bias'][nbin])
+                    b = self.config['galaxy_bias'][nbin]*np.ones(len(z))
                 n_gal = meta['n_lens'][nbin]
                 tracer_noise[tracer] = 1 / n_gal
                 ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
-        
+                    
         return ccl_tracers, tracer_noise
 
     def get_spins(self, tracer_comb):
@@ -197,11 +202,11 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     # compute a single covariance matrix for a given pair of C_ell or xi.  
     def compute_covariance_block(self, cosmo, meta, ell_bins,
-        tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
-        two_point_data=None,
-        xi_plus_minus1='plus', xi_plus_minus2='plus',
-        cache=None, WT=None,
-        ):
+                                 tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
+                                 two_point_data=None,
+                                 xi_plus_minus1='plus', xi_plus_minus2='plus',
+                                 cache=None, WT=None,
+    ):
         import pyccl as ccl
         from tjpcov import bin_cov
 
@@ -279,8 +284,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
                 Bmode_F=-1
-            # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
-            # B-modes
+                # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
+                # B-modes
             cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
             cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
@@ -357,7 +362,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 theta = meta['theta'] * d2r,
                 s1_s2 = [(2,2), (2,-2), (0,2), (2,0), (0,0)],
                 ncpu = num_processes,
-                )
+            )
             print("Computed Wigner Transform.")
 
         if path:
@@ -390,7 +395,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 if ('source' in combo[0]) and ('source' in combo[1]):
                     N2pt += 1
                     tracer_combs_temp += [combo]
-            tracer_combs = tracer_combs_temp.copy()
+                    tracer_combs = tracer_combs_temp.copy()
 
         ell_bins = self.get_angular_bins(two_point_data)
         Nell_bins = len(ell_bins) - 1
@@ -471,8 +476,8 @@ class TXFourierGaussianCovariance(PipelineStage):
             np.linalg.cholesky(cov_full)
         except:        
             print("liAnalg.LinAlgError: Covariance not positive definite! "
-                "Most likely this is a problem in xim. "
-                "We will continue for now but this needs to be fixed.")
+                  "Most likely this is a problem in xim. "
+                  "We will continue for now but this needs to be fixed.")
 
         return cov_full
 
@@ -498,6 +503,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         'nbins':20,
         'pickled_wigner_transform': '',
         'use_true_shear': False,
+        'galaxy_bias': None,
     }
 
     def run(self):
