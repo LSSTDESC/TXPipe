@@ -284,8 +284,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
                 Bmode_F=-1
-                # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
-                # B-modes
+            # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
+            # B-modes
             cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
             cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
@@ -362,7 +362,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 theta = meta['theta'] * d2r,
                 s1_s2 = [(2,2), (2,-2), (0,2), (2,0), (0,0)],
                 ncpu = num_processes,
-            )
+                )
             print("Computed Wigner Transform.")
 
         if path:
@@ -395,7 +395,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 if ('source' in combo[0]) and ('source' in combo[1]):
                     N2pt += 1
                     tracer_combs_temp += [combo]
-                    tracer_combs = tracer_combs_temp.copy()
+            tracer_combs = tracer_combs_temp.copy()
 
         ell_bins = self.get_angular_bins(two_point_data)
         Nell_bins = len(ell_bins) - 1
@@ -476,8 +476,8 @@ class TXFourierGaussianCovariance(PipelineStage):
             np.linalg.cholesky(cov_full)
         except:        
             print("liAnalg.LinAlgError: Covariance not positive definite! "
-                  "Most likely this is a problem in xim. "
-                  "We will continue for now but this needs to be fixed.")
+                "Most likely this is a problem in xim. "
+                "We will continue for now but this needs to be fixed.")
 
         return cov_full
 
