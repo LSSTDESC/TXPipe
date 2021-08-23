@@ -202,11 +202,11 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     # compute a single covariance matrix for a given pair of C_ell or xi.  
     def compute_covariance_block(self, cosmo, meta, ell_bins,
-                                 tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
-                                 two_point_data=None,
-                                 xi_plus_minus1='plus', xi_plus_minus2='plus',
-                                 cache=None, WT=None,
-    ):
+        tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
+        two_point_data=None,
+        xi_plus_minus1='plus', xi_plus_minus2='plus',
+        cache=None, WT=None,
+        ):
         import pyccl as ccl
         from tjpcov import bin_cov
 
