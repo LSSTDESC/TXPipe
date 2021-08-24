@@ -31,7 +31,7 @@ PZPDFMLZ:
 PZRailTrainLens:
     class_name: BPZ_lite
     zmin: 0.0
-    zmax: 2.0
+    zmax: 3.0
     dz: 0.01
     columns_file: ./examples/config/bpz_ugrizy.columns
     spectra_file: SED/CWWSB4.list
