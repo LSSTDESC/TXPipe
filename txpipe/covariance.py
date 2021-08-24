@@ -27,7 +27,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     config_options = {
         'pickled_wigner_transform': '',
         'use_true_shear': False,
-        'galaxy_bias': None,
+        'galaxy_bias': [0.],
     }
 
 
@@ -172,7 +172,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
             elif 'lens' in tracer:
-                if self.config['galaxy_bias'] is None:
+                if self.config['galaxy_bias'] == [0.]:
                     print("Using galaxy bias=1 for all lens bins since you didn't specify any values!")
                     b = 1.0*np.ones(len(z))  # place holder
                 else:
@@ -503,7 +503,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         'nbins':20,
         'pickled_wigner_transform': '',
         'use_true_shear': False,
-        'galaxy_bias': None,
+        'galaxy_bias': [0.],
     }
 
     def run(self):
