@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import PhotozPDFFile, HDFFile, PickleFile
 from ..utils import rename_iterated
+from .utils import convert_unseen
 import numpy as np
 import shutil
 
@@ -42,6 +43,9 @@ class PZRailEstimateSource(PipelineStage):
         "chunk_rows": 10000,
         "bands": "riz",
         "mag_prefix": "mcal_",
+        "convert_unseen": False,
+        "undetected_value": 99.0,
+        "unobserved_value": -99.0,
     }
 
     def run(self):
@@ -51,6 +55,12 @@ class PZRailEstimateSource(PipelineStage):
         # Load the estimator trained in PZRailTrain
         estimator = self.load_model()
 
+        bands = self.config['bands']
+        convert = self.config['convert_unseen']
+        undet = self.config['undetected_value']
+        unobs = self.config['unobserved_value']
+
+
         # prepare the output data - we will save things to this
         # as we go along.  We also need the z grid becauwe we use
         # it to get the mean z from the PDF
@@ -59,6 +69,11 @@ class PZRailEstimateSource(PipelineStage):
         # Loop through the chunks of data
         for s, e, data in self.data_iterator():
             print(f"Process {self.rank} estimating PZ PDF for rows {s:,} - {e:,}")
+
+            # Convert undetected and unseen values to whatever sentinel
+            # is expected by the algorithm. We currently use inf and nan for these
+            if convert:
+                convert_unseen(data, bands, undet, unobs)
 
             # Run the pre-trained estimator
             pz_data = estimator.estimate(data)
@@ -179,6 +194,9 @@ class PZRailEstimateLens(PZRailEstimateSource):
     config_options = {
         "chunk_rows": 10000,
         "bands": "ugrizy",
+        "convert_unseen": False,
+        "undetected_value": 99.0,
+        "unobserved_value": -99.0,
     }
 
     def data_iterator(self):
