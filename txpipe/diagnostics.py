@@ -755,7 +755,6 @@ class TXLensDiagnosticPlots(PipelineStage):
         self.plot_histograms(data, nbin, 'snr', xlog, bins)
 
     def plot_mag_histograms(self, data, nbin):
-        import dask.array as da
 
         # Histogram ranges are read from configuration choices
         mmin = self.config['mag_min']
