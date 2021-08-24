@@ -26,53 +26,29 @@ PZPDFMLZ:
     nz: 301
     zmax: 3.0
 
-PZRailTrainSource:
-    class_name: FZBoost
-    zmin: 0.0
-    zmax: 2.0
-    nzbins: 201
-    trainfrac: 0.75
-    bands: riz
-    bumpmin: 0.02
-    bumpmax: 0.35
-    nbump: 20
-    sharpmin: 0.7
-    sharpmax: 2.1
-    nsharp: 15
-    max_basis: 35
-    basis_system: cosine
-    regression_params: {'max_depth': 8,'objective':'reg:squarederror'}
+
 
 PZRailTrainLens:
-    class_name: FZBoost
+    class_name: BPZ_lite
     zmin: 0.0
-    zmax: 2.0
-    nzbins: 201
-    trainfrac: 0.75
-    bands: riz
-    bumpmin: 0.02
-    bumpmax: 0.35
-    nbump: 20
-    sharpmin: 0.7
-    sharpmax: 2.1
-    nsharp: 15
-    max_basis: 35
-    basis_system: cosine
-    regression_params: {'max_depth': 8, 'objective': 'reg:squarederror'}
+    zmax: 3.0
+    dz: 0.01
+    columns_file: ./examples/config/bpz_ugrizy.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: ugrizy
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
-FlexZPipe:
-    chunk_rows: 1000
-    bands: ["u","g","r","i","z","y"]
-    sigma_intrins: 0.05  #"intrinsic" assumed scatter, used in ODDS
-    odds_int: 0.99445    #number of sigma_intrins to integrate +/- around peak
-                         # note that 1.95993 is the number of sigma you get for old "ODDS" =0.95
-                         #in old BPZ, 0.68 is 0.99445
-    has_redshift: True   #does the test file have redshift?
-                         #if so, read in and append to output file.
-    nz: 300              #Number of grid points that FZboost will calculate
-    model_picklefile: "data/example/inputs/flexcode_model_sqderr.pkl"
-                         #the pickle file containing the trained  flexzbooxt model.
-    metacal_fluxes: False #switch for whether or not to run metacal suffices
+PZRailEstimateLens:
+    convert_unseen: True
+    bands: ugrizy
 
 
 TXPhotozStack: {}
@@ -183,10 +159,11 @@ TXLensMaps: {}
 
 TXMainMaps: {}
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     flag_exponent_max: 1
-    dilate: True
     psf_prefix: psf_
+
+TXAuxiliaryLensMaps:
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)

@@ -12,6 +12,9 @@ class TXNoiseMaps(PipelineStage):
     Generate a suite of random noise maps by randomly
     rotating individual galaxy measurements.
 
+    Only works if the source and lens catalogs are the same lengths.
+    Otherwise use TXSourceNoiseMaps and TXLensNoiseMaps below
+
     """
     # TODO rewrite this as a TXBaseMaps subclass
     # like the two below    
@@ -221,9 +224,17 @@ class TXNoiseMaps(PipelineStage):
             nbin_lens = f.file['maps'].attrs['nbin_lens']
             ngal_maps = [f.read_map(f'ngal_{b}') for b in range(nbin_lens)]
 
-        with self.open_input('shear_tomography_catalog', wrapper=True) as f:
-            nbin_source = f.file['tomography'].attrs['nbin_source']
+        with self.open_input('shear_tomography_catalog') as f:
+            nbin_source = f['tomography'].attrs['nbin_source']
+            sz1 = f['tomography/source_bin'].size
 
+        with self.open_input('lens_tomography_catalog') as f:
+            sz2 = f['tomography/lens_bin'].size
+
+        if sz1 != sz2:
+            raise ValueError("Lens and source catalogs are different sizes in "
+                             "TXNoiseMaps. In this case run TXSourceNoiseMaps "
+                             "and TXLensNoiseMaps separately.")
 
         return nbin_source, nbin_lens, ngal_maps, mask, map_info
 

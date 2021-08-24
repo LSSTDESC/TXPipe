@@ -7,7 +7,8 @@ stages:
     - name: TXIngestRedmagic
     - name: TXSourceMaps
     - name: TXExternalLensMaps
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+    - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXMapPlots

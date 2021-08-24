@@ -42,9 +42,12 @@ TXExternalLensMaps:
     pixelization: healpix
 
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     sparse:  True
     psf_prefix:  psf_
+
+TXAuxiliaryLensMaps:
+    sparse:  True
     bright_obj_threshold:  22.0
 
 TXSimpleMask:
