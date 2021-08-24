@@ -676,6 +676,7 @@ class TXLensDiagnosticPlots(PipelineStage):
     """
     """
     name='TXLensDiagnosticPlots'
+    # This tells ceci to launch under dask:
     dask_parallel = True
 
     inputs = [
@@ -718,23 +719,31 @@ class TXLensDiagnosticPlots(PipelineStage):
 
 
         bands = self.config['bands']
-        # These need to stay open until dask has finished
-        # with them.
+        # These need to stay open until dask has finished with them.:
         f = self.open_input("photometry_catalog")
         g = self.open_input("lens_tomography_catalog")
-        nbin = g['tomography'].attrs['nbin_lens']
-        block = 1_000_000
 
-        # magnitudes
+        # read nbin from metadata
+        nbin = g['tomography'].attrs['nbin_lens']
+
+        # This seems to work okay; it's also possible to set it to a specific count or
+        # to a data size
+        block = 'auto'
+
+        # Load data columns, lazily for dask
         data = {}
         for b in bands:
             data[f'mag_{b}'] = da.from_array(f[f'photometry/mag_{b}'], block)
             data[f'snr_{b}'] = da.from_array(f[f'photometry/snr_{b}'], block)
-
         data['bin'] = da.from_array(g['tomography/lens_bin'], block)
+
+        # Avoid recomputing selections in each histogram by doing it externally here
         data['sel'] = da.where(data['bin'] >= 0)
         for i in range(nbin):
             data[f'sel{i}'] = da.where(data['bin'] >= 0)
+
+        # Return the open files so they stay open until dask has finished with them.
+        # and also the dict of lazy columns and the bin info
         return [f, g], data, nbin
 
 
@@ -747,11 +756,14 @@ class TXLensDiagnosticPlots(PipelineStage):
 
     def plot_mag_histograms(self, data, nbin):
         import dask.array as da
+
+        # Histogram ranges are read from configuration choices
         mmin = self.config['mag_min']
         mmax = self.config['mag_max']
-        # let's do this in 0.5 mag bins                                                                                                                                                                                            
+        # let's do this in 0.5 mag bins                                                                                                                                                                                           
         bins = np.arange(mmin, mmax+1e-6, 0.5)
         xlog = False
+
         self.plot_histograms(data, nbin, 'mag', xlog, bins)
 
     def plot_histograms(self, data, nbin, name, xlog, bins):
@@ -762,27 +774,36 @@ class TXLensDiagnosticPlots(PipelineStage):
         bands = self.config['bands']
         nband = len(bands)
 
-        # overall version for all bins
         hists = {}
+        # Do a different set of histograms for each band
         for i,b in enumerate(bands):
             w = (data['bin'] >= 0).astype(int)
             sel = data['sel']
+            # first do the global non-tomographic version (all selected objects)
             hists[b, -1] = da.histogram(data[f'{name}_{b}'][sel], bins=bins)
+            # and also loop through tomo bins
             for j in range(nbin):
                 sel = data[f'sel{j}']
                 hists[b, j] = da.histogram(data[f'{name}_{b}'][sel], bins=bins)
 
+        # Launch actual dask computations so we have the data ready to plot
+        # Doing these all at once seems to be faster
         print(f"Beginning {name} histogram compute")
         hists, = dask.compute(hists)
         print("Done")
-        
-        with self.open_output(f'lens_{name}_hist', wrapper=True, figsize=(4*nband, 4)) as fig:
+
+        # Now make all the panels. The open_output method returns an object that
+        # can be used as a context manager and will be saved automatically at the end to the
+        # right location
+        figsize = (4*nband, 4*(nbin+1))
+        with self.open_output(f'lens_{name}_hist', wrapper=True, figsize=figsize) as fig:
             axes = fig.file.subplots(nbin+1, nband, squeeze=False)
             for i,b in enumerate(bands):
                 for j in range(-1, nbin):
                     bj = j if j >= 0 else '2D'
                     heights, edges = hists[b, j]
                     ax = axes[j+1, i]
+                    # This is my function to plot a line histogram from pre-computed edges and heights
                     manual_step_histogram(edges, heights, ax=ax)
                     if xlog:
                         ax.set_xscale('log')
