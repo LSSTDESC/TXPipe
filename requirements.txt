@@ -26,3 +26,4 @@ xgboost==1.1.0
 git+git://github.com/LSSTDESC/qp
 dask[distributed]
 git+git://github.com/joezuntz/dask-mpi
+git+git://github.com/LSSTDESC/desc_bpz
