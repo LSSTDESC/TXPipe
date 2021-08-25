@@ -172,12 +172,15 @@ class TXFourierGaussianCovariance(PipelineStage):
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
             elif 'lens' in tracer:
+                # Get galaxy bias for this sample. Default value = 1.
                 if self.config['galaxy_bias'] == [0.]:
-                    print("Using galaxy bias=1 for all lens bins since you didn't specify any values!")
-                    b = 1.0*np.ones(len(z))  # place holder
+                    b0 = 1
+                    print(f"Using galaxy bias = 1 for {tracer} (since you didn't specify any biases)")
                 else:
-                    print("Using galaxy bias= ", self.config['galaxy_bias'][nbin])
-                    b = self.config['galaxy_bias'][nbin]*np.ones(len(z))
+                    b0 = self.config['galaxy_bias'][nbin]
+                    print(f"Using galaxy bias = {b0} for {tracer}")
+
+                b = b0 * np.ones(len(z))
                 n_gal = meta['n_lens'][nbin]
                 tracer_noise[tracer] = 1 / n_gal
                 ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
