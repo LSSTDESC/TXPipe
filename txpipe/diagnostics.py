@@ -691,7 +691,7 @@ class TXLensDiagnosticPlots(PipelineStage):
     ]
 
     config_options = {
-        'chunk_rows': 50000,
+        'block_size': 0,
         'delta_gamma': 0.02,
         'mag_min': 18,
         'mag_max': 28,
@@ -726,9 +726,10 @@ class TXLensDiagnosticPlots(PipelineStage):
         # read nbin from metadata
         nbin = g['tomography'].attrs['nbin_lens']
 
-        # This seems to work okay; it's also possible to set it to a specific count or
-        # to a data size
-        block = 'auto'
+        # Default to the automatic value but expose as an option
+        block = self.config['block_size']
+        if block == 0:
+            block = 'auto'
 
         # Load data columns, lazily for dask
         data = {}
@@ -738,9 +739,9 @@ class TXLensDiagnosticPlots(PipelineStage):
         data['bin'] = da.from_array(g['tomography/lens_bin'], block)
 
         # Avoid recomputing selections in each histogram by doing it externally here
-        data['sel'] = da.where(data['bin'] >= 0)
+        data['sel'] = da.nonzero(data['bin'] >= 0)
         for i in range(nbin):
-            data[f'sel{i}'] = da.where(data['bin'] >= 0)
+            data[f'sel{i}'] = da.nonzero(data['bin'] == i)
 
         # Return the open files so they stay open until dask has finished with them.
         # and also the dict of lazy columns and the bin info
@@ -776,7 +777,6 @@ class TXLensDiagnosticPlots(PipelineStage):
         hists = {}
         # Do a different set of histograms for each band
         for i,b in enumerate(bands):
-            w = (data['bin'] >= 0).astype(int)
             sel = data['sel']
             # first do the global non-tomographic version (all selected objects)
             hists[b, -1] = da.histogram(data[f'{name}_{b}'][sel], bins=bins)
