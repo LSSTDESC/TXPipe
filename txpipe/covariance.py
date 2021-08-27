@@ -245,17 +245,17 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s2 = spins[1]
                 self.w = nmt.NmtWorkspace()
                 self.w.compute_coupling_matrix(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'), self.b)
-                self.w.write_to(f'temp/w{s1}{s2}.fits')
+                self.w.write_to(f'temp0/w{s1}{s2}.fits')
             pass
         
     def read_w(self):
         import pymaster as nmt
         self.w00 = nmt.NmtWorkspace()
-        self.w00.read_from('temp/w00.fits')
+        self.w00.read_from('temp0/w00.fits')
         self.w20 = nmt.NmtWorkspace()
-        self.w20.read_from('temp/w20.fits')
+        self.w20.read_from('temp0/w20.fits')
         self.w22 = nmt.NmtWorkspace()
-        self.w22.read_from('temp/w22.fits')
+        self.w22.read_from('temp0/w22.fits')
         pass 
     
     def get_cw_spinlist(self):
@@ -285,29 +285,29 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cw = nmt.NmtCovarianceWorkspace()
                 cw.compute_coupling_coefficients(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'),
                                                  getattr(self,f'f{s3}'), getattr(self,f'f{s4}'))
-                cw.write_to(f'temp/cw{s1}{s2}{s3}{s4}.fits')
+                cw.write_to(f'temp0/cw{s1}{s2}{s3}{s4}.fits')
             pass
         
     def read_cw(self):
         import pymaster as nmt
         
         self.cw0000 = nmt.NmtCovarianceWorkspace()
-        self.cw0000.read_from('temp/cw0000.fits')
+        self.cw0000.read_from('temp0/cw0000.fits')
         
         self.cw0020 = nmt.NmtCovarianceWorkspace()
-        self.cw0020.read_from('temp/cw0020.fits')
+        self.cw0020.read_from('temp0/cw0020.fits')
 
         self.cw0022 = nmt.NmtCovarianceWorkspace()
-        self.cw0022.read_from('temp/cw0022.fits')
+        self.cw0022.read_from('temp0/cw0022.fits')
 
         self.cw2020 = nmt.NmtCovarianceWorkspace()
-        self.cw2020.read_from('temp/cw2020.fits')
+        self.cw2020.read_from('temp0/cw2020.fits')
 
         self.cw2022 = nmt.NmtCovarianceWorkspace()
-        self.cw2022.read_from('temp/cw2022.fits')
+        self.cw2022.read_from('temp0/cw2022.fits')
 
         self.cw2222 = nmt.NmtCovarianceWorkspace()
-        self.cw2222.read_from('temp/cw2222.fits')
+        self.cw2222.read_from('temp0/cw2222.fits')
         pass
         
 
@@ -538,6 +538,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
             # Use these terms to project the covariance from C_ell to xi(theta)
+            print(tracer_comb1,tracer_comb2,xi_plus_minus1,xi_plus_minus2,s1_s2_1,s1_s2_2)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
 
@@ -651,16 +652,11 @@ class TXFourierGaussianCovariance(PipelineStage):
         cl240 = 0*cl_nmt[24]
         cl24 = [cl240+SN[24],cl240,cl240,cl240+SN[24]]
         
-        n13 = 1 if s1+s3==0 else s1+s3
-        n14 = 1 if s1+s4==0 else s1+s4
-        n23 = 1 if s2+s3==0 else s2+s3
-        n24 = 1 if s2+s4==0 else s2+s4
-        
         nmt_input = {}
-        nmt_input[13] = cl13[:n13]
-        nmt_input[14] = cl14[:n14]
-        nmt_input[23] = cl23[:n23]
-        nmt_input[24] = cl24[:n24]
+        nmt_input[13] = cl13
+        nmt_input[14] = cl14
+        nmt_input[23] = cl23
+        nmt_input[24] = cl24
         
         return nmt_input
         
@@ -742,6 +738,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     tracer_combs_temp += [combo]
             tracer_combs = tracer_combs_temp.copy()
 
+
         ell_bins = self.get_angular_bins(two_point_data)
         Nell_bins = len(ell_bins) - 1
 
@@ -751,30 +748,30 @@ class TXFourierGaussianCovariance(PipelineStage):
         count_xi_pm2 = 0
         cl_cache = {}
         xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
+        
+        xim_start = N2pt0-(N2pt-N2pt0)
+        xim_end = N2pt0
 
         alldic = [] #create a list of list of dictionaries, and scatter it using MPI
         
         # Look through the chunk of matrix, tracer pair by tracer pair
-        for i in range(N2pt):
+        for i in range(50,N2pt):
             tracer_comb1 = tracer_combs[i]
-
-            if i == N2pt0:
-                count_xi_pm1 = 1
+            count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
 
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
 
-                if j == N2pt0:
-                    count_xi_pm2 = 1
+                count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
                 
-                if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
+                if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
                 
                     dic = {'ij': (i,j),
                            'tracer_comb1': tracer_comb1,
                            'tracer_comb2': tracer_comb2,
-                           'xi_plus_minus1':xi_pm[count_xi_pm1, count_xi_pm2][0],
-                           'xi_plus_minus2':xi_pm[count_xi_pm1, count_xi_pm2][1],
+                           'xi_plus_minus1':xi_pm[count_xi_pm1][count_xi_pm2][0],
+                           'xi_plus_minus2':xi_pm[count_xi_pm1][count_xi_pm2][1],
                           }
                     alldic.append(dic)
 
@@ -829,7 +826,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         
         # Look through the chunk of matrix, tracer pair by tracer pair
         for num,dic in enumerate(diclist): 
-            if self.do_xi and ('source' in dic['tracer_comb1']) and ('source' in dic['tracer_comb2']):
+            tracer_comb1 = dic['tracer_comb1']
+            tracer_comb2 = dic['tracer_comb2']
+            if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
+                #print(tracer_comb1,tracer_comb2,dic['xi_plus_minus1'],dic['xi_plus_minus2'])
                 cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
@@ -860,7 +860,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     )
             i = dic['ij'][0]
             j = dic['ij'][1]
-            np.savetxt(f'temp/cov_{i}_{j}.txt',cov_ij)
+            np.savetxt(f'temp0/cov_{i}_{j}.txt',cov_ij)
         
         pass
     
@@ -872,7 +872,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         for i in range(0, N2pt):
             for j in range(i, N2pt): 
                 # Fill in this chunk of the matrix
-                cov_ij = np.loadtxt(f'temp/cov_{i}_{j}.txt')
+                cov_ij = np.loadtxt(f'temp0/cov_{i}_{j}.txt')
                 # Find the right location in the matrix
                 start_i = i * Nell_bins
                 start_j = j * Nell_bins
