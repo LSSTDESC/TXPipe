@@ -5,6 +5,7 @@ from .utils.provenance import find_module_versions, git_diff, git_current_revisi
 import sys
 import datetime
 import socket
+import itertools
 
 class PipelineStage(PipelineStageBase):
     name = "Error"
@@ -46,7 +47,7 @@ class PipelineStage(PipelineStageBase):
         # Print messsage
         print(f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB")
 
-    def combined_iterators(self, rows, *inputs, parallel=True):
+    def combined_iterators(self, rows, *inputs, parallel=True, longest=False):
         if not len(inputs) % 3 == 0:
             raise ValueError("Arguments to combined_iterators should be in threes: "
                 "tag, group, value"
@@ -54,17 +55,34 @@ class PipelineStage(PipelineStageBase):
         n = len(inputs) // 3
 
         iterators = []
+        colsets = []
         for i in range(n):
             tag = inputs[3 * i]
             section = inputs[3 * i + 1]
             cols = inputs[3 * i + 2]
+            colsets.append(cols)
             iterators.append(self.iterate_hdf(tag, section, cols, rows, parallel=parallel))
 
-        for it in zip(*iterators):
-            data = {}
-            for (s, e, d) in it:
-                data.update(d)
-            yield s, e, data
+        if longest:
+            for it in itertools.zip_longest(*iterators):
+                data = {}
+                se = []
+                for d, cols in zip(it, colsets):
+                    if d is None:
+                        se.append((None, None))
+                        for col in cols:
+                            data[col] = None
+                    else:
+                        se.append((d[0], d[1]))
+                        data.update(d[2])
+                yield se, data
+
+        else:
+            for it in zip(*iterators):
+                data = {}
+                for (s, e, d) in it:
+                    data.update(d)
+                yield s, e, data
 
     def gather_provenance(self):
         provenance = {}
