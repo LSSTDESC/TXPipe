@@ -19,8 +19,11 @@ stages:
       nprocess: 32
     - name: TXTruthLensSelector
       nprocess: 32
-    - name: TXTrueNumberDensity
+    - name: TXLensTrueNumberDensity
+    - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
     - name: TXTwoPointFourier
       nprocess: 2
       nodes: 2
@@ -46,11 +49,15 @@ stages:
       nprocess: 2
       nodes: 2
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXLensDiagnosticPlots
+      nprocess: 16
+      nodes: 1
+    - name: TXSourceDiagnosticPlots
       nprocess: 16
       nodes: 1
     - name: TXFourierGaussianCovariance
       threads_per_process: 32
+    - name: TXTwoPointTheoryReal
     - name: TXRealGaussianCovariance
       threads_per_process: 32
     - name: TXConvergenceMaps
