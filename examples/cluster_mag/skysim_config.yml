@@ -37,7 +37,8 @@ CMCorrelations:
     bin_slop: 0.1
     sep_units: arcmin
     verbose: 1
-    var_method': jackknife
+    var_method: jackknife
+    patch_dir: /pbs/throng/lsst/users/jzuntz/cluster_mag/cache
 
 # no options for this one
 CMCorrelationsPlot: {}
