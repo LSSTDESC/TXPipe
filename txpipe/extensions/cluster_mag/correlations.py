@@ -7,8 +7,6 @@ import traceback
 from ...twopoint import TXTwoPoint, POS_POS
 
 
-
-
 class CMCorrelations(TXTwoPoint):
     name = "CMCorrelations"
 
@@ -57,7 +55,7 @@ class CMCorrelations(TXTwoPoint):
         # but we do have two sets of density samples. The binned (in M and z) halos:
         lens_list = [f"{i}_{j}" for i in range(nz) for j in range(nm)]
         # and a single background sample:
-        lens_list.append("bg")
+        lens_list.insert(0, "bg")
 
         return source_list, lens_list
 
@@ -111,6 +109,7 @@ class CMCorrelations(TXTwoPoint):
 
     def get_lens_catalog(self, bins):
         import treecorr
+        self.memory_report(f"get lens {bins}")
         # We now have two different lens catalogs to choose from
         if bins == "bg":
             cat = treecorr.Catalog(
