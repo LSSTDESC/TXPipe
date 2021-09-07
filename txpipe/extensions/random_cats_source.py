@@ -3,11 +3,13 @@ from ..data_types import MapsFile, YamlFile, RandomsCatalog, TomographyCatalog, 
 from ..utils import choose_pixelization
 import numpy as np
 
-
+# All of this is relying on using the depth from the lenses rather than sources,
+# this is a major issue, and all of this code should therefore be taken as
+# speculative!
 class TXRandomCat_source(PipelineStage):
     name='TXRandomCat_source'
     inputs = [
-        ('aux_source_maps', MapsFile),
+        ('aux_lens_maps', MapsFile), #Source maps does not have depth, will they in future?
         ('tracer_metadata', HDFFile),       
         ('shear_photoz_stack', HDFFile),
         ('fiducial_cosmology', FiducialCosmology),
@@ -29,7 +31,7 @@ class TXRandomCat_source(PipelineStage):
         from .. import randoms
         import pyccl as ccl
         # Load the input depth map
-        with self.open_input('aux_source_maps', wrapper=True) as maps_file:
+        with self.open_input('aux_lens_maps', wrapper=True) as maps_file: 
             depth = maps_file.read_map('depth/depth')
             info = maps_file.read_map_info('depth/depth')
             nside = info['nside']
