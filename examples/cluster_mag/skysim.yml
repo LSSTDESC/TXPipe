@@ -16,22 +16,20 @@ stages:
     - name: TXJackknifeCenters
     - name: CMRedshifts
     - name: CMCorrelations
-      nprocess: 4
-      nodes: 4
       threads_per_process: 16
     - name: CMCorrelationsPlot
 
 # This file contains the configuration for the stages above:
-config: examples/cluster_mag/cluster_mag_skysim_config.yml
+config: examples/cluster_mag/skysim_config.yml
 
 # where to put ouput files
-output_dir: data/cluster_mag_skysim/outputs
+output_dir: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/outputs
 
 # overall inputs to the pipeline. The photometry catalog is one I extracted from SkySim 5000.
 # The halo catalog was generated with the commented-out stage above
 inputs:
-    photometry_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/from_nersc/photometry_catalog.hdf5
-    cluster_mag_halo_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/from_nersc//cluster_mag_halo_catalog.hdf5
+    photometry_catalog: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/photometry_catalog.hdf5
+    cluster_mag_halo_catalog: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/cluster_mag_halo_catalog.hdf5
 
 
 # this is which python modules to import
@@ -43,8 +41,8 @@ modules: txpipe
 resume: True
 
 # Where log files go
-log_dir: data/cluster_mag_skysim/logs
-pipeline_log: data/cluster_mag_skysim/log.txt
+log_dir: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/logs
+pipeline_log: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/log.txt
 
 # This tells the launcher how to run the code
 # you shouldn't need to modify it
@@ -58,5 +56,4 @@ launcher:
 # to modify this either.
 site:
     name: cc-parallel
-    image: txpipe_latest.sif
-    volume: ${PWD}:/opt/TXPipe,${THRONG_DIR}
+
