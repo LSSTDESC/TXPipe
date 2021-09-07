@@ -3,7 +3,7 @@ import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import HDFFile, MapsFile
 from ...utils import choose_pixelization
-
+from .buffer import Buffer
 
 class CMRandoms(PipelineStage):
     name = "CMRandoms"
@@ -57,11 +57,17 @@ class CMRandoms(PipelineStage):
 
         # Each processor now does a subset of the pixels, generating and saving
         #  points in each
-        for i, vertex in self.split_tasks_by_rank(enumerate(vertices)):
-            if (i % (10_000 * self.size)) == self.rank:
+        my_indices = np.array_split(np.arange(len(vertices)), self.size)[self.rank]
+        my_vertices = vertices[my_indices]
+        my_start = counts[my_indices[0]]
+        ra_buf = Buffer(1_000_000, ra_out, my_start)
+        dec_buf = Buffer(1_000_000, dec_out, my_start)
+        for i, vertex in enumerate(my_vertices):
+            if i % 10_000 == 0:
                 print(
-                    f"Rank {self.rank} done {i//self.size:,} of its {counts.size//self.size:,} pixels"
+                    f"Rank {self.rank} done {i:,} of its {my_indices.size:,} pixels"
                 )
+                self.stdout.flush()
             # Generate random points in this pixel
             p1, p2, p3, p4 = vertex.T
             N = counts[i]
@@ -73,10 +79,11 @@ class CMRandoms(PipelineStage):
             # Write output
             s = starts[i]
             e = starts[i + 1]
-            ra_out[s:e] = ra
-            dec_out[s:e] = dec
-
-            sys.stdout.flush()
+            ra_buf.append(ra)
+            dec_buf.append(dec)
+        # Write any residual stuff
+        ra_buf.write()
+        dec_buf.write()
 
         output_file.close()
 
