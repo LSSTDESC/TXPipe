@@ -437,8 +437,10 @@ class TXExternalLensMaps(TXLensMaps):
 class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
     Combined source and photometric lens maps, from the
-    same photometry catalog.  Same as running TXSourceMaps
-    and then TXLensMaps but faster as we only do the I/O once.
+    same photometry catalog. This might be slightly faster than
+    running two maps separately, but it only works if the source 
+    and lens catalogs are the same set of objects. Otherwise use
+    TXSourceMaps and TXLensMaps.
     """
 
     name = "TXMainMaps"
@@ -460,6 +462,17 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # This is just the combination of
         # the source and lens map columns
         print("TODO: no lens weights here")
+
+        with self.open_input("photometry_catalog") as f:
+            sz1 = f['photometry/ra'].size
+        with self.open_input("shear_catalog") as f:
+            sz2 = f['shear/ra'].size
+
+        if sz1 != sz2:
+            raise ValueError("Shear and photometry catalogs in TXMainMaps are "
+                             "different sizes. To use separate source and lens "
+                             "samples use TXSourceMaps and TXLensMaps separately."
+                             )
 
         # metacal, lensfit, etc.
         shear_catalog_type = read_shear_catalog_type(self)

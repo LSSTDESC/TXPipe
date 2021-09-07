@@ -46,7 +46,10 @@ stages:
     - name: TXMainMaps
       nprocess: 16
       nodes: 2
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+      nprocess: 16
+      nodes: 2
+    - name: TXAuxiliaryLensMaps
       nprocess: 16
       nodes: 2
     - name: TXSimpleMask
@@ -67,7 +70,9 @@ stages:
 #      nodes: 2
 #      threads_per_process: 32
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXSourceDiagnosticPlots
+      nprocess: 16
+    - name: TXLensDiagnosticPlots
       nprocess: 16
     - name:  TXStarCatalogSplitter
       nprocess: 1
