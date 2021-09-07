@@ -7,7 +7,7 @@ import numpy as np
 class TXRandomCat_source(PipelineStage):
     name='TXRandomCat_source'
     inputs = [
-        ('aux_maps', MapsFile),
+        ('aux_source_maps', MapsFile),
         ('tracer_metadata', HDFFile),       
         ('shear_photoz_stack', HDFFile),
         ('fiducial_cosmology', FiducialCosmology),
@@ -29,7 +29,7 @@ class TXRandomCat_source(PipelineStage):
         from .. import randoms
         import pyccl as ccl
         # Load the input depth map
-        with self.open_input('aux_maps', wrapper=True) as maps_file:
+        with self.open_input('aux_source_maps', wrapper=True) as maps_file:
             depth = maps_file.read_map('depth/depth')
             info = maps_file.read_map_info('depth/depth')
             nside = info['nside']
