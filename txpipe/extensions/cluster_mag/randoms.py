@@ -45,6 +45,8 @@ class CMRandoms(PipelineStage):
 
         # total number of objects to be generated over all the pixels
         total_count = counts.sum()
+        if self.rank == 0:
+            print(f"Generating a total of {total_count:,} randoms")
 
         # The starting index of each pixel in the array, so we can parallelize
         starts = np.concatenate([[0], np.cumsum(counts)])
@@ -59,15 +61,16 @@ class CMRandoms(PipelineStage):
         #  points in each
         my_indices = np.array_split(np.arange(len(vertices)), self.size)[self.rank]
         my_vertices = vertices[my_indices]
-        my_start = counts[my_indices[0]]
+        my_start = starts[my_indices[0]]
+
         ra_buf = Buffer(1_000_000, ra_out, my_start)
         dec_buf = Buffer(1_000_000, dec_out, my_start)
-        for i, vertex in enumerate(my_vertices):
-            if i % 10_000 == 0:
+        for j, (i, vertex) in enumerate(zip(my_indices, my_vertices)):
+            if j % 10_000 == 0:
                 print(
-                    f"Rank {self.rank} done {i:,} of its {my_indices.size:,} pixels"
+                    f"Rank {self.rank} done {j:,} of its {my_indices.size:,} pixels"
                 )
-                self.stdout.flush()
+                sys.stdout.flush()
             # Generate random points in this pixel
             p1, p2, p3, p4 = vertex.T
             N = counts[i]
@@ -76,14 +79,14 @@ class CMRandoms(PipelineStage):
             # This is not healpy-specific so we just use it as a convenience function
             ra, dec = healpy.vec2ang(P, lonlat=True)
 
-            # Write output
-            s = starts[i]
-            e = starts[i + 1]
-            ra_buf.append(ra)
+            # Buffer output for writing. We are writing contiguous chunks of data
+            # so shouldn't need output sizes
+            ra_buf.append(ra, verbose=True)
             dec_buf.append(dec)
         # Write any residual stuff
-        ra_buf.write()
+        ra_buf.write(verbose=True)
         dec_buf.write()
+        del ra_buf, dec_buf
 
         output_file.close()
 

@@ -15,20 +15,23 @@ class Buffer:
         self.ref = ref
         self.start = start
         self.buffered = 0
+        self.size = size
         self.buffer = []
 
-    def append(self, vals):
+    def append(self, vals, verbose=False):
         self.buffer.append(vals)
         self.buffered += len(vals)
 
         if self.buffered > self.size:
-            self.write()
+            self.write(verbose=verbose)
 
-    def write(self):
+    def write(self, verbose=False):
         if not self.buffer:
             return
         out = np.concatenate(self.buffer)
         n = len(out)
+        if verbose:
+            print(f"Writing out range {self.start:,} : {self.start + n:,} to {self.ref.name}")
         self.ref[self.start : self.start + n] = out
         self.start += n
         self.buffered = 0
