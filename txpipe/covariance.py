@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile
+from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile, YamlFile
 import numpy as np
 import warnings
 import os
@@ -7,6 +7,7 @@ import pickle
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
+sq_deg_on_sky = 360**2 / np.pi
 
 # Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix
 
@@ -541,3 +542,89 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         filename = self.get_output('summary_statistics_real')
         two_point_data.add_covariance(cov)
         two_point_data.save_fits(filename, overwrite=True)
+
+
+
+class TXFourierTJPCovariance(PipelineStage):
+    name='TXFourierTJPCovariance'
+    do_xi=False
+    
+    inputs = [
+        ('fiducial_cosmology', FiducialCosmology),    # For the cosmological parameters
+        ('twopoint_data_fourier', SACCFile), # For the binning information
+        ('tracer_metadata_yml', YamlFile),        # For metadata
+    ]
+
+    outputs = [
+        ('summary_statistics_fourier', SACCFile),
+    ]
+
+    config_options = {
+        'galaxy_bias': [0.],
+        'IA': 0.5
+    }
+
+
+    def run(self):
+        import tjpcov.main
+
+        with self.open_input("tracer_metadata_yml", wrapper=True) as f:
+            meta = f.content
+        assert meta['area_unit'] == 'deg^2'
+        assert meta['density_unit'] == 'arcmin^{-2}'
+
+        nbin_lens = meta['nbin_lens']
+        nbin_source = meta['nbin_source']
+
+        tjp_config = {}
+        tjp_config["do_xi"] = False
+        tjp_config['cov_type'] = 'gaus'
+        tjp_config["cl_file"] = self.read_sacc()
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            tjp_config["cosmo"] = f.to_ccl()
+
+        if self.config['galaxy_bias'] == [0.0]:
+            bias = [1.0 for i in range(nbin_lens)]
+        else:
+            bias = self.config['galaxy_bias']
+            if not len(bias) == nbin_lens:
+                raise ValueError("Wrong number of bias values supplied")
+
+        for i in range(nbin_lens):
+            tjp_config[f"bias_lens{i}"] = bias[i]
+            tjp_config[f"Ngal_lens{i}"] = meta["lens_density"][i]
+
+        for i in range(nbin_source):
+            tjp_config[f"Ngal_source{i}"] = meta["n_eff"][i]
+            tjp_config[f"sigma_e{i}"] = meta["sigma_e"][i]
+
+
+        tjp_config['fsky'] = meta['area'] / sq_deg_on_sky
+        # TODO use mask here instead
+
+        calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
+        covmat = calculator.get_all_cov_nmt()
+        print(covmat)
+
+
+
+    def read_sacc(self):
+        import sacc
+        f = self.get_input('twopoint_data_fourier')
+        two_point_data = sacc.Sacc.load_fits(f)
+
+        # Remove the data types that we won't use for inference
+        mask = [
+            two_point_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
+            two_point_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
+            two_point_data.indices(sacc.standard_types.galaxy_density_cl),
+            # not doing b-modes, do we want to?
+        ]
+        print("Length before cuts = ", len(two_point_data))
+        mask = np.concatenate(mask)
+        two_point_data.keep_indices(mask)
+        print("Length after cuts = ", len(two_point_data))
+        two_point_data.to_canonical_order()
+
+        return two_point_data
