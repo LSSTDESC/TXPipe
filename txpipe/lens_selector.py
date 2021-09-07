@@ -279,7 +279,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
     name = "TXMeanLensSelector"
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('photoz_pdfs', HDFFile),
+        ('lens_photoz_pdfs', HDFFile),
     ]
 
 
@@ -288,7 +288,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
         phot_cols = ['mag_i','mag_r','mag_g']
         z_cols = ['z_mean']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-        iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
+        iter_pz = self.iterate_hdf('lens_photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
             data['z'] = z_data['z_mean']
             yield s, e, data
@@ -297,7 +297,7 @@ class TXModeLensSelector(TXBaseLensSelector):
     name = "TXModeLensSelector"
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('photoz_pdfs', HDFFile),
+        ('lens_photoz_pdfs', HDFFile),
     ]
 
 
@@ -306,7 +306,7 @@ class TXModeLensSelector(TXBaseLensSelector):
         phot_cols = ['mag_i','mag_r','mag_g']
         z_cols = ['z_mode']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-        iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
+        iter_pz = self.iterate_hdf('lens_photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
             data['z'] = z_data['z_mode']
             yield s, e, data

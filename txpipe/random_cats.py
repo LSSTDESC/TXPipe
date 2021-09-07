@@ -7,7 +7,7 @@ import numpy as np
 class TXRandomCat(PipelineStage):
     name='TXRandomCat'
     inputs = [
-        ('aux_maps', MapsFile),
+        ('aux_lens_maps', MapsFile),
         ('lens_photoz_stack', HDFFile),
     ]
     outputs = [
@@ -26,7 +26,7 @@ class TXRandomCat(PipelineStage):
         import healpy
         from . import randoms
         # Load the input depth map
-        with self.open_input('aux_maps', wrapper=True) as maps_file:
+        with self.open_input('aux_lens_maps', wrapper=True) as maps_file:
             depth = maps_file.read_map('depth/depth')
             info = maps_file.read_map_info('depth/depth')
             nside = info['nside']

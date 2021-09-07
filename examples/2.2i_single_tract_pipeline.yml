@@ -30,7 +30,8 @@ stages:
     - name: TXPhotozStack
     - name: TXPhotozPlots
     - name: TXMainMaps
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+    - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXMapPlots
@@ -39,7 +40,8 @@ stages:
     - name: TXTwoPoint
     - name: TXNullBlinding
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXSourceDiagnosticPlots
+    - name: TXLensDiagnosticPlots
     - name: TXGammaTBrightStars
     - name: TXGammaTDimStars
     - name: TXBrighterFatterPlot

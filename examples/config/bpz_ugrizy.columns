@@ -1,0 +1,14 @@
+#This file is used by DESC_BPZ to figure out which data columns correspond to which filter
+#and whether to include additional error convoluation or offsets.  See BPZ documentation
+#for further details
+#Filter        columns  cal(AB or Vega,optional)  zp_error  zp_offset
+DC2LSST_u      mag_u_lsst, mag_err_u_lsst	AB     	  		  0.005	    0.0
+DC2LSST_g      mag_g_lsst, mag_err_g_lsst	AB			  0.005     0.0
+DC2LSST_r      mag_r_lsst, mag_err_g_lsst	AB			  0.005	    0.0
+DC2LSST_i      mag_i_lsst, mag_err_i_lsst	AB			  0.005	    0.0
+DC2LSST_z      mag_z_lsst, mag_err_z_lsst	AB			  0.005	    0.0
+DC2LSST_y      mag_y_lsst, mag_err_y_lsst	AB			  0.005	    0.0
+Z_S 	       redshift
+ID		id
+M_0		mag_i_lsst
+
