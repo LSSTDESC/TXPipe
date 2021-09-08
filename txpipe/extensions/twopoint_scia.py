@@ -5,7 +5,10 @@ import numpy as np
 import random
 import collections
 import sys
+import pathlib
 from time import perf_counter
+import gc
+
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -67,6 +70,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'low_mem': True,
         'metric': 'Rperp',
         'use_randoms': False,
+        'patch_dir': './cache/patches',
         }
 
     def run(self):
@@ -121,6 +125,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
             flip_g1 = self.config["flip_g1"],
             flip_g2 = self.config["flip_g2"],
         )
@@ -142,6 +147,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('binned_random_catalog_source', i),
         ) 
         return rancat
 
@@ -312,6 +318,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
+
+        gc.collect()
 
         result = Measurement(xtype, xx, i, j)
 
