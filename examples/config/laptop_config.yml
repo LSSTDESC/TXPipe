@@ -237,3 +237,7 @@ TXMapCorrelations:
 TXShearCalibration:
     3Dcoords: True
     redshift_shearcatalog: True
+
+TXSelfCalibrationIA:
+    do_pos_pos: True
+    use_randoms: True
