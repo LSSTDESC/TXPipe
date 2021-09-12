@@ -242,15 +242,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
             t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
-        ng.calculateXi(rg=rg)
-
         return ng
 
     def calculate_pos_pos(self, i, j):
         import pyccl as ccl
         import treecorr
 
-        cat_i, = self.get_shear_catalog(i)
+        cat_i = self.get_shear_catalog(i)
         rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
