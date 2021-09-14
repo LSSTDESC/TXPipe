@@ -568,22 +568,30 @@ class TXFourierTJPCovariance(PipelineStage):
     def run(self):
         import tjpcov.main
 
+        # Read the metadata from earlier in the pipeline
         with self.open_input("tracer_metadata_yml", wrapper=True) as f:
             meta = f.content
+        # check the units are what we are expecting
         assert meta['area_unit'] == 'deg^2'
         assert meta['density_unit'] == 'arcmin^{-2}'
 
+        # get the number of bins from metadata
         nbin_lens = meta['nbin_lens']
         nbin_source = meta['nbin_source']
 
+        # set up some config options for TJPCov
         tjp_config = {}
         tjp_config["do_xi"] = False
         tjp_config['cov_type'] = 'gaus'
         tjp_config["cl_file"] = self.read_sacc()
 
+        # Get the CCL cosmo object to pass to TJPCov
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             tjp_config["cosmo"] = f.to_ccl()
 
+
+        # Choose linear bias values to pass to CCL.
+        # Based on configuration option for user.
         if self.config['galaxy_bias'] == [0.0]:
             bias = [1.0 for i in range(nbin_lens)]
         else:
@@ -591,6 +599,7 @@ class TXFourierTJPCovariance(PipelineStage):
             if not len(bias) == nbin_lens:
                 raise ValueError("Wrong number of bias values supplied")
 
+        # Set more TJPCov config options
         for i in range(nbin_lens):
             tjp_config[f"bias_lens{i}"] = bias[i]
             tjp_config[f"Ngal_lens{i}"] = meta["lens_density"][i]
@@ -600,9 +609,10 @@ class TXFourierTJPCovariance(PipelineStage):
             tjp_config[f"sigma_e{i}"] = meta["sigma_e"][i]
 
 
+        # Set sky fraction. TODO: use mask here instead
         tjp_config['fsky'] = meta['area'] / sq_deg_on_sky
-        # TODO use mask here instead
 
+        # Run TJPCov
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
         covmat = calculator.get_all_cov_nmt()
         print(covmat)
@@ -610,6 +620,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
 
     def read_sacc(self):
+        # Loads a sacc file and remove any BB measurements or similar
         import sacc
         f = self.get_input('twopoint_data_fourier')
         two_point_data = sacc.Sacc.load_fits(f)
