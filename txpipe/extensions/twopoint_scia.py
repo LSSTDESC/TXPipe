@@ -269,7 +269,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         if self.rank == 0:
             print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_i} objects,  {n_rand_i} randoms")
 
-
+        t1 = perf_counter()
+        
         nn = treecorr.NNCorrelation(config)
         nn.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
         
