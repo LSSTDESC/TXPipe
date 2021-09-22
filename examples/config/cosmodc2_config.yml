@@ -99,6 +99,9 @@ TXJackknifeCenters:
 TXSourceDiagnosticPlots:
     shear_prefix: mcal_
 
+TXFourierGaussianCovariance:
+    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 100.
@@ -107,6 +110,7 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
+    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
 
 TXTwoPoint:
     bin_slop: 0.0
