@@ -97,6 +97,8 @@ class TXSourceSelector(PipelineStage):
 
         if shear_catalog_type == 'metacal':
             shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
+        elif shear_catalog_type == 'metadetect':
+            shear_cols += metadetect_variants('T', 's2n', 'g1', 'g2')
         elif shear_catalog_type == 'lensfit':
             shear_cols += ['T', 's2n', 'g1', 'g2','weight','m']
         elif shear_catalog_type =='hsc':
