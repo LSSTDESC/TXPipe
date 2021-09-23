@@ -6,7 +6,9 @@ import numpy as np
 import random
 import collections
 import sys
+import os
 import pathlib
+import warnings
 from time import perf_counter
 import gc
 
@@ -457,14 +459,15 @@ class TXTwoPoint(PipelineStage):
         with self.open_input(input_tag, wrapper=True) as f:
             p = f.read_provenance()
             uuid = p['uuid']
-            stem = pathlib.Path(f.path).stem
+            pth = pathlib.Path(f.path).resolve()
+            ctime = os.stat(pth).st_ctime
 
         # We expect the input files to be generated within a pipeline and so always
         # have input files to have a unique ID.  But if for some reason it doesn't
         # have one we handle that too.
         if uuid == 'UNKNOWN':
-            warnings.warn(f"No provenance in input file: using file name for patch dir. Using {stem}")
-            name = stem
+            ident = hash(f"{pth}{ctime}").to_bytes(8, 'big', signed=True).hex()
+            name = f"{input_tag}_{ident}"
         else:
             name = f"{input_tag}_{uuid}"
 
