@@ -8,7 +8,6 @@ import collections
 import sys
 import os
 import pathlib
-import warnings
 from time import perf_counter
 import gc
 
