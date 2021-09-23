@@ -27,7 +27,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     config_options = {
         'pickled_wigner_transform': '',
         'use_true_shear': False,
-        
+        'galaxy_bias': [0.],
     }
 
 
@@ -172,11 +172,19 @@ class TXFourierGaussianCovariance(PipelineStage):
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
             elif 'lens' in tracer:
-                b = 1.0*np.ones(len(z))  # place holder
+                # Get galaxy bias for this sample. Default value = 1.
+                if self.config['galaxy_bias'] == [0.]:
+                    b0 = 1
+                    print(f"Using galaxy bias = 1 for {tracer} (since you didn't specify any biases)")
+                else:
+                    b0 = self.config['galaxy_bias'][nbin]
+                    print(f"Using galaxy bias = {b0} for {tracer}")
+
+                b = b0 * np.ones(len(z))
                 n_gal = meta['n_lens'][nbin]
                 tracer_noise[tracer] = 1 / n_gal
                 ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
-        
+                    
         return ccl_tracers, tracer_noise
 
     def get_spins(self, tracer_comb):
@@ -278,14 +286,14 @@ class TXFourierGaussianCovariance(PipelineStage):
             if xi_plus_minus1 != xi_plus_minus2:
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
-                Bmode_F=-1 
+                Bmode_F=-1
             # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
             # B-modes
             cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
             cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
         cov['final']=cov[1423]+cov[1324]
-
+        
         if self.do_xi:
             s1_s2_1 = self.get_spins(tracer_comb1)
             s1_s2_2 = self.get_spins(tracer_comb2)
@@ -297,7 +305,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_1 = s1_s2_1[xi_plus_minus1]
             if isinstance(s1_s2_2, dict):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
-
+                
             # Use these terms to project the covariance from C_ell to xi(theta)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
@@ -402,21 +410,31 @@ class TXFourierGaussianCovariance(PipelineStage):
         cl_cache = {}
         xi_pm = [[('plus','plus'), ('plus', 'minus')], [('minus','plus'), ('minus', 'minus')]]
 
+        print("Total number of 2pt functions:", N2pt)
+        print("Number of 2pt functions without xim:", N2pt0)
+        
         # Look through the chunk of matrix, tracer pair by tracer pair
+        # Order of the covariance needs to be the cannonical order of saac. For a 3x2pt matrix that is:
+        # -galaxy_density_xi
+        # -galaxy_shearDensity_xi_t
+        # -galaxy_shear_xi_minus
+        # -galaxy_shear_xi_plus
+
+        xim_start = N2pt0-(N2pt-N2pt0)
+        xim_end = N2pt0
+        
         for i in range(N2pt):
             tracer_comb1 = tracer_combs[i]
 
-            if i == N2pt0:
-                count_xi_pm1 = 1
-
+            count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
+            
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
+                
+                count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
 
-                if j == N2pt0:
-                    count_xi_pm2 = 1
-
-                if self.do_xi and ('source' in tracer_comb1) and ('source' in tracer_comb2):
+                if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
@@ -426,8 +444,8 @@ class TXFourierGaussianCovariance(PipelineStage):
                         ccl_tracers=ccl_tracers,
                         tracer_Noise=tracer_Noise, 
                         two_point_data=two_point_data,
-                        xi_plus_minus1=xi_pm[count_xi_pm1, count_xi_pm2][0],
-                        xi_plus_minus2=xi_pm[count_xi_pm1, count_xi_pm2][1],
+                        xi_plus_minus1=xi_pm[count_xi_pm1][count_xi_pm2][0],
+                        xi_plus_minus2=xi_pm[count_xi_pm1][count_xi_pm2][1],
                         cache=cl_cache,
                         WT=WT,
                     )
@@ -487,6 +505,8 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         'max_sep':250,
         'nbins':20,
         'pickled_wigner_transform': '',
+        'use_true_shear': False,
+        'galaxy_bias': [0.],
     }
 
     def run(self):

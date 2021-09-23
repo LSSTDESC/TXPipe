@@ -3,9 +3,15 @@ sys.path.append('.')
 import ceci
 import txpipe
 import yaml
+import argparse
 import pygraphviz
 
-config = yaml.safe_load(open(sys.argv[1]))
+parser = argparse.ArgumentParser(description="Make a flow chart from a pipeline file")
+parser.add_argument("input", help="Input YML pipeline file")
+parser.add_argument("output", help="Output image file")
+parser.add_argument("--highlight", default="", nargs="*", help="Highlight inputs and outputs from stage(s)")
+args = parser.parse_args()
+config = yaml.safe_load(open(args.input))
 
 # Get all the stage objects
 stages = [ceci.PipelineStage.get_stage(stage['name']) for stage in config['stages']]
@@ -30,13 +36,15 @@ for stage in stages:
         if inp not in seen:
             graph.add_node(inp, shape='box', color='skyblue', style='filled')
             seen.add(inp)
-        graph.add_edge(inp, stage.name)
+        color = 'darkorange' if (stage.name in args.highlight) or (inp in args.highlight) else 'black'
+        graph.add_edge(inp, stage.name, color=color)
     # and to its outputs
     for out, _ in stage.outputs:
         if out not in seen:
             graph.add_node(out, shape='box', color='skyblue', style='filled')
             seen.add(out)
-        graph.add_edge(stage.name, out)
+        color = 'darkorchid' if (stage.name in args.highlight) or (out in args.highlight) else 'black'
+        graph.add_edge(stage.name, out, color=color)
 
 # finally, output the stage to file
-graph.draw(sys.argv[2], prog='dot')
+graph.draw(args.output, prog='dot')

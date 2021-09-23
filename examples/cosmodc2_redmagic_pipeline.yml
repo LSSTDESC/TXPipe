@@ -17,28 +17,41 @@ stages:
     - name: TXRandomCat
     - name: TXIngestRedmagic
     - name: TXSourceSelector
-      nprocess: 32
+      nprocess: 64
+      nodes: 2
+    - name: TXShearCalibration
+      nprocess: 7
+      nodes: 1
+    - name: TXExternalLensCatalogSplitter
+      nprocess: 5
+      nodes: 1
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXSourceMaps
+      nprocess: 12
+      threads_per_process: 1
+      nodes: 3
+    - name: TXExternalLensMaps
+    - name: TXAuxiliarySourceMaps
       nprocess: 8
       threads_per_process: 1
       nodes: 1
-    - name: TXExternalLensMaps
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliaryLensMaps
       nprocess: 8
       threads_per_process: 1
       nodes: 1
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
-    - name: TXTwoPointLensCat
+    - name: TXTwoPoint
       threads_per_process: 64
       nprocess: 2
       nodes: 2
+    - name: TXTwoPointTheoryReal
+    - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
       threads_per_process: 64
@@ -47,8 +60,8 @@ stages:
       nodes: 1
       threads_per_process: 1
     - name: TXExternalLensNoiseMaps
-      nprocess: 4
-      nodes: 1
+      nprocess: 8
+      nodes: 2
       threads_per_process: 1
     - name: TXTwoPointFourier
       nprocess: 2
@@ -59,9 +72,9 @@ stages:
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/
-# output_dir: data/cosmodc2/outputs_redmagic/no_shape_noise/
+output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins/
 config: examples/config/cosmodc2_config.yml
 
 # On NERSC, set this before running:

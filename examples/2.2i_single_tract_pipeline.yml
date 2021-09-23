@@ -3,34 +3,45 @@ launcher:
     name: mini
     interval: 1.0
 
+
+# These site options tell the launcher to use shifter
 site:
-  name: cori-interactive
-  image: joezuntz/txpipe
+    name: cori-interactive
+    image: joezuntz/txpipe
+    volume: ${PWD}:/opt/txpipe
 
-
+# modules and packages to import that have pipeline
+# stages defined in them
 modules: txpipe
 
-# We now also specify parallelization options.
-# By default, things run on one node, with one process, and one thread.
-# But all of these can be changed.
-# Sometimes (like for the TXDiagnosticMaps stage) which uses a lot of memory,
-# we want to use fewer processes but keep them on that one node.
-# Sometimes for slower codes we want to use lots of proceses on multiple nodes
-# and sometimes we have thread-enabled codes that want fewer processes but lots of threads.
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
 stages:
+    - name: TXJackknifeCenters
+    - name: TXNoiseMaps
     - name: TXSourceSelector
     - name: TXMeanLensSelector
     - name: PZPDFMLZ
-    - name: TXJackknifeCenters
     - name: TXPhotozStack
     - name: TXPhotozPlots
-    - name: TXDiagnosticMaps
+    - name: TXMainMaps
+    - name: TXAuxiliarySourceMaps
+    - name: TXAuxiliaryLensMaps
+    - name: TXSimpleMask
+    - name: TXDensityMaps
     - name: TXMapPlots
+    - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXTwoPoint
     - name: TXNullBlinding
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXSourceDiagnosticPlots
+    - name: TXLensDiagnosticPlots
     - name: TXGammaTBrightStars
     - name: TXGammaTDimStars
     - name: TXBrighterFatterPlot
@@ -39,7 +50,6 @@ stages:
 
 output_dir: data/2.2i-single-tract/outputs
 config: examples/config/2.2i_config.yml
-
 
 inputs:
     shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/shear_catalog.hdf5

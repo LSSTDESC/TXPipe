@@ -34,6 +34,29 @@ PZPDFMLZ:
     nz: 301
     zmax: 3.0
 
+
+PZRailTrainSource:
+    class_name: BPZ_lite
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    columns_file: ./examples/config/bpz_riz.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01]
+
+PZRailEstimateSource:
+    convert_unseen: True # needed for BPZ
+
+
 FlexZPipe:
     chunk_rows: 1000
     bands: ["u","g","r","i","z","y"]
@@ -95,11 +118,22 @@ TXMeanLensSelector:
     i_hi_cut: 21.9
     r_i_cut: 2.0
 
+TXModeLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
 TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
-    binslop: 0.1
+    bin_slop: 0.1
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -130,9 +164,11 @@ TXBlinding:
     b0: 0.95  ## we use bias of the form b0/g
     delete_unblinded: True
 
-TXDiagnosticPlots:
+TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
+
+TXLensDiagnosticPlots: {}
 
 TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
@@ -163,10 +199,12 @@ TXExternalLensMaps:
 
 TXMainMaps: {}
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     flag_exponent_max: 8
-    dilate: True
     psf_prefix: psf_
+
+TXAuxiliaryLensMaps:
+    flag_exponent_max: 8
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)

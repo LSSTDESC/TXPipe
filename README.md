@@ -6,6 +6,11 @@ We will build up the modules needed for the analysis as shown in the Pipelines r
 
 It builds on the ceci repository for the infrastructure.
 
+Tutorial
+--------
+
+[See our tutorial](https://docs.google.com/presentation/d/1haMu1eLBzfYjAlcZ-En7PdBxA4ebnWPwp8D2mCdvZV8/edit?usp=sharing) for information on understanding and developing for TXPipe.
+
 
 Getting the code and some test data
 -----------------------------------
@@ -41,13 +46,6 @@ Permissions
 
 Email or Slack Joe Zuntz to be added to the development team.
 
-Goals
------
-
-- Test using parsl for some of our larger more complex analyses.
-- Build and test a prototype pipeline infrastructure.
-- Build and run prototype.
-- Perform and publish a DC2 3x2pt analysis.
 
 
 Getting the code and some test data
@@ -146,13 +144,6 @@ ceci --dry-run examples/laptop_pipeline.yml
 so that you can run and examine them individually.
 
 
-Flat-sky maps
--------------
-To generate flat-sky maps for nicer visualizaton of small patches you can also do this, which will override some options in the pipeline YML file:
-
-```bash
-ceci examples/laptop_pipeline.yml config=examples/config/laptop_flat_sky_maps.yml output_dir=data/example/flat_sky
-```
 
 Larger runs
 -----------
@@ -264,7 +255,7 @@ Then you're ready.
 Continuous Integration
 ----------------------
 
-Travis CI is set up to run a pipeline whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://travis-ci.org/github/LSSTDESC/TXPipe/
+Github actions is set up to run pytest and then three pipelines (metacal, metacal + redmagic, and lensfit) whenever commits are pushed.  We need to keep this pipeline up to date, and to add more things to it as they are added: https://github.com/LSSTDESC/TXPipe/actions
 
 Site and launcher options
 -------------------------

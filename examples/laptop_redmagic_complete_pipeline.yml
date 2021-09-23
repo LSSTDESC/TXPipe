@@ -7,7 +7,8 @@ stages:
     - name: TXIngestRedmagic
     - name: TXSourceMaps
     - name: TXExternalLensMaps
-    - name: TXAuxiliaryMaps
+    - name: TXAuxiliarySourceMaps
+    - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXMapPlots
@@ -19,7 +20,8 @@ stages:
     - name: TXBlinding
       threads_per_process: 2
     - name: TXTwoPointPlots
-    - name: TXDiagnosticPlots
+    - name: TXSourceDiagnosticPlots
+    - name: TXLensDiagnosticPlots
     - name: TXGammaTFieldCenters
       threads_per_process: 2
     - name: TXGammaTBrightStars

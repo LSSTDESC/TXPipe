@@ -2,7 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
 from .utils import SourceNumberDensityStats
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
-from .utils.calibration_tools import metacal_variants, band_variants, ParallelCalibratorMetacal, ParallelCalibratorNonMetacal
+from .utils.calibration_tools import metacal_variants, band_variants, MetacalCalculator, LensfitCalculator, HSCCalculator
 import numpy as np
 import warnings
 
@@ -25,7 +25,7 @@ class TXSourceSelector(PipelineStage):
     the quantities needed to calibrate each bin -
     this consists of two shear response quantities.
 
-    TODO: add option to use lensfit catalogs, which 
+    TODO: add option to use lensfit catalogs, which
     would be much much simpler.
     """
 
@@ -34,7 +34,6 @@ class TXSourceSelector(PipelineStage):
     inputs = [
         ('shear_catalog', ShearCatalog),
         ('calibration_table', TextFile),
-        ('photometry_catalog', HDFFile),  # this is to get the photo-z, does not necessarily need it
     ]
 
     outputs = [
@@ -58,7 +57,7 @@ class TXSourceSelector(PipelineStage):
     def run(self):
         """
         Run the analysis for this stage.
-        
+
          - Collect the list of columns to read
          - Create iterators to read chunks of those columns
          - Loop through chunks:
@@ -72,7 +71,7 @@ class TXSourceSelector(PipelineStage):
         import sklearn.ensemble
 
         # Suppress some warnings from numpy that are not relevant
-        original_warning_settings = np.seterr(all='ignore')  
+        original_warning_settings = np.seterr(all='ignore')
 
         # Are we using a metacal or lensfit catalog?
         shear_catalog_type = read_shear_catalog_type(self)
@@ -85,7 +84,7 @@ class TXSourceSelector(PipelineStage):
         bands = self.config['bands']
         chunk_rows = self.config['chunk_rows']
         delta_gamma = self.config['delta_gamma']
-        
+
         shear_prefix = self.config['shear_prefix']
 
 
@@ -98,7 +97,9 @@ class TXSourceSelector(PipelineStage):
 
         if shear_catalog_type == 'metacal':
             shear_cols += metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2')
-        else:
+        elif shear_catalog_type == 'lensfit':
+            shear_cols += ['T', 's2n', 'g1', 'g2','weight','m']
+        elif shear_catalog_type =='hsc':
             shear_cols += ['T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
 
         if self.config['input_pz'] and self.config['shear_catalog_type']=='metacal':
@@ -132,12 +133,17 @@ class TXSourceSelector(PipelineStage):
         number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm,shear_type=self.config['shear_catalog_type'])
 
         if shear_catalog_type == 'metacal':
-            calibrators = [ParallelCalibratorMetacal(self.select, delta_gamma) for i in range(nbin_source)]
+            calibrators = [MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)]
             # 2d calibrator
-            calibrators.append(ParallelCalibratorMetacal(self.select_2d, delta_gamma))
+            calibrators.append(MetacalCalculator(self.select_2d, delta_gamma))
+        elif shear_catalog_type == 'lensfit':
+            calibrators = [LensfitCalculator(self.select,self.config['input_m_is_weighted']) for i in range(nbin_source)]
+            calibrators.append(LensfitCalculator(self.select_2d,self.config['input_m_is_weighted']))
+        elif shear_catalog_type == 'hsc':
+            calibrators = [HSCCalculator(self.select) for i in range(nbin_source)]
+            calibrators.append(HSCCalculator(self.select_2d))
         else:
-            calibrators = [ParallelCalibratorNonMetacal(self.select) for i in range(nbin_source)]
-            calibrators.append(ParallelCalibratorNonMetacal(self.select_2d))
+            raise ValueError("Unknown shear catalog type. Please specify from 'metacal','lensfit', or 'hsc'.")
 
         # Loop through the input data, processing it chunk by chunk
         for (start, end, shear_data) in iter_shear:
@@ -170,7 +176,7 @@ class TXSourceSelector(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
-    
+
     def build_tomographic_classifier(self):
         # Load the training data
         # Build the SOM from the training data
@@ -244,7 +250,7 @@ class TXSourceSelector(PipelineStage):
             variants = ['']
 
         pz_data = {}
-        
+
         for v in variants:
             # Pull out the columns that we have trained this bin selection
             # model on.
@@ -293,7 +299,7 @@ class TXSourceSelector(PipelineStage):
                 zz = shear_data['mean_z']
             else:
                 zz = shear_data['redshift_true']
-        
+
             pz_data_bin = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['source_zbin_edges'])-1):
                 mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
@@ -301,7 +307,7 @@ class TXSourceSelector(PipelineStage):
 
             pz_data[f'zbin'] = pz_data_bin
 
-            
+
 
         return pz_data
 
@@ -334,12 +340,15 @@ class TXSourceSelector(PipelineStage):
         counts = np.zeros(nbin + 1, dtype=int)
 
         data = {**pz_data, **shear_data}
-        
+
+        # TODO: Emily - do we want to call the calibration tools for this?
         if self.config['shear_catalog_type']=='metacal':
             R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
             R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
             R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
             R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        elif self.config['shear_catalog_type']=='lensfit':
+            R = 1.0
         else:
             w_tot = np.sum(data['weight'])
             R[:] =  np.array([1. - np.sum(data['weight']*data['sigma_e'])/w_tot]*len(data['weight']))
@@ -385,13 +394,14 @@ class TXSourceSelector(PipelineStage):
         group.create_dataset('N_eff_2d', (1,), dtype='f')
 
         group.attrs['nbin_source'] = nbin_source
+        group.attrs['catalog_type'] = self.config["shear_catalog_type"]
         for i in range(nbin_source):
             group.attrs[f'source_zmin_{i}'] = zbins[i]
             group.attrs[f'source_zmax_{i}'] = zbins[i+1]
 
         #group = outfile.create_group('multiplicative_bias')  # why is this called "multiplicative_bias"?
         if self.config['shear_catalog_type']=='metacal':
-            group = outfile.create_group('metacal_response') 
+            group = outfile.create_group('metacal_response')
             group.create_dataset('R_gamma', (n,2,2), dtype='f')
             group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
             group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
@@ -399,14 +409,20 @@ class TXSourceSelector(PipelineStage):
             group.create_dataset('R_S_2d', (2,2), dtype='f')
             group.create_dataset('R_gamma_mean_2d', (2,2), dtype='f')
             group.create_dataset('R_total_2d', (2,2), dtype='f')
+        elif self.config['shear_catalog_type']=='lensfit':
+            group = outfile.create_group('response')
+            group.create_dataset('K', (nbin_source,), dtype='f')
+            group.create_dataset('C', (nbin_source,2), dtype='f')
+            group.create_dataset('K_2d', (1,), dtype='f')
+            group.create_dataset('C_2d', (2), dtype='f')
         else:
-            group = outfile.create_group('response') 
+            group = outfile.create_group('response')
             group.create_dataset('R', (n,), dtype='f')
             group.create_dataset('K', (nbin_source,), dtype='f')
-            group.create_dataset('C', (nbin_source,1,2), dtype='f')
+            group.create_dataset('C', (nbin_source,2), dtype='f')
             group.create_dataset('R_mean', (nbin_source,), dtype='f')
             group.create_dataset('K_2d', (1,), dtype='f')
-            group.create_dataset('C_2d', (1,2), dtype='f')
+            group.create_dataset('C_2d', (2), dtype='f')
             group.create_dataset('R_mean_2d', (1,), dtype='f')
 
         return outfile
@@ -440,7 +456,7 @@ class TXSourceSelector(PipelineStage):
         if self.config['shear_catalog_type']=='metacal':
             group = outfile['metacal_response']
             group['R_gamma'][start:end,:,:] = R
-        else:
+        elif self.config['shear_catalog_type']=='hsc':
             group = outfile['response']
             group['R'][start:end] = R
 
@@ -461,7 +477,7 @@ class TXSourceSelector(PipelineStage):
         R = np.zeros((nbin_source, 2, 2))
         S = np.zeros((nbin_source, 2, 2))
         K = np.zeros(nbin_source)
-        C = np.zeros((nbin_source,1,2))
+        C = np.zeros((nbin_source, 2))
         N = np.zeros(nbin_source)
         R_scalar = np.zeros(nbin_source)
         mean_e1 = np.zeros(nbin_source)
@@ -494,21 +510,17 @@ class TXSourceSelector(PipelineStage):
                 # Apply to the variances to get sigma_e
                 sigma_e[i] = np.sqrt(0.5 * P @ variances[i])
 
-            elif self.config['shear_catalog_type']=='lensfit':
-                # TODO Someone using a lensft catalog needs to check
-                print("Warning: check the lensfit calibration in mean shear")
-
+            elif self.config['shear_catalog_type']=='lensfit' or self.config['shear_catalog_type']=='hsc':
                 # Collect the overall calibration
-                R_scalar[i], K[i], C[i], N[i] = cal.collect(self.comm)
+                K[i], C[i], N[i] = cal.collect(self.comm)
 
-                # should probably use one of the calibration_tools functions
-                mean_e1[i] = mu1 / R_scalar[i]
-                mean_e2[i] = mu2 / R_scalar[i]
+                mean_e1[i] = C[i][0]
+                mean_e2[i] = C[i][1]
 
                 # This also needs checking.
                 sigma_e[i] = np.sqrt(
                     (0.5 * (variances[i, 0] + variances[i, 1]))
-                ) / R_scalar[i]
+                ) / (1 + K[i])
 
             else:
                 raise ValueError("Unknown calibration type in mean g / sigma_e calc")
@@ -531,16 +543,28 @@ class TXSourceSelector(PipelineStage):
 
         # Non-tomo lensfit
         elif self.config['shear_catalog_type']=='lensfit':
+            K_2d, C_2d, N_2d = cal2d.collect(self.comm)
+
+            # should probably use one of the calibration_tools functions
+            mean_e1_2d = C_2d[0]
+            mean_e2_2d = C_2d[1]
+            # non-tomo sigma_e in lensfit
+            sigma_e_2d = np.sqrt(
+                (0.5 * (variances_2d[0] + variances_2d[1]))
+            ) / (1 + K_2d)
+
+        # Non-tomo lensfit
+        elif self.config['shear_catalog_type']=='hsc':
             print("(also check in the 2D bit!)")
             R_scalar_2d, K_2d, C_2d, N_2d = cal2d.collect(self.comm)
 
             # should probably use one of the calibration_tools functions
-            mean_e1_2d = mu1 / R_scalar_2d
-            mean_e2_2d = mu2 / R_scalar_2d
-            # non-tomo sigma_e in lensfit
+            mean_e1_2d = C_2d[0][0]
+            mean_e2_2d = C_2d[0][1]
+            # non-tomo sigma_e in hsc
             sigma_e_2d = np.sqrt(
                 (0.5 * (variances_2d[0] + variances_2d[1]))
-            ) / R_scalar_2d
+            ) / (1 + K_2d[0])
 
 
 
@@ -556,6 +580,15 @@ class TXSourceSelector(PipelineStage):
                 group['R_S_2d'][:,:] = S_2d
                 group['R_gamma_mean_2d'][:,:] = R_2d
                 group['R_total_2d'][:,:] = R_2d + S_2d
+            elif self.config['shear_catalog_type']=='lensfit':
+                group = outfile['response']
+                # Tomographic outputs
+                group['C'][:] = C
+                group['K'][:] = K
+
+                # Non-tomographic outputs
+                group['C_2d'][:] = C_2d
+                group['K_2d'][:] = K_2d
             else:
                 group = outfile['response']
                 # Tomographic outputs
@@ -584,22 +617,27 @@ class TXSourceSelector(PipelineStage):
             group['mean_e2_2d'][:] = mean_e2_2d
             group['sigma_e_2d'][:] = sigma_e_2d
 
-    
+
     def select(self, data, bin_index):
         zbin = data['zbin']
         verbose = self.config['verbose']
 
-        sel = self.select_2d(data, is_2d=False)
+        sel = self.select_2d(data, calling_from_select=True)
         sel &= zbin==bin_index
         f4 = sel.sum() / sel.size
 
         if verbose:
             print(f"{f4:.2%} z for bin {bin_index}")
+            print("total tomo", sel.sum())
 
         return sel
 
-    def select_2d(self, data, is_2d=True):
+    def select_2d(self, data, calling_from_select=False):
         # Select any objects that pass general WL cuts
+        # The calling_from_select option just specifies whether we
+        # are calling this function from within the select
+        # method above, because the useful printed verbose
+        # output is different in each case
         shear_prefix = self.config['shear_prefix']
         s2n_cut = self.config['s2n_cut']
         T_cut = self.config['T_cut']
@@ -619,17 +657,20 @@ class TXSourceSelector(PipelineStage):
         f2 = sel.sum() / n0
         sel &= s2n>s2n_cut
         f3 = sel.sum() / n0
+        sel &= data['zbin'] >= 0
+        f4 = sel.sum() / n0
 
         # Print out a message.  If we are selecting a 2D sample
         # this is the complete message.  Otherwise if we are about
         # to also apply a redshift bin cut about then the message will continue
         # as above
-        if verbose and is_2d:
-            print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR")
-        elif verbose:
+        if verbose and calling_from_select:
             print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
                   f"{f3:.2%} SNR, ", end="")
+        elif verbose:
+            print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
+                  f"{f3:.2%} SNR, {f4:.2%} any z bin")
+            print("total 2D", sel.sum())
         return sel
 
 
@@ -639,4 +680,3 @@ def flatten_list(lst):
 
 if __name__ == '__main__':
     PipelineStage.main()
-

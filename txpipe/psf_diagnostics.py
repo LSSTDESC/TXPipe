@@ -27,7 +27,7 @@ class TXPSFDiagnostics(PipelineStage):
         ('star_psf_stats', YamlFile),
 
     ]
-    config = {}
+    config_options = {}
 
     def run(self):
         # PSF tests

@@ -6,6 +6,8 @@ import warnings
 import pathlib
 import yaml
 import shutil
+import pickle
+from io import UnsupportedOperation
 
 class FileValidationError(Exception):
     pass
@@ -32,6 +34,10 @@ class DataFile:
     def __init__(self, path, mode, extra_provenance=None, validate=True, **kwargs):
         self.path = path
         self.mode = mode
+
+        if mode not in ["r", "w"]:
+            raise ValueError(f"File 'mode' argument must be 'r' or 'w' not '{mode}'")
+
         self.file = self.open(path, mode, **kwargs)
 
         if validate and mode == 'r':
@@ -161,7 +167,9 @@ class HDFFile(DataFile):
         called 'provenance'
         """
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read-only mode")
+            raise UnsupportedOperation("Cannot write provenance to an HDF5 "
+                                      f"file opened in read-only mode "
+                                      f"({self.mode}")
 
         # This method *must* be called by all the processes in a parallel
         # run.  
@@ -238,7 +246,9 @@ class FitsFile(DataFile):
         """
         # Call the sub-method to do each item
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a file opened in read mode")
+            raise UnsupportedOperation("Cannot write provenance to a FITS file opened "
+                                      f"in read-only mode ({self.mode}")
+
 
         for key, value in self.provenance.items():
             if isinstance(value, str) and '\n' in value:
@@ -359,7 +369,8 @@ class Directory(DataFile):
         # This method *must* be called by all the processes in a parallel
         # run.  
         if self.mode == 'r':
-            raise ValueError("Cannot write provenance to a directory opened in read-only mode")
+            raise UnsupportedOperation("Cannot write provenance to a directory opened "
+                                       f"in read-only mode ({self.mode})")
 
         self._provenance_file = open(self.file / 'provenance.yml', 'w')
 
@@ -445,3 +456,29 @@ class PNGFile(DataFile):
 
     def read_provenance(self):
         raise ValueError("Reading existing PNG files is not supported")
+
+class PickleFile(DataFile):
+    suffix = "pkl"
+
+    @classmethod
+    def open(self, path, mode, **kwargs):
+        return open(path, mode + "b")
+
+    def write_provenance(self):
+        self.write(self.provenance)
+
+    def read_provenance(self):
+        return self.read()
+
+    def write(self, obj):
+        if self.mode != "w":
+            raise UnsupportedOperation("Cannot write to pickle file opened in "
+                                      f"read-only ({self.mode})")
+        pickle.dump(obj, self.file)
+
+    def read(self):
+        if self.mode != "r":
+            raise UnsupportedOperation("Cannot read from pickle file opened in "
+                                      f"write-only ({self.mode})")
+        return pickle.load(self.file)
+
