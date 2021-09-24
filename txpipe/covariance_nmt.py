@@ -755,7 +755,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         alldic = [] #create a list of list of dictionaries, and scatter it using MPI
         
         # Look through the chunk of matrix, tracer pair by tracer pair
-        for i in range(50,N2pt):
+        for i in range(0,N2pt):
             tracer_comb1 = tracer_combs[i]
             count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
 
@@ -860,7 +860,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     )
             i = dic['ij'][0]
             j = dic['ij'][1]
-            np.savetxt(f'temp0/cov_{i}_{j}.txt',cov_ij)
+            np.savetxt(f'temp/cov_{i}_{j}.txt',cov_ij)
         
         pass
     
@@ -872,7 +872,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         for i in range(0, N2pt):
             for j in range(i, N2pt): 
                 # Fill in this chunk of the matrix
-                cov_ij = np.loadtxt(f'temp0/cov_{i}_{j}.txt')
+                cov_ij = np.loadtxt(f'temp/cov_{i}_{j}.txt')
                 # Find the right location in the matrix
                 start_i = i * Nell_bins
                 start_j = j * Nell_bins
