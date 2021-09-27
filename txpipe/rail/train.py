@@ -40,6 +40,11 @@ class PZRailTrainSource(PipelineStage):
     }
 
     def run(self):
+        print("About to import firecrown")
+        import firecrown
+        print("Fircrown imported; about to import pyccl")
+        import pyccl
+        print("pyccl imported")
         from rail.estimation.estimator import Estimator
         from rail.fileIO import load_training_data
 
