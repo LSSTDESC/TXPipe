@@ -245,17 +245,17 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s2 = spins[1]
                 self.w = nmt.NmtWorkspace()
                 self.w.compute_coupling_matrix(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'), self.b)
-                self.w.write_to(f'temp0/w{s1}{s2}.fits')
+                self.w.write_to(f'temp/w{s1}{s2}.fits')
             pass
         
     def read_w(self):
         import pymaster as nmt
         self.w00 = nmt.NmtWorkspace()
-        self.w00.read_from('temp0/w00.fits')
+        self.w00.read_from('temp/w00.fits')
         self.w20 = nmt.NmtWorkspace()
-        self.w20.read_from('temp0/w20.fits')
+        self.w20.read_from('temp/w20.fits')
         self.w22 = nmt.NmtWorkspace()
-        self.w22.read_from('temp0/w22.fits')
+        self.w22.read_from('temp/w22.fits')
         pass 
     
     def get_cw_spinlist(self):
@@ -285,29 +285,29 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cw = nmt.NmtCovarianceWorkspace()
                 cw.compute_coupling_coefficients(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'),
                                                  getattr(self,f'f{s3}'), getattr(self,f'f{s4}'))
-                cw.write_to(f'temp0/cw{s1}{s2}{s3}{s4}.fits')
+                cw.write_to(f'temp/cw{s1}{s2}{s3}{s4}.fits')
             pass
         
     def read_cw(self):
         import pymaster as nmt
         
         self.cw0000 = nmt.NmtCovarianceWorkspace()
-        self.cw0000.read_from('temp0/cw0000.fits')
+        self.cw0000.read_from('temp/cw0000.fits')
         
         self.cw0020 = nmt.NmtCovarianceWorkspace()
-        self.cw0020.read_from('temp0/cw0020.fits')
+        self.cw0020.read_from('temp/cw0020.fits')
 
         self.cw0022 = nmt.NmtCovarianceWorkspace()
-        self.cw0022.read_from('temp0/cw0022.fits')
+        self.cw0022.read_from('temp/cw0022.fits')
 
         self.cw2020 = nmt.NmtCovarianceWorkspace()
-        self.cw2020.read_from('temp0/cw2020.fits')
+        self.cw2020.read_from('temp/cw2020.fits')
 
         self.cw2022 = nmt.NmtCovarianceWorkspace()
-        self.cw2022.read_from('temp0/cw2022.fits')
+        self.cw2022.read_from('temp/cw2022.fits')
 
         self.cw2222 = nmt.NmtCovarianceWorkspace()
-        self.cw2222.read_from('temp0/cw2222.fits')
+        self.cw2222.read_from('temp/cw2222.fits')
         pass
         
 
@@ -652,11 +652,16 @@ class TXFourierGaussianCovariance(PipelineStage):
         cl240 = 0*cl_nmt[24]
         cl24 = [cl240+SN[24],cl240,cl240,cl240+SN[24]]
         
+        n13 = 1 if s1+s3==0 else s1+s3
+        n14 = 1 if s1+s4==0 else s1+s4
+        n23 = 1 if s2+s3==0 else s2+s3
+        n24 = 1 if s2+s4==0 else s2+s4
+        
         nmt_input = {}
-        nmt_input[13] = cl13
-        nmt_input[14] = cl14
-        nmt_input[23] = cl23
-        nmt_input[24] = cl24
+        nmt_input[13] = cl13[:n13]
+        nmt_input[14] = cl14[:n14]
+        nmt_input[23] = cl23[:n23]
+        nmt_input[24] = cl24[:n24]
         
         return nmt_input
         
@@ -755,7 +760,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         alldic = [] #create a list of list of dictionaries, and scatter it using MPI
         
         # Look through the chunk of matrix, tracer pair by tracer pair
-        for i in range(50,N2pt):
+        for i in range(0,N2pt):
             tracer_comb1 = tracer_combs[i]
             count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
 
@@ -860,7 +865,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                     )
             i = dic['ij'][0]
             j = dic['ij'][1]
-            np.savetxt(f'temp0/cov_{i}_{j}.txt',cov_ij)
+            np.savetxt(f'temp/cov_{i}_{j}.txt',cov_ij)
         
         pass
     
@@ -872,7 +877,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         for i in range(0, N2pt):
             for j in range(i, N2pt): 
                 # Fill in this chunk of the matrix
-                cov_ij = np.loadtxt(f'temp0/cov_{i}_{j}.txt')
+                cov_ij = np.loadtxt(f'temp/cov_{i}_{j}.txt')
                 # Find the right location in the matrix
                 start_i = i * Nell_bins
                 start_j = j * Nell_bins
