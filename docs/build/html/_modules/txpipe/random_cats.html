@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.random_cats &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.random_cats &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
@@ -88,83 +41,46 @@
 <li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.random_cats</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.random_cats</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">MapsFile</span><span class="p">,</span> <span class="n">YamlFile</span><span class="p">,</span> <span class="n">RandomsCatalog</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">,</span> <span class="n">HDFFile</span>
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">choose_pixelization</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">choose_pixelization</span><span class="p">,</span> <span class="n">Splitter</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 
 <div class="viewcode-block" id="TXRandomCat"><a class="viewcode-back" href="../../random_cats.html#txpipe.random_cats.TXRandomCat">[docs]</a><span class="k">class</span> <span class="nc">TXRandomCat</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXRandomCat&#39;</span>
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s1">&#39;aux_maps&#39;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
-        <span class="p">(</span><span class="s1">&#39;tracer_metadata&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>       
+        <span class="p">(</span><span class="s1">&#39;aux_lens_maps&#39;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
         <span class="p">(</span><span class="s1">&#39;lens_photoz_stack&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
     <span class="p">]</span>
     <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">(</span><span class="s1">&#39;random_cats&#39;</span><span class="p">,</span> <span class="n">RandomsCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;binned_random_catalog&#39;</span><span class="p">,</span> <span class="n">RandomsCatalog</span><span class="p">),</span>
     <span class="p">]</span>
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;density&#39;</span><span class="p">:</span> <span class="mf">100.</span><span class="p">,</span>  <span class="c1"># number per square arcmin at median depth depth.  Not sure if this is right.</span>
@@ -178,7 +94,7 @@
         <span class="kn">import</span> <span class="nn">healpy</span>
         <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">randoms</span>
         <span class="c1"># Load the input depth map</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;aux_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;aux_lens_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
             <span class="n">depth</span> <span class="o">=</span> <span class="n">maps_file</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="s1">&#39;depth/depth&#39;</span><span class="p">)</span>
             <span class="n">info</span> <span class="o">=</span> <span class="n">maps_file</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="s1">&#39;depth/depth&#39;</span><span class="p">)</span>
             <span class="n">nside</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;nside&#39;</span><span class="p">]</span>
@@ -189,6 +105,7 @@
         <span class="c1"># Cut down to pixels that have any objects in</span>
         <span class="n">pixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">depth</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">depth</span> <span class="o">=</span> <span class="n">depth</span><span class="p">[</span><span class="n">pixel</span><span class="p">]</span>
+        <span class="n">npix</span> <span class="o">=</span> <span class="n">depth</span><span class="o">.</span><span class="n">size</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pixel</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only one pixel in depth map!&quot;</span><span class="p">)</span>
@@ -215,7 +132,7 @@
         <span class="n">density</span> <span class="o">=</span> <span class="n">phi_star</span> <span class="o">*</span> <span class="n">scipy</span><span class="o">.</span><span class="n">special</span><span class="o">.</span><span class="n">gammaincc</span><span class="p">(</span><span class="n">alpha15</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
 
         <span class="c1"># Pixel geometry - area in arcmin^2</span>
-        <span class="n">area</span> <span class="o">=</span> <span class="n">scheme</span><span class="o">.</span><span class="n">pixel_area</span><span class="p">(</span><span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">*</span> <span class="mf">60.</span> <span class="o">*</span> <span class="mf">60.</span>
+        <span class="n">pix_area</span> <span class="o">=</span> <span class="n">scheme</span><span class="o">.</span><span class="n">pixel_area</span><span class="p">(</span><span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">*</span> <span class="mf">60.</span> <span class="o">*</span> <span class="mf">60.</span>
         <span class="n">vertices</span> <span class="o">=</span> <span class="n">scheme</span><span class="o">.</span><span class="n">vertices</span><span class="p">(</span><span class="n">pixel</span><span class="p">)</span>
 
         <span class="c1">##################################################################################</span>
@@ -228,40 +145,83 @@
         
         <span class="c1">### Loop over the tomographic bins to find number of galaxies in each pixel/zbin</span>
         <span class="c1">### When the density changes per redshift bin, this can go into the main Ntomo loop</span>
-        <span class="n">numbers</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">numbers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ntomo</span><span class="p">,</span> <span class="n">npix</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Ntomo</span><span class="p">):</span>
+                <span class="c1"># Poisson distribution about mean</span>
+                <span class="n">numbers</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">poisson</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">density</span> <span class="o">*</span> <span class="n">pix_area</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># give all processors the same values</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Bcast</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span>
+
+        <span class="c1"># total number of objects in each bin</span>
+        <span class="n">bin_counts</span> <span class="o">=</span> <span class="n">numbers</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># start index of the total number in the global bin</span>
+        <span class="n">bin_starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">bin_counts</span><span class="p">)])[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+        <span class="c1"># The starting index of each pixel in the array, so we can parallelize</span>
+        <span class="n">pix_starts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Ntomo</span><span class="p">,</span> <span class="n">npix</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Ntomo</span><span class="p">):</span>
-            <span class="c1"># Poisson distribution about mean</span>
-            <span class="n">numbers</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">poisson</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">density</span><span class="o">*</span><span class="n">area</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">pix_starts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">numbers</span><span class="p">[</span><span class="n">j</span><span class="p">])])[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
         <span class="c1">### Get total number of randoms in all zbins</span>
         <span class="c1">### Once the density gets updated per redshift bin, the output file will need to </span>
         <span class="c1">### combine all the tomographic bins in a bit more clever/convenient way than currently</span>
-        <span class="n">n_total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">n_total</span> <span class="o">=</span> <span class="n">numbers</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generating </span><span class="si">{n_total}</span><span class="s2"> randoms&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Ntomo</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{bin_counts[j]}</span><span class="s2"> in bin </span><span class="si">{j}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="n">output_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;random_cats&#39;</span><span class="p">)</span>
+        <span class="c1"># First output is the all of the </span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;random_cats&#39;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">group</span> <span class="o">=</span> <span class="n">output_file</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;randoms&#39;</span><span class="p">)</span>
         <span class="n">ra_out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n_total</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">dec_out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n_total</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">z_out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n_total</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-        <span class="n">bin_out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;bin&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n_total</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">bin_out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;bin&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">n_total</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">)</span>
 
-        <span class="c1">### Counter for total number of randoms</span>
-        <span class="n">index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Second output is specific to an individual bin, so we can just load</span>
+        <span class="c1"># a single bin as needed</span>
+        <span class="n">binned_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s2">&quot;binned_random_catalog&quot;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">binned_group</span> <span class="o">=</span> <span class="n">binned_output</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;randoms&quot;</span><span class="p">)</span>
+
+        <span class="n">subgroups</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">binned_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Ntomo</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Ntomo</span><span class="p">):</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">binned_group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;bin_</span><span class="si">{i}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">bin_counts</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">bin_counts</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">bin_counts</span><span class="p">[</span><span class="n">i</span><span class="p">],))</span>
+            <span class="n">subgroups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+
+
+        <span class="n">pixels_per_proc</span> <span class="o">=</span> <span class="n">npix</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
+
+
         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Ntomo</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Simulating tomographic bin </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1">### Load pdf of ith lens redshift bin pz</span>
-            <span class="n">n_hist</span> <span class="o">=</span> <span class="n">pz_stack</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;n_of_z/lens/bin_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][:]</span>
+            <span class="n">n_hist</span> <span class="o">=</span> <span class="n">pz_stack</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;n_of_z/lens/bin_</span><span class="si">{j}</span><span class="s1">&#39;</span><span class="p">][:]</span>
 
             <span class="c1">### Make cdf and normalise</span>
             <span class="n">z_cdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">n_hist</span><span class="p">)</span>
             <span class="n">z_cdf_norm</span> <span class="o">=</span> <span class="n">z_cdf</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">z_cdf</span><span class="p">))</span>
 
+            <span class="n">subgroup</span> <span class="o">=</span> <span class="n">subgroups</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
             <span class="c1"># Generate the random points in each pixel</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,(</span><span class="n">vertices_i</span><span class="p">,</span><span class="n">N</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span><span class="n">numbers</span><span class="p">[</span><span class="n">j</span><span class="p">])):</span>
-                <span class="c1"># Use the pixel vertices to generate the points</span>
+            <span class="n">ndone</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">vertices_i</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">split_tasks_by_rank</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">vertices</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">ndone</span> <span class="o">%</span> <span class="mi">1000</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{self.rank}</span><span class="s2"> done </span><span class="si">{ndone:,}</span><span class="s2"> of its </span><span class="si">{pixels_per_proc:,}</span><span class="s2"> pixels for bin </span><span class="si">{j}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>                <span class="c1"># Use the pixel vertices to generate the points</span>
                 <span class="c1">### This likely wont work for curved sky maps since healpy pixels aren&#39;t </span>
                 <span class="c1">### fully quadrilateral... not sure how big of a difference (if any) this</span>
                 <span class="c1">### will make</span>
+                <span class="n">N</span> <span class="o">=</span> <span class="n">numbers</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
                 <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span> <span class="n">p4</span> <span class="o">=</span> <span class="n">vertices_i</span><span class="o">.</span><span class="n">T</span>
                 <span class="n">P</span> <span class="o">=</span> <span class="n">randoms</span><span class="o">.</span><span class="n">random_points_in_quadrilateral</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span> <span class="n">p4</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
                 <span class="c1"># Convert to RA/Dec</span>
@@ -279,16 +239,25 @@
                 <span class="n">cdf_rand_val</span> <span class="o">=</span> <span class="n">cdf_rand_val</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">z_cdf_norm</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">z_cdf_norm</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
                 <span class="n">z_photo_rand</span> <span class="o">=</span> <span class="n">z_interp_func</span><span class="p">(</span><span class="n">cdf_rand_val</span><span class="p">)</span>
                 
-                <span class="c1"># Save output</span>
+                <span class="c1"># Save output to the generic non-binned output</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">bin_starts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">pix_starts</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
                 <span class="n">ra_out</span><span class="p">[</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">ra</span>
                 <span class="n">dec_out</span><span class="p">[</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">dec</span>
                 <span class="n">z_out</span><span class="p">[</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_photo_rand</span>
                 <span class="n">bin_out</span><span class="p">[</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">bin_index</span>
-                <span class="n">index</span> <span class="o">+=</span> <span class="n">N</span>
 
-        <span class="n">output_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+                <span class="c1"># Save to the bit that is specific to this bin</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">pix_starts</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+                <span class="n">subgroup</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">][</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">ra</span>
+                <span class="n">subgroup</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">][</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">dec</span>
+                <span class="n">subgroup</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">][</span><span class="n">index</span><span class="p">:</span><span class="n">index</span><span class="o">+</span><span class="n">N</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_photo_rand</span>
 
+                <span class="n">ndone</span> <span class="o">+=</span> <span class="mi">1</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Barrier</span><span class="p">()</span>
+        <span class="n">output_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">binned_output</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
@@ -296,49 +265,30 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

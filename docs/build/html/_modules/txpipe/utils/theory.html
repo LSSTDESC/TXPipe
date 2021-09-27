@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.utils.theory &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.utils.theory &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
         <script src="../../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-
-    
+    <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
@@ -88,75 +41,79 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.utils.theory</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.utils.theory</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
 
 <span class="c1"># same convention as elsewhere</span>
 <span class="n">SHEAR_SHEAR</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">SHEAR_POS</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">POS_POS</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="k">def</span> <span class="nf">ccl_read_yaml</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
+    <span class="sd">&quot;&quot;&quot;Read the parameters from a YAML file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filename (:obj:`str`) Filename to read parameters from.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span><span class="p">)</span>
+
+    <span class="c1"># Now we assemble an init for the object since the CCL YAML has</span>
+    <span class="c1"># extra info we don&#39;t need and different formatting.</span>
+    <span class="n">inits</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">Omega_c</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;Omega_c&#39;</span><span class="p">],</span>
+        <span class="n">Omega_b</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;Omega_b&#39;</span><span class="p">],</span>
+        <span class="n">h</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;h&#39;</span><span class="p">],</span>
+        <span class="n">n_s</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;n_s&#39;</span><span class="p">],</span>
+        <span class="n">sigma8</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;sigma8&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;nan&#39;</span> <span class="k">else</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;sigma8&#39;</span><span class="p">],</span>
+        <span class="n">A_s</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;A_s&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;nan&#39;</span> <span class="k">else</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;A_s&#39;</span><span class="p">],</span>
+        <span class="n">Omega_k</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;Omega_k&#39;</span><span class="p">],</span>
+        <span class="n">Neff</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;Neff&#39;</span><span class="p">],</span>
+        <span class="n">w0</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;w0&#39;</span><span class="p">],</span>
+        <span class="n">wa</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wa&#39;</span><span class="p">],</span>
+        <span class="n">bcm_log10Mc</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bcm_log10Mc&#39;</span><span class="p">],</span>
+        <span class="n">bcm_etab</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bcm_etab&#39;</span><span class="p">],</span>
+        <span class="n">bcm_ks</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bcm_ks&#39;</span><span class="p">],</span>
+        <span class="n">mu_0</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;mu_0&#39;</span><span class="p">],</span>
+        <span class="n">sigma_0</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;sigma_0&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s1">&#39;z_mg&#39;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+        <span class="n">inits</span><span class="p">[</span><span class="s1">&#39;z_mg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;z_mg&#39;</span><span class="p">]</span>
+        <span class="n">inits</span><span class="p">[</span><span class="s1">&#39;df_mg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;df_mg&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="s1">&#39;m_nu&#39;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+        <span class="n">inits</span><span class="p">[</span><span class="s1">&#39;m_nu&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;m_nu&#39;</span><span class="p">]</span>
+        <span class="n">inits</span><span class="p">[</span><span class="s1">&#39;m_nu_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;list&#39;</span>
+
+    <span class="n">inits</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ccl</span><span class="o">.</span><span class="n">Cosmology</span><span class="p">(</span><span class="o">**</span><span class="n">inits</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="theory_3x2pt"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.theory.theory_3x2pt">[docs]</a><span class="k">def</span> <span class="nf">theory_3x2pt</span><span class="p">(</span><span class="n">cosmology_file</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">,</span> <span class="n">fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
@@ -186,9 +143,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
 
-    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">Cosmology</span><span class="o">.</span><span class="n">read_yaml</span><span class="p">(</span><span class="n">cosmology_file</span><span class="p">)</span>
+    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">ccl_read_yaml</span><span class="p">(</span><span class="n">cosmology_file</span><span class="p">,</span> <span class="n">matter_power_spectrum</span><span class="o">=</span><span class="s1">&#39;halofit&#39;</span><span class="p">,</span> <span class="n">Neff</span><span class="o">=</span><span class="mf">3.04</span><span class="p">)</span>
 
-    <span class="n">ell_max</span> <span class="o">=</span> <span class="mi">2000</span> <span class="k">if</span> <span class="n">fourier</span> <span class="k">else</span> <span class="mi">100_000</span>
+    <span class="n">ell_max</span> <span class="o">=</span> <span class="mi">3000</span> <span class="k">if</span> <span class="n">fourier</span> <span class="k">else</span> <span class="mi">100_000</span>
     <span class="n">n_ell</span> <span class="o">=</span> <span class="mi">100</span> <span class="k">if</span> <span class="n">fourier</span> <span class="k">else</span> <span class="mi">200</span>
     <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">ell_max</span><span class="p">),</span> <span class="n">n_ell</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
     <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">ell</span><span class="p">)</span>
@@ -201,7 +158,7 @@
     <span class="c1"># Lensing tracers - need to think a little more about</span>
     <span class="c1"># the fiducial intrinsic alignment here</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">tag</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;S&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
         <span class="n">CTracers</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">WeakLensingTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">nz</span><span class="p">))</span>
     <span class="c1"># Position tracers - even more important to think about fiducial biases</span>
@@ -210,7 +167,7 @@
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Not using galaxy bias in fiducial theory density spectra&quot;</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">tag</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> 
         <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
         <span class="n">CTracers</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">NumberCountsTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">nz</span><span class="p">),</span>
@@ -270,49 +227,30 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

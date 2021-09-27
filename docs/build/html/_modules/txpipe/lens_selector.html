@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.lens_selector &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.lens_selector &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
@@ -88,71 +41,35 @@
 <li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.lens_selector</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.lens_selector</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">YamlFile</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">TextFile</span>
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">LensNumberDensityStats</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">Splitter</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
@@ -169,7 +86,7 @@
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXBaseLensSelector&#39;</span>
 
     <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">)</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
     <span class="p">]</span>
 
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
@@ -226,7 +143,7 @@
 
         <span class="c1"># Loop through the input data, processing it chunk by chunk</span>
         <span class="k">for</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">phot_data</span><span class="p">)</span> <span class="ow">in</span> <span class="n">iterator</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> running selection for rows </span><span class="si">{</span><span class="n">start</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> running selection for rows </span><span class="si">{start:,}</span><span class="s2">-</span><span class="si">{end:,}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="n">pz_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_redshift_cut</span><span class="p">(</span><span class="n">phot_data</span><span class="p">)</span>
 
@@ -430,7 +347,7 @@
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXMeanLensSelector&quot;</span>
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
-        <span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_photoz_pdfs&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
     <span class="p">]</span>
 
 
@@ -439,16 +356,124 @@
         <span class="n">phot_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">,</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span>
         <span class="n">z_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;z_mean&#39;</span><span class="p">]</span>
         <span class="n">iter_phot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">phot_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
-        <span class="n">iter_pz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photoz_pdfs&#39;</span><span class="p">,</span> <span class="s1">&#39;point_estimates&#39;</span><span class="p">,</span> <span class="n">z_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
+        <span class="n">iter_pz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;lens_photoz_pdfs&#39;</span><span class="p">,</span> <span class="s1">&#39;point_estimates&#39;</span><span class="p">,</span> <span class="n">z_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
         <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">z_data</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">iter_phot</span><span class="p">,</span> <span class="n">iter_pz</span><span class="p">):</span>
             <span class="n">data</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_data</span><span class="p">[</span><span class="s1">&#39;z_mean&#39;</span><span class="p">]</span>
             <span class="k">yield</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span></div>
 
+<div class="viewcode-block" id="TXModeLensSelector"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXModeLensSelector">[docs]</a><span class="k">class</span> <span class="nc">TXModeLensSelector</span><span class="p">(</span><span class="n">TXBaseLensSelector</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXModeLensSelector&quot;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_photoz_pdfs&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
 
 
-<span class="k">def</span> <span class="nf">flatten_list</span><span class="p">(</span><span class="n">lst</span><span class="p">):</span>
-    <span class="k">return</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">sublist</span> <span class="ow">in</span> <span class="n">lst</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sublist</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
+        <span class="n">phot_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">,</span><span class="s1">&#39;mag_r&#39;</span><span class="p">,</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span>
+        <span class="n">z_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;z_mode&#39;</span><span class="p">]</span>
+        <span class="n">iter_phot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">phot_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
+        <span class="n">iter_pz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;lens_photoz_pdfs&#39;</span><span class="p">,</span> <span class="s1">&#39;point_estimates&#39;</span><span class="p">,</span> <span class="n">z_cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">z_data</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">iter_phot</span><span class="p">,</span> <span class="n">iter_pz</span><span class="p">):</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_data</span><span class="p">[</span><span class="s1">&#39;z_mode&#39;</span><span class="p">]</span>
+            <span class="k">yield</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span></div>
 
+
+
+
+<div class="viewcode-block" id="TXLensCatalogSplitter"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXLensCatalogSplitter">[docs]</a><span class="k">class</span> <span class="nc">TXLensCatalogSplitter</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Split a lens catalog file into a new file with separate bins.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXLensCatalogSplitter&#39;</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;binned_lens_catalog&quot;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;initial_size&quot;</span><span class="p">:</span> <span class="mi">100_000</span><span class="p">,</span>
+        <span class="s2">&quot;chunk_rows&quot;</span><span class="p">:</span> <span class="mi">100_000</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">lens_cat_tag</span> <span class="o">=</span> <span class="s2">&quot;photometry_catalog&quot;</span>
+    <span class="n">lens_cat_sec</span> <span class="o">=</span> <span class="s2">&quot;photometry&quot;</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;lens_tomography_catalog&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">nbin</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;tomography&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;nbin_lens&quot;</span><span class="p">]</span>
+            <span class="n">counts</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;tomography/lens_counts&quot;</span><span class="p">][:]</span>
+            <span class="n">count2d</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;tomography/lens_counts_2d&quot;</span><span class="p">][:]</span>
+
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Object we use to make the separate lens bins catalog</span>
+        <span class="n">cat_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s2">&quot;binned_lens_catalog&quot;</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">cat_group</span> <span class="o">=</span> <span class="n">cat_output</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s2">&quot;lens&quot;</span><span class="p">)</span>
+        <span class="n">cat_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+        <span class="n">cat_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>
+
+
+        <span class="n">bins</span> <span class="o">=</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span><span class="n">c</span> <span class="k">for</span> <span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">counts</span><span class="p">)}</span>
+        <span class="n">bins</span><span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">count2d</span>
+        <span class="n">splitter</span> <span class="o">=</span> <span class="n">Splitter</span><span class="p">(</span><span class="n">cat_group</span><span class="p">,</span> <span class="s2">&quot;bin&quot;</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">bins</span><span class="p">)</span>
+
+        <span class="n">my_bins</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">split_tasks_by_rank</span><span class="p">(</span><span class="n">bins</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">my_bins</span><span class="p">:</span>
+            <span class="n">my_bins_text</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">my_bins</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> collating bins: [</span><span class="si">{my_bins_text}</span><span class="s2">]&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Note: Process </span><span class="si">{self.rank}</span><span class="s2"> will not do anything.&quot;</span><span class="p">)</span>
+
+        <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;chunk_rows&quot;</span><span class="p">],</span>
+            <span class="c1"># first file</span>
+            <span class="s2">&quot;lens_tomography_catalog&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tomography&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;lens_bin&quot;</span><span class="p">,</span> <span class="s2">&quot;lens_weight&quot;</span><span class="p">],</span>
+            <span class="c1"># second file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lens_cat_tag</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lens_cat_sec</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">],</span>
+            <span class="n">parallel</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process 0 binning data in range </span><span class="si">{s:,}</span><span class="s2"> - </span><span class="si">{e:,}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;weight&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;lens_weight&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">my_bins</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">b</span> <span class="o">==</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span>
+                    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;lens_bin&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;lens_bin&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">b</span><span class="p">)</span>
+                <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">col</span><span class="p">[</span><span class="n">w</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+                <span class="n">splitter</span><span class="o">.</span><span class="n">write_bin</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+        <span class="n">splitter</span><span class="o">.</span><span class="n">finish</span><span class="p">(</span><span class="n">my_bins</span><span class="p">)</span>
+        <span class="n">cat_output</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TXExternalLensCatalogSplitter"><a class="viewcode-back" href="../../lens_selector.html#txpipe.lens_selector.TXExternalLensCatalogSplitter">[docs]</a><span class="k">class</span> <span class="nc">TXExternalLensCatalogSplitter</span><span class="p">(</span><span class="n">TXLensCatalogSplitter</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXExternalLensCatalogSplitter&quot;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Split an external lens catalog into bins</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span> <span class="n">TomographyCatalog</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;lens_catalog&#39;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">lens_cat_tag</span> <span class="o">=</span> <span class="s2">&quot;lens_catalog&quot;</span>
+
+    <span class="n">lens_cat_sec</span> <span class="o">=</span> <span class="s2">&quot;lens&quot;</span></div>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
@@ -458,49 +483,30 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

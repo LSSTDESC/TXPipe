@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.input_cats &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.input_cats &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
@@ -88,73 +41,37 @@
 <li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.input_cats</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.input_cats</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">ShearCatalog</span><span class="p">,</span> <span class="n">HDFFile</span>
 <span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">band_variants</span><span class="p">,</span> <span class="n">metacal_variants</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.utils.timer</span> <span class="kn">import</span> <span class="n">Timer</span>
+
 
 <div class="viewcode-block" id="TXCosmoDC2Mock"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock">[docs]</a><span class="k">class</span> <span class="nc">TXCosmoDC2Mock</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -180,12 +97,15 @@
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;cat_name&#39;</span><span class="p">:</span><span class="s1">&#39;cosmoDC2&#39;</span><span class="p">,</span>
         <span class="s1">&#39;visits_per_band&#39;</span><span class="p">:</span><span class="mi">165</span><span class="p">,</span>  <span class="c1"># used in the noise simulation</span>
-        <span class="s1">&#39;snr_limit&#39;</span><span class="p">:</span><span class="mf">4.0</span><span class="p">,</span>  <span class="c1"># used to decide what objects to cut out</span>
+        <span class="s1">&#39;snr_limit&#39;</span><span class="p">:</span> <span class="mf">4.0</span><span class="p">,</span>  <span class="c1"># used to decide what objects to cut out</span>
         <span class="s1">&#39;max_size&#39;</span><span class="p">:</span> <span class="mi">99999999999999</span><span class="p">,</span>  <span class="c1">#for testing on smaller catalogs</span>
         <span class="s1">&#39;extra_cols&#39;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="c1"># string-separated list of columns to include</span>
         <span class="s1">&#39;max_npix&#39;</span><span class="p">:</span><span class="mi">99999999999999</span><span class="p">,</span>
         <span class="s1">&#39;unit_response&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;cat_size&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
         <span class="s1">&#39;flip_g2&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="c1"># this matches the metacal definition, and the treecorr/namaster one</span>
+        <span class="s1">&#39;apply_mag_cut&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="c1">#used when comparing to descqa measurements</span>
+        <span class="s1">&#39;Mag_r_limit&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mi">19</span><span class="p">,</span> <span class="c1"># used to decide what objects to cut out  </span>
         <span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gc</span><span class="p">):</span>
@@ -210,7 +130,7 @@
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">it</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">nfile</span><span class="p">:</span>
                 <span class="n">j</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading chunk </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">nfile</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading chunk </span><span class="si">{j}</span><span class="s2">/</span><span class="si">{nfile}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">yield</span> <span class="n">data</span>
 
     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -218,63 +138,26 @@
         <span class="n">cat_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;cat_name&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bands</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;u&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading from catalog </span><span class="si">{</span><span class="n">cat_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="c1"># Load the input catalog (this is lazy)</span>
-            <span class="c1"># For testing we may want to cut down to a smaller number of pixels.</span>
-            <span class="c1"># This is separate from the split by processor later on</span>
-            <span class="k">if</span> <span class="s1">&#39;cosmoDC2&#39;</span> <span class="ow">in</span> <span class="n">cat_name</span><span class="p">:</span>
-                <span class="n">all_healpix_pixels</span> <span class="o">=</span> <span class="n">GCRCatalogs</span><span class="o">.</span><span class="n">get_available_catalogs</span><span class="p">()[</span><span class="n">cat_name</span><span class="p">][</span><span class="s1">&#39;healpix_pixels&#39;</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="s1">&#39;buzzard&#39;</span> <span class="ow">in</span> <span class="n">cat_name</span><span class="p">:</span>
-                <span class="n">all_healpix_pixels</span> <span class="o">=</span> <span class="n">GCRCatalogs</span><span class="o">.</span><span class="n">load_catalog</span><span class="p">(</span><span class="n">cat_name</span><span class="p">)</span><span class="o">.</span><span class="n">healpix_pixels</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading from catalog </span><span class="si">{cat_name}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-            <span class="n">max_npix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;max_npix&#39;</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">max_npix</span> <span class="o">!=</span> <span class="mi">99999999999999</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cutting down initial catalog to </span><span class="si">{</span><span class="n">max_npix</span><span class="si">}</span><span class="s2"> healpix pixels&quot;</span><span class="p">)</span>
-                <span class="n">all_healpix_pixels</span> <span class="o">=</span> <span class="n">all_healpix_pixels</span><span class="p">[:</span><span class="n">max_npix</span><span class="p">]</span>
 
-            <span class="c1"># complete_cat = GCRCatalogs.load_catalog(cat_name, {&#39;healpix_pixels&#39;:all_healpix_pixels})</span>
-            <span class="c1"># print(f&quot;Loaded overall catalog {cat_name}&quot;)</span>
+        <span class="n">gc</span> <span class="o">=</span> <span class="n">GCRCatalogs</span><span class="o">.</span><span class="n">load_catalog</span><span class="p">(</span><span class="n">cat_name</span><span class="p">)</span>
 
-            <span class="c1"># # Get the size, and optionally cut down to a smaller</span>
-            <span class="c1"># # size if we want to test</span>
-            <span class="c1"># N = len(complete_cat)</span>
-            <span class="c1"># print(f&quot;Measured catalog length: {N}&quot;)</span>
+        <span class="c1"># GCR sometimes tries to read the entire catalog</span>
+        <span class="c1"># to measure its length rather than looking at metadata</span>
+        <span class="c1"># this can take a very long time.</span>
+        <span class="c1"># allow the user to say that already know it.</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;cat_size&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">all_healpix_pixels</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">:</span>
-            <span class="c1"># Split up the pixels to load among the processors</span>
-            <span class="n">all_healpix_pixels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">all_healpix_pixels</span><span class="p">)</span>
-            <span class="n">all_npix</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_healpix_pixels</span><span class="p">)</span>
-            <span class="n">my_healpix_pixels</span> <span class="o">=</span> <span class="n">all_healpix_pixels</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">::</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">]</span>
-            <span class="n">my_npix</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">my_healpix_pixels</span><span class="p">)</span>
-
-            <span class="c1"># Load the catalog for this processor</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> loading catalog with </span><span class="si">{</span><span class="n">my_npix</span><span class="si">}</span><span class="s2"> pixels from total </span><span class="si">{</span><span class="n">all_npix</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
-            <span class="n">gc</span> <span class="o">=</span> <span class="n">GCRCatalogs</span><span class="o">.</span><span class="n">load_catalog</span><span class="p">(</span><span class="n">cat_name</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;healpix_pixels&#39;</span><span class="p">:</span><span class="n">my_healpix_pixels</span><span class="p">})</span>
-
-            <span class="c1"># Work out my local length and the total length (from the sum of all the local lengths)</span>
-            <span class="n">my_N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
-            <span class="n">N</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="n">my_N</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2">: loaded. Have </span><span class="si">{</span><span class="n">my_N</span><span class="si">}</span><span class="s2"> objects from total </span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">all_npix</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_healpix_pixels</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> loading catalog with all </span><span class="si">{</span><span class="n">all_npix</span><span class="si">}</span><span class="s2"> pixels.&quot;</span><span class="p">)</span>
-            <span class="n">gc</span> <span class="o">=</span> <span class="n">GCRCatalogs</span><span class="o">.</span><span class="n">load_catalog</span><span class="p">(</span><span class="n">cat_name</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;healpix_pixels&#39;</span><span class="p">:</span><span class="n">all_healpix_pixels</span><span class="p">})</span>
-            <span class="n">N</span> <span class="o">=</span> <span class="n">my_N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> loaded: length = </span><span class="si">{</span><span class="n">N</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{self.rank}</span><span class="s2"> loaded: length = </span><span class="si">{N}</span><span class="s2">.&quot;</span><span class="p">)</span>
 
         <span class="n">target_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;max_size&#39;</span><span class="p">])</span>
         <span class="n">select_fraction</span> <span class="o">=</span> <span class="n">target_size</span> <span class="o">/</span> <span class="n">N</span>
 
         <span class="k">if</span> <span class="n">target_size</span> <span class="o">!=</span> <span class="n">N</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Will select approx </span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">select_fraction</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">% of objects (</span><span class="si">{</span><span class="n">target_size</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Will select approx {100*select_fraction:.2f}</span><span class="si">% o</span><span class="s2">f objects (</span><span class="si">{target_size}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
 
         <span class="c1"># Prepare output files</span>
@@ -297,7 +180,7 @@
             <span class="c1"># This will be reduced later as we remove objects</span>
             <span class="n">some_col</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">some_col</span><span class="p">])</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> read chunk </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">count</span><span class="o">+</span><span class="n">chunk_size</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">my_N</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> read chunk </span><span class="si">{count}</span><span class="s2"> - {count+chunk_size} of </span><span class="si">{N}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">count</span> <span class="o">+=</span> <span class="n">chunk_size</span>
             <span class="c1"># Select a random fraction of the catalog if we are cutting down</span>
             <span class="c1"># We can&#39;t just take the earliest galaxies because they are ordered</span>
@@ -305,7 +188,7 @@
             <span class="k">if</span> <span class="n">target_size</span> <span class="o">!=</span> <span class="n">N</span><span class="p">:</span>
                 <span class="n">select</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">chunk_size</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">select_fraction</span>
                 <span class="n">nselect</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cutting down to </span><span class="si">{</span><span class="n">nselect</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">chunk_size</span><span class="si">}</span><span class="s2"> objects&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cutting down to </span><span class="si">{nselect}</span><span class="s2">/</span><span class="si">{chunk_size}</span><span class="s2"> objects&quot;</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
                     <span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="n">select</span><span class="p">]</span>
 
@@ -317,8 +200,12 @@
             <span class="c1"># the object is detected, but we can do it before making the mock</span>
             <span class="c1"># metacal info, saving us some time simulating un-needed objects</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">remove_undetected</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">mock_photometry</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;apply_mag_cut&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">apply_magnitude_cut</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
             <span class="n">mock_metacal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_mock_metacal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">mock_photometry</span><span class="p">)</span>
+            
             <span class="c1"># The chunk size has now changed</span>
             <span class="n">some_col</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">mock_photometry</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mock_photometry</span><span class="p">[</span><span class="n">some_col</span><span class="p">])</span>
@@ -352,14 +239,15 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># all files should now be closed for all procs</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resizing all outupts to size </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resizing all outupts to size </span><span class="si">{n}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">),</span> <span class="s1">&#39;r+&#39;</span><span class="p">)</span>
             <span class="n">g</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;photometry&#39;</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
                 <span class="n">g</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>
             <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-            <span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">))</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="s1">&#39;shear_catalog&#39;</span><span class="p">),</span> <span class="s1">&#39;r+&#39;</span><span class="p">)</span>
             <span class="n">g</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;shear&#39;</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">g</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                 <span class="n">g</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="n">n</span><span class="p">,))</span>
@@ -377,7 +265,7 @@
             <span class="c1"># than the largest self.rank value) is the total data length</span>
             <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">starting_points</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="n">start</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">starting_points</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">]</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> writing output to </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">start</span><span class="o">+</span><span class="n">chunk_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Rank </span><span class="si">{self.rank}</span><span class="s2"> writing output to </span><span class="si">{start}</span><span class="s2">-{start+chunk_size}&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span>
 
 
@@ -386,9 +274,9 @@
         <span class="c1"># Get a list of all the column names</span>
         <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="s1">&#39;extendedness&#39;</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">:</span>
-            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_err&#39;</span><span class="p">)</span>
-            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_err&#39;</span><span class="p">)</span>
+            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;extra_cols&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">():</span>
             <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
@@ -417,7 +305,7 @@
             <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span>
         <span class="p">)</span>
 
-        <span class="n">cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;true_g1&#39;</span><span class="p">,</span> <span class="s1">&#39;true_g2&#39;</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;true_g1&#39;</span><span class="p">,</span> <span class="s1">&#39;true_g2&#39;</span><span class="p">,</span> <span class="s1">&#39;redshift_true&#39;</span><span class="p">]</span>
 
         <span class="c1"># Make group for all the photometry</span>
         <span class="n">group</span> <span class="o">=</span> <span class="n">metacal_file</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="s1">&#39;shear&#39;</span><span class="p">)</span>
@@ -495,10 +383,10 @@
 
         <span class="c1"># Save each column</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">photo_cols</span><span class="p">:</span>
-            <span class="n">photo_file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;photometry/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">photo_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">photo_file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;photometry/</span><span class="si">{name}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">photo_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
 
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">metacal_cols</span><span class="p">:</span>
-            <span class="n">metacal_file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;shear/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">metacal_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+            <span class="n">metacal_file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;shear/</span><span class="si">{name}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">metacal_data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
 
     <span class="k">def</span> <span class="nf">make_mock_photometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="c1"># The visit count affects the overall noise levels</span>
@@ -620,6 +508,9 @@
             <span class="c1"># Keep the truth value just in case</span>
             <span class="s2">&quot;true_g1&quot;</span><span class="p">:</span> <span class="n">g1</span><span class="p">,</span>
             <span class="s2">&quot;true_g2&quot;</span><span class="p">:</span> <span class="n">g2</span><span class="p">,</span>
+            <span class="c1"># add true redshift since it is used in source selector</span>
+            <span class="s2">&quot;redshift_true&quot;</span><span class="p">:</span><span class="n">photo</span><span class="p">[</span><span class="s1">&#39;redshift_true&#39;</span><span class="p">],</span>
+            
 
             <span class="c1"># g1</span>
             <span class="s2">&quot;mcal_g1&quot;</span><span class="p">:</span> <span class="n">e1</span><span class="o">*</span><span class="n">R</span><span class="p">,</span>
@@ -712,6 +603,21 @@
 
         <span class="k">return</span> <span class="n">output</span></div>
 
+<div class="viewcode-block" id="TXCosmoDC2Mock.apply_magnitude_cut"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock.apply_magnitude_cut">[docs]</a>    <span class="k">def</span> <span class="nf">apply_magnitude_cut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allow for a cut in absolute magnitude.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mag_limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;Mag_r_limit&#39;</span><span class="p">]</span>
+        <span class="n">sel</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;Mag_true_r_sdss_z0&#39;</span><span class="p">]</span><span class="o">&lt;</span> <span class="n">mag_limit</span>
+        
+        <span class="n">ndet</span> <span class="o">=</span> <span class="n">sel</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">ntot</span> <span class="o">=</span> <span class="n">sel</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">fract</span> <span class="o">=</span> <span class="n">ndet</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">ntot</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{ndet}</span><span class="s2"> objects pass magnitude cut out of </span><span class="si">{ntot}</span><span class="s2"> objects (</span><span class="si">{fract:.1f}</span><span class="s2">%)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Remove all objects not selected</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">sel</span><span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="TXCosmoDC2Mock.remove_undetected"><a class="viewcode-back" href="../../input_cats.html#txpipe.input_cats.TXCosmoDC2Mock.remove_undetected">[docs]</a>    <span class="k">def</span> <span class="nf">remove_undetected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">photo</span><span class="p">):</span>
@@ -731,16 +637,16 @@
         <span class="c1"># Check if detected in any band.  Makes a boolean array</span>
         <span class="c1"># Even though we started with just a single False.</span>
         <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="p">:</span>
-            <span class="n">detected_in_band</span> <span class="o">=</span> <span class="n">photo</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">snr_limit</span>
+            <span class="n">detected_in_band</span> <span class="o">=</span> <span class="n">photo</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">snr_limit</span>
             <span class="n">not_detected_in_band</span> <span class="o">=</span> <span class="o">~</span><span class="n">detected_in_band</span>
             <span class="c1"># Set objects not detected in one band that are detected in another</span>
             <span class="c1"># to inf magnitude in that band, and the SNR to zero.</span>
             <span class="c1"># We have to do this for each of the variants also, because otherwise</span>
             <span class="c1"># we end up with wildly different final SNR values later.</span>
             <span class="c1"># This is the metadetection issue really!</span>
-            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metacal_variants</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metacal_variants</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">):</span>
                 <span class="n">photo</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="n">not_detected_in_band</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metacal_variants</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">metacal_variants</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">):</span>
                 <span class="n">photo</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="n">not_detected_in_band</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
 
             <span class="c1"># Record that we have detected this object at all</span>
@@ -758,7 +664,7 @@
         <span class="n">ndet</span> <span class="o">=</span> <span class="n">detected</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="n">ntot</span> <span class="o">=</span> <span class="n">detected</span><span class="o">.</span><span class="n">size</span>
         <span class="n">fract</span> <span class="o">=</span> <span class="n">ndet</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">ntot</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected </span><span class="si">{</span><span class="n">ndet</span><span class="si">}</span><span class="s2"> out of </span><span class="si">{</span><span class="n">ntot</span><span class="si">}</span><span class="s2"> objects (</span><span class="si">{</span><span class="n">fract</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected </span><span class="si">{ndet}</span><span class="s2"> out of </span><span class="si">{ntot}</span><span class="s2"> objects (</span><span class="si">{fract:.1f}</span><span class="s2">%)&quot;</span><span class="p">)</span>
 
         <span class="c1"># Remove all objects not detected in *any* band</span>
         <span class="c1"># make a copy of the keys with list(photo.keys()) so we are not</span>
@@ -856,8 +762,8 @@
 
     <span class="k">for</span> <span class="n">band</span><span class="p">,</span> <span class="n">b_b</span><span class="p">,</span> <span class="n">t_b</span><span class="p">,</span> <span class="n">n_eff</span><span class="p">,</span> <span class="n">mag_resp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">B_b</span><span class="p">,</span> <span class="n">T_b</span><span class="p">,</span> <span class="n">N_eff</span><span class="p">,</span> <span class="n">mag_responses</span><span class="p">):</span>
         <span class="c1"># truth magnitude</span>
-        <span class="n">mag</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_true_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_lsst&#39;</span><span class="p">]</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_true_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_lsst&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag</span>
+        <span class="n">mag</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_true_</span><span class="si">{band}</span><span class="s1">_lsst&#39;</span><span class="p">]</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_true_</span><span class="si">{band}</span><span class="s1">_lsst&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag</span>
 
         <span class="c1"># expected signal photons, over all visits</span>
         <span class="n">c_b</span> <span class="o">=</span> <span class="n">factor</span> <span class="o">*</span> <span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="mf">0.4</span><span class="o">*</span><span class="p">(</span><span class="mi">25</span><span class="o">-</span><span class="n">mag</span><span class="p">))</span> <span class="o">*</span> <span class="n">t_b</span> <span class="o">*</span> <span class="n">n_visit</span>
@@ -883,11 +789,11 @@
         <span class="c1"># converting error on n_obs to error on mag</span>
         <span class="n">mag_err</span> <span class="o">=</span> <span class="mf">2.5</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">10.</span><span class="p">)</span> <span class="o">/</span> <span class="n">obs_snr</span>
 
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;true_snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">true_snr</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs_snr</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag_obs</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_err_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag_err</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_err&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag_err</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;true_snr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">true_snr</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obs_snr</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag_obs</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_err_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag_err</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_err&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mag_err</span>
 
         <span class="n">m</span> <span class="o">=</span> <span class="n">mag_resp</span><span class="o">*</span><span class="n">delta_gamma</span>
 
@@ -896,20 +802,20 @@
         <span class="n">mag_obs_1p</span> <span class="o">=</span> <span class="n">m1</span>
         <span class="n">mag_obs_1m</span> <span class="o">=</span> <span class="n">m2</span>
 
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_1p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m1</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_1m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m2</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_2p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m1</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_2m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m2</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_1p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m1</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_1m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m2</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_2p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m1</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_2m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">m2</span>
 
         <span class="c1"># Scale the SNR values according the to change in magnitude.r</span>
         <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="mf">10.</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.4</span><span class="o">*</span><span class="n">m</span><span class="p">)</span>
 
         <span class="n">snr1</span> <span class="o">=</span> <span class="n">obs_snr</span> <span class="o">*</span> <span class="n">s</span>
         <span class="n">snr2</span> <span class="o">=</span> <span class="n">obs_snr</span> <span class="o">/</span> <span class="n">s</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_1p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr1</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_1m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr2</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_2p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr1</span>
-        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_2m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr2</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_1p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr1</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_1m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr2</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_2p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr1</span>
+        <span class="n">output</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_2m&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">snr2</span>
 
 
 
@@ -918,7 +824,6 @@
 
 
 <span class="k">def</span> <span class="nf">generate_mock_metacal_mag_responses</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">nobj</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: getting oddly large S/N variation from mock metacal mags&quot;</span><span class="p">)</span>
     <span class="n">nband</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bands</span><span class="p">)</span>
     <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nband</span><span class="p">)</span> <span class="c1"># seems approx mean of response across bands, from HSC tract</span>
     <span class="n">rho</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1">#  approx correlation between response in bands, from HSC tract</span>
@@ -942,56 +847,37 @@
     <span class="n">n_visit</span><span class="o">=</span><span class="mi">165</span>
     <span class="n">M5</span> <span class="o">=</span> <span class="p">[</span><span class="mf">24.22</span><span class="p">,</span> <span class="mf">25.17</span><span class="p">,</span> <span class="mf">24.74</span><span class="p">,</span> <span class="mf">24.38</span><span class="p">,</span> <span class="mf">23.80</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">b</span><span class="p">,</span><span class="n">m5</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bands</span><span class="p">,</span> <span class="n">M5</span><span class="p">):</span>
-        <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_true_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">_lsst&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">m5</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_true_</span><span class="si">{b}</span><span class="s1">_lsst&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">m5</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
     <span class="n">results</span> <span class="o">=</span> <span class="n">make_mock_photometry</span><span class="p">(</span><span class="n">n_visit</span><span class="p">,</span> <span class="n">bands</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
     <span class="n">pylab</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;snr_r&#39;</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s1">&#39;step&#39;</span><span class="p">)</span>
     <span class="n">pylab</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;snr_r.png&#39;</span><span class="p">)</span>
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

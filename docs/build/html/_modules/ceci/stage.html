@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>ceci.stage &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ceci.stage &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
@@ -88,67 +41,30 @@
 <li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
       <li>ceci.stage</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for ceci.stage</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">pathlib</span>
 <span class="kn">import</span> <span class="nn">sys</span>
@@ -156,10 +72,13 @@
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">cProfile</span>
 
-<span class="n">SERIAL</span> <span class="o">=</span> <span class="s1">&#39;serial&#39;</span>
-<span class="n">MPI_PARALLEL</span> <span class="o">=</span> <span class="s1">&#39;mpi&#39;</span>
+<span class="kn">from</span> <span class="nn">.errors</span> <span class="kn">import</span> <span class="o">*</span>
 
-<span class="n">IN_PROGRESS_PREFIX</span> <span class="o">=</span> <span class="s1">&#39;inprogress_&#39;</span>
+<span class="n">SERIAL</span> <span class="o">=</span> <span class="s2">&quot;serial&quot;</span>
+<span class="n">MPI_PARALLEL</span> <span class="o">=</span> <span class="s2">&quot;mpi&quot;</span>
+
+<span class="n">IN_PROGRESS_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;inprogress_&quot;</span>
+
 
 <span class="k">class</span> <span class="nc">PipelineStage</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;A PipelineStage implements a single calculation step within a wider pipeline.</span>
@@ -175,9 +94,10 @@
 <span class="sd">    See documentation pages for more details.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">parallel</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
 
 <div class="viewcode-block" id="PipelineStage.__init__"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Construct a pipeline stage, specifying the inputs, outputs, and configuration for it.</span>
@@ -195,12 +115,12 @@
 <span class="sd">            inputs = [(&#39;eggs&#39;, TextFile)]</span>
 <span class="sd">            outputs = [(&#39;spam&#39;, TextFile)]</span>
 <span class="sd">        the args could contain:</span>
-<span class="sd">            {&#39;eggs&#39;: &#39;inputs/eggs.txt&#39;, </span>
+<span class="sd">            {&#39;eggs&#39;: &#39;inputs/eggs.txt&#39;,</span>
 <span class="sd">             &#39;spam&#39;: &#39;outputs/spam.txt&#39; }</span>
 <span class="sd">        If spam is not specified it will default to &quot;./spam.txt&quot;</span>
 
 <span class="sd">        }</span>
-<span class="sd">        </span>
+
 <span class="sd">        The config should map &quot;config&quot; to a path where a YAML config file</span>
 <span class="sd">        is located, e.g. {&#39;config&#39;:&#39;/path/to/config.yml&#39;}</span>
 
@@ -228,20 +148,22 @@
         <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_tags</span><span class="p">():</span>
             <span class="n">val</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">missing_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">missing_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{x}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">missing_inputs</span><span class="p">:</span>
-            <span class="n">missing_inputs</span> <span class="o">=</span> <span class="s1">&#39;  &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_inputs</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+            <span class="n">missing_inputs</span> <span class="o">=</span> <span class="s2">&quot;  &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_inputs</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
 
 <span class="s2">Missing these names on the command line:</span>
-<span class="s2">    Input names: </span><span class="si">{</span><span class="n">missing_inputs</span><span class="si">}</span><span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+<span class="s2">    Input names: </span><span class="si">{missing_inputs}</span><span class="s2">&quot;&quot;&quot;</span>
+            <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span><span class="n">args</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_tags</span><span class="p">()}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">args</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_tags</span><span class="p">()}</span>
         <span class="c1"># We alwys assume the config arg exists, whether it is in input_tags or not</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;config&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The argument --config was missing on the command line.&quot;</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
 
         <span class="c1"># We prefer to receive explicit filenames for the outputs but will</span>
         <span class="c1"># tolerate missing output filenames and will default to tag name in</span>
@@ -258,13 +180,13 @@
         <span class="c1"># command line arguments and optional &#39;config&#39; file</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_configs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_config</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
 
-        <span class="n">use_mpi</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mpi&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">use_mpi</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mpi&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">use_mpi</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># This isn&#39;t a ceci dependency, so give a sensible error message if not installed.</span>
                 <span class="kn">import</span> <span class="nn">mpi4py.MPI</span>
             <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;ERROR: Using --mpi option requires mpi4py to be installed.&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ERROR: Using --mpi option requires mpi4py to be installed.&quot;</span><span class="p">)</span>
                 <span class="k">raise</span>
 
         <span class="c1"># For scripting and testing we allow an MPI communicator or anything</span>
@@ -274,7 +196,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span> <span class="o">=</span> <span class="n">MPI_PARALLEL</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_comm</span> <span class="o">=</span> <span class="n">comm</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_rank</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>            
+            <span class="bp">self</span><span class="o">.</span><span class="n">_rank</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
         <span class="k">elif</span> <span class="n">use_mpi</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span> <span class="o">=</span> <span class="n">MPI_PARALLEL</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_comm</span> <span class="o">=</span> <span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
@@ -287,6 +209,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_rank</span> <span class="o">=</span> <span class="mi">0</span></div>
 
     <span class="n">pipeline_stages</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">incomplete_pipeline_stages</span> <span class="o">=</span> <span class="p">{}</span>
+
 <div class="viewcode-block" id="PipelineStage.__init_subclass__"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.__init_subclass__">[docs]</a>    <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Python 3.6+ provides a facility to automatically</span>
@@ -302,37 +226,57 @@
         <span class="c1"># where our stage was defined</span>
         <span class="n">filename</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span><span class="o">.</span><span class="vm">__file__</span>
 
-        <span class="c1"># Make sure the pipeline stage has a name</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pipeline stage defined in </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> must be given a name.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;outputs&#39;</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pipeline stage </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> defined in </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> must be given a list of outputs.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;inputs&#39;</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pipeline stage </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> defined in </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> must be given a list of inputs.&quot;</span><span class="p">)</span>
+        <span class="n">stage_is_complete</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;outputs&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;inputs&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
 
+        <span class="c1"># If there isn&#39;t an explicit name already then set it here.</span>
+        <span class="c1"># by default use the class name.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">):</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span>
 
-        <span class="c1"># Check for two stages with the same name.</span>
-        <span class="c1"># Not sure if we actually do want to allow this?</span>
-        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pipeline stage </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> already defined&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stage_is_complete</span><span class="p">:</span>
+            <span class="c1"># Deal with duplicated class names</span>
+            <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="p">:</span>
+                <span class="n">other</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">raise</span> <span class="n">DuplicateStageName</span><span class="p">(</span>
+                    <span class="s2">&quot;You created two pipeline stages with the&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;name </span><span class="si">{cls.name}</span><span class="s2">.</span><span class="se">\n</span><span class="s2">One was in </span><span class="si">{filename}</span><span class="se">\n</span><span class="s2">and the &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;other in </span><span class="si">{other}</span><span class="se">\n</span><span class="s2">You can either change the class &quot;</span>
+                    <span class="s2">&quot;name or explicitly put a variable &#39;name&#39; in the top&quot;</span>
+                    <span class="s2">&quot;level of the class.&quot;</span>
+                <span class="p">)</span>
 
-        <span class="c1"># Check for &quot;config&quot; in the inputs list - this is now implicit</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">name</span><span class="o">==</span><span class="s1">&#39;config&#39;</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;An input called &#39;config&#39; is now implicit in each pipeline stage</span>
-<span class="s2">and should not be added explicitly.  Please update your pipeline stage called </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> to remove</span>
-<span class="s2">the input called &#39;config&#39;.</span>
-<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="c1"># Check for &quot;config&quot; in the inputs list - this is implicit</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;config&quot;</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ReservedNameError</span><span class="p">(</span>
+                        <span class="s2">&quot;An input called &#39;config&#39; is implicit in each pipeline &quot;</span>
+                        <span class="s2">&quot;stage and should not be added explicitly.  Please update &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;your pipeline stage called </span><span class="si">{cls.name}</span><span class="s2"> to remove/rename &quot;</span>
+                        <span class="s2">&quot;the input called &#39;config&#39;.&quot;</span>
+                    <span class="p">)</span>
 
+        <span class="c1"># Check if user has over-written the config variable.</span>
+        <span class="c1"># Quite a common error I make myself.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="nb">property</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ReservedNameError</span><span class="p">(</span>
+                <span class="s2">&quot;You have a class variable called &#39;config&#39;, which &quot;</span>
+                <span class="s2">&quot;is reserved in ceci for its own configuration. &quot;</span>
+                <span class="s2">&quot;You may have meant to specify config_options?&quot;</span>
+            <span class="p">)</span>
         <span class="c1"># Find the absolute path to the class defining the file</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
-        <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
 
+        <span class="c1"># Register the class</span>
+        <span class="k">if</span> <span class="n">stage_is_complete</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">incomplete_pipeline_stages</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
 
-<span class="c1">#############################################</span>
-<span class="c1"># Life cycle-related methods and properties.</span>
-<span class="c1">#############################################</span>
-
+    <span class="c1">#############################################</span>
+    <span class="c1"># Life cycle-related methods and properties.</span>
+    <span class="c1">#############################################</span>
 
 <div class="viewcode-block" id="PipelineStage.get_stage"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.get_stage">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">get_stage</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
@@ -348,15 +292,28 @@
 <span class="sd">        cls: class</span>
 <span class="sd">            The corresponding subclass</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
+        <span class="n">stage</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
 
+        <span class="c1"># If not found, then check for incomplete stages</span>
+        <span class="k">if</span> <span class="n">stage</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">incomplete_pipeline_stages</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">IncompleteStage</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;The stage </span><span class="si">{name}</span><span class="s2"> is not completely written. &quot;</span>
+                    <span class="s2">&quot;Stages must specify &#39;inputs&#39;, &#39;outputs&#39; as class variables &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;and a &#39;run&#39; method.</span><span class="se">\n</span><span class="si">{name}</span><span class="s2"> might be unfinished, or it might &quot;</span>
+                    <span class="s2">&quot;be intended as a base for other classes and not to be run.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">StageNotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown stage &#39;</span><span class="si">{name}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">stage</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="PipelineStage.get_module"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.get_module">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">get_module</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the path to the python package containing the current sub-class</span>
 
-<span class="sd">        If we have a PipelineStage subclass defined in a module called &quot;bar&quot;, in </span>
+<span class="sd">        If we have a PipelineStage subclass defined in a module called &quot;bar&quot;, in</span>
 <span class="sd">        a package called &quot;foo&quot; e.g.:</span>
 <span class="sd">        /path/to/foo/bar.py  &lt;--   contains subclass &quot;Baz&quot;</span>
 
@@ -378,18 +335,20 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">stage_names</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">- &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">pipeline_stages</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">module</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_module</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">module</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_module</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">except</span><span class="p">:</span>
             <span class="n">module</span> <span class="o">=</span> <span class="s2">&quot;&lt;module_name&gt;&quot;</span>
-        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">Usage: python -m </span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2"> &lt;stage_name&gt; &lt;stage_arguments&gt;</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Usage: python -m </span><span class="si">{module}</span><span class="s2"> &lt;stage_name&gt; &lt;stage_arguments&gt;</span>
 
 <span class="s2">If no stage_arguments are given then usage information</span>
 <span class="s2">for the chosen stage will be given.</span>
 
 <span class="s2">I currently know about these stages:</span>
-<span class="s2">- </span><span class="si">{</span><span class="n">stage_names</span><span class="si">}</span><span class="s2"></span>
-<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span></div>
+<span class="s2">- </span><span class="si">{stage_names}</span><span class="s2"></span>
+<span class="s2">&quot;&quot;&quot;</span>
+        <span class="p">)</span></div>
 
 <div class="viewcode-block" id="PipelineStage.main"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.main">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
@@ -402,7 +361,7 @@
         <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
             <span class="bp">cls</span><span class="o">.</span><span class="n">usage</span><span class="p">()</span>
             <span class="k">return</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="n">stage_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;--help&#39;</span><span class="p">,</span> <span class="s1">&#39;-h&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">stage_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;--help&quot;</span><span class="p">,</span> <span class="s2">&quot;-h&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
             <span class="bp">cls</span><span class="o">.</span><span class="n">usage</span><span class="p">()</span>
             <span class="k">return</span> <span class="mi">1</span>
         <span class="n">stage</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_stage</span><span class="p">(</span><span class="n">stage_name</span><span class="p">)</span>
@@ -410,39 +369,61 @@
         <span class="n">stage</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
         <span class="k">return</span> <span class="mi">0</span></div>
 
-
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">_parse_command_line</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[:])</span>
         <span class="kn">import</span> <span class="nn">argparse</span>
-        <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Run pipeline stage </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Run pipeline stage </span><span class="si">{cls.name}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;stage_name&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">config_options</span><span class="p">:</span>
             <span class="n">def_val</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">config_options</span><span class="p">[</span><span class="n">conf</span><span class="p">]</span>
             <span class="n">opt_type</span> <span class="o">=</span> <span class="n">def_val</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span> <span class="k">else</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">opt_type</span> <span class="o">==</span> <span class="nb">bool</span><span class="p">:</span>
-                <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_const&#39;</span><span class="p">,</span> <span class="n">const</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{conf}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span> <span class="n">const</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">elif</span> <span class="n">opt_type</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
                 <span class="n">out_type</span> <span class="o">=</span> <span class="n">def_val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="nb">type</span> <span class="k">else</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
                 <span class="k">if</span> <span class="n">out_type</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
-                    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span> <span class="p">)</span>
+                    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{conf}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+                    <span class="p">)</span>
                 <span class="k">elif</span> <span class="n">out_type</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
-                    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)])</span>
+                    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{conf}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)],</span>
+                    <span class="p">)</span>
                 <span class="k">elif</span> <span class="n">out_type</span> <span class="ow">is</span> <span class="nb">float</span><span class="p">:</span>
-                    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)])</span>
+                    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{conf}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="k">lambda</span> <span class="n">string</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)],</span>
+                    <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Only handles str, int and float list arguments&quot;</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                        <span class="s2">&quot;Only handles str, int and float list arguments&quot;</span>
+                    <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">opt_type</span><span class="p">)</span>
+                <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{conf}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">opt_type</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">input_tags</span><span class="p">():</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">inp</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{inp}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">output_tags</span><span class="p">():</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">out</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--config&#39;</span><span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--mpi&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Set up MPI parallelism&quot;</span><span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--pdb&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Run under the python debugger&quot;</span><span class="p">)</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--cprofile&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Profile the stage using the python cProfile tool&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{out}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--config&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">parallel</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+                <span class="s2">&quot;--mpi&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Set up MPI parallelism&quot;</span>
+            <span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+            <span class="s2">&quot;--pdb&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Run under the python debugger&quot;</span>
+        <span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+            <span class="s2">&quot;--cprofile&quot;</span><span class="p">,</span>
+            <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+            <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Profile the stage using the python cProfile tool&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">args</span>
 
@@ -460,10 +441,11 @@
 <span class="sd">            The argparse namespace for this subclass.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span> <span class="nn">pdb</span>
+
         <span class="n">stage</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">stage</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing stage: </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stage</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing stage: </span><span class="si">{cls.name}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">cprofile</span><span class="p">:</span>
             <span class="n">profile</span> <span class="o">=</span> <span class="n">cProfile</span><span class="o">.</span><span class="n">Profile</span><span class="p">()</span>
@@ -473,7 +455,9 @@
             <span class="n">stage</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdb</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;There was an exception - starting python debugger because you ran with --pdb&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;There was an exception - starting python debugger because you ran with --pdb&quot;</span>
+                <span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
                 <span class="n">pdb</span><span class="o">.</span><span class="n">post_mortem</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
@@ -482,7 +466,9 @@
             <span class="n">stage</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdb</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;There was an exception in the finalization - starting python debugger because you ran with --pdb&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;There was an exception in the finalization - starting python debugger because you ran with --pdb&quot;</span>
+                <span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
                 <span class="n">pdb</span><span class="o">.</span><span class="n">post_mortem</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
@@ -490,16 +476,13 @@
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">cprofile</span><span class="p">:</span>
             <span class="n">profile</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
             <span class="n">profile</span><span class="o">.</span><span class="n">dump_stats</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">cprofile</span><span class="p">)</span>
-            <span class="n">profile</span><span class="o">.</span><span class="n">print_stats</span><span class="p">(</span><span class="s1">&#39;cumtime&#39;</span><span class="p">)</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">print_stats</span><span class="p">(</span><span class="s2">&quot;cumtime&quot;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">stage</span><span class="o">.</span><span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stage complete: </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
-
+        <span class="k">if</span> <span class="n">stage</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stage complete: </span><span class="si">{cls.name}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PipelineStage.finalize"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Finalize the stage, moving all its outputs to their final locations.</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Finalize the stage, moving all its outputs to their final locations.&quot;&quot;&quot;</span>
         <span class="c1"># Synchronize files so that everything is closed</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_mpi</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">Barrier</span><span class="p">()</span>
@@ -520,12 +503,13 @@
                         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">final_name</span><span class="p">)</span>
                     <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">temp_name</span><span class="p">,</span> <span class="n">final_name</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NOTE/WARNING: Expected output file </span><span class="si">{</span><span class="n">final_name</span><span class="si">}</span><span class="s2"> was not generated.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;NOTE/WARNING: Expected output file </span><span class="si">{final_name}</span><span class="s2"> was not generated.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="p">)</span></div>
 
-
-<span class="c1">#############################################</span>
-<span class="c1"># Parallelism-related methods and properties.</span>
-<span class="c1">#############################################</span>
+    <span class="c1">#############################################</span>
+    <span class="c1"># Parallelism-related methods and properties.</span>
+    <span class="c1">#############################################</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">rank</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -557,8 +541,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parallel</span> <span class="o">==</span> <span class="n">MPI_PARALLEL</span></div>
 
-
-
 <div class="viewcode-block" id="PipelineStage.split_tasks_by_rank"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.split_tasks_by_rank">[docs]</a>    <span class="k">def</span> <span class="nf">split_tasks_by_rank</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Iterate through a list of items, yielding ones this process is responsible for/</span>
 
@@ -568,13 +550,13 @@
 <span class="sd">        ----------</span>
 <span class="sd">        tasks: iterable</span>
 <span class="sd">            Tasks to split up</span>
-<span class="sd">        </span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">task</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tasks</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">i</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="o">==</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tasks</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">:</span>
                 <span class="k">yield</span> <span class="n">task</span></div>
 
-<div class="viewcode-block" id="PipelineStage.data_ranges_by_rank"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.data_ranges_by_rank">[docs]</a>    <span class="k">def</span> <span class="nf">data_ranges_by_rank</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.data_ranges_by_rank"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.data_ranges_by_rank">[docs]</a>    <span class="k">def</span> <span class="nf">data_ranges_by_rank</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Split a number of rows by process.</span>
 
 <span class="sd">        Given a total number of rows to read and a chunk size, yield</span>
@@ -587,17 +569,26 @@
 
 <span class="sd">        chunk_rows: int</span>
 <span class="sd">            Size of each chunk to be read.</span>
+
+<span class="sd">        Parallel: bool</span>
+<span class="sd">            Whether to split data by rank or just give all procs all data.</span>
+<span class="sd">            Default=True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">n_chunks</span> <span class="o">=</span> <span class="n">n_rows</span><span class="o">//</span><span class="n">chunk_rows</span>
-        <span class="k">if</span> <span class="n">n_chunks</span><span class="o">*</span><span class="n">chunk_rows</span><span class="o">&lt;</span><span class="n">n_rows</span><span class="p">:</span>
+        <span class="n">n_chunks</span> <span class="o">=</span> <span class="n">n_rows</span> <span class="o">//</span> <span class="n">chunk_rows</span>
+        <span class="k">if</span> <span class="n">n_chunks</span> <span class="o">*</span> <span class="n">chunk_rows</span> <span class="o">&lt;</span> <span class="n">n_rows</span><span class="p">:</span>
             <span class="n">n_chunks</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">split_tasks_by_rank</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_chunks</span><span class="p">)):</span>
-            <span class="n">start</span> <span class="o">=</span> <span class="n">i</span><span class="o">*</span><span class="n">chunk_rows</span>
-            <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">((</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">chunk_rows</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">parallel</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">split_tasks_by_rank</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_chunks</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_chunks</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">chunk_rows</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">((</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">chunk_rows</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">)</span>
             <span class="k">yield</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span></div>
-<span class="c1">##################################################</span>
-<span class="c1"># Input and output-related methods and properties.</span>
-<span class="c1">##################################################</span>
+
+    <span class="c1">##################################################</span>
+    <span class="c1"># Input and output-related methods and properties.</span>
+    <span class="c1">##################################################</span>
 
 <div class="viewcode-block" id="PipelineStage.get_input"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.get_input">[docs]</a>    <span class="k">def</span> <span class="nf">get_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the path of an input file with the given tag&quot;&quot;&quot;</span>
@@ -631,7 +622,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
         <span class="n">input_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input_type</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">input_class</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">input_class</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">wrapper</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">obj</span>
@@ -662,7 +653,7 @@
 <span class="sd">            Default=False.  Whether to return a wrapped file</span>
 
 <span class="sd">        final_name: bool</span>
-<span class="sd">            Default=False. Whether to save to </span>
+<span class="sd">            Default=False. Whether to save to</span>
 
 <span class="sd">        **kwargs:</span>
 <span class="sd">            Extra args are passed on to the file&#39;s class constructor.</span>
@@ -676,29 +667,34 @@
         <span class="c1"># - we have been told to open in parallel</span>
         <span class="c1"># - we are actually running under MPI</span>
         <span class="c1"># and adds the flags required if all these are true</span>
-        <span class="n">run_parallel</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;parallel&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_mpi</span><span class="p">()</span>
+        <span class="n">run_parallel</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;parallel&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_mpi</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">run_parallel</span><span class="p">:</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;driver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;mpio&#39;</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;comm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;driver&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;mpio&quot;</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;comm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span>
 
             <span class="c1"># XXX: This is also not a dependency, but it should be.</span>
             <span class="c1">#      Or even better would be to make it a dependency of descformats where it</span>
             <span class="c1">#      is actually used.</span>
             <span class="kn">import</span> <span class="nn">h5py</span>
+
             <span class="k">if</span> <span class="ow">not</span> <span class="n">h5py</span><span class="o">.</span><span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">mpi</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="n">dedent</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
-<span class="s2">                Your h5py installation is not MPI-enabled.</span>
-<span class="s2">                Options include:</span>
-<span class="s2">                  1) Set nprocess to 1 for all stages</span>
-<span class="s2">                  2) Upgrade h5py to use mpi.  See instructions here:</span>
-<span class="s2">                     http://docs.h5py.org/en/latest/build.html#custom-installation</span>
-<span class="s2">                Note: If using conda, the most straightforward way is to enable it is</span>
-<span class="s2">                    conda install -c spectraldns h5py-parallel</span>
-<span class="s2">                &quot;&quot;&quot;</span><span class="p">))</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="n">dedent</span><span class="p">(</span>
+                        <span class="sd">&quot;&quot;&quot;\</span>
+<span class="sd">                Your h5py installation is not MPI-enabled.</span>
+<span class="sd">                Options include:</span>
+<span class="sd">                  1) Set nprocess to 1 for all stages</span>
+<span class="sd">                  2) Upgrade h5py to use mpi.  See instructions here:</span>
+<span class="sd">                     http://docs.h5py.org/en/latest/build.html#custom-installation</span>
+<span class="sd">                Note: If using conda, the most straightforward way is to enable it is</span>
+<span class="sd">                    conda install -c spectraldns h5py-parallel</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
                 <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;h5py module is not MPI-enabled.&quot;</span><span class="p">)</span>
 
         <span class="c1"># Return an opened object representing the file</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">output_class</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">output_class</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">wrapper</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">obj</span>
         <span class="k">else</span><span class="p">:</span>
@@ -709,35 +705,32 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the list of output tags required by this stage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">_</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">]</span></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="PipelineStage.input_tags"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.input_tags">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">input_tags</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the list of input tags required by this stage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">_</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">]</span></div>
-
+        <span class="k">return</span> <span class="p">[</span><span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">]</span></div>
 
 <div class="viewcode-block" id="PipelineStage.get_input_type"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.get_input_type">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the file type class of an input file with the given tag.&quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">t</span><span class="p">,</span><span class="n">dt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">t</span><span class="o">==</span><span class="n">tag</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="o">==</span> <span class="n">tag</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">dt</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tag </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2"> is not a known input&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tag </span><span class="si">{tag}</span><span class="s2"> is not a known input&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="PipelineStage.get_output_type"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.get_output_type">[docs]</a>    <span class="k">def</span> <span class="nf">get_output_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the file type class of an output file with the given tag.&quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">t</span><span class="p">,</span><span class="n">dt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">t</span><span class="o">==</span><span class="n">tag</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="o">==</span> <span class="n">tag</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">dt</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tag </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2"> is not a known output&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tag </span><span class="si">{tag}</span><span class="s2"> is not a known output&quot;</span><span class="p">)</span></div>
 
-
-
-<span class="c1">##################################################</span>
-<span class="c1"># Configuration-related methods and properties.</span>
-<span class="c1">##################################################</span>
+    <span class="c1">##################################################</span>
+    <span class="c1"># Configuration-related methods and properties.</span>
+    <span class="c1">##################################################</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -746,7 +739,6 @@
 <span class="sd">        line options and optional configuration file.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configs</span>
-
 
 <div class="viewcode-block" id="PipelineStage.read_config"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.read_config">[docs]</a>    <span class="k">def</span> <span class="nf">read_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -768,18 +760,17 @@
 
         <span class="c1"># This is all the config information in the file, including</span>
         <span class="c1"># things for other stages</span>
-        <span class="n">overall_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s1">&#39;config&#39;</span><span class="p">)))</span>
+        <span class="n">overall_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_input</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">)))</span>
 
         <span class="c1"># The user can define global options that are inherited by</span>
         <span class="c1"># all the other sections if not already specified there.</span>
-        <span class="n">input_config</span> <span class="o">=</span> <span class="n">overall_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;global&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">input_config</span> <span class="o">=</span> <span class="n">overall_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;global&quot;</span><span class="p">,</span> <span class="p">{})</span>
 
         <span class="c1"># This is just the config info in the file for this stage.</span>
         <span class="c1"># It may be incomplete - there may be things specified on the</span>
         <span class="c1"># command line instead, or just using their default values</span>
         <span class="n">stage_config</span> <span class="o">=</span> <span class="n">overall_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">{})</span>
         <span class="n">input_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">stage_config</span><span class="p">)</span>
-
 
         <span class="c1"># Here we build up the actual configuration we use on this</span>
         <span class="c1"># run from all these sources</span>
@@ -821,14 +812,16 @@
 
             <span class="c1"># Finally, check that we got at least some value for this option</span>
             <span class="k">if</span> <span class="n">opt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing configuration option </span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> for stage </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Missing configuration option </span><span class="si">{x}</span><span class="s2"> for stage </span><span class="si">{self.name}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
 
             <span class="n">my_config</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">opt</span>
 
         <span class="c1"># Unspecified parameters can also be copied over.</span>
         <span class="c1"># This will be needed for parameters that are more complicated, such</span>
         <span class="c1"># as dictionaries or other more structured parameter information.</span>
-        <span class="k">for</span> <span class="n">x</span><span class="p">,</span><span class="n">val</span> <span class="ow">in</span> <span class="n">input_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">input_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="c1"># Omit things we&#39;ve already dealt with above</span>
             <span class="k">if</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_options</span><span class="p">:</span>
                 <span class="k">continue</span>
@@ -836,55 +829,96 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">my_config</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
 
-
-
         <span class="k">return</span> <span class="n">my_config</span></div>
 
-
-<div class="viewcode-block" id="PipelineStage.iterate_fits"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.iterate_fits">[docs]</a>    <span class="k">def</span> <span class="nf">iterate_fits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">hdunum</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.iterate_fits"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.iterate_fits">[docs]</a>    <span class="k">def</span> <span class="nf">iterate_fits</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">hdunum</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Loop through chunks of the input data from a FITS file with the given tag</span>
 
-<span class="sd">        TODO: add ceci tests of these functions</span>
+<span class="sd">        TODO: add ceci tests of this functions</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tag: str</span>
+<span class="sd">            The tag from the inputs list to use</span>
+
+<span class="sd">        hdunum: int</span>
+<span class="sd">            The extension number to read</span>
+
+<span class="sd">        cols: list</span>
+<span class="sd">            The columns to read</span>
+
+<span class="sd">        chunk_rows: int</span>
+<span class="sd">            Number of columns to read and return at once</span>
+
+<span class="sd">        parallel: bool</span>
+<span class="sd">            Whether to split up data among processes (parallel=True) or give</span>
+<span class="sd">            all processes all data (parallel=False).  Default = True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        it: iterator</span>
+<span class="sd">            Iterator yielding (int, int, array) tuples of (start, end, data)</span>
+<span class="sd">            data is a structured array.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">fits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
         <span class="n">ext</span> <span class="o">=</span> <span class="n">fits</span><span class="p">[</span><span class="n">hdunum</span><span class="p">]</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">get_nrows</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">start</span><span class="p">,</span><span class="n">end</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_ranges_by_rank</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_ranges_by_rank</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">ext</span><span class="o">.</span><span class="n">read_columns</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">rows</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
             <span class="k">yield</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span></div>
 
-<div class="viewcode-block" id="PipelineStage.iterate_hdf"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.iterate_hdf">[docs]</a>    <span class="k">def</span> <span class="nf">iterate_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">group_name</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.iterate_hdf"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.iterate_hdf">[docs]</a>    <span class="k">def</span> <span class="nf">iterate_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">group_name</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Loop through chunks of the input data from an HDF5 file with the given tag.</span>
 
 <span class="sd">        All the selected columns must have the same length.</span>
 
-<span class="sd">        TODO: add ceci tests of these functions</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tag: str</span>
+<span class="sd">            The tag from the inputs list to use</span>
+
+<span class="sd">        group: str</span>
+<span class="sd">            The group within the HDF5 file to use, looked up as</span>
+<span class="sd">            file[group]</span>
+
+<span class="sd">        cols: list</span>
+<span class="sd">            The columns to read</span>
+
+<span class="sd">        chunk_rows: int</span>
+<span class="sd">            Number of columns to read and return at once</span>
+
+<span class="sd">        parallel: bool</span>
+<span class="sd">            Whether to split up data among processes (parallel=True) or give</span>
+<span class="sd">            all processes all data (parallel=False).  Default = True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        it: iterator</span>
+<span class="sd">            Iterator yielding (int, int, dict) tuples of (start, end, data)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
         <span class="n">hdf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
         <span class="n">group</span> <span class="o">=</span> <span class="n">hdf</span><span class="p">[</span><span class="n">group_name</span><span class="p">]</span>
 
         <span class="c1"># Check all the columns are the same length</span>
         <span class="n">N</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">col</span><span class="p">])</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">]</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">N</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Different columns among </span><span class="si">{</span><span class="n">cols</span><span class="si">}</span><span class="s2"> in file </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="se">\</span>
-<span class="s2">            group </span><span class="si">{</span><span class="n">group_name</span><span class="si">}</span><span class="s2"> are different sizes - cannot use iterate_hdf&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Different columns among </span><span class="si">{cols}</span><span class="s2"> in file </span><span class="si">{tag}</span><span class="se">\</span>
+<span class="s2">            group </span><span class="si">{group_name}</span><span class="s2"> are different sizes - cannot use iterate_hdf&quot;</span>
+            <span class="p">)</span>
 
         <span class="c1"># Iterate through the data providing chunks</span>
-        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_ranges_by_rank</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_ranges_by_rank</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="n">parallel</span><span class="p">):</span>
             <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">group</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">}</span>
             <span class="k">yield</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span></div>
 
-
-
-
-
-<span class="c1">################################</span>
-<span class="c1"># Pipeline-related methods</span>
-<span class="c1">################################</span>
+    <span class="c1">################################</span>
+    <span class="c1"># Pipeline-related methods</span>
+    <span class="c1">################################</span>
 
 <div class="viewcode-block" id="PipelineStage.generate_command"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.generate_command">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">generate_command</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
@@ -892,33 +926,32 @@
 <span class="sd">        Generate a command line that will run the stage</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">module</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_module</span><span class="p">()</span>
-        <span class="n">module</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="n">flags</span> <span class="o">=</span> <span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
 
-        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">ftype</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">ftype</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">fpath</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing input location </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">fpath</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing input location </span><span class="si">{tag}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{tag}</span><span class="s2">=</span><span class="si">{fpath}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--config=</span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--config=</span><span class="si">{config}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">ftype</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">ftype</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">fpath</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
             <span class="k">except</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing output location </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">fpath</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing output location </span><span class="si">{tag}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{tag}</span><span class="s2">=</span><span class="si">{fpath}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="n">flags</span> <span class="o">=</span> <span class="s2">&quot;   &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">flags</span><span class="p">)</span>
 
         <span class="c1"># We just return this, instead of wrapping it in a</span>
         <span class="c1"># parsl job</span>
-        <span class="n">cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;python3 -m </span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">flags</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;python3 -m </span><span class="si">{module}</span><span class="s2"> </span><span class="si">{flags}</span><span class="s2">&quot;</span>
         <span class="k">return</span> <span class="n">cmd</span></div>
-
 
 <div class="viewcode-block" id="PipelineStage.generate_cwl"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.generate_cwl">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">generate_cwl</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">log_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -926,26 +959,29 @@
 <span class="sd">        Produces a CWL App object which can then be exported to yaml</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span> <span class="nn">cwlgen</span>
+
         <span class="n">module</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_module</span><span class="p">()</span>
-        <span class="n">module</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="c1"># Basic definition of the tool</span>
-        <span class="n">cwl_tool</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineTool</span><span class="p">(</span><span class="n">tool_id</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-                                          <span class="n">label</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-                                          <span class="n">base_command</span><span class="o">=</span><span class="s1">&#39;python3&#39;</span><span class="p">,</span>
-                                          <span class="n">cwl_version</span><span class="o">=</span><span class="s1">&#39;v1.0&#39;</span><span class="p">,</span>
-                                          <span class="n">doc</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">)</span>
+        <span class="n">cwl_tool</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineTool</span><span class="p">(</span>
+            <span class="n">tool_id</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">base_command</span><span class="o">=</span><span class="s2">&quot;python3&quot;</span><span class="p">,</span>
+            <span class="n">cwl_version</span><span class="o">=</span><span class="s2">&quot;v1.0&quot;</span><span class="p">,</span>
+            <span class="n">doc</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">log_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">cwl_tool</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">.out&#39;</span>
-            <span class="n">cwl_tool</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">.err&#39;</span>
+            <span class="n">cwl_tool</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{cls.name}</span><span class="s2">.out&quot;</span>
+            <span class="n">cwl_tool</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{cls.name}</span><span class="s2">.err&quot;</span>
 
         <span class="c1"># Adds the first input binding with the name of the module and pipeline stage</span>
-        <span class="n">input_arg</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">position</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">value_from</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;-m</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">input_arg</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">position</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">value_from</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;-m</span><span class="si">{module}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">cwl_tool</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_arg</span><span class="p">)</span>
-        <span class="n">input_arg</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">value_from</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">input_arg</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">value_from</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{cls.name}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">cwl_tool</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_arg</span><span class="p">)</span>
 
-        <span class="n">type_dict</span><span class="o">=</span><span class="p">{</span><span class="nb">int</span><span class="p">:</span> <span class="s1">&#39;int&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">:</span><span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">:</span><span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">:</span><span class="s1">&#39;boolean&#39;</span><span class="p">}</span>
+        <span class="n">type_dict</span> <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">:</span> <span class="s2">&quot;int&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">:</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">}</span>
         <span class="c1"># Adds the parameters of the tool</span>
         <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">config_options</span><span class="p">:</span>
             <span class="n">def_val</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">config_options</span><span class="p">[</span><span class="n">opt</span><span class="p">]</span>
@@ -953,23 +989,36 @@
             <span class="c1"># Handles special case of lists:</span>
             <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
                 <span class="n">v</span> <span class="o">=</span> <span class="n">def_val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">param_type</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span><span class="s1">&#39;array&#39;</span><span class="p">,</span> <span class="s1">&#39;items&#39;</span><span class="p">:</span> <span class="n">type_dict</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span> <span class="k">else</span> <span class="n">type_dict</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)]</span> <span class="p">}</span>
+                <span class="n">param_type</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="n">type_dict</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span> <span class="k">else</span> <span class="n">type_dict</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)],</span>
+                <span class="p">}</span>
                 <span class="n">default</span> <span class="o">=</span> <span class="n">def_val</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span> <span class="k">else</span> <span class="kc">None</span>
-                <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;--</span><span class="si">{}</span><span class="s1">=&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="p">),</span> <span class="n">item_separator</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="n">separate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span>
+                    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;--</span><span class="si">{}</span><span class="s2">=&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="p">),</span> <span class="n">item_separator</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">separate</span><span class="o">=</span><span class="kc">False</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">param_type</span><span class="o">=</span><span class="n">type_dict</span><span class="p">[</span><span class="n">def_val</span><span class="p">]</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span> <span class="k">else</span> <span class="n">type_dict</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)]</span>
-                <span class="n">default</span><span class="o">=</span><span class="n">def_val</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span> <span class="k">else</span> <span class="kc">None</span>
-                <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="s1">&#39;boolean&#39;</span><span class="p">:</span>
-                    <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;--</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="p">))</span>
+                <span class="n">param_type</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">type_dict</span><span class="p">[</span><span class="n">def_val</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span>
+                    <span class="k">else</span> <span class="n">type_dict</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)]</span>
+                <span class="p">)</span>
+                <span class="n">default</span> <span class="o">=</span> <span class="n">def_val</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">def_val</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="s2">&quot;boolean&quot;</span><span class="p">:</span>
+                    <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;--</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="p">))</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;--</span><span class="si">{}</span><span class="s1">=&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="p">),</span> <span class="n">separate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span>
+                        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;--</span><span class="si">{}</span><span class="s2">=&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">opt</span><span class="p">),</span> <span class="n">separate</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">)</span>
 
-            <span class="n">input_param</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandInputParameter</span><span class="p">(</span><span class="n">opt</span><span class="p">,</span>
-                                                       <span class="n">label</span><span class="o">=</span><span class="n">opt</span><span class="p">,</span>
-                                                       <span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
-                                                       <span class="n">input_binding</span><span class="o">=</span><span class="n">input_binding</span><span class="p">,</span>
-                                                       <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">,</span>
-                                                       <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Some documentation about this parameter&#39;</span><span class="p">)</span>
+            <span class="n">input_param</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandInputParameter</span><span class="p">(</span>
+                <span class="n">opt</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">opt</span><span class="p">,</span>
+                <span class="n">param_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                <span class="n">input_binding</span><span class="o">=</span><span class="n">input_binding</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">,</span>
+                <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Some documentation about this parameter&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
 
             <span class="c1"># We are bypassing the cwlgen builtin type check for the special case</span>
             <span class="c1"># of arrays until that gets added to the standard</span>
@@ -978,53 +1027,60 @@
 
             <span class="n">cwl_tool</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_param</span><span class="p">)</span>
 
-
         <span class="c1"># Add the inputs of the tool</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">inp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">input_tags</span><span class="p">()):</span>
-            <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;--</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">inp</span><span class="p">))</span>
-            <span class="n">input_param</span>   <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandInputParameter</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span>
-                                                         <span class="n">label</span><span class="o">=</span><span class="n">inp</span><span class="p">,</span>
-                                                         <span class="n">param_type</span><span class="o">=</span><span class="s1">&#39;File&#39;</span><span class="p">,</span>
-                                                         <span class="n">param_format</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
-                                                         <span class="n">input_binding</span><span class="o">=</span><span class="n">input_binding</span><span class="p">,</span>
-                                                         <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Some documentation about the input&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">inp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">input_tags</span><span class="p">()):</span>
+            <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;--</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">inp</span><span class="p">))</span>
+            <span class="n">input_param</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandInputParameter</span><span class="p">(</span>
+                <span class="n">inp</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">inp</span><span class="p">,</span>
+                <span class="n">param_type</span><span class="o">=</span><span class="s2">&quot;File&quot;</span><span class="p">,</span>
+                <span class="n">param_format</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
+                <span class="n">input_binding</span><span class="o">=</span><span class="n">input_binding</span><span class="p">,</span>
+                <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Some documentation about the input&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">cwl_tool</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_param</span><span class="p">)</span>
 
         <span class="c1"># Adds the overall configuration file</span>
-        <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;--config&#39;</span><span class="p">)</span>
-        <span class="n">input_param</span>   <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandInputParameter</span><span class="p">(</span><span class="s1">&#39;config&#39;</span><span class="p">,</span>
-                                                     <span class="n">label</span><span class="o">=</span><span class="s1">&#39;config&#39;</span><span class="p">,</span>
-                                                     <span class="n">param_type</span><span class="o">=</span><span class="s1">&#39;File&#39;</span><span class="p">,</span>
-                                                     <span class="n">param_format</span><span class="o">=</span><span class="s1">&#39;http://edamontology.org/format_3750&#39;</span><span class="p">,</span>
-                                                     <span class="n">input_binding</span><span class="o">=</span><span class="n">input_binding</span><span class="p">,</span>
-                                                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Configuration file&#39;</span><span class="p">)</span>
+        <span class="n">input_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandLineBinding</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;--config&quot;</span><span class="p">)</span>
+        <span class="n">input_param</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandInputParameter</span><span class="p">(</span>
+            <span class="s2">&quot;config&quot;</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;config&quot;</span><span class="p">,</span>
+            <span class="n">param_type</span><span class="o">=</span><span class="s2">&quot;File&quot;</span><span class="p">,</span>
+            <span class="n">param_format</span><span class="o">=</span><span class="s2">&quot;http://edamontology.org/format_3750&quot;</span><span class="p">,</span>
+            <span class="n">input_binding</span><span class="o">=</span><span class="n">input_binding</span><span class="p">,</span>
+            <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Configuration file&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">cwl_tool</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_param</span><span class="p">)</span>
 
-
         <span class="c1"># Add the definition of the outputs</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">out</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">output_tags</span><span class="p">()):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">out</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">output_tags</span><span class="p">()):</span>
             <span class="n">output_name</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">make_name</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
             <span class="n">output_binding</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputBinding</span><span class="p">(</span><span class="n">glob</span><span class="o">=</span><span class="n">output_name</span><span class="p">)</span>
-            <span class="n">output</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputParameter</span><span class="p">(</span><span class="n">out</span><span class="p">,</span>
-                                            <span class="n">label</span><span class="o">=</span><span class="n">out</span><span class="p">,</span>
-                                            <span class="n">param_type</span><span class="o">=</span><span class="s1">&#39;File&#39;</span><span class="p">,</span>
-                                            <span class="n">output_binding</span><span class="o">=</span><span class="n">output_binding</span><span class="p">,</span>
-                                            <span class="n">param_format</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
-                                            <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Some results produced by the pipeline element&#39;</span><span class="p">)</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputParameter</span><span class="p">(</span>
+                <span class="n">out</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">out</span><span class="p">,</span>
+                <span class="n">param_type</span><span class="o">=</span><span class="s2">&quot;File&quot;</span><span class="p">,</span>
+                <span class="n">output_binding</span><span class="o">=</span><span class="n">output_binding</span><span class="p">,</span>
+                <span class="n">param_format</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
+                <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Some results produced by the pipeline element&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">cwl_tool</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">log_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">output</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputParameter</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">@stdout&#39;</span><span class="p">,</span>
-                                            <span class="n">label</span><span class="o">=</span><span class="s1">&#39;stdout&#39;</span><span class="p">,</span>
-                                            <span class="n">param_type</span><span class="o">=</span><span class="s1">&#39;stdout&#39;</span><span class="p">,</span>
-                                            <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Pipeline elements standard output&#39;</span><span class="p">)</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputParameter</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{cls.name}</span><span class="s2">@stdout&quot;</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span>
+                <span class="n">param_type</span><span class="o">=</span><span class="s2">&quot;stdout&quot;</span><span class="p">,</span>
+                <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Pipeline elements standard output&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">cwl_tool</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
-            <span class="n">error</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputParameter</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">@stderr&#39;</span><span class="p">,</span>
-                                            <span class="n">label</span><span class="o">=</span><span class="s1">&#39;stderr&#39;</span><span class="p">,</span>
-                                            <span class="n">param_type</span><span class="o">=</span><span class="s1">&#39;stderr&#39;</span><span class="p">,</span>
-                                            <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Pipeline elements standard output&#39;</span><span class="p">)</span>
+            <span class="n">error</span> <span class="o">=</span> <span class="n">cwlgen</span><span class="o">.</span><span class="n">CommandOutputParameter</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{cls.name}</span><span class="s2">@stderr&quot;</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="s2">&quot;stderr&quot;</span><span class="p">,</span>
+                <span class="n">param_type</span><span class="o">=</span><span class="s2">&quot;stderr&quot;</span><span class="p">,</span>
+                <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Pipeline elements standard output&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">cwl_tool</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-
 
         <span class="c1"># Potentially add more metadata</span>
         <span class="c1"># This requires a schema however...</span>
@@ -1038,49 +1094,30 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

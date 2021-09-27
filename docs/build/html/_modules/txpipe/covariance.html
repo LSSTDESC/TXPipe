@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.covariance &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.covariance &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
@@ -88,67 +41,30 @@
 <li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.covariance</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.covariance</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">ShearCatalog</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">FiducialCosmology</span><span class="p">,</span> <span class="n">SACCFile</span>
@@ -179,7 +95,7 @@
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
         <span class="s1">&#39;use_true_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-        
+        <span class="s1">&#39;galaxy_bias&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.</span><span class="p">],</span>
     <span class="p">}</span>
 
 
@@ -279,14 +195,14 @@
         <span class="n">n_lens_arcmin</span> <span class="o">=</span> <span class="n">N_lens</span> <span class="o">/</span> <span class="n">area_arcmin2</span>
 
         <span class="c1"># Feedback</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area =  </span><span class="si">{</span><span class="n">area_deg2</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> deg^2&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky:  </span><span class="si">{</span><span class="n">f_sky</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_eff:  </span><span class="si">{</span><span class="n">N_eff</span><span class="si">}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_lens: </span><span class="si">{</span><span class="n">N_lens</span><span class="si">}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_eff:  </span><span class="si">{</span><span class="n">n_eff</span><span class="si">}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     =  </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">n_eff_arcmin</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> / sq arcmin&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lens density: </span><span class="si">{</span><span class="n">n_lens</span><span class="si">}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;            = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">n_lens_arcmin</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> / arcmin&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area =  </span><span class="si">{area_deg2:.1f}</span><span class="s2"> deg^2&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky:  </span><span class="si">{f_sky}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_eff:  </span><span class="si">{N_eff}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_lens: </span><span class="si">{N_lens}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_eff:  </span><span class="si">{n_eff}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     =  {np.around(n_eff_arcmin,2)} / sq arcmin&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lens density: </span><span class="si">{n_lens}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;            = {np.around(n_lens_arcmin,2)} / arcmin&quot;</span><span class="p">)</span>
 
         <span class="c1"># Pass all this back as a dictionary</span>
         <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span>
@@ -324,11 +240,19 @@
             <span class="c1"># or if it is a lens bin then generaete the corresponding</span>
             <span class="c1"># CCL tracer class</span>
             <span class="k">elif</span> <span class="s1">&#39;lens&#39;</span> <span class="ow">in</span> <span class="n">tracer</span><span class="p">:</span>
-                <span class="n">b</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>  <span class="c1"># place holder</span>
+                <span class="c1"># Get galaxy bias for this sample. Default value = 1.</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;galaxy_bias&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span><span class="mf">0.</span><span class="p">]:</span>
+                    <span class="n">b0</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using galaxy bias = 1 for </span><span class="si">{tracer}</span><span class="s2"> (since you didn&#39;t specify any biases)&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">b0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;galaxy_bias&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using galaxy bias = </span><span class="si">{b0}</span><span class="s2"> for </span><span class="si">{tracer}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="n">b</span> <span class="o">=</span> <span class="n">b0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
                 <span class="n">n_gal</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;n_lens&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
                 <span class="n">tracer_noise</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">n_gal</span>
                 <span class="n">ccl_tracers</span><span class="p">[</span><span class="n">tracer</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">NumberCountsTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">has_rsd</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">nz</span><span class="p">),</span> <span class="n">bias</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">b</span><span class="p">))</span>
-        
+                    
         <span class="k">return</span> <span class="n">ccl_tracers</span><span class="p">,</span> <span class="n">tracer_noise</span>
 
     <span class="k">def</span> <span class="nf">get_spins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tracer_comb</span><span class="p">):</span>
@@ -430,14 +354,14 @@
             <span class="k">if</span> <span class="n">xi_plus_minus1</span> <span class="o">!=</span> <span class="n">xi_plus_minus2</span><span class="p">:</span>
                 <span class="c1"># in the cross term, this contribution is subtracted.</span>
                 <span class="c1"># eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf</span>
-                <span class="n">Bmode_F</span><span class="o">=-</span><span class="mi">1</span> 
+                <span class="n">Bmode_F</span><span class="o">=-</span><span class="mi">1</span>
             <span class="c1"># below the we multiply zero to maintain the shape of the Cl array, these are effectively </span>
             <span class="c1"># B-modes</span>
             <span class="n">cov</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">cl</span><span class="p">[</span><span class="mi">13</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">13</span><span class="p">],</span> <span class="n">cl</span><span class="p">[</span><span class="mi">24</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">24</span><span class="p">])</span> <span class="o">*</span> <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span> <span class="o">*</span> <span class="n">Bmode_F</span>
             <span class="n">cov</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">cl</span><span class="p">[</span><span class="mi">14</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">14</span><span class="p">],</span> <span class="n">cl</span><span class="p">[</span><span class="mi">23</span><span class="p">]</span><span class="o">*</span><span class="mi">0</span> <span class="o">+</span> <span class="n">SN</span><span class="p">[</span><span class="mi">23</span><span class="p">])</span> <span class="o">*</span> <span class="n">coupling_mat</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span> <span class="o">*</span> <span class="n">Bmode_F</span>
 
         <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">cov</span><span class="p">[</span><span class="mi">1423</span><span class="p">]</span><span class="o">+</span><span class="n">cov</span><span class="p">[</span><span class="mi">1324</span><span class="p">]</span>
-
+        
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span><span class="p">:</span>
             <span class="n">s1_s2_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_spins</span><span class="p">(</span><span class="n">tracer_comb1</span><span class="p">)</span>
             <span class="n">s1_s2_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_spins</span><span class="p">(</span><span class="n">tracer_comb2</span><span class="p">)</span>
@@ -449,7 +373,7 @@
                 <span class="n">s1_s2_1</span> <span class="o">=</span> <span class="n">s1_s2_1</span><span class="p">[</span><span class="n">xi_plus_minus1</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s1_s2_2</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="n">s1_s2_2</span> <span class="o">=</span> <span class="n">s1_s2_2</span><span class="p">[</span><span class="n">xi_plus_minus2</span><span class="p">]</span>
-
+                
             <span class="c1"># Use these terms to project the covariance from C_ell to xi(theta)</span>
             <span class="n">th</span><span class="p">,</span> <span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">WT</span><span class="o">.</span><span class="n">projected_covariance2</span><span class="p">(</span>
                 <span class="n">l_cl</span><span class="o">=</span><span class="n">ell</span><span class="p">,</span> <span class="n">s1_s2</span><span class="o">=</span><span class="n">s1_s2_1</span><span class="p">,</span> <span class="n">s1_s2_cross</span><span class="o">=</span><span class="n">s1_s2_2</span><span class="p">,</span> <span class="n">cl_cov</span><span class="o">=</span><span class="n">cov</span><span class="p">[</span><span class="s1">&#39;final&#39;</span><span class="p">])</span>
@@ -488,11 +412,11 @@
         <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading precomputed wigner transform from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading precomputed wigner transform from </span><span class="si">{path}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">WT</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))</span>
                 <span class="k">return</span> <span class="n">WT</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precomputed wigner transform </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precomputed wigner transform </span><span class="si">{path}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Will compute it and then save it.&quot;</span><span class="p">)</span>
 
         <span class="c1"># We don&#39;t want to use n processes with n threads each by accident,</span>
@@ -516,7 +440,7 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">WT</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">))</span>
             <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not save wigner transform to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not save wigner transform to </span><span class="si">{path}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">WT</span>
 
 
@@ -554,21 +478,31 @@
         <span class="n">cl_cache</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">xi_pm</span> <span class="o">=</span> <span class="p">[[(</span><span class="s1">&#39;plus&#39;</span><span class="p">,</span><span class="s1">&#39;plus&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;plus&#39;</span><span class="p">,</span> <span class="s1">&#39;minus&#39;</span><span class="p">)],</span> <span class="p">[(</span><span class="s1">&#39;minus&#39;</span><span class="p">,</span><span class="s1">&#39;plus&#39;</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;minus&#39;</span><span class="p">,</span> <span class="s1">&#39;minus&#39;</span><span class="p">)]]</span>
 
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total number of 2pt functions:&quot;</span><span class="p">,</span> <span class="n">N2pt</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of 2pt functions without xim:&quot;</span><span class="p">,</span> <span class="n">N2pt0</span><span class="p">)</span>
+        
         <span class="c1"># Look through the chunk of matrix, tracer pair by tracer pair</span>
+        <span class="c1"># Order of the covariance needs to be the cannonical order of saac. For a 3x2pt matrix that is:</span>
+        <span class="c1"># -galaxy_density_xi</span>
+        <span class="c1"># -galaxy_shearDensity_xi_t</span>
+        <span class="c1"># -galaxy_shear_xi_minus</span>
+        <span class="c1"># -galaxy_shear_xi_plus</span>
+
+        <span class="n">xim_start</span> <span class="o">=</span> <span class="n">N2pt0</span><span class="o">-</span><span class="p">(</span><span class="n">N2pt</span><span class="o">-</span><span class="n">N2pt0</span><span class="p">)</span>
+        <span class="n">xim_end</span> <span class="o">=</span> <span class="n">N2pt0</span>
+        
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N2pt</span><span class="p">):</span>
             <span class="n">tracer_comb1</span> <span class="o">=</span> <span class="n">tracer_combs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
 
-            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">N2pt0</span><span class="p">:</span>
-                <span class="n">count_xi_pm1</span> <span class="o">=</span> <span class="mi">1</span>
-
+            <span class="n">count_xi_pm1</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xim_start</span><span class="p">,</span> <span class="n">xim_end</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+            
             <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">N2pt</span><span class="p">):</span>
                 <span class="n">tracer_comb2</span> <span class="o">=</span> <span class="n">tracer_combs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{</span><span class="n">tracer_comb1</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">tracer_comb2</span><span class="si">}</span><span class="s2">: chunk (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) of (</span><span class="si">{</span><span class="n">N2pt</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">N2pt</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{tracer_comb1}</span><span class="s2"> x </span><span class="si">{tracer_comb2}</span><span class="s2">: chunk (</span><span class="si">{i}</span><span class="s2">,</span><span class="si">{j}</span><span class="s2">) of (</span><span class="si">{N2pt}</span><span class="s2">,</span><span class="si">{N2pt}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                
+                <span class="n">count_xi_pm2</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xim_start</span><span class="p">,</span> <span class="n">xim_end</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
 
-                <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="n">N2pt0</span><span class="p">:</span>
-                    <span class="n">count_xi_pm2</span> <span class="o">=</span> <span class="mi">1</span>
-
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb1</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb2</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">do_xi</span> <span class="ow">and</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="ow">or</span> <span class="p">(</span><span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="s1">&#39;source&#39;</span> <span class="ow">in</span> <span class="n">tracer_comb2</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
                     <span class="n">cov_ij</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_covariance_block</span><span class="p">(</span>
                         <span class="n">cosmo</span><span class="p">,</span>
                         <span class="n">meta</span><span class="p">,</span>
@@ -578,8 +512,8 @@
                         <span class="n">ccl_tracers</span><span class="o">=</span><span class="n">ccl_tracers</span><span class="p">,</span>
                         <span class="n">tracer_Noise</span><span class="o">=</span><span class="n">tracer_Noise</span><span class="p">,</span> 
                         <span class="n">two_point_data</span><span class="o">=</span><span class="n">two_point_data</span><span class="p">,</span>
-                        <span class="n">xi_plus_minus1</span><span class="o">=</span><span class="n">xi_pm</span><span class="p">[</span><span class="n">count_xi_pm1</span><span class="p">,</span> <span class="n">count_xi_pm2</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
-                        <span class="n">xi_plus_minus2</span><span class="o">=</span><span class="n">xi_pm</span><span class="p">[</span><span class="n">count_xi_pm1</span><span class="p">,</span> <span class="n">count_xi_pm2</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">xi_plus_minus1</span><span class="o">=</span><span class="n">xi_pm</span><span class="p">[</span><span class="n">count_xi_pm1</span><span class="p">][</span><span class="n">count_xi_pm2</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="n">xi_plus_minus2</span><span class="o">=</span><span class="n">xi_pm</span><span class="p">[</span><span class="n">count_xi_pm1</span><span class="p">][</span><span class="n">count_xi_pm2</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
                         <span class="n">cache</span><span class="o">=</span><span class="n">cl_cache</span><span class="p">,</span>
                         <span class="n">WT</span><span class="o">=</span><span class="n">WT</span><span class="p">,</span>
                     <span class="p">)</span>
@@ -639,6 +573,8 @@
         <span class="s1">&#39;max_sep&#39;</span><span class="p">:</span><span class="mi">250</span><span class="p">,</span>
         <span class="s1">&#39;nbins&#39;</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span>
         <span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;use_true_shear&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;galaxy_bias&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.</span><span class="p">],</span>
     <span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -676,49 +612,30 @@
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

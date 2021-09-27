@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.maps &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.maps &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../_static/js/theme.js"></script>
-
-    
+    <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
@@ -88,73 +41,37 @@
 <li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.maps</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.maps</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">TomographyCatalog</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">ShearCatalog</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">unique_list</span><span class="p">,</span> <span class="n">choose_pixelization</span>
 <span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">read_shear_catalog_type</span><span class="p">,</span> <span class="n">apply_metacal_response</span>
+<span class="kn">from</span> <span class="nn">.utils.calibrators</span> <span class="kn">import</span> <span class="n">LensfitCalibrator</span>
 <span class="kn">from</span> <span class="nn">.mapping</span> <span class="kn">import</span> <span class="n">Mapper</span><span class="p">,</span> <span class="n">FlagMapper</span>
 
 
@@ -209,7 +126,7 @@
         <span class="c1"># Loop through the data</span>
         <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_iterator</span><span class="p">():</span>
             <span class="c1"># Give an idea of progress</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> read data chunk </span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> read data chunk </span><span class="si">{s:,}</span><span class="s2"> - </span><span class="si">{e:,}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># Build up any maps we are using</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">accumulate_maps</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">)</span>
 
@@ -324,14 +241,20 @@
                 <span class="n">cal</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)}</span>
                 <span class="n">cal</span><span class="p">[</span><span class="s1">&#39;2D&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/metacal_response/R_total_2d&#39;</span><span class="p">][:]</span>
             <span class="k">elif</span> <span class="n">shear_catalog_type</span> <span class="o">==</span> <span class="s2">&quot;lensfit&quot;</span><span class="p">:</span>
-                <span class="n">R</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/R_mean&#39;</span><span class="p">][:]</span>
                 <span class="n">K</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/K&#39;</span><span class="p">][:]</span>
                 <span class="n">c</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/C&#39;</span><span class="p">][:]</span>
-                <span class="n">cal</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)}</span>
+                <span class="n">cal</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)}</span>
                 <span class="n">cal</span><span class="p">[</span><span class="s1">&#39;2D&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/R_mean_2d&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
                     <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/K_2d&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
                     <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/C_2d&#39;</span><span class="p">][:],</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">shear_catalog_type</span> <span class="o">==</span> <span class="s2">&quot;hsc&quot;</span><span class="p">:</span>
+                <span class="n">R</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/R&#39;</span><span class="p">][:]</span>
+                <span class="n">K</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/K&#39;</span><span class="p">][:]</span>
+                <span class="n">cal</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">(</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">)}</span>
+                <span class="n">cal</span><span class="p">[</span><span class="s1">&#39;2D&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/R_2d&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">f</span><span class="p">[</span><span class="s1">&#39;/response/K_2d&#39;</span><span class="p">][:],</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown calibration&quot;</span><span class="p">)</span>
@@ -389,24 +312,17 @@
         <span class="k">return</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span>
 
 
-    <span class="k">def</span> <span class="nf">calibrate_map_lensfit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
-        <span class="n">c1</span> <span class="o">=</span> <span class="n">c</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
-        <span class="n">c2</span> <span class="o">=</span> <span class="n">c</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">one_plus_K</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">K</span>
+    <span class="k">def</span> <span class="nf">calibrate_map_lensfit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+        <span class="n">calib</span> <span class="o">=</span> <span class="n">LensfitCalibrator</span><span class="p">(</span><span class="n">K</span><span class="p">,</span><span class="n">c</span><span class="p">)</span>
 
-        <span class="n">g1</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">one_plus_K</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">g1</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span> <span class="o">-</span> <span class="n">c1</span><span class="p">)</span>
-        <span class="n">g2</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">one_plus_K</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">g2</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span> <span class="o">-</span> <span class="n">c2</span><span class="p">)</span>
+        <span class="n">g1</span><span class="p">,</span><span class="n">g2</span> <span class="o">=</span> <span class="n">calib</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="n">g2</span><span class="p">,</span><span class="n">subtract_mean</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="n">std_g1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_g1</span><span class="p">)</span>
-        <span class="n">std_g2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_g2</span><span class="p">)</span>
-        <span class="c1"># no c here I think because it&#39;s a std dev</span>
-        <span class="c1"># so it&#39;s alread mean-subtracted?</span>
-        <span class="n">std_g1</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">one_plus_K</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">std_g1</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span>
-        <span class="n">std_g2</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">one_plus_K</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">std_g2</span> <span class="o">/</span> <span class="n">R</span><span class="p">)</span>
-        <span class="n">var_g1</span> <span class="o">=</span> <span class="n">std_g1</span> <span class="o">**</span> <span class="mi">2</span>
-        <span class="n">var_g2</span> <span class="o">=</span> <span class="n">std_g2</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">var_g1</span><span class="p">,</span><span class="n">var_g2</span> <span class="o">=</span> <span class="n">calib</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="n">g2</span><span class="p">,</span><span class="n">subtract_mean</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span>
+
+    <span class="k">def</span> <span class="nf">calibrate_map_hsc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;need to write calibrate map hsc function&quot;</span>
 
     <span class="k">def</span> <span class="nf">calibrate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">,</span> <span class="n">cal</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">healpy</span>
@@ -430,8 +346,11 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
                 <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrate_map_metacal</span><span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">cal</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+                <span class="n">K</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">cal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrate_map_lensfit</span><span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;shear_catalog_type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;hsc&#39;</span><span class="p">:</span>
                 <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">cal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-                <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrate_map_lensfit</span><span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrate_map_hsc</span><span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown calibration&quot;</span><span class="p">)</span>
 
@@ -466,11 +385,11 @@
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">source_bins</span><span class="p">:</span>
             <span class="c1"># keys are the output tag and the map name</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
@@ -546,8 +465,8 @@
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">lens_bins</span><span class="p">:</span>
             <span class="c1"># keys are the output tag and the map name</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
@@ -586,8 +505,10 @@
 <div class="viewcode-block" id="TXMainMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXMainMaps">[docs]</a><span class="k">class</span> <span class="nc">TXMainMaps</span><span class="p">(</span><span class="n">TXSourceMaps</span><span class="p">,</span> <span class="n">TXLensMaps</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Combined source and photometric lens maps, from the</span>
-<span class="sd">    same photometry catalog.  Same as running TXSourceMaps</span>
-<span class="sd">    and then TXLensMaps but faster as we only do the I/O once.</span>
+<span class="sd">    same photometry catalog. This might be slightly faster than</span>
+<span class="sd">    running two maps separately, but it only works if the source </span>
+<span class="sd">    and lens catalogs are the same set of objects. Otherwise use</span>
+<span class="sd">    TXSourceMaps and TXLensMaps.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXMainMaps&quot;</span>
@@ -609,6 +530,17 @@
         <span class="c1"># This is just the combination of</span>
         <span class="c1"># the source and lens map columns</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TODO: no lens weights here&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;photometry_catalog&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">sz1</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;photometry/ra&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;shear_catalog&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">sz2</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;shear/ra&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+
+        <span class="k">if</span> <span class="n">sz1</span> <span class="o">!=</span> <span class="n">sz2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Shear and photometry catalogs in TXMainMaps are &quot;</span>
+                             <span class="s2">&quot;different sizes. To use separate source and lens &quot;</span>
+                             <span class="s2">&quot;samples use TXSourceMaps and TXLensMaps separately.&quot;</span>
+                             <span class="p">)</span>
 
         <span class="c1"># metacal, lensfit, etc.</span>
         <span class="n">shear_catalog_type</span> <span class="o">=</span> <span class="n">read_shear_catalog_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -677,15 +609,15 @@
 
         <span class="c1"># Now both loops, source and lens</span>
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">lens_bins</span><span class="p">:</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">source_bins</span><span class="p">:</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
@@ -726,7 +658,7 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">meta</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s2">&quot;maps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
             <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nbin_lens&quot;</span><span class="p">]</span>
-            <span class="n">ngal_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
+            <span class="n">ngal_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
 
         <span class="c1"># Convert count maps into density maps</span>
         <span class="n">density_maps</span> <span class="o">=</span> <span class="p">[]</span>
@@ -739,7 +671,7 @@
             <span class="c1"># First compute the overall mean object count per bin.</span>
             <span class="c1"># mean clustering galaxies per pixel in this map</span>
             <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">ng</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">mask_copy</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean number density in bin </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">mu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean number density in bin </span><span class="si">{i}</span><span class="s2"> = </span><span class="si">{mu}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># and then use that to convert to overdensity</span>
             <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">ng</span> <span class="o">-</span> <span class="n">mu</span><span class="p">)</span> <span class="o">/</span> <span class="n">mu</span>
             <span class="c1"># remove nans</span>
@@ -753,53 +685,34 @@
             <span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s2">&quot;maps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
             <span class="c1"># save each density map</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rho</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">density_maps</span><span class="p">):</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;delta_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pix</span><span class="p">,</span> <span class="n">rho</span><span class="p">[</span><span class="n">pix</span><span class="p">],</span> <span class="n">meta</span><span class="p">)</span></div>
+                <span class="n">f</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;delta_</span><span class="si">{i}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pix</span><span class="p">,</span> <span class="n">rho</span><span class="p">[</span><span class="n">pix</span><span class="p">],</span> <span class="n">meta</span><span class="p">)</span></div>
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

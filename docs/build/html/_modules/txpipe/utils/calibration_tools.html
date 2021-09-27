@@ -1,66 +1,30 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>txpipe.utils.calibration_tools &mdash; TXPipe  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.utils.calibration_tools &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
         <script src="../../../_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
-
-    
+    <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
-            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> TXPipe
-          
-
-          
+            <a href="../../../index.html" class="icon icon-home"> TXPipe
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -68,18 +32,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
@@ -88,67 +41,30 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../../index.html">TXPipe</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
-        
           <li><a href="../../index.html">Module code</a> &raquo;</li>
-        
       <li>txpipe.utils.calibration_tools</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <h1>Source code for txpipe.utils.calibration_tools</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">parallel_statistics</span> <span class="kn">import</span> <span class="n">ParallelMeanVariance</span><span class="p">,</span> <span class="n">ParallelMean</span>
@@ -190,36 +106,36 @@
 
 <span class="k">def</span> <span class="nf">calculate_selection_response</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">sel_1p</span><span class="p">,</span> <span class="n">sel_2p</span><span class="p">,</span> <span class="n">sel_1m</span><span class="p">,</span> <span class="n">sel_2m</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">):</span>
     <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-    
+
     <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
     <span class="n">S_11</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">delta_gamma</span>
     <span class="n">S_12</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">delta_gamma</span>
     <span class="n">S_21</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">delta_gamma</span>
     <span class="n">S_22</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">delta_gamma</span>
-    
+
     <span class="c1"># Also save the selection biases as a matrix.</span>
     <span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">S_11</span>
     <span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">S_12</span>
     <span class="n">S</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">S_21</span>
     <span class="n">S</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">S_22</span>
-    
+
     <span class="k">return</span> <span class="n">S</span>
 
 <span class="k">def</span> <span class="nf">calculate_shear_response</span><span class="p">(</span><span class="n">g1_1p</span><span class="p">,</span><span class="n">g1_2p</span><span class="p">,</span><span class="n">g1_1m</span><span class="p">,</span><span class="n">g1_2m</span><span class="p">,</span><span class="n">g2_1p</span><span class="p">,</span><span class="n">g2_2p</span><span class="p">,</span><span class="n">g2_1m</span><span class="p">,</span><span class="n">g2_2m</span><span class="p">,</span><span class="n">delta_gamma</span><span class="p">):</span>
-    <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span> 
-    
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
     <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">g1_1p</span><span class="p">)</span>
     <span class="n">R</span> <span class="o">=</span>  <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
     <span class="n">R_11</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1_1p</span> <span class="o">-</span> <span class="n">g1_1m</span><span class="p">)</span> <span class="o">/</span> <span class="n">delta_gamma</span>
     <span class="n">R_12</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1_2p</span> <span class="o">-</span> <span class="n">g1_2m</span><span class="p">)</span> <span class="o">/</span> <span class="n">delta_gamma</span>
     <span class="n">R_21</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2_1p</span> <span class="o">-</span> <span class="n">g2_1m</span><span class="p">)</span> <span class="o">/</span> <span class="n">delta_gamma</span>
     <span class="n">R_22</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2_2p</span> <span class="o">-</span> <span class="n">g2_2m</span><span class="p">)</span> <span class="o">/</span> <span class="n">delta_gamma</span>
-    
+
     <span class="n">R</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_11</span>
     <span class="n">R</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_12</span>
     <span class="n">R</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_21</span>
     <span class="n">R</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_22</span>
-    
+
     <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">R</span>
 
@@ -228,15 +144,15 @@
     <span class="c1"># have had appropriate weights included</span>
     <span class="kn">from</span> <span class="nn">numpy.linalg</span> <span class="kn">import</span> <span class="n">pinv</span>
     <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-    
+
     <span class="n">mcal_g</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">g1</span><span class="p">,</span><span class="n">g2</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    
+
     <span class="n">R_total</span> <span class="o">=</span> <span class="n">R</span><span class="o">+</span><span class="n">S</span>
-    
+
     <span class="c1"># Invert the responsivity matrix</span>
     <span class="n">Rinv</span> <span class="o">=</span> <span class="n">pinv</span><span class="p">(</span><span class="n">R_total</span><span class="p">)</span>
     <span class="n">mcal_g</span> <span class="o">=</span> <span class="p">(</span><span class="n">Rinv</span> <span class="o">@</span> <span class="n">mcal_g</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="n">mcal_g</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mcal_g</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
 
@@ -245,7 +161,7 @@
     <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weight</span><span class="o">*</span><span class="n">m</span><span class="p">)</span><span class="o">/</span><span class="n">w_tot</span>        <span class="c1">#if m not provided, default is m=0, so one_plus_K=1</span>
     <span class="n">one_plus_K</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">+</span><span class="n">m</span>
     <span class="n">R</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weight</span><span class="o">*</span><span class="n">sigma_e</span><span class="p">)</span><span class="o">/</span><span class="n">w_tot</span>
-    <span class="n">g1</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">one_plus_K</span><span class="p">))</span><span class="o">*</span><span class="p">((</span><span class="n">g1</span><span class="o">/</span><span class="n">R</span><span class="p">)</span><span class="o">-</span><span class="n">c1</span><span class="p">)</span>       
+    <span class="n">g1</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">one_plus_K</span><span class="p">))</span><span class="o">*</span><span class="p">((</span><span class="n">g1</span><span class="o">/</span><span class="n">R</span><span class="p">)</span><span class="o">-</span><span class="n">c1</span><span class="p">)</span>
     <span class="n">g2</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">one_plus_K</span><span class="p">))</span><span class="o">*</span><span class="p">((</span><span class="n">g2</span><span class="o">/</span><span class="n">R</span><span class="p">)</span><span class="o">-</span><span class="n">c2</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">one_plus_K</span>
 
@@ -261,7 +177,7 @@
 <span class="sd">    and returns that if so.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create </span>
+        <span class="sd">&quot;&quot;&quot;Create</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -282,11 +198,11 @@
     <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 
-<div class="viewcode-block" id="ParallelCalibratorMetacal"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.ParallelCalibratorMetacal">[docs]</a><span class="k">class</span> <span class="nc">ParallelCalibratorMetacal</span><span class="p">:</span>
+<div class="viewcode-block" id="MetacalCalculator"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.MetacalCalculator">[docs]</a><span class="k">class</span> <span class="nc">MetacalCalculator</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class builds up the total response and selection calibration</span>
 <span class="sd">    factors for Metacalibration from each chunk of data it is given.</span>
-<span class="sd">    At the end an MPI communuicator can be supplied to collect together</span>
+<span class="sd">    At the end an MPI communicator can be supplied to collect together</span>
 <span class="sd">    the results from the different processes.</span>
 
 <span class="sd">    To do this we need the function used to select the data, and the instance</span>
@@ -301,7 +217,7 @@
 <span class="sd">        the chunk of data to select on.  It should look up the original</span>
 <span class="sd">        names of the columns to select on, without the metacal suffix.</span>
 
-<span class="sd">        The ParallelCalibrator will then wrap the data passed to it so that</span>
+<span class="sd">        The MetacalCalculator will then wrap the data passed to it so that</span>
 <span class="sd">        when a metacalibrated column is used for selection then the appropriate</span>
 <span class="sd">        variant column is selected instead.</span>
 
@@ -316,12 +232,12 @@
 <span class="sd">            The difference in applied g between 1p and 1m metacal variants</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">selector</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">S</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span> <span class="o">=</span> <span class="n">delta_gamma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 
-<div class="viewcode-block" id="ParallelCalibratorMetacal.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.ParallelCalibratorMetacal.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MetacalCalculator.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.MetacalCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Select objects from a new chunk of data and tally their responses</span>
 
 <span class="sd">        Parameters</span>
@@ -332,16 +248,23 @@
 <span class="sd">            Positional arguments to be passed to the selection function</span>
 <span class="sd">        **kwargs</span>
 <span class="sd">            Keyword arguments to be passed to the selection function</span>
-<span class="sd">        </span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># These all wrap the catalog such that lookups find the variant</span>
-        <span class="c1"># column if available</span>
+        <span class="c1"># column if available.</span>
+        <span class="c1"># For example, if I look up data_1p[&quot;x&quot;] then it will check if</span>
+        <span class="c1"># data[&quot;x_1p&quot;] exists and return that if so.  Otherwise it will</span>
+        <span class="c1"># fall back to &quot;x&quot;</span>
         <span class="n">data_00</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
         <span class="n">data_1p</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;_1p&#39;</span><span class="p">)</span>
         <span class="n">data_1m</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;_1m&#39;</span><span class="p">)</span>
         <span class="n">data_2p</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;_2p&#39;</span><span class="p">)</span>
         <span class="n">data_2m</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;_2m&#39;</span><span class="p">)</span>
 
+        <span class="c1"># These are the selections from this chunk of data</span>
+        <span class="c1"># that we would make under different shears, the baseline</span>
+        <span class="c1"># and all the others.  self.selector is a function that the user</span>
+        <span class="c1"># supplied in init, not a method</span>
         <span class="n">sel_00</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">(</span><span class="n">data_00</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">sel_1p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">(</span><span class="n">data_1p</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">sel_1m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">(</span><span class="n">data_1m</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -351,51 +274,48 @@
         <span class="n">g1</span> <span class="o">=</span> <span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">]</span>
         <span class="n">g2</span> <span class="o">=</span> <span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">]</span>
         <span class="n">weight</span> <span class="o">=</span> <span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_00</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
 
-        <span class="c1"># TODO:</span>
-        <span class="c1"># Use different weights for different variants!</span>
-
-        <span class="c1"># Selector can return several reasonable ways to choose</span>
-        <span class="c1"># objects - where result, boolean mask, integer indices</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sel_00</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-            <span class="c1"># tupe returned from np.where</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sel_00</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">sel_00</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
-            <span class="c1"># integer array</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sel_00</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">sel_00</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">):</span>
-            <span class="c1"># boolean selection</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="n">sel_00</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Selection function passed to Calibrator return type not known&quot;</span><span class="p">)</span>
-
-        <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
-
-        <span class="c1"># This is the selection bias, associated with the fact that sometimes different</span>
-        <span class="c1"># objects would be selected to be put into a bin depending on their shear</span>
-        <span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
-        <span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
-        <span class="n">S</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
-        <span class="n">S</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
+        <span class="c1"># Record the count for this chunk, for summation later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="n">n</span>
 
         <span class="c1"># This is the estimator response, correcting  bias of the shear estimator itself</span>
-        <span class="n">R</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data_1p</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_1m</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">])</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
-        <span class="n">R</span><span class="p">[:,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data_2p</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_2m</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">])</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
-        <span class="n">R</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data_1p</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_1m</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">])</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
-        <span class="n">R</span><span class="p">[:,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data_2p</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_2m</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">])</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
+        <span class="c1"># We have four components, and want the weighted mean of each, which we use</span>
+        <span class="c1"># the ParallelMean class to get</span>
+        <span class="n">w00</span> <span class="o">=</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_00</span><span class="p">]</span>
+        <span class="n">R00</span> <span class="o">=</span> <span class="n">data_1p</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_1m</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span>
+        <span class="n">R01</span> <span class="o">=</span> <span class="n">data_2p</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_2m</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span>
+        <span class="n">R10</span> <span class="o">=</span> <span class="n">data_1p</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_1m</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span>
+        <span class="n">R11</span> <span class="o">=</span> <span class="n">data_2p</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span> <span class="o">-</span> <span class="n">data_2m</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">sel_00</span><span class="p">]</span>
 
-        <span class="k">if</span> <span class="n">n</span><span class="p">:</span>
-            <span class="n">R_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">R</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weight</span><span class="p">[</span><span class="n">sel_00</span><span class="p">])</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">R_mean</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">R_mean</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">S</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="c1"># TODO: if there is a weight per variant would we use that here?</span>
+        <span class="c1"># Not currently used though.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">R00</span><span class="p">,</span> <span class="n">w00</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">R01</span><span class="p">,</span> <span class="n">w00</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">R10</span><span class="p">,</span> <span class="n">w00</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">R11</span><span class="p">,</span> <span class="n">w00</span><span class="p">)</span>
 
+        <span class="c1"># Now we handle the selection bias.  This value is given by the</span>
+        <span class="c1"># difference in the (weighted) means of the shears under two selections,</span>
+        <span class="c1"># the positive and negative shear, divided by the applied shear</span>
+        <span class="c1"># See the second term in equation 14 of https://arxiv.org/pdf/1702.02601</span>
+        <span class="c1"># We need to calculate eight means:</span>
+        <span class="c1"># (g1 or g2) X (shear applied to 1 or 2) X (plus or minus shear)</span>
+        <span class="c1"># We again use the ParallelMean class to handle this for us.</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_1p</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_1m</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_2p</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">],</span> <span class="n">weight</span><span class="p">[</span><span class="n">sel_2m</span><span class="p">])</span>
+
+        <span class="c1"># The user of this class may need the base selection, so return it</span>
         <span class="k">return</span> <span class="n">sel_00</span></div>
 
-<div class="viewcode-block" id="ParallelCalibratorMetacal.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.ParallelCalibratorMetacal.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="MetacalCalculator.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.MetacalCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Finalize and sum up all the response values, returning separate</span>
 <span class="sd">        R (estimator response) and S (selection bias) 2x2 matrices</span>
@@ -411,42 +331,169 @@
 <span class="sd">        S: 2x2 array</span>
 <span class="sd">            Selection bias matrix</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># MPI allgather to get full arrays for everyone</span>
+        <span class="c1"># collect all the things we need</span>
         <span class="k">if</span> <span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="p">),</span> <span class="p">[])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">S</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">S</span><span class="p">),</span> <span class="p">[])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">),</span> <span class="p">[])</span>
-
-        <span class="n">R_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
-        <span class="n">S_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
-        <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="c1"># Find the correctly weighted averages of all the values we have</span>
-        <span class="k">for</span> <span class="n">R</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">S</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">):</span>
-            <span class="c1"># This deals with cases where n is 0 and R/S are NaN</span>
-            <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">continue</span>
-            <span class="n">R_sum</span> <span class="o">+=</span> <span class="n">R</span><span class="o">*</span><span class="n">n</span>
-            <span class="n">S_sum</span> <span class="o">+=</span> <span class="n">S</span><span class="o">*</span><span class="n">n</span>
-            <span class="n">N</span> <span class="o">+=</span> <span class="n">n</span>
-
-        <span class="n">R</span> <span class="o">=</span> <span class="n">R_sum</span> <span class="o">/</span> <span class="n">N</span>
-        <span class="n">S</span> <span class="o">=</span> <span class="n">S_sum</span> <span class="o">/</span> <span class="n">N</span>
-        
-        <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">N</span></div></div>
+            <span class="k">if</span> <span class="n">allgather</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span>
 
 
-<div class="viewcode-block" id="ParallelCalibratorNonMetacal"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal">[docs]</a><span class="k">class</span> <span class="nc">ParallelCalibratorNonMetacal</span><span class="p">:</span>
+        <span class="c1"># Collect the mean values we need</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;allgather&quot;</span> <span class="k">if</span> <span class="n">allgather</span> <span class="k">else</span> <span class="s2">&quot;gather&quot;</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">S</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+
+        <span class="c1"># Unpack the flat mean R and S values into</span>
+        <span class="c1"># matrices</span>
+        <span class="n">R_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">R_mean</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">R_mean</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">R_mean</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">R_mean</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">R_mean</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
+
+        <span class="c1"># Need to take all the diffs to compute the</span>
+        <span class="c1"># S term</span>
+        <span class="n">S_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">S_mean</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">S</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">S_mean</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">S</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">S</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">S_mean</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">S</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">-</span> <span class="n">S</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+        <span class="n">S_mean</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">S</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">-</span> <span class="n">S</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+        <span class="n">S_mean</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta_gamma</span>
+
+        <span class="k">return</span> <span class="n">R_mean</span><span class="p">,</span> <span class="n">S_mean</span><span class="p">,</span> <span class="n">count</span></div></div>
+
+
+
+<div class="viewcode-block" id="LensfitCalculator"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.LensfitCalculator">[docs]</a><span class="k">class</span> <span class="nc">LensfitCalculator</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    This class builds up the total response calibration</span>
-<span class="sd">    factors for NonMetacalibration shears from each chunk of data it is given.</span>
+<span class="sd">    This class builds up the total calibration</span>
+<span class="sd">    factors for lensfit-convention shears from each chunk of data it is given.</span>
+<span class="sd">    Note here we derive the c-terms from the data (in constrast to averaging</span>
+<span class="sd">    values derived from simulations and stored in the catalog.)</span>
 <span class="sd">    At the end an MPI communicator can be supplied to collect together</span>
 <span class="sd">    the results from the different processes.</span>
 
-<span class="sd">    To do this we need the function used to select the data, and the instance</span>
-<span class="sd">    this function to each of the metacalibrated variants automatically by</span>
-<span class="sd">    wrapping the data object passed in to it and modifying the names of columns</span>
-<span class="sd">    that are looked up.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selector</span><span class="p">,</span> <span class="n">input_m_is_weighted</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the Calibrator using the function you will use to select</span>
+<span class="sd">        objects. That function should take at least one argument,</span>
+<span class="sd">        the chunk of data to select on.</span>
+
+<span class="sd">        The selector can take further *args and **kwargs, passed in when adding</span>
+<span class="sd">        data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        selector: function</span>
+<span class="sd">            Function that selects objects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">selector</span>
+        <span class="c1"># Create a set of calculators that will calculate (in parallel)</span>
+        <span class="c1"># the three quantities we need to compute the overall calibration</span>
+        <span class="c1"># We create these, then add data to them below, then collect them</span>
+        <span class="c1"># together over all the processes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_m_is_weighted</span> <span class="o">=</span> <span class="n">input_m_is_weighted</span>
+
+<div class="viewcode-block" id="LensfitCalculator.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.LensfitCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Select objects from a new chunk of data and tally their responses</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data: dict</span>
+<span class="sd">            Dictionary of data columns to select on and add</span>
+
+<span class="sd">        *args</span>
+<span class="sd">            Positional arguments to be passed to the selection function</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Keyword arguments to be passed to the selection function</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># These all wrap the catalog such that lookups find the variant</span>
+        <span class="c1"># column if available</span>
+
+        <span class="c1"># This is just to let the selection tools access data.variant for feedback</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">sel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Extract the calibration quantities for the selected objects</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">]</span>
+        <span class="n">g1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">]</span>
+        <span class="n">g2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">]</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+
+         <span class="c1"># Record the count for this chunk, for summation later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="n">n</span>
+
+        <span class="c1"># Accumulate the calibration quantities so that later we</span>
+        <span class="c1"># can compute the weighted mean of the values</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_m_is_weighted</span><span class="p">:</span>
+            <span class="c1"># if the m values are already weighted don&#39;t use the weights here</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">K</span><span class="p">[</span><span class="n">sel</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if not apply the weights</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">K</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span> <span class="n">w</span><span class="p">[</span><span class="n">sel</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span> <span class="n">w</span><span class="p">[</span><span class="n">sel</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span> <span class="n">w</span><span class="p">[</span><span class="n">sel</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">sel</span></div>
+
+<div class="viewcode-block" id="LensfitCalculator.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.LensfitCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Finalize and sum up all the response values, returning calibration</span>
+<span class="sd">        quantities.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        comm: MPI Communicator</span>
+<span class="sd">            If supplied, all processors response values will be combined together.</span>
+<span class="sd">            All processes will return the same final value</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        K: float</span>
+<span class="sd">            K = (1+m) calibration</span>
+
+<span class="sd">        C: float array</span>
+<span class="sd">            c1, c2 additive biases (weighted average of g1 and g2)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The total number of objects is just the</span>
+        <span class="c1"># number from all the processes summed together.</span>
+        <span class="k">if</span> <span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">allgather</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span>
+
+        <span class="c1"># Collect the weighted means of these numbers.</span>
+        <span class="c1"># this collects all the values from the different</span>
+        <span class="c1"># processes and over all the chunks of data</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;allgather&quot;</span> <span class="k">if</span> <span class="n">allgather</span> <span class="k">else</span> <span class="s2">&quot;gather&quot;</span><span class="p">)</span>
+        <span class="n">_</span> <span class="p">,</span><span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">K</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">count</span></div></div>
+
+
+<div class="viewcode-block" id="HSCCalculator"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.HSCCalculator">[docs]</a><span class="k">class</span> <span class="nc">HSCCalculator</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class builds up the total response calibration</span>
+<span class="sd">    factors for HSC-convention shear-calibration from each chunk of data it is</span>
+<span class="sd">    given.</span>
+<span class="sd">    At the end an MPI communicator can be supplied to collect together</span>
+<span class="sd">    the results from the different processes.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -463,12 +510,15 @@
 <span class="sd">            Function that selects objects</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">selector</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Create a set of calculators that will calculate (in parallel)</span>
+        <span class="c1"># the three quantities we need to compute the overall calibration</span>
+        <span class="c1"># We create these, then add data to them below, then collect them</span>
+        <span class="c1"># together over all the processes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
 
-<div class="viewcode-block" id="ParallelCalibratorNonMetacal.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="HSCCalculator.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.HSCCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Select objects from a new chunk of data and tally their responses</span>
 
 <span class="sd">        Parameters</span>
@@ -480,47 +530,35 @@
 <span class="sd">            Positional arguments to be passed to the selection function</span>
 <span class="sd">        **kwargs</span>
 <span class="sd">            Keyword arguments to be passed to the selection function</span>
-<span class="sd">        </span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># These all wrap the catalog such that lookups find the variant</span>
         <span class="c1"># column if available</span>
-        <span class="n">data_00</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
 
-        <span class="n">sel_00</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">(</span><span class="n">data_00</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># This is just to let the selection tools access data.variant for feedback</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">_DataWrapper</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">sel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="n">g1</span> <span class="o">=</span> <span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">]</span>
-        <span class="n">g2</span> <span class="o">=</span> <span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">]</span>
+        <span class="c1"># Extract the calibration quantities for the selected objects</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">]</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">w</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span><span class="o">.</span><span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="n">w</span><span class="o">.</span><span class="n">size</span>
 
-        <span class="c1"># Selector can return several reasonable ways to choose</span>
-        <span class="c1"># objects - where result, boolean mask, integer indices</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sel_00</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-            <span class="c1"># tupe returned from np.where</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sel_00</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">sel_00</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
-            <span class="c1"># integer array</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sel_00</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">sel_00</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">):</span>
-            <span class="c1"># boolean selection</span>
-            <span class="n">n</span> <span class="o">=</span> <span class="n">sel_00</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Selection function passed to Calibrator return type not known&quot;</span><span class="p">)</span>
-        <span class="n">w_tot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">])</span>
-        <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;m&#39;</span><span class="p">])</span><span class="o">/</span><span class="n">w_tot</span>        <span class="c1">#if m not provided, default is m=0, so one_plus_K=1</span>
-        <span class="n">K</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">+</span><span class="n">m</span>
-        <span class="n">R</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;sigma_e&#39;</span><span class="p">])</span><span class="o">/</span><span class="n">w_tot</span>
-        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;c1&#39;</span><span class="p">],</span><span class="n">data_00</span><span class="p">[</span><span class="s1">&#39;c2&#39;</span><span class="p">]],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">w</span><span class="p">[</span><span class="n">sel</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">K</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="c1"># Accumulate the calibration quantities so that later we</span>
+        <span class="c1"># can compute the weighted mean of the values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">R</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span> <span class="n">w</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">K</span><span class="p">[</span><span class="n">sel</span><span class="p">],</span> <span class="n">w</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">sel_00</span></div>
+        <span class="k">return</span> <span class="n">sel</span></div>
 
-<div class="viewcode-block" id="ParallelCalibratorNonMetacal.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.ParallelCalibratorNonMetacal.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="HSCCalculator.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.HSCCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Finalize and sum up all the response values, returning separate</span>
-<span class="sd">        R (estimator response) and S (selection bias) 2x2 matrices</span>
+<span class="sd">        Finalize and sum up all the response values, returning calibration</span>
+<span class="sd">        quantities.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -530,45 +568,33 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        R: 2x2 array</span>
-<span class="sd">            Estimator response matrix</span>
+<span class="sd">        R: float</span>
+<span class="sd">            R calibration factor</span>
 
-<span class="sd">        S: 2x2 array</span>
-<span class="sd">            Selection bias matrix</span>
+<span class="sd">        K: float</span>
+<span class="sd">            K = (1+m) calibration</span>
+
+<span class="sd">        N: int</span>
+<span class="sd">            Total object count</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># MPI allgather to get full arrays for everyone</span>
+        <span class="c1"># The total number of objects is just the</span>
+        <span class="c1"># number from all the processes summed together.</span>
         <span class="k">if</span> <span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="p">),</span> <span class="p">[])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">K</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">),</span> <span class="p">[])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">),</span> <span class="p">[])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">counts</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">),</span> <span class="p">[])</span>
-
-        <span class="n">R_sum</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">K_sum</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">C_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
-        <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="c1"># Find the correctly weighted averages of all the values we have</span>
-        <span class="k">for</span> <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">counts</span><span class="p">):</span>
-            <span class="c1"># This deals with cases where n is 0 and R/S are NaN</span>
-            <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">continue</span>
-            <span class="n">R_sum</span> <span class="o">+=</span> <span class="n">R</span><span class="o">*</span><span class="n">n</span>
-            <span class="n">K_sum</span> <span class="o">+=</span> <span class="n">K</span><span class="o">*</span><span class="n">n</span>
-            <span class="n">C_sum</span> <span class="o">+=</span> <span class="n">C</span><span class="o">*</span><span class="n">n</span>
-            <span class="n">N</span> <span class="o">+=</span> <span class="n">n</span>
-
-        <span class="k">if</span> <span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-            <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">if</span> <span class="n">allgather</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">allreduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">count</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">R</span> <span class="o">=</span> <span class="n">R_sum</span> <span class="o">/</span> <span class="n">N</span>
-            <span class="n">K</span> <span class="o">=</span> <span class="n">K_sum</span> <span class="o">/</span> <span class="n">N</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span>
 
-        <span class="n">C</span> <span class="o">=</span> <span class="n">C_sum</span> <span class="o">/</span> <span class="n">N</span>
-        
-        <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">N</span> </div></div>
+        <span class="c1"># Collect the weighted means of these numbers.</span>
+        <span class="c1"># this collects all the values from the different</span>
+        <span class="c1"># processes and over all the chunks of data</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;allgather&quot;</span> <span class="k">if</span> <span class="n">allgather</span> <span class="k">else</span> <span class="s2">&quot;gather&quot;</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">R</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="n">_</span> <span class="p">,</span><span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">K</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">count</span></div></div>
 
 
 <span class="k">class</span> <span class="nc">MeanShearInBins</span><span class="p">:</span>
@@ -580,16 +606,19 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span> <span class="o">=</span> <span class="n">shear_catalog_type</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
-        <span class="c1"># We have to work out the mean g1, g2 </span>
+        <span class="c1"># We have to work out the mean g1, g2</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">g1</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">g2</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">x</span>  <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">ParallelCalibratorMetacal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">MetacalCalculator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">,</span> <span class="n">delta_gamma</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">LensfitCalculator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;hsc&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">HSCCalculator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span> <span class="o">=</span> <span class="p">[</span><span class="n">ParallelCalibratorNonMetacal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)]</span>
-
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Please specify metacal, lensfit or hsc for shear_catalog in config.&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">selector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_name</span><span class="p">]</span>
@@ -606,14 +635,18 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">g1</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g1&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">g2</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mcal_g2&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">g1</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">g2</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;hsc&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">g1</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g1&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">]</span><span class="o">-</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;c1&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">g2</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;g2&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">]</span><span class="o">-</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;c2&#39;</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_name</span><span class="p">][</span><span class="n">w</span><span class="p">],</span> <span class="n">weight</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="n">count1</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">var1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g1</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gather&#39;</span><span class="p">)</span>
         <span class="n">count2</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">g2</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gather&#39;</span><span class="p">)</span>
+
         <span class="n">_</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gather&#39;</span><span class="p">)</span>
 
         <span class="c1"># Now we have the complete sample we can get the calibration matrix</span>
@@ -627,11 +660,14 @@
                 <span class="n">r</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
                 <span class="c1"># and record the total (a 2x2 matrix)</span>
                 <span class="n">R</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="o">+</span><span class="n">s</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">r</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
-                <span class="n">R</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+                <span class="n">k</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
                 <span class="n">K</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
                 <span class="n">C</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">r</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibrators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
+                <span class="n">K</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                <span class="n">R</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
 
         <span class="c1"># Only the root processor does the rest</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">comm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
@@ -644,7 +680,7 @@
             <span class="c1"># Get the shears and the errors on their means</span>
             <span class="n">g</span> <span class="o">=</span> <span class="p">[</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
             <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">([</span><span class="n">var1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">count1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">var2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">count2</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span>
-            
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;metacal&#39;</span><span class="p">:</span>
                 <span class="c1"># Get the inverse response matrix to apply</span>
                 <span class="n">R_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
@@ -652,61 +688,48 @@
                 <span class="c1"># Apply the matrix in full to the shears and errors</span>
                 <span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_inv</span> <span class="o">@</span> <span class="n">g</span>
                 <span class="n">sigma1</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">sigma2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">R_inv</span> <span class="o">@</span> <span class="n">sigma</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_catalog_type</span><span class="o">==</span><span class="s1">&#39;lensfit&#39;</span><span class="p">:</span>
+                <span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+                <span class="n">sigma1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">sigma2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">((</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>       
-                <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">((</span><span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
-                <span class="n">sigma1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">((</span><span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>       
-                <span class="n">sigma2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">*</span><span class="p">((</span><span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">-</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">g1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">g2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+                <span class="n">sigma1</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">sigma2</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">K</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
 
 
         <span class="k">return</span> <span class="n">mu</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">sigma1</span><span class="p">,</span> <span class="n">sigma2</span>
-
 </pre></div>
 
            </div>
-           
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        
-        &copy; Copyright 2020, DESC
-
-    </p>
+    <p>&#169; Copyright 2020, DESC.</p>
   </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
-
         </div>
       </div>
-
     </section>
-
   </div>
-  
-
-  <script type="text/javascript">
+  <script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>
