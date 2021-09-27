@@ -6,6 +6,11 @@ import numpy as np
 import random
 import collections
 import sys
+import os
+import pathlib
+from time import perf_counter
+import gc
+
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
 Measurement = collections.namedtuple(
@@ -17,16 +22,14 @@ SHEAR_POS = 1
 POS_POS = 2
 
 
-
 class TXTwoPoint(PipelineStage):
     name='TXTwoPoint'
     inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('shear_tomography_catalog', TomographyCatalog),
+        ('binned_shear_catalog', ShearCatalog),
+        ('binned_lens_catalog', HDFFile),
+        ('binned_random_catalog', HDFFile),
         ('shear_photoz_stack', HDFFile),
-        ('lens_tomography_catalog', TomographyCatalog),
         ('lens_photoz_stack', HDFFile),
-        ('random_cats', RandomsCatalog),
         ('patch_centers', TextFile),
         ('tracer_metadata', HDFFile),
     ]
@@ -43,6 +46,7 @@ class TXTwoPoint(PipelineStage):
         'nbins':9,
         'bin_slop':0.0,
         'sep_units':'arcmin',
+        'flip_g1':False,
         'flip_g2':True,
         'cores_per_task':20,
         'verbose':1,
@@ -53,8 +57,9 @@ class TXTwoPoint(PipelineStage):
         'do_shear_pos': True,
         'do_pos_pos': True,
         'var_method': 'jackknife',
-        'use_true_shear': False,
-        'subtract_mean_shear':False
+        'use_randoms': True,
+        'low_mem': False,
+        'patch_dir': './cache/patches',
         }
 
     def run(self):
@@ -64,46 +69,31 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import healpy
         import treecorr
-        # Load the different pieces of data we need into
-        # one large dictionary which we accumulate
-        data = {}
-        self.load_shear_catalog(data)
-        self.load_tomography(data)
-        self.load_random_catalog(data)
-        # This one is optional - this class does nothing with it
-        self.load_lens_catalog(data)
         # Binning information
-        self.read_nbin(data)
+        source_list, lens_list = self.read_nbin()
 
         # Calculate metadata like the area and related
         # quantities
         meta = self.read_metadata()
 
         # Choose which pairs of bins to calculate
-        calcs = self.select_calculations(data)
-
+        calcs = self.select_calculations(source_list, lens_list)
         sys.stdout.flush()
 
-        # This splits the calculations among the parallel bins
-        # It's not necessarily the most optimal way of doing it
-        # as it's not dynamic, just a round-robin assignment,
-        # but for this case I would expect it to be mostly fine
-        results = []
-        for i,j,k in self.split_tasks_by_rank(calcs):
-            result = self.call_treecorr(data, meta, i, j, k)
-            results.append(result)
+        # Split the catalogs into patch files
+        self.prepare_patches(calcs)
 
-        # If we are running in parallel this collects the results together
-        results = self.collect_results(results)
+        results = []
+        for i,j,k in calcs:
+            result = self.call_treecorr(i, j, k)
+            results.append(result)
 
         # Save the results
         if self.rank==0:
-            self.write_output(data, meta, results)
+            self.write_output(source_list, lens_list, meta, results)
 
 
-    def select_calculations(self, data):
-        source_list = data['source_list']
-        lens_list = data['lens_list']
+    def select_calculations(self, source_list, lens_list):
         calcs = []
 
         # For shear-shear we omit pairs with j>i
@@ -113,7 +103,7 @@ class TXTwoPoint(PipelineStage):
                 for j in range(i+1):
                     if j in source_list:
                         calcs.append((i,j,k))
-
+        
         # For shear-position we use all pairs
         if self.config['do_shear_pos']:
             k = SHEAR_POS
@@ -123,7 +113,7 @@ class TXTwoPoint(PipelineStage):
 
         # For position-position we omit pairs with j>i
         if self.config['do_pos_pos']:
-            if not 'random_bin' in data:
+            if not self.config['use_randoms']:
                 raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             for i in lens_list:
@@ -132,23 +122,12 @@ class TXTwoPoint(PipelineStage):
                         calcs.append((i,j,k))
 
         if self.rank==0:
-            print(f"Running these calculations: {calcs}")
+            print(f"Running {len(calcs)} calculations: {calcs}")
 
         return calcs
 
-    def collect_results(self, results):
-        if self.comm is None:
-            return results
 
-        results = self.comm.gather(results, root=0)
-
-        # Concatenate results on master
-        if self.rank==0:
-            results = sum(results, [])
-
-        return results
-
-    def read_nbin(self, data):
+    def read_nbin(self):
         """
         Determine the bins to use in this analysis, either from the input file
         or from the configuration.
@@ -160,24 +139,23 @@ class TXTwoPoint(PipelineStage):
 
         ns = len(source_list)
         nl = len(lens_list)
-        print(f'Running with {ns} source bins and {nl} lens bins')
+        if self.rank == 0:
+            print(f'Running with {ns} source bins and {nl} lens bins')
 
-        data['source_list']  =  source_list
-        data['lens_list']  =  lens_list
+        return source_list, lens_list
 
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        tomo = self.open_input('shear_tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
-        tomo.close()
-        nbin_source = d['nbin_source']
-        tomo = self.open_input('lens_tomography_catalog')
-        d = dict(tomo['tomography'].attrs)
-        tomo.close()
-        nbin_lens = d['nbin_lens']
+        with self.open_input('binned_shear_catalog') as f:
+            nbin_source = f['shear'].attrs['nbin_source']
+
+        with self.open_input('binned_lens_catalog') as f:
+            nbin_lens = f['lens'].attrs['nbin_lens']
+
         source_list = range(nbin_source)
         lens_list = range(nbin_lens)
+
         return source_list, lens_list
 
     def _read_nbin_from_config(self):
@@ -218,7 +196,7 @@ class TXTwoPoint(PipelineStage):
 
 
 
-    def write_output(self, data, meta, results):
+    def write_output(self, source_list, lens_list, meta, results):
         import sacc
         import treecorr
         XI = "combined"
@@ -238,7 +216,7 @@ class TXTwoPoint(PipelineStage):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        for i in data['source_list']:
+        for i in source_list:
             z = f['n_of_z/source/z'][:]
             Nz = f[f'n_of_z/source/bin_{i}'][:]
             S.add_tracer('NZ', f'source_{i}', z, Nz)
@@ -247,7 +225,7 @@ class TXTwoPoint(PipelineStage):
 
         f = self.open_input('lens_photoz_stack')
         # For both source and lens
-        for i in data['lens_list']:
+        for i in lens_list:
             z = f['n_of_z/lens/z'][:]
             Nz = f[f'n_of_z/lens/bin_{i}'][:]
             S.add_tracer('NZ', f'lens_{i}', z, Nz)
@@ -360,331 +338,314 @@ class TXTwoPoint(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
 
-    def call_treecorr(self, data, meta, i, j, k):
+    def call_treecorr(self, i, j, k):
         """
         This is a wrapper for interaction with treecorr.
         """
         import sacc
 
-
         if k==SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, meta, i, j)
+            xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
         elif k==SHEAR_POS:
-            xx = self.calculate_shear_pos(data, meta, i, j)
+            xx = self.calculate_shear_pos(i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         elif k==POS_POS:
-            xx = self.calculate_pos_pos(data, i, j)
+            xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
+        # Force garbage collection here to make sure all the
+        # catalogs are definitely freed
+        gc.collect()
+
+        # The measurement object collects the results and type info.
+        # we use it because the ordering will not be simple if we have
+        # parallelized, so it's good to keep explicit track.
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
         return result
 
-
-    def get_calibrated_catalog_bin(self, data, meta, i):
+    def prepare_patches(self, calcs):
         """
-        Calculate the metacal correction factor for this tomographic bin.
+        For each catalog to be generated, have one process load the catalog
+        and write its patch files out to disc.  These are then re-used later
+        by all the different processes.
+
+        Parameters
+        ----------
+
+        calcs: list
+            A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
+            or bin labels and bin_type is one of the constants SHEAR_SHEAR,
+            SHEAR_POS, or POS_POS.
         """
+        # Make the full list of catalogs to run
+        cats = set()
 
-        mask = (data['source_bin'] == i)
+        # Use shear-shear and pos-pos only here as they represent
+        # catalogs not pairs.
+        for i, j, k in calcs:
+            if k == SHEAR_SHEAR:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, SHEAR_SHEAR))
+            elif k == SHEAR_POS:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, POS_POS))
+            elif k == POS_POS:
+                cats.add((i, POS_POS))
+                cats.add((j, POS_POS))
+        cats = list(cats)
+        cats.sort(key=str)
 
-        if self.config['use_true_shear']:
-            g1 = data[f'true_g1'][mask]
-            g2 = data[f'true_g2'][mask]
+        # This does a round-robin assignment to processes
+        for (h, k) in self.split_tasks_by_rank(cats):
 
-        elif self.config['shear_catalog_type']=='metacal':
-            # We use S=0 here because we have already included it in R_total
-            g1, g2 = apply_metacal_response(data['R'][i], 0.0, data['mcal_g1'][mask], data['mcal_g2'][mask])
+            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
 
-        elif self.config['shear_catalog_type']=='lensfit':
-            #By now, by default lensfit_m=None for KiDS, so one_plus_K will be 1
-            g1, g2, weight, one_plus_K = apply_lensfit_calibration(g1 = data['g1'][mask],g2 = data['g2'][mask],weight = data['weight'][mask],sigma_e = data['sigma_e'][mask], m = data['m'][mask])
-
-        else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
-            
-        # Subtract mean shears, if needed.  These are calculated in source_selector,
-        # and have already been calibrated, so subtract them after calibrated our sample.
-        # Right now we are loading the full catalog here, so we could just take the mean
-        # at this point, but in future we would like to move to just loading part of the
-        # catalog.
-        if self.config['subtract_mean_shear']:
-            # Cross-check: print out the new mean.
-            # In the weighted case these won't actually be equal
-            mu1 = g1.mean()
-            mu2 = g2.mean()
-
-            if self.config['use_true_shear']:
-                g1 -= g1.mean()
-                g2 -= g2.mean()
+            # For shear we just have the one catalog. For position we may
+            # have randoms also. We explicitly delete catalogs after loading
+            # them to ensure we don't have two in memory at once.
+            if k == SHEAR_SHEAR:
+                cat = self.get_shear_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
             else:
-                # If we flip g2 we also have to flip the sign
-                # of what we subtract
-                g1 -= meta['mean_e1'][i]
-                g2 -= meta['mean_e2'][i]
+                cat = self.get_lens_catalog(h)
+                cat.get_patches(low_mem=False)
+                del cat
+                ran_cat = self.get_random_catalog(h)
 
-            # Compare to final means.
-            nu1 = g1.mean()
-            nu2 = g2.mean()
-            print(f"Subtracting mean shears for bin {i}")
-            print(f"Means before: {mu1}  and  {mu2}")
-            print(f"Means after:  {nu1}  and  {nu2}")
-            print("(In the weighted case the latter may not be exactly zero)")
+                # support use_randoms = False
+                if ran_cat is None:
+                    continue
 
-        if self.config['flip_g2']:
-            g2 *= -1
+                ran_cat.get_patches(low_mem=False)
+                del ran_cat
 
-        return g1, g2, mask
+        # stop other processes progressing to the rest of the code and
+        # trying to load things we have not written yet
+        if self.comm is not None:
+            self.comm.Barrier()
 
-    def get_shear_catalog(self, data, meta, i):
+                
+    def get_patch_dir(self, input_tag, b):
+        """
+        Select a patch directory for the file  with the given input tag
+        and with a bin number/label.
+
+        To ensure that if you change the catalog the patch dir will also
+        change, the directory path includes the unique ID of the input file.
+
+        Parameters
+        ----------
+        input_tag: str
+            One of the tags in the class's inputs attribute
+        b: any
+            An additional label used as the last component in the returned
+            directory
+
+        Returns
+        -------
+        str: a directory, which has been created if it did not exist already.
+        """
+        # start from a user-specified base directory
+        patch_base = self.config['patch_dir']
+
+        # append the unique identifier for the parent catalog file
+        with self.open_input(input_tag, wrapper=True) as f:
+            p = f.read_provenance()
+            uuid = p['uuid']
+            pth = pathlib.Path(f.path).resolve()
+            ctime = os.stat(pth).st_ctime
+
+        # We expect the input files to be generated within a pipeline and so always
+        # have input files to have a unique ID.  But if for some reason it doesn't
+        # have one we handle that too.
+        if uuid == 'UNKNOWN':
+            ident = hash(f"{pth}{ctime}").to_bytes(8, 'big', signed=True).hex()
+            name = f"{input_tag}_{ident}"
+        else:
+            name = f"{input_tag}_{uuid}"
+
+        # And finally append the bin name or number
+        patch_dir = pathlib.Path(patch_base) / name / str(b)
+
+        # Make the directory and return it
+        pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
+        return patch_dir
+
+    def get_shear_catalog(self, i):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
-
-        if self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='metacal':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_method']=='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                w = data['weight'][mask],
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree',patch_centers=patch_centers)
-        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='metacal':
-            print('Not using JK.', len(g1))
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-        elif self.config['var_method']!='jackknife' and self.config['shear_catalog_type']=='lensfit':
-            cat = treecorr.Catalog(
-                g1 = g1,
-                g2 = g2,
-                w = data['weight'][mask],
-                ra = data['ra'][mask],
-                dec = data['dec'][mask],
-                ra_units='degree', dec_units='degree')
-        else:
-            raise ValueError(f"Please specify metacal or lensfit for shear_catalog in config.")
+        cat = treecorr.Catalog(
+            self.get_input("binned_shear_catalog"),
+            ext = f"/shear/bin_{i}",
+            g1_col = "g1",
+            g2_col = "g2",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+            flip_g1 = self.config["flip_g1"],
+            flip_g2 = self.config["flip_g2"],
+        )
+        
         return cat
 
 
-    def get_lens_catalog(self, data, i):
+    def get_lens_catalog(self, i):
         import treecorr
 
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            self.get_input("binned_lens_catalog"),
+            ext = f"/lens/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('binned_lens_catalog', i),
+        )
+        return cat
 
-        mask = data['lens_bin'] == i
+    def get_random_catalog(self, i):
+        import treecorr
+        if not self.config["use_randoms"]:
+            return None
 
-        if 'lens_ra' in data:
-            ra = data['lens_ra'][mask]
-            dec = data['lens_dec'][mask]
-        else:
-            ra = data['ra'][mask]
-            dec = data['dec'][mask]
-
-        if self.config['var_method']=='jackknife':
-            patch_centers = self.get_input('patch_centers')
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec,
-                ra_units='degree', dec_units='degree',
-                patch_centers=patch_centers)
-        else:
-            cat = treecorr.Catalog(
-                ra=ra, dec=dec,
-                ra_units='degree', dec_units='degree')
-
-        if 'random_bin' in data:
-            random_mask = data['random_bin']==i
-            if self.config['var_method']=='jackknife':
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    ra_units='degree', dec_units='degree',
-                    patch_centers=patch_centers)
-            else:
-                rancat  = treecorr.Catalog(
-                    ra=data['random_ra'][random_mask], dec=data['random_dec'][random_mask],
-                    ra_units='degree', dec_units='degree')
-        else:
-            rancat = None
-
-        return cat, rancat
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_catalog"),
+            ext = f"/randoms/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('binned_random_catalog', i),
+        ) 
+        return rancat
 
 
-    def calculate_shear_shear(self, data, meta, i, j):
+    def calculate_shear_shear(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
-        gg = treecorr.GGCorrelation(self.config)
         if i==j:
-            gg.process(cat_i)
+            cat_j = None
             n_j = n_i
         else:
-            cat_j = self.get_shear_catalog(data, meta, j)
+            cat_j = self.get_shear_catalog(j)
             n_j = cat_j.nobj
-            gg.process(cat_i, cat_j)
 
-        print(f"Rank {self.rank} calculated shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects")
+        if self.rank == 0:
+            print(f"Calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects using MPI")
+
+        gg = treecorr.GGCorrelation(self.config)
+        t1 = perf_counter()
+        gg.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
+        t2 = perf_counter()
+        if self.rank == 0:
+            print(f"Processing took {t2 - t1:.1f} seconds")
+
         return gg
 
-    def calculate_shear_pos(self, data, meta, i, j):
+    def calculate_shear_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
         n_i = cat_i.nobj
 
-        cat_j, rancat_j = self.get_lens_catalog(data, j)
+        cat_j = self.get_lens_catalog(j)
+        rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+        if self.rank == 0:
+            print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+
 
         ng = treecorr.NGCorrelation(self.config)
-        ng.process(cat_j, cat_i)
+        t1 = perf_counter()
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
 
         if rancat_j:
             rg = treecorr.NGCorrelation(self.config)
-            rg.process(rancat_j, cat_i)
+            rg.process(rancat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
         else:
             rg = None
 
-        ng.calculateXi(rg=rg)
+
+        if self.rank == 0:
+            ng.calculateXi(rg=rg)
+            t2 = perf_counter()
+            print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
 
 
-    def calculate_pos_pos(self, data, i, j):
+    def calculate_pos_pos(self, i, j):
         import treecorr
 
-        cat_i, rancat_i = self.get_lens_catalog(data, i)
+        cat_i = self.get_lens_catalog(i)
+        rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-
-        nn = treecorr.NNCorrelation(self.config)
-        rn = treecorr.NNCorrelation(self.config)
-        nr = treecorr.NNCorrelation(self.config)
-        rr = treecorr.NNCorrelation(self.config)
         
         if i==j:
+            cat_j = None
+            rancat_j = rancat_i
             n_j = n_i
             n_rand_j = n_rand_i
-            nn.process(cat_i)
-            nr.process(cat_i, rancat_i)
-            rr.process(rancat_i)
-            nn.calculateXi(rr, dr=nr)
-            
         else:
-            cat_j, rancat_j = self.get_lens_catalog(data, j)
+            cat_j = self.get_lens_catalog(j)
+            rancat_j = self.get_random_catalog(j)
             n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj if rancat_j is not None else 0
-            nn.process(cat_i,    cat_j)
-            nr.process(cat_i,    rancat_j)
-            rn.process(rancat_i, cat_j)
-            rr.process(rancat_i, rancat_j)
-            nn.calculateXi(rr, dr=nr, rd=rn)
+            n_rand_j = rancat_j.nobj
 
-        print(f"Rank {self.rank} calculated position-position bin pair ({i},{j}): {n_i} x {n_j} objects, "
-            f"{n_rand_i} x {n_rand_j} randoms")
+
+        if self.rank == 0:
+            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms")
+
+        t1 = perf_counter()
+        
+        nn = treecorr.NNCorrelation(self.config)
+        nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        nr = treecorr.NNCorrelation(self.config)
+        nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        # The next calculation is faster if we explicitly tell TreeCorr
+        # that its two catalogs here are the same one.
+        if i == j:
+            rancat_j = None
+        
+        rr = treecorr.NNCorrelation(self.config)
+        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if i==j:
+            rn = None
+        else:
+            rn = treecorr.NNCorrelation(self.config)
+            rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if self.rank == 0:
+            t2 = perf_counter()
+            nn.calculateXi(rr, dr=nr, rd=rn)
+            print(f"Processing took {t2 - t1:.1f} seconds")            
 
         return nn
 
-    def load_tomography(self, data):
-
-        # Columns we need from the tomography catalog
-        f = self.open_input('shear_tomography_catalog')
-        source_bin = f['tomography/source_bin'][:]
-        if self.config['shear_catalog_type']=='metacal':
-            r_total = f['metacal_response/R_total'][:]
-        else:
-            r_total = f['response/R'][:]
-        f.close()
-
-        f = self.open_input('lens_tomography_catalog')
-        lens_bin = f['tomography/lens_bin'][:]
-        f.close()
-
-        data['source_bin']  =  source_bin
-        data['lens_bin']  =  lens_bin
-        data['R']  =  r_total
-
-    def load_lens_catalog(self, data):
-        # Subclasses can load an external lens catalog
-        pass
-
-
-
-    def load_shear_catalog(self, data):
-
-        # Columns we need from the shear catalog
-        read_shear_catalog_type(self)
-
-        if self.config['shear_catalog_type']=='metacal':
-            if self.config['use_true_shear']:
-                cat_cols = ['ra', 'dec', 'true_g1', 'true_g2', 'mcal_flags']
-            else:
-                cat_cols = ['ra', 'dec', 'mcal_g1', 'mcal_g2', 'mcal_flags']
-                
-        else:
-            cat_cols = ['ra', 'dec', 'g1', 'g2', 'weight','flags','sigma_e','m']
-        print(f"Loading shear catalog columns: {cat_cols}")
-
-        f = self.open_input('shear_catalog')
-        g = f['shear']
-        for col in cat_cols:
-            print(f"Loading {col}")
-            data[col] = g[col][:]
-
-
-    def load_random_catalog(self, data):
-        filename = self.get_input('random_cats')
-        if filename is None:
-            print("Not using randoms")
-            return
-
-        # Columns we need from the tomography catalog
-        randoms_cols = ['dec','ra','bin']
-        print(f"Loading random catalog columns: {randoms_cols}")
-
-        f = self.open_input('random_cats')
-        group = f['randoms']
-
-        cut = self.config['reduce_randoms_size']
-        if 0.0<cut<1.0:
-            N = group['dec'].size
-            sel = np.random.uniform(size=N) < cut
-        else:
-            sel = slice(None)
-
-        data['random_ra'] =  group['ra'][sel]
-        data['random_dec'] = group['dec'][sel]
-        data['random_bin'] = group['bin'][sel]
-
-        f.close()
-
-    def calculate_area(self, data):
-        import healpy as hp
-        pix=hp.ang2pix(4096, np.pi/2.-np.radians(data['dec']),np.radians(data['ra']), nest=True)
-        area=hp.nside2pixarea(4096)*(180./np.pi)**2
-        mask=np.bincount(pix)>0
-        area=np.sum(mask)*area
-        area=float(area) * 60. * 60.
-        return area
 
     def read_metadata(self):
         meta_data = self.open_input('tracer_metadata')
@@ -703,6 +664,7 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
+<<<<<<< HEAD
 class TXTwoPointLensCat(TXTwoPoint):
     """
     This subclass of the standard TXTwoPoint takes its
@@ -2141,6 +2103,8 @@ class TXJackknifeCenters(PipelineStage):
 
         self.plot(np.degrees(cat.ra), np.degrees(cat.dec), cat.patch)
 
+=======
+>>>>>>> master
 
 if __name__ == '__main__':
     PipelineStage.main()

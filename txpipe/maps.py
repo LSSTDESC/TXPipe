@@ -3,6 +3,7 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibrators import LensfitCalibrator
 from .mapping import Mapper, FlagMapper
 
 
@@ -172,14 +173,20 @@ class TXSourceMaps(TXBaseMaps):
                 cal = {i:R[i] for i in range(nbin_source)}
                 cal['2D'] = f['/metacal_response/R_total_2d'][:]
             elif shear_catalog_type == "lensfit":
-                R = f['/response/R_mean'][:]
                 K = f['/response/K'][:]
                 c = f['/response/C'][:]
-                cal = {i: (R[i], K[i], c[i]) for i in range(nbin_source)}
+                cal = {i: (K[i], c[i]) for i in range(nbin_source)}
                 cal['2D'] = (
-                    f['/response/R_mean_2d'][0],
                     f['/response/K_2d'][0],
                     f['/response/C_2d'][:],
+                )
+            elif shear_catalog_type == "hsc":
+                R = f['/response/R'][:]
+                K = f['/response/K'][:]
+                cal = {i: (R[i], K[i]) for i in range(nbin_source)}
+                cal['2D'] = (
+                    f['/response/R_2d'][0],
+                    f['/response/K_2d'][:],
                 )
             else:
                 raise ValueError("Unknown calibration")
@@ -237,24 +244,17 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
 
-    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, R, K, c):
-        c1 = c[:, 0]
-        c2 = c[:, 1]
-        one_plus_K = 1 + K
+    def calibrate_map_lensfit(self, g1, g2, var_g1, var_g2, K, c):
+        calib = LensfitCalibrator(K,c)
 
-        g1 = (1. / one_plus_K) * ((g1 / R) - c1)
-        g2 = (1. / one_plus_K) * ((g2 / R) - c2)
+        g1,g2 = calib.apply(g1,g2,subtract_mean=True)
 
-        std_g1 = np.sqrt(var_g1)
-        std_g2 = np.sqrt(var_g2)
-        # no c here I think because it's a std dev
-        # so it's alread mean-subtracted?
-        std_g1 = (1. / one_plus_K) * (std_g1 / R)
-        std_g2 = (1. / one_plus_K) * (std_g2 / R)
-        var_g1 = std_g1 ** 2
-        var_g2 = std_g2 ** 2
+        var_g1,var_g2 = calib.apply(g1,g2,subtract_mean=False)
 
         return g1, g2, var_g1, var_g2
+
+    def calibrate_map_hsc(self, g1, g2, var_g1, var_g2, K, c):
+        return "need to write calibrate map hsc function"
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal):
         import healpy
@@ -278,8 +278,11 @@ class TXSourceMaps(TXBaseMaps):
             if self.config['shear_catalog_type'] == 'metacal':
                 out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
+                K, c = cal[i]
+                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], K, c)
+            elif self.config['shear_catalog_type'] == 'hsc':
                 R, K, c = cal[i]
-                out = self.calibrate_map_lensfit(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
+                out = self.calibrate_map_hsc(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c)
             else:
                 raise ValueError("Unknown calibration")
 
@@ -434,8 +437,10 @@ class TXExternalLensMaps(TXLensMaps):
 class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
     Combined source and photometric lens maps, from the
-    same photometry catalog.  Same as running TXSourceMaps
-    and then TXLensMaps but faster as we only do the I/O once.
+    same photometry catalog. This might be slightly faster than
+    running two maps separately, but it only works if the source 
+    and lens catalogs are the same set of objects. Otherwise use
+    TXSourceMaps and TXLensMaps.
     """
 
     name = "TXMainMaps"
@@ -457,6 +462,17 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # This is just the combination of
         # the source and lens map columns
         print("TODO: no lens weights here")
+
+        with self.open_input("photometry_catalog") as f:
+            sz1 = f['photometry/ra'].size
+        with self.open_input("shear_catalog") as f:
+            sz2 = f['shear/ra'].size
+
+        if sz1 != sz2:
+            raise ValueError("Shear and photometry catalogs in TXMainMaps are "
+                             "different sizes. To use separate source and lens "
+                             "samples use TXSourceMaps and TXLensMaps separately."
+                             )
 
         # metacal, lensfit, etc.
         shear_catalog_type = read_shear_catalog_type(self)

@@ -1,4 +1,5 @@
-from ..utils.calibration_tools import MeanShearInBins, ParallelCalibratorMetacal
+from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator
+from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
 import numpy as np
 import mockmpi
 
@@ -49,9 +50,9 @@ def core_metacal(comm):
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(select_all_bool, delta_gamma)
+        cal = MetacalCalculator(select_all_bool, delta_gamma)
         cal.add_data(data)
-        R, S, n = cal.collect(comm)
+        R, S, n = cal.collect(comm, allgather=True)
 
         assert np.allclose(R, R_true)
         assert np.allclose(S, 0.0)
@@ -61,9 +62,9 @@ def core_metacal(comm):
     data["weight"] *= 0.5
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(sel, delta_gamma)
+        cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n = cal.collect(comm)
+        R, S, n = cal.collect(comm, allgather=True)
         print("R = ", R)
 
         assert np.allclose(R, R_true)
@@ -74,9 +75,9 @@ def core_metacal(comm):
     data["weight"] = np.random.uniform(0, 1, size=N)
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = ParallelCalibratorMetacal(sel, delta_gamma)
+        cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n = cal.collect(comm)
+        R, S, n = cal.collect(comm, allgather=True)
         print("R = ", R)
 
         assert np.allclose(R, R_true)
@@ -174,6 +175,116 @@ def test_mean_shear_weights():
     print(sigma1, expected_sigma1)
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
+
+
+def test_metacal_scalar():
+    # metacal calibrator
+    R = np.array([[2, 3], [4, 5]])
+    g1 = 0.2
+    g2 = -0.3
+    g_obs = R @ [g1, g2]
+    mu = np.zeros(2)
+    cal = MetaCalibrator(R, mu)
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == float
+    assert type(g2) == float
+
+def test_metacal_array():
+    # array version
+    R = np.array([[2, 3], [4, 5]])
+    mu = np.zeros(2)
+    cal = MetaCalibrator(R, mu)
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
+def test_metacal_mean():
+    # array version with mean
+    R = np.array([[2, 3], [4, 5]])
+    mu = [0.1, 0.2]
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g_obs[0] += mu[0]
+    g_obs[1] += mu[1]
+    cal = MetaCalibrator(R, mu, mu_is_calibrated=False)
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
+
+    g_obs = R @ [g1 + mu[0], g2 + mu[1]]
+    cal = MetaCalibrator(R, mu, mu_is_calibrated=True)
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
+
+
+def test_null():
+    # null calibrator
+    R = np.eye(2)
+    g1 = 0.2
+    g2 = -0.3
+    g_obs = R @ [g1, g2]
+    assert g_obs.shape == (2,)
+    cal = NullCalibrator()
+    g1_, g2_ = cal.apply(float(g_obs[0]), float(g_obs[1]))
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == float
+    assert type(g2) == float
+    
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+
+    assert np.allclose(g1_, g1)
+    assert np.allclose(g2_, g2)
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
+
+
+def test_null_mean():
+    # null calibrator
+    R = np.eye(2)
+    g1 = 0.2
+    g2 = -0.3
+    g_obs = R @ [g1, g2]
+    mu = [0.05, 0.06]
+    assert g_obs.shape == (2,)
+    cal = NullCalibrator(mu)
+    g1_, g2_ = cal.apply(float(g_obs[0]), float(g_obs[1]), subtract_mean=True)
+    assert np.allclose(g1_, g1 - mu[0])
+    assert np.allclose(g2_, g2 - mu[1])
+    assert type(g1) == float
+    assert type(g2) == float
+
+    g1 = np.random.normal(size=10)
+    g2 = np.random.normal(size=10)
+    g_obs = R @ [g1, g2]
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1], subtract_mean=True)
+
+    assert np.allclose(g1_, g1 - mu[0])
+    assert np.allclose(g2_, g2 - mu[1])
+    assert type(g1) == np.ndarray
+    assert type(g2) == np.ndarray
+
 
 
 if __name__ == '__main__':

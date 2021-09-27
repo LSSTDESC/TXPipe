@@ -34,21 +34,27 @@ PZPDFMLZ:
     nz: 301
     zmax: 3.0
 
-PZRailTrain:
-    class_name: FZBoost
+
+PZRailTrainSource:
+    class_name: BPZ_lite
     zmin: 0.0
-    zmax: 2.0
-    nzbins: 201
-    trainfrac: 0.75
-    bumpmin: 0.02
-    bumpmax: 0.35
-    nbump: 20
-    sharpmin: 0.7
-    sharpmax: 2.1
-    nsharp: 15
-    max_basis: 35
-    basis_system: cosine
-    regression_params: {'max_depth': 8,'objective':'reg:squarederror'}
+    zmax: 3.0
+    dz: 0.01
+    columns_file: ./examples/config/bpz_riz.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01]
+
+PZRailEstimateSource:
+    convert_unseen: True # needed for BPZ
 
 
 FlexZPipe:
@@ -158,9 +164,11 @@ TXBlinding:
     b0: 0.95  ## we use bias of the form b0/g
     delete_unblinded: True
 
-TXDiagnosticPlots:
+TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
+
+TXLensDiagnosticPlots: {}
 
 TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
@@ -191,10 +199,12 @@ TXExternalLensMaps:
 
 TXMainMaps: {}
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     flag_exponent_max: 8
-    dilate: True
     psf_prefix: psf_
+
+TXAuxiliaryLensMaps:
+    flag_exponent_max: 8
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)

@@ -12,14 +12,18 @@ TXExposureInfo:
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
-    extra_cols: redshift_true size_true shear_1 shear_2
+    extra_cols: redshift_true size_true shear_1 shear_2 Mag_true_r_sdss_z0 
     flip_g2: True # to match metacal
+    snr_limit: 4.0
+    Mag_r_limit: -19
+    unit_response: True
+    apply_mag_cut: False
 
 TXIngestRedmagic:
     lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
 
 TXSourceTrueNumberDensity:
-    nz: 301
+    nz: 601
     zmax: 3.0
     chunk_rows: 100000
 
@@ -43,10 +47,14 @@ TXExternalLensMaps:
     pixelization: healpix
 
 
-TXAuxiliaryMaps:
+TXAuxiliarySourceMaps:
     chunk_rows:  100000
     sparse:  True
     psf_prefix:  psf_
+
+TXAuxiliaryLensMaps:
+    chunk_rows:  100000
+    sparse:  True
     bright_obj_threshold:  22.0
 
 TXSimpleMask:
@@ -88,14 +96,21 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXDiagnosticPlots:
+TXSourceDiagnosticPlots:
     shear_prefix: mcal_
+
+TXFourierGaussianCovariance:
+    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
 
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 100.
     nbins: 15
     use_true_shear: False
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
+    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
 
 TXTwoPoint:
     bin_slop: 0.0
@@ -108,24 +123,8 @@ TXTwoPoint:
     max_sep: 100
     nbins: 15
     verbose: 0
-    use_true_shear: False
-    subtract_mean_shear: True
-
-TXTwoPointLensCat:
-    bin_slop: 0.0
-    delta_gamma: 0.02
-    do_pos_pos: True
-    do_shear_shear: True
-    do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
-    min_sep: 2.5
-    max_sep: 100
-    nbins: 15
-    verbose: 0
-    use_true_shear: False
-    subtract_mean_shear: True
     var_method: jackknife
-    
+
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g2: True

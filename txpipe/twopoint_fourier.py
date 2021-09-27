@@ -162,15 +162,17 @@ class TXTwoPointFourier(PipelineStage):
             area = info['area']
             f_sky = info['f_sky']
             mask = f.read_map('mask')
-            print("Loaded mask")
+            if self.rank == 0:
+                print("Loaded mask")
         # Then the shear maps and weights
         with self.open_input('source_maps', wrapper=True) as f:
             nbin_source = f.file['maps'].attrs['nbin_source']
             g1_maps = [f.read_map(f'g1_{b}') for b in range(nbin_source)]
             g2_maps = [f.read_map(f'g2_{b}') for b in range(nbin_source)]
             lensing_weights = [f.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
-            print(f"Loaded 2 x {nbin_source} shear maps")
-            print(f"Loaded {nbin_source} lensing weight maps")
+            if self.rank == 0:
+                print(f"Loaded 2 x {nbin_source} shear maps")
+                print(f"Loaded {nbin_source} lensing weight maps")
 
         # And finally the density maps
         with self.open_input('density_maps', wrapper=True) as f:
@@ -182,13 +184,14 @@ class TXTwoPointFourier(PipelineStage):
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
 
-        if self.rank == 0:
-            print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
 
         if pixel_scheme.name != 'healpix':
             raise ValueError("TXTwoPointFourier can only run on healpix maps")
 
-
+        if self.rank == 0:
+            print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
+            print(f"Nside = {pixel_scheme.nside}")
+        
         # Using a flat mask as the clustering weight for now, since I need to know
         # how to turn the depth map into a weight
         clustering_weight = mask
@@ -551,7 +554,7 @@ class TXTwoPointFourier(PipelineStage):
             y=f*x
             return np.exp(-y**2/2)
 
-        c_beam = c/(window_pixel(ls, self.config['nside']))**2
+        c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
         
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
@@ -721,88 +724,6 @@ class TXTwoPointFourier(PipelineStage):
         S.save_fits(output_filename, overwrite=True)
 
 
-
-class TXTwoPointPlotsFourier(PipelineStage):
-
-    name='TXTwoPointPlotsFourier'
-    inputs = [
-        ('summary_statistics_fourier', SACCFile),
-        ('fiducial_cosmology', FiducialCosmology),  # For example lines
-        ('twopoint_theory_fourier', SACCFile),
-    ]
-    outputs = [
-        ('shear_cl_ee', PNGFile),
-        ('shearDensity_cl', PNGFile),
-        ('density_cl', PNGFile),
-        ('shear_cl_ee_ratio', PNGFile),
-    ]
-
-    config_options = {
-        'wspace': 0.05,
-        'hspace': 0.05,
-    }
-
-    def read_nbin(self,s):
-        sources = []
-        lenses = []
-        for tn,t in s.tracers.items():
-            if 'source' in tn:
-                sources.append(tn)
-            if 'lens' in tn:
-                lenses.append(tn)
-        return len(sources), len(lenses)
-
-    def run(self):
-        import sacc
-        import matplotlib
-        import pyccl
-        from .plotting import full_3x2pt_plots
-        matplotlib.use('agg')
-        matplotlib.rcParams["xtick.direction"]='in'
-        matplotlib.rcParams["ytick.direction"]='in'
-
-        filename = self.get_input('summary_statistics_fourier')
-        s = sacc.Sacc.load_fits(filename)
-        nbin_source, nbin_lens = self.read_nbin(s)  
- 
-        filename_theory = self.get_input('twopoint_theory_fourier')
-        
-        outputs = {
-            "galaxy_density_cl": self.open_output('density_cl',
-                figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
-
-            "galaxy_shearDensity_cl_e": self.open_output('shearDensity_cl',
-                figsize=(3.5*nbin_lens, 3*nbin_source), wrapper=True),
-
-            "galaxy_shear_cl_ee": self.open_output('shear_cl_ee',
-                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
-
-        }
-
-        figures = {key: val.file for key, val in outputs.items()}
-
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures,
-                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
-                         xi=False, xlogscale=True)
-
-        outputs = {
-            "galaxy_shear_cl_ee": self.open_output('shear_cl_ee_ratio',
-                figsize=(3.5*nbin_source, 3*nbin_source), wrapper=True),
-
-        }
-
-        figures = {key: val.file for key, val in outputs.items()}
-
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures, 
-                         theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
-                         xi=False, xlogscale=True, ratios=True)
-
-        
-        for fig in outputs.values():
-            fig.close()
-
-
-        
 
 if __name__ == '__main__':
     PipelineStage.main()
