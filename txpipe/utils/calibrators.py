@@ -52,6 +52,8 @@ class Calibrator:
             subcls = NullCalibrator
         elif cat_type == "metacal":
             subcls = MetaCalibrator
+        elif cat_type == "metadetect":
+            subcls = MetaDetectCalibrator
         elif cat_type == "lensfit":
             subcls = LensfitCalibrator
         elif cat_type == "hsc":
@@ -194,8 +196,8 @@ class MetaCalibrator(Calibrator):
 
         with h5py.File(tomo_file, "r") as f:
             # Load the response values
-            R = f["metacal_response/R_total"][:]
-            R_2d = f["metacal_response/R_total_2d"][:]
+            R = f["response/R_total"][:]
+            R_2d = f["response/R_total_2d"][:]
             n = len(R)
 
             # Load the mean shear values
@@ -209,6 +211,47 @@ class MetaCalibrator(Calibrator):
         calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
         return calibrators, calibrator2d
 
+class MetaDetectCalibrator(MetaCalibrator):
+    # This is the same as the metacal one except the names
+    # we load from are different (because S is not separately calculated)
+    @classmethod
+    def load(cls, tomo_file):
+        """
+        Make a set of MetaDetect calibrators using the info in a tomography file.
+
+        You can use the parent Calibrator.load to automatically
+        load the correct subclass.
+
+        Parameters
+        ----------
+        tomo_file: str
+            A tomography file name the cal factors are read from
+
+        Returns
+        -------
+        cals: list
+            A set of MetaDetectCalibrators, one per bin
+        cal2D: MetaCalibrator
+            A single MetaDetectCalibrator for the 2D bin
+        """
+        import h5py
+
+        with h5py.File(tomo_file, "r") as f:
+            # Load the response values
+            R = f["response/R"][:]
+            R_2d = f["response/R_2d"][:]
+            n = len(R)
+
+            # Load the mean shear values
+            mu1 = f["tomography/mean_e1"][:]
+            mu2 = f["tomography/mean_e2"][:]
+            mu1_2d = f["tomography/mean_e1_2d"][0]
+            mu2_2d = f["tomography/mean_e2_2d"][0]
+
+        # make the calibrator objects
+        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
+        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        return calibrators, calibrator2d
 
 class LensfitCalibrator(Calibrator):
     def __init__(self, K, c):

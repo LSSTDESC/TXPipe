@@ -45,6 +45,8 @@ class ShearCatalog(HDFFile):
             t = self.file['shear'].attrs['catalog_type']
         elif 'mcal_g1' in self.file['shear'].keys():
             t = 'metacal'
+        elif '1p' in self.file['shear'].keys():
+            t = 'metadetect'
         elif 'c1' in self.file['shear'].keys():
             t = 'lensfit'
         else:

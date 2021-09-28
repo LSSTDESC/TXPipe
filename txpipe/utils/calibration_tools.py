@@ -39,7 +39,7 @@ def band_variants(bands, *names, shear_catalog_type='metacal'):
         ]
     elif shear_catalog_type=='metadetect':
         return [
-            "{group}/{name}_{band}"
+            f"{group}/{name}_{band}"
             for group in ['00', '1p', '1m', '2p', '2m']
             for band in bands
             for name in names
@@ -354,9 +354,11 @@ class MetaDetectCalculator:
             sel = self.selector(data_p, *args, **kwargs)
             if p == '00/':
                 sel_00 = sel
+            w = data_p['weight'][sel]
+            if w.size == 0:
+                continue
             g1 = data_p['g1'][sel]
             g2 = data_p['g2'][sel]
-            w = data_p['weight'][sel]
             self.mean_e.add_data(2 * i + 0, g1, w)
             self.mean_e.add_data(2 * i + 1, g2, w)
             self.counts[i] += w.size

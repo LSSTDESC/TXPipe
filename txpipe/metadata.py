@@ -56,12 +56,12 @@ class TXTracerMetadata(PipelineStage):
                 metadata[k] = v
 
         if shear_catalog_type == "metacal":
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_gamma_mean")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_S")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_total")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_gamma_mean_2d")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_S_2d")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_total_2d")
+            copy(shear_tomo_file, "response", "tracers", "R_gamma_mean")
+            copy(shear_tomo_file, "response", "tracers", "R_S")
+            copy(shear_tomo_file, "response", "tracers", "R_total")
+            copy(shear_tomo_file, "response", "tracers", "R_gamma_mean_2d")
+            copy(shear_tomo_file, "response", "tracers", "R_S_2d")
+            copy(shear_tomo_file, "response", "tracers", "R_total_2d")
         elif shear_catalog_type == 'lensfit':
             copy(shear_tomo_file, "response", "tracers", "K")
             copy(shear_tomo_file, "response", "tracers", "C")

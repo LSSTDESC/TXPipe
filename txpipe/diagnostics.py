@@ -77,7 +77,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         shear_tomo_cols = ['source_bin']
 
         if self.config['shear_catalog_type']=='metacal':
-            more_iters = ['shear_tomography_catalog', 'metacal_response', ['R_gamma']]
+            more_iters = ['shear_tomography_catalog', 'response', ['R_gamma']]
         elif self.config['shear_catalog_type']=='lensfit':
             more_iters = []
         else:

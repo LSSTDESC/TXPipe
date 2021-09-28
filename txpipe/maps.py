@@ -169,9 +169,9 @@ class TXSourceMaps(TXBaseMaps):
             nbin_source = f["tomography"].attrs["nbin_source"]
 
             if shear_catalog_type == "metacal":
-                R = f['/metacal_response/R_total'][:] # nbin x 2 x 2
+                R = f['/response/R_total'][:] # nbin x 2 x 2
                 cal = {i:R[i] for i in range(nbin_source)}
-                cal['2D'] = f['/metacal_response/R_total_2d'][:]
+                cal['2D'] = f['/response/R_total_2d'][:]
             elif shear_catalog_type == "lensfit":
                 K = f['/response/K'][:]
                 c = f['/response/C'][:]

@@ -380,7 +380,7 @@ class TXStarShearTests(PipelineStage):
         source_bin = f['tomography/source_bin'][:]
         mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
         if self.config['shear_catalog_type']=='metacal':
-            R_total_2d = f['metacal_response/R_total_2d'][:]
+            R_total_2d = f['response/R_total_2d'][:]
 
         f = self.open_input('shear_catalog')
         g = f['shear']
