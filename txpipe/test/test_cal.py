@@ -1,4 +1,4 @@
-from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator
+from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator, MetaDetectCalculator
 from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
 import numpy as np
 import mockmpi
@@ -14,6 +14,16 @@ def select_all_index(data):
 def select_all_where(data):
     # we just want to select everything here too
     return np.where(data['mcal_g2'] * 0 == 0)
+
+def select_all_bool_md(data):
+    return np.repeat(True, data['g2'].size)
+
+def select_all_index_md(data):
+    return np.arange(data['g2'].size)
+
+def select_all_where_md(data):
+    # we just want to select everything here too
+    return np.where(data['g2'] * 0 == 0)
 
 
 
@@ -84,12 +94,89 @@ def core_metacal(comm):
         assert np.allclose(S, 0.0)
         assert n == N * nproc
 
+def core_metadet(comm):
+    delta_gamma = 0.02
+
+    nproc = 1 if comm is None else comm.size
+
+    N = 10
+    g1_true = np.random.normal(0, 0.1, size=N)
+    g2_true = np.random.normal(0, 0.1, size=N)
+    g_true = np.array([g1_true, g2_true])
+    R_true = np.array([[0.9, 0.1], [0.07, 0.8]])
+    g = R_true @ g_true
+    g_1p = R_true @ (g_true + 0.5*delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_true @ (g_true + 0.5*delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    g_2p = R_true @ (g_true + 0.5*delta_gamma * np.array([0, +1])[:, np.newaxis])
+    g_2m = R_true @ (g_true + 0.5*delta_gamma * np.array([0, -1])[:, np.newaxis])
+    weight = np.ones(N)
+
+    data = {
+        "00/g1": g[0],
+        "1p/g1": g_1p[0],
+        "1m/g1": g_1m[0],
+        "2p/g1": g_2p[0],
+        "2m/g1": g_2m[0],
+        "00/g2": g[1],
+        "1p/g2": g_1p[1],
+        "1m/g2": g_1m[1],
+        "2p/g2": g_2p[1],
+        "2m/g2": g_2m[1],
+        "00/weight": weight,
+        "1p/weight": weight,
+        "1m/weight": weight,
+        "2p/weight": weight,
+        "2m/weight": weight,
+    }
+
+    # test each type of selector
+    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
+        cal = MetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        R, n = cal.collect(comm, allgather=True)
+
+        assert np.allclose(R, R_true)
+        assert np.allclose(n, N * nproc)
+
+    # equal non-unit weights - everything should be the same.
+    data["1p/weight"] *= 0.5
+    data["1m/weight"] *= 0.5
+    data["2p/weight"] *= 0.5
+    data["2m/weight"] *= 0.5
+    # test each type of selector
+    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
+        cal = MetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        R, n = cal.collect(comm, allgather=True)
+        print("R = ", R)
+        assert np.allclose(n, N * nproc)
+
+    # random weights.  since R is constant this should still be the same
+    data["1p/weight"] *= np.random.uniform(0, 1, size=N)
+    data["1m/weight"] *= np.random.uniform(0, 1, size=N)
+    data["2p/weight"] *= np.random.uniform(0, 1, size=N)
+    data["2m/weight"] *= np.random.uniform(0, 1, size=N)
+    # test each type of selector
+    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
+        cal = MetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        R, n = cal.collect(comm, allgather=True)
+        print("R = ", R)
+
+        assert np.allclose(R, R_true)
+        assert np.allclose(n, N * nproc)
+
 def test_metacalibrator_serial():
     core_metacal(None)
 
-def test_metacalibrator_parallel():
-    mockmpi.mock_mpiexec(2, core_metacal)
-    mockmpi.mock_mpiexec(10, core_metacal)
+def test_metadetect_serial():
+    core_metadet(None)
+
+
+
+def test_metadetect_parallel():
+    mockmpi.mock_mpiexec(2, core_metadet)
+    mockmpi.mock_mpiexec(10, core_metadet)
 
 
 def test_mean_shear():
