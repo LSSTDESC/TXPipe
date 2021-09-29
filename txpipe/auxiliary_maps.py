@@ -3,8 +3,7 @@ import numpy as np
 from .base_stage import PipelineStage
 from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
-from .utils import choose_pixelization
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
 
 class TXAuxiliarySourceMaps(TXBaseMaps):
@@ -65,14 +64,31 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
 
         # Flag column name depends on catalog type
         if shear_catalog_type == "metacal":
-            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "mcal_flags", "weight"]
+            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "mcal_flags", "weight", "ra", "dec"]
+            renames = {
+                f"{psf_prefix}g1": "psf_g1",
+                f"{psf_prefix}g2": "psf_g2",
+                "mcal_flags": "flags",
+            }
+        if shear_catalog_type == "metadetect":
+            shear_cols = [f"00/{psf_prefix}g1", f"00/{psf_prefix}g2", "00/flags", "00/weight", "00/ra", "00/dec"]
+            renames = {
+                f"00/{psf_prefix}g1": "psf_g1",
+                f"00/{psf_prefix}g2": "psf_g2",
+                "00/flags": "flags",
+                "00/weight": "weight",
+                "00/ra": "ra",
+                "00/dec": "dec",
+            }
         else:
-            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "flags", "weight"]
-
-        shear_cols += ["ra", "dec"]
+            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "flags", "weight", "ra", "dec"]
+            renames = {
+                f"00/{psf_prefix}g1": "psf_g1",
+                f"00/{psf_prefix}g2": "psf_g2",
+            }
 
         # See maps.py for an explanation of this
-        return self.combined_iterators(
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
             "shear_catalog",
@@ -84,6 +100,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
             ["source_bin"],
         )
 
+        return rename_iterated(it, renames)
+
     def accumulate_maps(self, pixel_scheme, data, mappers):
         psf_mapper, flag_mapper = mappers
 
@@ -93,8 +111,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         # We pull out the bits they need and give them just those.
 
         psf_data = {
-            "g1": data[f"{psf_prefix}g1"],
-            "g2": data[f"{psf_prefix}g2"],
+            "g1": data["psf_g1"],
+            "g2": data["psf_g2"],
             "ra": data["ra"],
             "dec": data["dec"],
             "source_bin": data["source_bin"],
@@ -104,13 +122,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         flag_data = {
             "ra": data["ra"],
             "dec": data["dec"],
+            "flags": data["flags"],
         }
-
-        # Flag column names depends on catalog type.
-        if self.config["shear_catalog_type"] == "metacal":
-            flag_data["flags"] = data["mcal_flags"]
-        else:
-            flag_data["flags"] = data["flags"]
 
         psf_mapper.add_data(psf_data)
         flag_mapper.add_data(flag_data)

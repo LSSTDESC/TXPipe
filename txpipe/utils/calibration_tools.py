@@ -662,12 +662,14 @@ class MeanShearInBins:
 
         if shear_catalog_type=='metacal':
             self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
+        if shear_catalog_type=='metadetect':
+            self.calibrators = [MetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         elif shear_catalog_type=='lensfit':
             self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
         elif shear_catalog_type=='hsc':
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
         else:
-            raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
+            raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
         x = data[self.x_name]
@@ -680,14 +682,20 @@ class MeanShearInBins:
     def add_data(self, data):
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
-            weight = data['weight'][w]
             if self.shear_catalog_type=='metacal':
+                weight = data['weight'][w]
                 self.g1.add_data(i, data['mcal_g1'][w], weight)
                 self.g2.add_data(i, data['mcal_g2'][w], weight)
-            elif self.shear_catalog_type=='lensfit':
+            if self.shear_catalog_type=='metadetect':
+                weight = data['00/weight'][w]
+                self.g1.add_data(i, data['00/g1'][w], weight)
+                self.g2.add_data(i, data['00/g2'][w], weight)
+            elif self.shear_catalog_type in ['lensfit', 'metadetect']:
+                weight = data['weight'][w]
                 self.g1.add_data(i, data['g1'][w], weight)
                 self.g2.add_data(i, data['g2'][w], weight)
             elif self.shear_catalog_type=='hsc':
+                weight = data['weight'][w]
                 self.g1.add_data(i, data['g1'][w]-data['c1'][w], weight)
                 self.g2.add_data(i, data['g2'][w]-data['c2'][w], weight)
             self.x.add_data(i, data[self.x_name][w], weight)
@@ -709,6 +717,12 @@ class MeanShearInBins:
                 r, s, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r+s)
+            elif self.shear_catalog_type=='metadetect':
+                # Tell the Calibrators to work out the responses
+                r, _ = self.calibrators[i].collect(comm)
+                # and record the total (a 2x2 matrix)
+                R.append(r)
+
             elif self.shear_catalog_type=='lensfit':
                 k, c, _ = self.calibrators[i].collect(comm)
                 K.append(k)
@@ -730,7 +744,7 @@ class MeanShearInBins:
             g = [g1[i], g2[i]]
             sigma = np.sqrt([var1[i]/count1[i], var2[i]/count2[i]])
 
-            if self.shear_catalog_type=='metacal':
+            if self.shear_catalog_type in ['metacal', 'metadetect']:
                 # Get the inverse response matrix to apply
                 R_inv = np.linalg.inv(R[i])
 

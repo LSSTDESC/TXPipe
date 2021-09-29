@@ -130,8 +130,6 @@ class TXSourceSelector(PipelineStage):
         # one.
         longest = shear_catalog_type == "metadetect"
 
-        print(shear_cols)
-
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will

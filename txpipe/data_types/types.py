@@ -55,6 +55,12 @@ class ShearCatalog(HDFFile):
         self._catalog_type = t
         return t
 
+    def get_size(self):
+        if self.catalog_type == 'metadetect':
+            return self.file['shear/00/ra'].size
+        else:
+            return self.file['shear/ra'].size
+
 
 class TomographyCatalog(HDFFile):
     required_datasets = []
