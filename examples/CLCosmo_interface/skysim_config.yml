@@ -1,6 +1,6 @@
 CMIngestHalosCosmoDC2:
-    cat_name: skysim5000_v1.1.1
-    halo_mass_min: 0.5e+13
+    cat_name: skysim5000_v1.1.1_small
+    halo_mass_min: 1e+12
     initial_size: 1_000_000
     chunk_rows: 10_000_000
     ra_range: [-1000, 1000.]
@@ -16,8 +16,8 @@ CMSelectBackground:
     chunk_rows: 10_000_000
 
 CMSelectHalos:
-    zedge: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
-    medge: [1.00000000e+13 1.99526231e+13 3.98107171e+13 7.94328235e+13, 1.58489319e+14 3.16227766e+14]
+    zedge: [0.2, 0.4, 0.6, 0.8]
+    logmedge: [13.  13.3 13.6 13.9 14.2 14.5]
     initial_size: 100_000
     chunk_rows: 10_000_000
 
