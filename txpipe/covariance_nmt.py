@@ -12,7 +12,7 @@ d2r=np.pi/180
 # Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix
 
 class TXFourierGaussianCovariance(PipelineStage):
-    name='TXFourierGaussianCovariance'
+    name='TXFourierGaussianCovariance_nmt'
     do_xi=False
     
     inputs = [
@@ -898,7 +898,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):
-    name='TXRealGaussianCovariance'
+    name='TXRealGaussianCovariance_nmt'
     do_xi = True
 
     inputs = [

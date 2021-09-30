@@ -108,7 +108,7 @@ TXLensDiagnosticPlots: {}
 TXFourierGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
-    nodes: 4
+    nodes: 12
     use_true_shear: True
 
 TXRealGaussianCovariance:
@@ -118,7 +118,7 @@ TXRealGaussianCovariance:
     use_true_shear: True
     nprocess: 4
     threads_per_process: 2
-    nodes: 4
+    nodes: 12
 
 TXTwoPoint:
     bin_slop: 0.0

@@ -46,11 +46,7 @@ stages:
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
-<<<<<<< HEAD
-    - name: TXTwoPointLensCat
-=======
     - name: TXTwoPoint
->>>>>>> master
       nprocess: 2
       nodes: 2
       threads_per_process: 64
@@ -58,8 +54,6 @@ stages:
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
-      nprocess: 4
-      nodes: 2
       threads_per_process: 64
     - name: TXSourceNoiseMaps
       nprocess: 4
@@ -80,11 +74,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-<<<<<<< HEAD
-output_dir: data/cosmodc2/outputs_redmagic/2021/no_shape_noise/7sbins_updatedcov/
-=======
 output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins_no_shape_noise/
->>>>>>> master
 config: examples/config/cosmodc2_config_no_shape_noise.yml
 
 # On NERSC, set this before running:
@@ -105,4 +95,3 @@ inputs:
 resume: True
 log_dir: data/cosmodc2/logs_redmagic
 pipeline_log: data/cosmodc2/log.txt
-

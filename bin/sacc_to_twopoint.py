@@ -1,5 +1,5 @@
 import sacc
-1;95;0cfrom sacc import Sacc, standard_types
+from sacc import Sacc, standard_types
 import twopoint
 from twopoint import Types
 import sys
