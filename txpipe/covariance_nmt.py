@@ -897,7 +897,7 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         return cov_full
 
 
-class TXRealGaussianCovariance_nmt(TXFourierGaussianCovariance):
+class TXRealGaussianCovariance_nmt(TXFourierGaussianCovariance_nmt):
     name='TXRealGaussianCovariance_nmt'
     do_xi = True
 
