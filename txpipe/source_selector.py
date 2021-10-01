@@ -591,16 +591,16 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # Otherwise we have to do it once for each variant
         pz_data = {}
-        variants = ['', '_1p', '_2p', '_1m', '_2m']
+        variants = ['00/', '1p/', '2p/', '1m/', '2m/']
         for v in variants:
-            zz = shear_data[f'mean_z{v}']
+            zz = shear_data[f'{v}mean_z']
 
             pz_data_v = np.zeros(len(zz), dtype=int) -1
             for zi in range(len(self.config['source_zbin_edges'])-1):
                 mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
                 pz_data_v[mask_zbin] = zi
 
-            pz_data[f'zbin{v}'] = pz_data_v
+            pz_data[f'{v}zbin'] = pz_data_v
 
         return pz_data
 
