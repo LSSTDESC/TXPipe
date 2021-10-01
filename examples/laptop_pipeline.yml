@@ -1,7 +1,7 @@
 
 # Stages to run
 stages:
-    - name: TXSourceSelector     # select and split objects into source bins
+    - name: TXSourceSelectorMetacal     # select and split objects into source bins
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)

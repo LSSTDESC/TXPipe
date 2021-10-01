@@ -18,34 +18,35 @@ class SourceNumberDensityStats:
             w = np.where(shear_bin==i)
 
             if self.shear_type=='metacal':
-                g1 = shear_data['mcal_g1'][w]
-                g2 = shear_data['mcal_g2'][w]
-                weight = shear_data['weight'][w]
-            elif self.shear_type == 'metadetect':
-                g1 = shear_data['00/g1'][w]
-                g2 = shear_data['00/g2'][w]
-                weight = shear_data['00/weight'][w]
+                self.shear_stats[i].add_data(0, shear_data['mcal_g1'][w], shear_data['weight'][w])
+                self.shear_stats[i].add_data(1, shear_data['mcal_g2'][w], shear_data['weight'][w])
+                # each bin contributes to the 2D
+                self.shear_stats_2d.add_data(0, shear_data['mcal_g1'][w], shear_data['weight'][w])
+                self.shear_stats_2d.add_data(1, shear_data['mcal_g2'][w], shear_data['weight'][w])
+            elif self.shear_type=='metadetect':
+                self.shear_stats[i].add_data(0, shear_data['00/g1'][w], shear_data['00/weight'][w])
+                self.shear_stats[i].add_data(1, shear_data['00/g2'][w], shear_data['00/weight'][w])
+                # each bin contributes to the 2D
+                self.shear_stats_2d.add_data(0, shear_data['00/g1'][w], shear_data['00/weight'][w])
+                self.shear_stats_2d.add_data(1, shear_data['00/g2'][w], shear_data['00/weight'][w])
             else:
-                g1 = shear_data['g1'][w]
-                g2 = shear_data['g2'][w]
-                weight = shear_data['weight'][w]
-
-            self.shear_stats[i].add_data(0, g1, weight)
-            self.shear_stats[i].add_data(1, g2, weight)
-            self.shear_stats_2d.add_data(0, g1, weight)
-            self.shear_stats_2d.add_data(1, g2, weight)
+                self.shear_stats[i].add_data(0, shear_data['g1'][w], shear_data['weight'][w])
+                self.shear_stats[i].add_data(1, shear_data['g2'][w], shear_data['weight'][w])
+                self.shear_stats_2d.add_data(0, shear_data['g1'][w], shear_data['weight'][w])
+                self.shear_stats_2d.add_data(1, shear_data['g2'][w], shear_data['weight'][w])
 
 
     def collect(self):
         # Get the basic shear numbers - means, counts, variances
-        variances = np.zeros((self.nbin_source, 2))
-        means = np.zeros((self.nbin_source, 2))
+        nb = self.nbin_source
+        variances = np.zeros((nb + 1, 2))
+        means = np.zeros((nb + 1, 2))
 
-        for i in range(self.nbin_source):
+        for i in range(nb):
             _, means[i], variances[i] = self.shear_stats[i].collect(self.comm, mode='allgather')
 
-        _, means2d, variances2d = self.shear_stats_2d.collect(self.comm, mode='allgather')
-        return means, variances, means2d, variances2d
+        _, means[nb], variances[nb] = self.shear_stats_2d.collect(self.comm, mode='allgather')
+        return means, variances
 
 
 class LensNumberDensityStats:

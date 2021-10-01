@@ -138,10 +138,14 @@ class NullCalibrator:
 
         return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator([mu1_2d, mu2_2d])
 
+    def save(self, group, index):
+        pass
 
 class MetaCalibrator(Calibrator):
-    def __init__(self, R, mu, mu_is_calibrated=True):
-        self.R = R
+    def __init__(self, R, S, mu, mu_is_calibrated=True):
+        self.R_gamma = R
+        self.R_sel = S
+        self.R = R + S
         self.Rinv = np.linalg.inv(R)
         if mu_is_calibrated:
             self.mu = np.array(mu)
@@ -196,9 +200,11 @@ class MetaCalibrator(Calibrator):
 
         with h5py.File(tomo_file, "r") as f:
             # Load the response values
-            R = f["response/R_total"][:]
-            R_2d = f["response/R_total_2d"][:]
-            n = len(R)
+            R = f["response/R_gamma_mean"][:]
+            S = f["response/R_S"][:]
+
+            R_2d = f["response/R_gamma_mean_2d"][:]
+            S_2d = f["response/R_S_2d"][:]
 
             # Load the mean shear values
             mu1 = f["tomography/mean_e1"][:]
@@ -207,13 +213,31 @@ class MetaCalibrator(Calibrator):
             mu2_2d = f["tomography/mean_e2_2d"][0]
 
         # make the calibrator objects
-        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
-        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        n = len(R)
+        calibrators = [cls(R[i], S[i], [mu1[i], mu2[i]]) for i in range(n)]
+        calibrator2d = cls(R_2d, S_2d, [mu1_2d, mu2_2d])
         return calibrators, calibrator2d
+
+    def save(self, outfile, i):
+        if i == "2d":
+            outfile["response/R_gamma_mean_2d"][:] = self.R_gamma
+            outfile["response/R_S_2d"][:] = self.R_sel
+            outfile["tomography/mean_e1_2d"][0] = self.mu[0]
+            outfile["tomography/mean_e2_2d"][0] = self.mu[1]
+        else:
+            outfile["response/R_gamma_mean"][i] = self.R_gamma
+            outfile["response/R_S"][i] = self.R_sel
+            outfile["tomography/mean_e1"][i] = self.mu[0]
+            outfile["tomography/mean_e2"][i] = self.mu[1]
+
 
 class MetaDetectCalibrator(MetaCalibrator):
     # This is the same as the metacal one except the names
     # we load from are different (because S is not separately calculated)
+    def __init__(self, R, mu, mu_is_calibrated=True):
+        S = np.zeros_like(R)
+        super().__init__(R, S, mu, mu_is_calibrated)
+
     @classmethod
     def load(cls, tomo_file):
         """
@@ -253,6 +277,17 @@ class MetaDetectCalibrator(MetaCalibrator):
         calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
         return calibrators, calibrator2d
 
+    def save(self, outfile, i):
+        if i == "2d":
+            outfile["response/R_2d"][:] = self.R
+            outfile["tomography/mean_e1_2d"][0] = self.mu[0]
+            outfile["tomography/mean_e2_2d"][0] = self.mu[1]
+        else:
+            outfile["response/R"][i] = self.R
+            outfile["tomography/mean_e1"][i] = self.mu[0]
+            outfile["tomography/mean_e2"][i] = self.mu[1]
+
+
 class LensfitCalibrator(Calibrator):
     def __init__(self, K, c):
         self.K = K
@@ -291,6 +326,19 @@ class LensfitCalibrator(Calibrator):
         calibrators = [cls(K[i], C[i]) for i in range(n)]
         calibrator2d = cls(K_2d, C_2d)
         return calibrators, calibrator2d
+
+    def save(self, outfile, i):
+        if i == "2d":
+            outfile["response/K_2d"][:] = self.K
+            outfile["response/C_2d"][:] = self.c
+            outfile["tomography/mean_e1_2d"][0] = self.c[0]
+            outfile["tomography/mean_e2_2d"][0] = self.c[1]
+        else:
+            outfile["response/K"][i] = self.K
+            outfile["response/C"][i] = self.c
+            outfile["tomography/mean_e1"][i] = self.c[0]
+            outfile["tomography/mean_e2"][i] = self.c[1]
+
 
     def apply(self, g1, g2, subtract_mean=True):
         """
@@ -362,6 +410,14 @@ class HSCCalibrator(Calibrator):
         calibrator2d = cls(R_2d, K_2d)
         return calibrators, calibrator2d
 
+    def save(self, outfile, i):
+        if i == "2d":
+            outfile["response/R_mean_2d"][:] = self.R
+            outfile["response/K_2d"][:] = self.K
+        else:
+            outfile["response/R_mean"][i] = self.R
+            outfile["response/K"][i] = self.K
+
     def apply(self, g1, g2, c1, c2):
         """
         For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
@@ -388,3 +444,4 @@ class HSCCalibrator(Calibrator):
         g1 = (g1 / (2 * self.R) - c1)/ (1 + self.K)
         g2 = (g2 / (2 * self.R) - c2)/ (1 + self.K)
         return g1, g2
+

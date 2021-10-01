@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog
-from .utils import read_shear_catalog_type, Calibrator, Splitter, SourceNumberDensityStats, rename_iterated
+from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
 import numpy as np
 
 
@@ -144,6 +144,8 @@ class TXShearCalibration(PipelineStage):
             counts = f["tomography/source_counts"][:]
             count2d = f["tomography/source_counts_2d"][0]
             nbin = len(counts)
+
+        print(counts, count2d)
 
         # Prepare the calibrated output catalog
         f = self.open_output("binned_shear_catalog", parallel=True)

@@ -70,7 +70,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
                 f"{psf_prefix}g2": "psf_g2",
                 "mcal_flags": "flags",
             }
-        if shear_catalog_type == "metadetect":
+        elif shear_catalog_type == "metadetect":
             shear_cols = [f"00/{psf_prefix}g1", f"00/{psf_prefix}g2", "00/flags", "00/weight", "00/ra", "00/dec"]
             renames = {
                 f"00/{psf_prefix}g1": "psf_g1",
@@ -83,8 +83,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         else:
             shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "flags", "weight", "ra", "dec"]
             renames = {
-                f"00/{psf_prefix}g1": "psf_g1",
-                f"00/{psf_prefix}g2": "psf_g2",
+                f"{psf_prefix}g1": "psf_g1",
+                f"{psf_prefix}g2": "psf_g2",
             }
 
         # See maps.py for an explanation of this

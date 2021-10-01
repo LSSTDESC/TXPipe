@@ -662,7 +662,7 @@ class MeanShearInBins:
 
         if shear_catalog_type=='metacal':
             self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
-        if shear_catalog_type=='metadetect':
+        elif shear_catalog_type=='metadetect':
             self.calibrators = [MetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         elif shear_catalog_type=='lensfit':
             self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
@@ -686,7 +686,7 @@ class MeanShearInBins:
                 weight = data['weight'][w]
                 self.g1.add_data(i, data['mcal_g1'][w], weight)
                 self.g2.add_data(i, data['mcal_g2'][w], weight)
-            if self.shear_catalog_type=='metadetect':
+            elif self.shear_catalog_type=='metadetect':
                 weight = data['00/weight'][w]
                 self.g1.add_data(i, data['00/g1'][w], weight)
                 self.g2.add_data(i, data['00/g2'][w], weight)

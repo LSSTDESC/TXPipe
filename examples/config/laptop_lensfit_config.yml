@@ -58,7 +58,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelector:
+TXSourceSelectorLensfit:
     input_pz: True
     bands: ri #used for selection
     T_cut: 0.25
