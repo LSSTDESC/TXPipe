@@ -267,11 +267,12 @@ def test_mean_shear_weights():
 def test_metacal_scalar():
     # metacal calibrator
     R = np.array([[2, 3], [4, 5]])
+    S = np.zeros_like(R)
     g1 = 0.2
     g2 = -0.3
     g_obs = R @ [g1, g2]
     mu = np.zeros(2)
-    cal = MetaCalibrator(R, mu)
+    cal = MetaCalibrator(R, S, mu)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
 
     assert np.allclose(g1_, g1)
@@ -282,8 +283,9 @@ def test_metacal_scalar():
 def test_metacal_array():
     # array version
     R = np.array([[2, 3], [4, 5]])
+    S = np.zeros_like(R)
     mu = np.zeros(2)
-    cal = MetaCalibrator(R, mu)
+    cal = MetaCalibrator(R, S, mu)
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
     g_obs = R @ [g1, g2]
@@ -297,13 +299,14 @@ def test_metacal_array():
 def test_metacal_mean():
     # array version with mean
     R = np.array([[2, 3], [4, 5]])
+    S = np.zeros_like(R)
     mu = [0.1, 0.2]
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
     g_obs = R @ [g1, g2]
     g_obs[0] += mu[0]
     g_obs[1] += mu[1]
-    cal = MetaCalibrator(R, mu, mu_is_calibrated=False)
+    cal = MetaCalibrator(R, S, mu, mu_is_calibrated=False)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
@@ -312,7 +315,7 @@ def test_metacal_mean():
 
 
     g_obs = R @ [g1 + mu[0], g2 + mu[1]]
-    cal = MetaCalibrator(R, mu, mu_is_calibrated=True)
+    cal = MetaCalibrator(R, S, mu, mu_is_calibrated=True)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
