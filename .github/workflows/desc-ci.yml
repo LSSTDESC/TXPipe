@@ -33,6 +33,7 @@ jobs:
       run: |
         ceci examples/laptop_redmagic_pipeline.yml
         ceci examples/laptop_lensfit_pipeline.yml
+        ceci examples/metadetect/pipeline.yml
         test -f data/example/outputs/shear_xi_plus.png
         test -f data/example/outputs_redmagic/shear_xi_plus.png
         test -f data/example/outputs_lensfit/shear_xi_plus.png
@@ -43,3 +44,4 @@ jobs:
         tail -n +1 data/example/logs/*
         tail -n +1 data/example/logs_redmagic/*
         tail -n +1 data/example/logs_lensfit/*
+        tail -n +1 data/example/logs_metadetect/*

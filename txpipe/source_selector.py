@@ -236,8 +236,8 @@ class TXSourceSelectorBase(PipelineStage):
             prefixes = ['00/', '1p/', '2p/', '1m/', '2m/']
             suffixes = ['', '', '', '' '', '']
         else:
-            prefixes = ['', '', '', '' '', '']
-            suffixes = ['', '', '', '' '', '']
+            prefixes = ['']
+            suffixes = ['']
 
         pz_data = {}
 
