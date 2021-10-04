@@ -145,8 +145,6 @@ class TXShearCalibration(PipelineStage):
             count2d = f["tomography/source_counts_2d"][0]
             nbin = len(counts)
 
-        print(counts, count2d)
-
         # Prepare the calibrated output catalog
         f = self.open_output("binned_shear_catalog", parallel=True)
 
