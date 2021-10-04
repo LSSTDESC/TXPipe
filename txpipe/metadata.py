@@ -62,6 +62,9 @@ class TXTracerMetadata(PipelineStage):
             copy(shear_tomo_file, "response", "tracers", "R_gamma_mean_2d")
             copy(shear_tomo_file, "response", "tracers", "R_S_2d")
             copy(shear_tomo_file, "response", "tracers", "R_total_2d")
+        elif shear_catalog_type == "metadetect":
+            copy(shear_tomo_file, "response", "tracers", "R")
+            copy(shear_tomo_file, "response", "tracers", "R_2d")
         elif shear_catalog_type == 'lensfit':
             copy(shear_tomo_file, "response", "tracers", "K")
             copy(shear_tomo_file, "response", "tracers", "C")

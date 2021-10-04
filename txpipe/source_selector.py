@@ -230,7 +230,7 @@ class TXSourceSelectorBase(PipelineStage):
         bands = self.config['bands']
 
         if self.config['shear_catalog_type'] == 'metacal':
-            prefixes = ['', '', '', '' '', '']
+            prefixes = ['mcal_', 'mcal_', 'mcal_', 'mcal_', 'mcal_']
             suffixes = ['', '_1p', '_2p', '_1m', '_2m']
         elif self.config['shear_catalog_type'] == 'metadetect':
             prefixes = ['00/', '1p/', '2p/', '1m/', '2m/']
@@ -264,6 +264,8 @@ class TXSourceSelectorBase(PipelineStage):
 
             # Run the random forest on this data chunk
             pz_data[f'{prefix}zbin{suffix}'] = classifier.predict(data)
+            if self.config['shear_catalog_type'] == 'metacal':
+                pz_data[f'zbin{suffix}'] = pz_data[f'{prefix}zbin{suffix}']
         return pz_data
 
     def apply_simple_redshift_cut(self, shear_data):
