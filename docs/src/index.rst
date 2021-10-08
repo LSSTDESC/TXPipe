@@ -13,8 +13,7 @@ TXPipe documentation
    installation
    running
 
-   stages
-   submodules
+   stages/stages
    
 
 
