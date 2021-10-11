@@ -4,15 +4,15 @@ import numpy as np
 import warnings
 import os
 import pickle
-from mpi4py import MPI
+
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
 
 # Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix
 
-class TXFourierGaussianCovariance_nmt(PipelineStage):
-    name='TXFourierGaussianCovariance_nmt'
+class TXFourierNamasterCovariance(PipelineStage):
+    name='TXFourierNamasterCovariance'
     do_xi=False
     
     inputs = [
@@ -20,6 +20,7 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata', HDFFile),        # For metadata
         ('mask', MapsFile), #For the mask
+        ('scratch_dir', Scratch_dir)
     ]
 
     outputs = [
@@ -29,6 +30,8 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
     config_options = {
         'pickled_wigner_transform': '',
         'use_true_shear': False,
+        'scratch_dir': 'temp',
+        'nside': 1024
         
     }
 
@@ -42,20 +45,17 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         import sacc
         import tjpcov
         import threadpoolctl
-        import shutil
         
-        comm = MPI.COMM_WORLD
-        size = comm.Get_size()
-        rank = comm.Get_rank()
-        
+        comm = self.comm
+        size = self.size
+        rank = self.rank
+        print(Scratch_dir)
         print(size)
         
         if rank == 0: 
-            if not os.path.exists('temp'):
-                os.makedirs('temp')
-            else:  # make sure that the temp directory is empty
-                shutil.rmtree('temp', ignore_errors=True)
-                os.makedirs('temp')
+            scratch_dir = self.config['scratch_dir']
+            if not os.path.exists(scratch_dir):
+                os.makedirs(scratch_dir)
 
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
@@ -69,7 +69,10 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         # read the mask
         f = self.open_input('mask', wrapper=True)
         m = f.read_map('mask')
-        m = hp.ud_grade(m,1024)
+        
+        nside = self.config['nside']
+        
+        m = hp.ud_grade(m,nside)
         msk = 1*(m == 1)
         msk = nmt.mask_apodization(msk, 1., apotype="Smooth")
         
@@ -103,9 +106,9 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
             )
 
         # creating ell arrays for the tjp-block and nmt-block
-        tjp_ell_mask = meta['ell']>1024*3
+        tjp_ell_mask = meta['ell']>nside*3
         meta['ell_tjp'] = meta['ell'][tjp_ell_mask]
-        meta['ell_nmt0'] = np.linspace(0, 3*1024-1, 3*1024)
+        meta['ell_nmt0'] = np.linspace(0, 3*nside-1, 3*nside)
         meta['ell_nmt'] = meta['ell'][np.invert(tjp_ell_mask)]
 
         # Theta binning - log spaced between 1 .. 300 arcmin.
@@ -125,10 +128,6 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         comm.Barrier()
         cov = self.put_together(covsize)
         self.save_outputs(two_point_data, cov)
-        
-        if rank == 0:
-            if os.path.exists('temp'):
-                shutil.rmtree('temp', ignore_errors=True)
 
 
     def save_outputs(self, two_point_data, cov):
@@ -216,8 +215,8 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         return meta
     
     def get_w_spinlist(self):
-        comm = MPI.COMM_WORLD
-        size = comm.Get_size()
+        comm = self.comm
+        size = self.size
         allspins = [(0,0),(2,0),(2,2)]
         spinlist = [[] for i in range(size)]
         for i, spins in enumerate(allspins):
@@ -227,9 +226,9 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
     
     def get_w(self,msk,spinlist):
         import pymaster as nmt
-
-        nside = 1024
-        # Spin-0 field
+        
+        nside = self.config['nside']
+        
         self.f0 = nmt.NmtField(msk, [msk], n_iter=0)
         # Spin-2 field
         self.f2 = nmt.NmtField(msk, [msk, msk], n_iter=2)
@@ -237,26 +236,23 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         self.b = nmt.NmtBin.from_nside_linear(nside, 48)
 
         # Workspace
-        if len(spinlist) == 0:
-            pass
-        else: 
-            for spins in spinlist: 
-                s1 = spins[0]
-                s2 = spins[1]
-                self.w = nmt.NmtWorkspace()
-                self.w.compute_coupling_matrix(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'), self.b)
-                self.w.write_to(f'temp/w{s1}{s2}.fits')
-            pass
+        for spins in spinlist: 
+            s1 = spins[0]
+            s2 = spins[1]
+            self.w = nmt.NmtWorkspace()
+            self.w.compute_coupling_matrix(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'), self.b)
+            self.w.write_to(f'{scratch_dir}/w{s1}{s2}.fits')
+
         
     def read_w(self):
         import pymaster as nmt
         self.w00 = nmt.NmtWorkspace()
-        self.w00.read_from('temp/w00.fits')
+        self.w00.read_from(f'{scratch_dir}/w00.fits')
         self.w20 = nmt.NmtWorkspace()
-        self.w20.read_from('temp/w20.fits')
+        self.w20.read_from(f'{scratch_dir}/w20.fits')
         self.w22 = nmt.NmtWorkspace()
-        self.w22.read_from('temp/w22.fits')
-        pass 
+        self.w22.read_from(f'{scratch_dir}/w22.fits')
+
     
     def get_cw_spinlist(self):
         
@@ -272,43 +268,38 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
     def get_cw(self, spinlist):
         import pymaster as nmt
         
-        if len(spinlist) == 0: 
-            pass
-        
-        else: 
-            for spins in spinlist: 
-                s1 = spins[0]
-                s2 = spins[1]
-                s3 = spins[2]
-                s4 = spins[3]
+        for spins in spinlist: 
+            s1 = spins[0]
+            s2 = spins[1]
+            s3 = spins[2]
+            s4 = spins[3]
 
-                cw = nmt.NmtCovarianceWorkspace()
-                cw.compute_coupling_coefficients(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'),
-                                                 getattr(self,f'f{s3}'), getattr(self,f'f{s4}'))
-                cw.write_to(f'temp/cw{s1}{s2}{s3}{s4}.fits')
-            pass
+            cw = nmt.NmtCovarianceWorkspace()
+            cw.compute_coupling_coefficients(getattr(self,f'f{s1}'), getattr(self,f'f{s2}'),
+                                             getattr(self,f'f{s3}'), getattr(self,f'f{s4}'))
+            cw.write_to(f'{scratch_dir}/cw{s1}{s2}{s3}{s4}.fits')
+
         
     def read_cw(self):
         import pymaster as nmt
         
         self.cw0000 = nmt.NmtCovarianceWorkspace()
-        self.cw0000.read_from('temp/cw0000.fits')
+        self.cw0000.read_from(f'{scratch_dir}/cw0000.fits')
         
         self.cw0020 = nmt.NmtCovarianceWorkspace()
-        self.cw0020.read_from('temp/cw0020.fits')
+        self.cw0020.read_from(f'{scratch_dir}/cw0020.fits')
 
         self.cw0022 = nmt.NmtCovarianceWorkspace()
-        self.cw0022.read_from('temp/cw0022.fits')
+        self.cw0022.read_from(f'{scratch_dir}/cw0022.fits')
 
         self.cw2020 = nmt.NmtCovarianceWorkspace()
-        self.cw2020.read_from('temp/cw2020.fits')
+        self.cw2020.read_from(f'{scratch_dir}/cw2020.fits')
 
         self.cw2022 = nmt.NmtCovarianceWorkspace()
-        self.cw2022.read_from('temp/cw2022.fits')
+        self.cw2022.read_from(f'{scratch_dir}/cw2022.fits')
 
         self.cw2222 = nmt.NmtCovarianceWorkspace()
-        self.cw2222.read_from('temp/cw2222.fits')
-        pass
+        self.cw2222.read_from(f'{scratch_dir}/cw2222.fits')
         
 
 
@@ -538,7 +529,8 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
             # Use these terms to project the covariance from C_ell to xi(theta)
-            print(tracer_comb1,tracer_comb2,xi_plus_minus1,xi_plus_minus2,s1_s2_1,s1_s2_2)
+            print('tracer combos:',tracer_comb1,tracer_comb2,' xi+/xi-:',xi_plus_minus1,xi_plus_minus2,
+                  ' spins:',s1_s2_1,s1_s2_2)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
 
@@ -724,8 +716,8 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
     # the row and column of the covariance block (i,j), as well as some other
     # info, e.g. tracer combo and xi_pm
     def make_mpi_dict(self, cosmo, meta, two_point_data):
-        comm = MPI.COMM_WORLD
-        size = comm.Get_size()
+        comm = self.comm
+        size = self.size
 
         # we will loop over all these
         tracer_combs = two_point_data.get_tracer_combinations() 
@@ -865,9 +857,8 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
                     )
             i = dic['ij'][0]
             j = dic['ij'][1]
-            np.savetxt(f'temp/cov_{i}_{j}.txt',cov_ij)
-        
-        pass
+            np.savetxt(f'{scratch_dir}/cov_{i}_{j}.txt',cov_ij)
+
     
     def put_together(self, covsize):
         Nell_bins = covsize['Nell_bins']
@@ -877,7 +868,7 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         for i in range(0, N2pt):
             for j in range(i, N2pt): 
                 # Fill in this chunk of the matrix
-                cov_ij = np.loadtxt(f'temp/cov_{i}_{j}.txt')
+                cov_ij = np.loadtxt(f'{scratch_dir}/cov_{i}_{j}.txt')
                 # Find the right location in the matrix
                 start_i = i * Nell_bins
                 start_j = j * Nell_bins
@@ -897,8 +888,8 @@ class TXFourierGaussianCovariance_nmt(PipelineStage):
         return cov_full
 
 
-class TXRealGaussianCovariance_nmt(TXFourierGaussianCovariance_nmt):
-    name='TXRealGaussianCovariance_nmt'
+class TXRealNamasterCovariance(TXFourierNamasterCovariance):
+    name='TXRealNamasterCovariance'
     do_xi = True
 
     inputs = [
@@ -918,6 +909,8 @@ class TXRealGaussianCovariance_nmt(TXFourierGaussianCovariance_nmt):
         'max_sep':250,
         'nbins':20,
         'pickled_wigner_transform': '',
+        'use_true_shear': False,
+        'galaxy_bias': [0.],
     }
 
     def run(self):
