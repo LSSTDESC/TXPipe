@@ -20,7 +20,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata', HDFFile),        # For metadata
         ('mask', MapsFile), #For the mask
-        ('scratch_dir', Scratch_dir)
     ]
 
     outputs = [
