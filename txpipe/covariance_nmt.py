@@ -49,7 +49,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         comm = self.comm
         size = self.size
         rank = self.rank
-        print(Scratch_dir)
         print(size)
         
         if rank == 0: 
