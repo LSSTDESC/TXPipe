@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.base_stage &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.base_stage &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -78,7 +78,7 @@
 <span class="sd">.. module:: pipelinestage</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="PipelineStage"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage">[docs]</a><span class="k">class</span> <span class="nc">PipelineStage</span><span class="p">(</span><span class="n">PipelineStageBase</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage"><a class="viewcode-back" href="../../stages/base_stage.html#txpipe.base_stage.PipelineStage">[docs]</a><span class="k">class</span> <span class="nc">PipelineStage</span><span class="p">(</span><span class="n">PipelineStageBase</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is the base pipeline stage for TXPipe, it is based on the ceci pipeline software. </span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -87,10 +87,10 @@
     <span class="n">outputs</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{}</span>
 
-<div class="viewcode-block" id="PipelineStage.run"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.run"><a class="viewcode-back" href="../../stages/base_stage.html#txpipe.base_stage.PipelineStage.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Please do not execute this stage again.&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="PipelineStage.memory_report"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.memory_report">[docs]</a>    <span class="k">def</span> <span class="nf">memory_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.memory_report"><a class="viewcode-back" href="../../stages/base_stage.html#txpipe.base_stage.PipelineStage.memory_report">[docs]</a>    <span class="k">def</span> <span class="nf">memory_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Print a report about memory currently available</span>
 <span class="sd">        on the node the process is running on.</span>
@@ -113,15 +113,15 @@
         <span class="k">if</span> <span class="n">tag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">tag</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">tag</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{tag}</span><span class="s2">:&quot;</span>
+            <span class="n">tag</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">:&quot;</span>
 
         <span class="c1"># This gives you the name of the host.  At NERSC that is the node name</span>
         <span class="n">host</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()</span>
 
         <span class="c1"># Print messsage</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{t}</span><span class="s2">: Process </span><span class="si">{self.rank}</span><span class="s2">:</span><span class="si">{tag}</span><span class="s2"> Remaining memory on </span><span class="si">{host}</span><span class="s2"> </span><span class="si">{avail:.1f}</span><span class="s2"> GB / </span><span class="si">{total:.1f}</span><span class="s2"> GB&quot;</span><span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2"> Remaining memory on </span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">avail</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB / </span><span class="si">{</span><span class="n">total</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="PipelineStage.combined_iterators"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.combined_iterators">[docs]</a>    <span class="k">def</span> <span class="nf">combined_iterators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="o">*</span><span class="n">inputs</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.combined_iterators"><a class="viewcode-back" href="../../stages/base_stage.html#txpipe.base_stage.PipelineStage.combined_iterators">[docs]</a>    <span class="k">def</span> <span class="nf">combined_iterators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="o">*</span><span class="n">inputs</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Arguments to combined_iterators should be in threes: &quot;</span>
                 <span class="s2">&quot;tag, group, value&quot;</span>
@@ -141,11 +141,11 @@
                 <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
             <span class="k">yield</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span></div>
 
-<div class="viewcode-block" id="PipelineStage.gather_provenance"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.gather_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">gather_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.gather_provenance"><a class="viewcode-back" href="../../stages/base_stage.html#txpipe.base_stage.PipelineStage.gather_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">gather_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">provenance</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">provenance</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;config/</span><span class="si">{key}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">provenance</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;config/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">tag_cls</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -155,17 +155,17 @@
             <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">IOError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                 <span class="n">input_id</span> <span class="o">=</span> <span class="s2">&quot;UNKNOWN&quot;</span>
 
-            <span class="n">provenance</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;input/</span><span class="si">{name}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">input_id</span>
+            <span class="n">provenance</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;input/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">input_id</span>
 
         <span class="n">provenance</span><span class="p">[</span><span class="s2">&quot;gitdiff&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">git_diff</span><span class="p">()</span>
         <span class="n">provenance</span><span class="p">[</span><span class="s1">&#39;githead&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">git_current_revision</span><span class="p">()</span>
 
         <span class="k">for</span> <span class="n">module</span><span class="p">,</span> <span class="n">version</span> <span class="ow">in</span> <span class="n">find_module_versions</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">provenance</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;versions/</span><span class="si">{module}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">version</span>
+            <span class="n">provenance</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;versions/</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">version</span>
 
         <span class="k">return</span> <span class="n">provenance</span></div>
 
-<div class="viewcode-block" id="PipelineStage.open_output"><a class="viewcode-back" href="../../base_stage.html#txpipe.base_stage.PipelineStage.open_output">[docs]</a>    <span class="k">def</span> <span class="nf">open_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="PipelineStage.open_output"><a class="viewcode-back" href="../../stages/base_stage.html#txpipe.base_stage.PipelineStage.open_output">[docs]</a>    <span class="k">def</span> <span class="nf">open_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Find and open an output file with the given tag, in write mode.</span>
 
@@ -192,8 +192,8 @@
         <span class="k">if</span> <span class="n">run_parallel</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">output_class</span><span class="o">.</span><span class="n">supports_parallel_write</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tried to open file for parallel output, but not&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot; supported for type </span><span class="si">{output_class}</span><span class="s2">.  Tag was </span><span class="si">{tag}</span><span class="s2"> and&quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot; path was </span><span class="si">{path}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; supported for type </span><span class="si">{</span><span class="n">output_class</span><span class="si">}</span><span class="s2">.  Tag was </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2"> and&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; path was </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
                     <span class="p">)</span>
             <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;driver&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;mpio&#39;</span>
             <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;comm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comm</span>

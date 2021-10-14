@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.utils.hdf_tools &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.utils.hdf_tools &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -74,8 +74,8 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    In-place HDF5 repack operation on file.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">tmp_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{filename}</span><span class="s1">.tmp_325467847&#39;</span>
-    <span class="n">subprocess</span><span class="o">.</span><span class="n">check_call</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;h5repack </span><span class="si">{filename}</span><span class="s1"> </span><span class="si">{tmp_name}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tmp_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1">.tmp_325467847&#39;</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">check_call</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;h5repack </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">tmp_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">tmp_name</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="create_dataset_early_allocated"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.hdf_tools.create_dataset_early_allocated">[docs]</a><span class="k">def</span> <span class="nf">create_dataset_early_allocated</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>

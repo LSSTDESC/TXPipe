@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.data_types.base &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.data_types.base &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -77,10 +77,10 @@
 <span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">UnsupportedOperation</span>
 
-<div class="viewcode-block" id="FileValidationError"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FileValidationError">[docs]</a><span class="k">class</span> <span class="nc">FileValidationError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<div class="viewcode-block" id="FileValidationError"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FileValidationError">[docs]</a><span class="k">class</span> <span class="nc">FileValidationError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
     <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DataFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile">[docs]</a><span class="k">class</span> <span class="nc">DataFile</span><span class="p">:</span>
+<div class="viewcode-block" id="DataFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile">[docs]</a><span class="k">class</span> <span class="nc">DataFile</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A class representing a DataFile to be made by pipeline stages</span>
 <span class="sd">    and passed on to subsequent ones.</span>
@@ -104,7 +104,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
 
         <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File &#39;mode&#39; argument must be &#39;r&#39; or &#39;w&#39; not &#39;</span><span class="si">{mode}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File &#39;mode&#39; argument must be &#39;r&#39; or &#39;w&#39; not &#39;</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
@@ -117,7 +117,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">provenance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_provenance</span><span class="p">()</span>
 
-<div class="viewcode-block" id="DataFile.generate_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.generate_provenance">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="DataFile.generate_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.generate_provenance">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">generate_provenance</span><span class="p">(</span><span class="n">extra_provenance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generate provenance information - a dictionary</span>
@@ -140,14 +140,14 @@
             <span class="n">provenance</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extra_provenance</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">provenance</span></div>
 
-<div class="viewcode-block" id="DataFile.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DataFile.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Concrete subclasses (for which it is possible) should override</span>
 <span class="sd">        this method to save the dictionary self.provenance to the file.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DataFile.add_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.add_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">add_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<div class="viewcode-block" id="DataFile.add_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.add_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">add_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Concrete subclasses (for which it is possible) should override</span>
 <span class="sd">        this method to save the a new string key/value pair to file</span>
@@ -155,7 +155,7 @@
         <span class="k">pass</span></div>
 
 
-<div class="viewcode-block" id="DataFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DataFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Concrete subclasses for which it is possible should override</span>
 <span class="sd">        this method and read the provenance information from the file.</span>
@@ -172,14 +172,14 @@
         <span class="k">return</span> <span class="n">provenance</span></div>
 
 
-<div class="viewcode-block" id="DataFile.validate"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DataFile.validate"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Concrete subclasses should override this method</span>
 <span class="sd">        to check that all expected columns are present.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="DataFile.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="DataFile.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Open a data file.  The base implementation of this function just</span>
@@ -192,13 +192,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="DataFile.close"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DataFile.close"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="DataFile.make_name"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.DataFile.make_name">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="DataFile.make_name"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.DataFile.make_name">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">make_name</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="n">suffix</span><span class="p">:</span>
-            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{tag}</span><span class="s1">.</span><span class="si">{cls.suffix}</span><span class="s1">&#39;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">suffix</span><span class="si">}</span><span class="s1">&#39;</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">tag</span></div>
 
@@ -208,7 +208,7 @@
     <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="HDFFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.HDFFile">[docs]</a><span class="k">class</span> <span class="nc">HDFFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="HDFFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.HDFFile">[docs]</a><span class="k">class</span> <span class="nc">HDFFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="n">supports_parallel_write</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A data file in the HDF5 format.</span>
@@ -219,7 +219,7 @@
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;hdf5&#39;</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="HDFFile.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.HDFFile.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="HDFFile.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.HDFFile.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="c1"># Suppress a warning that h5py always displays</span>
         <span class="c1"># on import</span>
@@ -229,7 +229,7 @@
         <span class="c1"># Return an open h5py File</span>
         <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="HDFFile.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.HDFFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HDFFile.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.HDFFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write provenance information to a new group,</span>
 <span class="sd">        called &#39;provenance&#39;</span>
@@ -237,7 +237,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;Cannot write provenance to an HDF5 &quot;</span>
                                       <span class="sa">f</span><span class="s2">&quot;file opened in read-only mode &quot;</span>
-                                      <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{self.mode}</span><span class="s2">&quot;</span><span class="p">)</span>
+                                      <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># This method *must* be called by all the processes in a parallel</span>
         <span class="c1"># run.  </span>
@@ -247,7 +247,7 @@
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_provenance_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span></div>
 
-<div class="viewcode-block" id="HDFFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.HDFFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HDFFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.HDFFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;provenance&#39;</span><span class="p">]</span>
             <span class="n">attrs</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span>
@@ -268,18 +268,18 @@
 
 
 
-<div class="viewcode-block" id="HDFFile.validate"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.HDFFile.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HDFFile.validate"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.HDFFile.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">required_datasets</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
             <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="n">FileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;These data sets are missing from HDF file </span><span class="si">{self.path}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{text}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="n">FileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;These data sets are missing from HDF file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="HDFFile.close"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.HDFFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HDFFile.close"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.HDFFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div></div>
 
 
 
-<div class="viewcode-block" id="FitsFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile">[docs]</a><span class="k">class</span> <span class="nc">FitsFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="FitsFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile">[docs]</a><span class="k">class</span> <span class="nc">FitsFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A data file in the FITS format.</span>
 <span class="sd">    Using these files requires the fitsio package.</span>
@@ -287,7 +287,7 @@
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;fits&#39;</span>
     <span class="n">required_columns</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="FitsFile.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="FitsFile.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">fitsio</span>
         <span class="c1"># Fitsio doesn&#39;t have pure &#39;w&#39; modes, just &#39;rw&#39;.</span>
@@ -296,7 +296,7 @@
             <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;rw&#39;</span>
         <span class="k">return</span> <span class="n">fitsio</span><span class="o">.</span><span class="n">FITS</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="FitsFile.missing_columns"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile.missing_columns">[docs]</a>    <span class="k">def</span> <span class="nf">missing_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<div class="viewcode-block" id="FitsFile.missing_columns"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile.missing_columns">[docs]</a>    <span class="k">def</span> <span class="nf">missing_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">hdu</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check that all supplied columns exist</span>
 <span class="sd">        and are in the chosen HDU</span>
@@ -307,7 +307,7 @@
         <span class="k">return</span> <span class="n">missing_columns</span></div>
 
 
-<div class="viewcode-block" id="FitsFile.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="FitsFile.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write provenance information to a new group,</span>
 <span class="sd">        called &#39;provenance&#39;</span>
@@ -315,19 +315,19 @@
         <span class="c1"># Call the sub-method to do each item</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;Cannot write provenance to a FITS file opened &quot;</span>
-                                      <span class="sa">f</span><span class="s2">&quot;in read-only mode (</span><span class="si">{self.mode}</span><span class="s2">&quot;</span><span class="p">)</span>
+                                      <span class="sa">f</span><span class="s2">&quot;in read-only mode (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">provenance</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
                 <span class="n">values</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">write_key</span><span class="p">(</span><span class="n">key</span><span class="o">+</span><span class="sa">f</span><span class="s2">&quot;_</span><span class="si">{i}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">write_key</span><span class="p">(</span><span class="n">key</span><span class="o">+</span><span class="sa">f</span><span class="s2">&quot;_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">write_key</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="FitsFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="FitsFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">header</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">read_header</span><span class="p">()</span>
         <span class="n">provenance</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;uuid&#39;</span><span class="p">:</span>     <span class="n">header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">,</span> <span class="s1">&#39;UNKNOWN&#39;</span><span class="p">),</span>
@@ -339,7 +339,7 @@
 
 
 
-<div class="viewcode-block" id="FitsFile.validate"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="FitsFile.validate"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Check that the catalog has all the required columns and complain otherwise&quot;&quot;&quot;</span>
         <span class="c1"># Find any columns that do not exist in the file</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">missing_columns</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">required_columns</span><span class="p">)</span>
@@ -347,19 +347,19 @@
         <span class="c1"># If there are any, raise an exception that lists them explicitly</span>
         <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
             <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="n">FileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;These columns are missing from FITS file </span><span class="si">{self.path}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{text}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="n">FileValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;These columns are missing from FITS file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="FitsFile.close"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FitsFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="FitsFile.close"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FitsFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div></div>
 
 
-<div class="viewcode-block" id="TextFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.TextFile">[docs]</a><span class="k">class</span> <span class="nc">TextFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="TextFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.TextFile">[docs]</a><span class="k">class</span> <span class="nc">TextFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A data file in plain text format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;txt&#39;</span></div>
 
-<div class="viewcode-block" id="YamlFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.YamlFile">[docs]</a><span class="k">class</span> <span class="nc">YamlFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="YamlFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.YamlFile">[docs]</a><span class="k">class</span> <span class="nc">YamlFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A data file in yaml format.</span>
 <span class="sd">    The top-level object in TXPipe YAML</span>
@@ -380,7 +380,7 @@
             <span class="k">elif</span> <span class="n">load_mode</span> <span class="o">==</span> <span class="s1">&#39;unsafe&#39;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">unsafe_load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown value </span><span class="si">{yaml_load}</span><span class="s2"> of load_mode. &quot;</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown value </span><span class="si">{</span><span class="n">yaml_load</span><span class="si">}</span><span class="s2"> of load_mode. &quot;</span>
                                   <span class="s2">&quot;Should be &#39;safe&#39;, &#39;full&#39;, or &#39;unsafe&#39;&quot;</span><span class="p">)</span>
             <span class="c1"># get provenance</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">provenance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_provenance</span><span class="p">()</span>
@@ -389,19 +389,19 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">provenance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_provenance</span><span class="p">(</span><span class="n">extra_provenance</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">write_provenance</span><span class="p">()</span>
 
-<div class="viewcode-block" id="YamlFile.read"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.YamlFile.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<div class="viewcode-block" id="YamlFile.read"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.YamlFile.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="n">key</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="YamlFile.write"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.YamlFile.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+<div class="viewcode-block" id="YamlFile.write"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.YamlFile.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Only dicts should be passed to YamlFile.write&quot;</span><span class="p">)</span>
         <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="YamlFile.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.YamlFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="YamlFile.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.YamlFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;provenance&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">provenance</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">d</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="YamlFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.YamlFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="YamlFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.YamlFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">prov</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;provenance&#39;</span><span class="p">,</span> <span class="p">{})</span>
         <span class="n">req_provenance</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s1">&#39;uuid&#39;</span><span class="p">:</span>     <span class="n">prov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">,</span> <span class="s2">&quot;UNKNOWN&quot;</span><span class="p">),</span>
@@ -413,10 +413,10 @@
         <span class="k">return</span> <span class="n">prov</span></div></div>
 
 
-<div class="viewcode-block" id="Directory"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.Directory">[docs]</a><span class="k">class</span> <span class="nc">Directory</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="Directory"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.Directory">[docs]</a><span class="k">class</span> <span class="nc">Directory</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
 
-<div class="viewcode-block" id="Directory.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.Directory.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Directory.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.Directory.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
         <span class="n">p</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
@@ -426,10 +426,10 @@
             <span class="n">p</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Directory input </span><span class="si">{path}</span><span class="s2"> does not exist&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Directory input </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> does not exist&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">p</span></div>
 
-<div class="viewcode-block" id="Directory.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.Directory.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Directory.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.Directory.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write provenance information to a new group,</span>
 <span class="sd">        called &#39;provenance&#39;</span>
@@ -438,7 +438,7 @@
         <span class="c1"># run.  </span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;r&#39;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;Cannot write provenance to a directory opened &quot;</span>
-                                       <span class="sa">f</span><span class="s2">&quot;in read-only mode (</span><span class="si">{self.mode}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                                       <span class="sa">f</span><span class="s2">&quot;in read-only mode (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_provenance_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">/</span> <span class="s1">&#39;provenance.yml&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
 
@@ -447,7 +447,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_provenance_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="Directory.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.Directory.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Directory.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.Directory.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">/</span> <span class="s1">&#39;provenance.yml&#39;</span><span class="p">)</span>
             <span class="n">attrs</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -467,14 +467,14 @@
 
         <span class="k">return</span> <span class="n">provenance</span></div></div>
 
-<div class="viewcode-block" id="FileCollection"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FileCollection">[docs]</a><span class="k">class</span> <span class="nc">FileCollection</span><span class="p">(</span><span class="n">Directory</span><span class="p">):</span>
+<div class="viewcode-block" id="FileCollection"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FileCollection">[docs]</a><span class="k">class</span> <span class="nc">FileCollection</span><span class="p">(</span><span class="n">Directory</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a grouped bundle of files, for cases where you don&#39;t</span>
 <span class="sd">    know the exact list in advance.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
 
-<div class="viewcode-block" id="FileCollection.write_listing"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FileCollection.write_listing">[docs]</a>    <span class="k">def</span> <span class="nf">write_listing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filenames</span><span class="p">):</span>
+<div class="viewcode-block" id="FileCollection.write_listing"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FileCollection.write_listing">[docs]</a>    <span class="k">def</span> <span class="nf">write_listing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filenames</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write a listing file in the directory recording</span>
 <span class="sd">        (presumably) the filenames put in it.</span>
@@ -483,7 +483,7 @@
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">filenames</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="FileCollection.read_listing"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FileCollection.read_listing">[docs]</a>    <span class="k">def</span> <span class="nf">read_listing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="FileCollection.read_listing"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FileCollection.read_listing">[docs]</a>    <span class="k">def</span> <span class="nf">read_listing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read a listing file from the directory.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -492,7 +492,7 @@
             <span class="n">filenames</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">filenames</span></div>
 
-<div class="viewcode-block" id="FileCollection.path_for_file"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.FileCollection.path_for_file">[docs]</a>    <span class="k">def</span> <span class="nf">path_for_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<div class="viewcode-block" id="FileCollection.path_for_file"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.FileCollection.path_for_file">[docs]</a>    <span class="k">def</span> <span class="nf">path_for_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the path for a file inside the collection.</span>
 <span class="sd">        Does not check if the file exists or anything like</span>
@@ -501,10 +501,10 @@
         <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">/</span> <span class="n">filename</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="PNGFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PNGFile">[docs]</a><span class="k">class</span> <span class="nc">PNGFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="PNGFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PNGFile">[docs]</a><span class="k">class</span> <span class="nc">PNGFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;png&#39;</span>
 
-<div class="viewcode-block" id="PNGFile.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PNGFile.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="PNGFile.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PNGFile.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">matplotlib</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
@@ -513,41 +513,41 @@
         <span class="k">return</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="PNGFile.close"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PNGFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PNGFile.close"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PNGFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">provenance</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="PNGFile.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PNGFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PNGFile.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PNGFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># provenance is written on closing the file</span>
         <span class="k">pass</span></div>
 
-<div class="viewcode-block" id="PNGFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PNGFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PNGFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PNGFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Reading existing PNG files is not supported&quot;</span><span class="p">)</span></div></div>
 
-<div class="viewcode-block" id="PickleFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PickleFile">[docs]</a><span class="k">class</span> <span class="nc">PickleFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="PickleFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PickleFile">[docs]</a><span class="k">class</span> <span class="nc">PickleFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;pkl&quot;</span>
 
-<div class="viewcode-block" id="PickleFile.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PickleFile.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="PickleFile.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PickleFile.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mode</span> <span class="o">+</span> <span class="s2">&quot;b&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="PickleFile.write_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PickleFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PickleFile.write_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PickleFile.write_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">write_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">provenance</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="PickleFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PickleFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PickleFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PickleFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="PickleFile.write"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PickleFile.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+<div class="viewcode-block" id="PickleFile.write"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PickleFile.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">!=</span> <span class="s2">&quot;w&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;Cannot write to pickle file opened in &quot;</span>
-                                      <span class="sa">f</span><span class="s2">&quot;read-only (</span><span class="si">{self.mode}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                                      <span class="sa">f</span><span class="s2">&quot;read-only (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="PickleFile.read"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.base.PickleFile.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PickleFile.read"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.base.PickleFile.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">!=</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;Cannot read from pickle file opened in &quot;</span>
-                                      <span class="sa">f</span><span class="s2">&quot;write-only (</span><span class="si">{self.mode}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                                      <span class="sa">f</span><span class="s2">&quot;write-only (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span></div></div>
 
 </pre></div>

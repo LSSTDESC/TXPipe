@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TXPipe Installation &mdash; TXPipe  documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>TXPipe Installation &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -35,14 +37,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">TXPipe Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 <li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
 </ul>
 
@@ -70,39 +72,20 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="txpipe-installation">
-<h1>TXPipe Installation<a class="headerlink" href="#txpipe-installation" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+  <section id="txpipe-installation">
+<h1>TXPipe Installation<a class="headerlink" href="#txpipe-installation" title="Permalink to this headline"></a></h1>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline"></a></h2>
 <p>TXPipe requires python 3.6 or above.</p>
-<p>The pipeline software ceci that TXPipe uses can be installed with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">ceci</span>
-</pre></div>
-</div>
-<p>Various stages of TXPipe also require:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">numpy</span>
-<span class="n">scipy</span>
-<span class="n">fitsio</span>
-<span class="n">healpy</span>
-<span class="n">astropy</span>
-</pre></div>
-</div>
-<p>which can all also be installed with pip.</p>
-<p>To run the example you need some input data files.  You can obtain these from
-NERSC if you have access to the LSST space using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">scp</span> <span class="n">USERNAME</span><span class="nd">@cori</span><span class="o">.</span><span class="n">nersc</span><span class="o">.</span><span class="n">gov</span><span class="p">:</span><span class="o">/</span><span class="k">global</span><span class="o">/</span><span class="n">projecta</span><span class="o">/</span><span class="n">projectdirs</span><span class="o">/</span><span class="n">lsst</span><span class="o">/</span><span class="n">groups</span><span class="o">/</span><span class="n">WL</span><span class="o">/</span><span class="n">users</span><span class="o">/</span><span class="n">zuntz</span><span class="o">/</span><span class="n">data</span><span class="o">/*</span> <span class="o">./</span>
-</pre></div>
-</div>
-<p>To set up an environment with the required dependencies for this code on the cori machine at NERSC
-you can run:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">/</span><span class="k">global</span><span class="o">/</span><span class="n">projecta</span><span class="o">/</span><span class="n">projectdirs</span><span class="o">/</span><span class="n">lsst</span><span class="o">/</span><span class="n">groups</span><span class="o">/</span><span class="n">WL</span><span class="o">/</span><span class="n">users</span><span class="o">/</span><span class="n">zuntz</span><span class="o">/</span><span class="n">setup</span><span class="o">-</span><span class="n">cori</span>
-<span class="c1"># OR</span>
-<span class="n">source</span> <span class="o">/</span><span class="k">global</span><span class="o">/</span><span class="n">projecta</span><span class="o">/</span><span class="n">projectdirs</span><span class="o">/</span><span class="n">lsst</span><span class="o">/</span><span class="n">groups</span><span class="o">/</span><span class="n">WL</span><span class="o">/</span><span class="n">users</span><span class="o">/</span><span class="n">zuntz</span><span class="o">/</span><span class="n">setup</span><span class="o">-</span><span class="n">cori</span><span class="o">-</span><span class="n">nompi</span>
-</pre></div>
-</div>
-<p>use the former when running jobs and the latter on the login nodes.</p>
-</div>
-</div>
+<p>As the pipeline has many components it has many dependencies. These are listed in the file <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code>, but getting an environment which can run the code fully parallel requires care.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="installation/conda.html#conda-installation"><span class="std std-ref">Conda Installation</span></a> is the easiest approach on a personal machine</p></li>
+<li><p><a class="reference internal" href="installation/nersc.html#nersc-shifter-installation"><span class="std std-ref">NERSC Shifter Installation</span></a> is the easiest approach on NERSC</p></li>
+<li><p><a class="reference internal" href="installation/ccin2p3.html#cc-in2p3-installation"><span class="std std-ref">CC-IN2P3 Installation</span></a> for the French CC-IN2P3 machine</p></li>
+</ul>
+<p>The last is probably easiest to adapt to other clusters or supercomputer.</p>
+</section>
+</section>
 
 
            </div>
@@ -115,7 +98,7 @@ you can run:</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2020, DESC.</p>
+    <p>&#169; Copyright 2021, DESC.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

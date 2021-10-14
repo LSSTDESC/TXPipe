@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.noise_maps &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.noise_maps &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -75,7 +75,7 @@
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">choose_pixelization</span>
 <span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">read_shear_catalog_type</span>
 
-<div class="viewcode-block" id="TXNoiseMaps"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXNoiseMaps</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXNoiseMaps"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXNoiseMaps</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate a suite of random noise maps by randomly</span>
 <span class="sd">    rotating individual galaxy measurements.</span>
@@ -147,7 +147,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">nmaps</span> <span class="o">=</span> <span class="n">nbin_source</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">lensing_realizations</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">nbin_lens</span> <span class="o">*</span> <span class="n">clustering_realizations</span> <span class="o">*</span> <span class="mi">2</span>
             <span class="n">nGB</span> <span class="o">=</span> <span class="p">(</span><span class="n">npix</span> <span class="o">*</span> <span class="n">nmaps</span> <span class="o">*</span> <span class="mi">8</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1000.</span><span class="o">**</span><span class="mi">3</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Allocating maps of size </span><span class="si">{nGB:.2f}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Allocating maps of size </span><span class="si">{</span><span class="n">nGB</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
 
         <span class="c1"># lensing g1, g2</span>
         <span class="n">G1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">npix</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">lensing_realizations</span><span class="p">))</span>
@@ -162,7 +162,7 @@
 
         <span class="c1"># Loop through the data</span>
         <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{self.rank}</span><span class="s2"> processing rows </span><span class="si">{s}</span><span class="s2"> - </span><span class="si">{e}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> processing rows </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">source_bin</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;source_bin&#39;</span><span class="p">]</span>
             <span class="n">lens_bin</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">]</span>
             <span class="n">ra</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span>
@@ -237,10 +237,10 @@
                     <span class="n">g1</span> <span class="o">=</span> <span class="n">G1</span><span class="p">[:,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">GW</span><span class="p">[:,</span> <span class="n">b</span><span class="p">]</span>
                     <span class="n">g2</span> <span class="o">=</span> <span class="n">G2</span><span class="p">[:,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">GW</span><span class="p">[:,</span> <span class="n">b</span><span class="p">]</span>
 
-                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{i}</span><span class="s2">/g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">,</span> 
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> 
                         <span class="n">pixels</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">],</span> <span class="n">g1</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">],</span> <span class="n">metadata</span><span class="p">)</span>
 
-                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{i}</span><span class="s2">/g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">,</span> 
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> 
                         <span class="n">pixels</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">],</span> <span class="n">metadata</span><span class="p">)</span>
 
             <span class="n">outfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_output</span><span class="p">(</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -268,14 +268,14 @@
 
                     <span class="c1"># Write both overdensity and count maps</span>
                     <span class="c1"># for each bin for each split</span>
-                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/rho1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">,</span> 
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/rho1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> 
                         <span class="n">pixels</span><span class="p">,</span> <span class="n">rho1</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/rho2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">,</span> 
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/rho2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> 
                         <span class="n">pixels</span><span class="p">,</span> <span class="n">rho2</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
                     <span class="c1"># counts</span>
-                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/ngal1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">,</span> 
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/ngal1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> 
                         <span class="n">pixels</span><span class="p">,</span> <span class="n">half1</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
-                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/ngal2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">,</span> 
+                    <span class="n">outfile</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/ngal2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> 
                         <span class="n">pixels</span><span class="p">,</span> <span class="n">half2</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
                     
 
@@ -290,7 +290,7 @@
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;lens_maps&#39;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;maps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span>
-            <span class="n">ngal_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;ngal_</span><span class="si">{b}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
+            <span class="n">ngal_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s1">&#39;shear_tomography_catalog&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
@@ -308,7 +308,7 @@
 
 
 
-<div class="viewcode-block" id="TXSourceNoiseMaps"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXSourceNoiseMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceNoiseMaps"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXSourceNoiseMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXSourceNoiseMaps&#39;</span>
     
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
@@ -328,13 +328,13 @@
     <span class="p">}</span>
 
     <span class="c1"># instead of reading from config we match the basic maps</span>
-<div class="viewcode-block" id="TXSourceNoiseMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceNoiseMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
             <span class="n">pix_info</span> <span class="o">=</span> <span class="n">maps_file</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">choose_pixelization</span><span class="p">(</span><span class="o">**</span><span class="n">pix_info</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXSourceNoiseMaps.prepare_mappers"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceNoiseMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
         <span class="n">read_shear_catalog_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
@@ -364,7 +364,7 @@
 
         <span class="k">return</span> <span class="p">(</span><span class="n">npix</span><span class="p">,</span> <span class="n">G1</span><span class="p">,</span> <span class="n">G2</span><span class="p">,</span> <span class="n">GW</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">reverse_map</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXSourceNoiseMaps.data_iterator"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceNoiseMaps.data_iterator"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;shear_catalog_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;metacal&quot;</span><span class="p">:</span>
             <span class="n">shear_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="s1">&#39;dec&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="s1">&#39;mcal_g1&#39;</span><span class="p">,</span> <span class="s1">&#39;mcal_g2&#39;</span><span class="p">]</span>
@@ -377,7 +377,7 @@
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">it</span></div>
 
-<div class="viewcode-block" id="TXSourceNoiseMaps.accumulate_maps"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceNoiseMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="n">npix</span><span class="p">,</span> <span class="n">G1</span><span class="p">,</span> <span class="n">G2</span><span class="p">,</span> <span class="n">GW</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">mappers</span>
         <span class="n">lensing_realizations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;lensing_realizations&#39;</span><span class="p">]</span>
 
@@ -429,7 +429,7 @@
             <span class="n">GW</span><span class="p">[</span><span class="n">pix</span><span class="p">,</span> <span class="n">sb</span><span class="p">]</span> <span class="o">+=</span> <span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="TXSourceNoiseMaps.finalize_mappers"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceNoiseMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXSourceNoiseMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># only one mapper here - we call its finalize method</span>
         <span class="c1"># to collect everything</span>
         <span class="n">npix</span><span class="p">,</span> <span class="n">G1</span><span class="p">,</span> <span class="n">G2</span><span class="p">,</span> <span class="n">GW</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">reverse_map</span><span class="p">,</span> <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">mappers</span>
@@ -458,17 +458,17 @@
                 <span class="n">g1</span> <span class="o">=</span> <span class="n">G1</span><span class="p">[:,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">GW</span><span class="p">[:,</span> <span class="n">b</span><span class="p">]</span>
                 <span class="n">g2</span> <span class="o">=</span> <span class="n">G2</span><span class="p">[:,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">GW</span><span class="p">[:,</span> <span class="n">b</span><span class="p">]</span>
 
-                <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_noise_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{i}</span><span class="s2">/g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_noise_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">reverse_map</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">],</span> <span class="n">g1</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">]</span>
                 <span class="p">)</span>
 
-                <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_noise_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{i}</span><span class="s2">/g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_noise_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;rotation_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">reverse_map</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">],</span> <span class="n">g2</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">]</span>
                 <span class="p">)</span>
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
 
-<div class="viewcode-block" id="TXExternalLensNoiseMaps"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXExternalLensNoiseMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensNoiseMaps"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXExternalLensNoiseMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXExternalLensNoiseMaps&#39;</span>
     
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
@@ -487,13 +487,13 @@
     <span class="p">}</span>
 
     <span class="c1"># instead of reading from config we match the basic maps</span>
-<div class="viewcode-block" id="TXExternalLensNoiseMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensNoiseMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
             <span class="n">pix_info</span> <span class="o">=</span> <span class="n">maps_file</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">choose_pixelization</span><span class="p">(</span><span class="o">**</span><span class="n">pix_info</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXExternalLensNoiseMaps.prepare_mappers"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensNoiseMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="n">maps_file</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="s2">&quot;mask&quot;</span><span class="p">)</span>
@@ -519,14 +519,14 @@
 
         <span class="k">return</span> <span class="p">(</span><span class="n">npix</span><span class="p">,</span> <span class="n">ngal_split</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">reverse_map</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXExternalLensNoiseMaps.data_iterator"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensNoiseMaps.data_iterator"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">it</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;chunk_rows&quot;</span><span class="p">],</span>
                 <span class="s1">&#39;lens_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;lens&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">,</span> <span class="s1">&#39;dec&#39;</span><span class="p">],</span>
                 <span class="s1">&#39;lens_tomography_catalog&#39;</span><span class="p">,</span><span class="s1">&#39;tomography&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;lens_bin&#39;</span><span class="p">],</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">it</span></div>
 
-<div class="viewcode-block" id="TXExternalLensNoiseMaps.accumulate_maps"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensNoiseMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="n">npix</span><span class="p">,</span> <span class="n">ngal_split</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">mappers</span>
         <span class="n">clustering_realizations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;clustering_realizations&#39;</span><span class="p">]</span>
 
@@ -562,7 +562,7 @@
                 <span class="n">ngal_split</span><span class="p">[</span><span class="n">pix</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">split</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span></div>
 
 
-<div class="viewcode-block" id="TXExternalLensNoiseMaps.finalize_mappers"><a class="viewcode-back" href="../../noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensNoiseMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/noise_maps.html#txpipe.noise_maps.TXExternalLensNoiseMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># only one mapper here - we call its finalize method</span>
         <span class="c1"># to collect everything</span>
         <span class="n">npix</span><span class="p">,</span> <span class="n">ngal_split</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">reverse_map</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">mappers</span>
@@ -599,13 +599,13 @@
                 <span class="n">rho2</span> <span class="o">=</span> <span class="p">(</span><span class="n">half2</span> <span class="o">-</span> <span class="n">mu2</span><span class="p">)</span> <span class="o">/</span> <span class="n">mu2</span>
 
                 <span class="c1"># Save four maps - density splits and ngal splits</span>
-                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/rho1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/rho1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">reverse_map</span><span class="p">,</span> <span class="n">rho1</span><span class="p">)</span>
-                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/rho2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/rho2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">reverse_map</span><span class="p">,</span> <span class="n">rho2</span><span class="p">)</span>
-                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/ngal1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/ngal1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">reverse_map</span><span class="p">,</span> <span class="n">half1</span><span class="p">)</span>
-                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{i}</span><span class="s2">/ngal2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">maps</span><span class="p">[</span><span class="s1">&#39;lens_noise_maps&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;split_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/ngal2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">reverse_map</span><span class="p">,</span> <span class="n">half2</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>

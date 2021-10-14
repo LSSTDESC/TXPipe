@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.covariance &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.covariance &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -78,7 +78,7 @@
 
 <span class="c1"># Needed changes: 1) ell and theta spacing could be further optimized 2) coupling matrix</span>
 
-<div class="viewcode-block" id="TXFourierGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.covariance.TXFourierGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXFourierGaussianCovariance</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXFourierGaussianCovariance"><a class="viewcode-back" href="../../stages/covariance.html#txpipe.covariance.TXFourierGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXFourierGaussianCovariance</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXFourierGaussianCovariance&#39;</span>
     <span class="n">do_xi</span><span class="o">=</span><span class="kc">False</span>
     
@@ -195,14 +195,14 @@
         <span class="n">n_lens_arcmin</span> <span class="o">=</span> <span class="n">N_lens</span> <span class="o">/</span> <span class="n">area_arcmin2</span>
 
         <span class="c1"># Feedback</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area =  </span><span class="si">{area_deg2:.1f}</span><span class="s2"> deg^2&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky:  </span><span class="si">{f_sky}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_eff:  </span><span class="si">{N_eff}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_lens: </span><span class="si">{N_lens}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_eff:  </span><span class="si">{n_eff}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     =  {np.around(n_eff_arcmin,2)} / sq arcmin&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lens density: </span><span class="si">{n_lens}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;            = {np.around(n_lens_arcmin,2)} / arcmin&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area =  </span><span class="si">{</span><span class="n">area_deg2</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> deg^2&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky:  </span><span class="si">{</span><span class="n">f_sky</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_eff:  </span><span class="si">{</span><span class="n">N_eff</span><span class="si">}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;N_lens: </span><span class="si">{</span><span class="n">N_lens</span><span class="si">}</span><span class="s2"> (totals)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_eff:  </span><span class="si">{</span><span class="n">n_eff</span><span class="si">}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     =  </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">n_eff_arcmin</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> / sq arcmin&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lens density: </span><span class="si">{</span><span class="n">n_lens</span><span class="si">}</span><span class="s2"> / steradian&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;            = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">n_lens_arcmin</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> / arcmin&quot;</span><span class="p">)</span>
 
         <span class="c1"># Pass all this back as a dictionary</span>
         <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span>
@@ -243,10 +243,10 @@
                 <span class="c1"># Get galaxy bias for this sample. Default value = 1.</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;galaxy_bias&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span><span class="mf">0.</span><span class="p">]:</span>
                     <span class="n">b0</span> <span class="o">=</span> <span class="mi">1</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using galaxy bias = 1 for </span><span class="si">{tracer}</span><span class="s2"> (since you didn&#39;t specify any biases)&quot;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using galaxy bias = 1 for </span><span class="si">{</span><span class="n">tracer</span><span class="si">}</span><span class="s2"> (since you didn&#39;t specify any biases)&quot;</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">b0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;galaxy_bias&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using galaxy bias = </span><span class="si">{b0}</span><span class="s2"> for </span><span class="si">{tracer}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using galaxy bias = </span><span class="si">{</span><span class="n">b0</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">tracer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
                 <span class="n">b</span> <span class="o">=</span> <span class="n">b0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
                 <span class="n">n_gal</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;n_lens&#39;</span><span class="p">][</span><span class="n">nbin</span><span class="p">]</span>
@@ -412,11 +412,11 @@
         <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;pickled_wigner_transform&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading precomputed wigner transform from </span><span class="si">{path}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading precomputed wigner transform from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">WT</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">))</span>
                 <span class="k">return</span> <span class="n">WT</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precomputed wigner transform </span><span class="si">{path}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precomputed wigner transform </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Will compute it and then save it.&quot;</span><span class="p">)</span>
 
         <span class="c1"># We don&#39;t want to use n processes with n threads each by accident,</span>
@@ -440,7 +440,7 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">WT</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">))</span>
             <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not save wigner transform to </span><span class="si">{path}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not save wigner transform to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">WT</span>
 
 
@@ -498,7 +498,7 @@
             
             <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">N2pt</span><span class="p">):</span>
                 <span class="n">tracer_comb2</span> <span class="o">=</span> <span class="n">tracer_combs</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{tracer_comb1}</span><span class="s2"> x </span><span class="si">{tracer_comb2}</span><span class="s2">: chunk (</span><span class="si">{i}</span><span class="s2">,</span><span class="si">{j}</span><span class="s2">) of (</span><span class="si">{N2pt}</span><span class="s2">,</span><span class="si">{N2pt}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing </span><span class="si">{</span><span class="n">tracer_comb1</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">tracer_comb2</span><span class="si">}</span><span class="s2">: chunk (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">) of (</span><span class="si">{</span><span class="n">N2pt</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">N2pt</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
                 
                 <span class="n">count_xi_pm2</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xim_start</span><span class="p">,</span> <span class="n">xim_end</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
 
@@ -553,7 +553,7 @@
         <span class="k">return</span> <span class="n">cov_full</span></div>
 
 
-<div class="viewcode-block" id="TXRealGaussianCovariance"><a class="viewcode-back" href="../../covariance.html#txpipe.covariance.TXRealGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRealGaussianCovariance"><a class="viewcode-back" href="../../stages/covariance.html#txpipe.covariance.TXRealGaussianCovariance">[docs]</a><span class="k">class</span> <span class="nc">TXRealGaussianCovariance</span><span class="p">(</span><span class="n">TXFourierGaussianCovariance</span><span class="p">):</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TXRealGaussianCovariance&#39;</span>
     <span class="n">do_xi</span> <span class="o">=</span> <span class="kc">True</span>
 

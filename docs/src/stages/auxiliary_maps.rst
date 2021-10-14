@@ -1,7 +1,7 @@
 Auxilliary maps
 ---------------------
 
-.. autoclass:: txpipe.TXAuxiliaryMaps
+.. automodule:: txpipe.auxiliary_maps
    :members:
    :special-members:
    :show-inheritance:

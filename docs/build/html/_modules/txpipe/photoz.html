@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.photoz &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.photoz &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -70,7 +70,7 @@
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">PhotozPDFFile</span><span class="p">,</span> <span class="n">ShearCatalog</span><span class="p">,</span> <span class="n">YamlFile</span><span class="p">,</span> <span class="n">HDFFile</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-<div class="viewcode-block" id="TXRandomPhotozPDF"><a class="viewcode-back" href="../../photoz.html#txpipe.photoz.TXRandomPhotozPDF">[docs]</a><span class="k">class</span> <span class="nc">TXRandomPhotozPDF</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRandomPhotozPDF"><a class="viewcode-back" href="../../stages/photoz.html#txpipe.photoz.TXRandomPhotozPDF">[docs]</a><span class="k">class</span> <span class="nc">TXRandomPhotozPDF</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is a placeholder for an actual photoz pipeline!</span>
 
@@ -109,7 +109,7 @@
     <span class="p">}</span>
 
 
-<div class="viewcode-block" id="TXRandomPhotozPDF.run"><a class="viewcode-back" href="../../photoz.html#txpipe.photoz.TXRandomPhotozPDF.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRandomPhotozPDF.run"><a class="viewcode-back" href="../../stages/photoz.html#txpipe.photoz.TXRandomPhotozPDF.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Run the analysis for this stage.</span>
 
@@ -139,7 +139,7 @@
         <span class="n">bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;bands&#39;</span><span class="p">]</span>
         <span class="c1"># The columns we need to calculate the photo-z.</span>
         <span class="c1"># Note that we need all the metacalibrated variants too.</span>
-        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">_lsst</span><span class="si">{suffix}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span> <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">suffices</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_lsst</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span> <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">suffices</span><span class="p">]</span>
 
         <span class="c1"># Loop through chunks of the data.</span>
         <span class="c1"># Parallelism is handled in the iterate_input function - </span>
@@ -148,7 +148,7 @@
         <span class="c1"># all write to the file at once too.</span>
         <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s2">&quot;photometry&quot;</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> running photo-z for rows </span><span class="si">{start}</span><span class="s2">-</span><span class="si">{end}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> running photo-z for rows </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="c1"># Compute some mock photo-z PDFs and point estimates</span>
             <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_photozs</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
@@ -162,7 +162,7 @@
         <span class="c1"># Finish</span>
         <span class="n">output_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="TXRandomPhotozPDF.calculate_photozs"><a class="viewcode-back" href="../../photoz.html#txpipe.photoz.TXRandomPhotozPDF.calculate_photozs">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_photozs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRandomPhotozPDF.calculate_photozs"><a class="viewcode-back" href="../../stages/photoz.html#txpipe.photoz.TXRandomPhotozPDF.calculate_photozs">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_photozs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generate random photo-zs.</span>
 
@@ -225,7 +225,7 @@
         
         <span class="k">return</span> <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span></div>
 
-<div class="viewcode-block" id="TXRandomPhotozPDF.write_output"><a class="viewcode-back" href="../../photoz.html#txpipe.photoz.TXRandomPhotozPDF.write_output">[docs]</a>    <span class="k">def</span> <span class="nf">write_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRandomPhotozPDF.write_output"><a class="viewcode-back" href="../../stages/photoz.html#txpipe.photoz.TXRandomPhotozPDF.write_output">[docs]</a>    <span class="k">def</span> <span class="nf">write_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write out a chunk of the computed PZ data.</span>
 
@@ -260,7 +260,7 @@
 
 
 
-<div class="viewcode-block" id="TXRandomPhotozPDF.prepare_output"><a class="viewcode-back" href="../../photoz.html#txpipe.photoz.TXRandomPhotozPDF.prepare_output">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nobj</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<div class="viewcode-block" id="TXRandomPhotozPDF.prepare_output"><a class="viewcode-back" href="../../stages/photoz.html#txpipe.photoz.TXRandomPhotozPDF.prepare_output">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nobj</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Prepare the output HDF5 file for writing.</span>
 

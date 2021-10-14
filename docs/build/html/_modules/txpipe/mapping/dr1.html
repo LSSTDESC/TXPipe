@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.mapping.dr1 &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.mapping.dr1 &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -69,7 +69,7 @@
 <span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">parallel_statistics</span> <span class="kn">import</span> <span class="n">ParallelMeanVariance</span>
 
-<div class="viewcode-block" id="DepthMapperDR1"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.DepthMapperDR1">[docs]</a><span class="k">class</span> <span class="nc">DepthMapperDR1</span><span class="p">:</span>
+<div class="viewcode-block" id="DepthMapperDR1"><a class="viewcode-back" href="../../../stages/mapping.html#txpipe.mapping.dr1.DepthMapperDR1">[docs]</a><span class="k">class</span> <span class="nc">DepthMapperDR1</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">snr_threshold</span><span class="p">,</span> <span class="n">snr_delta</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Class to build up depth maps iteratively as we cycle through a data set.</span>
 
@@ -118,7 +118,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span> <span class="o">=</span> <span class="n">sparse</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="o">.</span><span class="n">npix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="n">sparse</span><span class="p">)</span>
 
-<div class="viewcode-block" id="DepthMapperDR1.add_data"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.DepthMapperDR1.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<div class="viewcode-block" id="DepthMapperDR1.add_data"><a class="viewcode-back" href="../../../stages/mapping.html#txpipe.mapping.dr1.DepthMapperDR1.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="n">ra</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span>
         <span class="n">dec</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span>
         <span class="n">snr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;snr&#39;</span><span class="p">]</span>
@@ -132,7 +132,7 @@
             <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix_nums</span><span class="o">==</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">snr</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">snr_threshold</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">snr_delta</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">mags</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="DepthMapperDR1.finalize"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.DepthMapperDR1.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="DepthMapperDR1.finalize"><a class="viewcode-back" href="../../../stages/mapping.html#txpipe.mapping.dr1.DepthMapperDR1.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
         <span class="n">count</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">depth_var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
 
@@ -150,7 +150,7 @@
         <span class="k">return</span> <span class="n">pixel</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">depth_var</span></div></div>
 
     
-<div class="viewcode-block" id="BrightObjectMapper"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.BrightObjectMapper">[docs]</a><span class="k">class</span> <span class="nc">BrightObjectMapper</span><span class="p">:</span>
+<div class="viewcode-block" id="BrightObjectMapper"><a class="viewcode-back" href="../../../stages/mapping.html#txpipe.mapping.dr1.BrightObjectMapper">[docs]</a><span class="k">class</span> <span class="nc">BrightObjectMapper</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mag_threshold</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Class to build up bright object maps iteratively as we cycle through a data set.</span>
 
@@ -195,7 +195,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sparse</span> <span class="o">=</span> <span class="n">sparse</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="n">ParallelMeanVariance</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="o">.</span><span class="n">npix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="n">sparse</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BrightObjectMapper.add_data"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.BrightObjectMapper.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<div class="viewcode-block" id="BrightObjectMapper.add_data"><a class="viewcode-back" href="../../../stages/mapping.html#txpipe.mapping.dr1.BrightObjectMapper.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="n">ra</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span>
         <span class="n">dec</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span>
         <span class="n">ext</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;extendedness&#39;</span><span class="p">]</span>
@@ -209,7 +209,7 @@
             <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix_nums</span><span class="o">==</span><span class="n">p</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ext</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">mags</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">mag_threshold</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">mags</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="BrightObjectMapper.finalize"><a class="viewcode-back" href="../../../mapping.html#txpipe.mapping.dr1.BrightObjectMapper.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="BrightObjectMapper.finalize"><a class="viewcode-back" href="../../../stages/mapping.html#txpipe.mapping.dr1.BrightObjectMapper.finalize">[docs]</a>    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 
         <span class="n">count</span><span class="p">,</span> <span class="n">brmag</span><span class="p">,</span> <span class="n">brmag_var</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">comm</span><span class="p">)</span>
 

@@ -15,6 +15,8 @@ TXPipe documentation
 
    stages/stages
    
+   submodules
+   
 
 
 

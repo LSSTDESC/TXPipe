@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.data_types.types &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.data_types.types &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -73,7 +73,7 @@
 <span class="kn">from</span> <span class="nn">.base</span> <span class="kn">import</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">DataFile</span><span class="p">,</span> <span class="n">YamlFile</span>
 <span class="kn">import</span> <span class="nn">yaml</span>
 
-<div class="viewcode-block" id="metacalibration_names"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.metacalibration_names">[docs]</a><span class="k">def</span> <span class="nf">metacalibration_names</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+<div class="viewcode-block" id="metacalibration_names"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.metacalibration_names">[docs]</a><span class="k">def</span> <span class="nf">metacalibration_names</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate the metacalibrated variants of the inputs names,</span>
 <span class="sd">    that is, variants with _1p, _1m, _2p, and _2m on the end</span>
@@ -85,7 +85,7 @@
         <span class="n">out</span> <span class="o">+=</span> <span class="p">[</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">suffices</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">out</span></div>
 
-<div class="viewcode-block" id="ShearCatalog"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.ShearCatalog">[docs]</a><span class="k">class</span> <span class="nc">ShearCatalog</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
+<div class="viewcode-block" id="ShearCatalog"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.ShearCatalog">[docs]</a><span class="k">class</span> <span class="nc">ShearCatalog</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A generic shear catalog </span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -95,7 +95,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_catalog_type</span> <span class="o">=</span> <span class="kc">None</span>
     
-<div class="viewcode-block" id="ShearCatalog.read_catalog_info"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.ShearCatalog.read_catalog_info">[docs]</a>    <span class="k">def</span> <span class="nf">read_catalog_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ShearCatalog.read_catalog_info"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.ShearCatalog.read_catalog_info">[docs]</a>    <span class="k">def</span> <span class="nf">read_catalog_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;shear&#39;</span><span class="p">]</span>
             <span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
@@ -122,36 +122,36 @@
         <span class="k">return</span> <span class="n">t</span></div>
 
 
-<div class="viewcode-block" id="TomographyCatalog"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.TomographyCatalog">[docs]</a><span class="k">class</span> <span class="nc">TomographyCatalog</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
+<div class="viewcode-block" id="TomographyCatalog"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.TomographyCatalog">[docs]</a><span class="k">class</span> <span class="nc">TomographyCatalog</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="TomographyCatalog.read_zbins"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.TomographyCatalog.read_zbins">[docs]</a>    <span class="k">def</span> <span class="nf">read_zbins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bin_type</span><span class="p">):</span>
+<div class="viewcode-block" id="TomographyCatalog.read_zbins"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.TomographyCatalog.read_zbins">[docs]</a>    <span class="k">def</span> <span class="nf">read_zbins</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bin_type</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read saved redshift bin edges from attributes</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">d</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
-        <span class="n">nbin</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;nbin_</span><span class="si">{bin_type}</span><span class="s1">&#39;</span><span class="p">]</span>
-        <span class="n">zbins</span> <span class="o">=</span> <span class="p">[(</span><span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{bin_type}</span><span class="s1">_zmin_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{bin_type}</span><span class="s1">_zmax_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin</span><span class="p">)]</span>
+        <span class="n">nbin</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;nbin_</span><span class="si">{</span><span class="n">bin_type</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">zbins</span> <span class="o">=</span> <span class="p">[(</span><span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">bin_type</span><span class="si">}</span><span class="s1">_zmin_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">bin_type</span><span class="si">}</span><span class="s1">_zmax_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin</span><span class="p">)]</span>
         <span class="k">return</span> <span class="n">zbins</span></div>
 
-<div class="viewcode-block" id="TomographyCatalog.read_nbin"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.TomographyCatalog.read_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bin_type</span><span class="p">):</span>
+<div class="viewcode-block" id="TomographyCatalog.read_nbin"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.TomographyCatalog.read_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">read_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bin_type</span><span class="p">):</span>
         <span class="n">d</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;tomography&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;nbin_</span><span class="si">{bin_type}</span><span class="s1">&#39;</span><span class="p">]</span></div></div>
+        <span class="k">return</span> <span class="n">d</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;nbin_</span><span class="si">{</span><span class="n">bin_type</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span></div></div>
 
 
 
 
 
-<div class="viewcode-block" id="RandomsCatalog"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.RandomsCatalog">[docs]</a><span class="k">class</span> <span class="nc">RandomsCatalog</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
+<div class="viewcode-block" id="RandomsCatalog"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.RandomsCatalog">[docs]</a><span class="k">class</span> <span class="nc">RandomsCatalog</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;randoms/ra&#39;</span><span class="p">,</span> <span class="s1">&#39;randoms/dec&#39;</span><span class="p">]</span></div>
 
 
 
 
-<div class="viewcode-block" id="MapsFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile">[docs]</a><span class="k">class</span> <span class="nc">MapsFile</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile">[docs]</a><span class="k">class</span> <span class="nc">MapsFile</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="MapsFile.list_maps"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.list_maps">[docs]</a>    <span class="k">def</span> <span class="nf">list_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.list_maps"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.list_maps">[docs]</a>    <span class="k">def</span> <span class="nf">list_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">h5py</span>
         <span class="n">maps</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -176,10 +176,10 @@
         <span class="c1"># return the accumulated list</span>
         <span class="k">return</span> <span class="n">maps</span></div>
 
-<div class="viewcode-block" id="MapsFile.read_healpix"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.read_healpix">[docs]</a>    <span class="k">def</span> <span class="nf">read_healpix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.read_healpix"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.read_healpix">[docs]</a>    <span class="k">def</span> <span class="nf">read_healpix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="n">return_all</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">healpy</span>
         <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;maps/</span><span class="si">{map_name}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;maps/</span><span class="si">{</span><span class="n">map_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">nside</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nside&#39;</span><span class="p">]</span>
         <span class="n">npix</span> <span class="o">=</span> <span class="n">healpy</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
         <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">,</span> <span class="n">npix</span><span class="p">)</span>
@@ -191,15 +191,15 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">m</span></div>
 
-<div class="viewcode-block" id="MapsFile.read_map_info"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.read_map_info">[docs]</a>    <span class="k">def</span> <span class="nf">read_map_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">):</span>
-        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;maps/</span><span class="si">{map_name}</span><span class="s1">&#39;</span><span class="p">]</span>
+<div class="viewcode-block" id="MapsFile.read_map_info"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.read_map_info">[docs]</a>    <span class="k">def</span> <span class="nf">read_map_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">):</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;maps/</span><span class="si">{</span><span class="n">map_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;pixelization&#39;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Map &#39;</span><span class="si">{map_name}</span><span class="s2">&#39; not found, &quot;</span>
-                             <span class="sa">f</span><span class="s2">&quot;or not saved properly in file </span><span class="si">{self.path}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Map &#39;</span><span class="si">{</span><span class="n">map_name</span><span class="si">}</span><span class="s2">&#39; not found, &quot;</span>
+                             <span class="sa">f</span><span class="s2">&quot;or not saved properly in file </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">info</span></div>
 
-<div class="viewcode-block" id="MapsFile.read_map"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.read_map">[docs]</a>    <span class="k">def</span> <span class="nf">read_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.read_map"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.read_map">[docs]</a>    <span class="k">def</span> <span class="nf">read_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">):</span>
         <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="n">map_name</span><span class="p">)</span>
         <span class="n">pixelization</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;pixelization&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">pixelization</span> <span class="o">==</span> <span class="s1">&#39;gnomonic&#39;</span><span class="p">:</span>
@@ -207,16 +207,16 @@
         <span class="k">elif</span> <span class="n">pixelization</span> <span class="o">==</span> <span class="s1">&#39;healpix&#39;</span><span class="p">:</span>
             <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_healpix</span><span class="p">(</span><span class="n">map_name</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown map pixelization type </span><span class="si">{pixelization}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown map pixelization type </span><span class="si">{</span><span class="n">pixelization</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">m</span></div>
 
-<div class="viewcode-block" id="MapsFile.read_mask"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.read_mask">[docs]</a>    <span class="k">def</span> <span class="nf">read_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.read_mask"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.read_mask">[docs]</a>    <span class="k">def</span> <span class="nf">read_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="s1">&#39;mask&#39;</span><span class="p">)</span>
         <span class="n">mask</span><span class="p">[</span><span class="n">mask</span><span class="o">&lt;</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="n">mask</span></div>
 
 
-<div class="viewcode-block" id="MapsFile.write_map"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.write_map">[docs]</a>    <span class="k">def</span> <span class="nf">write_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="n">pixel</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">metadata</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.write_map"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.write_map">[docs]</a>    <span class="k">def</span> <span class="nf">write_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="n">pixel</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">metadata</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Save an output map to an HDF5 subgroup.</span>
 
@@ -240,14 +240,14 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Map metadata should include pixelization&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">pixel</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Map pixels and values should be same shape &quot;</span>
-                             <span class="sa">f</span><span class="s2">&quot;but are </span><span class="si">{pixel.shape}</span><span class="s2"> vs </span><span class="si">{value.shape}</span><span class="s2">&quot;</span><span class="p">)</span>
+                             <span class="sa">f</span><span class="s2">&quot;but are </span><span class="si">{</span><span class="n">pixel</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> vs </span><span class="si">{</span><span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">subgroup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;maps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">map_name</span><span class="p">)</span>
         <span class="n">subgroup</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
         <span class="n">subgroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;pixel&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pixel</span><span class="p">)</span>
         <span class="n">subgroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="MapsFile.plot_healpix"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.plot_healpix">[docs]</a>    <span class="k">def</span> <span class="nf">plot_healpix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.plot_healpix"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.plot_healpix">[docs]</a>    <span class="k">def</span> <span class="nf">plot_healpix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">healpy</span>
         <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
@@ -255,7 +255,7 @@
         <span class="n">lon</span><span class="p">,</span><span class="n">lat</span><span class="o">=</span><span class="n">healpy</span><span class="o">.</span><span class="n">pix2ang</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span><span class="n">pix</span><span class="p">,</span><span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">npix</span><span class="o">=</span><span class="n">healpy</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pix</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Empty map </span><span class="si">{map_name}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Empty map </span><span class="si">{</span><span class="n">map_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pix</span><span class="p">)</span><span class="o">==</span><span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
             <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">m</span><span class="o">!=</span><span class="n">healpy</span><span class="o">.</span><span class="n">UNSEEN</span><span class="p">)</span><span class="o">&amp;</span><span class="p">(</span><span class="n">m</span><span class="o">!=</span><span class="mi">0</span><span class="p">))</span>
@@ -271,11 +271,11 @@
         <span class="k">elif</span> <span class="n">view</span> <span class="o">==</span> <span class="s1">&#39;moll&#39;</span><span class="p">:</span>
             <span class="n">healpy</span><span class="o">.</span><span class="n">mollview</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">hold</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown Healpix view mode </span><span class="si">{mode}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown Healpix view mode </span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="MapsFile.read_gnomonic"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.read_gnomonic">[docs]</a>    <span class="k">def</span> <span class="nf">read_gnomonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.read_gnomonic"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.read_gnomonic">[docs]</a>    <span class="k">def</span> <span class="nf">read_gnomonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;maps/</span><span class="si">{map_name}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;maps/</span><span class="si">{</span><span class="n">map_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
         <span class="n">nx</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;nx&#39;</span><span class="p">]</span>
         <span class="n">ny</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;ny&#39;</span><span class="p">]</span>
@@ -292,7 +292,7 @@
         <span class="n">m</span><span class="p">[</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
         <span class="k">return</span> <span class="n">m</span></div>
 
-<div class="viewcode-block" id="MapsFile.plot_gnomonic"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.plot_gnomonic">[docs]</a>    <span class="k">def</span> <span class="nf">plot_gnomonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.plot_gnomonic"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.plot_gnomonic">[docs]</a>    <span class="k">def</span> <span class="nf">plot_gnomonic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
         <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="n">map_name</span><span class="p">)</span>
@@ -311,7 +311,7 @@
         <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="MapsFile.plot"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.MapsFile.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MapsFile.plot"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.MapsFile.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">map_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map_info</span><span class="p">(</span><span class="n">map_name</span><span class="p">)</span>
         <span class="n">pixelization</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;pixelization&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">pixelization</span> <span class="o">==</span> <span class="s1">&#39;gnomonic&#39;</span><span class="p">:</span>
@@ -319,61 +319,61 @@
         <span class="k">elif</span> <span class="n">pixelization</span> <span class="o">==</span> <span class="s1">&#39;healpix&#39;</span><span class="p">:</span>
             <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_healpix</span><span class="p">(</span><span class="n">map_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown map pixelization type </span><span class="si">{pixelization}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown map pixelization type </span><span class="si">{</span><span class="n">pixelization</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">m</span></div></div>
 
 
-<div class="viewcode-block" id="LensingNoiseMaps"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.LensingNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">LensingNoiseMaps</span><span class="p">(</span><span class="n">MapsFile</span><span class="p">):</span>
+<div class="viewcode-block" id="LensingNoiseMaps"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.LensingNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">LensingNoiseMaps</span><span class="p">(</span><span class="n">MapsFile</span><span class="p">):</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">]</span>
 
-<div class="viewcode-block" id="LensingNoiseMaps.read_rotation"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.LensingNoiseMaps.read_rotation">[docs]</a>    <span class="k">def</span> <span class="nf">read_rotation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">realization_index</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
-        <span class="n">g1_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;rotation_</span><span class="si">{realization_index}</span><span class="s1">/g1_</span><span class="si">{bin_index}</span><span class="s1">&#39;</span>
-        <span class="n">g2_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;rotation_</span><span class="si">{realization_index}</span><span class="s1">/g2_</span><span class="si">{bin_index}</span><span class="s1">&#39;</span>
+<div class="viewcode-block" id="LensingNoiseMaps.read_rotation"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.LensingNoiseMaps.read_rotation">[docs]</a>    <span class="k">def</span> <span class="nf">read_rotation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">realization_index</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
+        <span class="n">g1_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;rotation_</span><span class="si">{</span><span class="n">realization_index</span><span class="si">}</span><span class="s1">/g1_</span><span class="si">{</span><span class="n">bin_index</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="n">g2_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;rotation_</span><span class="si">{</span><span class="n">realization_index</span><span class="si">}</span><span class="s1">/g2_</span><span class="si">{</span><span class="n">bin_index</span><span class="si">}</span><span class="s1">&#39;</span>
 
         <span class="n">g1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="n">g1_name</span><span class="p">)</span>
         <span class="n">g2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="n">g2_name</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span></div>
 
-<div class="viewcode-block" id="LensingNoiseMaps.number_of_realizations"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.LensingNoiseMaps.number_of_realizations">[docs]</a>    <span class="k">def</span> <span class="nf">number_of_realizations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="LensingNoiseMaps.number_of_realizations"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.LensingNoiseMaps.number_of_realizations">[docs]</a>    <span class="k">def</span> <span class="nf">number_of_realizations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;maps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
         <span class="n">lensing_realizations</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;lensing_realizations&#39;</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">lensing_realizations</span></div></div>
 
-<div class="viewcode-block" id="ClusteringNoiseMaps"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.ClusteringNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">ClusteringNoiseMaps</span><span class="p">(</span><span class="n">MapsFile</span><span class="p">):</span>
-<div class="viewcode-block" id="ClusteringNoiseMaps.read_density_split"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.ClusteringNoiseMaps.read_density_split">[docs]</a>    <span class="k">def</span> <span class="nf">read_density_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">realization_index</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
-        <span class="n">rho1_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;split_</span><span class="si">{realization_index}</span><span class="s1">/rho1_</span><span class="si">{bin_index}</span><span class="s1">&#39;</span>
-        <span class="n">rho2_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;split_</span><span class="si">{realization_index}</span><span class="s1">/rho2_</span><span class="si">{bin_index}</span><span class="s1">&#39;</span>
+<div class="viewcode-block" id="ClusteringNoiseMaps"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.ClusteringNoiseMaps">[docs]</a><span class="k">class</span> <span class="nc">ClusteringNoiseMaps</span><span class="p">(</span><span class="n">MapsFile</span><span class="p">):</span>
+<div class="viewcode-block" id="ClusteringNoiseMaps.read_density_split"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.ClusteringNoiseMaps.read_density_split">[docs]</a>    <span class="k">def</span> <span class="nf">read_density_split</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">realization_index</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
+        <span class="n">rho1_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;split_</span><span class="si">{</span><span class="n">realization_index</span><span class="si">}</span><span class="s1">/rho1_</span><span class="si">{</span><span class="n">bin_index</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="n">rho2_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;split_</span><span class="si">{</span><span class="n">realization_index</span><span class="si">}</span><span class="s1">/rho2_</span><span class="si">{</span><span class="n">bin_index</span><span class="si">}</span><span class="s1">&#39;</span>
         <span class="n">rho1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="n">rho1_name</span><span class="p">)</span>
         <span class="n">rho2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="n">rho2_name</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">rho1</span><span class="p">,</span> <span class="n">rho2</span></div>
 
-<div class="viewcode-block" id="ClusteringNoiseMaps.number_of_realizations"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.ClusteringNoiseMaps.number_of_realizations">[docs]</a>    <span class="k">def</span> <span class="nf">number_of_realizations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ClusteringNoiseMaps.number_of_realizations"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.ClusteringNoiseMaps.number_of_realizations">[docs]</a>    <span class="k">def</span> <span class="nf">number_of_realizations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;maps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span>
         <span class="n">clustering_realizations</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;clustering_realizations&#39;</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">clustering_realizations</span></div></div>
 
 
-<div class="viewcode-block" id="PhotozPDFFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.PhotozPDFFile">[docs]</a><span class="k">class</span> <span class="nc">PhotozPDFFile</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
+<div class="viewcode-block" id="PhotozPDFFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.PhotozPDFFile">[docs]</a><span class="k">class</span> <span class="nc">PhotozPDFFile</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[]</span></div>
 
-<div class="viewcode-block" id="CSVFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.CSVFile">[docs]</a><span class="k">class</span> <span class="nc">CSVFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="CSVFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.CSVFile">[docs]</a><span class="k">class</span> <span class="nc">CSVFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;csv&#39;</span>
-<div class="viewcode-block" id="CSVFile.save_file"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.CSVFile.save_file">[docs]</a>    <span class="k">def</span> <span class="nf">save_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">dataframe</span><span class="p">):</span>
+<div class="viewcode-block" id="CSVFile.save_file"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.CSVFile.save_file">[docs]</a>    <span class="k">def</span> <span class="nf">save_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">dataframe</span><span class="p">):</span>
         <span class="n">dataframe</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div></div>
 
-<div class="viewcode-block" id="SACCFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.SACCFile">[docs]</a><span class="k">class</span> <span class="nc">SACCFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
+<div class="viewcode-block" id="SACCFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.SACCFile">[docs]</a><span class="k">class</span> <span class="nc">SACCFile</span><span class="p">(</span><span class="n">DataFile</span><span class="p">):</span>
     <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;sacc&#39;</span>
 
-<div class="viewcode-block" id="SACCFile.open"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.SACCFile.open">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="SACCFile.open"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.SACCFile.open">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">sacc</span>
         <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;w&#39;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Do not use the open_output method to write sacc files.  Use sacc.write_fits&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="o">.</span><span class="n">load_fits</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="SACCFile.read_provenance"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.SACCFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="SACCFile.read_provenance"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.SACCFile.read_provenance">[docs]</a>    <span class="k">def</span> <span class="nf">read_provenance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">metadata</span>
         <span class="n">provenance</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;uuid&#39;</span><span class="p">:</span>     <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;provenance/uuid&#39;</span><span class="p">,</span> <span class="s2">&quot;UNKNOWN&quot;</span><span class="p">),</span>
@@ -385,7 +385,7 @@
         <span class="k">return</span> <span class="n">provenance</span></div>
 
 
-<div class="viewcode-block" id="SACCFile.close"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.SACCFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="SACCFile.close"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.SACCFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">pass</span></div></div>
 
 
@@ -393,27 +393,27 @@
 
 
 
-<div class="viewcode-block" id="NOfZFile"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.NOfZFile">[docs]</a><span class="k">class</span> <span class="nc">NOfZFile</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
+<div class="viewcode-block" id="NOfZFile"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.NOfZFile">[docs]</a><span class="k">class</span> <span class="nc">NOfZFile</span><span class="p">(</span><span class="n">HDFFile</span><span class="p">):</span>
 
     <span class="c1"># Must have at least one bin in</span>
     <span class="n">required_datasets</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="NOfZFile.get_nbin"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.NOfZFile.get_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">get_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">):</span>
+<div class="viewcode-block" id="NOfZFile.get_nbin"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.NOfZFile.get_nbin">[docs]</a>    <span class="k">def</span> <span class="nf">get_nbin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;n_of_z&#39;</span><span class="p">][</span><span class="n">kind</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;nbin&#39;</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="NOfZFile.get_n_of_z"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.NOfZFile.get_n_of_z">[docs]</a>    <span class="k">def</span> <span class="nf">get_n_of_z</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
+<div class="viewcode-block" id="NOfZFile.get_n_of_z"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.NOfZFile.get_n_of_z">[docs]</a>    <span class="k">def</span> <span class="nf">get_n_of_z</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">):</span>
         <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s1">&#39;n_of_z&#39;</span><span class="p">][</span><span class="n">kind</span><span class="p">]</span>
         <span class="n">z</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">][:]</span>
-        <span class="n">nz</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;bin_</span><span class="si">{bin_index}</span><span class="s1">&#39;</span><span class="p">][:]</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;bin_</span><span class="si">{</span><span class="n">bin_index</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][:]</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="NOfZFile.get_n_of_z_spline"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.NOfZFile.get_n_of_z_spline">[docs]</a>    <span class="k">def</span> <span class="nf">get_n_of_z_spline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="NOfZFile.get_n_of_z_spline"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.NOfZFile.get_n_of_z_spline">[docs]</a>    <span class="k">def</span> <span class="nf">get_n_of_z_spline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bin_index</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">scipy.interpolate</span>
         <span class="n">z</span><span class="p">,</span> <span class="n">nz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_n_of_z</span><span class="p">(</span><span class="n">bin_index</span><span class="p">)</span>
         <span class="n">spline</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">spline</span></div>
 
-<div class="viewcode-block" id="NOfZFile.save_plot"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.NOfZFile.save_plot">[docs]</a>    <span class="k">def</span> <span class="nf">save_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">fig_kw</span><span class="p">):</span>
+<div class="viewcode-block" id="NOfZFile.save_plot"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.NOfZFile.save_plot">[docs]</a>    <span class="k">def</span> <span class="nf">save_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">fig_kw</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="o">**</span><span class="n">fig_kw</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
@@ -421,16 +421,16 @@
         <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="NOfZFile.plot"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.NOfZFile.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">):</span>
+<div class="viewcode-block" id="NOfZFile.plot"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.NOfZFile.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_nbin</span><span class="p">(</span><span class="n">kind</span><span class="p">)):</span>
             <span class="n">z</span><span class="p">,</span> <span class="n">nz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_n_of_z</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Bin </span><span class="si">{b}</span><span class="s1">&#39;</span><span class="p">)</span></div></div>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Bin </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div></div>
 
-<div class="viewcode-block" id="FiducialCosmology"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.FiducialCosmology">[docs]</a><span class="k">class</span> <span class="nc">FiducialCosmology</span><span class="p">(</span><span class="n">YamlFile</span><span class="p">):</span>
+<div class="viewcode-block" id="FiducialCosmology"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.FiducialCosmology">[docs]</a><span class="k">class</span> <span class="nc">FiducialCosmology</span><span class="p">(</span><span class="n">YamlFile</span><span class="p">):</span>
 
     <span class="c1"># TODO replace when CCL has more complete serialization tools.</span>
-<div class="viewcode-block" id="FiducialCosmology.to_ccl"><a class="viewcode-back" href="../../../data_types.html#txpipe.data_types.types.FiducialCosmology.to_ccl">[docs]</a>    <span class="k">def</span> <span class="nf">to_ccl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="FiducialCosmology.to_ccl"><a class="viewcode-back" href="../../../stages/data_types.html#txpipe.data_types.types.FiducialCosmology.to_ccl">[docs]</a>    <span class="k">def</span> <span class="nf">to_ccl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
             <span class="n">params</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span><span class="p">)</span>

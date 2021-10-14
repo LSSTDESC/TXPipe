@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.maps &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.maps &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -96,7 +96,7 @@
 <span class="p">}</span>
 
 
-<div class="viewcode-block" id="TXBaseMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXBaseMaps</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps">[docs]</a><span class="k">class</span> <span class="nc">TXBaseMaps</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is an abstract base mapping class, which other subclasses</span>
 <span class="sd">    inherit from to use the same basic structure, which is:</span>
@@ -126,7 +126,7 @@
         <span class="c1"># Loop through the data</span>
         <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_iterator</span><span class="p">():</span>
             <span class="c1"># Give an idea of progress</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> read data chunk </span><span class="si">{s:,}</span><span class="s2"> - </span><span class="si">{e:,}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> read data chunk </span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># Build up any maps we are using</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">accumulate_maps</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">)</span>
 
@@ -135,41 +135,41 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">save_maps</span><span class="p">(</span><span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">maps</span><span class="p">)</span>
 
-<div class="viewcode-block" id="TXBaseMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subclasses can override to instead load pixelization</span>
 <span class="sd">        from an existing map</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">choose_pixelization</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXBaseMaps.prepare_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subclasses must override to init any mapper objects</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Do not use TXBaseMaps - use a subclass&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXBaseMaps.data_iterator"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps.data_iterator"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subclasses must override to create an iterator looping over</span>
 <span class="sd">        input data</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Do not use TXBaseMaps - use a subclass&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXBaseMaps.accumulate_maps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subclasses must override to supply the next chunk &quot;data&quot; to</span>
 <span class="sd">        their mappers</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Do not use TXBaseMaps - use a subclass&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXBaseMaps.finalize_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subclasses must override to finalize their maps and return</span>
 <span class="sd">        a dictionary of (output_tag, map_name) -&gt; (pixels, values)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Do not use TXBaseMaps - use a subclass&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXBaseMaps.save_maps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXBaseMaps.save_maps">[docs]</a>    <span class="k">def</span> <span class="nf">save_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">maps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXBaseMaps.save_maps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXBaseMaps.save_maps">[docs]</a>    <span class="k">def</span> <span class="nf">save_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">maps</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subclasses can use this directly, by generating maps as described</span>
 <span class="sd">        in finalize_mappers</span>
@@ -192,7 +192,7 @@
             <span class="n">output_files</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="n">map_name</span><span class="p">,</span> <span class="n">pix</span><span class="p">,</span> <span class="n">map_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="TXSourceMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXSourceMaps">[docs]</a><span class="k">class</span> <span class="nc">TXSourceMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceMaps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXSourceMaps">[docs]</a><span class="k">class</span> <span class="nc">TXSourceMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Make g1, g2, var(g1), var(g2), and lensing weight maps</span>
 <span class="sd">    from shear catalogs and tomography</span>
@@ -213,7 +213,7 @@
     <span class="c1"># to use the truth shear columns</span>
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;true_shear&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">map_config_options</span><span class="p">}</span>
 
-<div class="viewcode-block" id="TXSourceMaps.prepare_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXSourceMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXSourceMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
         <span class="c1"># read shear cols and calibration info</span>
         <span class="n">nbin_source</span><span class="p">,</span> <span class="n">cal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_calibrators</span><span class="p">()</span>
 
@@ -260,7 +260,7 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown calibration&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">cal</span>
 
-<div class="viewcode-block" id="TXSourceMaps.data_iterator"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXSourceMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceMaps.data_iterator"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXSourceMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 
         <span class="c1"># can optionally read truth values</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;true_shear&quot;</span><span class="p">]:</span>
@@ -285,7 +285,7 @@
             <span class="p">[</span><span class="s2">&quot;source_bin&quot;</span><span class="p">],</span>  <span class="c1"># column(s) to read</span>
         <span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXSourceMaps.accumulate_maps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXSourceMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXSourceMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># rename columns, if needed</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;true_shear&quot;</span><span class="p">]:</span>
             <span class="n">data</span><span class="p">[</span><span class="s2">&quot;g1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;true_g1&quot;</span><span class="p">]</span>
@@ -367,7 +367,7 @@
         <span class="k">return</span> <span class="n">g1_out</span><span class="p">,</span> <span class="n">g2_out</span><span class="p">,</span> <span class="n">var_g1_out</span><span class="p">,</span> <span class="n">var_g2_out</span>
 
 
-<div class="viewcode-block" id="TXSourceMaps.finalize_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXSourceMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSourceMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXSourceMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># only one mapper here - we call its finalize method</span>
         <span class="c1"># to collect everything</span>
         <span class="n">mapper</span><span class="p">,</span> <span class="n">cal</span> <span class="o">=</span> <span class="n">mappers</span>
@@ -385,16 +385,16 @@
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">source_bins</span><span class="p">:</span>
             <span class="c1"># keys are the output tag and the map name</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
 
-<div class="viewcode-block" id="TXLensMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXLensMaps">[docs]</a><span class="k">class</span> <span class="nc">TXLensMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXLensMaps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXLensMaps">[docs]</a><span class="k">class</span> <span class="nc">TXLensMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Make galaxy number count maps from photometry</span>
 <span class="sd">    and lens tomography.</span>
@@ -415,7 +415,7 @@
 
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">map_config_options</span><span class="p">}</span>
 
-<div class="viewcode-block" id="TXLensMaps.prepare_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXLensMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+<div class="viewcode-block" id="TXLensMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXLensMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
         <span class="c1"># read nbin_lens and save</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;lens_tomography_catalog&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;tomography&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;nbin_lens&quot;</span><span class="p">]</span>
@@ -433,7 +433,7 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">mapper</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="TXLensMaps.data_iterator"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXLensMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXLensMaps.data_iterator"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXLensMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TODO: add use of lens weights here&quot;</span><span class="p">)</span>
         <span class="c1"># see TXSourceMaps abov for info on this</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
@@ -448,12 +448,12 @@
             <span class="p">[</span><span class="s2">&quot;lens_bin&quot;</span><span class="p">],</span>
         <span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXLensMaps.accumulate_maps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXLensMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXLensMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXLensMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># no need to rename cols here since just ra, dec, lens_bin</span>
         <span class="n">mapper</span> <span class="o">=</span> <span class="n">mappers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">mapper</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXLensMaps.finalize_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXLensMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXLensMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXLensMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># Again just the one mapper</span>
         <span class="n">mapper</span> <span class="o">=</span> <span class="n">mappers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="c1"># Ignored return values are empty dicts for shear</span>
@@ -465,13 +465,13 @@
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">lens_bins</span><span class="p">:</span>
             <span class="c1"># keys are the output tag and the map name</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
 
-<div class="viewcode-block" id="TXExternalLensMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXExternalLensMaps">[docs]</a><span class="k">class</span> <span class="nc">TXExternalLensMaps</span><span class="p">(</span><span class="n">TXLensMaps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensMaps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXExternalLensMaps">[docs]</a><span class="k">class</span> <span class="nc">TXExternalLensMaps</span><span class="p">(</span><span class="n">TXLensMaps</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Same as TXLensMaps except it reads from an external</span>
 <span class="sd">    lens catalog.</span>
@@ -486,7 +486,7 @@
 
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">map_config_options</span><span class="p">}</span>
 
-<div class="viewcode-block" id="TXExternalLensMaps.data_iterator"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXExternalLensMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXExternalLensMaps.data_iterator"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXExternalLensMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># See TXSourceMaps for an explanation of thsis</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;chunk_rows&quot;</span><span class="p">],</span>
@@ -502,7 +502,7 @@
         <span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="TXMainMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXMainMaps">[docs]</a><span class="k">class</span> <span class="nc">TXMainMaps</span><span class="p">(</span><span class="n">TXSourceMaps</span><span class="p">,</span> <span class="n">TXLensMaps</span><span class="p">):</span>
+<div class="viewcode-block" id="TXMainMaps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXMainMaps">[docs]</a><span class="k">class</span> <span class="nc">TXMainMaps</span><span class="p">(</span><span class="n">TXSourceMaps</span><span class="p">,</span> <span class="n">TXLensMaps</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Combined source and photometric lens maps, from the</span>
 <span class="sd">    same photometry catalog. This might be slightly faster than</span>
@@ -526,7 +526,7 @@
 
     <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;true_shear&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">map_config_options</span><span class="p">}</span>
 
-<div class="viewcode-block" id="TXMainMaps.data_iterator"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXMainMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="TXMainMaps.data_iterator"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXMainMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># This is just the combination of</span>
         <span class="c1"># the source and lens map columns</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TODO: no lens weights here&quot;</span><span class="p">)</span>
@@ -574,7 +574,7 @@
             <span class="p">[</span><span class="s2">&quot;source_bin&quot;</span><span class="p">],</span>
         <span class="p">)</span></div>
 
-<div class="viewcode-block" id="TXMainMaps.prepare_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXMainMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+<div class="viewcode-block" id="TXMainMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXMainMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
         <span class="n">nbin_source</span><span class="p">,</span> <span class="n">cal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_calibrators</span><span class="p">()</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;lens_tomography_catalog&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -595,7 +595,7 @@
     <span class="c1"># accumulate_maps is inherited from TXSourceMaps because</span>
     <span class="c1"># that appears first in the parent classes</span>
 
-<div class="viewcode-block" id="TXMainMaps.finalize_mappers"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXMainMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+<div class="viewcode-block" id="TXMainMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXMainMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
         <span class="c1"># Still one mapper, but now we read both source and</span>
         <span class="c1"># lens maps from it.</span>
         <span class="n">mapper</span><span class="p">,</span> <span class="n">cal</span> <span class="o">=</span> <span class="n">mappers</span>
@@ -609,20 +609,20 @@
 
         <span class="c1"># Now both loops, source and lens</span>
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">lens_bins</span><span class="p">:</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weighted_ngal</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">source_bins</span><span class="p">:</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
-            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;var_g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lensing_weight_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weights_g</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">maps</span></div></div>
 
 
-<div class="viewcode-block" id="TXDensityMaps"><a class="viewcode-back" href="../../maps.html#txpipe.maps.TXDensityMaps">[docs]</a><span class="k">class</span> <span class="nc">TXDensityMaps</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXDensityMaps"><a class="viewcode-back" href="../../stages/maps.html#txpipe.maps.TXDensityMaps">[docs]</a><span class="k">class</span> <span class="nc">TXDensityMaps</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert n_gal maps to overdensity delta maps</span>
 <span class="sd">    delta = (ngal - &lt;ngal&gt;) / &lt;ngal&gt;</span>
@@ -658,7 +658,7 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">meta</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s2">&quot;maps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
             <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;nbin_lens&quot;</span><span class="p">]</span>
-            <span class="n">ngal_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{b}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
+            <span class="n">ngal_maps</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">read_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weighted_ngal_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">)]</span>
 
         <span class="c1"># Convert count maps into density maps</span>
         <span class="n">density_maps</span> <span class="o">=</span> <span class="p">[]</span>
@@ -671,7 +671,7 @@
             <span class="c1"># First compute the overall mean object count per bin.</span>
             <span class="c1"># mean clustering galaxies per pixel in this map</span>
             <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">ng</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">mask_copy</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean number density in bin </span><span class="si">{i}</span><span class="s2"> = </span><span class="si">{mu}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean number density in bin </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">mu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># and then use that to convert to overdensity</span>
             <span class="n">d</span> <span class="o">=</span> <span class="p">(</span><span class="n">ng</span> <span class="o">-</span> <span class="n">mu</span><span class="p">)</span> <span class="o">/</span> <span class="n">mu</span>
             <span class="c1"># remove nans</span>
@@ -685,7 +685,7 @@
             <span class="n">f</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s2">&quot;maps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
             <span class="c1"># save each density map</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rho</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">density_maps</span><span class="p">):</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;delta_</span><span class="si">{i}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pix</span><span class="p">,</span> <span class="n">rho</span><span class="p">[</span><span class="n">pix</span><span class="p">],</span> <span class="n">meta</span><span class="p">)</span></div>
+                <span class="n">f</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;delta_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">pix</span><span class="p">,</span> <span class="n">rho</span><span class="p">[</span><span class="n">pix</span><span class="p">],</span> <span class="n">meta</span><span class="p">)</span></div>
 </pre></div>
 
            </div>

@@ -6,32 +6,13 @@ Requirements
 
 TXPipe requires python 3.6 or above.
 
-The pipeline software ceci that TXPipe uses can be installed with::
-
-    pip install ceci
-
-Various stages of TXPipe also require::
-
-    numpy
-    scipy
-    fitsio
-    healpy
-    astropy
+As the pipeline has many components it has many dependencies. These are listed in the file ``requirements.txt``, but getting an environment which can run the code fully parallel requires care.
 
 
-which can all also be installed with pip.
+- :ref:`Conda Installation` is the easiest approach on a personal machine
+- :ref:`NERSC Shifter Installation` is the easiest approach on NERSC
+- :ref:`CC-IN2P3 Installation` for the French CC-IN2P3 machine
 
-To run the example you need some input data files.  You can obtain these from 
-NERSC if you have access to the LSST space using::
-
-    scp USERNAME@cori.nersc.gov:/global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/* ./
+The last is probably easiest to adapt to other clusters or supercomputer.
 
 
-To set up an environment with the required dependencies for this code on the cori machine at NERSC
-you can run::
-
-    source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
-    # OR
-    source /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori-nompi
-
-use the former when running jobs and the latter on the login nodes.

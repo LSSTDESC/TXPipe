@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.photoz_mlz &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.photoz_mlz &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -71,7 +71,7 @@
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-<div class="viewcode-block" id="PZPDFMLZ"><a class="viewcode-back" href="../../photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ">[docs]</a><span class="k">class</span> <span class="nc">PZPDFMLZ</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="PZPDFMLZ"><a class="viewcode-back" href="../../stages/photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ">[docs]</a><span class="k">class</span> <span class="nc">PZPDFMLZ</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 
 
@@ -94,7 +94,7 @@
     <span class="p">}</span>
 
 
-<div class="viewcode-block" id="PZPDFMLZ.run"><a class="viewcode-back" href="../../photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="PZPDFMLZ.run"><a class="viewcode-back" href="../../stages/photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span> <span class="nn">mlz_desc</span>
@@ -119,7 +119,7 @@
         <span class="n">bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;bands&#39;</span><span class="p">]</span>
         <span class="c1"># The columns we need to calculate the photo-z.</span>
         <span class="c1"># Note that we need all the metacalibrated variants too.</span>
-        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="n">bands</span><span class="p">]</span>
 
         <span class="c1"># Loop through chunks of the data.</span>
         <span class="c1"># Parallelism is handled in the iterate_input function - </span>
@@ -128,7 +128,7 @@
         <span class="c1"># all write to the file at once too.</span>
         <span class="n">chunk_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;chunk_rows&#39;</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s1">&#39;photometry_catalog&#39;</span><span class="p">,</span> <span class="s2">&quot;photometry&quot;</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">chunk_rows</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{self.rank}</span><span class="s2"> running photo-z for rows </span><span class="si">{start}</span><span class="s2">-</span><span class="si">{end}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="si">}</span><span class="s2"> running photo-z for rows </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="c1"># Compute some mock photo-z PDFs and point estimates</span>
             <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_photozs</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">trees</span><span class="p">)</span>
@@ -151,7 +151,7 @@
         <span class="n">features</span><span class="p">,</span> <span class="n">trees</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">features</span><span class="p">,</span> <span class="n">trees</span>
 
-<div class="viewcode-block" id="PZPDFMLZ.calculate_photozs"><a class="viewcode-back" href="../../photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.calculate_photozs">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_photozs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">trees</span><span class="p">):</span>
+<div class="viewcode-block" id="PZPDFMLZ.calculate_photozs"><a class="viewcode-back" href="../../stages/photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.calculate_photozs">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_photozs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">trees</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Generate random photo-zs.</span>
 
@@ -206,7 +206,7 @@
             <span class="s1">&#39;mag_r_lsst-mag_i_lsst&#39;</span><span class="p">,</span>
             <span class="s1">&#39;mag_i_lsst-mag_z_lsst&#39;</span><span class="p">,</span>
             <span class="s1">&#39;mag_z_lsst-mag_y_lsst&#39;</span><span class="p">]:</span>
-            <span class="n">x</span> <span class="o">=</span>  <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{b}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="s1">&#39;ugrizy&#39;</span><span class="p">]</span>
+            <span class="n">x</span> <span class="o">=</span>  <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="s1">&#39;ugrizy&#39;</span><span class="p">]</span>
 
             <span class="n">ug</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_u&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span>
             <span class="n">gr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_r&#39;</span><span class="p">]</span>
@@ -225,7 +225,7 @@
          <span class="s1">&#39;mag_r_lsst-mag_i_lsst&#39;</span><span class="p">,</span>
          <span class="s1">&#39;mag_i_lsst-mag_z_lsst&#39;</span><span class="p">,</span>
          <span class="s1">&#39;mag_z_lsst-mag_y_lsst&#39;</span><span class="p">]:</span>
-            <span class="n">x</span> <span class="o">=</span>  <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{b}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="s1">&#39;ugriz&#39;</span><span class="p">]</span>
+            <span class="n">x</span> <span class="o">=</span>  <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="s1">&#39;ugriz&#39;</span><span class="p">]</span>
             <span class="n">ug</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_u&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span>
             <span class="n">gr</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_g&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_r&#39;</span><span class="p">]</span>
             <span class="n">ri</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_r&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;mag_i&#39;</span><span class="p">]</span>
@@ -250,7 +250,7 @@
             <span class="n">point_estimates</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span></div>
 
-<div class="viewcode-block" id="PZPDFMLZ.write_output"><a class="viewcode-back" href="../../photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.write_output">[docs]</a>    <span class="k">def</span> <span class="nf">write_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span><span class="p">):</span>
+<div class="viewcode-block" id="PZPDFMLZ.write_output"><a class="viewcode-back" href="../../stages/photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.write_output">[docs]</a>    <span class="k">def</span> <span class="nf">write_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">pdfs</span><span class="p">,</span> <span class="n">point_estimates</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write out a chunk of the computed PZ data.</span>
 
@@ -278,7 +278,7 @@
         <span class="n">group2</span> <span class="o">=</span> <span class="n">output_file</span><span class="p">[</span><span class="s1">&#39;point_estimates&#39;</span><span class="p">]</span>
         <span class="n">group2</span><span class="p">[</span><span class="s1">&#39;z_mean&#39;</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="n">point_estimates</span></div>
 
-<div class="viewcode-block" id="PZPDFMLZ.prepare_output"><a class="viewcode-back" href="../../photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.prepare_output">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nobj</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+<div class="viewcode-block" id="PZPDFMLZ.prepare_output"><a class="viewcode-back" href="../../stages/photoz_mlz.html#txpipe.photoz_mlz.PZPDFMLZ.prepare_output">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nobj</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Prepare the output HDF5 file for writing.</span>
 
