@@ -1,0 +1,140 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Download Data:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Download test data
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
+
+    - name: Cache test data
+      uses: actions/upload-artifact@v2
+      with:
+        name: txpipe-example-data
+        path: data/example
+
+
+  Unit Tests:
+    runs-on: ubuntu-latest
+
+    needs: Download Data
+
+    container:
+      image: joezuntz/txpipe
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Test with pytest
+      run: |
+        pytest txpipe
+
+
+  Metacal Pipeline:
+    runs-on: ubuntu-latest
+
+    needs: Download Data
+
+    container:
+      image: joezuntz/txpipe
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Get data
+    - uses: actions/download-artifact@v2
+      with:
+        name: txpipe-example-data
+
+    - name: Run metacal pipeline
+      run: |
+        ceci examples/metacal/pipeline.yml
+        test -f data/example/outputs/shear_xi_plus.png
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs/*
+
+
+  Lensfit Pipeline:
+    runs-on: ubuntu-latest
+
+    needs: Download Data
+
+    container:
+      image: joezuntz/txpipe
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Get data
+    - uses: actions/download-artifact@v2
+      with:
+        name: txpipe-example-data
+
+    - name: Run lensfit pipeline
+      run: |
+        ceci examples/lensfit/pipeline.yml
+        test -f data/example/outputs_lensfit/shear_xi_plus.png
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs_lensfit/*
+
+
+  Redmagic Pipeline:
+    runs-on: ubuntu-latest
+
+    needs: Download Data
+
+    container:
+      image: joezuntz/txpipe
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Get data
+    - uses: actions/download-artifact@v2
+      with:
+        name: txpipe-example-data
+
+    - name: Run redmagic pipeline
+      run: |
+        ceci examples/redmagic/pipeline.yml
+        test -f data/example/outputs_redmagic/shear_xi_plus.png
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs_redmagic/*
+
+  Delete Data:
+    runs-on: ubuntu-latest
+    needs: ["Redmagic Pipeline", "Metacal Pipeline", "Lensfit Pipeline"]
+    steps:
+      - uses: geekyeggo/delete-artifact@v1
+        with:
+          name: txpipe-example-data
