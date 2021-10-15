@@ -87,8 +87,108 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="auxilliary-maps">
-<h1>Auxilliary maps<a class="headerlink" href="#auxilliary-maps" title="Permalink to this headline"></a></h1>
+  <section id="module-txpipe.auxiliary_maps">
+<span id="auxilliary-maps"></span><h1>Auxilliary maps<a class="headerlink" href="#module-txpipe.auxiliary_maps" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.auxiliary_maps.</span></span><span class="sig-name descname"><span class="pre">TXAuxiliaryLensMaps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliaryLensMaps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ceci.</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps.accumulate_maps">
+<span class="sig-name descname"><span class="pre">accumulate_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_scheme</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mappers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliaryLensMaps.accumulate_maps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.accumulate_maps" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to supply the next chunk “data” to
+their mappers</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps.choose_pixel_scheme">
+<span class="sig-name descname"><span class="pre">choose_pixel_scheme</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliaryLensMaps.choose_pixel_scheme"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.choose_pixel_scheme" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses can override to instead load pixelization
+from an existing map</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps.data_iterator">
+<span class="sig-name descname"><span class="pre">data_iterator</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliaryLensMaps.data_iterator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.data_iterator" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps.finalize_mappers">
+<span class="sig-name descname"><span class="pre">finalize_mappers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_scheme</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mappers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliaryLensMaps.finalize_mappers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.finalize_mappers" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to finalize their maps and return
+a dictionary of (output_tag, map_name) -&gt; (pixels, values)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"> <span class="pre">=</span> <span class="pre">'TXAuxiliaryLensMaps'</span></em><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.name" title="Permalink to this definition"></a></dt>
+<dd><p>This class generates:
+- depth maps
+- psf maps
+- bright object maps
+- flag maps</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliaryLensMaps.prepare_mappers">
+<span class="sig-name descname"><span class="pre">prepare_mappers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_scheme</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliaryLensMaps.prepare_mappers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.prepare_mappers" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to init any mapper objects</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.auxiliary_maps.</span></span><span class="sig-name descname"><span class="pre">TXAuxiliarySourceMaps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliarySourceMaps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ceci.</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps.accumulate_maps">
+<span class="sig-name descname"><span class="pre">accumulate_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_scheme</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mappers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliarySourceMaps.accumulate_maps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.accumulate_maps" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to supply the next chunk “data” to
+their mappers</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps.choose_pixel_scheme">
+<span class="sig-name descname"><span class="pre">choose_pixel_scheme</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliarySourceMaps.choose_pixel_scheme"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.choose_pixel_scheme" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses can override to instead load pixelization
+from an existing map</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps.data_iterator">
+<span class="sig-name descname"><span class="pre">data_iterator</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliarySourceMaps.data_iterator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.data_iterator" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to create an iterator looping over
+input data</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps.finalize_mappers">
+<span class="sig-name descname"><span class="pre">finalize_mappers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_scheme</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mappers</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliarySourceMaps.finalize_mappers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.finalize_mappers" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to finalize their maps and return
+a dictionary of (output_tag, map_name) -&gt; (pixels, values)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"> <span class="pre">=</span> <span class="pre">'TXAuxiliarySourceMaps'</span></em><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.name" title="Permalink to this definition"></a></dt>
+<dd><p>This class generates:
+- depth maps
+- psf maps
+- bright object maps
+- flag maps</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.auxiliary_maps.TXAuxiliarySourceMaps.prepare_mappers">
+<span class="sig-name descname"><span class="pre">prepare_mappers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pixel_scheme</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/auxiliary_maps.html#TXAuxiliarySourceMaps.prepare_mappers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.prepare_mappers" title="Permalink to this definition"></a></dt>
+<dd><p>Subclasses must override to init any mapper objects</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
@@ -102,7 +202,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2020, DESC.</p>
+    <p>&#169; Copyright 2021, DESC.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

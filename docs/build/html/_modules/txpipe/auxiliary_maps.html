@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.auxiliary_maps &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../example.html">Running an example pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      <li>txpipe.auxiliary_maps</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for txpipe.auxiliary_maps</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.maps</span> <span class="kn">import</span> <span class="n">TXBaseMaps</span><span class="p">,</span> <span class="n">map_config_options</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">.base_stage</span> <span class="kn">import</span> <span class="n">PipelineStage</span>
+<span class="kn">from</span> <span class="nn">.mapping</span> <span class="kn">import</span> <span class="n">Mapper</span><span class="p">,</span> <span class="n">FlagMapper</span><span class="p">,</span> <span class="n">BrightObjectMapper</span><span class="p">,</span> <span class="n">DepthMapperDR1</span>
+<span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">MapsFile</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">,</span> <span class="n">ShearCatalog</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">choose_pixelization</span>
+<span class="kn">from</span> <span class="nn">.utils.calibration_tools</span> <span class="kn">import</span> <span class="n">read_shear_catalog_type</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: TXAuxiliaryMaps</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TXAuxiliarySourceMaps"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliarySourceMaps">[docs]</a><span class="k">class</span> <span class="nc">TXAuxiliarySourceMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXAuxiliarySourceMaps&quot;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class generates:</span>
+<span class="sd">        - depth maps</span>
+<span class="sd">        - psf maps</span>
+<span class="sd">        - bright object maps</span>
+<span class="sd">        - flag maps</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;shear_catalog&quot;</span><span class="p">,</span> <span class="n">ShearCatalog</span><span class="p">),</span>  <span class="c1"># for psfs</span>
+        <span class="p">(</span><span class="s2">&quot;shear_tomography_catalog&quot;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>  <span class="c1"># for per-bin psf maps</span>
+        <span class="p">(</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>  <span class="c1"># we copy the pixel scheme from here</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;chunk_rows&quot;</span><span class="p">:</span> <span class="mi">100_000</span><span class="p">,</span>
+        <span class="s2">&quot;sparse&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;flag_exponent_max&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>  <span class="c1"># flag bits go up to 2**8 by default</span>
+        <span class="s2">&quot;psf_prefix&quot;</span><span class="p">:</span> <span class="s2">&quot;psf_&quot;</span><span class="p">,</span>  <span class="c1"># prefix name for columns</span>
+    <span class="p">}</span>
+    <span class="c1"># instead of reading from config we match the basic maps</span>
+<div class="viewcode-block" id="TXAuxiliarySourceMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;source_maps&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
+            <span class="n">pix_info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">maps_file</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s2">&quot;maps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">choose_pixelization</span><span class="p">(</span><span class="o">**</span><span class="n">pix_info</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TXAuxiliarySourceMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+        <span class="c1"># We make a suite of mappers here.</span>
+
+        <span class="c1"># We read nbin_source because we want PSF maps per-bin</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;shear_tomography_catalog&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;tomography&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;nbin_source&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;nbin_source&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nbin_source</span>  <span class="c1"># so it gets saved later</span>
+        <span class="n">source_bins</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">))</span>
+
+        <span class="c1"># For making psf_g1, psf_g2 maps, per source-bin</span>
+        <span class="n">psf_mapper</span> <span class="o">=</span> <span class="n">Mapper</span><span class="p">(</span>
+            <span class="n">pixel_scheme</span><span class="p">,</span> <span class="p">[],</span> <span class="n">source_bins</span><span class="p">,</span> <span class="n">do_lens</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;sparse&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># for mapping the density of flagged objects</span>
+        <span class="n">flag_mapper</span> <span class="o">=</span> <span class="n">FlagMapper</span><span class="p">(</span>
+            <span class="n">pixel_scheme</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;flag_exponent_max&quot;</span><span class="p">],</span> <span class="n">sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;sparse&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">psf_mapper</span><span class="p">,</span> <span class="n">flag_mapper</span></div>
+
+<div class="viewcode-block" id="TXAuxiliarySourceMaps.data_iterator"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">psf_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;psf_prefix&quot;</span><span class="p">]</span>
+        <span class="n">shear_catalog_type</span> <span class="o">=</span> <span class="n">read_shear_catalog_type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># Flag column name depends on catalog type</span>
+        <span class="k">if</span> <span class="n">shear_catalog_type</span> <span class="o">==</span> <span class="s2">&quot;metacal&quot;</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s2">g1&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s2">g2&quot;</span><span class="p">,</span> <span class="s2">&quot;mcal_flags&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shear_cols</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s2">g1&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s2">g2&quot;</span><span class="p">,</span> <span class="s2">&quot;flags&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">]</span>
+
+        <span class="n">shear_cols</span> <span class="o">+=</span> <span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">]</span>
+
+        <span class="c1"># See maps.py for an explanation of this</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_iterators</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;chunk_rows&quot;</span><span class="p">],</span>
+            <span class="c1"># first file</span>
+            <span class="s2">&quot;shear_catalog&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;shear&quot;</span><span class="p">,</span>
+            <span class="n">shear_cols</span><span class="p">,</span>
+            <span class="c1"># next file</span>
+            <span class="s2">&quot;shear_tomography_catalog&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tomography&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;source_bin&quot;</span><span class="p">],</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TXAuxiliarySourceMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+        <span class="n">psf_mapper</span><span class="p">,</span> <span class="n">flag_mapper</span> <span class="o">=</span> <span class="n">mappers</span>
+
+        <span class="n">psf_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;psf_prefix&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Our different mappers want different data columns.</span>
+        <span class="c1"># We pull out the bits they need and give them just those.</span>
+
+        <span class="n">psf_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;g1&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s2">g1&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;g2&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">psf_prefix</span><span class="si">}</span><span class="s2">g2&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;ra&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;dec&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;source_bin&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;source_bin&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;weight&quot;</span><span class="p">],</span>
+        <span class="p">}</span>
+
+        <span class="n">flag_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;ra&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;dec&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">],</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Flag column names depends on catalog type.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;shear_catalog_type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;metacal&quot;</span><span class="p">:</span>
+            <span class="n">flag_data</span><span class="p">[</span><span class="s2">&quot;flags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;mcal_flags&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flag_data</span><span class="p">[</span><span class="s2">&quot;flags&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;flags&quot;</span><span class="p">]</span>
+
+        <span class="n">psf_mapper</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">psf_data</span><span class="p">)</span>
+        <span class="n">flag_mapper</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">flag_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TXAuxiliarySourceMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliarySourceMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+        <span class="n">psf_mapper</span><span class="p">,</span> <span class="n">flag_mapper</span> <span class="o">=</span> <span class="n">mappers</span>
+
+        <span class="c1"># Four different mappers</span>
+        <span class="n">pix</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">,</span> <span class="n">var_g2</span><span class="p">,</span> <span class="n">weight</span> <span class="o">=</span> <span class="n">psf_mapper</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+        <span class="n">flag_pixs</span><span class="p">,</span> <span class="n">flag_maps</span> <span class="o">=</span> <span class="n">flag_mapper</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+
+        <span class="c1"># Collect all the maps</span>
+        <span class="n">maps</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">maps</span>
+
+        <span class="c1"># Save PSF maps</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">psf_mapper</span><span class="o">.</span><span class="n">source_bins</span><span class="p">:</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;psf/g1_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;psf/g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;psf/var_g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;psf/var_g2_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">var_g1</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;psf/lensing_weight_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pix</span><span class="p">,</span> <span class="n">weight</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+
+        <span class="c1"># Save flag maps</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">flag_pixs</span><span class="p">,</span> <span class="n">flag_maps</span><span class="p">)):</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">i</span>
+            <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_source_maps&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;flags/flag_</span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span>
+            <span class="c1"># also print out some stats</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Map shows total </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2"> objects with flag </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">maps</span></div></div>
+
+
+
+<div class="viewcode-block" id="TXAuxiliaryLensMaps"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliaryLensMaps">[docs]</a><span class="k">class</span> <span class="nc">TXAuxiliaryLensMaps</span><span class="p">(</span><span class="n">TXBaseMaps</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXAuxiliaryLensMaps&quot;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class generates:</span>
+<span class="sd">        - depth maps</span>
+<span class="sd">        - psf maps</span>
+<span class="sd">        - bright object maps</span>
+<span class="sd">        - flag maps</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;photometry_catalog&quot;</span><span class="p">,</span> <span class="n">HDFFile</span><span class="p">),</span>  <span class="c1"># for mags etc</span>
+        <span class="p">(</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>  <span class="c1"># we copy the pixel scheme from here</span>
+    <span class="p">]</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;aux_lens_maps&quot;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;chunk_rows&quot;</span><span class="p">:</span> <span class="mi">100_000</span><span class="p">,</span>
+        <span class="s2">&quot;sparse&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;bright_obj_threshold&quot;</span><span class="p">:</span> <span class="mf">22.0</span><span class="p">,</span>  <span class="c1"># The magnitude threshold for a object to be counted as bright</span>
+        <span class="s2">&quot;depth_band&quot;</span><span class="p">:</span> <span class="s2">&quot;i&quot;</span><span class="p">,</span>  <span class="c1"># Make depth maps for this band</span>
+        <span class="s2">&quot;snr_threshold&quot;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>  <span class="c1"># The S/N value to generate maps for (e.g. 5 for 5-sigma depth)</span>
+        <span class="s2">&quot;snr_delta&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># The range threshold +/- delta is used for finding objects at the boundary</span>
+    <span class="p">}</span>
+    <span class="c1"># instead of reading from config we match the basic maps</span>
+<div class="viewcode-block" id="TXAuxiliaryLensMaps.choose_pixel_scheme"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.choose_pixel_scheme">[docs]</a>    <span class="k">def</span> <span class="nf">choose_pixel_scheme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_input</span><span class="p">(</span><span class="s2">&quot;lens_maps&quot;</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">maps_file</span><span class="p">:</span>
+            <span class="n">pix_info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">maps_file</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="s2">&quot;maps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">choose_pixelization</span><span class="p">(</span><span class="o">**</span><span class="n">pix_info</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TXAuxiliaryLensMaps.prepare_mappers"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.prepare_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">):</span>
+        <span class="c1"># We make a suite of mappers here.</span>
+
+        <span class="c1"># for estimating depth per lens-bin</span>
+        <span class="n">depth_mapper</span> <span class="o">=</span> <span class="n">DepthMapperDR1</span><span class="p">(</span>
+            <span class="n">pixel_scheme</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;snr_threshold&quot;</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;snr_delta&quot;</span><span class="p">],</span>
+            <span class="n">sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;sparse&quot;</span><span class="p">],</span>
+            <span class="n">comm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># for mapping bright star fractions, for masks</span>
+        <span class="n">brobj_mapper</span> <span class="o">=</span> <span class="n">BrightObjectMapper</span><span class="p">(</span>
+            <span class="n">pixel_scheme</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;bright_obj_threshold&quot;</span><span class="p">],</span>
+            <span class="n">sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;sparse&quot;</span><span class="p">],</span>
+            <span class="n">comm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">depth_mapper</span><span class="p">,</span> <span class="n">brobj_mapper</span></div>
+
+<div class="viewcode-block" id="TXAuxiliaryLensMaps.data_iterator"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.data_iterator">[docs]</a>    <span class="k">def</span> <span class="nf">data_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">band</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;depth_band&quot;</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">,</span> <span class="s2">&quot;dec&quot;</span><span class="p">,</span> <span class="s2">&quot;extendedness&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterate_hdf</span><span class="p">(</span><span class="s2">&quot;photometry_catalog&quot;</span><span class="p">,</span> <span class="s2">&quot;photometry&quot;</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;chunk_rows&quot;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="TXAuxiliaryLensMaps.accumulate_maps"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.accumulate_maps">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+        <span class="n">depth_mapper</span><span class="p">,</span> <span class="n">brobj_mapper</span> <span class="o">=</span> <span class="n">mappers</span>
+        <span class="n">band</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;depth_band&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Our different mappers want different data columns.</span>
+        <span class="c1"># We pull out the bits they need and give them just those.</span>
+        <span class="n">brobj_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;mag&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;extendedness&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;extendedness&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;ra&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;dec&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">],</span>
+        <span class="p">}</span>
+
+        <span class="n">depth_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;mag&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;snr&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;ra&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;dec&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">],</span>
+        <span class="p">}</span>
+
+        <span class="n">depth_mapper</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">depth_data</span><span class="p">)</span>
+        <span class="n">brobj_mapper</span><span class="o">.</span><span class="n">add_data</span><span class="p">(</span><span class="n">brobj_data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TXAuxiliaryLensMaps.finalize_mappers"><a class="viewcode-back" href="../../stages/auxiliary_maps.html#txpipe.auxiliary_maps.TXAuxiliaryLensMaps.finalize_mappers">[docs]</a>    <span class="k">def</span> <span class="nf">finalize_mappers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pixel_scheme</span><span class="p">,</span> <span class="n">mappers</span><span class="p">):</span>
+        <span class="n">depth_mapper</span><span class="p">,</span> <span class="n">brobj_mapper</span> <span class="o">=</span> <span class="n">mappers</span>
+
+        <span class="c1"># Four different mappers</span>
+        <span class="n">depth_pix</span><span class="p">,</span> <span class="n">depth_count</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">depth_var</span> <span class="o">=</span> <span class="n">depth_mapper</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span>
+        <span class="n">brobj_pix</span><span class="p">,</span> <span class="n">brobj_count</span><span class="p">,</span> <span class="n">brobj_mag</span><span class="p">,</span> <span class="n">brobj_mag_var</span> <span class="o">=</span> <span class="n">brobj_mapper</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">comm</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Collect all the maps</span>
+        <span class="n">maps</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">maps</span>
+
+        <span class="c1"># Save depth maps</span>
+        <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_lens_maps&quot;</span><span class="p">,</span> <span class="s2">&quot;depth/depth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">depth_pix</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+        <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_lens_maps&quot;</span><span class="p">,</span> <span class="s2">&quot;depth/depth_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">depth_pix</span><span class="p">,</span> <span class="n">depth_count</span><span class="p">)</span>
+        <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_lens_maps&quot;</span><span class="p">,</span> <span class="s2">&quot;depth/depth_var&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">depth_pix</span><span class="p">,</span> <span class="n">depth_var</span><span class="p">)</span>
+
+        <span class="c1"># Save bright object counts</span>
+        <span class="n">maps</span><span class="p">[</span><span class="s2">&quot;aux_lens_maps&quot;</span><span class="p">,</span> <span class="s2">&quot;bright_objects/count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">brobj_pix</span><span class="p">,</span> <span class="n">brobj_count</span><span class="p">)</span>
+
+
+        <span class="k">return</span> <span class="n">maps</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

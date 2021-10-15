@@ -1,6 +1,8 @@
 from parallel_statistics import ParallelMeanVariance
 import numpy as np
-
+"""
+.. module:: NumberDensityStats
+"""
 class SourceNumberDensityStats:
     def __init__(self, nbin_source, shear_type, comm=None):
         self.nbin_source = nbin_source
