@@ -49,9 +49,9 @@ class TXFourierNamasterCovariance(PipelineStage):
         rank = self.rank
 
         if rank == 0:
-            scratch_dir = self.config["scratch_dir"]
-            if not os.path.exists(scratch_dir):
-                os.makedirs(scratch_dir)
+            self.scratch_dir = self.config["scratch_dir"]
+            if not os.path.exists(self.scratch_dir):
+                os.makedirs(self.scratch_dir)
 
         # read the fiducial cosmology
         cosmo = self.read_cosmology()
@@ -78,7 +78,9 @@ class TXFourierNamasterCovariance(PipelineStage):
         else:
             spinlist = None
 
-        if comm is not None:
+        if comm is None:
+            spinlist = spinlist[0]
+        else:
             spinlist = comm.scatter(spinlist, root=0)
 
         self.get_w(msk, spinlist)
@@ -94,7 +96,9 @@ class TXFourierNamasterCovariance(PipelineStage):
         else:
             spinlist = None
 
-        if comm is not None:
+        if comm is None:
+            spinlist = spinlist[0]
+        else:
             spinlist = comm.scatter(spinlist, root=0)
         self.get_cw(spinlist)
 
@@ -130,7 +134,9 @@ class TXFourierNamasterCovariance(PipelineStage):
             diclist = None
             covsize = None
 
-        if comm is not None:
+        if comm is None:
+            diclist = diclist[0]
+        else:
             diclist = comm.scatter(diclist, root=0)
             covsize = comm.bcast(covsize, root=0)
 
@@ -253,18 +259,18 @@ class TXFourierNamasterCovariance(PipelineStage):
             self.w.compute_coupling_matrix(
                 getattr(self, f"f{s1}"), getattr(self, f"f{s2}"), self.b
             )
-            self.w.write_to(f"{scratch_dir}/w{s1}{s2}.fits")
+            self.w.write_to(f"{self.scratch_dir}/w{s1}{s2}.fits")
 
     def read_w(self):
         import pymaster as nmt
 
         # These are accessed via getattr in compute_covariance_block
         self.w00 = nmt.NmtWorkspace()
-        self.w00.read_from(f"{scratch_dir}/w00.fits")
+        self.w00.read_from(f"{self.scratch_dir}/w00.fits")
         self.w20 = nmt.NmtWorkspace()
-        self.w20.read_from(f"{scratch_dir}/w20.fits")
+        self.w20.read_from(f"{self.scratch_dir}/w20.fits")
         self.w22 = nmt.NmtWorkspace()
-        self.w22.read_from(f"{scratch_dir}/w22.fits")
+        self.w22.read_from(f"{self.scratch_dir}/w22.fits")
 
     def get_cw_spinlist(self):
         size = self.size
@@ -298,29 +304,29 @@ class TXFourierNamasterCovariance(PipelineStage):
                 getattr(self, f"f{s3}"),
                 getattr(self, f"f{s4}"),
             )
-            cw.write_to(f"{scratch_dir}/cw{s1}{s2}{s3}{s4}.fits")
+            cw.write_to(f"{self.scratch_dir}/cw{s1}{s2}{s3}{s4}.fits")
 
     def read_cw(self):
         import pymaster as nmt
 
         # These are accessed via getattr in compute_covariance_block
         self.cw0000 = nmt.NmtCovarianceWorkspace()
-        self.cw0000.read_from(f"{scratch_dir}/cw0000.fits")
+        self.cw0000.read_from(f"{self.scratch_dir}/cw0000.fits")
 
         self.cw0020 = nmt.NmtCovarianceWorkspace()
-        self.cw0020.read_from(f"{scratch_dir}/cw0020.fits")
+        self.cw0020.read_from(f"{self.scratch_dir}/cw0020.fits")
 
         self.cw0022 = nmt.NmtCovarianceWorkspace()
-        self.cw0022.read_from(f"{scratch_dir}/cw0022.fits")
+        self.cw0022.read_from(f"{self.scratch_dir}/cw0022.fits")
 
         self.cw2020 = nmt.NmtCovarianceWorkspace()
-        self.cw2020.read_from(f"{scratch_dir}/cw2020.fits")
+        self.cw2020.read_from(f"{self.scratch_dir}/cw2020.fits")
 
         self.cw2022 = nmt.NmtCovarianceWorkspace()
-        self.cw2022.read_from(f"{scratch_dir}/cw2022.fits")
+        self.cw2022.read_from(f"{self.scratch_dir}/cw2022.fits")
 
         self.cw2222 = nmt.NmtCovarianceWorkspace()
-        self.cw2222.read_from(f"{scratch_dir}/cw2222.fits")
+        self.cw2222.read_from(f"{self.scratch_dir}/cw2222.fits")
 
     def get_tracer_info(self, cosmo, meta, two_point_data):
         # Generates CCL tracers from n(z) information in the data file
@@ -955,7 +961,7 @@ class TXFourierNamasterCovariance(PipelineStage):
                 )
             i = dic["ij"][0]
             j = dic["ij"][1]
-            np.savetxt(f"{scratch_dir}/cov_{i}_{j}.txt", cov_ij)
+            np.savetxt(f"{self.scratch_dir}/cov_{i}_{j}.txt", cov_ij)
 
     def put_together(self, covsize):
         Nell_bins = covsize["Nell_bins"]
@@ -965,7 +971,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         for i in range(0, N2pt):
             for j in range(i, N2pt):
                 # Fill in this chunk of the matrix
-                cov_ij = np.loadtxt(f"{scratch_dir}/cov_{i}_{j}.txt")
+                cov_ij = np.loadtxt(f"{self.scratch_dir}/cov_{i}_{j}.txt")
                 # Find the right location in the matrix
                 start_i = i * Nell_bins
                 start_j = j * Nell_bins
