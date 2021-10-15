@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile, YamlFile
+from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile, YamlFile, MapsFile
+from .twopoint_fourier import TXTwoPointFourier
 import numpy as np
 import warnings
 import os
@@ -14,7 +15,7 @@ sq_deg_on_sky = 360**2 / np.pi
 class TXFourierGaussianCovariance(PipelineStage):
     name='TXFourierGaussianCovariance'
     do_xi=False
-    
+
     inputs = [
         ('fiducial_cosmology', FiducialCosmology),    # For the cosmological parameters
         ('twopoint_data_fourier', SACCFile), # For the binning information
@@ -44,23 +45,23 @@ class TXFourierGaussianCovariance(PipelineStage):
         # read binning
         two_point_data = self.read_sacc()
 
-        # read the n(z) and f_sky from the source summary stats        
+        # read the n(z) and f_sky from the source summary stats
         meta = self.read_number_statistics()
-        
+
         # Binning choices. The ell binning is a linear piece with all the
-        # integer values up to 500 -- these are from firecrown, might need 
+        # integer values up to 500 -- these are from firecrown, might need
         # to change later
         meta['ell'] = np.concatenate(
-            (np.linspace(2, 500-1, 500-2), 
+            (np.linspace(2, 500-1, 500-2),
              np.logspace(np.log10(500), np.log10(6e4), 500))
             )
 
         # Theta binning - log spaced between 1 .. 300 arcmin.
-        meta['theta'] = np.logspace(np.log10(1/60), np.log10(300./60), 3000) 
+        meta['theta'] = np.logspace(np.log10(1/60), np.log10(300./60), 3000)
 
         #C_ell covariance
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
-        
+
         self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
@@ -185,7 +186,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 n_gal = meta['n_lens'][nbin]
                 tracer_noise[tracer] = 1 / n_gal
                 ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z,nz), bias=(z,b))
-                    
+
         return ccl_tracers, tracer_noise
 
     def get_spins(self, tracer_comb):
@@ -204,7 +205,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 tracers+=['source']
         return WT_factors[tuple(tracers)]
 
-    # compute a single covariance matrix for a given pair of C_ell or xi.  
+    # compute a single covariance matrix for a given pair of C_ell or xi.
     def compute_covariance_block(self, cosmo, meta, ell_bins,
         tracer_comb1=None, tracer_comb2=None, ccl_tracers=None, tracer_Noise=None,
         two_point_data=None,
@@ -262,7 +263,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # The overall normalization factor at the front of the matrix
         if self.do_xi:
             norm = np.pi * 4 * meta['f_sky']
-        else: 
+        else:
             norm = (2*ell + 1) * np.gradient(ell) * meta['f_sky']
 
         # The coupling is an identity matrix at least when we neglect
@@ -288,13 +289,13 @@ class TXFourierGaussianCovariance(PipelineStage):
                 # in the cross term, this contribution is subtracted.
                 # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
                 Bmode_F=-1
-            # below the we multiply zero to maintain the shape of the Cl array, these are effectively 
+            # below the we multiply zero to maintain the shape of the Cl array, these are effectively
             # B-modes
             cov[1324] += np.outer(cl[13]*0 + SN[13], cl[24]*0 + SN[24]) * coupling_mat[1324] * Bmode_F
             cov[1423] += np.outer(cl[14]*0 + SN[14], cl[23]*0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
         cov['final']=cov[1423]+cov[1324]
-        
+
         if self.do_xi:
             s1_s2_1 = self.get_spins(tracer_comb1)
             s1_s2_2 = self.get_spins(tracer_comb2)
@@ -306,7 +307,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_1 = s1_s2_1[xi_plus_minus1]
             if isinstance(s1_s2_2, dict):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
-                
+
             # Use these terms to project the covariance from C_ell to xi(theta)
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
@@ -314,7 +315,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # Normalize
         cov['final'] /= norm
 
-        # Put the covariance into bins. 
+        # Put the covariance into bins.
         # This is optional in the case of a C_ell covariance (only if bins in ell are
         # supplied, otherwise the matrix is for each ell value individually).  It is
         # required for real-space covariances since these are always binned.
@@ -324,7 +325,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb, cov['final_b'] = bin_cov(r=ell, r_bins=ell_bins, cov=cov['final'])
         return cov
-    
+
     def get_angular_bins(self, two_point_data):
         # Assume that the ell binning is the same for each of the bins.
         # This is true in the current pipeline.
@@ -383,13 +384,13 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         ccl_tracers,tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         # we will loop over all these
-        tracer_combs = two_point_data.get_tracer_combinations() 
+        tracer_combs = two_point_data.get_tracer_combinations()
         N2pt = len(tracer_combs)
 
 
         WT = self.make_wigner_transform(meta)
-        
-        # the bit below is just counting the number of 2pt functions, and accounting 
+
+        # the bit below is just counting the number of 2pt functions, and accounting
         # for the fact that xi needs to be double counted
         N2pt0 = 0
         if self.do_xi:
@@ -413,7 +414,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         print("Total number of 2pt functions:", N2pt)
         print("Number of 2pt functions without xim:", N2pt0)
-        
+
         # Look through the chunk of matrix, tracer pair by tracer pair
         # Order of the covariance needs to be the cannonical order of saac. For a 3x2pt matrix that is:
         # -galaxy_density_xi
@@ -423,27 +424,27 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         xim_start = N2pt0-(N2pt-N2pt0)
         xim_end = N2pt0
-        
+
         for i in range(N2pt):
             tracer_comb1 = tracer_combs[i]
 
             count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
-            
+
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
-                
+
                 count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
 
                 if self.do_xi and ('source' in tracer_comb1[0] and 'source' in tracer_comb1[1]) or ('source' in tracer_comb2[0] and 'source' in tracer_comb2[1]):
                     cov_ij = self.compute_covariance_block(
                         cosmo,
                         meta,
-                        ell_bins, 
+                        ell_bins,
                         tracer_comb1=tracer_comb1,
                         tracer_comb2=tracer_comb2,
                         ccl_tracers=ccl_tracers,
-                        tracer_Noise=tracer_Noise, 
+                        tracer_Noise=tracer_Noise,
                         two_point_data=two_point_data,
                         xi_plus_minus1=xi_pm[count_xi_pm1][count_xi_pm2][0],
                         xi_plus_minus2=xi_pm[count_xi_pm1][count_xi_pm2][1],
@@ -478,7 +479,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         try:
             np.linalg.cholesky(cov_full)
-        except:        
+        except:
             print("liAnalg.LinAlgError: Covariance not positive definite! "
                 "Most likely this is a problem in xim. "
                 "We will continue for now but this needs to be fixed.")
@@ -548,11 +549,13 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
 class TXFourierTJPCovariance(PipelineStage):
     name='TXFourierTJPCovariance'
     do_xi=False
-    
+
     inputs = [
         ('fiducial_cosmology', FiducialCosmology),    # For the cosmological parameters
         ('twopoint_data_fourier', SACCFile), # For the binning information
         ('tracer_metadata_yml', YamlFile),        # For metadata
+        ('mask', MapsFile),  # For the lens mask
+        ('source_maps', MapsFile), # For the sources masks
     ]
 
     outputs = [
@@ -561,7 +564,12 @@ class TXFourierTJPCovariance(PipelineStage):
 
     config_options = {
         'galaxy_bias': [0.],
-        'IA': 0.5
+        'IA': 0.5,
+        # These should be read from TXTwoPointFourier config
+        "ell_min": 100,
+        "ell_max": 1536,
+        "n_ell": 20,
+        "ell_spacing": 'log'
     }
 
 
@@ -601,23 +609,57 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Set more TJPCov config options
         for i in range(nbin_lens):
-            tjp_config[f"bias_lens{i}"] = bias[i]
-            tjp_config[f"Ngal_lens{i}"] = meta["lens_density"][i]
+            tjp_config[f"bias_lens_{i}"] = bias[i]
+            tjp_config[f"Ngal_lens_{i}"] = meta["lens_density"][i]
 
         for i in range(nbin_source):
-            tjp_config[f"Ngal_source{i}"] = meta["n_eff"][i]
-            tjp_config[f"sigma_e{i}"] = meta["sigma_e"][i]
+            tjp_config[f"Ngal_source_{i}"] = meta["n_eff"][i]
+            tjp_config[f"sigma_e_{i}"] = meta["sigma_e"][i]
 
 
-        # Set sky fraction. TODO: use mask here instead
-        tjp_config['fsky'] = meta['area'] / sq_deg_on_sky
+        # TODO: Set masks
+        with self.open_input('mask', wrapper=True) as f:
+            mask = f.read_map('mask')
+            if self.rank == 0:
+                print("Loaded mask")
+
+        with self.open_input('source_maps', wrapper=True) as f:
+            lensing_weights = [f.read_map(f'lensing_weight_{b}') for b in range(nbin_source)]
+            if self.rank == 0:
+                print(f"Loaded {nbin_source} lensing weight maps")
+
+        # Following twopoint_fourier.py:197 all clustering maps use this mask
+        masks = {f'lens_{i}': mask for i in range(nbin_lens)}
+        masks.update({f'source_{i}': lensing_weights[i] for i in range(nbin_source)})
+        masks_names = {f'lens_{i}': 'mask_lens' for i in range(nbin_lens)}
+        masks_names.update({f'source_{i}': f'mask_source_{i}' for i in range(nbin_source)})
+
+        tjp_config[f"mask_file"] = masks
+        tjp_config[f"mask_names"] = masks_names
+
+        # Load NmtBin used for the Cells
 
         # Run TJPCov
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
-        covmat = calculator.get_all_cov_nmt()
-        print(covmat)
+        ell_bins = self.choose_ell_bins()
+        covmat = calculator.get_all_cov_nmt(cache={'bins': ell_bins})
 
+    def choose_ell_bins(self):
+        # TODO: This should be read from somewhere. That way one makes sure it
+        # has the same binning as in the Cells
 
+        # Copied from TXTwoPointFourier()
+        import pymaster as nmt
+        from .utils.nmt_utils import MyNmtBin
+
+        # Creating the ell binning from the edges using this Namaster constructor.
+        if self.config['ell_spacing'] == 'log':
+            edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+        else:
+            edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+
+        ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
+        return ell_bins
 
     def read_sacc(self):
         # Loads a sacc file and remove any BB measurements or similar
