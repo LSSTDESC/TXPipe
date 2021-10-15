@@ -81,7 +81,14 @@
 <section id="running">
 <h2>Running<a class="headerlink" href="#running" title="Permalink to this headline"></a></h2>
 <p>You can download data for a test pipeline like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
+tar -zxvf example.tar.gz
+</pre></div>
+</div>
 <p>and run that test pipeline like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ceci examples/laptop_pipeline.yml
+</pre></div>
+</div>
 </section>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -106,7 +113,7 @@
 </section>
 <section id="results">
 <h2>Results<a class="headerlink" href="#results" title="Permalink to this headline"></a></h2>
-<p>Once the pipeline is complete, the results will be stored in <code class="docutils literal notranslate"><span class="pre">data/example/outputs</span></code>. Some are PNG images you can look at directly. Others are HDF5 files - see <span class="xref std std-ref">&lt;Reading HDF5 Files&gt;</span>.</p>
+<p>Once the pipeline is complete, the results will be stored in <code class="docutils literal notranslate"><span class="pre">data/example/outputs</span></code>. Some are PNG images you can look at directly. Others are HDF5 files - see <a class="reference internal" href="hdf5.html#reading-hdf5-files"><span class="std std-ref">Reading HDF5 Files</span></a>.</p>
 </section>
 </section>
 

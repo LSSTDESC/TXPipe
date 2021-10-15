@@ -7,12 +7,14 @@ Running
 You can download data for a test pipeline like this:
 
 .. code-block:: bash
+
     curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
     tar -zxvf example.tar.gz
 
 and run that test pipeline like this:
 
 .. code-block:: bash
+
     ceci examples/laptop_pipeline.yml
 
 Overview
@@ -49,6 +51,6 @@ You can make your charts like this using (requires pygraphviz)::
 Results
 -------
 
-Once the pipeline is complete, the results will be stored in ``data/example/outputs``. Some are PNG images you can look at directly. Others are HDF5 files - see :ref:`<Reading HDF5 Files>`.
+Once the pipeline is complete, the results will be stored in ``data/example/outputs``. Some are PNG images you can look at directly. Others are HDF5 files - see :ref:`Reading HDF5 Files`.
 
 
