@@ -8,8 +8,7 @@ input_sacc_filename = sys.argv[1]
 output_2pt_filename = sys.argv[2]
 
 # Set real to False if the input file is in Fourier space
-real = True
-fourier = not real
+real = None
 
 # Load in the sacc data file from fits method
 s = sacc.Sacc.load_fits(input_sacc_filename)
@@ -60,10 +59,17 @@ for dt in s.get_data_types():
         if 'xi' in d.data_type:
             #real space
             ang = d['theta']
+            if real is False:
+                raise ValueError("Mixed real/fourier data")
+            real = True
+
         if 'cl' in d.data_type:
             # Fourier space
             ang = d['ell']
-        print(ang)
+            if real is True:
+                raise ValueError("Mixed real/fourier data")
+            real = False
+
         # This relies on the specific ordering in the sacc file to work.
         # The data points have to be in ascending order, and then each
         # time they're not it indicates the start of a new bin.
@@ -87,7 +93,7 @@ if real:
         builder.types[3]: "xip"
     }
 
-if fourier:
+else:
     names = {
         builder.types[0]: "galaxy_density_cl",
         builder.types[1]: "galaxy_shearDensity_cl_e",
