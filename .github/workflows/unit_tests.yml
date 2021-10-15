@@ -1,0 +1,31 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Test:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: joezuntz/txpipe
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Download test data
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
+
+    - name: Test with pytest
+      run: |
+        pytest txpipe
+

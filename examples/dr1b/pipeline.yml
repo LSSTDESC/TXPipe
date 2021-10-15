@@ -50,7 +50,7 @@ site:
 modules: txpipe
 
 # configuration settings
-config: examples/config/dr1b_config.yml
+config: examples/dr1b/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

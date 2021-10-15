@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Lensfit Pipeline
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: joezuntz/txpipe-auto
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
@@ -25,21 +25,12 @@ jobs:
         wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
         tar -zxvf example.tar.gz
 
-    - name: Test with pytest
+    - name: Run lensfit pipeline
       run: |
-        pytest txpipe
-
-    - name: Run more pipelines
-      run: |
-        ceci examples/laptop_redmagic_pipeline.yml
-        ceci examples/laptop_lensfit_pipeline.yml
-        test -f data/example/outputs/shear_xi_plus.png
-        test -f data/example/outputs_redmagic/shear_xi_plus.png
+        ceci examples/lensfit/pipeline.yml
         test -f data/example/outputs_lensfit/shear_xi_plus.png
 
     - name: Show logs
       if: ${{ always() }}
       run: |
-        tail -n +1 data/example/logs/*
-        tail -n +1 data/example/logs_redmagic/*
         tail -n +1 data/example/logs_lensfit/*

@@ -68,7 +68,7 @@ stages:
     - name: TXTwoPointPlotsFourier
 
 output_dir: data/skysim5000_v1.1.1/outputs
-config: examples/config/skysim5000_config.yml
+config: examples/skysim/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
