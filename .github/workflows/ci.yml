@@ -135,6 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ["Redmagic Pipeline", "Metacal Pipeline", "Lensfit Pipeline"]
     steps:
-      - uses: geekyeggo/delete-artifact@v1
+        name: Delete
+        uses: geekyeggo/delete-artifact@v1
         with:
           name: txpipe-example-data
