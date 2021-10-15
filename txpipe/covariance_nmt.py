@@ -48,7 +48,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         comm = self.comm
         size = self.size
         rank = self.rank
-        print(size)
         
         if rank == 0: 
             scratch_dir = self.config['scratch_dir']
@@ -79,9 +78,15 @@ class TXFourierNamasterCovariance(PipelineStage):
             spinlist = self.get_w_spinlist()
         else: 
             spinlist = None
-        spinlist = comm.scatter(spinlist, root=0)
+
+        if comm is not None:
+            spinlist = comm.scatter(spinlist, root=0)
+
         self.get_w(msk, spinlist)
-        comm.Barrier()
+
+        if comm is not None:
+            comm.Barrier()
+
         self.read_w()
         
         #get cw-workspace
@@ -89,9 +94,14 @@ class TXFourierNamasterCovariance(PipelineStage):
             spinlist = self.get_cw_spinlist()
         else: 
             spinlist = None
-        spinlist = comm.scatter(spinlist, root=0)
+
+        if comm is not None:
+            spinlist = comm.scatter(spinlist, root=0)
         self.get_cw(spinlist)
-        comm.Barrier()
+
+        if comm is not None:
+            comm.Barrier()
+
         self.read_cw()
 
         
@@ -119,11 +129,15 @@ class TXFourierNamasterCovariance(PipelineStage):
             diclist = None
             covsize = None
         
-        diclist = comm.scatter(diclist, root=0)
-        covsize = comm.bcast(covsize, root=0)
+        if comm is not None:
+            diclist = comm.scatter(diclist, root=0)
+            covsize = comm.bcast(covsize, root=0)
 
         self.compute_covariance(cosmo, meta, two_point_data, diclist)
-        comm.Barrier()
+
+        if self.comm is not None:
+            comm.Barrier()
+
         cov = self.put_together(covsize)
         self.save_outputs(two_point_data, cov)
 
@@ -213,7 +227,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         return meta
     
     def get_w_spinlist(self):
-        comm = self.comm
         size = self.size
         allspins = [(0,0),(2,0),(2,2)]
         spinlist = [[] for i in range(size)]
@@ -244,6 +257,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         
     def read_w(self):
         import pymaster as nmt
+        # These are accessed via getattr in compute_covariance_block
         self.w00 = nmt.NmtWorkspace()
         self.w00.read_from(f'{scratch_dir}/w00.fits')
         self.w20 = nmt.NmtWorkspace()
@@ -253,9 +267,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     
     def get_cw_spinlist(self):
-        
-        comm = MPI.COMM_WORLD
-        size = comm.Get_size()
+        size = self.size
         allspins = [(0,0,0,0),(0,0,2,0),(0,0,2,2),(2,0,2,0),(2,0,2,2),(2,2,2,2)]
         spinlist = [[] for i in range(size)]
         for i, spins in enumerate(allspins):
@@ -280,7 +292,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         
     def read_cw(self):
         import pymaster as nmt
-        
+
+        # These are accessed via getattr in compute_covariance_block
         self.cw0000 = nmt.NmtCovarianceWorkspace()
         self.cw0000.read_from(f'{scratch_dir}/cw0000.fits')
         
@@ -368,7 +381,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
         # tracers 1,2,3,4 = tracer_comb1[0], tracer_comb1[1], tracer_comb2[0], tracer_comb2[1]
         # In the dicts below we use '13' to indicate C_ell_(1,3), etc.
-        # This index maps to this usae
+        # This index maps to this usage
         reindex = {
             (0, 0): 13,
             (1, 1): 24,
@@ -714,9 +727,6 @@ class TXFourierNamasterCovariance(PipelineStage):
     # the row and column of the covariance block (i,j), as well as some other
     # info, e.g. tracer combo and xi_pm
     def make_mpi_dict(self, cosmo, meta, two_point_data):
-        comm = self.comm
-        size = self.size
-
         # we will loop over all these
         tracer_combs = two_point_data.get_tracer_combinations() 
         N2pt = len(tracer_combs)
@@ -747,7 +757,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         xim_start = N2pt0-(N2pt-N2pt0)
         xim_end = N2pt0
 
-        alldic = [] #create a list of list of dictionaries, and scatter it using MPI
+        # create a list of list of dictionaries, and scatter it using MPI
+        alldic = []
         
         # Look through the chunk of matrix, tracer pair by tracer pair
         for i in range(0,N2pt):
@@ -777,6 +788,7 @@ class TXFourierNamasterCovariance(PipelineStage):
                           }
                     alldic.append(dic)
         
+        size = self.size
         diclist = [[] for i in range(size)]
         for i, dic in enumerate(alldic):
             num = i%size
@@ -785,7 +797,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         return diclist, covsize
 
 
-#compute all the covariances and then combine them into one single giant matrix
+    # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data, diclist):
         from tjpcov import bin_cov
 
