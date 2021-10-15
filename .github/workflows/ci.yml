@@ -57,7 +57,7 @@ jobs:
         submodules: true
 
     - name: Get data
-    - uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v2
       with:
         name: txpipe-example-data
 
@@ -87,7 +87,7 @@ jobs:
         submodules: true
 
     - name: Get data
-    - uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v2
       with:
         name: txpipe-example-data
 
@@ -117,7 +117,7 @@ jobs:
         submodules: true
 
     - name: Get data
-    - uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v2
       with:
         name: txpipe-example-data
 
