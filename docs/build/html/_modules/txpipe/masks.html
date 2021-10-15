@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.masks &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.masks &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../example.html">Running an example pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -72,7 +74,7 @@
 <span class="kn">from</span> <span class="nn">.data_types</span> <span class="kn">import</span> <span class="n">MapsFile</span>
 
 
-<div class="viewcode-block" id="TXSimpleMask"><a class="viewcode-back" href="../../masks.html#txpipe.masks.TXSimpleMask">[docs]</a><span class="k">class</span> <span class="nc">TXSimpleMask</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXSimpleMask"><a class="viewcode-back" href="../../stages/masks.html#txpipe.masks.TXSimpleMask">[docs]</a><span class="k">class</span> <span class="nc">TXSimpleMask</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXSimpleMask&quot;</span>
     <span class="c1"># make a mask from the auxiliary maps</span>
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;aux_lens_maps&quot;</span><span class="p">,</span> <span class="n">MapsFile</span><span class="p">)]</span>
@@ -99,7 +101,7 @@
 
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">masks</span><span class="p">:</span>
             <span class="n">frac</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">m</span> <span class="o">&amp;</span> <span class="n">hit</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">hit</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mask &#39;</span><span class="si">{name}</span><span class="s2">&#39; removes fraction </span><span class="si">{frac:.3f}</span><span class="s2"> of hit pixels&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mask &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; removes fraction </span><span class="si">{</span><span class="n">frac</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> of hit pixels&quot;</span><span class="p">)</span>
 
         <span class="c1"># Overall mask</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="o">.</span><span class="n">reduce</span><span class="p">([</span><span class="n">mask</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">masks</span><span class="p">])</span>
@@ -110,8 +112,8 @@
         <span class="n">num_hit</span> <span class="o">=</span> <span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">*</span> <span class="mf">1.0</span><span class="p">)</span>
         <span class="n">area</span> <span class="o">=</span> <span class="n">pixel_scheme</span><span class="o">.</span><span class="n">pixel_area</span><span class="p">(</span><span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">*</span> <span class="n">num_hit</span>
         <span class="n">f_sky</span> <span class="o">=</span> <span class="n">area</span> <span class="o">/</span> <span class="mf">41252.96125</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky = </span><span class="si">{f_sky}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area = </span><span class="si">{area:.2f}</span><span class="s2"> sq deg&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;f_sky = </span><span class="si">{</span><span class="n">f_sky</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;area = </span><span class="si">{</span><span class="n">area</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> sq deg&quot;</span><span class="p">)</span>
         <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;area&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">area</span>
         <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;f_sky&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">f_sky</span>
 

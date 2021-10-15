@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.utils.theory &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.utils.theory &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../example.html">Running an example pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -116,7 +118,7 @@
     <span class="k">return</span> <span class="n">ccl</span><span class="o">.</span><span class="n">Cosmology</span><span class="p">(</span><span class="o">**</span><span class="n">inits</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="theory_3x2pt"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.theory.theory_3x2pt">[docs]</a><span class="k">def</span> <span class="nf">theory_3x2pt</span><span class="p">(</span><span class="n">cosmology_file</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">,</span> <span class="n">fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="theory_3x2pt"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.theory.theory_3x2pt">[docs]</a><span class="k">def</span> <span class="nf">theory_3x2pt</span><span class="p">(</span><span class="n">cosmology_file</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">nbin_source</span><span class="p">,</span> <span class="n">nbin_lens</span><span class="p">,</span> <span class="n">fourier</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Compute the 3x2pt theory, for example for a fiducial cosmology</span>
 
 <span class="sd">    Parameters</span>
@@ -158,7 +160,7 @@
     <span class="c1"># Lensing tracers - need to think a little more about</span>
     <span class="c1"># the fiducial intrinsic alignment here</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">tag</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;S&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
         <span class="n">CTracers</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">WeakLensingTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">nz</span><span class="p">))</span>
     <span class="c1"># Position tracers - even more important to think about fiducial biases</span>
@@ -167,7 +169,7 @@
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Not using galaxy bias in fiducial theory density spectra&quot;</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">):</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span>
         <span class="n">tag</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> 
         <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
         <span class="n">CTracers</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">NumberCountsTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">nz</span><span class="p">),</span>

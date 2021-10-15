@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CC-IN2P3 Installation &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">Running an example pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>CC-IN2P3 Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/installation/ccin2p3.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cc-in2p3-installation">
+<h1>CC-IN2P3 Installation<a class="headerlink" href="#cc-in2p3-installation" title="Permalink to this headline"></a></h1>
+<p>You can get a conda environment on the CC-IN2P3 machine with the instructions below.</p>
+<p>Take care when using existing conda environments, especially when they have versions of MPI or MPI-dependent  code (e.g. emcee) included; these often will not work.</p>
+<p>Your first-time setup is this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load CC-IN2P3 modules</span>
+<span class="n">module</span> <span class="n">load</span> <span class="n">gcc</span>
+<span class="n">module</span> <span class="n">load</span> <span class="n">Libraries</span><span class="o">/</span><span class="n">hdf5</span><span class="o">/</span><span class="mf">1.12.1</span>
+<span class="n">module</span> <span class="n">load</span> <span class="n">Compilers</span><span class="o">/</span><span class="n">swig</span><span class="o">/</span><span class="mf">4.0.2</span>
+<span class="n">source</span> <span class="o">/</span><span class="n">pbs</span><span class="o">/</span><span class="n">software</span><span class="o">/</span><span class="n">centos</span><span class="o">-</span><span class="mi">7</span><span class="o">-</span><span class="n">x86_64</span><span class="o">/</span><span class="n">openmpi</span><span class="o">/</span><span class="n">ccenv</span><span class="o">.</span><span class="n">sh</span> <span class="mf">4.1.1</span>
+
+<span class="c1"># Download and setup conda forge environment</span>
+<span class="n">wget</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">conda</span><span class="o">-</span><span class="n">forge</span><span class="o">/</span><span class="n">miniforge</span><span class="o">/</span><span class="n">releases</span><span class="o">/</span><span class="n">latest</span><span class="o">/</span><span class="n">download</span><span class="o">/</span><span class="n">Miniforge3</span><span class="o">-</span><span class="n">Linux</span><span class="o">-</span><span class="n">x86_64</span><span class="o">.</span><span class="n">sh</span>
+<span class="n">chmod</span> <span class="o">+</span><span class="n">x</span> <span class="n">Miniforge3</span><span class="o">-</span><span class="n">Linux</span><span class="o">-</span><span class="n">x86_64</span><span class="o">.</span><span class="n">sh</span>
+<span class="o">./</span><span class="n">Miniforge3</span><span class="o">-</span><span class="n">Linux</span><span class="o">-</span><span class="n">x86_64</span><span class="o">.</span><span class="n">sh</span> <span class="o">-</span><span class="n">b</span> <span class="o">-</span><span class="n">p</span> <span class="o">./</span><span class="n">conda</span>
+<span class="n">source</span> <span class="o">./</span><span class="n">conda</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
+
+<span class="c1"># Install requirements</span>
+<span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">scipy</span> <span class="n">matplotlib</span> <span class="n">camb</span> <span class="n">healpy</span> <span class="n">psutil</span> <span class="n">numpy</span> <span class="n">scikit</span><span class="o">-</span><span class="n">learn</span> <span class="n">fitsio</span> <span class="n">pandas</span> <span class="n">astropy</span> <span class="n">pyccl</span> <span class="n">treecorr</span> <span class="n">namaster</span>  <span class="n">dask</span> <span class="n">healsparse</span> <span class="n">pygraphviz</span>
+<span class="n">HDF5_MPI</span><span class="o">=</span><span class="n">ON</span> <span class="n">CC</span><span class="o">=</span><span class="n">mpicc</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">binary</span><span class="o">=</span><span class="n">h5py</span><span class="p">,</span><span class="n">mpi4py</span>  <span class="n">h5py</span> <span class="n">mpi4py</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="n">requirements</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>Then when you log in in future do this to set up your environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">module</span> <span class="n">load</span> <span class="n">gcc</span>
+<span class="n">module</span> <span class="n">load</span> <span class="n">Libraries</span><span class="o">/</span><span class="n">hdf5</span><span class="o">/</span><span class="mf">1.12.1</span>
+<span class="n">module</span> <span class="n">load</span> <span class="n">Compilers</span><span class="o">/</span><span class="n">swig</span><span class="o">/</span><span class="mf">4.0.2</span>
+<span class="n">source</span> <span class="o">/</span><span class="n">pbs</span><span class="o">/</span><span class="n">software</span><span class="o">/</span><span class="n">centos</span><span class="o">-</span><span class="mi">7</span><span class="o">-</span><span class="n">x86_64</span><span class="o">/</span><span class="n">openmpi</span><span class="o">/</span><span class="n">ccenv</span><span class="o">.</span><span class="n">sh</span> <span class="mf">4.1.1</span>
+<span class="n">source</span> <span class="o">./</span><span class="n">conda</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

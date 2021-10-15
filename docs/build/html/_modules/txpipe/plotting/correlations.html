@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.plotting.correlations &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.plotting.correlations &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../example.html">Running an example pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -91,7 +93,7 @@
 <span class="p">}</span>
 
 
-<div class="viewcode-block" id="make_axis"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.make_axis">[docs]</a><span class="k">def</span> <span class="nf">make_axis</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+<div class="viewcode-block" id="make_axis"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.make_axis">[docs]</a><span class="k">def</span> <span class="nf">make_axis</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
     <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
     <span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="mi">0</span> <span class="ow">and</span> <span class="n">j</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
         <span class="n">shares</span> <span class="o">=</span> <span class="p">{}</span>
@@ -107,7 +109,7 @@
     <span class="k">return</span> <span class="n">a</span></div>
 
 
-<div class="viewcode-block" id="apply_galaxy_bias_ggl"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.apply_galaxy_bias_ggl">[docs]</a><span class="k">def</span> <span class="nf">apply_galaxy_bias_ggl</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">theory</span><span class="p">,</span> <span class="n">xi</span><span class="p">):</span>
+<div class="viewcode-block" id="apply_galaxy_bias_ggl"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.apply_galaxy_bias_ggl">[docs]</a><span class="k">def</span> <span class="nf">apply_galaxy_bias_ggl</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">theory</span><span class="p">,</span> <span class="n">xi</span><span class="p">):</span>
     <span class="n">theory</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">theory</span><span class="p">)</span>
 
     <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
@@ -125,7 +127,7 @@
         <span class="n">mean_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">b</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
         <span class="n">cl_theory</span> <span class="o">*=</span> <span class="n">mean_b</span><span class="o">**</span><span class="mi">2</span>
         <span class="n">bias</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_b</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bias </span><span class="si">{i}</span><span class="s2"> = </span><span class="si">{mean_b:.2f}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bias </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">mean_b</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Now apply to GGL</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
@@ -136,7 +138,7 @@
     <span class="k">return</span> <span class="n">theory</span></div>
 
 
-<div class="viewcode-block" id="full_3x2pt_plots"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.full_3x2pt_plots">[docs]</a><span class="k">def</span> <span class="nf">full_3x2pt_plots</span><span class="p">(</span><span class="n">sacc_files</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">theory_sacc_files</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">theory_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<div class="viewcode-block" id="full_3x2pt_plots"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.full_3x2pt_plots">[docs]</a><span class="k">def</span> <span class="nf">full_3x2pt_plots</span><span class="p">(</span><span class="n">sacc_files</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">theory_sacc_files</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">theory_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                      <span class="n">xi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fit_bias</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">figures</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xlogscale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ratios</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="kn">import</span> <span class="nn">sacc</span>
     <span class="n">sacc_data</span> <span class="o">=</span> <span class="p">[]</span>
@@ -167,7 +169,7 @@
         <span class="n">fitted_obs_theory</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">obs</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">obs_data</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
             <span class="n">theory_fit</span> <span class="o">=</span> <span class="n">apply_galaxy_bias_ggl</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">obs_theory</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xi</span><span class="p">)</span>
-            <span class="n">theory_fit</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Fit to </span><span class="si">{label}</span><span class="s2">&quot;</span>
+            <span class="n">theory_fit</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Fit to </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="n">fitted_obs_theory</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">theory_fit</span><span class="p">)</span>
         <span class="n">obs_theory</span> <span class="o">=</span> <span class="n">fitted_obs_theory</span>
 
@@ -189,12 +191,12 @@
     <span class="k">return</span> <span class="n">output_figures</span></div>
     
 
-<div class="viewcode-block" id="axis_setup"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.axis_setup">[docs]</a><span class="k">def</span> <span class="nf">axis_setup</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<div class="viewcode-block" id="axis_setup"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.axis_setup">[docs]</a><span class="k">def</span> <span class="nf">axis_setup</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
     <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
     <span class="k">if</span> <span class="n">j</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get_yticklabels</span><span class="p">(),</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">a</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;$</span><span class="si">{name}</span><span class="s2">$&quot;</span><span class="p">)</span>
+        <span class="n">a</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;$</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">$&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">ny</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get_xticklabels</span><span class="p">(),</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -208,13 +210,13 @@
     <span class="n">a</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s1">&#39;minor&#39;</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;in&#39;</span><span class="p">)</span>
 
     <span class="c1"># Fix</span>
-    <span class="n">a</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{j}</span><span class="s2"> - </span><span class="si">{i}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="n">j</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
         <span class="n">a</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
     <span class="n">a</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="make_plot"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.make_plot">[docs]</a><span class="k">def</span> <span class="nf">make_plot</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">obs_data</span><span class="p">,</span> <span class="n">obs_theory</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xlogscale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ratios</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="make_plot"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.make_plot">[docs]</a><span class="k">def</span> <span class="nf">make_plot</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="n">obs_data</span><span class="p">,</span> <span class="n">obs_theory</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xlogscale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ratios</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
     <span class="n">nbin_source</span> <span class="o">=</span> <span class="n">obs_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;nbin_source&#39;</span><span class="p">]</span>
     <span class="n">nbin_lens</span> <span class="o">=</span> <span class="n">obs_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;nbin_lens&#39;</span><span class="p">]</span>
@@ -340,7 +342,7 @@
             <span class="k">if</span> <span class="n">corr</span> <span class="ow">in</span> <span class="p">[</span><span class="n">EE</span><span class="p">,</span> <span class="n">ED</span><span class="p">,</span> <span class="n">DD</span><span class="p">]:</span>
                 <span class="n">a</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">90</span><span class="p">,</span> <span class="mi">1500</span><span class="p">)</span>
 
-    <span class="n">f</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="sa">rf</span><span class="s2">&quot;TXPipe $</span><span class="si">{name}</span><span class="s2">$&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="sa">rf</span><span class="s2">&quot;TXPipe $</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">$&quot;</span><span class="p">)</span>
 
     <span class="c1"># plt.tight_layout()</span>
     <span class="c1">#f.tight_layout(rect=[0, 0.03, 1, 0.95])</span>
@@ -348,11 +350,11 @@
     <span class="k">return</span> <span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="smooth_nz"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.smooth_nz">[docs]</a><span class="k">def</span> <span class="nf">smooth_nz</span><span class="p">(</span><span class="n">nz</span><span class="p">):</span>
+<div class="viewcode-block" id="smooth_nz"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.smooth_nz">[docs]</a><span class="k">def</span> <span class="nf">smooth_nz</span><span class="p">(</span><span class="n">nz</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="extract_observables_plot_data"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.extract_observables_plot_data">[docs]</a><span class="k">def</span> <span class="nf">extract_observables_plot_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+<div class="viewcode-block" id="extract_observables_plot_data"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.extract_observables_plot_data">[docs]</a><span class="k">def</span> <span class="nf">extract_observables_plot_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">label</span><span class="p">}</span>
 
     <span class="n">nbin_source</span> <span class="o">=</span> <span class="nb">len</span><span class="p">([</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">tracers</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">)])</span>
@@ -375,8 +377,8 @@
 
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_max</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_max</span><span class="p">):</span>
-                <span class="n">B1</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{b1}</span><span class="s2">_</span><span class="si">{i}</span><span class="s2">&quot;</span>
-                <span class="n">B2</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{b2}</span><span class="s2">_</span><span class="si">{j}</span><span class="s2">&quot;</span>
+                <span class="n">B1</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">b1</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">B2</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">b2</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="s1">&#39;theta&#39;</span><span class="p">:</span>
                     <span class="n">res</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get_theta_xi</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">B1</span><span class="p">,</span> <span class="n">B2</span><span class="p">,</span> <span class="n">return_cov</span><span class="o">=</span><span class="n">has_cov</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
@@ -390,7 +392,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This whole function below can be removed now since it is not used anymore. </span>
 <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="make_theory_plot_data"><a class="viewcode-back" href="../../../plotting.html#txpipe.plotting.correlations.make_theory_plot_data">[docs]</a><span class="k">def</span> <span class="nf">make_theory_plot_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">xi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ratios</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="make_theory_plot_data"><a class="viewcode-back" href="../../../stages/plotting.html#txpipe.plotting.correlations.make_theory_plot_data">[docs]</a><span class="k">def</span> <span class="nf">make_theory_plot_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">xi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ratios</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="kn">import</span> <span class="nn">pyccl</span>
     
     <span class="n">theory</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">label</span><span class="p">}</span>
@@ -408,7 +410,7 @@
     
     <span class="c1"># Make the lensing tracers</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{i}</span><span class="s1">&#39;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span>
         <span class="n">Ti</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get_tracer</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="n">nz</span> <span class="o">=</span> <span class="n">smooth_nz</span><span class="p">(</span><span class="n">Ti</span><span class="o">.</span><span class="n">nz</span><span class="p">)</span> <span class="k">if</span> <span class="n">smooth</span> <span class="k">else</span> <span class="n">Ti</span><span class="o">.</span><span class="n">nz</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;smooth:&quot;</span><span class="p">,</span>  <span class="n">smooth</span><span class="p">)</span>
@@ -417,7 +419,7 @@
 
     <span class="c1"># And the clustering tracers</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">):</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{i}</span><span class="s1">&#39;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span>
         <span class="n">Ti</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get_tracer</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
         <span class="n">nz</span> <span class="o">=</span> <span class="n">smooth_nz</span><span class="p">(</span><span class="n">Ti</span><span class="o">.</span><span class="n">nz</span><span class="p">)</span> <span class="k">if</span> <span class="n">smooth</span> <span class="k">else</span> <span class="n">Ti</span><span class="o">.</span><span class="n">nz</span>
 
@@ -428,7 +430,7 @@
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing theory lensing-lensing (</span><span class="si">{i}</span><span class="s2">,</span><span class="si">{j}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing theory lensing-lensing (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
             <span class="c1"># uncomment to take ratio in Fourier space to get the exact ells</span>
             <span class="k">if</span> <span class="n">ratios</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">xi</span><span class="p">):</span>
@@ -436,7 +438,7 @@
                     <span class="n">ell</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[(</span><span class="s1">&#39;galaxy_shearDensity_cl_e&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="c1"># to get the ratio between theory and data</span>
 
             <span class="c1"># compute power spectra</span>
-            <span class="n">cl</span> <span class="o">=</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{j}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
+            <span class="n">cl</span> <span class="o">=</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
             
             <span class="n">theory</span><span class="p">[(</span><span class="n">EE</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ell</span><span class="p">,</span> <span class="n">cl</span>
 
@@ -448,10 +450,10 @@
                 <span class="n">theory</span><span class="p">[(</span><span class="n">XIM</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">theta</span><span class="p">,</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">correlation</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">ell</span><span class="p">,</span> <span class="n">cl</span><span class="p">,</span> <span class="n">theta</span><span class="o">/</span><span class="mi">60</span><span class="p">,</span> <span class="n">corr_type</span><span class="o">=</span><span class="s1">&#39;L-&#39;</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing theory density-density (</span><span class="si">{i}</span><span class="s2">,</span><span class="si">{i}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing theory density-density (</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
         <span class="c1"># compute power spectra</span>
-        <span class="n">cl</span> <span class="o">=</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
+        <span class="n">cl</span> <span class="o">=</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
         <span class="n">theory</span><span class="p">[(</span><span class="n">DD</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ell</span><span class="p">,</span> <span class="n">cl</span>
 
         <span class="c1"># Optionally also compute correlation functions</span>
@@ -463,10 +465,10 @@
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_source</span><span class="p">):</span>
         
         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nbin_lens</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing theory lensing-density (S</span><span class="si">{i}</span><span class="s2">,L</span><span class="si">{j}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing theory lensing-density (S</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">,L</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
             <span class="c1"># compute power spectra</span>
-            <span class="n">cl</span> <span class="o">=</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{i}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{j}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
+            <span class="n">cl</span> <span class="o">=</span> <span class="n">pyccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;lens_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">ell</span><span class="p">)</span>
             <span class="n">theory</span><span class="p">[(</span><span class="n">ED</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ell</span><span class="p">,</span> <span class="n">cl</span>
 
             <span class="c1"># Optionally also compute correlation functions</span>

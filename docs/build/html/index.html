@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TXPipe documentation &mdash; TXPipe  documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>TXPipe documentation &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -34,12 +36,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Running an example pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -66,95 +69,27 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="txpipe-documentation">
-<h1>TXPipe documentation<a class="headerlink" href="#txpipe-documentation" title="Permalink to this headline">¶</a></h1>
+  <section id="txpipe-documentation">
+<h1>TXPipe documentation<a class="headerlink" href="#txpipe-documentation" title="Permalink to this headline"></a></h1>
 <div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Contents:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="running.html">Running a pipeline:</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="running.html#the-pipeline-file">The pipeline file:</a></li>
-<li class="toctree-l2"><a class="reference internal" href="running.html#config-file">Config file:</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#the-base-stage">The base stage:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="base_stage.html">Base stage</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#ingestion-stages">Ingestion stages:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ingest_redmagic.html">Ingest redmagic</a></li>
-<li class="toctree-l3"><a class="reference internal" href="metacal_gcr_input.html">metacal_gcr_input</a></li>
-<li class="toctree-l3"><a class="reference internal" href="exposure_info.html">exposure_info</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input_cats.html">Input Catalogs</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#selection-and-tomography-stages">Selection and Tomography stages:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="source_selector.html">source_selector</a></li>
-<li class="toctree-l3"><a class="reference internal" href="lens_selector.html">Lens selector</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#photoz-stages">Photoz stages:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="photoz.html">photoz</a></li>
-<li class="toctree-l3"><a class="reference internal" href="photoz_mlz.html">photoz_mlz</a></li>
-<li class="toctree-l3"><a class="reference internal" href="photoz_stack.html">photoz_stack</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#maps-and-mask-stages">Maps and Mask stages:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="maps.html">maps</a></li>
-<li class="toctree-l3"><a class="reference internal" href="auxiliary_maps.html">Auxilliary maps</a></li>
-<li class="toctree-l3"><a class="reference internal" href="noise_maps.html">noise_maps</a></li>
-<li class="toctree-l3"><a class="reference internal" href="masks.html">masks</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#two-point-stages">Two point stages:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="random_cats.html">random_cats</a></li>
-<li class="toctree-l3"><a class="reference internal" href="twopoint.html">Twopoint correlations</a></li>
-<li class="toctree-l3"><a class="reference internal" href="twopoint_fourier.html">twopoint_fourier</a></li>
-<li class="toctree-l3"><a class="reference internal" href="map_correlations.html">map_correlations</a></li>
-<li class="toctree-l3"><a class="reference internal" href="covariance.html">covariance stage</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#plotting-and-diagnostics">Plotting and diagnostics:</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="blinding.html">Blinding</a></li>
-<li class="toctree-l3"><a class="reference internal" href="convergence.html">Convergencemaps</a></li>
-<li class="toctree-l3"><a class="reference internal" href="diagnostics.html">Diagnostics plots</a></li>
-<li class="toctree-l3"><a class="reference internal" href="map_plots.html">map_plots</a></li>
-<li class="toctree-l3"><a class="reference internal" href="metadata.html">metadata</a></li>
-<li class="toctree-l3"><a class="reference internal" href="psf_diagnostics.html">psf_diagnostics</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="stages.html#extra-utilities">Extra utilities</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="data_types.html">data_types</a></li>
-<li class="toctree-l3"><a class="reference internal" href="mapping.html">mapping</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plotting.html">plotting</a></li>
-<li class="toctree-l3"><a class="reference internal" href="randoms.html">randoms</a></li>
-<li class="toctree-l3"><a class="reference internal" href="ui.html">Ui</a></li>
-<li class="toctree-l3"><a class="reference internal" href="utils.html">Utilities</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="FlexZPipe.html">FlexZPipe</a></li>
-<li class="toctree-l2"><a class="reference internal" href="TJPCov.html">TJPCov</a></li>
-<li class="toctree-l2"><a class="reference internal" href="WLMassMap.html">WLMassMap</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Running an example pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 </div>
-</div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
 <li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
 </ul>
-</div>
+</section>
 
 
            </div>

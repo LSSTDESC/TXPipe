@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Utilities &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="randoms" href="randoms.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">Running an example pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="stages.html#the-base-stage">The base stage:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#ingestion-stages">Ingestion stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#selection-and-tomography-stages">Selection and Tomography stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#photoz-stages">Photoz stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#maps-and-mask-stages">Maps and Mask stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#two-point-stages">Two point stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#plotting-and-diagnostics">Plotting and diagnostics:</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="stages.html#extra-utilities">Extra utilities</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="data_types.html">data_types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mapping.html">mapping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plotting.html">plotting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="randoms.html">randoms</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Utilities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+      <li>Utilities</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/stages/utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-txpipe.utils.calibration_tools">
+<span id="utilities"></span><h1>Utilities<a class="headerlink" href="#module-txpipe.utils.calibration_tools" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.HSCCalculator">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.utils.calibration_tools.</span></span><span class="sig-name descname"><span class="pre">HSCCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#HSCCalculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.HSCCalculator" title="Permalink to this definition"></a></dt>
+<dd><p>This class builds up the total response calibration
+factors for HSC-convention shear-calibration from each chunk of data it is
+given.
+At the end an MPI communicator can be supplied to collect together
+the results from the different processes.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.HSCCalculator.add_data">
+<span class="sig-name descname"><span class="pre">add_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#HSCCalculator.add_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.HSCCalculator.add_data" title="Permalink to this definition"></a></dt>
+<dd><p>Select objects from a new chunk of data and tally their responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em>) – Dictionary of data columns to select on and add</p></li>
+<li><p><strong>*args</strong> – Positional arguments to be passed to the selection function</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed to the selection function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.HSCCalculator.collect">
+<span class="sig-name descname"><span class="pre">collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allgather</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#HSCCalculator.collect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.HSCCalculator.collect" title="Permalink to this definition"></a></dt>
+<dd><p>Finalize and sum up all the response values, returning calibration
+quantities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>comm</strong> (<em>MPI Communicator</em>) – If supplied, all processors response values will be combined together.
+All processes will return the same final value</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>R</strong> (<em>float</em>) – R calibration factor</p></li>
+<li><p><strong>K</strong> (<em>float</em>) – K = (1+m) calibration</p></li>
+<li><p><strong>N</strong> (<em>int</em>) – Total object count</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.LensfitCalculator">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.utils.calibration_tools.</span></span><span class="sig-name descname"><span class="pre">LensfitCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_m_is_weighted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#LensfitCalculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.LensfitCalculator" title="Permalink to this definition"></a></dt>
+<dd><p>This class builds up the total calibration
+factors for lensfit-convention shears from each chunk of data it is given.
+Note here we derive the c-terms from the data (in constrast to averaging
+values derived from simulations and stored in the catalog.)
+At the end an MPI communicator can be supplied to collect together
+the results from the different processes.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.LensfitCalculator.add_data">
+<span class="sig-name descname"><span class="pre">add_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#LensfitCalculator.add_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.LensfitCalculator.add_data" title="Permalink to this definition"></a></dt>
+<dd><p>Select objects from a new chunk of data and tally their responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em>) – Dictionary of data columns to select on and add</p></li>
+<li><p><strong>*args</strong> – Positional arguments to be passed to the selection function</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed to the selection function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.LensfitCalculator.collect">
+<span class="sig-name descname"><span class="pre">collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allgather</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#LensfitCalculator.collect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.LensfitCalculator.collect" title="Permalink to this definition"></a></dt>
+<dd><p>Finalize and sum up all the response values, returning calibration
+quantities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>comm</strong> (<em>MPI Communicator</em>) – If supplied, all processors response values will be combined together.
+All processes will return the same final value</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>K</strong> (<em>float</em>) – K = (1+m) calibration</p></li>
+<li><p><strong>C</strong> (<em>float array</em>) – c1, c2 additive biases (weighted average of g1 and g2)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.MetacalCalculator">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.utils.calibration_tools.</span></span><span class="sig-name descname"><span class="pre">MetacalCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta_gamma</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#MetacalCalculator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.MetacalCalculator" title="Permalink to this definition"></a></dt>
+<dd><p>This class builds up the total response and selection calibration
+factors for Metacalibration from each chunk of data it is given.
+At the end an MPI communicator can be supplied to collect together
+the results from the different processes.</p>
+<p>To do this we need the function used to select the data, and the instance
+this function to each of the metacalibrated variants automatically by
+wrapping the data object passed in to it and modifying the names of columns
+that are looked up.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.MetacalCalculator.add_data">
+<span class="sig-name descname"><span class="pre">add_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#MetacalCalculator.add_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.MetacalCalculator.add_data" title="Permalink to this definition"></a></dt>
+<dd><p>Select objects from a new chunk of data and tally their responses</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em>) – Dictionary of data columns to select on and add</p></li>
+<li><p><strong>*args</strong> – Positional arguments to be passed to the selection function</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments to be passed to the selection function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.MetacalCalculator.collect">
+<span class="sig-name descname"><span class="pre">collect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allgather</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#MetacalCalculator.collect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.MetacalCalculator.collect" title="Permalink to this definition"></a></dt>
+<dd><p>Finalize and sum up all the response values, returning separate
+R (estimator response) and S (selection bias) 2x2 matrices
+:param comm: If supplied, all processors response values will be combined together.</p>
+<blockquote>
+<div><p>All processes will return the same final value</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>R</strong> (<em>2x2 array</em>) – Estimator response matrix</p></li>
+<li><p><strong>S</strong> (<em>2x2 array</em>) – Selection bias matrix</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.calibration_tools.read_shear_catalog_type">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.calibration_tools.</span></span><span class="sig-name descname"><span class="pre">read_shear_catalog_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/calibration_tools.html#read_shear_catalog_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.calibration_tools.read_shear_catalog_type" title="Permalink to this definition"></a></dt>
+<dd><p>Determine the type of shear catalog a stage is using as input.
+Returns a string, e.g. metacal, lensfit.
+Also sets shear_catalog_type in the stage’s configuration
+so that it is available later and is saved in output.</p>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.fitting"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.fitting.fit_straight_line">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.fitting.</span></span><span class="sig-name descname"><span class="pre">fit_straight_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_err</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_err</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nan_error</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_nan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/fitting.html#fit_straight_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.fitting.fit_straight_line" title="Permalink to this definition"></a></dt>
+<dd><p>Use scipy to fit a straight line, with errors or covariances allowed
+on both x and y.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<em>array</em>) – x-coordinate</p></li>
+<li><p><strong>y</strong> (<em>array</em>) – y-coordinate</p></li>
+<li><p><strong>m0</strong> (<em>float</em>) – optional, default=1, guess at gradient</p></li>
+<li><p><strong>c0</strong> (<em>float</em>) – optional, default=1, guess at intercept</p></li>
+<li><p><strong>x_err</strong> (<em>array/float</em>) – optional, default=None, errors either 1D std. dev., 2D covariance, or scalar constant, or None for unspecified</p></li>
+<li><p><strong>y_err</strong> (<em>array/float</em>) – optional, default=None, errors either 1D std. dev., 2D covariance, or scalar constant, or None for unspecified</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>m</strong> (<em>float</em>) – gradient</p></li>
+<li><p><strong>c</strong> (<em>float</em>) – intercept</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.hdf_tools"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.hdf_tools.create_dataset_early_allocated">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.hdf_tools.</span></span><span class="sig-name descname"><span class="pre">create_dataset_early_allocated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">group</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/hdf_tools.html#create_dataset_early_allocated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.hdf_tools.create_dataset_early_allocated" title="Permalink to this definition"></a></dt>
+<dd><p>Create an HdF5 dataset, allocating the full space for it at the start of the process.
+This can make it faster to write data incrementally from multiple processes.
+The dataset is also not pre-filled, saving more time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>group</strong> (<em>h5py.Group</em>) – the parent for the dataset</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – name for the new dataset</p></li>
+<li><p><strong>size</strong> (<em>int</em>) – The size of the new data set (which must be 1D)</p></li>
+<li><p><strong>dtype</strong> (<em>str</em>) – Data type, One of f4, f8, i4, i8</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.hdf_tools.repack">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.hdf_tools.</span></span><span class="sig-name descname"><span class="pre">repack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/hdf_tools.html#repack"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.hdf_tools.repack" title="Permalink to this definition"></a></dt>
+<dd><p>In-place HDF5 repack operation on file.</p>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.healpix"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.healpix.dilated_healpix_map">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.healpix.</span></span><span class="sig-name descname"><span class="pre">dilated_healpix_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/healpix.html#dilated_healpix_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.healpix.dilated_healpix_map" title="Permalink to this definition"></a></dt>
+<dd><p>Dilate a healpix map - every pixel with a neighbour
+that is UNSEEN gets set to unseen as well</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>m</strong> (<em>array</em>) – Healpix float map</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>m2</strong> – Matching-sized map with edge pixels UNSEEN</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.misc"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.misc.hex_escape">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.misc.</span></span><span class="sig-name descname"><span class="pre">hex_escape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace_newlines</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/misc.html#hex_escape"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.misc.hex_escape" title="Permalink to this definition"></a></dt>
+<dd><p>Replace non-printable characters in a string with hex-code equivalents
+so they can be printed or saved to a FITS file header.  Newline characters
+will be replaced if replace_newlines is set to true</p>
+<p>Based on:  <a class="reference external" href="https://stackoverflow.com/a/13935582">https://stackoverflow.com/a/13935582</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>str</em>) – The initial string</p></li>
+<li><p><strong>replace_newlines</strong> (<em>bool</em>) – Whether to include newline characters in the replacement</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Same string with unprintable chars replaced with hex codes, e.g.
+the bell character becomes “”</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.misc.rename_iterated">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.misc.</span></span><span class="sig-name descname"><span class="pre">rename_iterated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">it</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renames</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/misc.html#rename_iterated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.misc.rename_iterated" title="Permalink to this definition"></a></dt>
+<dd><p>Rename the items in dictionaries yielded by an interator.</p>
+<p>In several places we load data from catalogs chunk by chunk,
+yielding a dictionary of data each time. This renames columns
+in each chunk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>it</strong> (<em>iterator</em>) – Must yield triplets of (any, any, data)</p></li>
+<li><p><strong>renames</strong> (<em>dict</em>) – dictionary of old names mapped to new names</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.misc.unique_list">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.misc.</span></span><span class="sig-name descname"><span class="pre">unique_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seq</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/misc.html#unique_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.misc.unique_list" title="Permalink to this definition"></a></dt>
+<dd><p>Find the unique elements in a list or other sequence
+while maintaining the order. (i.e., remove any duplicated
+elements but otherwise leave it the same)</p>
+<p>Method from:
+<a class="reference external" href="https://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-whilst-preserving-order">https://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-whilst-preserving-order</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>seq</strong> (<em>list</em><em> or </em><em>sequence</em>) – Any input object that can be iterated</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>L</strong> – a new list of the unique objects</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.mpi_utils"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.mpi_utils.mpi_reduce_large">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.mpi_utils.</span></span><span class="sig-name descname"><span class="pre">mpi_reduce_large</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_chunk_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1073741824</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/mpi_utils.html#mpi_reduce_large"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.mpi_utils.mpi_reduce_large" title="Permalink to this definition"></a></dt>
+<dd><p>Use MPI reduce in-place on an array, even a very large one.</p>
+<p>MPI Reduce is a reduction operation that will, (e.g.) sum arrays
+from different processors on a single process.</p>
+<p>It fails whenever the size of the array is greater than 2**31,
+due to an overflow.  This version detects that case and divides
+the array up into chunks, running reduction on each one separately</p>
+<p>This specific call does in-place reduction, so that the root
+process overwrites its own array with the result.
+This minimizes memory usage.</p>
+<p>The default is to do a sum of all the arrays, and to collect
+at process zero, but those can be overridden.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>array</em>) – can be any shape but must be contiguous</p></li>
+<li><p><strong>comm</strong> (<em>MPI communictator</em>) – </p></li>
+<li><p><strong>max_chunk_count</strong> (<em>int</em>) – Optional, default=2**30.  Max number of items to allow to be sent at once</p></li>
+<li><p><strong>root</strong> (<em>int</em>) – Optional, default=0.  Rank of process to receive final result</p></li>
+<li><p><strong>op</strong> (<em>MPI operation</em>) – Optional, default=None. MPI operation, e.g. MPI.PROD, MPI.MAX, etc. Default is to SUM</p></li>
+<li><p><strong>debug</strong> (<em>bool</em>) – Optional, default=False.  Whether to print out information from each rank</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.nmt_utils"></span><dl class="py class">
+<dt class="sig sig-object py" id="txpipe.utils.nmt_utils.MyNmtBin">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.utils.nmt_utils.</span></span><span class="sig-name descname"><span class="pre">MyNmtBin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bpws</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_Dell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_ell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/nmt_utils.html#MyNmtBin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.nmt_utils.MyNmtBin" title="Permalink to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.nmt_utils.MyNmtBin.get_ell_max">
+<span class="sig-name descname"><span class="pre">get_ell_max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/nmt_utils.html#MyNmtBin.get_ell_max"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.nmt_utils.MyNmtBin.get_ell_max" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the maximum ell value used by bandpower with         index b</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>maximum ell value</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.utils.nmt_utils.MyNmtBin.get_ell_min">
+<span class="sig-name descname"><span class="pre">get_ell_min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/nmt_utils.html#MyNmtBin.get_ell_min"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.nmt_utils.MyNmtBin.get_ell_min" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the minimum ell value used by bandpower with         index b</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>minimum ell value</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.utils.nmt_utils.MyNmtBinFlat">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.utils.nmt_utils.</span></span><span class="sig-name descname"><span class="pre">MyNmtBinFlat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lf</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/nmt_utils.html#MyNmtBinFlat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.nmt_utils.MyNmtBinFlat" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<span class="target" id="module-txpipe.utils.provenance"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.provenance.find_module_versions">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.provenance.</span></span><span class="sig-name descname"><span class="pre">find_module_versions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/provenance.html#find_module_versions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.provenance.find_module_versions" title="Permalink to this definition"></a></dt>
+<dd><p>Generate a dictionary of versions of all imported modules
+by looking for __version__ or version attributes on them.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.provenance.get_caller_directory">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.provenance.</span></span><span class="sig-name descname"><span class="pre">get_caller_directory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grandparent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/provenance.html#get_caller_directory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.provenance.get_caller_directory" title="Permalink to this definition"></a></dt>
+<dd><p>Find the directory where the code calling this
+module lives, or where the code calling
+that code lives if grandparent=True.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.provenance.git_current_revision">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.provenance.</span></span><span class="sig-name descname"><span class="pre">git_current_revision</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/provenance.html#git_current_revision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.provenance.git_current_revision" title="Permalink to this definition"></a></dt>
+<dd><p>Run git diff in the caller’s directory, and return stdout+stderr</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.provenance.git_diff">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.provenance.</span></span><span class="sig-name descname"><span class="pre">git_diff</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/provenance.html#git_diff"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.provenance.git_diff" title="Permalink to this definition"></a></dt>
+<dd><p>Run git diff in the caller’s directory, and return stdout+stderr</p>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.theory"></span><dl class="py function">
+<dt class="sig sig-object py" id="txpipe.utils.theory.theory_3x2pt">
+<span class="sig-prename descclassname"><span class="pre">txpipe.utils.theory.</span></span><span class="sig-name descname"><span class="pre">theory_3x2pt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cosmology_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbin_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbin_lens</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fourier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/utils/theory.html#theory_3x2pt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.utils.theory.theory_3x2pt" title="Permalink to this definition"></a></dt>
+<dd><p>Compute the 3x2pt theory, for example for a fiducial cosmology</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cosmology_file</strong> (<em>str</em>) – name of YAML file</p></li>
+<li><p><strong>tracers</strong> (<em>dict{str:obj}</em>) – dict of objects (e.g. sacc tracers) containing z, nz.
+keys are source_0, source_1, …, lens_0, lens_1, …</p></li>
+<li><p><strong>nbin_source</strong> (<em>int</em>) – number of source bins</p></li>
+<li><p><strong>nbin_lens</strong> (<em>int</em>) – number of lens bins</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>theory_cl</strong> – theory c_ell for each pair (i,j,k) where k is one of
+SHEAR_SHEAR = 0, SHEAR_POS = 1, POS_POS = 2</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict{str:array}</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-txpipe.utils.timer"></span></section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="randoms.html" class="btn btn-neutral float-left" title="randoms" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.utils.calibration_tools &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <title>txpipe.utils.calibration_tools &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
         <script src="../../../_static/jquery.js"></script>
         <script src="../../../_static/underscore.js"></script>
         <script src="../../../_static/doctools.js"></script>
-        <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" /> 
@@ -33,12 +34,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../example.html">Running an example pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -70,7 +72,7 @@
 <span class="kn">from</span> <span class="nn">parallel_statistics</span> <span class="kn">import</span> <span class="n">ParallelMeanVariance</span><span class="p">,</span> <span class="n">ParallelMean</span>
 
 
-<div class="viewcode-block" id="read_shear_catalog_type"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.read_shear_catalog_type">[docs]</a><span class="k">def</span> <span class="nf">read_shear_catalog_type</span><span class="p">(</span><span class="n">stage</span><span class="p">):</span>
+<div class="viewcode-block" id="read_shear_catalog_type"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.read_shear_catalog_type">[docs]</a><span class="k">def</span> <span class="nf">read_shear_catalog_type</span><span class="p">(</span><span class="n">stage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determine the type of shear catalog a stage is using as input.</span>
 <span class="sd">    Returns a string, e.g. metacal, lensfit.</span>
@@ -198,7 +200,7 @@
     <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 
-<div class="viewcode-block" id="MetacalCalculator"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.MetacalCalculator">[docs]</a><span class="k">class</span> <span class="nc">MetacalCalculator</span><span class="p">:</span>
+<div class="viewcode-block" id="MetacalCalculator"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.MetacalCalculator">[docs]</a><span class="k">class</span> <span class="nc">MetacalCalculator</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class builds up the total response and selection calibration</span>
 <span class="sd">    factors for Metacalibration from each chunk of data it is given.</span>
@@ -237,7 +239,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cal_bias_means</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sel_bias_means</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 
-<div class="viewcode-block" id="MetacalCalculator.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.MetacalCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="MetacalCalculator.add_data"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.MetacalCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Select objects from a new chunk of data and tally their responses</span>
 
 <span class="sd">        Parameters</span>
@@ -315,7 +317,7 @@
         <span class="c1"># The user of this class may need the base selection, so return it</span>
         <span class="k">return</span> <span class="n">sel_00</span></div>
 
-<div class="viewcode-block" id="MetacalCalculator.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.MetacalCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="MetacalCalculator.collect"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.MetacalCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Finalize and sum up all the response values, returning separate</span>
 <span class="sd">        R (estimator response) and S (selection bias) 2x2 matrices</span>
@@ -368,7 +370,7 @@
 
 
 
-<div class="viewcode-block" id="LensfitCalculator"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.LensfitCalculator">[docs]</a><span class="k">class</span> <span class="nc">LensfitCalculator</span><span class="p">:</span>
+<div class="viewcode-block" id="LensfitCalculator"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.LensfitCalculator">[docs]</a><span class="k">class</span> <span class="nc">LensfitCalculator</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class builds up the total calibration</span>
 <span class="sd">    factors for lensfit-convention shears from each chunk of data it is given.</span>
@@ -402,7 +404,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">input_m_is_weighted</span> <span class="o">=</span> <span class="n">input_m_is_weighted</span>
 
-<div class="viewcode-block" id="LensfitCalculator.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.LensfitCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="LensfitCalculator.add_data"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.LensfitCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Select objects from a new chunk of data and tally their responses</span>
 
 <span class="sd">        Parameters</span>
@@ -446,7 +448,7 @@
 
         <span class="k">return</span> <span class="n">sel</span></div>
 
-<div class="viewcode-block" id="LensfitCalculator.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.LensfitCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="LensfitCalculator.collect"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.LensfitCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Finalize and sum up all the response values, returning calibration</span>
 <span class="sd">        quantities.</span>
@@ -486,7 +488,7 @@
         <span class="k">return</span> <span class="n">K</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">count</span></div></div>
 
 
-<div class="viewcode-block" id="HSCCalculator"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.HSCCalculator">[docs]</a><span class="k">class</span> <span class="nc">HSCCalculator</span><span class="p">:</span>
+<div class="viewcode-block" id="HSCCalculator"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.HSCCalculator">[docs]</a><span class="k">class</span> <span class="nc">HSCCalculator</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class builds up the total response calibration</span>
 <span class="sd">    factors for HSC-convention shear-calibration from each chunk of data it is</span>
@@ -518,7 +520,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">R</span> <span class="o">=</span> <span class="n">ParallelMean</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
 
-<div class="viewcode-block" id="HSCCalculator.add_data"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.HSCCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="HSCCalculator.add_data"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.HSCCalculator.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Select objects from a new chunk of data and tally their responses</span>
 
 <span class="sd">        Parameters</span>
@@ -555,7 +557,7 @@
 
         <span class="k">return</span> <span class="n">sel</span></div>
 
-<div class="viewcode-block" id="HSCCalculator.collect"><a class="viewcode-back" href="../../../utils.html#txpipe.utils.calibration_tools.HSCCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="HSCCalculator.collect"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.calibration_tools.HSCCalculator.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">allgather</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Finalize and sum up all the response values, returning calibration</span>
 <span class="sd">        quantities.</span>

@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>txpipe.metacal_gcr_input &mdash; TXPipe  documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <title>txpipe.metacal_gcr_input &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -33,12 +34,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../example.html">Running an example pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../running.html">Running a pipeline:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -73,7 +75,7 @@
 <span class="kn">import</span> <span class="nn">glob</span>
 <span class="kn">import</span> <span class="nn">re</span>
 
-<div class="viewcode-block" id="TXMetacalGCRInput"><a class="viewcode-back" href="../../metacal_gcr_input.html#txpipe.metacal_gcr_input.TXMetacalGCRInput">[docs]</a><span class="k">class</span> <span class="nc">TXMetacalGCRInput</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXMetacalGCRInput"><a class="viewcode-back" href="../../stages/metacal_gcr_input.html#txpipe.metacal_gcr_input.TXMetacalGCRInput">[docs]</a><span class="k">class</span> <span class="nc">TXMetacalGCRInput</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This stage simulates metacal data and metacalibrated</span>
 <span class="sd">    photometry measurements, starting from a cosmology catalogs</span>
@@ -115,16 +117,16 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
                 <span class="n">config_overwrite</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading catalog </span><span class="si">{cat_name}</span><span class="s2"> + </span><span class="si">{config_overwrite}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading catalog </span><span class="si">{</span><span class="n">cat_name</span><span class="si">}</span><span class="s2"> + </span><span class="si">{</span><span class="n">config_overwrite</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">cat</span> <span class="o">=</span> <span class="n">GCRCatalogs</span><span class="o">.</span><span class="n">load_catalog</span><span class="p">(</span><span class="n">cat_name</span><span class="p">,</span> <span class="n">config_overwrite</span><span class="o">=</span><span class="n">config_overwrite</span><span class="p">)</span>
         <span class="c1"># Total size is needed to set up the output file,</span>
         <span class="c1"># although in larger files it is a little slow to compute this.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cat</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total catalog size = </span><span class="si">{n}</span><span class="s2">&quot;</span><span class="p">)</span>  
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total catalog size = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  
         <span class="k">else</span><span class="p">:</span>
             <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using fixed specified size = </span><span class="si">{n}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using fixed specified size = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="c1"># This option, which prevented memory leaks with a previous</span>
         <span class="c1"># catalog format, appears not to work for Parquet catalogs,</span>
@@ -137,7 +139,7 @@
         <span class="n">available</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">list_all_quantities</span><span class="p">()</span>
         <span class="n">bands</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="s1">&#39;ugrizy&#39;</span><span class="p">:</span>
-            <span class="k">if</span> <span class="sa">f</span><span class="s1">&#39;mcal_mag_</span><span class="si">{b}</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+            <span class="k">if</span> <span class="sa">f</span><span class="s1">&#39;mcal_mag_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
                 <span class="n">bands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
 
         <span class="c1"># Columns that we will need.</span>
@@ -151,9 +153,9 @@
 
         <span class="c1"># Photometry columns (non-metacal)</span>
         <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="s1">&#39;ugrizy&#39;</span><span class="p">:</span>
-            <span class="n">photo_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">)</span>
-            <span class="n">photo_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;magerr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">)</span>
-            <span class="n">photo_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_cModel&#39;</span><span class="p">)</span>
+            <span class="n">photo_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">photo_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;magerr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">photo_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_cModel&#39;</span><span class="p">)</span>
 
 
         <span class="c1"># For shear we just add a weight column, and the non-rounded PSF estimates</span>
@@ -180,8 +182,8 @@
         <span class="n">single_tract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;single_tract&#39;</span><span class="p">]</span>
         
         <span class="k">if</span> <span class="n">single_tract</span><span class="p">:</span>
-            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;native_filters&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;tract == </span><span class="si">{single_tract}</span><span class="s1">&#39;</span><span class="p">}</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selecting one tract only: </span><span class="si">{single_tract}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;native_filters&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;tract == </span><span class="si">{</span><span class="n">single_tract</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">}</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selecting one tract only: </span><span class="si">{</span><span class="n">single_tract</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -200,7 +202,7 @@
 
             <span class="c1"># Write out this chunk of data to HDF</span>
             <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">])</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Saving </span><span class="si">{start}</span><span class="s2"> - </span><span class="si">{end}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Saving </span><span class="si">{</span><span class="n">start</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">write_output</span><span class="p">(</span><span class="n">shear_output</span><span class="p">,</span> <span class="s1">&#39;shear&#39;</span><span class="p">,</span> <span class="n">shear_out_cols</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">write_output</span><span class="p">(</span><span class="n">photo_output</span><span class="p">,</span> <span class="s1">&#39;photometry&#39;</span><span class="p">,</span> <span class="n">photo_out_cols</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
             <span class="n">start</span> <span class="o">=</span> <span class="n">end</span>
@@ -211,8 +213,8 @@
 
     <span class="k">def</span> <span class="nf">rename_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">band</span> <span class="ow">in</span> <span class="s1">&#39;ugrizy&#39;</span><span class="p">:</span>
-            <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_cModel&#39;</span><span class="p">]</span>
-            <span class="k">del</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{band}</span><span class="s1">_cModel&#39;</span><span class="p">]</span>
+            <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_cModel&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;snr_</span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s1">_cModel&#39;</span><span class="p">]</span>
 
         <span class="n">Ixx</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;IxxPSF&#39;</span><span class="p">]</span>
         <span class="n">Ixy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;IxyPSF&#39;</span><span class="p">]</span>
@@ -238,7 +240,7 @@
 
 
 
-<div class="viewcode-block" id="TXIngestStars"><a class="viewcode-back" href="../../metacal_gcr_input.html#txpipe.metacal_gcr_input.TXIngestStars">[docs]</a><span class="k">class</span> <span class="nc">TXIngestStars</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
+<div class="viewcode-block" id="TXIngestStars"><a class="viewcode-back" href="../../stages/metacal_gcr_input.html#txpipe.metacal_gcr_input.TXIngestStars">[docs]</a><span class="k">class</span> <span class="nc">TXIngestStars</span><span class="p">(</span><span class="n">PipelineStage</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;TXIngestStars&quot;</span>
     <span class="n">inputs</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -265,11 +267,11 @@
         <span class="c1"># Actually much smaller of course</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]:</span>
             <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;length&#39;</span><span class="p">]</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using fixed size </span><span class="si">{n}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using fixed size </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cat</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Full catalog size = </span><span class="si">{n}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Full catalog size = </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="c1"># Columns we need to load in for the star data - </span>
         <span class="c1"># the measured object moments and the identifier telling us</span>
         <span class="c1"># if it was used in PSF measurement</span>
@@ -309,8 +311,8 @@
         <span class="n">single_tract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;single_tract&#39;</span><span class="p">]</span>
         
         <span class="k">if</span> <span class="n">single_tract</span><span class="p">:</span>
-            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;native_filters&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;tract == </span><span class="si">{single_tract}</span><span class="s1">&#39;</span><span class="p">}</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selecting one tract only: </span><span class="si">{single_tract}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;native_filters&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;tract == </span><span class="si">{</span><span class="n">single_tract</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">}</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selecting one tract only: </span><span class="si">{</span><span class="n">single_tract</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
 
@@ -326,7 +328,7 @@
         <span class="n">star_output</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">cat</span><span class="o">.</span><span class="n">get_quantities</span><span class="p">(</span><span class="n">star_cols</span><span class="p">,</span> <span class="n">return_iterator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
             <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">])</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reading data </span><span class="si">{start:,}</span><span class="s2"> - </span><span class="si">{end:,}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reading data </span><span class="si">{</span><span class="n">start</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">end</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="c1"># Some columns have different names in input than output</span>
             <span class="n">star_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_star_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
             <span class="n">star_end</span> <span class="o">=</span> <span class="n">star_start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">star_data</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">])</span>
@@ -374,7 +376,7 @@
             <span class="n">star_data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
 
         <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="s1">&#39;ugrizy&#39;</span><span class="p">:</span>
-            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{b}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{b}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
+            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;mag_</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
 
         <span class="c1"># HSM reports moments.  We convert these into</span>
         <span class="c1"># ellipticities.  We do this for both the star shape</span>
@@ -386,18 +388,18 @@
 
         <span class="k">for</span> <span class="n">in_name</span><span class="p">,</span> <span class="n">out_name</span> <span class="ow">in</span> <span class="n">kinds</span><span class="p">:</span>
             <span class="c1"># Pulling out the correct moment columns</span>
-            <span class="n">Ixx</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ixx</span><span class="si">{in_name}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
-            <span class="n">Iyy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Iyy</span><span class="si">{in_name}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
-            <span class="n">Ixy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ixy</span><span class="si">{in_name}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
+            <span class="n">Ixx</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ixx</span><span class="si">{</span><span class="n">in_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
+            <span class="n">Iyy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Iyy</span><span class="si">{</span><span class="n">in_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
+            <span class="n">Ixy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ixy</span><span class="si">{</span><span class="n">in_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">][</span><span class="n">star</span><span class="p">]</span>
 
             <span class="c1"># Conversion of moments to e1, e2</span>
             <span class="n">T</span> <span class="o">=</span> <span class="n">Ixx</span> <span class="o">+</span> <span class="n">Iyy</span>
             <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span> <span class="o">=</span> <span class="n">moments_to_shear</span><span class="p">(</span><span class="n">Ixx</span><span class="p">,</span> <span class="n">Iyy</span><span class="p">,</span> <span class="n">Ixy</span><span class="p">)</span>
 
             <span class="c1"># save to output</span>
-            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{out_name}</span><span class="s1">e1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">e1</span>
-            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{out_name}</span><span class="s1">e2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">e2</span>
-            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{out_name}</span><span class="s1">T&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span>
+            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">out_name</span><span class="si">}</span><span class="s1">e1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">e1</span>
+            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">out_name</span><span class="si">}</span><span class="s1">e2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">e2</span>
+            <span class="n">star_data</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">out_name</span><span class="si">}</span><span class="s1">T&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span>
 
         <span class="k">return</span> <span class="n">star_data</span></div>
 

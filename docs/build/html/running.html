@@ -1,23 +1,25 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Running a pipeline: &mdash; TXPipe  documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>Running a pipeline: &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Stages implemented in TX-Pipe:" href="stages.html" />
-    <link rel="prev" title="TXPipe Installation" href="installation.html" /> 
+    <link rel="next" title="Reading HDF5 Files" href="hdf5.html" />
+    <link rel="prev" title="Running an example pipeline" href="example.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -35,16 +37,17 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Running an example pipeline</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Running a pipeline:</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#the-pipeline-file">The pipeline file:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#config-file">Config file:</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a></li>
-<li class="toctree-l1"><a class="reference internal" href="submodules.html">Submodules for TXPipe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hdf5.html">Reading HDF5 Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stages/stages.html">Stages implemented in TX-Pipe:</a></li>
 </ul>
 
         </div>
@@ -71,8 +74,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="running-a-pipeline">
-<h1>Running a pipeline:<a class="headerlink" href="#running-a-pipeline" title="Permalink to this headline">¶</a></h1>
+  <section id="running-a-pipeline">
+<h1>Running a pipeline:<a class="headerlink" href="#running-a-pipeline" title="Permalink to this headline"></a></h1>
 <p>TXPipe is based on ceci on software. To run the pipeline it needs 2 files a <em>configuration file</em> and a <em>Pipeline file</em></p>
 <p>Examples of both can be found in the <a class="reference external" href="https://github.com/LSSTDESC/TXPipe/tree/Documentation/examples">examples folder</a>. To running the actual pipeline will be as simple as:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ceci</span> <span class="n">examples</span><span class="o">/</span><span class="n">laptop_pipeline</span><span class="o">.</span><span class="n">yml</span>
@@ -80,8 +83,8 @@
 </div>
 <p>So what goes into this sort of file? We will use <em>laptop_pipeline.yml</em> as an example and go through it.
 For details on Ceci please see <a class="reference external" href="https://ceci.readthedocs.io/en/latest/index.html">Ceci Documentation</a>.</p>
-<div class="section" id="the-pipeline-file">
-<h2>The pipeline file:<a class="headerlink" href="#the-pipeline-file" title="Permalink to this headline">¶</a></h2>
+<section id="the-pipeline-file">
+<h2>The pipeline file:<a class="headerlink" href="#the-pipeline-file" title="Permalink to this headline"></a></h2>
 <p>First part of the file is the stages:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stages</span><span class="p">:</span>
 <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXSourceSelector</span>     <span class="c1"># select and split objects into source bins</span>
@@ -122,7 +125,7 @@ For details on Ceci please see <a class="reference external" href="https://ceci.
 <span class="o">-</span> <span class="n">name</span><span class="p">:</span> <span class="n">TXMapCorrelations</span>    <span class="c1"># plot the correlations between systematics and data</span>
 </pre></div>
 </div>
-<p>Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in <a class="reference internal" href="stages.html"><span class="doc">TXPipe</span></a>.
+<p>Each line indicates a pipeline stage that needs to be run. Each stage of course points to one of the stages implemented in <span class="xref std std-doc">TXPipe</span>.
 Note a few lines have have specifically <code class="docutils literal notranslate"><span class="pre">threads_per_process:</span> <span class="pre">2</span></code> which is just a way to indicate that these stages should be run with more threads.
 Another option available is <code class="docutils literal notranslate"><span class="pre">nprocess:</span> <span class="pre">32</span></code> which would run the stage on 32 processes.</p>
 <p>Next follows modules, which simply is which modules and packages the pipeline stages are defined in.:</p>
@@ -168,7 +171,7 @@ In the example we use:</p>
     <span class="c1"># See README for paths to download these files</span>
     <span class="n">shear_catalog</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">shear_catalog</span><span class="o">.</span><span class="n">hdf5</span>
     <span class="n">photometry_catalog</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">photometry_catalog</span><span class="o">.</span><span class="n">hdf5</span>
-    <span class="n">photoz_trained_model</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">cosmoDC2_trees_i25</span><span class="o">.</span><span class="mf">3.</span><span class="n">npy</span>
+    <span class="n">photoz_trained_model</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">cosmoDC2_trees_i25</span><span class="mf">.3</span><span class="o">.</span><span class="n">npy</span>
     <span class="n">calibration_table</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">sample_cosmodc2_w10year_errors</span><span class="o">.</span><span class="n">dat</span>
     <span class="n">exposures</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">exposures</span><span class="o">.</span><span class="n">hdf5</span>
     <span class="n">star_catalog</span><span class="p">:</span> <span class="n">data</span><span class="o">/</span><span class="n">example</span><span class="o">/</span><span class="n">inputs</span><span class="o">/</span><span class="n">star_catalog</span><span class="o">.</span><span class="n">hdf5</span>
@@ -188,9 +191,9 @@ In the example we use:</p>
 <p>The first here is simply if possible should a restart of the pipeline resume from where it ended or start over.
 Secondly for each stage there will be a log file detailing what has been done, where is this saved.
 While <code class="docutils literal notranslate"><span class="pre">pipeline_log</span></code> is where the overall parsl pipeline log is saved.</p>
-</div>
-<div class="section" id="config-file">
-<h2>Config file:<a class="headerlink" href="#config-file" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="config-file">
+<h2>Config file:<a class="headerlink" href="#config-file" title="Permalink to this headline"></a></h2>
 <p>Let us take a look at the how the <em>configuration file</em> will look like.
 First we have <code class="docutils literal notranslate"><span class="pre">global</span></code> which is configuration options that are shared across all stages:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">global</span><span class="p">:</span>
@@ -219,7 +222,7 @@ First we have <code class="docutils literal notranslate"><span class="pre">globa
   <span class="n">subtract_mean_shear</span><span class="p">:</span> <span class="kc">True</span>
 </pre></div>
 </div>
-<p>Each line here overwrite the standard configuration given for the <code class="docutils literal notranslate"><span class="pre">TXTwoPoint</span></code> stage <a class="reference internal" href="twopoint.html"><span class="doc">TXTwoPoint</span></a>:</p>
+<p>Each line here overwrite the standard configuration given for the <code class="docutils literal notranslate"><span class="pre">TXTwoPoint</span></code> stage <span class="xref std std-doc">TXTwoPoint</span>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">config_options</span> <span class="o">=</span> <span class="p">{</span>
       <span class="s1">&#39;calcs&#39;</span><span class="p">:[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span>
       <span class="s1">&#39;min_sep&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span>
@@ -245,15 +248,15 @@ First we have <code class="docutils literal notranslate"><span class="pre">globa
 <p class="admonition-title">Note</p>
 <p>we don’t need to replace all options, the options we don’t replace will just use the options from the file.</p>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="installation.html" class="btn btn-neutral float-left" title="TXPipe Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="stages.html" class="btn btn-neutral float-right" title="Stages implemented in TX-Pipe:" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="example.html" class="btn btn-neutral float-left" title="Running an example pipeline" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="hdf5.html" class="btn btn-neutral float-right" title="Reading HDF5 Files" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
