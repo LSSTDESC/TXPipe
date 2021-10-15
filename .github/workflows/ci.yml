@@ -10,7 +10,6 @@ jobs:
   Download Data:
     runs-on: ubuntu-latest
     steps:
-
     - name: Download test data
       run: |
         wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
