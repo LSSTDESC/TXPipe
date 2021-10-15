@@ -88,6 +88,10 @@ jobs:
       with:
         name: txpipe-example-data
 
+    - name: ls
+      run: |
+        ls -R
+
     - name: Run lensfit pipeline
       run: |
         ceci examples/lensfit/pipeline.yml
