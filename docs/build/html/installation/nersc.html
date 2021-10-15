@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NERSC Shifter Installation &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>NERSC Shifter Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/installation/nersc.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="nersc-shifter-installation">
+<h1>NERSC Shifter Installation<a class="headerlink" href="#nersc-shifter-installation" title="Permalink to this headline"></a></h1>
+<p>The easiest way to use TXPipe on NERSC is via the Shifter system, which creates a container with all the requirements pre-built.</p>
+<p>To use this, first run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">/</span><span class="k">global</span><span class="o">/</span><span class="n">cfs</span><span class="o">/</span><span class="n">cdirs</span><span class="o">/</span><span class="n">lsst</span><span class="o">/</span><span class="n">groups</span><span class="o">/</span><span class="n">WL</span><span class="o">/</span><span class="n">users</span><span class="o">/</span><span class="n">zuntz</span><span class="o">/</span><span class="n">setup</span><span class="o">-</span><span class="n">txpipe</span>
+</pre></div>
+</div>
+<p>This will create a command <code class="docutils literal notranslate"><span class="pre">tx</span></code>. You prefix any command with this to run it inside the container.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tx</span> <span class="n">ceci</span> <span class="n">examples</span><span class="o">/</span><span class="n">laptop_pipeline</span><span class="o">.</span><span class="n">yml</span>
+</pre></div>
+</div>
+<p>Will run the pipeline inside the container.  You could run an individual stage instead by doing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tx</span> <span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">txpipe</span> <span class="n">NameOfStage</span> <span class="o">-</span><span class="n">h</span>
+</pre></div>
+</div>
+<p>If you need to update or add to the software dependencies in the image, please make a PR on <a class="reference external" href="github.com/joezuntz/txpipe-docker/">github.com/joezuntz/txpipe-docker/</a> modifying the file  <code class="docutils literal notranslate"><span class="pre">txpipe-conda/Dockerfile</span></code>.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

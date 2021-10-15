@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.ui.gui &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>txpipe.ui.gui</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for txpipe.ui.gui</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">tkinter</span> <span class="k">as</span> <span class="nn">tk</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="c1"># pip install pillow</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">ImageTk</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">from</span> <span class="nn">.pipeline_monitor</span> <span class="kn">import</span> <span class="n">PipelineMonitor</span>
+
+<span class="c1"># set up your Tk Frame and whatnot here...</span>
+
+<div class="viewcode-block" id="window_focus"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.window_focus">[docs]</a><span class="k">def</span> <span class="nf">window_focus</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Darwin&#39;</span><span class="p">:</span>  <span class="c1"># How Mac OS X is identified by Python</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;/usr/bin/osascript -e &#39;tell app &quot;Finder&quot; to set frontmost of process &quot;Python&quot; to true&#39; &#39;&#39;&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConfigWindow"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.ConfigWindow">[docs]</a><span class="k">class</span> <span class="nc">ConfigWindow</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">master</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">master</span> <span class="o">=</span> <span class="n">master</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Pipeline Monitor Configuration&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label1</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;NERSC Username:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry1</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Entry</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label2</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Public key:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry2</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Entry</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry2</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">END</span><span class="p">,</span> <span class="s1">&#39;~/.ssh/nersc.pub&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label3</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Cori TXPipe directory:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry3</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Entry</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label4</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Remote yaml file:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry4</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Entry</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry4</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">END</span><span class="p">,</span> <span class="s1">&#39;test/demo.yml&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">button</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Start&quot;</span><span class="p">,</span> <span class="n">command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">submit</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">label2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label3</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry3</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">label4</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry4</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">columnspan</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry1</span><span class="o">.</span><span class="n">focus_set</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="ConfigWindow.submit"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.ConfigWindow.submit">[docs]</a>    <span class="k">def</span> <span class="nf">submit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ok</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">entry1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry4</span><span class="p">]:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="n">vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                <span class="n">entry</span><span class="o">.</span><span class="n">config</span><span class="p">({</span><span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="s2">&quot;pink&quot;</span><span class="p">})</span>
+                <span class="n">ok</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+            <span class="n">start_monitor</span><span class="p">(</span><span class="o">*</span><span class="n">vals</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="PipelineWindow"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.PipelineWindow">[docs]</a><span class="k">class</span> <span class="nc">PipelineWindow</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">master</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">master</span> <span class="o">=</span> <span class="n">master</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Pipeline Monitor&quot;</span><span class="p">)</span>
+        <span class="n">master</span><span class="o">.</span><span class="n">geometry</span><span class="p">(</span><span class="s2">&quot;800x600&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_resized</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">master</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">img_resized</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">side</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s1">&#39;&lt;Configure&gt;&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resize_image</span><span class="p">)</span>
+
+        <span class="c1"># self.canvas = tk.Canvas(master, width=self.width, height=self.height)</span>
+        <span class="c1"># self.canvas.pack()</span>
+        <span class="c1"># create empty image</span>
+        <span class="c1"># self.img_frame = self.canvas.create_image(0, 0, anchor=tk.NW, image=img_resized)</span>
+        <span class="c1"># self.canvas.bind(&#39;&lt;Configure&gt;&#39;, self._resize_image)</span>
+
+<div class="viewcode-block" id="PipelineWindow.set_image"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.PipelineWindow.set_image">[docs]</a>    <span class="k">def</span> <span class="nf">set_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="o">=</span> <span class="n">img</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">winfo_width</span><span class="p">()</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">winfo_height</span><span class="p">()</span>
+
+        <span class="n">ratio</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">width</span><span class="o">/</span><span class="n">img</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="o">/</span><span class="n">img</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">width</span><span class="o">*</span><span class="n">ratio</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">height</span><span class="o">*</span><span class="n">ratio</span><span class="p">)</span>
+
+        <span class="n">img_resized</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">),</span> <span class="n">Image</span><span class="o">.</span><span class="n">LANCZOS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_resized</span> <span class="o">=</span> <span class="n">ImageTk</span><span class="o">.</span><span class="n">PhotoImage</span><span class="p">(</span><span class="n">img_resized</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">img_resized</span><span class="p">)</span></div>
+        <span class="c1"># self.canvas.itemconfig(self.img_frame, image=self.img_resized)</span>
+
+    <span class="k">def</span> <span class="nf">_resize_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">event</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">img</span><span class="p">)</span></div>
+        <span class="c1"># new_width = event.width</span>
+        <span class="c1"># new_height = event.height</span>
+
+        <span class="c1"># self.image_resized = self.img_copy.resize((new_width, new_height))</span>
+        <span class="c1"># self.background_image = ImageTk.PhotoImage(self.image)</span>
+        <span class="c1"># self.background.configure(image =  self.background_image)</span>
+
+
+
+
+<div class="viewcode-block" id="start_monitor"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.start_monitor">[docs]</a><span class="k">def</span> <span class="nf">start_monitor</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">key_filename</span><span class="p">,</span> <span class="n">remote_dir</span><span class="p">,</span> <span class="n">config_file</span><span class="p">,</span> <span class="n">from_gui</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">from_gui</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;You can quickstart this using this command in future:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;python -m txpipe.ui </span><span class="si">{</span><span class="n">username</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">key_filename</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">remote_dir</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">config_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># start a new TK instance</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Tk</span><span class="p">()</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">PipelineWindow</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+    <span class="n">monitor</span> <span class="o">=</span> <span class="n">PipelineMonitor</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">key_filename</span><span class="p">,</span> <span class="n">remote_dir</span><span class="p">,</span> <span class="n">config_file</span><span class="p">)</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">draw_pil</span><span class="p">()</span>
+    <span class="n">first</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">root</span><span class="o">.</span><span class="n">update_idletasks</span><span class="p">()</span>
+            <span class="n">root</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">first</span><span class="p">:</span>
+                <span class="n">window</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+                <span class="n">first</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">changes</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">changes</span><span class="p">:</span>
+                <span class="n">img</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">draw_pil</span><span class="p">()</span>
+                <span class="n">window</span><span class="o">.</span><span class="n">set_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="k">except</span> <span class="n">tk</span><span class="o">.</span><span class="n">_tkinter</span><span class="o">.</span><span class="n">TclError</span><span class="p">:</span>
+            <span class="k">break</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.gui.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span><span class="o">==</span><span class="mi">5</span><span class="p">:</span>
+        <span class="n">start_monitor</span><span class="p">(</span><span class="o">*</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Tk</span><span class="p">()</span>
+        <span class="n">window</span> <span class="o">=</span> <span class="n">ConfigWindow</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+        <span class="n">window_focus</span><span class="p">()</span>
+        <span class="n">root</span><span class="o">.</span><span class="n">mainloop</span><span class="p">()</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+       <span class="n">main</span><span class="p">()</span>   
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

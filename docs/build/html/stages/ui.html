@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ui &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Utilities" href="utils.html" />
+    <link rel="prev" title="randoms" href="randoms.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="stages.html#the-base-stage">The base stage:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#ingestion-stages">Ingestion stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#selection-and-tomography-stages">Selection and Tomography stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#photoz-stages">Photoz stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#maps-and-mask-stages">Maps and Mask stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#two-point-stages">Two point stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#plotting-and-diagnostics">Plotting and diagnostics:</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="stages.html#extra-utilities">Extra utilities</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="data_types.html">data_types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mapping.html">mapping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plotting.html">plotting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="randoms.html">randoms</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Ui</a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html">Utilities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+      <li>Ui</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/stages/ui.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-txpipe.ui.gui">
+<span id="ui"></span><h1>Ui<a class="headerlink" href="#module-txpipe.ui.gui" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.ui.gui.ConfigWindow">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.ui.gui.</span></span><span class="sig-name descname"><span class="pre">ConfigWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">master</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#ConfigWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.ConfigWindow" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.gui.ConfigWindow.submit">
+<span class="sig-name descname"><span class="pre">submit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#ConfigWindow.submit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.ConfigWindow.submit" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.ui.gui.PipelineWindow">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.ui.gui.</span></span><span class="sig-name descname"><span class="pre">PipelineWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">master</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#PipelineWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.PipelineWindow" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.gui.PipelineWindow.set_image">
+<span class="sig-name descname"><span class="pre">set_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#PipelineWindow.set_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.PipelineWindow.set_image" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.ui.gui.main">
+<span class="sig-prename descclassname"><span class="pre">txpipe.ui.gui.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.main" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.ui.gui.start_monitor">
+<span class="sig-prename descclassname"><span class="pre">txpipe.ui.gui.</span></span><span class="sig-name descname"><span class="pre">start_monitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remote_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_gui</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#start_monitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.start_monitor" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="txpipe.ui.gui.window_focus">
+<span class="sig-prename descclassname"><span class="pre">txpipe.ui.gui.</span></span><span class="sig-name descname"><span class="pre">window_focus</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/gui.html#window_focus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.gui.window_focus" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<span class="target" id="module-txpipe.ui.nersc_monitor"></span><dl class="py class">
+<dt class="sig sig-object py" id="txpipe.ui.nersc_monitor.NerscMonitor">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.ui.nersc_monitor.</span></span><span class="sig-name descname"><span class="pre">NerscMonitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirnames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/nersc_monitor.html#NerscMonitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.nersc_monitor.NerscMonitor" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.nersc_monitor.NerscMonitor.time_since_last_monitor">
+<span class="sig-name descname"><span class="pre">time_since_last_monitor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/nersc_monitor.html#NerscMonitor.time_since_last_monitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.nersc_monitor.NerscMonitor.time_since_last_monitor" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.nersc_monitor.NerscMonitor.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/nersc_monitor.html#NerscMonitor.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.nersc_monitor.NerscMonitor.update" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-txpipe.ui.pipeline_monitor"></span><dl class="py class">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.ui.pipeline_monitor.</span></span><span class="sig-name descname"><span class="pre">PipelineMonitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remote_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.build_dag">
+<span class="sig-name descname"><span class="pre">build_dag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">running_stages</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">complete_stages</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">running_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">complete_files</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.build_dag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.build_dag" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.check_file_statuses">
+<span class="sig-name descname"><span class="pre">check_file_statuses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_files</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.check_file_statuses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.check_file_statuses" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.check_stage_statuses">
+<span class="sig-name descname"><span class="pre">check_stage_statuses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">complete_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_files</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.check_stage_statuses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.check_stage_statuses" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.draw_ipython">
+<span class="sig-name descname"><span class="pre">draw_ipython</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.draw_ipython"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.draw_ipython" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.draw_pil">
+<span class="sig-name descname"><span class="pre">draw_pil</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.draw_pil"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.draw_pil" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.main_loop">
+<span class="sig-name descname"><span class="pre">main_loop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.main_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.main_loop" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.ui.pipeline_monitor.PipelineMonitor.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/ui/pipeline_monitor.html#PipelineMonitor.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.ui.pipeline_monitor.PipelineMonitor.update" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="randoms.html" class="btn btn-neutral float-left" title="randoms" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="utils.html" class="btn btn-neutral float-right" title="Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

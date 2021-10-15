@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.ui.pipeline_monitor &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>txpipe.ui.pipeline_monitor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for txpipe.ui.pipeline_monitor</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">ceci</span>
+<span class="kn">import</span> <span class="nn">pygraphviz</span>
+<span class="kn">from</span> <span class="nn">paramiko</span> <span class="kn">import</span> <span class="n">SSHClient</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">IPython.display</span>
+<span class="kn">import</span> <span class="nn">PIL.Image</span>
+<span class="kn">from</span> <span class="nn">.nersc_monitor</span> <span class="kn">import</span> <span class="n">NerscMonitor</span>
+<span class="kn">import</span> <span class="nn">paramiko</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+
+<div class="viewcode-block" id="PipelineMonitor"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor">[docs]</a><span class="k">class</span> <span class="nc">PipelineMonitor</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">key_filename</span><span class="p">,</span> <span class="n">remote_dir</span><span class="p">,</span> <span class="n">config_file</span><span class="p">):</span>
+        <span class="c1"># get the config data from the remote_dir</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">SSHClient</span><span class="p">()</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">load_system_host_keys</span><span class="p">()</span>
+            <span class="n">key_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">key_filename</span><span class="p">)</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;cori.nersc.gov&#39;</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">key_filename</span><span class="o">=</span><span class="n">key_filename</span><span class="p">)</span>
+            <span class="n">config_remote_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remote_dir</span><span class="p">,</span> <span class="n">config_file</span><span class="p">)</span>
+
+            <span class="n">cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;cat </span><span class="si">{</span><span class="n">config_remote_path</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">err</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Remote config file </span><span class="si">{</span><span class="n">config_file</span><span class="si">}</span><span class="s2"> not found on NERSC: </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">config_data</span> <span class="o">=</span> <span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">config_data</span><span class="p">)</span>
+        <span class="c1"># d/l file</span>
+
+        <span class="c1"># Info we need from the pipeline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="n">ceci</span><span class="o">.</span><span class="n">PipelineStage</span><span class="o">.</span><span class="n">get_stage</span><span class="p">(</span><span class="n">stage</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;stages&#39;</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;inputs&#39;</span><span class="p">]</span>
+
+        <span class="c1"># determine which directories to watch - log dir and output dir</span>
+        <span class="n">log_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remote_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;log_dir&#39;</span><span class="p">])</span>
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">remote_dir</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;output_dir&#39;</span><span class="p">])</span>
+        
+        <span class="c1"># start monitor watching them</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span> <span class="o">=</span> <span class="n">NerscMonitor</span><span class="p">([</span><span class="n">log_dir</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">],</span> <span class="n">client</span><span class="o">=</span><span class="n">client</span><span class="p">)</span>
+        
+        <span class="c1"># build initial dag - no files completed yet</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_dag</span><span class="p">([],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[])</span>
+
+<div class="viewcode-block" id="PipelineMonitor.draw_pil"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.draw_pil">[docs]</a>    <span class="k">def</span> <span class="nf">draw_pil</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+        <span class="n">png_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s1">&#39;png&#39;</span><span class="p">,</span> <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;dot&#39;</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">png_data</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">s</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PipelineMonitor.draw_ipython"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.draw_ipython">[docs]</a>    <span class="k">def</span> <span class="nf">draw_ipython</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">IPython</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">clear_output</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">png_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s1">&#39;png&#39;</span><span class="p">,</span> <span class="n">prog</span><span class="o">=</span><span class="s1">&#39;dot&#39;</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">png_data</span><span class="p">)</span>
+        <span class="n">IPython</span><span class="o">.</span><span class="n">display</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">img</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="PipelineMonitor.update"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># ask monitor for files</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+        <span class="c1"># if monitor is not ready yet, just return False</span>
+        <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># otherwise, parse these files and see what they mean for the pipeline</span>
+        <span class="n">log_files</span><span class="p">,</span> <span class="n">output_files</span> <span class="o">=</span> <span class="n">results</span>
+
+        <span class="c1"># check file statuses</span>
+        <span class="n">complete_files</span><span class="p">,</span> <span class="n">running_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_file_statuses</span><span class="p">(</span><span class="n">output_files</span><span class="p">)</span>
+
+        <span class="c1"># check stage statuses</span>
+        <span class="n">complete_stages</span><span class="p">,</span> <span class="n">running_stages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_stage_statuses</span><span class="p">(</span><span class="n">complete_files</span><span class="p">,</span> <span class="n">log_files</span><span class="p">)</span>
+
+        <span class="c1"># Build the dag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_dag</span><span class="p">(</span><span class="n">running_stages</span><span class="p">,</span> <span class="n">complete_stages</span><span class="p">,</span> <span class="n">running_files</span><span class="p">,</span> <span class="n">complete_files</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="PipelineMonitor.main_loop"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.main_loop">[docs]</a>    <span class="k">def</span> <span class="nf">main_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1000000000</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+                <span class="k">break</span></div>
+
+<div class="viewcode-block" id="PipelineMonitor.check_file_statuses"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.check_file_statuses">[docs]</a>    <span class="k">def</span> <span class="nf">check_file_statuses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_files</span><span class="p">):</span>
+        <span class="n">running_files</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">complete_files</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">mark</span> <span class="o">=</span> <span class="s1">&#39;inprogress_&#39;</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">output_files</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">mark</span><span class="p">):</span>
+                <span class="n">running_files</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">filename</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">mark</span><span class="p">):])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">complete_files</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+                
+        <span class="k">return</span> <span class="n">complete_files</span><span class="p">,</span> <span class="n">running_files</span></div>
+
+<div class="viewcode-block" id="PipelineMonitor.check_stage_statuses"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.check_stage_statuses">[docs]</a>    <span class="k">def</span> <span class="nf">check_stage_statuses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">complete_files</span><span class="p">,</span> <span class="n">log_files</span><span class="p">):</span>
+        <span class="n">running_stages</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">complete_stages</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stages</span><span class="p">:</span>
+            <span class="c1"># Check if all outputs from the stage are present.</span>
+            <span class="c1"># If so, stage is complete</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">ftype</span> <span class="ow">in</span> <span class="n">stage</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">ftype</span><span class="o">.</span><span class="n">make_name</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">complete_files</span><span class="p">:</span>                    
+                    <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># this happens if we never &quot;break&quot; above, i.e. if all output</span>
+                <span class="c1"># files are present</span>
+                <span class="n">complete_stages</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stage</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="c1"># If job us complete we do not count it as</span>
+                <span class="c1"># running also</span>
+                <span class="k">continue</span>
+            <span class="c1"># Job is running if log file is located</span>
+            <span class="k">if</span> <span class="n">stage</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.log&#39;</span> <span class="ow">in</span> <span class="n">log_files</span><span class="p">:</span>
+                <span class="n">running_stages</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stage</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">complete_stages</span><span class="p">,</span> <span class="n">running_stages</span></div>
+            
+                
+
+<div class="viewcode-block" id="PipelineMonitor.build_dag"><a class="viewcode-back" href="../../../stages/ui.html#txpipe.ui.pipeline_monitor.PipelineMonitor.build_dag">[docs]</a>    <span class="k">def</span> <span class="nf">build_dag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">running_stages</span><span class="p">,</span> <span class="n">complete_stages</span><span class="p">,</span> <span class="n">running_files</span><span class="p">,</span> <span class="n">complete_files</span><span class="p">):</span>
+
+        <span class="n">G</span> <span class="o">=</span> <span class="n">pygraphviz</span><span class="o">.</span><span class="n">AGraph</span><span class="p">(</span><span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">rankdir</span><span class="o">=</span><span class="s1">&#39;LR&#39;</span><span class="p">,</span> <span class="n">nodesep</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">minlen</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">mindist</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">ranksep</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Draw overall inputst as plum boxes</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">names</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="s2"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">G</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">names</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;plum&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;filled&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s1">&#39;box&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stages</span><span class="p">:</span>
+            <span class="c1"># Draw files input/output from the pipeline</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">ftype</span> <span class="ow">in</span> <span class="n">stage</span><span class="o">.</span><span class="n">inputs</span> <span class="o">+</span> <span class="n">stage</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">names</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">ftype</span><span class="o">.</span><span class="n">make_name</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+                <span class="c1"># Do not re-add overall inputs or multiple</span>
+                <span class="c1"># inputs to different pipelines</span>
+                <span class="k">if</span> <span class="n">tag</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+                    <span class="c1"># Choose colour for file</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">complete_files</span><span class="p">:</span>
+                        <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;mediumspringgreen&#39;</span>
+                    <span class="k">elif</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">running_files</span><span class="p">:</span>
+                        <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;lightskyblue&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;white&#39;</span>
+                    <span class="c1"># Build up nodeds</span>
+                    <span class="n">G</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">fillcolor</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;filled&#39;</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s1">&#39;box&#39;</span><span class="p">)</span>
+                <span class="n">names</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stages</span><span class="p">:</span>
+            <span class="c1"># Choose colour from status</span>
+            <span class="k">if</span> <span class="n">stage</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">complete_stages</span><span class="p">:</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;palegreen2&#39;</span>
+            <span class="k">elif</span> <span class="n">stage</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">running_stages</span><span class="p">:</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="s1">&#39;whitesmoke&#39;</span>
+            <span class="n">G</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">stage</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">fillcolor</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;filled&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Draw edges to/from this stage from/to input/output files</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">stage</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+                <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">names</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">stage</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">stage</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+                <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">stage</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">names</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">G</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

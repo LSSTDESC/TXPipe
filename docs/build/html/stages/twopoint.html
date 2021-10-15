@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twopoint correlations &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="twopoint_fourier" href="twopoint_fourier.html" />
+    <link rel="prev" title="random_cats" href="random_cats.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="stages.html">Stages implemented in TX-Pipe:</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="stages.html#the-base-stage">The base stage:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#ingestion-stages">Ingestion stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#selection-and-tomography-stages">Selection and Tomography stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#photoz-stages">Photoz stages:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#maps-and-mask-stages">Maps and Mask stages:</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="stages.html#two-point-stages">Two point stages:</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="random_cats.html">random_cats</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Twopoint correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="twopoint_fourier.html">twopoint_fourier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="map_correlations.html">map_correlations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="covariance.html">covariance stage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#plotting-and-diagnostics">Plotting and diagnostics:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stages.html#extra-utilities">Extra utilities</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="stages.html">Stages implemented in TX-Pipe:</a> &raquo;</li>
+      <li>Twopoint correlations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/stages/twopoint.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-txpipe.twopoint">
+<span id="twopoint-correlations"></span><h1>Twopoint correlations<a class="headerlink" href="#module-txpipe.twopoint" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.twopoint.</span></span><span class="sig-name descname"><span class="pre">Measurement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">corr_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.__getnewargs__">
+<span class="sig-name descname"><span class="pre">__getnewargs__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement.__getnewargs__" title="Permalink to this definition"></a></dt>
+<dd><p>Return self as a plain tuple.  Used by copy and pickle.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.__new__">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">__new__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">corr_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement.__new__" title="Permalink to this definition"></a></dt>
+<dd><p>Create new instance of Measurement(corr_type, object, i, j)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#txpipe.twopoint.Measurement.__repr__" title="Permalink to this definition"></a></dt>
+<dd><p>Return a nicely formatted representation string</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.corr_type">
+<span class="sig-name descname"><span class="pre">corr_type</span></span><a class="headerlink" href="#txpipe.twopoint.Measurement.corr_type" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.i">
+<span class="sig-name descname"><span class="pre">i</span></span><a class="headerlink" href="#txpipe.twopoint.Measurement.i" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.j">
+<span class="sig-name descname"><span class="pre">j</span></span><a class="headerlink" href="#txpipe.twopoint.Measurement.j" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="txpipe.twopoint.Measurement.object">
+<span class="sig-name descname"><span class="pre">object</span></span><a class="headerlink" href="#txpipe.twopoint.Measurement.object" title="Permalink to this definition"></a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="txpipe.twopoint.TXTwoPoint">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">txpipe.twopoint.</span></span><span class="sig-name descname"><span class="pre">TXTwoPoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/twopoint.html#TXTwoPoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ceci.</span></code></p>
+<p>This is the base stage for real-space two-point correlations.</p>
+<dl class="simple">
+<dt>Input files:</dt><dd><ul class="simple">
+<li><p>shear_tomography_catalog:     Shear catalog.</p></li>
+<li><p>shear_photoz_stack:           Shear photoz information.</p></li>
+<li><p>lens_tomography_catalog:      Lens catalog.</p></li>
+<li><p>lens_photoz_stack:            Lens photoz information.</p></li>
+<li><p>random_cats:                  Random catalog for lenses.</p></li>
+<li><p>patch_centers:                Patch centers for Jackknife.</p></li>
+<li><p>tracer_metadata:              Metadata for tracers.</p></li>
+</ul>
+</dd>
+<dt>Return files:</dt><dd><ul class="simple">
+<li><p>twopoint_data_real_raw:       Sacc file with all two-point correlations including jackknife covariance matrices.</p></li>
+<li><p>twopoint_gamma_x:             This is the gamma_x component, for null tests, its kept seperate since it is only needed for null tests.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.TXTwoPoint.call_treecorr">
+<span class="sig-name descname"><span class="pre">call_treecorr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/twopoint.html#TXTwoPoint.call_treecorr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.call_treecorr" title="Permalink to this definition"></a></dt>
+<dd><p>This is a wrapper for interaction with treecorr.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.TXTwoPoint.get_patch_dir">
+<span class="sig-name descname"><span class="pre">get_patch_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_tag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/twopoint.html#TXTwoPoint.get_patch_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.get_patch_dir" title="Permalink to this definition"></a></dt>
+<dd><p>Select a patch directory for the file  with the given input tag
+and with a bin number/label.</p>
+<p>To ensure that if you change the catalog the patch dir will also
+change, the directory path includes the unique ID of the input file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_tag</strong> (<em>str</em>) – One of the tags in the class’s inputs attribute</p></li>
+<li><p><strong>b</strong> (<em>any</em>) – An additional label used as the last component in the returned
+directory</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>str</strong></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>a directory, which has been created if it did not exist already.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.TXTwoPoint.prepare_patches">
+<span class="sig-name descname"><span class="pre">prepare_patches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calcs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/twopoint.html#TXTwoPoint.prepare_patches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.prepare_patches" title="Permalink to this definition"></a></dt>
+<dd><p>For each catalog to be generated, have one process load the catalog
+and write its patch files out to disc.  These are then re-used later
+by all the different processes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>calcs</strong> (<em>list</em>) – A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
+or bin labels and bin_type is one of the constants SHEAR_SHEAR,
+SHEAR_POS, or POS_POS.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.TXTwoPoint.read_nbin">
+<span class="sig-name descname"><span class="pre">read_nbin</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/twopoint.html#TXTwoPoint.read_nbin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.read_nbin" title="Permalink to this definition"></a></dt>
+<dd><p>Determine the bins to use in this analysis, either from the input file
+or from the configuration.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="txpipe.twopoint.TXTwoPoint.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/txpipe/twopoint.html#TXTwoPoint.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#txpipe.twopoint.TXTwoPoint.run" title="Permalink to this definition"></a></dt>
+<dd><p>Run the analysis for this stage.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="random_cats.html" class="btn btn-neutral float-left" title="random_cats" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="twopoint_fourier.html" class="btn btn-neutral float-right" title="twopoint_fourier" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

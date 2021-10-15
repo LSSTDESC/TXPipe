@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conda Installation &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Conda Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/installation/conda.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="conda-installation">
+<h1>Conda Installation<a class="headerlink" href="#conda-installation" title="Permalink to this headline"></a></h1>
+<p>The easiest way to install TXPipe on your laptop or desktop is to used <a class="reference external" href="https://conda-forge.org/">Conda Forge</a>.</p>
+<p>You can get a complete environment from scratch that can run TXPipe using these commands on most operating systems.  This will give you an isolated environment.</p>
+<p>First download one of these Conda Forge Mini installers, depending on your operating system:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">..</span> <span class="n">code</span><span class="o">-</span><span class="n">block</span><span class="p">::</span> <span class="n">bash</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p># For Linux:
+wget -O Miniforge3.sh <a class="reference external" href="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh">https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh</a></p>
+<p># For Mac:
+wget -O Miniforge3.sh <a class="reference external" href="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh">https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh</a></p>
+<p># For Mac Silicon:
+wget -O Miniforge3.sh <a class="reference external" href="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh">https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh</a></p>
+</div></blockquote>
+<p>Then install the requirements:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download and activate the conda forge mini-installer</span>
+chmod +x Miniforge3.sh
+./Miniforge3.sh -b -p ./conda
+<span class="nb">source</span> ./conda/bin/activate
+
+<span class="c1"># Install main packages with conda</span>
+conda install -c conda-forge scipy matplotlib-base camb healpy psutil numpy scikit-learn fitsio pandas astropy pyccl treecorr namaster dask cosmosis-standalone <span class="s2">&quot;h5py=*=*mpich*&quot;</span> mpi4py healsparse qp
+
+<span class="c1"># Install remaining packages with pip</span>
+pip install -r requirements.txt
+</pre></div>
+</div>
+<p>Then whenever you start a new terminal, enable the system with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">./</span><span class="n">conda</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

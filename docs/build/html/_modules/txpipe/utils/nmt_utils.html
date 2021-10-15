@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>txpipe.utils.nmt_utils &mdash; TXPipe  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> TXPipe
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">TXPipe Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../running.html">Running a pipeline:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../stages/stages.html">Stages implemented in TX-Pipe:</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../submodules.html">Submodules for TXPipe</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TXPipe</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>txpipe.utils.nmt_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for txpipe.utils.nmt_utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pymaster</span> <span class="k">as</span> <span class="nn">nmt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">healpy</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+
+<div class="viewcode-block" id="MyNmtBinFlat"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.nmt_utils.MyNmtBinFlat">[docs]</a><span class="k">class</span> <span class="nc">MyNmtBinFlat</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtBinFlat</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">l0</span><span class="p">,</span> <span class="n">lf</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">l0</span><span class="p">,</span> <span class="n">lf</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell_min</span> <span class="o">=</span> <span class="n">l0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span> <span class="o">=</span> <span class="n">lf</span>
+
+    <span class="k">def</span> <span class="nf">get_window</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ell_min</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span><span class="p">[</span><span class="n">b</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ell</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">ell</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_ell_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_min</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get_ell_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">is_flat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">apply_window</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c_ell</span><span class="p">):</span>
+        <span class="n">b0</span><span class="p">,</span> <span class="n">b1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_window</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">c_ell</span><span class="p">[</span><span class="n">b0</span><span class="p">:</span><span class="n">b1</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MyNmtBin"><a class="viewcode-back" href="../../../stages/utils.html#txpipe.utils.nmt_utils.MyNmtBin">[docs]</a><span class="k">class</span> <span class="nc">MyNmtBin</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtBin</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bpws</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ells</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nlb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">is_Dell</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">f_ell</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">nside</span><span class="o">=</span><span class="n">nside</span><span class="p">,</span> <span class="n">bpws</span><span class="o">=</span><span class="n">bpws</span><span class="p">,</span> <span class="n">ells</span><span class="o">=</span><span class="n">ells</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">nlb</span><span class="o">=</span><span class="n">nlb</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span> <span class="n">is_Dell</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">f_ell</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ell_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lmax</span>
+
+    <span class="k">def</span> <span class="nf">get_window</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="n">ls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ell_list</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_weight_list</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">ls</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_ell_min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ell_list</span><span class="p">(</span><span class="n">b</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get_ell_max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_ell_list</span><span class="p">(</span><span class="n">b</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">is_flat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">apply_window</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c_ell</span><span class="p">):</span>
+        <span class="n">ell</span><span class="p">,</span> <span class="n">weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_window</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">c_ell</span><span class="p">[</span><span class="n">ell</span><span class="p">]</span><span class="o">*</span><span class="n">weight</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">weight</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span></div>
+
+
+<span class="kn">import</span> <span class="nn">healpy</span>
+
+
+
+<span class="k">class</span> <span class="nc">WorkspaceCache</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirname</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">dirname</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;workspace_</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">.dat&#39;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Initialize a workspace and populate</span>
+        <span class="c1"># it from file</span>
+        <span class="n">workspace</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="p">()</span>
+        <span class="n">workspace</span><span class="o">.</span><span class="n">read_from</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">workspace</span>
+
+        <span class="k">return</span> <span class="n">workspace</span>
+
+    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workspace</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">workspace</span><span class="o">.</span><span class="n">txpipe_key</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;workspace_</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">.dat&#39;</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saving workspace to </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">workspace</span><span class="o">.</span><span class="n">write_to</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, DESC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
