@@ -400,12 +400,12 @@ class TXSourceNoiseMaps(TXBaseMaps):
         return maps
 
 
-class TXExternalLensNoiseMaps(TXBaseMaps):
-    name='TXExternalLensNoiseMaps'
+class TXLensNoiseMaps(TXBaseMaps):
+    name='TXLensNoiseMaps'
     
     inputs = [
         ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_catalog', HDFFile),
+        ('photometry_catalog', HDFFile),
         ('mask', MapsFile),
     ]
 
@@ -453,7 +453,7 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
 
     def data_iterator(self):
         it = self.combined_iterators(self.config["chunk_rows"],
-                'lens_catalog','lens', ['ra', 'dec'],
+                'photometry_catalog','photometry', ['ra', 'dec'],
                 'lens_tomography_catalog','tomography', ['lens_bin'],
             )
         return it

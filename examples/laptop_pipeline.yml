@@ -25,6 +25,8 @@ stages:
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    - name: TXSourceNoiseMaps    # Make realisations of the source noise
+    - name: TXLensNoiseMaps      # Make realizations of the lens noise
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
     - name: TXRandomCat          # generate lens bin random catalogs
