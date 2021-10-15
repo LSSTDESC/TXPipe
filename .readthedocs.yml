@@ -1,9 +1,9 @@
 version: 2
 
 sphinx:
-  configuration: doc/conf.py
+  configuration: docs/src/conf.py
 
 formats: all
 
 conda:
-  environment: doc/environment.yml
+  environment: docs/environment.yml
