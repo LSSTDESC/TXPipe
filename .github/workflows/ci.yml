@@ -57,6 +57,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: txpipe-example-data
+        path: data/example
 
     - name: Run metacal pipeline
       run: |
@@ -87,6 +88,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: txpipe-example-data
+        path: data/example
 
     - name: ls
       run: |
@@ -121,6 +123,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: txpipe-example-data
+        path: data/example
 
     - name: Run redmagic pipeline
       run: |
