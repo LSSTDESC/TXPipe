@@ -5,3 +5,4 @@ Diagnostics plots
    :members:
    :special-members:
    :show-inheritance:
+   :undoc-members:

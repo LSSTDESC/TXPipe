@@ -5,3 +5,4 @@ exposure_info
    :members:
    :special-members:
    :show-inheritance:
+   :undoc-members:

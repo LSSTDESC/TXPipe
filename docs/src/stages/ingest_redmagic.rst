@@ -5,3 +5,4 @@ Ingest redmagic
    :members:
    :special-members:
    :show-inheritance:
+   :undoc-members:
