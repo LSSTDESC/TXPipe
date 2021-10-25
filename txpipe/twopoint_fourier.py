@@ -732,6 +732,13 @@ class TXTwoPointFourier(PipelineStage):
         if self.config['cache_dir']:
             S.metadata['cache_dir'] = self.config['cache_dir']
 
+        # Adding binning information to pass later to TJPCov. I shouldn't be
+        # necessary, but it is at the moment.
+        S.metadata['binning/ell_min'] = self.config['ell_min']
+        S.metadata['binning/ell_max'] = self.config['ell_max']
+        S.metadata['binning/ell_spacing'] = self.config['ell_spacing']
+        S.metadata['binning/n_ell'] = self.config['n_ell']
+
         # And we're all done!
         output_filename = self.get_output("twopoint_data_fourier")
         S.save_fits(output_filename, overwrite=True)

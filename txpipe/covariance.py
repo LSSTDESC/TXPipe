@@ -565,11 +565,6 @@ class TXFourierTJPCovariance(PipelineStage):
     config_options = {
         'galaxy_bias': [0.],
         'IA': 0.5,
-        # These should be read from TXTwoPointFourier config
-        "ell_min": 100,
-        "ell_max": 1536,
-        "n_ell": 20,
-        "ell_spacing": 'log'
     }
 
 
@@ -645,11 +640,18 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Run TJPCov
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
-        if not workspaces:
-            ell_bins = self.choose_ell_bins()
-            cache = {'bins': ell_bins}
-        else:
-            cache = {'workspaces': workspaces}
+        # TODO: I shouldn't need to pass the binnning.
+        # if not workspaces:
+        #     ell_bins = self.choose_ell_bins()
+        #     cache = {'bins': ell_bins}
+        # else:
+        #     cache = {'workspaces': workspaces}
+        ell_min = cl_file.metadata['binning/ell_min']
+        ell_max = cl_file.metadata['binning/ell_max']
+        ell_spacing = cl_file.metadata['binning/ell_spacing']
+        n_ell = cl_file.metadata['binning/n_ell']
+        ell_bins = self.choose_ell_bins(ell_min, ell_max, ell_spacing, n_ell)
+        cache = {'bins': ell_bins, 'workspaces': workspaces}
         covmat = calculator.get_all_cov_nmt(cache=cache)
 
     def get_workspaces_dict(self, cl_file, masks_names):
@@ -694,7 +696,7 @@ class TXFourierTJPCovariance(PipelineStage):
         cache = WorkspaceCache(dirname)
         return cache
 
-    def choose_ell_bins(self):
+    def choose_ell_bins(self, ell_min, ell_max, ell_spacing, n_ell):
         # TODO: This should be read from somewhere. That way one makes sure it
         # has the same binning as in the Cells
 
@@ -703,10 +705,10 @@ class TXFourierTJPCovariance(PipelineStage):
         from .utils.nmt_utils import MyNmtBin
 
         # Creating the ell binning from the edges using this Namaster constructor.
-        if self.config['ell_spacing'] == 'log':
-            edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+        if 'ell_spacing' == 'log':
+            edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
         else:
-            edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
+            edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
 
         ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
