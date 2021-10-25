@@ -65,7 +65,7 @@ class WorkspaceCache:
         if key in self._loaded:
             return self._loaded[key]
 
-        p = self.path / f'workspace_{key}.dat'
+        p = self.get_path(key)
 
         if not p.exists():
             return None
@@ -79,9 +79,13 @@ class WorkspaceCache:
 
         return workspace
 
+    def get_path(self, key):
+        return self.path / f'workspace_{key}.dat'
+
+
     def put(self, workspace):
         key = workspace.txpipe_key
-        p = self.path / f'workspace_{key}.dat'
+        p = self.get_path(key)
         if p.exists():
             return False
 

@@ -727,6 +727,8 @@ class TXTwoPointFourier(PipelineStage):
 
         # Save hashes needed to recover workspace hash
         S.metadata['hashes'] = self.hash_metadata
+        if self.config['cache_dir']:
+            S.metadata['cache_dir'] = self.config['cache_dir']
 
         # And we're all done!
         output_filename = self.get_output("twopoint_data_fourier")

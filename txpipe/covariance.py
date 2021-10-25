@@ -591,7 +591,8 @@ class TXFourierTJPCovariance(PipelineStage):
         tjp_config = {}
         tjp_config["do_xi"] = False
         tjp_config['cov_type'] = 'gaus'
-        tjp_config["cl_file"] = self.read_sacc()
+        cl_file = self.read_sacc()
+        tjp_config["cl_file"] = cl_file
 
         # Get the CCL cosmo object to pass to TJPCov
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
@@ -629,6 +630,7 @@ class TXFourierTJPCovariance(PipelineStage):
                 print(f"Loaded {nbin_source} lensing weight maps")
 
         # Following twopoint_fourier.py:197 all clustering maps use this mask
+        # TODO: Better pass paths
         masks = {f'lens_{i}': mask for i in range(nbin_lens)}
         masks.update({f'source_{i}': lensing_weights[i] for i in range(nbin_source)})
         masks_names = {f'lens_{i}': 'mask_lens' for i in range(nbin_lens)}
@@ -636,13 +638,58 @@ class TXFourierTJPCovariance(PipelineStage):
 
         tjp_config[f"mask_file"] = masks
         tjp_config[f"mask_names"] = masks_names
+        tjp_config["outdir"] = cl_file.metadata['cache_dir']
 
         # Load NmtBin used for the Cells
+        workspaces = self.get_workspaces_dict(cl_file, masks_names)
 
         # Run TJPCov
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
-        ell_bins = self.choose_ell_bins()
-        covmat = calculator.get_all_cov_nmt(cache={'bins': ell_bins})
+        if not workspaces:
+            ell_bins = self.choose_ell_bins()
+            cache = {'bins': ell_bins}
+        else:
+            cache = {'workspaces': workspaces}
+        covmat = calculator.get_all_cov_nmt(cache=cache)
+
+    def get_workspaces_dict(self, cl_file, masks_names):
+        cache = self.load_workspace_cache()
+        if cache == {}:
+            return {}
+
+        hashes = cl_file.metadata['hashes']
+        ell_hash = hashes['ell_hash']
+
+        w = {}
+        for tr1, tr2 in cl_file.get_tracer_combinations():
+            m1 = masks_names[tr1]
+            m2 = masks_names[tr2]
+            key = (m1, m2)
+            if (key in w) or (key[::-1] in w):
+                continue
+            # Build workspace hash (twopoint_fourier.py:387-395)
+            h1 = hashes[m1]
+            h2 = hashes[m2]
+            cache_key = h1 ^ ell_hash
+            if h2 != h1:
+                cache_key ^= h2
+
+            w[key] = str(cache.get_path(cache_key))
+
+        return w
+
+    def load_workspace_cache(self):
+        # Copied from twopoint_fourier.py
+        from .utils.nmt_utils import WorkspaceCache
+        dirname = self.config['cache_dir']
+
+        if not dirname:
+            if self.rank == 0:
+                print("Not using an on-disc cache.  Set cache_dir to use one")
+            return {}
+
+        cache = WorkspaceCache(dirname)
+        return cache
 
     def choose_ell_bins(self):
         # TODO: This should be read from somewhere. That way one makes sure it
