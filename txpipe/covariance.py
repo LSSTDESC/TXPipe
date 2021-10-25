@@ -657,8 +657,10 @@ class TXFourierTJPCovariance(PipelineStage):
         if cache == {}:
             return {}
 
-        hashes = cl_file.metadata['hashes']
-        ell_hash = hashes['ell_hash']
+        hashes = {}
+        for m in masks_names:
+            hashes[m] = cl_file.metadata[f'hash/{m}']
+        ell_hash = hashes['hash/ell_hash']
 
         w = {}
         for tr1, tr2 in cl_file.get_tracer_combinations():
