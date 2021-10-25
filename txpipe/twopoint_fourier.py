@@ -355,7 +355,7 @@ class TXTwoPointFourier(PipelineStage):
                               'mask_lens': hashes[id(density_weight)]}
 
         for i, w in enumerate(lensing_weights):
-            self.mask_metadata[f'mask_source_{i}'] = hashes[id(w)]
+            self.hash_metadata[f'mask_source_{i}'] = hashes[id(w)]
 
 
         # It's an oddity of NaMaster that we
