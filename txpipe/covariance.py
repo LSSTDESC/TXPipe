@@ -610,7 +610,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
         for i in range(nbin_source):
             tjp_config[f"Ngal_source_{i}"] = meta["n_eff"][i]
-            tjp_config[f"sigma_e_{i}"] = meta["sigma_e"][i]
+            tjp_config[f"sigma_e_source_{i}"] = meta["sigma_e"][i]
 
 
         # TODO: Set masks
