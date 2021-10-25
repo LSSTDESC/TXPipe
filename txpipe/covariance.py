@@ -653,14 +653,16 @@ class TXFourierTJPCovariance(PipelineStage):
         covmat = calculator.get_all_cov_nmt(cache=cache)
 
     def get_workspaces_dict(self, cl_file, masks_names):
-        cache = self.load_workspace_cache()
+        cache = self.load_workspace_cache(cl_file.metadata['cache_dir'])
         if cache == {}:
             return {}
 
         hashes = {}
-        for m in masks_names:
-            hashes[m] = cl_file.metadata[f'hash/{m}']
-        ell_hash = hashes['hash/ell_hash']
+        masks_names_list = list(masks_names.values())
+        for m in masks_names_list:
+            if m not in hashes:
+                hashes[m] = cl_file.metadata[f'hash/{m}']
+        ell_hash = cl_file.metadata['hash/ell_hash']
 
         w = {}
         for tr1, tr2 in cl_file.get_tracer_combinations():
@@ -680,10 +682,9 @@ class TXFourierTJPCovariance(PipelineStage):
 
         return w
 
-    def load_workspace_cache(self):
+    def load_workspace_cache(self, dirname):
         # Copied from twopoint_fourier.py
         from .utils.nmt_utils import WorkspaceCache
-        dirname = self.config['cache_dir']
 
         if not dirname:
             if self.rank == 0:

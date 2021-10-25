@@ -726,7 +726,9 @@ class TXTwoPointFourier(PipelineStage):
                 S.metadata[f'provenance/{key}'] = value
 
         # Save hashes needed to recover workspace hash
-        S.metadata['hashes'] = self.hash_metadata
+        for k, v in self.hash_metadata.items():
+            S.metadata[f'hash/{k}'] = v
+
         if self.config['cache_dir']:
             S.metadata['cache_dir'] = self.config['cache_dir']
 
