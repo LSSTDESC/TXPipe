@@ -654,6 +654,14 @@ class TXFourierTJPCovariance(PipelineStage):
         cache = {'bins': ell_bins, 'workspaces': workspaces}
         covmat = calculator.get_all_cov_nmt(cache=cache)
 
+        # Write the collect results out to HDF5.
+        # TODO: Move it to TJPCov?
+        if self.rank == 0:
+            cl_file.add_covariance(covmat)
+            output_filename = self.get_output('summary_statistics_fourier')
+            cl_file.save_fits(output_filename, overwrite=True)
+            print("Saved power spectra with its Gaussian covariance")
+
     def get_workspaces_dict(self, cl_file, masks_names):
         cache = self.load_workspace_cache(cl_file.metadata['cache_dir'])
         if cache == {}:
