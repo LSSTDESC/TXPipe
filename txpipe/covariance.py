@@ -639,19 +639,17 @@ class TXFourierTJPCovariance(PipelineStage):
         workspaces = self.get_workspaces_dict(cl_file, masks_names)
 
         # Run TJPCov
-        calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
         # TODO: I shouldn't need to pass the binnning.
-        # if not workspaces:
-        #     ell_bins = self.choose_ell_bins()
-        #     cache = {'bins': ell_bins}
-        # else:
-        #     cache = {'workspaces': workspaces}
         ell_min = cl_file.metadata['binning/ell_min']
         ell_max = cl_file.metadata['binning/ell_max']
         ell_spacing = cl_file.metadata['binning/ell_spacing']
         n_ell = cl_file.metadata['binning/n_ell']
         ell_bins = self.choose_ell_bins(ell_min, ell_max, ell_spacing, n_ell)
-        cache = {'bins': ell_bins, 'workspaces': workspaces}
+
+        tjp_config['binning_info'] = ell_bins
+        calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
+
+        cache = {'workspaces': workspaces}
         covmat = calculator.get_all_cov_nmt(cache=cache)
 
         # Write the collect results out to HDF5.
