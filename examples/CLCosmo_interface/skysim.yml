@@ -8,7 +8,7 @@ stages:
 ## Delete it from the list of inputs below as well in that case.
     - name: CMIngestHalosSkySim
     - name: CMSelectHalos
-#    - name: CMSelectBackground
+    - name: CMSelectBackground
 #    - name: CMRandoms
 #      nprocess: 16
 #      nodes: 1
