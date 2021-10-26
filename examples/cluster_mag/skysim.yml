@@ -23,7 +23,8 @@ stages:
 config: examples/cluster_mag/skysim_config.yml
 
 # where to put ouput files
-output_dir: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/outputs
+output_dir: /pbs/home/m/mricci/throng_mricci/desc/TXPipe/tests/
+#$THRONG_DIR/users/jzuntz/cluster_mag/skysim/outputs
 
 # overall inputs to the pipeline. The photometry catalog is one I extracted from SkySim 5000.
 # The halo catalog was generated with the commented-out stage above
@@ -41,8 +42,10 @@ modules: txpipe
 resume: True
 
 # Where log files go
-log_dir: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/logs
-pipeline_log: $THRONG_DIR/users/jzuntz/cluster_mag/skysim/log.txt
+log_dir: /pbs/home/m/mricci/throng_mricci/desc/TXPipe/tests/logs
+#$THRONG_DIR/users/jzuntz/cluster_mag/skysim/log
+pipeline_log: /pbs/home/m/mricci/throng_mricci/desc/TXPipe/tests/log.txt
+#$THRONG_DIR/users/jzuntz/cluster_mag/skysim/log.txt
 
 # This tells the launcher how to run the code
 # you shouldn't need to modify it

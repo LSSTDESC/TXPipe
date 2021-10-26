@@ -13,7 +13,7 @@ class CMSelectHalosSkySim(PipelineStage):
     outputs = [("cluster_SkySim_halo_tomography", HDFFile)]
     config_options = {
         "zedge": [0.2, 0.4, 0.6, 0.8],
-        "logmedge": [13.  13.3 13.6 13.9 14.2 14.5],
+        "logmedge": [13.,13.3, 13.6, 13.9, 14.2, 14.5],
         "initial_size": 100_000,
         "chunk_rows": 100_000,
     }
@@ -28,8 +28,8 @@ class CMSelectHalosSkySim(PipelineStage):
 
         log10medge = np.array(self.config['logmedge'])
 
-        nz = len(zedge) - 1
-        nm = len(log10medge) - 1
+        nz = len(zedge) 
+        nm = len(log10medge)
 
         # add infinities to either end to catch objects that spill out
         zedge = np.concatenate([[-np.inf], zedge, [np.inf]])
@@ -57,13 +57,13 @@ class CMSelectHalosSkySim(PipelineStage):
         for _, _, data in it:
             n = len(data["redshift"])
 
-            # Figure out which bin each halo it in, if any
-            zbin = np.digitize(data['redshift'], zedge)
-            mbin = np.digitize(np.log10(data["baseDC2/sod_halo_mass"]/h0_SkySim), log10medge)
+            # Figure out which bin each halo it in, if any, starts at 0
+            zbin = np.digitize(data['redshift'], zedge) - 1
+            mbin = np.digitize(np.log10(data["baseDC2/sod_halo_mass"]/h0_SkySim), log10medge) - 1
 
             # Find which bin each object is in, or None
-            for zi in range(1, nz + 1):
-                for mi in range(1, nm + 1):
+            for zi in range(1, nz):
+                for mi in range(1, nm):
                     w = np.where((zbin == zi) & (mbin == mi))
                     # if there are no objects in this bin in this chunk,
                     # then we skip the rest
@@ -74,7 +74,7 @@ class CMSelectHalosSkySim(PipelineStage):
                     # data that is in this bin and have our splitter
                     # object write it out.
                     d = {name:col[w] for name, col in data.items()}
-                    bin_name = f"{zi - 1}_{mi - 1}"
+                    bin_name = f"{zi - 1}_{mi - 1}" #TO CHANGE ?
                     splitter.write_bin(d, bin_name)
 
         # Truncate arrays to correct size
