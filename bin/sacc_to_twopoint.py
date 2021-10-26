@@ -7,19 +7,24 @@ import sys
 input_sacc_filename = sys.argv[1]
 output_2pt_filename = sys.argv[2]
 
+# Set real to False if the input file is in Fourier space
+real = None
 
 # Load in the sacc data file from fits method
 s = sacc.Sacc.load_fits(input_sacc_filename)
 
-
 # This table converts the type codes used in sacc to twopoint names
-
 types = {
     standard_types.galaxy_shear_xi_plus: (Types.galaxy_shear_plus_real, Types.galaxy_shear_plus_real),
     standard_types.galaxy_shear_xi_minus: (Types.galaxy_shear_minus_real, Types.galaxy_shear_minus_real),
     standard_types.galaxy_shearDensity_xi_t: (Types.galaxy_position_real, Types.galaxy_shear_plus_real),
     standard_types.galaxy_density_xi: (Types.galaxy_position_real, Types.galaxy_position_real),
+    standard_types.galaxy_shear_cl_ee: (Types.galaxy_shear_emode_fourier, Types.galaxy_shear_emode_fourier),
+    standard_types.galaxy_shear_cl_bb: (Types.galaxy_shear_bmode_fourier, Types.galaxy_shear_bmode_fourier),
+    standard_types.galaxy_shearDensity_cl_e: (Types.galaxy_shear_emode_fourier, Types.galaxy_position_fourier),
+    standard_types.galaxy_density_cl: (Types.galaxy_position_fourier, Types.galaxy_position_fourier),
 }
+
 # Use builder class from twopoint to build file interating overdata points.
 
 def choose_kernel_and_bins(tracer):
@@ -51,7 +56,19 @@ for dt in s.get_data_types():
         kernel2, bin2 = choose_kernel_and_bins(d.tracers[1])
 
         # Sacc tags store things like angle indices
-        ang = d['theta']
+        if 'xi' in d.data_type:
+            #real space
+            ang = d['theta']
+            if real is False:
+                raise ValueError("Mixed real/fourier data")
+            real = True
+
+        if 'cl' in d.data_type:
+            # Fourier space
+            ang = d['ell']
+            if real is True:
+                raise ValueError("Mixed real/fourier data")
+            real = False
 
         # This relies on the specific ordering in the sacc file to work.
         # The data points have to be in ascending order, and then each
@@ -68,12 +85,21 @@ for dt in s.get_data_types():
 # Define names of the spectra.  These are our choice, but the selection
 # below matches the usage in most DES CosmoSIS pipelines.   
 
-names = {
-    builder.types[0]: "wtheta",
-    builder.types[1]: "gammat",
-    builder.types[2]: "xim",
-    builder.types[3]: "xip"
-}
+if real:
+    names = {
+        builder.types[0]: "wtheta",
+        builder.types[1]: "gammat",
+        builder.types[2]: "xim",
+        builder.types[3]: "xip"
+    }
+
+else:
+    names = {
+        builder.types[0]: "galaxy_density_cl",
+        builder.types[1]: "galaxy_shearDensity_cl_e",
+        builder.types[2]: "galaxy_shear_cl_ee",
+    }
+
 builder.set_names(names)
 
 # Load and add covariance

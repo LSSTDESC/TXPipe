@@ -106,13 +106,34 @@ TXSourceDiagnosticPlots:
 TXLensDiagnosticPlots: {}
 
 TXFourierGaussianCovariance:
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
     use_true_shear: True
 
+TXFourierNamasterCovariance:
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 12
+    use_true_shear: True
+    
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 100.
     nbins: 15
     use_true_shear: True
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
+
+TXRealNamasterCovariance:
+    min_sep: 2.5
+    max_sep: 100.
+    nbins: 15
+    use_true_shear: True
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 12
 
 TXTwoPoint:
     bin_slop: 0.0

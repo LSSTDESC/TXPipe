@@ -54,7 +54,30 @@ Getting Dependencies
 
 TXPipe requires python>=3.6.
 
-**Dependencies on your laptop**
+
+**Dependencies with Conda**
+
+You can use the commands below to get a conda environment with everything you need.
+
+On a cluster with an existing MPI implementation you should modify `mpich` to `mpich=3.4.*=external_*` or whatever version of MPI you have.
+
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+chmod +x Miniforge3-Linux-x86_64.sh 
+./Miniforge3-Linux-x86_64.sh -b -p ./conda
+source ./conda/bin/activate
+
+
+# conda forge installations
+conda install -y scipy matplotlib camb healpy psutil numpy scikit-learn fitsio pandas astropy pyccl mpi4py treecorr namaster  dask mpich 'h5py=*=mpi_mpich_*'
+
+# pip installations
+pip install threadpoolctl ceci sacc parallel_statistics git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs  git+git://github.com/LSSTDESC/qp git+git://github.com/LSSTDESC/desc_bpz healsparse flexcode  xgboost==1.1.1  git+https://github.com/dask/dask-mpi cosmosis-standalone git+https://github.com/LSSTDESC/firecrown@v0.4 git+git://github.com/LSSTDESC/desc_bpz git+git://github.com/LSSTDESC/qp
+```
+
+
+
+**Dependencies with pip**
 
 The various stages within it depend on the python packages listed in requirements.txt, and can be install using:
 ```
@@ -105,6 +128,7 @@ pip install ceci numpy scipy parallel_statistics
 ```
 
 Then use shifter to run the actual jobs.
+
 
 
 Running the pipeline

@@ -39,5 +39,6 @@ from .calibrate import TXShearCalibration
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
+from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
 #from .extensions.cluster_mag import *
 from .extensions.CLCosmo_interface import *
