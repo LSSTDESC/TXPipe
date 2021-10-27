@@ -660,7 +660,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
     def get_workspaces_dict(self, cl_file, masks_names):
         cache_dir = cl_file.metadata['cache_dir']
-        cache = self.load_workspace_cache()
+        cache = self.load_workspace_cache(cache_dir)
         if cache == {}:
             return {}
 
