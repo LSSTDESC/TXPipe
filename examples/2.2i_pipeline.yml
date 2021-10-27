@@ -35,7 +35,10 @@ stages:
       nprocess: 8
     - name: TXTruthLensSelector
       nprocess: 32
-    - name: TXTrueNumberDensity
+    - name: TXLensTrueNumberDensity
+      nprocess: 32
+      nodes: 2
+    - name: TXSourceTrueNumberDensity
       nprocess: 32
       nodes: 2
     - name: TXTwoPointTheoryReal

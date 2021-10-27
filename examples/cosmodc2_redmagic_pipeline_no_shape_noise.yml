@@ -95,4 +95,3 @@ inputs:
 resume: True
 log_dir: data/cosmodc2/logs_redmagic
 pipeline_log: data/cosmodc2/log.txt
-
