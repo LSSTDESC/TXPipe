@@ -91,3 +91,15 @@ class WorkspaceCache:
 
         print(f"Saving workspace to {p}")
         workspace.write_to(str(p))
+
+
+def build_MyNmtBin_from_binning_info(ell_min, ell_max, n_ell, ell_spacing):
+    # Creating the ell binning from the edges using this Namaster constructor.
+    if ell_spacing == 'log':
+        edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
+    else:
+        edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
+
+    ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
+
+    return ell_bins

@@ -633,20 +633,18 @@ class TXFourierTJPCovariance(PipelineStage):
 
         tjp_config[f"mask_file"] = masks
         tjp_config[f"mask_names"] = masks_names
-        tjp_config["outdir"] = cl_file.metadata['cache_dir']
+        cache_dir = cl_file.metadata.get('cache_dir', None)
+        tjp_config["outdir"] = cache_dir
 
         # Load NmtBin used for the Cells
-        workspaces = self.get_workspaces_dict(cl_file, masks_names)
+        if cache_dir is None:
+            workspaces = {}
+        else:
+            workspaces = self.get_workspaces_dict(cl_file, masks_names)
 
         # Run TJPCov
         # TODO: I shouldn't need to pass the binnning.
-        ell_min = cl_file.metadata['binning/ell_min']
-        ell_max = cl_file.metadata['binning/ell_max']
-        ell_spacing = cl_file.metadata['binning/ell_spacing']
-        n_ell = cl_file.metadata['binning/n_ell']
-        ell_bins = self.choose_ell_bins(ell_min, ell_max, ell_spacing, n_ell)
-
-        tjp_config['binning_info'] = ell_bins
+        tjp_config['binning_info'] = self.recover_NmtBin(cl_file)
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
@@ -661,7 +659,8 @@ class TXFourierTJPCovariance(PipelineStage):
             print("Saved power spectra with its Gaussian covariance")
 
     def get_workspaces_dict(self, cl_file, masks_names):
-        cache = self.load_workspace_cache(cl_file.metadata['cache_dir'])
+        cache_dir = cl_file.metadata['cache_dir']
+        cache = self.load_workspace_cache()
         if cache == {}:
             return {}
 
@@ -702,21 +701,28 @@ class TXFourierTJPCovariance(PipelineStage):
         cache = WorkspaceCache(dirname)
         return cache
 
-    def choose_ell_bins(self, ell_min, ell_max, ell_spacing, n_ell):
-        # TODO: This should be read from somewhere. That way one makes sure it
-        # has the same binning as in the Cells
+    def recover_NmtBin(self, cl_file):
+        # This function replicates `choose_ell_bins` in twopoint_fourier.py
+        from .utils.nmt_utils import build_MyNmtBin_from_binning_info
 
-        # Copied from TXTwoPointFourier()
-        import pymaster as nmt
-        from .utils.nmt_utils import MyNmtBin
+        ell_min = cl_file.metadata['binning/ell_min']
+        ell_max = cl_file.metadata['binning/ell_max']
+        ell_spacing = cl_file.metadata['binning/ell_spacing']
+        n_ell = cl_file.metadata['binning/n_ell']
 
-        # Creating the ell binning from the edges using this Namaster constructor.
-        if 'ell_spacing' == 'log':
-            edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
-        else:
-            edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
+        ell_bins = build_MyNmtBin_from_binning_info(ell_min, ell_max, n_ell,
+                                                    ell_spacing)
 
-        ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
+        # Check that the binning is compatible with the one in the file
+        dtype = cl_file.get_data_types()[0]
+        trs = cl_file.get_tracer_combinations()[0]
+        ell_eff, _ = cl_file.get_ell_cl(dtype, *trs)
+        if not np.all(ell_bins.get_effective_ells() == ell_eff):
+            print(ell_bins.get_effective_ells())
+            print(ell_eff)
+            raise ValueError('The reconstructed NmtBin object is not ' +
+                             'compatible with the ells in the sacc file')
+
         return ell_bins
 
     def read_sacc(self):

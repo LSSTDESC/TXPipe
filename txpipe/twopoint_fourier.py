@@ -439,8 +439,7 @@ class TXTwoPointFourier(PipelineStage):
         self.results = []
 
     def choose_ell_bins(self, pixel_scheme, f_sky):
-        import pymaster as nmt
-        from .utils.nmt_utils import MyNmtBin
+        from .utils.nmt_utils import build_MyNmtBin_from_binning_info
 
         # commented code below is not needed anymore
         '''
@@ -460,12 +459,12 @@ class TXTwoPointFourier(PipelineStage):
         # Can feed these back upstream if useful.
 
         # Creating the ell binning from the edges using this Namaster constructor.
-        if self.config['ell_spacing'] == 'log':
-            edges = np.unique(np.geomspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
-        else:
-            edges = np.unique(np.linspace(self.config['ell_min'], self.config['ell_max'], self.config['n_ell']).astype(int))
-
-        ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
+        ell_min = self.config['ell_min']
+        ell_max = self.config['ell_max']
+        n_ell = self.config['n_ell']
+        ell_spacing = self.config['ell_spacing']
+        ell_bins = build_MyNmtBin_from_binning_info(ell_min, ell_max, n_ell,
+                                                    ell_spacing)
         return ell_bins
 
 
