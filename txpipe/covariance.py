@@ -565,6 +565,7 @@ class TXFourierTJPCovariance(PipelineStage):
     config_options = {
         'galaxy_bias': [0.],
         'IA': 0.5,
+        'cache_dir': ''
     }
 
 
@@ -633,11 +634,16 @@ class TXFourierTJPCovariance(PipelineStage):
 
         tjp_config[f"mask_file"] = masks
         tjp_config[f"mask_names"] = masks_names
-        cache_dir = cl_file.metadata.get('cache_dir', None)
-        tjp_config["outdir"] = cache_dir
+
+        # Set the covariance cache:
+        cl_cache = cl_file.metadata.get('cache_dir', None)
+        if self.config['cache_dir']:
+            tjp_config["outdir"] = self.config['cache_dir']
+        else:
+            tjp_config["outdir"] = cl_cache
 
         # Load NmtBin used for the Cells
-        if cache_dir is None:
+        if cl_cache is None:
             workspaces = {}
         else:
             workspaces = self.get_workspaces_dict(cl_file, masks_names)
