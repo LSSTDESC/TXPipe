@@ -99,8 +99,11 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXDiagnosticPlots:
+TXSourceDiagnosticPlots:
     shear_prefix: mcal_
+    psf_prefix: mcal_psf_
+
+TXLensDiagnosticPlots: {}
 
 TXFourierGaussianCovariance:
     use_true_shear: True
