@@ -614,7 +614,9 @@ class TXFourierTJPCovariance(PipelineStage):
             tjp_config[f"sigma_e_source_{i}"] = meta["sigma_e"][i]
 
 
-        # TODO: Set masks
+        # Load masks
+        # Would it be better to pass a path? Masks are not that heavy, so we
+        # might save some I/O overhead reading them at once here)
         with self.open_input('mask', wrapper=True) as f:
             mask = f.read_map('mask')
             if self.rank == 0:
@@ -626,7 +628,6 @@ class TXFourierTJPCovariance(PipelineStage):
                 print(f"Loaded {nbin_source} lensing weight maps")
 
         # Following twopoint_fourier.py:197 all clustering maps use this mask
-        # TODO: Better pass paths
         masks = {f'lens_{i}': mask for i in range(nbin_lens)}
         masks.update({f'source_{i}': lensing_weights[i] for i in range(nbin_source)})
         masks_names = {f'lens_{i}': 'mask_lens' for i in range(nbin_lens)}
@@ -649,15 +650,16 @@ class TXFourierTJPCovariance(PipelineStage):
             workspaces = self.get_workspaces_dict(cl_file, masks_names)
 
         # Run TJPCov
-        # TODO: I shouldn't need to pass the binnning.
+        # I shouldn't need to pass the binnning (unless the cache is not set or
+        # there are one of the workspaces missing). For generality, I will pass
+        # it.
         tjp_config['binning_info'] = self.recover_NmtBin(cl_file)
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
         covmat = calculator.get_all_cov_nmt(cache=cache)
 
-        # Write the collect results out to HDF5.
-        # TODO: Move it to TJPCov?
+        # Write the sacc file with the covariance
         if self.rank == 0:
             cl_file.add_covariance(covmat)
             output_filename = self.get_output('summary_statistics_fourier')
@@ -732,22 +734,25 @@ class TXFourierTJPCovariance(PipelineStage):
         return ell_bins
 
     def read_sacc(self):
-        # Loads a sacc file and remove any BB measurements or similar
+        # Loads a sacc file.
         import sacc
         f = self.get_input('twopoint_data_fourier')
         two_point_data = sacc.Sacc.load_fits(f)
 
-        # Remove the data types that we won't use for inference
-        mask = [
-            two_point_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
-            two_point_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
-            two_point_data.indices(sacc.standard_types.galaxy_density_cl),
-            # not doing b-modes, do we want to?
-        ]
-        print("Length before cuts = ", len(two_point_data))
-        mask = np.concatenate(mask)
-        two_point_data.keep_indices(mask)
-        print("Length after cuts = ", len(two_point_data))
-        two_point_data.to_canonical_order()
+        # Since NaMaster computes all terms (B-modes included). Keep all of
+        # them.
+
+        # # Remove the data types that we won't use for inference
+        # mask = [
+        #     two_point_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
+        #     two_point_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
+        #     two_point_data.indices(sacc.standard_types.galaxy_density_cl),
+        #     # not doing b-modes, do we want to?
+        # ]
+        # print("Length before cuts = ", len(two_point_data))
+        # mask = np.concatenate(mask)
+        # two_point_data.keep_indices(mask)
+        # print("Length after cuts = ", len(two_point_data))
+        # two_point_data.to_canonical_order()
 
         return two_point_data
