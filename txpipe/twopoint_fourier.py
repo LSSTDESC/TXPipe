@@ -439,7 +439,7 @@ class TXTwoPointFourier(PipelineStage):
         self.results = []
 
     def choose_ell_bins(self, pixel_scheme, f_sky):
-        from .utils.nmt_utils import build_MyNmtBin_from_binning_info
+        from .utils.nmt_utils import MyNmtBin
 
         # commented code below is not needed anymore
         '''
@@ -463,8 +463,8 @@ class TXTwoPointFourier(PipelineStage):
         ell_max = self.config['ell_max']
         n_ell = self.config['n_ell']
         ell_spacing = self.config['ell_spacing']
-        ell_bins = build_MyNmtBin_from_binning_info(ell_min, ell_max, n_ell,
-                                                    ell_spacing)
+        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
+                                              ell_spacing)
         return ell_bins
 
 
