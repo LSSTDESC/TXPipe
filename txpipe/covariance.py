@@ -587,8 +587,8 @@ class TXFourierTJPCovariance(PipelineStage):
         tjp_config = {}
         tjp_config["do_xi"] = False
         tjp_config['cov_type'] = 'gaus'
-        cl_file = self.read_sacc()
-        tjp_config["cl_file"] = cl_file
+        cl_sacc = self.read_sacc()
+        tjp_config["cl_file"] = cl_sacc
 
         # Get the CCL cosmo object to pass to TJPCov
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
@@ -636,24 +636,20 @@ class TXFourierTJPCovariance(PipelineStage):
         tjp_config[f"mask_file"] = masks
         tjp_config[f"mask_names"] = masks_names
 
-        # Set the covariance cache:
-        cl_cache = cl_file.metadata.get('cache_dir', None)
+        # Set the TJPCov specific cache:
         if self.config['cache_dir']:
             tjp_config["outdir"] = self.config['cache_dir']
         else:
-            tjp_config["outdir"] = cl_cache
+            tjp_config["outdir"] = cl_sacc.metadata.get('cache_dir', None)
 
         # Load NmtBin used for the Cells
-        if cl_cache is None:
-            workspaces = {}
-        else:
-            workspaces = self.get_workspaces_dict(cl_file, masks_names)
+        workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
 
         # Run TJPCov
         # I shouldn't need to pass the binnning (unless the cache is not set or
-        # there are one of the workspaces missing). For generality, I will pass
+        # there is one of the workspaces missing). For generality, I will pass
         # it.
-        tjp_config['binning_info'] = self.recover_NmtBin(cl_file)
+        tjp_config['binning_info'] = self.recover_NmtBin(cl_sacc)
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
@@ -661,13 +657,15 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Write the sacc file with the covariance
         if self.rank == 0:
-            cl_file.add_covariance(covmat)
+            cl_sacc.add_covariance(covmat)
             output_filename = self.get_output('summary_statistics_fourier')
-            cl_file.save_fits(output_filename, overwrite=True)
+            cl_sacc.save_fits(output_filename, overwrite=True)
             print("Saved power spectra with its Gaussian covariance")
 
-    def get_workspaces_dict(self, cl_file, masks_names):
-        cache_dir = cl_file.metadata['cache_dir']
+    def get_workspaces_dict(self, cl_sacc, masks_names):
+        # Based on txpipe/twopoint_fourier.py
+        # TODO: Move this to txpipe/utils/nmt_utils.py
+        cache_dir = cl_sacc.metadata.get('cache_dir', None)
         cache = self.load_workspace_cache(cache_dir)
         if cache == {}:
             return {}
@@ -676,11 +674,11 @@ class TXFourierTJPCovariance(PipelineStage):
         masks_names_list = list(masks_names.values())
         for m in masks_names_list:
             if m not in hashes:
-                hashes[m] = cl_file.metadata[f'hash/{m}']
-        ell_hash = cl_file.metadata['hash/ell_hash']
+                hashes[m] = cl_sacc.metadata[f'hash/{m}']
+        ell_hash = cl_sacc.metadata['hash/ell_hash']
 
         w = {}
-        for tr1, tr2 in cl_file.get_tracer_combinations():
+        for tr1, tr2 in cl_sacc.get_tracer_combinations():
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
@@ -709,22 +707,23 @@ class TXFourierTJPCovariance(PipelineStage):
         cache = WorkspaceCache(dirname)
         return cache
 
-    def recover_NmtBin(self, cl_file):
+    def recover_NmtBin(self, cl_sacc):
         # This function replicates `choose_ell_bins` in twopoint_fourier.py
-        from .utils.nmt_utils import build_MyNmtBin_from_binning_info
+        # TODO: Move this to txpipe/utils/nmt_utils.py
+        from .utils.nmt_utils import MyNmtBin
 
-        ell_min = cl_file.metadata['binning/ell_min']
-        ell_max = cl_file.metadata['binning/ell_max']
-        ell_spacing = cl_file.metadata['binning/ell_spacing']
-        n_ell = cl_file.metadata['binning/n_ell']
+        ell_min = cl_sacc.metadata['binning/ell_min']
+        ell_max = cl_sacc.metadata['binning/ell_max']
+        ell_spacing = cl_sacc.metadata['binning/ell_spacing']
+        n_ell = cl_sacc.metadata['binning/n_ell']
 
-        ell_bins = build_MyNmtBin_from_binning_info(ell_min, ell_max, n_ell,
-                                                    ell_spacing)
+        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
+                                              ell_spacing)
 
         # Check that the binning is compatible with the one in the file
-        dtype = cl_file.get_data_types()[0]
-        trs = cl_file.get_tracer_combinations()[0]
-        ell_eff, _ = cl_file.get_ell_cl(dtype, *trs)
+        dtype = cl_sacc.get_data_types()[0]
+        trs = cl_sacc.get_tracer_combinations()[0]
+        ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
         if not np.all(ell_bins.get_effective_ells() == ell_eff):
             print(ell_bins.get_effective_ells())
             print(ell_eff)
@@ -741,18 +740,4 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Since NaMaster computes all terms (B-modes included). Keep all of
         # them.
-
-        # # Remove the data types that we won't use for inference
-        # mask = [
-        #     two_point_data.indices(sacc.standard_types.galaxy_shear_cl_ee),
-        #     two_point_data.indices(sacc.standard_types.galaxy_shearDensity_cl_e),
-        #     two_point_data.indices(sacc.standard_types.galaxy_density_cl),
-        #     # not doing b-modes, do we want to?
-        # ]
-        # print("Length before cuts = ", len(two_point_data))
-        # mask = np.concatenate(mask)
-        # two_point_data.keep_indices(mask)
-        # print("Length after cuts = ", len(two_point_data))
-        # two_point_data.to_canonical_order()
-
         return two_point_data
