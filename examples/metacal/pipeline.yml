@@ -98,7 +98,7 @@ site:
 modules: txpipe
 
 # configuration settings
-config: examples/config/laptop_config.yml
+config: examples/metacal/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

@@ -90,7 +90,7 @@ stages:
 #    - name: TXMapCorrelations
 
 output_dir: data/2.2i_dr6/outputs
-config: examples/config/2.2i_config.yml
+config: examples/2.2i/config.yml
 
 
 
