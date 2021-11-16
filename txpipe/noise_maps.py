@@ -541,3 +541,216 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                     reverse_map, half2)
 
         return maps
+
+
+class TXNoiseMapsJax(PipelineStage):
+    """ TXNoiseMaps implementation using Google Jax for GPU acceleration """
+    name = "TXNoiseMapsJax"
+    inputs = [
+        ('shear_catalog', ShearCatalog),
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('shear_tomography_catalog', TomographyCatalog),
+        # We get the pixelization info from the diagnostic maps
+        ('mask', MapsFile),
+        ('lens_maps', MapsFile),
+    ]
+    outputs = [
+        ('source_noise_maps', LensingNoiseMaps),
+        ('lens_noise_maps', ClusteringNoiseMaps),
+    ]
+
+    config_options = {
+        'chunk_rows': 2000000,
+        'lensing_realizations': 30,
+        'clustering_realizations': 1,
+    }
+
+    def run(self):
+        from jax import numpy as jnp
+        from jax.ops import index
+        from jax import random, jit, device_get, device_put
+        from .utils import choose_pixelization
+        # get the number of bins.
+        nbin_source, nbin_lens, ngal_maps, mask, map_info = self.read_inputs()
+        pixel_scheme = choose_pixelization(**map_info)
+        lensing_realizations = self.config['lensing_realizations']
+        clustering_realizations = self.config['clustering_realizations']
+
+        # The columns we will need
+        shear_cols = ['ra', 'dec', 'weight', 'mcal_g1', 'mcal_g2']
+
+        # Make the iterators
+        chunk_rows = self.config['chunk_rows']
+
+        it = self.combined_iterators(chunk_rows,
+                'shear_catalog', 'shear', shear_cols,
+                'shear_tomography_catalog','tomography', ['source_bin'],
+                'lens_tomography_catalog','tomography', ['lens_bin'],
+            )
+
+        # Get a mapping from healpix indices to masked pixel indices
+        # This reduces memory usage.  We could use a healsparse array
+        # here, but I'm not sure how to do that best with our
+        # many realizations.  Possiby a recarray?
+
+        index_map = np.zeros(pixel_scheme.npix, dtype=jnp.int32) - 1
+        counter = 0
+        for i in range(pixel_scheme.npix):
+            if mask[i] > 0:
+                index_map[i] = counter
+                counter += 1
+        # Number of unmasked pixels
+        npix = counter
+
+        if self.rank == 0:
+            nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations * 2
+            nGB = (npix * nmaps * 8) / 1000.**3
+            print(f"Allocating maps of size {nGB:.2f} GB")
+        # lensing g1, g2
+        G1 = jnp.zeros((npix, nbin_source, lensing_realizations))
+        G2 = jnp.zeros((npix, nbin_source, lensing_realizations))
+        # lensing weight
+        GW = jnp.zeros((npix, nbin_source))
+        # clustering map - n_gal to start with
+        ngal_split = jnp.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
+        # TODO: Clustering weights go here
+
+        # Initialize PRNG key for Jax
+        key = random.PRNGKey(np.random.randint(2**32))
+
+        # Loop through the data
+        for (s, e, data) in it:
+            print(f"Rank {self.rank} processing rows {s} - {e}")
+            # Send data to GPU
+            data = device_put(data)
+            source_bin = data['source_bin']
+            lens_bin = data['lens_bin']
+            ra = data['ra']
+            dec = data['dec']
+            orig_pixels = device_put(pixel_scheme.ang2pix(ra, dec))
+            pixels = device_put(index_map[orig_pixels])
+            n = e - s
+
+            weights = data['weight']
+            g1 = data['mcal_g1'] * weights
+            g2 = data['mcal_g2'] * weights
+            # randomly select a half for each object
+            key, subkey = random.split(key)
+            split = 1*random.bernoulli(subkey, 0.5, (n, clustering_realizations))
+
+            # random rotations of the g1, g2 values
+            key, subkey = random.split(key)
+            phi = random.uniform(subkey, shape=(lensing_realizations, n), minval=0, maxval=2*jnp.pi)
+            cos = jnp.cos(phi)
+            sin = jnp.sin(phi)
+            g1r = jnp.transpose(cos * g1 + sin * g2)
+            g2r = jnp.transpose(-sin * g1 + cos * g2)
+
+            pix_mask = pixels >= 0
+            sb_mask = (source_bin >= 0) & pix_mask
+            G1 = G1.at[index[pixels[sb_mask], source_bin[sb_mask], :]].add(g1r[sb_mask])
+            G2 = G2.at[index[pixels[sb_mask], source_bin[sb_mask], :]].add(g2r[sb_mask])
+            GW = GW.at[index[pixels[sb_mask], source_bin[sb_mask]]].add(weights[sb_mask])
+            lb_mask = sb_mask & (lens_bin >= 0)
+            ngal_split = ngal_split.at[index[pixels[lb_mask], lens_bin[lb_mask], jnp.arange(clustering_realizations), split[lb_mask]]].add(1)
+            #!!!!! Currently breaks with clustering_realizations > 1
+        # Sum everything at root
+        if self.comm is not None:
+            import mpi4jax
+            from mpi4py import MPI
+            mpi4jax.reduce(G1, MPI.SUM, root=0)
+            mpi4jax.reduce(G2, MPI.SUM, root=0)
+            mpi4jax.reduce(GW, MPI.SUM, root=0)
+            mpi4jax.reduce(ngal_split, MPI.SUM, root=0)
+            if self.rank != 0:
+                del G1, G2, GW, ngal_split
+
+        if self.rank == 0:
+            print("Saving maps")
+            outfile = self.open_output('source_noise_maps', wrapper=True)
+
+            # The top section has the metadata in
+            group = outfile.file.create_group("maps")
+            group.attrs['nbin_source'] = nbin_source
+            group.attrs['lensing_realizations'] = lensing_realizations
+            # Get outputs from GPU
+            g1 = device_get(g1)
+            g2 = device_get(g2)
+            G1 = device_get(G1)
+            G2 = device_get(G2)
+            GW = device_get(GW)
+            metadata = {**self.config, **map_info}
+
+            pixels = np.where(mask > 0)[0]
+            for b in range(nbin_source):
+                for i in range(lensing_realizations):
+
+                    bin_mask = np.where(GW[:, b] > 0)
+                    g1 = G1[:, b, i] / GW[:, b]
+                    g2 = G2[:, b, i] / GW[:, b]
+
+                    outfile.write_map(f"rotation_{i}/g1_{b}",
+                                      pixels[bin_mask], g1[bin_mask], metadata)
+
+                    outfile.write_map(f"rotation_{i}/g2_{b}",
+                                      pixels[bin_mask], g2[bin_mask], metadata)
+
+            outfile = self.open_output('lens_noise_maps', wrapper=True)
+            group = outfile.file.create_group("maps")
+            group.attrs['nbin_lens'] = nbin_lens
+            group.attrs['clustering_realizations'] = clustering_realizations
+
+            for b in range(nbin_lens):
+                for i in range(clustering_realizations):
+                    # We have computed the first half already,
+                    # and we have the total map from an earlier stage
+                    half1 = ngal_split[:, b, i, 0]
+                    half2 = ngal_split[:, b, i, 1]
+
+                    # Convert to overdensity.  I thought about
+                    # using half the mean from the full map to reduce
+                    # noise, but thought that might add covariance
+                    # to the two maps, and this shouldn't be that noisy
+                    mu1 = np.average(half1, weights=mask[pixels])
+                    mu2 = np.average(half2, weights=mask[pixels])
+                    # This will produce some mangled sentinel values
+                    # but they will be masked out
+                    rho1 = (half1 - mu1) / mu1
+                    rho2 = (half2 - mu2) / mu2
+
+                    # Write both overdensity and count maps
+                    # for each bin for each split
+                    outfile.write_map(f"split_{i}/rho1_{b}",
+                                      pixels, rho1, metadata)
+                    outfile.write_map(f"split_{i}/rho2_{b}",
+                                      pixels, rho2, metadata)
+                    # counts
+                    outfile.write_map(f"split_{i}/ngal1_{b}",
+                                      pixels, half1, metadata)
+                    outfile.write_map(f"split_{i}/ngal2_{b}",
+                                      pixels, half2, metadata)
+
+    def read_inputs(self):
+
+        with self.open_input('mask', wrapper=True) as f:
+            mask = f.read_map('mask')
+            # pixelization etc
+            map_info = f.read_map_info('mask')
+
+        with self.open_input('lens_maps', wrapper=True) as f:
+            nbin_lens = f.file['maps'].attrs['nbin_lens']
+            ngal_maps = [f.read_map(f'ngal_{b}') for b in range(nbin_lens)]
+
+        with self.open_input('shear_tomography_catalog') as f:
+            nbin_source = f['tomography'].attrs['nbin_source']
+            sz1 = f['tomography/source_bin'].size
+
+        with self.open_input('lens_tomography_catalog') as f:
+            sz2 = f['tomography/lens_bin'].size
+
+        if sz1 != sz2:
+            raise ValueError("Lens and source catalogs are different sizes in "
+                             "TXNoiseMaps. In this case run TXSourceNoiseMaps "
+                             "and TXLensNoiseMaps separately.")
+
+        return nbin_source, nbin_lens, ngal_maps, mask, map_info
