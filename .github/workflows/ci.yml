@@ -131,6 +131,26 @@ jobs:
       run: |
         tail -n +1 data/example/logs_redmagic/*
 
+  Other_Pipeline_Dry_Runs:
+    runs-on: ubuntu-latest
+
+    container:
+      image: joezuntz/txpipe
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Dry-run pipelines
+      run: |
+        ceci --dry-run examples/2.2i/pipeline.yml
+        ceci --dry-run examples/buzzard/pipeline.yml
+        ceci --dry-run examples/cosmodc2/pipeline.yml
+        ceci --dry-run examples/dr1b/pipeline.yml
+        ceci --dry-run examples/skysim/pipeline.yml
+
+
   Delete_Data:
     runs-on: ubuntu-latest
     needs: ["Redmagic_Pipeline", "Metacal_Pipeline", "Lensfit_Pipeline"]

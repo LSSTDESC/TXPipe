@@ -27,7 +27,10 @@ stages:
     - name: TXLensCatalogSplitter
       nodes: 1
       nprocess: 8
-    - name: TXTrueNumberDensity
+    - name: TXSourceTrueNumberDensity
+      nodes: 8
+      nprocess: 64
+    - name: TXLensTrueNumberDensity
       nodes: 8
       nprocess: 64
     - name: TXPhotozPlots
