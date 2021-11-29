@@ -9,7 +9,8 @@ stages:
       threads_per_process: 2
     - name: PZRailEstimateSource # Compute p(z) values for the source sample
     - name: PZRailEstimateLensFromSource   # Copy the p(z) values from the source to lens values
-    - name: TXPhotozStack
+    - name: TXPhotozSourceStack
+    - name: TXPhotozLensStack  
     - name: TXMainMaps
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
@@ -80,8 +81,8 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
+    photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
