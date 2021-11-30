@@ -543,6 +543,17 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
         return maps
 
 
+def GN_add(GN, masked_pixels, masked_source_bin, masked_gnr):
+    return GN.at[masked_pixels, masked_source_bin, :].add(masked_gnr)
+
+def GW_add(GW, masked_pixels, masked_source_bin, masked_weights):
+    return GW.at[masked_pixels, masked_source_bin].add(masked_weights)
+
+def ngal_split_add(ngal_split, pixels_lb_mask, clustering_realizations, split_lb_mask, lens_bin_lb_mask):
+    from jax import numpy as jnp
+    return ngal_split.at[pixels_lb_mask, lens_bin_lb_mask, jnp.arange(clustering_realizations), split_lb_mask].add(1)
+
+
 class TXNoiseMapsJax(PipelineStage):
     """ TXNoiseMaps implementation using Google Jax for GPU acceleration """
     name = "TXNoiseMapsJax"
@@ -618,6 +629,11 @@ class TXNoiseMapsJax(PipelineStage):
         # Initialize PRNG key for Jax
         key = random.PRNGKey(np.random.randint(2**32))
 
+        # add jit decorator to do in place operations on the arrays while looping through the data
+        GN_add_jit = jit(GN_add)
+        GW_add_jit = jit(GW_add)
+        ngal_split_add_jit = jit(ngal_split_add, static_argnums=(2,))
+
         # Loop through the data
         for (s, e, data) in it:
             print(f"Rank {self.rank} processing rows {s} - {e}")
@@ -648,11 +664,24 @@ class TXNoiseMapsJax(PipelineStage):
 
             pix_mask = pixels >= 0
             sb_mask = (source_bin >= 0) & pix_mask
-            G1 = G1.at[pixels[sb_mask], source_bin[sb_mask], :].add(g1r[sb_mask])
-            G2 = G2.at[pixels[sb_mask], source_bin[sb_mask], :].add(g2r[sb_mask])
-            GW = GW.at[pixels[sb_mask], source_bin[sb_mask]].add(weights[sb_mask])
+            
+
+            # jax.jit doesn't like masks inside masks so we have to calculate these in advance instead of doing that within the jitted functions
+            masked_pixels = pixels[sb_mask]
+            masked_source_bin = source_bin[sb_mask]
+            masked_g1r = g1r[sb_mask]
+            masked_g2r = g2r[sb_mask]
+            masked_weights = weights[sb_mask]
             lb_mask = sb_mask & (lens_bin >= 0)
-            ngal_split = ngal_split.at[pixels[lb_mask], lens_bin[lb_mask], jnp.arange(clustering_realizations), split[lb_mask]].add(1)
+            pixels_lb_mask = pixels[lb_mask]
+            lens_bin_lb_mask = lens_bin[lb_mask]
+            split_lb_mask = split[lb_mask]
+
+
+            G1 = GN_add_jit(G1, masked_pixels, masked_source_bin, masked_g1r)
+            G2 = GN_add_jit(G2, masked_pixels, masked_source_bin, masked_g2r)
+            GW = GW_add_jit(GW, masked_pixels, masked_source_bin, masked_weights)
+            ngal_split = ngal_split_add_jit(ngal_split, pixels_lb_mask, clustering_realizations, split_lb_mask, lens_bin_lb_mask)
             # TODO: Currently breaks with clustering_realizations > 1
         # Sum everything at root
         if self.comm is not None:
