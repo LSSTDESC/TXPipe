@@ -622,18 +622,18 @@ class TXNoiseMapsJax(PipelineStage):
         for (s, e, data) in it:
             print(f"Rank {self.rank} processing rows {s} - {e}")
             # Send data to GPU
-            data = device_put(data)
-            source_bin = data['source_bin']
-            lens_bin = data['lens_bin']
+            source_bin = device_put(data['source_bin'])
+            lens_bin = device_put(data['lens_bin'])
             ra = data['ra']
             dec = data['dec']
             orig_pixels = device_put(pixel_scheme.ang2pix(ra, dec))
             pixels = device_put(index_map[orig_pixels])
             n = e - s
 
-            weights = data['weight']
-            g1 = data['mcal_g1'] * weights
-            g2 = data['mcal_g2'] * weights
+            weights = device_put(data['weight'])
+            g1 = device_put(data['mcal_g1']) * weights
+            g2 = device_put(data['mcal_g2']) * weights
+            
             # randomly select a half for each object
             key, subkey = random.split(key)
             split = 1*random.bernoulli(subkey, 0.5, (n, clustering_realizations))
@@ -648,12 +648,12 @@ class TXNoiseMapsJax(PipelineStage):
 
             pix_mask = pixels >= 0
             sb_mask = (source_bin >= 0) & pix_mask
-            G1 = G1.at[index[pixels[sb_mask], source_bin[sb_mask], :]].add(g1r[sb_mask])
-            G2 = G2.at[index[pixels[sb_mask], source_bin[sb_mask], :]].add(g2r[sb_mask])
-            GW = GW.at[index[pixels[sb_mask], source_bin[sb_mask]]].add(weights[sb_mask])
+            G1 = G1.at[pixels[sb_mask], source_bin[sb_mask], :].add(g1r[sb_mask])
+            G2 = G2.at[pixels[sb_mask], source_bin[sb_mask], :].add(g2r[sb_mask])
+            GW = GW.at[pixels[sb_mask], source_bin[sb_mask]].add(weights[sb_mask])
             lb_mask = sb_mask & (lens_bin >= 0)
-            ngal_split = ngal_split.at[index[pixels[lb_mask], lens_bin[lb_mask], jnp.arange(clustering_realizations), split[lb_mask]]].add(1)
-            #!!!!! Currently breaks with clustering_realizations > 1
+            ngal_split = ngal_split.at[pixels[lb_mask], lens_bin[lb_mask], jnp.arange(clustering_realizations), split[lb_mask]].add(1)
+            # TODO: Currently breaks with clustering_realizations > 1
         # Sum everything at root
         if self.comm is not None:
             import mpi4jax
@@ -674,8 +674,6 @@ class TXNoiseMapsJax(PipelineStage):
             group.attrs['nbin_source'] = nbin_source
             group.attrs['lensing_realizations'] = lensing_realizations
             # Get outputs from GPU
-            g1 = device_get(g1)
-            g2 = device_get(g2)
             G1 = device_get(G1)
             G2 = device_get(G2)
             GW = device_get(GW)
