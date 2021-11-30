@@ -571,7 +571,7 @@ class TXNoiseMapsJax(PipelineStage):
     ]
 
     config_options = {
-        'chunk_rows': 2000000,
+        'chunk_rows': 4000000,
         'lensing_realizations': 30,
         'clustering_realizations': 1,
     }
