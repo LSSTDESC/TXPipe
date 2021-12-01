@@ -7,14 +7,20 @@ from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
 
 class TXAuxiliarySourceMaps(TXBaseMaps):
+    """
+    This stage generates a set of auxiliary maps from the source catalog.
+    It makes maps of:
+    - the count of different flag values
+    - the mean PSF
+
+    These are currently only used for making visualizations in the later TXMapPlots
+    stage, and are not otherwise used directly.
+
+    Like most of the mapping stages it inherits most behavior from the TXBaseMaps
+    parent class, which specifies the primary `run` method. This is because most
+    mapper classes have the same overall structure. See that class for more details.
+    """
     name = "TXAuxiliarySourceMaps"
-    """
-    This class generates:
-        - depth maps
-        - psf maps
-        - bright object maps
-        - flag maps
-    """
     inputs = [
         ("shear_catalog", ShearCatalog),  # for psfs
         ("shear_tomography_catalog", HDFFile),  # for per-bin psf maps
@@ -30,16 +36,14 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         "flag_exponent_max": 8,  # flag bits go up to 2**8 by default
         "psf_prefix": "psf_",  # prefix name for columns
     }
-    # instead of reading from config we match the basic maps
+
     def choose_pixel_scheme(self):
         with self.open_input("source_maps", wrapper=True) as maps_file:
             pix_info = dict(maps_file.file["maps"].attrs)
-
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
         # We make a suite of mappers here.
-
         # We read nbin_source because we want PSF maps per-bin
         with self.open_input("shear_tomography_catalog") as f:
             nbin_source = f["tomography"].attrs["nbin_source"]

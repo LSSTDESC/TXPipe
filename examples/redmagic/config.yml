@@ -6,13 +6,9 @@ global:
     # at once
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
-    pixelization: gnomonic
+    pixelization: healpix
+    nside: 512
     sparse: True  # Generate sparse maps - faster if using small areas
-    pixel_size: 0.04
-    ra_cent: 60.5
-    dec_cent: -30.5
-    npix_x: 25
-    npix_y: 25
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -31,10 +27,35 @@ TXCosmoDC2Mock:
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: True # to match metacal
 
+TXIngestRedmagic:
+    lens_zbin_edges: [0.1, 0.3, 0.5]
 
 PZPDFMLZ:
     nz: 301
     zmax: 3.0
+
+
+PZRailTrainSource:
+    class_name: BPZ_lite
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    columns_file: ./data/bpz_riz.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01]
+
+PZRailEstimateSource:
+    convert_unseen: True # needed for BPZ
+
 
 FlexZPipe:
     chunk_rows: 1000
@@ -52,12 +73,18 @@ FlexZPipe:
 
 
 # Mock version of stacking:
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+
+# Mock version of stacking:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
 TXSourceSelector:
     input_pz: False
+    true_z: True
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -68,7 +95,9 @@ TXSourceSelector:
 
 TXTruthLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0,0.2,0.4]
+    input_pz: False
+    true_z: True
+    lens_zbin_edges: [0.1, 0.3, 0.5]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -79,6 +108,17 @@ TXTruthLensSelector:
     # may also need one for r_cpar_cut
 
 TXMeanLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
+TXModeLensSelector:
     # Mag cuts
     lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
@@ -103,11 +143,13 @@ TXTwoPoint:
     max_sep: 60.0
     nbins: 10
     verbose: 0
-
+    subtract_mean_shear: True
 
 TXGammaTBrightStars: {}
-    
+
 TXGammaTDimStars: {}
+
+TXGammaTRandoms: {}
 
 TXGammaTFieldCenters: {}
 
@@ -126,12 +168,33 @@ TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
 
+TXLensDiagnosticPlots: {}
+
+TXDiagnosticMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+    snr_threshold: 10.0
+    snr_delta: 1.0
+    # pixelization: gnomonic
+    pixel_size: 0.2
+    ra_cent: 62.
+    dec_cent: -35.
+    npix_x: 60
+    npix_y: 60
+    depth_cut: 23.0
+    psf_prefix: mcal_psf_
 
 TXSourceMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
+
+# For redmagic mapping
+TXExternalLensMaps:
+    chunk_rows: 100000
+    sparse: True
+    pixelization: healpix
+    nside: 512
 
 
 TXMainMaps: {}
@@ -140,13 +203,12 @@ TXAuxiliarySourceMaps:
     flag_exponent_max: 8
     psf_prefix: psf_
 
-
 TXAuxiliaryLensMaps:
+    flag_exponent_max: 8
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
-
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -166,3 +228,8 @@ TXTwoPointFourier:
 TXSimpleMask:
     depth_cut : 23.5
     bright_object_max: 10.0
+
+TXMapCorrelations:
+    supreme_path_root: data/example/inputs/supreme
+    outlier_fraction: 0.05
+    nbin: 20

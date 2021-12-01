@@ -18,7 +18,7 @@ stages:
     - name: TXIngestRedmagic
     - name: TXSourceSelector
       nprocess: 64
-      nodes: 3
+      nodes: 2
     - name: TXShearCalibration
       nprocess: 7
       nodes: 1
@@ -36,20 +36,20 @@ stages:
       nodes: 3
     - name: TXExternalLensMaps
     - name: TXAuxiliarySourceMaps
-      nprocess: 16
+      nprocess: 8
       threads_per_process: 1
-      nodes: 2
+      nodes: 1
     - name: TXAuxiliaryLensMaps
-      nprocess: 16
+      nprocess: 8
       threads_per_process: 1
-      nodes: 2
+      nodes: 1
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
     - name: TXTwoPoint
+      threads_per_process: 64
       nprocess: 2
       nodes: 2
-      threads_per_process: 64
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
@@ -74,8 +74,8 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins_no_shape_noise/
-config: examples/config/cosmodc2_config_no_shape_noise.yml
+output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins/
+config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

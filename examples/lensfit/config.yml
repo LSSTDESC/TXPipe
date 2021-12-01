@@ -33,7 +33,7 @@ PZRailTrainLens:
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
-    columns_file: ./examples/config/bpz_ugrizy.columns
+    columns_file: ./data/bpz_ugrizy.columns
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this

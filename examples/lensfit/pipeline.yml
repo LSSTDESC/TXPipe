@@ -1,12 +1,17 @@
 
 # Stages to run
 stages:
-    - name: FlexZPipe
-    - name: TXSourceSelector
+    - name: TXSourceSelectorLensfit
+    - name: TXShearCalibration
+    - name: TXLensCatalogSplitter
+    - name: TXStarCatalogSplitter
+    - name: TXTruthLensSelector
+    - name: PZRailTrainLens
+    - name: PZRailEstimateSourceFromLens
+    - name: PZRailEstimateLens
     - name: TXPhotozSourceStack
-    - name: TXIngestRedmagic
-    - name: TXSourceMaps
-    - name: TXExternalLensMaps
+    - name: TXPhotozLensStack
+    - name: TXMainMaps
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
@@ -15,37 +20,35 @@ stages:
     - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
-    - name: TXTwoPointLensCat
+    - name: TXTwoPoint
       threads_per_process: 2
     - name: TXBlinding
       threads_per_process: 2
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots
     - name: TXSourceDiagnosticPlots
     - name: TXLensDiagnosticPlots
-    - name: TXGammaTFieldCenters
+    - name: TXGammaTStars
       threads_per_process: 2
-    - name: TXGammaTBrightStars
-      threads_per_process: 2
-    - name: TXGammaTDimStars
+    - name: TXGammaTRandoms
       threads_per_process: 2
     - name: TXRoweStatistics
       threads_per_process: 2
+    - name: TXGalaxyStarDensity
+    - name: TXGalaxyStarShear
     - name: TXPSFDiagnostics
-    - name: TXRealGaussianCovariance
-      threads_per_process: 2
-    - name: TXSourceNoiseMaps
-      threads_per_process: 2
-    - name: TXExternalLensNoiseMaps
-      threads_per_process: 2
-    - name: TXTwoPointFourier
-      threads_per_process: 2
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 2
-    - name: TXConvergenceMaps
-    - name: TXConvergenceMapPlots
+    - name: TXBrighterFatterPlot
+    - name: TXPhotozPlots
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    - name: TXConvergenceMapPlots # Plot the convergence map
+    # disabling these as they takes too long for a quick test
+#    - name: TXRealGaussianCovariance
+#    - name: TXTwoPointFourier
+#    - name: TXFourierGaussianCovariance
+# uncomment the last two if you have namaster working
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example/outputs_lensfit
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -67,30 +70,29 @@ python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
     - submodules/FlexZPipe
+    - submodules/RAIL
 
 # configuration settings
-config: examples/config/laptop_config.yml
+config: examples/lensfit/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/example/inputs/shear_catalog.hdf5
-    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
+    photoz_lens_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_lens_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
+    shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
+    photometry_catalog: data/example/inputs/lensfit_photometry_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    exposures: data/example/inputs/exposures.hdf5
-    star_catalog: data/example/inputs/star_catalog.hdf5
+    star_catalog: data/example/inputs/lensfit_star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
-    redmagic_catalog: data/example/inputs/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_lensfit
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
-

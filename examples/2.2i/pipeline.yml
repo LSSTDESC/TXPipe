@@ -35,7 +35,10 @@ stages:
       nprocess: 8
     - name: TXTruthLensSelector
       nprocess: 32
-    - name: TXTrueNumberDensity
+    - name: TXLensTrueNumberDensity
+      nprocess: 32
+      nodes: 2
+    - name: TXSourceTrueNumberDensity
       nprocess: 32
       nodes: 2
     - name: TXTwoPointTheoryReal
@@ -87,7 +90,7 @@ stages:
 #    - name: TXMapCorrelations
 
 output_dir: data/2.2i_dr6/outputs
-config: examples/config/2.2i_config.yml
+config: examples/2.2i/config.yml
 
 
 

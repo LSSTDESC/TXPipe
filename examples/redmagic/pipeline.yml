@@ -1,52 +1,51 @@
+
 # Stages to run
 stages:
-    - name: TXSourceSelector
+    - name: TXSourceSelectorMetacal
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
+    - name: TXExternalLensCatalogSplitter
     - name: TXStarCatalogSplitter
-    - name: TXTruthLensSelector
-    - name: PZRailTrainSource
-      threads_per_process: 2
-    - name: PZRailEstimateSource # Compute p(z) values for the source sample
-    - name: PZRailEstimateLensFromSource   # Copy the p(z) values from the source to lens values
-    - name: TXPhotozStack
-    - name: TXMainMaps
+    - name: TXSourceTrueNumberDensity
+    - name: TXIngestRedmagic
+    - name: TXTracerMetadata
+    - name: TXSourceMaps
+    - name: TXExternalLensMaps
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXMapPlots
-    - name: TXTracerMetadata
     - name: TXRandomCat
     - name: TXJackknifeCenters
+    - name: TXPhotozPlots
     - name: TXTwoPoint
       threads_per_process: 2
-    - name: TXBlinding
+    - name: TXBlinding           # Blind the data following Muir et al
       threads_per_process: 2
-    - name: TXTwoPointTheoryReal
-    - name: TXTwoPointPlots
-    - name: TXSourceDiagnosticPlots
-    - name: TXLensDiagnosticPlots
-    - name: TXGammaTFieldCenters
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
       threads_per_process: 2
-    - name: TXGammaTStars
+    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       threads_per_process: 2
-    - name: TXRoweStatistics
+    - name: TXGammaTStars     # Compute and plot gamma_t around dim stars
       threads_per_process: 2
-    - name: TXPSFDiagnostics
-    - name: TXRealGaussianCovariance
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
-    - name: TXNoiseMaps
-      threads_per_process: 2
-    - name: TXTwoPointFourier
-      threads_per_process: 2
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 2
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    - name: TXSourceNoiseMaps
+    - name: TXExternalLensNoiseMaps
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
+    # - name: TXTwoPointFourier
+      # threads_per_process: 2
+    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example/outputs_redmagic
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -57,11 +56,10 @@ launcher:
 site:
     name: local
     max_threads: 2
-    max_processes: 2
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe  flexzpipe
+modules: txpipe
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
@@ -71,7 +69,7 @@ python_paths:
     - submodules/FlexZPipe
 
 # configuration settings
-config: examples/config/laptop_config.yml
+config: examples/redmagic/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
@@ -80,11 +78,11 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
+    photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
+    redmagic_catalog: data/example/inputs/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
 
@@ -92,7 +90,7 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_redmagic
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
 
