@@ -40,7 +40,7 @@ PZRailTrainSource:
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
-    columns_file: ./examples/config/bpz_riz.columns
+    columns_file: ./data/bpz_riz.columns
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
