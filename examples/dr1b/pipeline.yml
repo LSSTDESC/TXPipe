@@ -3,7 +3,8 @@ stages:
     - name: TXRandomCat
     - name: TXSourceSelector
     - name: TXTruthLensSelector
-    - name: TXTrueNumberDensity
+    - name: TXSourceTrueNumberDensity
+    - name: TXLensTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXTwoPointFourier
       nprocess: 8

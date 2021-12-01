@@ -44,7 +44,13 @@ stages:
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
-    - name: TXTwoPointLensCat
+    - name: TXShearCalibration
+      nprocess: 7
+      nodes: 1
+    - name: TXExternalLensCatalogSplitter
+      nprocess: 5
+      nodes: 1
+    - name: TXTwoPoint
       nprocess: 2
       nodes: 2
       threads_per_process: 64
