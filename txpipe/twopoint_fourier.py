@@ -66,7 +66,8 @@ class TXTwoPointFourier(PipelineStage):
         "ell_max": 1500,
         "n_ell": 20,
         "ell_spacing": 'log',
-        "true_shear": False
+        "true_shear": False,
+        "analytic_noise": False
     }
 
     def run(self):
@@ -625,7 +626,37 @@ class TXTwoPointFourier(PipelineStage):
 
         return mean_noise
 
-
+    
+    def compute_noise_analytic(self, i, j, k, maps, f_sky):
+        # Copied from the HSC branch
+        import pymaster
+        import healpy as hp
+        if (i != j) or (k == SHEAR_POS):
+            return None
+        # This bit only works with healpix maps but it's checked beforehand so that's fine
+        if k == SHEAR_SHEAR:
+            with self.open_input('source_maps', wrapper=True) as f:
+                var_map = f.read_map(f'var_e_{i}')
+                #_var_g1_map = f.read_map(f'var_g1_{i}')
+                #_var_g2_map = f.read_map(f'var_g2_{i}')
+            #var_map = 0.5*(_var_g1_map+_var_g2_map)
+            var_map[var_map==hp.UNSEEN] = 0.
+            nside = hp.get_nside(var_map)
+            pxarea = hp.nside2pixarea(nside)
+            n_ls = np.mean(var_map)*pxarea
+            n_ell = np.zeros((4, 3*nside))
+            n_ell[0, :] = n_ls
+            n_ell[3, :] = n_ls
+            return n_ell
+        if k == POS_POS:
+            metadata = self.open_input('tracer_metadata')
+            nside = hp.get_nside(maps['dw'])
+            ndens = metadata['tracers/lens_counts'][i]/(4*np.pi)
+            # print(np.mean(maps['dw']), ndens)
+            n_ell = np.mean(maps['dw'])/ndens
+            n_ell = [n_ell*np.ones(3*nside)]
+            return n_ell
+        
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         # Get lots of bits of metadata from the input file,
