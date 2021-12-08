@@ -9,8 +9,25 @@ import warnings
 
 
 class BinStats:
+    """
+    This is a small helper class to store and write the statistics of a
+    single tomographic bin. It helps simplify some of the code below.
+    """
     def __init__(self, source_count, N_eff, mean_e, sigma_e, calibrator):
-        super(BinStats, self).__init__()
+        """
+        Parameters
+        ----------
+        source_count: int
+            The raw number of objects
+        N_eff: int
+            The effective number of objects
+        mean_e: array or list
+            Length 2. The mean ellipticity e1 and e2 in the bin
+        sigma_e: float
+            The ellipticity dispersion
+        calibrator: Calibrator
+            A Calibrator subclass instance that calibrates this bin
+        """
         self.source_count = source_count
         self.N_eff = N_eff
         self.mean_e = mean_e
@@ -18,6 +35,16 @@ class BinStats:
         self.calibrator = calibrator
 
     def write_to(self, outfile, i):
+        """
+        Writes the bin statistics to an HDF5 file in the right place
+
+        Parameters
+        ----------
+        outfile: an open HDF5 file object
+            The output file
+        i: int or str
+            The index for this tomographic bin, or "2d"
+        """
         group = outfile['tomography']
         if i == '2d':
             group['source_counts_2d'][:] = self.source_count
@@ -39,27 +66,29 @@ class BinStats:
 
 class TXSourceSelectorBase(PipelineStage):
     """
-    This pipeline stage selects objects to be used
-    as the source sample for the shear-shear and
-    shear-position calibrations.  It applies some
-    general cuts based on the flags that metacal
-    gives for the objects, and size and S/N cuts
+    The subclasses of this pipeline stage select 
+    objects to be used as the source sample for
+    the shear-shear and shear-position calibrations.
+
+    Each subclass is specialised to a specific kind
+    of catalog and calibration scheme. You cannot
+    use this parent class.
+
+    All the versions apply some general cuts based
+    on object flags, and size and S/N cuts
     based on the configuration file.
 
     It also splits those objects into tomographic
-    bins according to the choice the user makes
-    in the input file, from the information in the
-    photo-z PDF file.
+    bins using either a random forest algorithm, with
+    the training data in calibration_table, or according to
+    the true shear (if present), according to the choice the 
+    user makes in the configuration.
 
     Once these selections are made it constructs
-    the quantities needed to calibrate each bin -
-    this consists of two shear response quantities.
-
-    TODO: add option to use lensfit catalogs, which
-    would be much much simpler.
+    the quantities needed to calibrate each bin,
+    generating a set of Calibrator objects.
     """
     name = "TXSourceSelector"
-
 
     inputs = [
         ('shear_catalog', ShearCatalog),
@@ -75,30 +104,20 @@ class TXSourceSelectorBase(PipelineStage):
         'true_z': False,
         'bands': 'riz', # bands from metacal to use
         'verbose': False,
-        'T_cut':float,
-        's2n_cut':float,
+        'T_cut': float,
+        's2n_cut': float,
         'delta_gamma': float,
-        'chunk_rows':10000,
-        'source_zbin_edges':[float],
+        'chunk_rows': 10000,
+        'source_zbin_edges': [float],
         'random_seed': 42,
     }
 
     def run(self):
-        """
-        Run the analysis for this stage.
-
-         - Collect the list of columns to read
-         - Create iterators to read chunks of those columns
-         - Loop through chunks:
-            - select objects for each bin
-            - write them out
-            - accumulate selection bias values
-         - Average the selection biases
-         - Write out biases and close the output
-        """
         import astropy.table
         import sklearn.ensemble
 
+        # This base class should no longer be used, so to avoid people
+        # accidentally doing so we give a clear message if they try.
         if self.name == "TXSourceSelector":
             raise ValueError("Do not use the class TXSourceSelector any more. "
                              "Use one of the subclasses like TXSourceSelectorMetacal")
@@ -127,7 +146,11 @@ class TXSourceSelectorBase(PipelineStage):
         # matrices for each chunk and do a weighted average at the end.
         nbin_source = len(self.config['source_zbin_edges'])-1
 
-        number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm,shear_type=self.config['shear_catalog_type'])
+        number_density_stats = SourceNumberDensityStats(
+            nbin_source, 
+            comm=self.comm,
+            shear_type=shear_catalog_type
+        )
 
         calculators = self.setup_response_calculators(nbin_source)
 
@@ -135,11 +158,13 @@ class TXSourceSelectorBase(PipelineStage):
         for (start, end, shear_data) in it:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
+            # Either apply a simple z cut if we have an input PZ estimate or
+            # the truth value (in simulations)
             if self.config['true_z'] or self.config['input_pz']:
                 pz_data = self.apply_simple_redshift_cut(shear_data)
 
             else:
-                # Select most likely tomographic source bin
+                # or select most likely tomographic source bin, with a random forest
                 pz_data = self.apply_classifier(classifier, features, shear_data)
 
             # Combine this selection with size and snr cuts to produce a source selection
@@ -169,6 +194,10 @@ class TXSourceSelectorBase(PipelineStage):
         from astropy.table import Table
         from sklearn.ensemble import RandomForestClassifier
 
+        # If we are using multiple processes then only one should do the
+        # classification, to ensure that everything is consistent. In that
+        # case if we are not the root process, wait for them to finish and
+        # receive and return their classifier
         if self.rank > 0:
             classifier = self.comm.bcast(None)
             features = self.comm.bcast(None)
@@ -225,8 +254,7 @@ class TXSourceSelectorBase(PipelineStage):
 
 
     def apply_classifier(self, classifier, features, shear_data):
-        """Apply the classifier to the measured magnitudes
-        """
+        """Apply the classifier to the measured magnitudes"""
         bands = self.config['bands']
 
         if self.config['shear_catalog_type'] == 'metacal':
@@ -269,7 +297,6 @@ class TXSourceSelectorBase(PipelineStage):
         return pz_data
 
     def apply_simple_redshift_cut(self, shear_data):
-
         pz_data = {}
         if self.config['input_pz']:
             zz = shear_data['mean_z']
@@ -303,7 +330,8 @@ class TXSourceSelectorBase(PipelineStage):
         # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
 
-        # We also keep count of total count of objects in each bin
+        # We also keep count of total count of objects in each bin,
+        # and also the overall count for all the bins (the last entry)
         counts = np.zeros(nbin + 1, dtype=int)
 
         data = {**pz_data, **shear_data}
@@ -413,13 +441,21 @@ class TXSourceSelectorBase(PipelineStage):
                 stats.write_to(outfile, i if i < nbin_source else '2d')
 
 
-
     def select(self, data, bin_index):
+        """
+        Select which objects are to be chosen in this tomographic bin.
+        We do this by calling out to the 2D selector, which does the
+        cuts on size and SNR, and then combining this with a cut on tomographic bin.
+
+        Note that we don't call this method directly in this class. Instead
+        we pass it to the Calculator objects that call it, sometimes on different
+        columns of data.
+        """
         zbin = data['zbin']
         verbose = self.config['verbose']
 
         sel = self.select_2d(data, calling_from_select=True)
-        sel &= zbin==bin_index
+        sel &= (zbin == bin_index)
         f4 = sel.sum() / sel.size
 
         if verbose:
@@ -446,13 +482,23 @@ class TXSourceSelectorBase(PipelineStage):
         Tpsf = data[f'{shear_prefix}psf_T_mean']
         flag = data[f'{shear_prefix}flags']
 
+        # Apply our cuts.  We keep track of the number of objects
+        # reject by each cut in case it's important.
+        # First we require flag = 0
         n0 = len(flag)
         sel  = flag==0
         f1 = sel.sum() / n0
-        sel &= (T/Tpsf)>T_cut
+
+        # Next we required a minimum object size compared to the PSF
+        sel &= (T / Tpsf) > T_cut
         f2 = sel.sum() / n0
+
+        # Then we require a signal-to-noise minimum
         sel &= s2n>s2n_cut
         f3 = sel.sum() / n0
+
+        # Finally we want objects that have been put into any of our other
+        # tomographic bins
         sel &= data['zbin'] >= 0
         f4 = sel.sum() / n0
 
@@ -470,8 +516,22 @@ class TXSourceSelectorBase(PipelineStage):
         return sel
 
 class TXSourceSelectorMetacal(TXSourceSelectorBase):
+    """
+    This selector subclass is designed for metacal-type catalogs like those
+    used in Dark Energy Survey Y1 and Y3 data releases. In DESC they are
+    superseded by MetaDetect, see below.
+    """
     name='TXSourceSelectorMetacal'
+
+    # The main differences between the classes are to do with how the data is read
+    # and what output response values are generated.
     def data_iterator(self):
+        """
+        This iterator returns chunks of data in dictionaries one by one.
+
+        We call to a parent class method to do the main iteration; the work here is
+        just choosing which columns to read.
+        """
         bands = self.config['bands']
         shear_cols = metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2', 'mcal_flags')
         shear_cols += ['ra', 'dec', 'mcal_psf_T_mean', 'weight']
@@ -486,6 +546,16 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         return self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
     def setup_output(self):
+        """
+        Prepare the output columns for the response values generated by metacal.
+        We save:
+            R_gamma: the per-object estimator response
+            R_S: the per-bin selection response
+            R_gamma_mean: the mean per-bin estimator response
+            R_total: the complete per-bin response
+
+        and the 2D versions of the per-bin values.
+        """
         outfile = super().setup_output()
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
@@ -506,6 +576,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):
+        # This write the per-object response values as well in addition
+        # to the general values that are written in the base class.
         super().write_tomography(outfile, start, end, source_bin, R)
         group = outfile['response']
         group['R_gamma'][start:end,:,:] = R
@@ -542,31 +614,55 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         return pz_data
 
     def compute_output_stats(self, calculator, mean, variance):
+        """
+        Collect the per-bin response values, and the shear means and variances.
+        These are calculated in a distributed way across different processes,
+        so here we bring them together.
+
+        We collate these into a BinStats object for clarity.
+        """
         R, S, N = calculator.collect(self.comm)
         calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu
 
         Rtot = R + S
         P = np.diag(np.linalg.inv(Rtot @ Rtot))
+
         # Apply to the variances to get sigma_e
         sigma_e = np.sqrt(0.5 * P @ variance)
 
+        # In metacal all weights are unity, so the effective N is the same
+        # as the raw N.
         return BinStats(N, N, mean_e, sigma_e, calibrator)
 
 
 
 
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):
+    """
+    This subclass selects for MetaDetect catalogs, which is expected to be used for
+    Rubin data. It computes the selection bias due to object detection by repeating
+    the detection process under different applied shears.
+
+    As a consequence the different calibration columns have different lengths, since
+    different objects are detected in each case.
+    """
     name = "TXSourceSelectorMetadetect"
     def data_iterator(self):
+        # As above, this is where we work out which columns we need.
         chunk_rows = self.config['chunk_rows']
         bands = self.config['bands']
+
+        # Core quantities we need
         shear_cols = metadetect_variants(
                 'T', 's2n', 'g1', 'g2',
                 'ra', 'dec', 'mcal_psf_T_mean', 'weight', 'flags'
                 )
+
+        # Magnitudes and errors
         shear_cols += band_variants(bands, 'mag', 'mag_err', shear_catalog_type='metadetect')
 
+        # We need truth shears and/or PZ point-estimates for each shear too
         if self.config['input_pz']:
             shear_cols += metadetect_variants('mean_z')
         elif self.config['true_z']:
@@ -576,6 +672,8 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         for prefix in ['00', '1p', '1m', '2p', '2m']:
             renames[f'{prefix}/mcal_psf_T_mean'] = f'{prefix}/psf_T_mean'
 
+        # This is a parent ceci.PipelineStage method.
+        # It returns an iterator we loop through
         it = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows, longest=True)
         return rename_iterated(it, renames)
 
@@ -608,28 +706,44 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
 
     def setup_output(self):
+        """
+        MetaDetect outputs do not include per-object calibration values,
+        only the per-bin values.
+        """
         outfile = super().setup_output()
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
         group = outfile.create_group('response')
+
+        # Per-bin 2x2 calibration matrix
         group.create_dataset('R', (nbin_source,2,2), dtype='f')
+        # Global calibration matrix
         group.create_dataset('R_2d', (2,2), dtype='f')
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
+        # Collate calibration values
         R, N = calculator.collect(self.comm, allgather=True)
         calibrator = MetaDetectCalibrator(R, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu
 
-        P = np.diag(np.linalg.inv(R @ R))
         # Apply to the variances to get sigma_e
+        P = np.diag(np.linalg.inv(R @ R))
         sigma_e = np.sqrt(0.5 * P @ variance)
 
+        # Like metacal, N_eff = N for metadetect
         return BinStats(N, N, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
+    """
+    This selector class is for Lensfit catalogs like those used in KIDS.
+
+    It is a simpler calibration scheme than the above two, and does not involve
+    variant catalogs, just taking the mean of a value for one catalog.
+    """
     name = "TXSourceSelectorLensfit"
+
     def data_iterator(self):
         chunk_rows = self.config['chunk_rows']
         bands = self.config['bands']
@@ -668,16 +782,29 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
 
 
 class TXSourceSelectorHSC(TXSourceSelectorBase):
+    """
+    This subclass is for selecting objects on catalogs of the form made by HSC.
+
+    This scheme is quite similar to the one used by lensfit. The main difference is in
+    the per-object response.
+
+    TODO: The HSC calibrator is currently broken, and will crash when it gets
+    to compute_output_stats
+    """
     name = "TXSourceSelectorHSC"
     def data_iterator(self):
         chunk_rows = self.config['chunk_rows']
         bands = self.config['bands']
+
+        # Select columns we need.
         shear_cols = ['psf_T_mean', 'weight', 'flags', 'T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
         shear_cols += band_variants(bands, 'mag', 'mag_err', shear_catalog_type='hsc')
         if self.config['input_pz']:
             shear_cols += ['mean_z']
         elif self.config['true_z']:
             shear_cols += ['redshift_true']
+
+        # Iterate using parent class method
         return self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
     def setup_output(self):
@@ -685,7 +812,12 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
         group = outfile.create_group('response')
+
+        # There is a single scalar per-object value for this scheme
         group.create_dataset('R', (n,), dtype='f')
+
+        # and a set of additive and multiplicative factors.
+        # The K and R values are degenerate.
         group.create_dataset('K', (nbin_source,), dtype='f')
         group.create_dataset('C', (nbin_source,2), dtype='f')
         group.create_dataset('R_mean', (nbin_source,), dtype='f')
@@ -710,9 +842,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         calibrator = HSCCalibrator(R, mean)
         mean_e = C
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K[i])
-
         return BinStats(N, N, mean_e, sigma_e, calibrator)
-
 
 
 
