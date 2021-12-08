@@ -596,10 +596,13 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     def apply_simple_redshift_cut(self, data):
         # If we have the truth pz then we just need to do the binning once,
         # as in the parent class
-        if not self.config['input_pz']:
+        if self.config['true_z']:
             return super().apply_simple_redshift_cut(data)
 
-        # Otherwise we have to do it once for each variant
+        # Otherwise we have to do it once for each variant, because
+        # we are using a point estimate and should have different
+        # values of it for each shear.
+
         pz_data = {}
         variants = ['', '_1p', '_2p', '_1m', '_2m']
         for v in variants:
