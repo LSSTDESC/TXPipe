@@ -75,7 +75,7 @@ stages:
     - name: TXTwoPointPlotsFourier 
 
 output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins_no_shape_noise/
-config: examples/config/cosmodc2_config_no_shape_noise.yml
+config: examples/cosmodc2/config_no_shape_noise.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

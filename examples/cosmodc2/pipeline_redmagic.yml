@@ -75,7 +75,7 @@ stages:
     - name: TXTwoPointPlotsFourier 
 
 output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins/
-config: examples/config/cosmodc2_config.yml
+config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

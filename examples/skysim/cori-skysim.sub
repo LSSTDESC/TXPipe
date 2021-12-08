@@ -19,4 +19,4 @@ export OMP_PLACES=threads
 # This should not be called with srun.
 # srun is called inside ceci
 echo "Running ceci"
-ceci examples/skysim5000_pipeline.yml
+ceci examples/skysim/pipeline.yml

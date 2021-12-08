@@ -12,8 +12,8 @@ stages:
     - name: TXBuzzardMock
       nprocess: 4
 
-output_dir: /global/projecta/projectdirs/lsst/groups/WL/users/flanusse/buzzard-inputs_6
-config: examples/config/buzzard_config.yml
+output_dir: data/buzzard/outputs
+config: examples/buzzard/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

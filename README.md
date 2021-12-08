@@ -154,7 +154,7 @@ Running the pipeline
 Once you have installed the dependecies you can run this using the test data you downloaded above
 
 ```bash
-ceci examples/laptop_pipeline.yml
+ceci examples/metacal/pipeline.yml
 ```
 
 to run the implemented stages.
@@ -162,7 +162,7 @@ to run the implemented stages.
 You can get a list of the individual commands that will be run like this:
 
 ```bash
-ceci --dry-run examples/laptop_pipeline.yml
+ceci --dry-run examples/metacal/pipeline.yml
 ```
 
 so that you can run and examine them individually.
@@ -177,10 +177,10 @@ Example larger runs, which can be run on NERSC under interactive jobs (for now) 
 # To get an interactive job:
 salloc -N 2  -q interactive -C haswell -t 01:00:00 -A m1727
 # <wait for allocation>
-ceci examples/2.2i_pipeline.yml
+ceci examples/2.2i/pipeline.yml
 ```
 
-A smaller run is in `examples/2.2i_single_tract_pipeline.yml`.
+A smaller run is in `examples/2.2i/pipeline_1tract.yml`.
 
 Batch runs
 ----------
@@ -188,10 +188,9 @@ Batch runs
 You can launch an example of a batch run (a submitted job that queues so you don't have to wait around), by executing this on cori:
 
 ```bash
-sbatch examples/cori-2.2i.sub
+sbatch examples/skysim/cori-skysim.sub
 ```
 
-It will generate an output log `2.2i.log`.
 
 Implementation
 --------------
