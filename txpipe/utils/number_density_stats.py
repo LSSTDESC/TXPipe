@@ -39,12 +39,17 @@ class SourceNumberDensityStats:
     def collect(self):
         # Get the basic shear numbers - means, counts, variances
         nb = self.nbin_source
+
+        # We have the nb bins plus a single non-tomographic bin
+        # with everything in.
         variances = np.zeros((nb + 1, 2))
         means = np.zeros((nb + 1, 2))
 
+        # The tomographic bins first
         for i in range(nb):
             _, means[i], variances[i] = self.shear_stats[i].collect(self.comm, mode='allgather')
 
+        # and the 2D one
         _, means[nb], variances[nb] = self.shear_stats_2d.collect(self.comm, mode='allgather')
         return means, variances
 

@@ -557,6 +557,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         and the 2D versions of the per-bin values.
         """
+        # This call to the super-class method defined above sets up most of the output
+        # here, so the rest of this method only does things specific to this
+        # calibration scheme
         outfile = super().setup_output()
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
@@ -627,7 +630,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         """
         R, S, N = calculator.collect(self.comm)
         calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
-        mean_e = calibrator.mu
+        mean_e = calibrator.mu.copy()
 
         Rtot = R + S
         P = np.diag(np.linalg.inv(Rtot @ Rtot))
@@ -690,7 +693,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     def apply_simple_redshift_cut(self, data):
         # If we have the truth pz then we just need to do the binning once,
         # as in the parent class
-        if not self.config['input_pz']:
+        if self.config['true_z']:
             return super().apply_simple_redshift_cut(data)
 
         # Otherwise we have to do it once for each variant
@@ -714,6 +717,9 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         MetaDetect outputs do not include per-object calibration values,
         only the per-bin values.
         """
+        # This call to the super-class method defined above sets up most of the output
+        # here, so the rest of this method only does things specific to this
+        # calibration scheme
         outfile = super().setup_output()
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
@@ -729,7 +735,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # Collate calibration values
         R, N = calculator.collect(self.comm, allgather=True)
         calibrator = MetaDetectCalibrator(R, mean, mu_is_calibrated=False)
-        mean_e = calibrator.mu
+        mean_e = calibrator.mu.copy()
 
         # Apply to the variances to get sigma_e
         P = np.diag(np.linalg.inv(R @ R))
@@ -765,6 +771,9 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         return calculators
 
     def setup_output(self):
+        # This call to the super-class method defined above sets up most of the output
+        # here, so the rest of this method only does things specific to this
+        # calibration scheme
         outfile = super().setup_output()
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
@@ -779,7 +788,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     def compute_output_stats(self, calculator, mean, variance):
         K, C, N = calculator.collect(self.comm, allgather=True)
         calibrator = LensfitCalibrator(K, C)
-        mean_e = C
+        mean_e = C.copy()
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
         return BinStats(N, N, mean_e, sigma_e, calibrator)
@@ -812,6 +821,9 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
 
     def setup_output(self):
+        # This call to the super-class method defined above sets up most of the output
+        # here, so the rest of this method only does things specific to this
+        # calibration scheme
         outfile = super().setup_output()
         n = outfile['tomography/source_bin'].size
         nbin_source = outfile['tomography/source_counts'].size
@@ -844,7 +856,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         raise NotImplementedError("HSC calib is broken")
         R, C, N = calculator.collect(self.comm, allgather=True)
         calibrator = HSCCalibrator(R, mean)
-        mean_e = C
+        mean_e = C.copy()
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K[i])
         return BinStats(N, N, mean_e, sigma_e, calibrator)
 
