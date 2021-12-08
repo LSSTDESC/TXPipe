@@ -543,6 +543,13 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
         return maps
 
 
+# These functions will be jitted and used in the TXNoiseMapsJax class below.
+# Note that, quoting the JAX docs:
+#   Unlike NumPy in-place operations such as x[idx] += y, if multiple indices
+#   refer to the same location, all updates will be applied (NumPy would only
+#   apply the last update, rather than applying all updates.)
+#   So this is not just the raw equivalent of GN[masked_pixels, masked_source_bin] += masked_gnr
+# This is better than original numpy!
 def GN_add(GN, masked_pixels, masked_source_bin, masked_gnr):
     return GN.at[masked_pixels, masked_source_bin, :].add(masked_gnr)
 
@@ -574,6 +581,7 @@ class TXNoiseMapsJax(PipelineStage):
         'chunk_rows': 4000000,
         'lensing_realizations': 30,
         'clustering_realizations': 1,
+        'seed': 0,
     }
 
     def run(self):
@@ -600,10 +608,6 @@ class TXNoiseMapsJax(PipelineStage):
             )
 
         # Get a mapping from healpix indices to masked pixel indices
-        # This reduces memory usage.  We could use a healsparse array
-        # here, but I'm not sure how to do that best with our
-        # many realizations.  Possiby a recarray?
-
         index_map = np.zeros(pixel_scheme.npix, dtype=jnp.int32) - 1
         counter = 0
         for i in range(pixel_scheme.npix):
@@ -626,8 +630,16 @@ class TXNoiseMapsJax(PipelineStage):
         ngal_split = jnp.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
         # TODO: Clustering weights go here
 
-        # Initialize PRNG key for Jax
-        key = random.PRNGKey(np.random.randint(2**32))
+        # Initialize PRNG key for Jax with a seed, which can either be
+        # chosen by the user or generated with numpy
+        if self.config['seed'] == 0:
+            seed = np.random.randint(2**32)
+        else:
+            seed = self.config['seed']
+
+        # ensure that every MPI rank has a different seed
+        seed += self.rank
+        key = random.PRNGKey(seed)
 
         # add jit decorator to do in place operations on the arrays while looping through the data
         GN_add_jit = jit(GN_add)
@@ -649,9 +661,12 @@ class TXNoiseMapsJax(PipelineStage):
             weights = device_put(data['weight'])
             g1 = device_put(data['mcal_g1']) * weights
             g2 = device_put(data['mcal_g2']) * weights
-            
-            # randomly select a half for each object
+
+            # This is how you do RNG with JAX
             key, subkey = random.split(key)
+            # randomly select a half for each object
+            # random.bernoulli returns True/False arrays. Convert that
+            # to an integer array (both on the GPU)
             split = 1*random.bernoulli(subkey, 0.5, (n, clustering_realizations))
 
             # random rotations of the g1, g2 values
@@ -662,6 +677,7 @@ class TXNoiseMapsJax(PipelineStage):
             g1r = jnp.transpose(cos * g1 + sin * g2)
             g2r = jnp.transpose(-sin * g1 + cos * g2)
 
+            # masks showing which pixels to fill in
             pix_mask = pixels >= 0
             sb_mask = (source_bin >= 0) & pix_mask
             
@@ -683,6 +699,7 @@ class TXNoiseMapsJax(PipelineStage):
             GW = GW_add_jit(GW, masked_pixels, masked_source_bin, masked_weights)
             ngal_split = ngal_split_add_jit(ngal_split, pixels_lb_mask, clustering_realizations, split_lb_mask, lens_bin_lb_mask)
             # TODO: Currently breaks with clustering_realizations > 1
+
         # Sum everything at root
         if self.comm is not None:
             import mpi4jax
@@ -694,6 +711,7 @@ class TXNoiseMapsJax(PipelineStage):
             if self.rank != 0:
                 del G1, G2, GW, ngal_split
 
+        # Save the maps on the root processor
         if self.rank == 0:
             print("Saving maps")
             outfile = self.open_output('source_noise_maps', wrapper=True)
