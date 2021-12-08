@@ -228,12 +228,12 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 
-    def setup_metacal_output(self, metacal_file, target_size):
+    def setup_metadetect_output(self, metacal_file, target_size):
         # Get a list of all the column names
         cols = (
             ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
-            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
-            + band_variants('riz', 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
+            + metadetect_variants('g1', 'g2', 'T', 's2n',  'T_err')
+            + band_variants('riz', 'mag', 'mag_err', shear_catalog_type='metadetect')
             + ['weight']
         )
 
@@ -244,8 +244,6 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
-        
-
         for col in cols:
             group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
@@ -445,78 +443,78 @@ class TXCosmoDC2Mock(PipelineStage):
             
 
             # g1
-            "mcal_g1": e1*R,
-            "mcal_g1_1p": (e1+delta_gamma)*R,
-            "mcal_g1_1m": (e1-delta_gamma)*R,
-            "mcal_g1_2p": e1*R,
-            "mcal_g1_2m": e1*R,
+            "00/g1": e1*R,
+            "1p/g1": (e1+delta_gamma)*R,
+            "1m/g1": (e1-delta_gamma)*R,
+            "2p/g1": e1*R,
+            "2m/g1": e1*R,
 
             # g2
-            "mcal_g2": e2*R,
-            "mcal_g2_1p": e2*R,
-            "mcal_g2_1m": e2*R,
-            "mcal_g2_2p": (e2+delta_gamma)*R,
-            "mcal_g2_2m": (e2-delta_gamma)*R,
+            "00/g2": e2*R,
+            "1p/g2": e2*R,
+            "1m/g2": e2*R,
+            "2p/g2": (e2+delta_gamma)*R,
+            "2m/g2": (e2-delta_gamma)*R,
 
             # T
-            "mcal_T": size_T,
-            "mcal_T_1p": size_T + R_size*delta_gamma,
-            "mcal_T_1m": size_T - R_size*delta_gamma,
-            "mcal_T_2p": size_T + R_size*delta_gamma,
-            "mcal_T_2m": size_T - R_size*delta_gamma,
+            "00/T": size_T,
+            "1p/T": size_T + R_size*delta_gamma,
+            "1m/T": size_T - R_size*delta_gamma,
+            "2p/T": size_T + R_size*delta_gamma,
+            "2m/T": size_T - R_size*delta_gamma,
 
             # Terr
-            "mcal_T_err":    zero,
-            "mcal_T_err_1p": zero,
-            "mcal_T_err_1m": zero,
-            "mcal_T_err_2p": zero,
-            "mcal_T_err_2m": zero,
+            "00/T_err":    zero,
+            "1p/T_err": zero,
+            "1m/T_err": zero,
+            "2p/T_err": zero,
+            "2m/T_err": zero,
 
             # size 
-            "mcal_s2n": snr,
-            "mcal_s2n_1p": snr_1p,
-            "mcal_s2n_1m": snr_1m,
-            "mcal_s2n_2p": snr_2p,
-            "mcal_s2n_2m": snr_2m,
+            "00/s2n": snr,
+            "1p/s2n": snr_1p,
+            "1m/s2n": snr_1m,
+            "2p/s2n": snr_2p,
+            "2m/s2n": snr_2m,
 
             # Magntiudes and fluxes, just copied from the inputs.
-            'mcal_mag_r': photo['mag_r'],
-            'mcal_mag_i': photo['mag_i'],
-            'mcal_mag_z': photo['mag_z'],
+            '00/mag_r': photo['mag_r'],
+            '00/mag_i': photo['mag_i'],
+            '00/mag_z': photo['mag_z'],
 
-            'mcal_mag_err_r': photo['mag_r_err'],
-            'mcal_mag_err_i': photo['mag_i_err'],
-            'mcal_mag_err_z': photo['mag_z_err'],
+            '00/mag_err_r': photo['mag_r_err'],
+            '00/mag_err_i': photo['mag_i_err'],
+            '00/mag_err_z': photo['mag_z_err'],
 
-            'mcal_mag_r_1p': photo['mag_r_1p'],
-            'mcal_mag_r_2p': photo['mag_r_2p'],
-            'mcal_mag_r_1m': photo['mag_r_1m'],
-            'mcal_mag_r_2m': photo['mag_r_2m'],
+            '1p/mag_r': photo['mag_r_1p'],
+            '2p/mag_r': photo['mag_r_2p'],
+            '1m/mag_r': photo['mag_r_1m'],
+            '2m/mag_r': photo['mag_r_2m'],
 
-            'mcal_mag_i_1p': photo['mag_i_1p'],
-            'mcal_mag_i_2p': photo['mag_i_2p'],
-            'mcal_mag_i_1m': photo['mag_i_1m'],
-            'mcal_mag_i_2m': photo['mag_i_2m'],
+            '1p/mag_i': photo['mag_i_1p'],
+            '2p/mag_i': photo['mag_i_2p'],
+            '1m/mag_i': photo['mag_i_1m'],
+            '2m/mag_i': photo['mag_i_2m'],
             
-            'mcal_mag_z_1p': photo['mag_z_1p'],
-            'mcal_mag_z_2p': photo['mag_z_2p'],
-            'mcal_mag_z_1m': photo['mag_z_1m'],
-            'mcal_mag_z_2m': photo['mag_z_2m'],
+            '1p/mag_z': photo['mag_z_1p'],
+            '2p/mag_z': photo['mag_z_2p'],
+            '1m/mag_z': photo['mag_z_1m'],
+            '2m/mag_z': photo['mag_z_2m'],
 
-            'mcal_mag_err_r_1p': photo['mag_r_err'],
-            'mcal_mag_err_r_2p': photo['mag_r_err'],
-            'mcal_mag_err_r_1m': photo['mag_r_err'],
-            'mcal_mag_err_r_2m': photo['mag_r_err'],
+            '1p/mag_err_r': photo['mag_r_err'],
+            '2p/mag_err_r': photo['mag_r_err'],
+            '1m/mag_err_r': photo['mag_r_err'],
+            '2m/mag_err_r': photo['mag_r_err'],
 
-            'mcal_mag_err_i_1p': photo['mag_i_err'],
-            'mcal_mag_err_i_2p': photo['mag_i_err'],
-            'mcal_mag_err_i_1m': photo['mag_i_err'],
-            'mcal_mag_err_i_2m': photo['mag_i_err'],
+            '1p/mag_err_i': photo['mag_i_err'],
+            '2p/mag_err_i': photo['mag_i_err'],
+            '1m/mag_err_i': photo['mag_i_err'],
+            '2m/mag_err_i': photo['mag_i_err'],
 
-            'mcal_mag_err_z_1p': photo['mag_z_err'],
-            'mcal_mag_err_z_2p': photo['mag_z_err'],
-            'mcal_mag_err_z_1m': photo['mag_z_err'],
-            'mcal_mag_err_z_2m': photo['mag_z_err'],
+            '1p/mag_err_z': photo['mag_z_err'],
+            '2p/mag_err_z': photo['mag_z_err'],
+            '1m/mag_err_z': photo['mag_z_err'],
+            '2m/mag_err_z': photo['mag_z_err'],
 
             # Fixed PSF parameters - all round with same size
             'mcal_psf_g1': zero,

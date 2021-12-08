@@ -5,7 +5,7 @@ Pipeline modules for the 3x2pt (TX) project.
 # Make sure any stages you want to use in a pipeline
 # are imported here.
 from .base_stage import PipelineStage
-from .source_selector import TXSourceSelector
+from .source_selector import TXSourceSelectorMetacal, TXSourceSelectorLensfit, TXSourceSelectorMetadetect
 from .lens_selector import TXMeanLensSelector
 from .photoz import TXRandomPhotozPDF
 from .photoz_stack import TXPhotozSourceStack, TXPhotozLensStack

@@ -80,8 +80,9 @@ def rename_iterated(it, renames):
     """
     for s, e, data in it:
         for old, new in renames.items():
-            # rename the column
-            data[new] = data[old]
-            # delete the old column
-            del data[old]
+            if old != new:
+                # rename the column
+                data[new] = data[old]
+                # delete the old column
+                del data[old]
         yield s, e, data

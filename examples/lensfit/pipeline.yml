@@ -1,7 +1,7 @@
 
 # Stages to run
 stages:
-    - name: TXSourceSelector
+    - name: TXSourceSelectorLensfit
     - name: TXShearCalibration
     - name: TXLensCatalogSplitter
     - name: TXStarCatalogSplitter
