@@ -353,7 +353,8 @@ class TXSourceSelectorBase(PipelineStage):
         return tomo_bin, R, counts
 
     def compute_per_object_response(self, data):
-        # The default implementation has no per-object weight
+        # The default implementation has no per-object response
+        # Some subclasses supply it.
         return None
 
     def setup_output(self):
