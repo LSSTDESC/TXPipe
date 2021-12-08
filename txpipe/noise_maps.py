@@ -614,19 +614,26 @@ class TXNoiseMapsJax(PipelineStage):
             if mask[i] > 0:
                 index_map[i] = counter
                 counter += 1
+
         # Number of unmasked pixels
         npix = counter
 
+        # The memory usage of this class can get high, so we report what is expected here, so
+        # if a crash happens a few moments later it's clear why.
         if self.rank == 0:
             nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations * 2
             nGB = (npix * nmaps * 8) / 1000.**3
             print(f"Allocating maps of size {nGB:.2f} GB")
-        # lensing g1, g2
+
+        # lensing g1, g2. To start with we accumalate these, and normalize them later
         G1 = jnp.zeros((npix, nbin_source, lensing_realizations))
         G2 = jnp.zeros((npix, nbin_source, lensing_realizations))
-        # lensing weight
+
+        # lensing weights per pixel, which we later use to normalize g1, g2
         GW = jnp.zeros((npix, nbin_source))
-        # clustering map - n_gal to start with
+
+        # clustering map - we start by generating a random split in the number count
+        # maps, and later convert this to overdensity maps
         ngal_split = jnp.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
         # TODO: Clustering weights go here
 
@@ -637,37 +644,46 @@ class TXNoiseMapsJax(PipelineStage):
         else:
             seed = self.config['seed']
 
-        # ensure that every MPI rank has a different seed
+        # ensure that every MPI rank has a different seed, and set up the JAX RNG
+        # system
         seed += self.rank
         key = random.PRNGKey(seed)
 
-        # add jit decorator to do in place operations on the arrays while looping through the data
+        # apply the just-in-time compilation to these functions; this means that
+        # they are compiled on first use, for the data types given to them, then
+        # subsequent times the compiled version is used. They are used on each chunk
+        # of the data as we loop through it.
         GN_add_jit = jit(GN_add)
         GW_add_jit = jit(GW_add)
         ngal_split_add_jit = jit(ngal_split_add, static_argnums=(2,))
 
         # Loop through the data
         for (s, e, data) in it:
+            # Number of objects in this chunk
+            n = e - s
             print(f"Rank {self.rank} processing rows {s} - {e}")
+
             # Send data to GPU
             source_bin = device_put(data['source_bin'])
             lens_bin = device_put(data['lens_bin'])
-            ra = data['ra']
-            dec = data['dec']
-            orig_pixels = device_put(pixel_scheme.ang2pix(ra, dec))
-            pixels = device_put(index_map[orig_pixels])
-            n = e - s
-
             weights = device_put(data['weight'])
             g1 = device_put(data['mcal_g1']) * weights
             g2 = device_put(data['mcal_g2']) * weights
 
-            # This is how you do RNG with JAX
+            # Compute which pixel each object is in
+            ra = data['ra']
+            dec = data['dec']
+            orig_pixels = device_put(pixel_scheme.ang2pix(ra, dec))
+            pixels = device_put(index_map[orig_pixels])
+
+            # This is how you do RNG with JAX. We use subkey for this RNG operation
+            # and then key is passed forward for the next operation
             key, subkey = random.split(key)
-            # randomly select a half for each object
+
+            # randomly select a half for each lens bin object
             # random.bernoulli returns True/False arrays. Convert that
-            # to an integer array (both on the GPU)
-            split = 1*random.bernoulli(subkey, 0.5, (n, clustering_realizations))
+            # to an integer array (both on the GPU) by multiplying by 1
+            split = 1 * random.bernoulli(subkey, 0.5, (n, clustering_realizations))
 
             # random rotations of the g1, g2 values
             key, subkey = random.split(key)
@@ -682,7 +698,8 @@ class TXNoiseMapsJax(PipelineStage):
             sb_mask = (source_bin >= 0) & pix_mask
             
 
-            # jax.jit doesn't like masks inside masks so we have to calculate these in advance instead of doing that within the jitted functions
+            # jax.jit doesn't like masks inside masks so we have to calculate these in
+            # advance instead of doing that within the jitted functions
             masked_pixels = pixels[sb_mask]
             masked_source_bin = source_bin[sb_mask]
             masked_g1r = g1r[sb_mask]
@@ -693,14 +710,17 @@ class TXNoiseMapsJax(PipelineStage):
             lens_bin_lb_mask = lens_bin[lb_mask]
             split_lb_mask = split[lb_mask]
 
-
+            # Accumulate into the total noise maps. Under JAX this can't be an in-place
+            # operation, so we have to replace G1 each time. Under the hood this may
+            # be happening in-place, I think it depends.
             G1 = GN_add_jit(G1, masked_pixels, masked_source_bin, masked_g1r)
             G2 = GN_add_jit(G2, masked_pixels, masked_source_bin, masked_g2r)
             GW = GW_add_jit(GW, masked_pixels, masked_source_bin, masked_weights)
             ngal_split = ngal_split_add_jit(ngal_split, pixels_lb_mask, clustering_realizations, split_lb_mask, lens_bin_lb_mask)
             # TODO: Currently breaks with clustering_realizations > 1
 
-        # Sum everything at root
+        # Now we have finished looping through the data, we sum everything over the
+        # different processes to the root process
         if self.comm is not None:
             import mpi4jax
             from mpi4py import MPI
@@ -714,32 +734,42 @@ class TXNoiseMapsJax(PipelineStage):
         # Save the maps on the root processor
         if self.rank == 0:
             print("Saving maps")
+
+            # First we save the source noise maps
             outfile = self.open_output('source_noise_maps', wrapper=True)
 
-            # The top section has the metadata in
+            # The top section has the metadata in it
             group = outfile.file.create_group("maps")
             group.attrs['nbin_source'] = nbin_source
             group.attrs['lensing_realizations'] = lensing_realizations
+
             # Get outputs from GPU
             G1 = device_get(G1)
             G2 = device_get(G2)
             GW = device_get(GW)
             metadata = {**self.config, **map_info}
 
+            # We save only the hit pixels
             pixels = np.where(mask > 0)[0]
+
+            # Loop through each realization of each bin
             for b in range(nbin_source):
                 for i in range(lensing_realizations):
 
+                    # Normalize this bin with the weights
                     bin_mask = np.where(GW[:, b] > 0)
                     g1 = G1[:, b, i] / GW[:, b]
                     g2 = G2[:, b, i] / GW[:, b]
 
+                    # and save g1 and g2 maps to the file.
                     outfile.write_map(f"rotation_{i}/g1_{b}",
                                       pixels[bin_mask], g1[bin_mask], metadata)
 
                     outfile.write_map(f"rotation_{i}/g2_{b}",
                                       pixels[bin_mask], g2[bin_mask], metadata)
 
+
+            # Similar for the lensing noise maps
             outfile = self.open_output('lens_noise_maps', wrapper=True)
             group = outfile.file.create_group("maps")
             group.attrs['nbin_lens'] = nbin_lens
