@@ -20,7 +20,7 @@ from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
-from .noise_maps import TXNoiseMaps
+from .noise_maps import TXNoiseMaps, TXNoiseMapsJax
 from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
