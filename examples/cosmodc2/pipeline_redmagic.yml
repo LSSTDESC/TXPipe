@@ -47,9 +47,9 @@ stages:
     - name: TXDensityMaps
     - name: TXNullBlinding
     - name: TXTwoPoint
-      threads_per_process: 64
-      nprocess: 2
-      nodes: 2
+      threads_per_process: 32
+      nprocess: 4
+      nodes: 4
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
@@ -74,7 +74,7 @@ stages:
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2021/june/7sbins/
+output_dir: data/cosmodc2/outputs_redmagic/2021/december/7sbins/
 config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:

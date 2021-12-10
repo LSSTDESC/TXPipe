@@ -123,7 +123,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         psf_mapper, flag_mapper = mappers
 
         # Four different mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weight = psf_mapper.finalize(self.comm)
+        pix, _, _, g1, g2, var_g1, var_g2, weight, _ = psf_mapper.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
         # Collect all the maps

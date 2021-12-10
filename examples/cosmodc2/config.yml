@@ -135,7 +135,7 @@ TXTwoPointFourier:
     n_ell: 20
     ell_max: 3000
     nside: 2048
-    analytic_noise: True
+    analytic_noise: False
     
 TXClusteringNoiseMaps:
     n_realization: 30

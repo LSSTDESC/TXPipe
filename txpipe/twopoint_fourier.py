@@ -140,7 +140,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl)
+                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl, f_sky)
 
         if self.rank==0:
             print(f"Collecting results together")
@@ -499,7 +499,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory, f_sky):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -547,8 +547,17 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspaces[(i,j,k)]
 
-        # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+
+        if self.config['analytic_noise']==False:
+            # Get the coupled noise C_ell values to give to the master algorithm
+            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+        else:
+            print('Noise from analytic function.')
+            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky)
+        
+        #if i==j and i==0 and k == POS_POS:
+        #    np.save('cl_noise_maps', cl_noise_maps)
+        #    np.save('cl_noise_analytic', cl_noise)
 
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
@@ -651,7 +660,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
-            ndens = metadata['tracers/lens_counts'][i]/(4*np.pi)
+            ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
             # print(np.mean(maps['dw']), ndens)
             n_ell = np.mean(maps['dw'])/ndens
             n_ell = [n_ell*np.ones(3*nside)]

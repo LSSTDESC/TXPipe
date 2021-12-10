@@ -93,7 +93,8 @@ class Mapper:
         var_g2 = {}
         source_weight = {}
         lens_weight = {}
-
+        var_e = {}
+        
         rank = 0 if comm is None else comm.Get_rank()
         pixel = np.arange(self.pixel_scheme.npix)
 
@@ -185,11 +186,11 @@ class Mapper:
         # Remove pixels not detected in anything
         if self.sparse:
             pixel = pixel[mask]
-            for d in [ngal, g1, g2, var_g1, var_g2, source_weight, lens_weight]:
+            for d in [ngal, g1, g2, var_g1, var_g2, source_weight, lens_weight, var_e]:
                 for k,v in list(d.items()):
                     d[k] = v[mask]
 
-        return pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight
+        return pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight, var_e
 
 
 class FlagMapper:

@@ -303,7 +303,7 @@ class TXSourceMaps(TXBaseMaps):
         # only one mapper here - we call its finalize method
         # to collect everything
         mapper, cal = mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        pix, _, _, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
 
         # build up output
         maps = {}
@@ -322,6 +322,11 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
+            # added from HSC branch, to get analytic noise in twopoint_fourier
+            out_e = np.zeros_like(esq[b])
+            #out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
+            out_e[esq[b]>0] = esq[b][esq[b]>0]
+            maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
         return maps
 
@@ -595,6 +600,16 @@ class TXDensityMaps(PipelineStage):
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
+            # fix from Javi 
+            mask_copy = mask.copy()
+            mask_copy[ng == healpy.UNSEEN] = 0
+            ng[np.isnan(ng)] = 0.0
+            ng[ng == healpy.UNSEEN] = 0
+            delta_map = np.zeros(mask_copy.shape, dtype=np.float64)
+            delta_map[mask_copy>0] = ng[mask_copy>0]/mask_copy[mask_copy>0]
+            delta_map[mask_copy>0] = delta_map[mask_copy>0]/np.mean(delta_map[mask_copy>0])-1
+            density_maps.append(delta_map)
+            '''
             mask_copy = mask.copy()
             mask_copy[ng == healpy.UNSEEN] = 0
             ng[np.isnan(ng)] = 0.0
@@ -609,7 +624,7 @@ class TXDensityMaps(PipelineStage):
             # remove nans
             d[mask == 0] = 0
             density_maps.append(d)
-
+            '''
         # write output
         with self.open_output("density_maps", wrapper=True) as f:
             # create group and save metadata there too.
