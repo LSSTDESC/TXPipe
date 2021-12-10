@@ -640,7 +640,7 @@ class TXDensityMaps(PipelineStage):
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask_copy.shape, dtype=np.float64)
-            delta_map[mask_copy>0] = ng[mask_copy>0]/mask_copy[mask_copy>0]
+            delta_map[mask_copy>0] = ng[mask_copy>0] # Assuming they are already weighted by the mask
             mu = np.mean(delta_map[mask_copy>0])
             delta_map[mask_copy>0] = delta_map[mask_copy>0]/mu-1
             density_maps.append(delta_map)
