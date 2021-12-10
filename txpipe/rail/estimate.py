@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
-from ..data_types import PhotozPDFFile, HDFFile, PickleFile
+from ..data_types import PhotozPDFFile, HDFFile, PickleFile, ShearCatalog
 from ..utils import rename_iterated
+from ..utils.calibration_tools import read_shear_catalog_type
 from .utils import convert_unseen
 import numpy as np
 import shutil
@@ -31,7 +32,7 @@ class PZRailEstimateSource(PipelineStage):
     pdf_output = "source_photoz_pdfs"
 
     inputs = [
-        ("shear_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("photoz_source_model", PickleFile),
     ]
 
@@ -111,8 +112,12 @@ class PZRailEstimateSource(PipelineStage):
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
+        cat_type = read_shear_catalog_type(self)
         with self.open_input("shear_catalog") as f:
-            nobj = f["shear/ra"].size
+            if cat_type == 'metadetect':
+                nobj = f["shear/00/ra"].size
+            else:
+                nobj = f["shear/ra"].size
         return nobj
 
     def setup_output_file(self, estimator):

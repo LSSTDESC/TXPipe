@@ -82,7 +82,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelector:
+TXSourceSelectorMetacal:
     input_pz: False
     true_z: True
     bands: riz #used for selection

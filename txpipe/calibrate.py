@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog
-from .utils import read_shear_catalog_type, Calibrator, Splitter, SourceNumberDensityStats
+from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
 import numpy as np
 
 
@@ -60,16 +60,20 @@ class TXShearCalibration(PipelineStage):
         tomo_file = self.get_input("shear_tomography_catalog")
         cals, cal2d = Calibrator.load(tomo_file, null=use_true)
 
-        # These are always named the same
-        cat_cols = ["ra", "dec", "weight"]
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs
         if use_true:
-            cat_cols += ["true_g1", "true_g2"]
+            cat_cols = ["ra", "dec", "weight", "true_g1", "true_g2"]
+            renames = {"true_g1": "g1", "true_g2": "g2"}
         elif cat_type == "metacal":
-            cat_cols += ["mcal_g1", "mcal_g2"]
+            cat_cols = ["ra", "dec", "weight", "mcal_g1", "mcal_g2"]
+            renames = {"mcal_g1": "g1", "mcal_g2": "g2"}
+        elif cat_type == "metadetect":
+            cat_cols = ["00/ra", "00/dec", "00/weight", "00/g1", "00/g2"]
+            renames = {col: col[3:] for col in cat_cols}
         else:
-            cat_cols += ["g1", "g2"]
+            cat_cols = ["ra", "dec", "weight", "g1", "g2"]
+            renames = {}
 
         output_cols = ["ra", "dec", "g1", "g2", "weight"]
 
@@ -101,7 +105,7 @@ class TXShearCalibration(PipelineStage):
         )
 
         #  Main loop
-        for s, e, data in it:
+        for s, e, data in rename_iterated(it, renames):
 
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
