@@ -769,7 +769,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
-            ndens = metadata['tracers/lens_counts'][i]/(4*np.pi)
+            ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
             # print(np.mean(maps['dw']), ndens)
             n_ell = np.mean(maps['dw'])/ndens
             n_ell = [n_ell*np.ones(3*nside)]
