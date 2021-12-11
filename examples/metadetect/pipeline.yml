@@ -1,7 +1,7 @@
 
 # Stages to run
 stages:
-    - name: TXSourceSelectorMetacal     # select and split objects into source bins
+    - name: TXSourceSelectorMetadetect     # select and split objects into source bins
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
@@ -25,8 +25,6 @@ stages:
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
-    - name: TXSourceNoiseMaps    # Make realisations of the source noise
-    - name: TXLensNoiseMaps      # Make realizations of the lens noise
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
     - name: TXRandomCat          # generate lens bin random catalogs
@@ -57,16 +55,15 @@ stages:
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
+
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
-    # The latter three need NaMaster
-    # - name: TXNoiseMaps
+    # The latter two need NaMaster
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
     # - name: TXTwoPointFourier          # Compute power spectra C_ell
-    # - name: TXFourierNamasterCovariance # Compute the C_ell covariance
-    # - name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
 
 
 # modules and packages to import that have pipeline
@@ -82,7 +79,7 @@ python_paths:
     - submodules/RAIL
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example/outputs_metadetect
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -98,14 +95,14 @@ site:
 modules: txpipe
 
 # configuration settings
-config: examples/metacal/config.yml
+config: examples/metadetect/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/example/inputs/shear_catalog.hdf5
+    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
     photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
@@ -122,6 +119,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_metadetect
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt

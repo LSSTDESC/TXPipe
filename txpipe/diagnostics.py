@@ -1,7 +1,15 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
-from parallel_statistics import ParallelMeanVariance
-from .utils.calibration_tools import calculate_selection_response, calculate_shear_response, apply_metacal_response, apply_lensfit_calibration, MeanShearInBins
+from parallel_statistics import ParallelMeanVariance, ParallelHistogram
+from .utils.calibrators import Calibrator
+from .utils.calibration_tools import calculate_selection_response, \
+                                    calculate_shear_response, \
+                                    apply_metacal_response, \
+                                    apply_lensfit_calibration,  \
+                                    MeanShearInBins, \
+                                    read_shear_catalog_type, \
+                                    metadetect_variants, \
+                                    band_variants
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
@@ -44,8 +52,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib
         matplotlib.use('agg')
 
-        with self.open_input('shear_catalog', wrapper=True) as f:
-            self.config['shear_catalog_type'] = f.catalog_type
+        # this also sets self.config["shear_catalog_type"]
+        cat_type = read_shear_catalog_type(self)
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -65,11 +73,16 @@ class TXSourceDiagnosticPlots(PipelineStage):
         chunk_rows = self.config['chunk_rows']
         psf_prefix = self.config['psf_prefix']
         shear_prefix = self.config['shear_prefix']
+        bands = self.config['bands']
 
-        if self.config['shear_catalog_type']=='metacal':
+        if cat_type == 'metacal':
             shear_cols = [f'{psf_prefix}g1', f'{psf_prefix}g2', f'{psf_prefix}T_mean', 'mcal_g1','mcal_g1_1p','mcal_g1_2p','mcal_g1_1m','mcal_g1_2m','mcal_g2','mcal_g2_1p','mcal_g2_2p','mcal_g2_1m','mcal_g2_2m','mcal_s2n','mcal_T',
                      'mcal_T_1p','mcal_T_2p','mcal_T_1m','mcal_T_2m','mcal_s2n_1p','mcal_s2n_2p','mcal_s2n_1m',
-                     'mcal_s2n_2m', 'weight'] + [f'mcal_mag_{b}' for b in self.config['bands']]
+                     'mcal_s2n_2m', 'weight'] + [f'mcal_mag_{b}' for b in bands]
+        elif cat_type == 'metadetect':
+            # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
+            shear_cols = metadetect_variants('g1', 'g2', 'T', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 's2n', 'weight')
+            shear_cols += band_variants(bands, 'mag', 'mag_err', shear_catalog_type='metadetect')
         else:
             shear_cols = ['psf_g1','psf_g2','g1','g2','psf_T_mean','s2n','T','weight','m','sigma_e','c1','c2',
                          ] + [f'{shear_prefix}mag_{b}' for b in self.config['bands']]
@@ -77,7 +90,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         shear_tomo_cols = ['source_bin']
 
         if self.config['shear_catalog_type']=='metacal':
-            more_iters = ['shear_tomography_catalog', 'metacal_response', ['R_gamma']]
+            more_iters = ['shear_tomography_catalog', 'response', ['R_gamma']]
         elif self.config['shear_catalog_type']=='lensfit':
             more_iters = []
         else:
@@ -377,12 +390,19 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
 
+        cat_type = self.config['shear_catalog_type']
         delta_gamma = self.config['delta_gamma']
-        bins = 10
+        bins = 20
         edges = np.linspace(-1, 1, bins+1)
         mids = 0.5*(edges[1:] + edges[:-1])
-        calc1 = ParallelMeanVariance(bins)
-        calc2 = ParallelMeanVariance(bins)
+        width = edges[1:]-edges[:-1]
+
+        # Calibrate everything in the 2D bin
+        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
+        H1 = ParallelHistogram(edges)
+        H2 = ParallelHistogram(edges)
+        H1_weighted = ParallelHistogram(edges)
+        H2_weighted = ParallelHistogram(edges)
 
 
         while True:
@@ -390,84 +410,46 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
             if data is None:
                 break
+
             qual_cut = data['source_bin'] !=-1
-#            qual_cut |= data['lens_bin'] !=-1
 
-            if self.config['shear_catalog_type']=='metacal':
-                b1 = np.digitize(data['mcal_g1'][qual_cut], edges) - 1
-                b1_1p = np.digitize(data['mcal_g1_1p'][qual_cut], edges) - 1
-                b1_2p = np.digitize(data['mcal_g1_2p'][qual_cut], edges) - 1
-                b1_1m = np.digitize(data['mcal_g1_1m'][qual_cut], edges) - 1
-                b1_2m = np.digitize(data['mcal_g1_2m'][qual_cut], edges) - 1
+            if cat_type == 'metacal':
+                g1 = data['mcal_g1']
+                g2 = data['mcal_g2']
+                w = data['weight']
+            elif cat_type == 'metadetect':
+                g1 = data['00/g1']
+                g2 = data['00/g2']
+                w = data['00/weight']
             else:
-                b1 = np.digitize(data['g1'][qual_cut], edges) - 1
+                g1 = data['g1']
+                g2 = data['g2']
+                w = data['weight']
 
-            if self.config['shear_catalog_type']=='metacal':
-                b2 = np.digitize(data['mcal_g2'][qual_cut], edges) - 1
-                b2_1p = np.digitize(data['mcal_g2_1p'][qual_cut], edges) - 1
-                b2_2p = np.digitize(data['mcal_g2_2p'][qual_cut], edges) - 1
-                b2_1m = np.digitize(data['mcal_g2_1m'][qual_cut], edges) - 1
-                b2_2m = np.digitize(data['mcal_g2_2m'][qual_cut], edges) - 1
-            else:
-                b2 = np.digitize(data['g2'][qual_cut], edges) - 1
+            g1, g2 = cal.apply(g1, g2)
+            H1.add_data(g1)
+            H2.add_data(g2)
+            H1_weighted.add_data(g1, w)
+            H2_weighted.add_data(g2, w)
 
-            for i in range(bins):
-                w1 = np.where(b1==i)
-
-                if self.config['shear_catalog_type']=='metacal':
-                    w1_1p = np.where(b1_1p==i)
-                    w1_2p = np.where(b1_2p==i)
-                    w1_1m = np.where(b1_1m==i)
-                    w1_2m = np.where(b1_2m==i)
-                    S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
-                    R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
-                elif self.config['shear_catalog_type']=='lensfit':
-                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
-                else:
-                    raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
-                # Do more things here to establish
-                calc1.add_data(i, g1)
+        count1 = H1.collect(self.comm)
+        count2 = H2.collect(self.comm)
+        weight1 = H1_weighted.collect(self.comm)
+        weight2 = H2_weighted.collect(self.comm)
 
 
-                w2 = np.where(b2==i)
-
-                if self.config['shear_catalog_type']=='metacal':
-                    w2_1p = np.where(b2_1p==i)
-                    w2_2p = np.where(b2_2p==i)
-                    w2_1m = np.where(b2_1m==i)
-                    w2_2m = np.where(b2_2m==i)
-                    S = calculate_selection_response(data['mcal_g1'][qual_cut], data['mcal_g2'][qual_cut], w1_1p, w1_2p,w1_1m, w1_2m, delta_gamma)
-                    R = calculate_shear_response(data['mcal_g1_1p'][qual_cut],data['mcal_g1_2p'][qual_cut],data['mcal_g1_1m'][qual_cut],data['mcal_g1_2m'][qual_cut],
-                                                  data['mcal_g2_1p'][qual_cut],data['mcal_g2_2p'][qual_cut],data['mcal_g2_1m'][qual_cut],data['mcal_g2_2m'][qual_cut],delta_gamma)
-                    g1, g2 = apply_metacal_response(R, S, data['mcal_g1'][qual_cut][w1], data['mcal_g2'][qual_cut][w1])
-                elif self.config['shear_catalog_type']=='lensfit':
-                    g1, g2, weight, one_plus_K = apply_lensfit_calibration(data['g1'][qual_cut][w1], data['g2'][qual_cut][w1],data['weight'][qual_cut][w1])
-                else:
-                    raise ValueError(f"Please specify metacal, lensfit or hsc for shear_catalog in config.")
-                calc2.add_data(i, g2)
-
-        count1, mean1, var1 = calc1.collect(self.comm, mode='gather')
-        count2, mean2, var2 = calc2.collect(self.comm, mode='gather')
         if self.rank != 0:
             return
-        std1 = np.sqrt(var1/count1)
-        std2 = np.sqrt(var2/count2)
-        fig = self.open_output('g1_hist', wrapper=True)
-        plt.bar(mids, count1, width=edges[1]-edges[0],edgecolor='black',align='center',color='blue')
-        plt.xlabel("g1")
-        plt.ylabel(r'$N_{galaxies}$')
-        plt.ylim(0,1.1*max(count1))
-        fig.close()
 
-        fig = self.open_output('g2_hist', wrapper=True)
-        plt.bar(mids, count2, width=edges[1]-edges[0], align='center',edgecolor='black',color='purple')
-        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        plt.xlabel("g2")
-        plt.ylabel(r'$N_{galaxies}$')
-        plt.ylim(0,1.1*max(count2))
-        fig.close()
+        for i,count,weight in [(1, count1, weight1), (2, count2, weight2)]:
+            with self.open_output(f'g{i}_hist', wrapper=True) as fig:
+                plt.bar(mids, count, width=width, align='center', color='lightblue', label='Unweighted')
+                plt.bar(mids, weight, width=width, align='center', color='none', edgecolor='red', label='Weighted')
+                plt.xlabel(f"g{i}")
+                plt.ylabel('Count')
+                plt.ylim(0,1.1*max(count1))
+                plt.legend()
+
 
     def plot_snr_histogram(self):
         print('plotting snr histogram')
@@ -513,13 +495,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         if self.comm:
             import mpi4py.MPI
+
         size = 10
+
         # This seems to be a reasonable range, though there are samples
         # with extremely high values
         edges = np.linspace(-3, 3, size+1)
         mid = 0.5*(edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
-        if self.config['shear_catalog_type']=='metacal':
+        cat_type = self.config['shear_catalog_type']
+
+        if cat_type == 'metacal':
             # count of objects
             counts = np.zeros((2,2,size))
             # make a separate histogram of the shear-sample-selected
@@ -531,15 +517,21 @@ class TXSourceDiagnosticPlots(PipelineStage):
             # make a separate histogram of the shear-sample-selected
             # objects
             counts_s = np.zeros((size))
+
+        # Main loop
         while True:
             data = yield
 
             if data is None:
                 break
 
+            if cat_type == 'metadetect':
+                # No per-object R values in metadetect
+                continue
+
             # check if selected for any source bin
             in_shear_sample = data['source_bin'] !=-1
-            if self.config['shear_catalog_type']=='metacal':
+            if cat_type == 'metacal':
                 B = np.digitize(data['R_gamma'], edges) - 1
                 # loop through this chunk of data.
                 for s, b in zip(in_shear_sample, B):
@@ -553,7 +545,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                                 counts[i, j, bij] += 1
                                 if s:
                                     counts_s[i, j, bij] += 1
-            elif self.config['shear_catalog_type']=='lensfit':
+
+            elif cat_type =='lensfit':
                 B = np.digitize(data['m'], edges) - 1
                 # loop through this chunk of data.
                 for s, b in zip(in_shear_sample, B):
@@ -586,11 +579,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         fig = self.open_output('response_hist', wrapper=True, figsize=(10, 5))
 
         plt.subplot(1,2,1)
-        if self.config['shear_catalog_type']=='metacal':
+        if cat_type == 'metacal':
             manual_step_histogram(edges, counts[0, 0], label='R00', color='#1f77b4')
             manual_step_histogram(edges, counts[1, 1], label='R11', color='#ff7f0e')
             manual_step_histogram(edges, counts[0, 1], label='R01', color='#2ca02c')
             manual_step_histogram(edges, counts[1, 0], label='R10', color='#d62728')
+        elif cat_type == 'metadetect':
+            plt.text(0.5, 0.5, 'This plot is intentionally left blank', horizontalalignment='center')
+            counts[:] = 0.909
         else:
             manual_step_histogram(edges, counts, label='R', color='#1f77b4')
         plt.ylim(0, counts.max()*1.1)
@@ -599,13 +595,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.title("All flag=0")
 
         plt.subplot(1,2,2)
-        if self.config['shear_catalog_type']=='metacal':
+        if cat_type == 'metacal':
             manual_step_histogram(edges, counts_s[0, 0], label='R00', color='#1f77b4')
             manual_step_histogram(edges, counts_s[1, 1], label='R11', color='#ff7f0e')
             manual_step_histogram(edges, counts_s[0, 1], label='R01', color='#2ca02c')
             manual_step_histogram(edges, counts_s[1, 0], label='R10', color='#d62728')
+        elif cat_type == 'metadetect':
+            plt.text(0.5, 0.5, 'This plot is intentionally left blank', horizontalalignment='center')
+            counts_s[:] = 0.909
         else:
             manual_step_histogram(edges, counts_s, label='R', color='#1f77b4')
+
         plt.ylim(0, counts_s.max()*1.1)
         plt.xlabel("R_gamma")
         plt.ylabel("Count")
