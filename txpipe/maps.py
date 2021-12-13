@@ -349,7 +349,7 @@ class TXLensMaps(TXBaseMaps):
         # Again just the one mapper
         mapper = mappers[0]
         # Ignored return values are empty dicts for shear
-        pix, ngal, weighted_ngal, _, _, _, _, _ = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, _, _, _, _, _, _ = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
