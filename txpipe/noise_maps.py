@@ -542,6 +542,27 @@ class TXLensNoiseMaps(TXBaseMaps):
 
         return maps
 
+class TXExternalLensNoiseMaps(TXLensNoiseMaps):
+    name='TXExternalLensNoiseMaps'
+
+    inputs = [
+        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_catalog', HDFFile),
+        ('mask', MapsFile),
+    ]
+
+    outputs = [
+        ('lens_noise_maps', ClusteringNoiseMaps),
+    ]
+
+    def data_iterator(self):
+        it = self.combined_iterators(self.config["chunk_rows"],
+                'lens_catalog','lens', ['ra', 'dec'],
+                'lens_tomography_catalog','tomography', ['lens_bin'],
+            )
+        return it
+
+
 
 # These functions will be jitted and used in the TXNoiseMapsJax class below.
 # Note that, quoting the JAX docs:
