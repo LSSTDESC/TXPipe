@@ -494,7 +494,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # Still one mapper, but now we read both source and
         # lens maps from it.
         mapper, cal = mappers
-        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
