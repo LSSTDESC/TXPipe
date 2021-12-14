@@ -204,8 +204,6 @@ class TXNoiseMaps(PipelineStage):
                     mu1 = np.mean(half1)
                     mu2 = np.mean(half2)
 
-                    print(mu1, mu2)
-                    
                     # This will produce some mangled sentinel values
                     # but they will be masked out
                     rho1 = (half1 - mu1) / mu1
@@ -542,7 +540,6 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                 mu1 = np.mean(half1)
                 mu2 = np.mean(half2)
                
-                print(mu1, mu2)
                 # This will produce some mangled sentinel values
                 # but they will be masked out
                 rho1 = (half1 - mu1) / mu1

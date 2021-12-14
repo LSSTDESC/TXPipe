@@ -643,7 +643,6 @@ class TXDensityMaps(PipelineStage):
             #delta_map[mask_copy>0] = ng[mask_copy>0] # Assuming they are already weighted by the mask
             delta_map[mask_copy>0] = ng[mask_copy>0]/mask[mask_copy>0] # Assuming that the weights do not include the mask
             mu = np.mean(delta_map[mask_copy>0])
-            print(mu)
             delta_map[mask_copy>0] = delta_map[mask_copy>0]/mu-1
             density_maps.append(delta_map)
         # write output
