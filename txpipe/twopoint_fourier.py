@@ -663,16 +663,32 @@ class TXTwoPointFourier(PipelineStage):
         # Get the coupled noise C_ell values to give to the master algorithm
         if self.config['analytic_noise']==False:
             cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-        else:
-            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky)
-        # Run the master algorithm
-        c = nmt.compute_full_master(field_i, field_j, ell_bins,
+            # compute_full_master assumes noise from realizations (coupled)
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        
+        else:
+            # we are going to subtract the noise afterwards
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                cl_guess=cl_guess, workspace=workspace, n_iter=1)
+            # noise to subtract (already decoupled)
+            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
+            if cl_noise is not None:
+                c = c - cl_noise
+            # Cross-check to be removed
+            if k == POS_POS:
+                cl_noise_check = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+                if cl_noise_check is not None:
+                    print(cl_noise, workspace.decouple_cell(cl_noise_check))
+                
+        # Writing out the noise for later cross-checks
         if cl_noise is None:
             noise_out = np.zeros(len(ls))
         else:
-            noise_out = workspace.decouple_cell(workspace.couple_cell(cl_noise))[0]
+            if self.config['analytic_noise']:
+                noise_out = cl_noise[0]
+            else:
+                # Remember that cl_noise is coupled if it comes from sims
+                noise_out = workspace.decouple_cell(cl_noise)[0]
         
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
@@ -746,7 +762,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return mean_noise
 
-    def compute_noise_analytic(self, i, j, k, maps, f_sky):
+    def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
         import pymaster
         import healpy as hp
         if (i != j) or (k == SHEAR_POS):
@@ -762,18 +778,19 @@ class TXTwoPointFourier(PipelineStage):
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map)*pxarea
-            n_ell = np.zeros((4, 3*nside))
-            n_ell[0, :] = n_ls
-            n_ell[3, :] = n_ls
-            return n_ell
+            n_ells = np.array([n_ls*np.ones(3*nside), np.zeros(3*nside), np.zeros(3*nside), n_ls*np.ones(3*nside)])
+            cls_out = workspace.decouple_cell(workspace.couple_cell(n_ells))
+            print('Coupled C_ells', cls_out, cls_out.shape)
+            return cls_out
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
             ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
             # print(np.mean(maps['dw']), ndens)
-            n_ell = np.mean(maps['dw'])/ndens
+            n_ell = np.mean(maps['dw'][maps['dw']>0])/ndens # Taking the averages in the mask region for consistency
             n_ell = [n_ell*np.ones(3*nside)]
-            return n_ell
+            cls_out = workspace.decouple_cell(workspace.couple_cell(n_ell))
+            return cls_out
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         # Get lots of bits of metadata from the input file,
