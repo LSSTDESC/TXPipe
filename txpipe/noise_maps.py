@@ -527,8 +527,8 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                     half1 = ngal_split[:, b, i, 0]
                     half2 = ngal_split[:, b, i, 1]
                 else:
-                    half1 = (ngal_split[:, b, i, 0])/mask[reverse_map>0]
-                    half2 = (ngal_split[:, b, i, 1])/mask[reverse_map>0]
+                    half1 = (ngal_split[:, b, i, 0])/mask[reverse_map]
+                    half2 = (ngal_split[:, b, i, 1])/mask[reverse_map]
 
                 # Convert to overdensity.  I thought about
                 # using half the mean from the full map to reduce
