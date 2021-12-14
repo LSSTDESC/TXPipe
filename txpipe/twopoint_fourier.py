@@ -674,11 +674,6 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
             if cl_noise is not None:
                 c = c - cl_noise
-            # Cross-check to be removed
-            if k == POS_POS:
-                cl_noise_check = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-                if cl_noise_check is not None:
-                    print(cl_noise, workspace.decouple_cell(cl_noise_check))
                 
         # Writing out the noise for later cross-checks
         if cl_noise is None:
@@ -780,13 +775,11 @@ class TXTwoPointFourier(PipelineStage):
             n_ls = np.mean(var_map)*pxarea
             n_ells = np.array([n_ls*np.ones(3*nside), np.zeros(3*nside), np.zeros(3*nside), n_ls*np.ones(3*nside)])
             cls_out = workspace.decouple_cell(workspace.couple_cell(n_ells))
-            print('Coupled C_ells', cls_out, cls_out.shape)
             return cls_out
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
             ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
-            # print(np.mean(maps['dw']), ndens)
             n_ell = np.mean(maps['dw'][maps['dw']>0])/ndens # Taking the averages in the mask region for consistency
             n_ell = [n_ell*np.ones(3*nside)]
             cls_out = workspace.decouple_cell(workspace.couple_cell(n_ell))
