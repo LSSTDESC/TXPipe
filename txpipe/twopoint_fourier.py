@@ -670,11 +670,13 @@ class TXTwoPointFourier(PipelineStage):
             # we are going to subtract the noise afterwards
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
                 cl_guess=cl_guess, workspace=workspace, n_iter=1)
+            print('Output spectra', c)
             # noise to subtract (already decoupled)
             cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
             if cl_noise is not None:
                 c = c - cl_noise
-                
+                cl_check = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+                print(cl_noise, workspace.decouple_cell(cl_check))
         # Writing out the noise for later cross-checks
         if cl_noise is None:
             noise_out = np.zeros(len(ls))
@@ -766,13 +768,14 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             with self.open_input('source_maps', wrapper=True) as f:
                 var_map = f.read_map(f'var_e_{i}')
+                lw = f.read_map(f'lensing_weight_{i}')
                 #_var_g1_map = f.read_map(f'var_g1_{i}')
                 #_var_g2_map = f.read_map(f'var_g2_{i}')
             #var_map = 0.5*(_var_g1_map+_var_g2_map)
             var_map[var_map==hp.UNSEEN] = 0.
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
-            n_ls = np.mean(var_map)*pxarea
+            n_ls = np.mean(var_map[lw>0]/lw[lw>0]**2)*pxarea/np.sqrt(2) # This sqrt(2) factor might only be needed for distortion def?
             n_ells = np.array([n_ls*np.ones(3*nside), np.zeros(3*nside), np.zeros(3*nside), n_ls*np.ones(3*nside)])
             cls_out = workspace.decouple_cell(workspace.couple_cell(n_ells))
             return cls_out

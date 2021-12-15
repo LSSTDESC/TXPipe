@@ -169,7 +169,9 @@ class TXNoiseMaps(PipelineStage):
 
                     g1 = G1[:, b, i] / GW[:, b]
                     g2 = G2[:, b, i] / GW[:, b]
-
+                    if self.config['shear_catalog_type'] == 'hsc':
+                        g1 = g1/np.sqrt(2)
+                        g2 = g2/np.sqrt(2)
                     outfile.write_map(f"rotation_{i}/g1_{b}", 
                         pixels[bin_mask], g1[bin_mask], metadata)
 
