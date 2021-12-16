@@ -114,10 +114,7 @@ class MapsFile(HDFFile):
         group = self.file[f'maps/{map_name}']
         nside = group.attrs['nside']
         npix = healpy.nside2npix(nside)
-        if "mask" in map_name:
-            m = np.repeat(healpy.UNSEEN, npix)
-        else:
-            m = np.zeros(npix)
+        m = np.repeat(healpy.UNSEEN, npix)
         pix = group['pixel'][:]
         val = group['value'][:]
         m[pix] = val
