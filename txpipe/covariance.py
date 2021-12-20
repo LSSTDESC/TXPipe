@@ -650,6 +650,8 @@ class TXFourierTJPCovariance(PipelineStage):
         # there is one of the workspaces missing). For generality, I will pass
         # it.
         tjp_config['binning_info'] = self.recover_NmtBin(cl_sacc)
+        # MPI
+        tjp_config['use_mpi'] = True if self.comm is not None else False
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
