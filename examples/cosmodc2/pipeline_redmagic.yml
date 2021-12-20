@@ -71,10 +71,10 @@ stages:
       threads_per_process: 64
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
-#   - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2021/december14/7sbins/
+output_dir: data/cosmodc2/outputs_redmagic/2021/december19/7sbins/
 config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:
