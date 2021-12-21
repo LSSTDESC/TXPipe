@@ -21,7 +21,6 @@ class TXSimpleMask(PipelineStage):
             bright_obj = f.read_map("bright_objects/count")
             depth = f.read_map("depth/depth")
             pixel_scheme = choose_pixelization(**metadata)
-            
         hit = depth > healpy.UNSEEN
         masks = [
             ("depth", depth > self.config["depth_cut"]),
