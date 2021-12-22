@@ -646,9 +646,6 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             with self.open_input('source_maps', wrapper=True) as f:
                 var_map = f.read_map(f'var_e_{i}')
-                #_var_g1_map = f.read_map(f'var_g1_{i}')
-                #_var_g2_map = f.read_map(f'var_g2_{i}')
-            #var_map = 0.5*(_var_g1_map+_var_g2_map)
             var_map[var_map==hp.UNSEEN] = 0.
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
