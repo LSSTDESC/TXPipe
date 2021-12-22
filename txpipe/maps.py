@@ -279,7 +279,6 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
             # added from HSC branch, to get analytic noise in twopoint_fourier
             out_e = np.zeros_like(esq[b])
-            #out_e[esq[b]>0] = esq[b][esq[b]>0]/weights_g[b][esq[b]>0]**2
             out_e[esq[b]>0] = esq[b][esq[b]>0]
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
@@ -561,7 +560,6 @@ class TXDensityMaps(PipelineStage):
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask.shape, dtype=np.float64)
-            #delta_map[mask_copy>0] = ng[mask_copy>0] # Assuming they are already weighted by the mask
             delta_map[mask>0] = ng[mask>0]/mask[mask>0] # Assuming that the weights do not include the mask
             mu = np.mean(delta_map[mask>0])
             delta_map[mask>0] = delta_map[mask>0]/mu-1

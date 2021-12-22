@@ -138,7 +138,6 @@ class TXTracerMetadata(PipelineStage):
             m = f.read_map("mask")
             pixel_scheme = choose_pixelization(**f.read_map_info("mask"))
 
-        #num_hit = (m > 0).sum()
         num_hit = np.sum(m[m>0]) # Assuming fracdet mask
         area_sq_deg = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = float(area_sq_deg) / 41252.96125
