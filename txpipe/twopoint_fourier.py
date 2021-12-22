@@ -547,12 +547,7 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspaces[(i,j,k)]
 
-        if self.config['analytic_noise']==False:
-            # Get the coupled noise C_ell values to give to the master algorithm
-            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-            c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                        cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        else:
+        if self.config['analytic_noise']:
             # we are going to subtract the noise afterwards
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
                                         cl_guess=cl_guess, workspace=workspace, n_iter=1)
@@ -560,20 +555,13 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
             if cl_noise is not None:
                 c = c - cl_noise
-
             # Writing out the noise for later cross-checks
-        if cl_noise is None:
-            noise_out = np.zeros(len(ls))
+            
         else:
-            if self.config['analytic_noise']:
-                noise_out = cl_noise[0]
-                if i==j and k == POS_POS:
-                    np.save('cl_noise_analytic_%d%d'%(i, j), noise_out)
-            else:
-                # Remember that cl_noise is coupled if it comes from sims
-                noise_out = workspace.decouple_cell(cl_noise)[0]
-                if i==j and k == POS_POS:
-                    np.save('cl_noise_maps_%d%d'%(i, j), noise_out)
+            # Get the coupled noise C_ell values to give to the master algorithm
+            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                        cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
@@ -591,8 +579,8 @@ class TXTwoPointFourier(PipelineStage):
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
 
-        if self.config['true_shear']:
-            # if using true shear (i.e. no shape noise) we do not need to add any noise
+        if self.config['true_shear'] and k == SHEAR_SHEAR:
+            # if using true shear (i.e. no shape noise) we do not need to add any noise for the shear-shear case
             return None
 
         import pymaster as nmt

@@ -527,8 +527,6 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
             for i in range(clustering_realizations):
                 # We have computed the first half already,
                 # and we have the total map from an earlier stage
-                #half1 = ngal_split[:, b, i, 0]
-                #half2 = ngal_split[:, b, i, 1]
 
                 half1 = np.zeros(npix)
                 half2 = np.zeros_like(half1)
@@ -546,8 +544,6 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                 # using half the mean from the full map to reduce
                 # noise, but thought that might add covariance
                 # to the two maps, and this shouldn't be that noisy
-                #mu1 = np.average(half1, weights=mask[reverse_map])
-                #mu2 = np.average(half2, weights=mask[reverse_map])
 
                 mu1 = np.mean(half1)
                 mu2 = np.mean(half2)
