@@ -189,11 +189,11 @@ class TXNoiseMaps(PipelineStage):
                     half2 = np.zeros_like(half1)
 
                     if self.config['mask_in_weights']:
-                        half1 = ngal_split[:, b, i, 0]
-                        half2 =	ngal_split[:, b, i, 1]
+                        half1 = ngal_split[:,b,i,0]
+                        half2 =	ngal_split[:,b,i,1]
                     else:
-                        half1 =	(ngal_split[:, b, i, 0])/mask[pixels]
-                        half2 = (ngal_split[:, b, i, 1])/mask[pixels]
+                        half1 =	(ngal_split[:,b,i,0])/mask[pixels]
+                        half2 = (ngal_split[:,b,i,1])/mask[pixels]
                     
                     # Convert to overdensity.  I thought about
                     # using half the mean from the full map to reduce
@@ -202,8 +202,8 @@ class TXNoiseMaps(PipelineStage):
                     # This will produce some mangled sentinel values
                     # but they will be masked out
 
-                    mu1 = np.mean(half1)
-                    mu2 = np.mean(half2)
+                    mu1 = np.average(half1, weights=mask[pixels])
+                    mu2 = np.average(half2, weights=mask[pixels])
                     
                     rho1 = (half1 - mu1) / mu1
                     rho2 = (half2 - mu2) / mu2
@@ -533,11 +533,11 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                 
 
                 if self.config['mask_in_weights']:
-                    half1 = ngal_split[:, b, i, 0]
-                    half2 = ngal_split[:, b, i, 1]
+                    half1 = ngal_split[:,b,i,0]
+                    half2 = ngal_split[:,b,i,1]
                 else:
-                    half1 = (ngal_split[:, b, i, 0])/mask[reverse_map]
-                    half2 = (ngal_split[:, b, i, 1])/mask[reverse_map]
+                    half1 = (ngal_split[:,b,i,0])/mask[reverse_map]
+                    half2 = (ngal_split[:,b,i,1])/mask[reverse_map]
                     
                 
                 # Convert to overdensity.  I thought about
@@ -545,8 +545,8 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
                 # noise, but thought that might add covariance
                 # to the two maps, and this shouldn't be that noisy
 
-                mu1 = np.mean(half1)
-                mu2 = np.mean(half2)
+                mu1 = np.average(half1, weights=mask[reverse_map])
+                mu2 = np.average(half2, weights=mask[reverse_map])
                 
                 # This will produce some mangled sentinel values
                 # but they will be masked out
@@ -802,8 +802,8 @@ class TXNoiseMapsJax(PipelineStage):
                 for i in range(clustering_realizations):
                     # We have computed the first half already,
                     # and we have the total map from an earlier stage
-                    half1 = ngal_split[:, b, i, 0]
-                    half2 = ngal_split[:, b, i, 1]
+                    half1 = ngal_split[:,b,i,0]
+                    half2 = ngal_split[:,b,i,1]
 
                     # Convert to overdensity.  I thought about
                     # using half the mean from the full map to reduce
