@@ -38,6 +38,7 @@ class TXNoiseMaps(PipelineStage):
         'chunk_rows': 100000,
         'lensing_realizations': 30,
         'clustering_realizations': 1,
+        'mask_in_weights': False,
     }        
 
     def run(self):
@@ -184,17 +185,26 @@ class TXNoiseMaps(PipelineStage):
                 for i in range(clustering_realizations):
                     # We have computed the first half already,
                     # and we have the total map from an earlier stage
-                    half1 = ngal_split[:, b, i, 0]
-                    half2 = ngal_split[:, b, i, 1]
+                    half1 = np.zeros(npix)
+                    half2 = np.zeros_like(half1)
 
+                    if self.config['mask_in_weights']:
+                        half1 = ngal_split[:,b,i,0]
+                        half2 =	ngal_split[:,b,i,1]
+                    else:
+                        half1 =	(ngal_split[:,b,i,0])/mask[pixels]
+                        half2 = (ngal_split[:,b,i,1])/mask[pixels]
+                    
                     # Convert to overdensity.  I thought about
                     # using half the mean from the full map to reduce
                     # noise, but thought that might add covariance
                     # to the two maps, and this shouldn't be that noisy
-                    mu1 = np.average(half1, weights=mask[pixels])
-                    mu2 = np.average(half2, weights=mask[pixels])
                     # This will produce some mangled sentinel values
                     # but they will be masked out
+
+                    mu1 = np.average(half1, weights=mask[pixels])
+                    mu2 = np.average(half2, weights=mask[pixels])
+                    
                     rho1 = (half1 - mu1) / mu1
                     rho2 = (half2 - mu2) / mu2
 
@@ -416,6 +426,7 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
     config_options = {
         'chunk_rows': 100000,
         'clustering_realizations': 1,
+        'mask_in_weights': False,
     }
 
     # instead of reading from config we match the basic maps
@@ -516,15 +527,27 @@ class TXExternalLensNoiseMaps(TXBaseMaps):
             for i in range(clustering_realizations):
                 # We have computed the first half already,
                 # and we have the total map from an earlier stage
-                half1 = ngal_split[:, b, i, 0]
-                half2 = ngal_split[:, b, i, 1]
 
+                half1 = np.zeros(npix)
+                half2 = np.zeros_like(half1)
+                
+
+                if self.config['mask_in_weights']:
+                    half1 = ngal_split[:,b,i,0]
+                    half2 = ngal_split[:,b,i,1]
+                else:
+                    half1 = (ngal_split[:,b,i,0])/mask[reverse_map]
+                    half2 = (ngal_split[:,b,i,1])/mask[reverse_map]
+                    
+                
                 # Convert to overdensity.  I thought about
                 # using half the mean from the full map to reduce
                 # noise, but thought that might add covariance
                 # to the two maps, and this shouldn't be that noisy
+
                 mu1 = np.average(half1, weights=mask[reverse_map])
                 mu2 = np.average(half2, weights=mask[reverse_map])
+                
                 # This will produce some mangled sentinel values
                 # but they will be masked out
                 rho1 = (half1 - mu1) / mu1
@@ -779,8 +802,8 @@ class TXNoiseMapsJax(PipelineStage):
                 for i in range(clustering_realizations):
                     # We have computed the first half already,
                     # and we have the total map from an earlier stage
-                    half1 = ngal_split[:, b, i, 0]
-                    half2 = ngal_split[:, b, i, 1]
+                    half1 = ngal_split[:,b,i,0]
+                    half2 = ngal_split[:,b,i,1]
 
                     # Convert to overdensity.  I thought about
                     # using half the mean from the full map to reduce

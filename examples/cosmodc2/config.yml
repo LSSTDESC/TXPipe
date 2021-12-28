@@ -46,6 +46,10 @@ TXExternalLensMaps:
     chunk_rows:  100000
     pixelization: healpix
 
+TXExternalLensNoiseMaps:
+    nside: 2048
+    chunk_rows:  100000
+    pixelization: healpix
 
 TXAuxiliarySourceMaps:
     chunk_rows:  100000
@@ -76,7 +80,7 @@ TXTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
-TXSourceSelector:
+TXSourceSelectorMetacal:
     input_pz: False
     bands: riz #used for selection
     T_cut: 0.5
@@ -135,6 +139,7 @@ TXTwoPointFourier:
     n_ell: 20
     ell_max: 3000
     nside: 2048
+    analytic_noise: False
     
 TXClusteringNoiseMaps:
     n_realization: 30

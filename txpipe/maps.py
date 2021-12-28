@@ -258,7 +258,7 @@ class TXSourceMaps(TXBaseMaps):
         # only one mapper here - we call its finalize method
         # to collect everything
         mapper, cal = mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        pix, _, _, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
 
         # build up output
         maps = {}
@@ -277,6 +277,10 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
+            # added from HSC branch, to get analytic noise in twopoint_fourier
+            out_e = np.zeros_like(esq[b])
+            out_e[esq[b]>0] = esq[b][esq[b]>0]
+            maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
         return maps
 
@@ -344,7 +348,7 @@ class TXLensMaps(TXBaseMaps):
         # Again just the one mapper
         mapper = mappers[0]
         # Ignored return values are empty dicts for shear
-        pix, ngal, weighted_ngal, _, _, _, _, _ = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, _, _, _, _, _, _ = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
@@ -489,7 +493,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # Still one mapper, but now we read both source and
         # lens maps from it.
         mapper, cal = mappers
-        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
@@ -553,20 +557,13 @@ class TXDensityMaps(PipelineStage):
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
-            mask_copy = mask.copy()
-            mask_copy[ng == healpy.UNSEEN] = 0
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
-            # Convert the number count maps to overdensity maps.
-            # First compute the overall mean object count per bin.
-            # mean clustering galaxies per pixel in this map
-            mu = np.average(ng, weights=mask_copy)
-            print(f"Mean number density in bin {i} = {mu}")
-            # and then use that to convert to overdensity
-            d = (ng - mu) / mu
-            # remove nans
-            d[mask == 0] = 0
-            density_maps.append(d)
+            delta_map = np.zeros(mask.shape, dtype=np.float64)
+            delta_map[mask>0] = ng[mask>0]/mask[mask>0] # Assuming that the weights do not include the mask
+            mu = np.mean(delta_map[mask>0])
+            delta_map[mask>0] = delta_map[mask>0]/mu-1
+            density_maps.append(delta_map)
 
         # write output
         with self.open_output("density_maps", wrapper=True) as f:

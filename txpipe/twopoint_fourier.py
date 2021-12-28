@@ -66,7 +66,8 @@ class TXTwoPointFourier(PipelineStage):
         "ell_max": 1500,
         "n_ell": 20,
         "ell_spacing": 'log',
-        "true_shear": False
+        "true_shear": False,
+        "analytic_noise": False
     }
 
     def run(self):
@@ -139,7 +140,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl)
+                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl, f_sky)
 
         if self.rank==0:
             print(f"Collecting results together")
@@ -498,7 +499,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory, f_sky):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -546,12 +547,21 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspaces[(i,j,k)]
 
-        # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-
-        # Run the master algorithm
-        c = nmt.compute_full_master(field_i, field_j, ell_bins,
-            cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+        if self.config['analytic_noise']:
+            # we are going to subtract the noise afterwards
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                        cl_guess=cl_guess, workspace=workspace, n_iter=1)
+            # noise to subtract (already decoupled)
+            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
+            if cl_noise is not None:
+                c = c - cl_noise
+            # Writing out the noise for later cross-checks
+            
+        else:
+            # Get the coupled noise C_ell values to give to the master algorithm
+            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                        cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
@@ -569,8 +579,8 @@ class TXTwoPointFourier(PipelineStage):
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
 
-        if self.config['true_shear']:
-            # if using true shear (i.e. no shape noise) we do not need to add any noise
+        if self.config['true_shear'] and k == SHEAR_SHEAR:
+            # if using true shear (i.e. no shape noise) we do not need to add any noise for the shear-shear case
             return None
 
         import pymaster as nmt
@@ -625,7 +635,34 @@ class TXTwoPointFourier(PipelineStage):
 
         return mean_noise
 
+    
+    def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
+        # Copied from the HSC branch
+        import pymaster
+        import healpy as hp
+        if (i != j) or (k == SHEAR_POS):
+            return None
+        # This bit only works with healpix maps but it's checked beforehand so that's fine
+        if k == SHEAR_SHEAR:
+            with self.open_input('source_maps', wrapper=True) as f:
+                var_map = f.read_map(f'var_e_{i}')
+            var_map[var_map==hp.UNSEEN] = 0.
+            nside = hp.get_nside(var_map)
+            pxarea = hp.nside2pixarea(nside)
+            n_ls = np.mean(var_map)*pxarea
+            n_ells = np.array([n_ls*np.ones(3*nside), np.zeros(3*nside), np.zeros(3*nside), n_ls*np.ones(3*nside)])
+            cls_out = workspace.decouple_cell(workspace.couple_cell(n_ells))
+            return cls_out
 
+        if k == POS_POS:
+            metadata = self.open_input('tracer_metadata')
+            nside = hp.get_nside(maps['dw'])
+            ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
+            n_ell = np.mean(maps['dw'][maps['dw']>0])/ndens #taking the averages in the mask region for consistency
+            n_ell = [n_ell*np.ones(3*nside)]
+            cls_out = workspace.decouple_cell(workspace.couple_cell(n_ell))
+            return cls_out
+        
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         # Get lots of bits of metadata from the input file,

@@ -29,7 +29,7 @@ def test_mapper():
         # get variances
         mapper.add_data(data)
 
-    pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight = mapper.finalize()
+    pixel, ngal, lens_weight, g1, g2, var_g1, var_g2, source_weight, esq = mapper.finalize()
 
     mu_2 = (N - 1) / 2
     # variance
