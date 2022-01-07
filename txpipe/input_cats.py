@@ -3,7 +3,7 @@ from .data_types import ShearCatalog, HDFFile
 from .utils.calibration_tools import band_variants, metacal_variants
 import numpy as np
 from .utils.timer import Timer
-
+import pdb
 
 class TXCosmoDC2Mock(PipelineStage):
     """
@@ -65,7 +65,8 @@ class TXCosmoDC2Mock(PipelineStage):
                 print(f"Loading chunk {j}/{nfile}")
             yield data
 
-    def run(self):
+    def load_catalog(self):
+        
         import GCRCatalogs
         cat_name = self.config['cat_name']
         self.bands = ('u', 'g', 'r', 'i', 'z', 'y')
@@ -83,6 +84,12 @@ class TXCosmoDC2Mock(PipelineStage):
         if N == 0:
             N = len(gc)
 
+        return gc, N
+            
+    def run(self):
+
+        gc, N = self.load_catalog()
+        
         print(f"Rank {self.rank} loaded: length = {N}.")
 
         target_size = min(N, self.config['max_size'])
@@ -91,12 +98,12 @@ class TXCosmoDC2Mock(PipelineStage):
         if target_size != N:
             print(f"Will select approx {100*select_fraction:.2f}% of objects ({target_size})")
 
-
+        
         # Prepare output files
         metacal_file = self.open_output('shear_catalog', parallel=self.is_mpi())
         photo_file = self.open_output('photometry_catalog', parallel=self.is_mpi())
         photo_cols = self.setup_photometry_output(photo_file, target_size)
-        metacal_cols = self.setup_metacal_output(metacal_file, target_size)
+        metacal_cols = self.setup_metadetect_output(metacal_file, target_size)
 
 
         # Load the metacal response file
@@ -638,6 +645,84 @@ class TXBuzzardMock(TXCosmoDC2Mock):
         }
 
 
+
+class TXGaussianSimsMock(TXCosmoDC2Mock):
+    """
+    This stage simulates metacal data and metacalibrated
+    photometry measurements, starting from simple Gaussian simulations
+    produced starting from CCL power spectra and poission sampling galaxies
+    from it. 
+
+    This is mainly useful for testing infrastructure
+    starting from a purer simulation.
+    """
+    name='TXGaussianSimsMock'
+
+    inputs = [
+        ('response_model', HDFFile)
+    ]
+
+    outputs = [
+        ('shear_catalog', ShearCatalog),
+        ('photometry_catalog', HDFFile),
+    ]
+
+    config_options = {
+        'cat_name':'GaussianSims',
+        'visits_per_band':165,  # used in the noise simulation
+        'snr_limit': 0.0,  # we want to keep all input objects here
+        'max_size': 99999999999999,  #for testing on smaller catalogs
+        'extra_cols': "", # string-separated list of columns to include
+        'max_npix':99999999999999,
+        'unit_response': True,
+        'cat_size': 0,
+        'flip_g2': False, # this matches the metacal definition, and the treecorr/namaster one
+        'apply_mag_cut': False, #used when comparing to descqa measurements
+        }
+
+    def data_iterator(self, cat):
+
+        # Columns we need from the cosmo simulation
+        cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
+                'mag_true_r_lsst', 'mag_true_i_lsst', 
+                'mag_true_z_lsst', 'mag_true_y_lsst',
+                'ra', 'dec',
+                'ellipticity_1_true', 'ellipticity_2_true',
+                'shear_1', 'shear_2',
+                'size_true',
+                'galaxy_id',
+                'redshift_true',
+                ]
+        cat_dic = {}
+        cat_dic['ra'], cat_dic['dec'], cat_dic['shear_1'],cat_dic['shear_2'],.. = cat
+        # all cols
+        #ra,dec,g1s,g2s,zs,m_u,m_g, m_r, m_i, m_z, m_y, etrue1, etrue2, size, galaxy_id = 
+        it = 1000
+
+        for i, data in enumerate(it):
+            if nfile:
+                j = i+1
+                print(f"Loading chunk {j}/{nfile}")
+            yield data
+
+    def load_catalog(self):
+        """
+        This method loads the Gaussian sims produced in this notebook
+        https://github.com/LSSTDESC/txpipe-cosmodc2/blob/master/notebooks/MaskAreaGaussianSims_and_FakeTXPipeInput.ipynb
+        """
+        cat_name = self.config['cat_name']
+        self.bands = ('u', 'g', 'r', 'i', 'z', 'y')
+
+        print(f"Loading from catalog {cat_name}")
+
+        cat = np.load(cat_name)
+
+        N = len(cat[0])
+
+        return cat, N
+
+    
+    
 def make_mock_photometry(n_visit, bands, data, unit_response):
     """
     Generate a mock photometric table with noise added
