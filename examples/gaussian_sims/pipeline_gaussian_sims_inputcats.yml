@@ -1,0 +1,42 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXGaussianSimsMock
+      nprocess: 1
+      threads_per_process: 20
+
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/111221/area12300/with_shape_noise/2022/Jan7/
+config: examples/gaussian_sims/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    #    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/111221/area12300/TXPipe_inputs/shear_catalog.hdf5
+    #photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/111221/area12300/TXPipe_inputs/photometry_catalog.hdf5
+    lens_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/111221/area12300/TXPipe_inputs/lens_catalog.hdf5
+    # photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+    lens_input_catalog: 
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
+
+
+resume: True
+log_dir: data/cosmodc2/logs_redmagic
+pipeline_log: data/cosmodc2/log.txt
+

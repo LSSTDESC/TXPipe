@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, HDFFile
-from .utils.calibration_tools import band_variants, metacal_variants
+from .utils.calibration_tools import band_variants, metacal_variants, metadetect_variants
 import numpy as np
 from .utils.timer import Timer
 import pdb
@@ -37,7 +37,7 @@ class TXCosmoDC2Mock(PipelineStage):
         'cat_size': 0,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
         'apply_mag_cut': False, #used when comparing to descqa measurements
-        'Mag_r_limit': -19, # used to decide what objects to cut out  
+        'Mag_r_limit': -19, # used to decide what objects to cut out
         }
 
     def data_iterator(self, gc):
@@ -138,7 +138,8 @@ class TXCosmoDC2Mock(PipelineStage):
             # We have to do this after the photometry, so that we know if
             # the object is detected, but we can do it before making the mock
             # metacal info, saving us some time simulating un-needed objects
-            self.remove_undetected(data, mock_photometry)
+            if self.config['snr_limit'] > 0:  # otherwise there is no need to run this function which is slow
+                self.remove_undetected(data, mock_photometry)
             
             if self.config['apply_mag_cut']:
                 self.apply_magnitude_cut(data)
@@ -176,6 +177,27 @@ class TXCosmoDC2Mock(PipelineStage):
         if self.comm is not None:
             self.comm.Barrier()
 
+        def visitor(name, node):
+            if isinstance(node, h5py.Dataset):
+                print(f"Resizing {name}")
+                node.resize((n,))
+
+        if self.rank == 0:
+            # all files should now be closed for all procs
+            print(f"Resizing all outupts to size {n}")
+
+            with h5py.File(self.get_output('photometry_catalog'), 'r+') as f:
+                f['photometry'].visititems(visitor)
+
+            with h5py.File(self.get_output('shear_catalog'), 'r+') as f:
+                f['shear'].visititems(visitor)
+
+    '''    
+    def truncate_outputs(self, n):
+        import h5py
+        if self.comm is not None:
+            self.comm.Barrier()
+
         if self.rank == 0:
             # all files should now be closed for all procs
             print(f"Resizing all outupts to size {n}")
@@ -191,7 +213,7 @@ class TXCosmoDC2Mock(PipelineStage):
             for col in g.keys():
                 g[col].resize((n,))
 
-
+    '''
 
     def next_output_indices(self, start, chunk_size):
         if self.comm is None:
@@ -682,29 +704,44 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
 
     def data_iterator(self, cat):
 
-        # Columns we need from the cosmo simulation
-        cols = ['mag_true_u_lsst', 'mag_true_g_lsst', 
-                'mag_true_r_lsst', 'mag_true_i_lsst', 
-                'mag_true_z_lsst', 'mag_true_y_lsst',
-                'ra', 'dec',
-                'ellipticity_1_true', 'ellipticity_2_true',
-                'shear_1', 'shear_2',
-                'size_true',
-                'galaxy_id',
-                'redshift_true',
-                ]
-        cat_dic = {}
-        cat_dic['ra'], cat_dic['dec'], cat_dic['shear_1'],cat_dic['shear_2'],.. = cat
-        # all cols
-        #ra,dec,g1s,g2s,zs,m_u,m_g, m_r, m_i, m_z, m_y, etrue1, etrue2, size, galaxy_id = 
-        it = 1000
+        # all cols we need
+        ra,dec,g1,g2,z,m_u,m_g, m_r, m_i, m_z, m_y, etrue1, etrue2, size, galaxy_id = cat
 
-        for i, data in enumerate(it):
-            if nfile:
-                j = i+1
-                print(f"Loading chunk {j}/{nfile}")
-            yield data
+        # figuring out number of chunks
+        chunk_size=1_000_000
+        nchunk = len(ra) // chunk_size
+        if nchunk * chunk_size < len(ra):
+            nchunk += 1
 
+        # main loop
+        for i in range(nchunk):
+            # start and end index of this chunk in full data
+            s = chunk_size * i
+            e = s + chunk_size
+
+            # make dict just for this chunk of data
+            data_chunk = {}
+            data_chunk['ra'] = ra[s:e]
+            data_chunk['dec'] = dec[s:e]
+            data_chunk['shear_1'] = g1[s:e]
+            data_chunk['shear_2'] = g2[s:e]
+            data_chunk['size_true'] = size[s:e]
+            data_chunk['galaxy_id'] = galaxy_id[s:e]
+            data_chunk['redshift_true'] = z[s:e]
+            data_chunk['ellipticity_1_true'] = etrue1[s:e]
+            data_chunk['ellipticity_2_true'] = etrue2[s:e]
+            data_chunk['mag_true_u_lsst'] = m_u[s:e]
+            data_chunk['mag_true_g_lsst'] = m_g[s:e]
+            data_chunk['mag_true_r_lsst'] = m_r[s:e]
+            data_chunk['mag_true_i_lsst'] = m_i[s:e]
+            data_chunk['mag_true_z_lsst'] = m_z[s:e]
+            data_chunk['mag_true_y_lsst'] = m_y[s:e]
+
+
+            # send this chunk of data back to caller
+            yield data_chunk
+ 
+            
     def load_catalog(self):
         """
         This method loads the Gaussian sims produced in this notebook
