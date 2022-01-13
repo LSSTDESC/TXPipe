@@ -267,7 +267,7 @@ class TXCosmoDC2Mock(PipelineStage):
     def setup_metadetect_output(self, metacal_file, target_size):
         # Get a list of all the column names
         cols = (
-            + metadetect_variants('g1', 'g2', 'T', 's2n',  'T_err', 'ra', 'dec', 'psf_g1', 
+              metadetect_variants('g1', 'g2', 'T', 's2n',  'T_err', 'ra', 'dec', 'psf_g1', 
               'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'weight')
             + band_variants('riz', 'mag', 'mag_err', shear_catalog_type='metadetect')
         )
