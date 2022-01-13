@@ -148,7 +148,10 @@ class TXCosmoDC2Mock(PipelineStage):
             if self.config['apply_mag_cut']:
                 self.apply_magnitude_cut(data)
 
-            mock_metacal = self.make_mock_metacal(data, mock_photometry)
+            if self.config['metadetect']:
+                mock_shear = self.make_mock_metadetect(data, mock_photometry)
+            else:
+                mock_shear = self.make_mock_metacal(data, mock_photometry)
             
             # The chunk size has now changed
             some_col = list(mock_photometry.keys())[0]
@@ -162,7 +165,7 @@ class TXCosmoDC2Mock(PipelineStage):
             start, end = self.next_output_indices(start, chunk_size)
 
             # Save all output
-            self.write_output(start, target_size, photo_cols, metacal_cols, photo_file, mock_photometry, metacal_file, mock_metacal)
+            self.write_output(start, target_size, photo_cols, metacal_cols, photo_file, mock_photometry, metacal_file, mock_shear)
 
             # The next iteration starts writing where the current one ends.
             start = end
