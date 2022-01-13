@@ -267,10 +267,9 @@ class TXCosmoDC2Mock(PipelineStage):
     def setup_metadetect_output(self, metacal_file, target_size):
         # Get a list of all the column names
         cols = (
-            ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
-            + metadetect_variants('g1', 'g2', 'T', 's2n',  'T_err')
+            + metadetect_variants('g1', 'g2', 'T', 's2n',  'T_err', 'ra', 'dec', 'psf_g1', 
+              'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean', 'weight')
             + band_variants('riz', 'mag', 'mag_err', shear_catalog_type='metadetect')
-            + ['weight']
         )
 
         cols += ['true_g1', 'true_g2', 'redshift_true']
@@ -498,16 +497,30 @@ class TXCosmoDC2Mock(PipelineStage):
         # file
         output = {
             # Basic values
-            'id': photo['id'],
-            'ra': photo['ra'],
-            'dec': photo['dec'],
-            # Keep the truth value just in case
+            '00/id': photo['id'],
+            '1p/id': photo['id'],
+            '1m/id': photo['id'],
+            '2p/id': photo['id'],
+            '2m/id': photo['id'],
+
+            '00/ra': photo['ra'],
+            '1p/ra': photo['ra'],
+            '1m/ra': photo['ra'],
+            '2p/ra': photo['ra'],
+            '2m/ra': photo['ra'],
+
+            '00/dec': photo['dec'],
+            '1p/dec': photo['dec'],
+            '1m/dec': photo['dec'],
+            '2p/dec': photo['dec'],
+            '2m/dec': photo['dec'],
+
+            # Keep the truth values for use in some testing paths
+            # We are not pretending to do meta
             "true_g1": g1,
             "true_g2": g2,
-            # add true redshift since it is used in source selector
             "redshift_true":photo['redshift_true'],
             
-
             # g1
             "00/g1": e1*R,
             "1p/g1": (e1+delta_gamma)*R,
