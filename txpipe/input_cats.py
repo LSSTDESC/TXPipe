@@ -543,7 +543,7 @@ class TXCosmoDC2Mock(PipelineStage):
             "2m/T": size_T - R_size*delta_gamma,
 
             # Terr
-            "00/T_err":    zero,
+            "00/T_err": zero,
             "1p/T_err": zero,
             "1m/T_err": zero,
             "2p/T_err": zero,
@@ -596,18 +596,49 @@ class TXCosmoDC2Mock(PipelineStage):
             '2m/mag_err_z': photo['mag_z_err'],
 
             # Fixed PSF parameters - all round with same size
-            'mcal_psf_g1': zero,
-            'mcal_psf_g2': zero,
-            'psf_g1': zero,
-            'psf_g2': zero,
-            'mcal_psf_T_mean' : np.repeat(psf_T, nobj),
+            '00/mcal_psf_g1': zero,
+            '1p/mcal_psf_g1': zero,
+            '1m/mcal_psf_g1': zero,
+            '2p/mcal_psf_g1': zero,
+            '2m/mcal_psf_g1': zero,
+
+            '00/mcal_psf_g2': zero,
+            '1p/mcal_psf_g2': zero,
+            '1m/mcal_psf_g2': zero,
+            '2p/mcal_psf_g2': zero,
+            '2m/mcal_psf_g2': zero,
+
+            '00/psf_g1': zero,
+            '1p/psf_g1': zero,
+            '1m/psf_g1': zero,
+            '2p/psf_g1': zero,
+            '2m/psf_g1': zero,
+
+            '00/psf_g2': zero,
+            '1p/psf_g2': zero,
+            '1m/psf_g2': zero,
+            '2p/psf_g2': zero,
+            '2m/psf_g2': zero,
+            '00/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
+            '1p/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
+            '1m/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
+            '2p/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
+            '2m/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
 
             # Everything that gets this far should be used, so flag=0
-            'mcal_flags': np.zeros(nobj, dtype=np.int32),
+            '00/mcal_flags': np.zeros(nobj, dtype=np.int32),
+            '1p/mcal_flags': np.zeros(nobj, dtype=np.int32),
+            '1m/mcal_flags': np.zeros(nobj, dtype=np.int32),
+            '2p/mcal_flags': np.zeros(nobj, dtype=np.int32),
+            '2m/mcal_flags': np.zeros(nobj, dtype=np.int32),
             # we use weights of one for everything for metacal
             # if that ever changes we may also need to add
             # weight_1p, etc.
-            'weight': np.ones(nobj),
+            '00/weight': np.ones(nobj),
+            '1p/weight': np.ones(nobj),
+            '1m/weight': np.ones(nobj),
+            '2p/weight': np.ones(nobj),
+            '2m/weight': np.ones(nobj),
             }
 
         return output
