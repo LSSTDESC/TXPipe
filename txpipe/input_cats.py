@@ -282,11 +282,13 @@ class TXCosmoDC2Mock(PipelineStage):
         for col in cols:
             group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
-        group.create_dataset('id', (target_size,), maxshape=(target_size,), dtype='i8')
-        group.create_dataset('mcal_flags', (target_size,), maxshape=(target_size,), dtype='i8')
+        # Integer columns
+        int_cols = metadetect_variants('id', 'mcal_flags')
+        for col in int_cols:
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='i8')
+ 
 
-
-        return cols + ['id',  'mcal_flags']
+        return cols + int_cols
         
 
     def setup_metacal_output(self, metacal_file, target_size):
@@ -619,6 +621,7 @@ class TXCosmoDC2Mock(PipelineStage):
             '1m/psf_g2': zero,
             '2p/psf_g2': zero,
             '2m/psf_g2': zero,
+
             '00/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
             '1p/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
             '1m/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
