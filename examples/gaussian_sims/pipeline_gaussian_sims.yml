@@ -92,7 +92,7 @@ inputs:
     response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
 
 
-resume: True
+resume: False
 log_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/
 pipeline_log: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/log.txt
 
