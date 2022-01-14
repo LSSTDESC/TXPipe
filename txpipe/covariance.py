@@ -645,6 +645,11 @@ class TXFourierTJPCovariance(PipelineStage):
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
 
+        # MPI
+        if self.comm:
+            self.comm.Barrier()
+            tjp_config['use_mpi'] = True
+
         # Run TJPCov
         # I shouldn't need to pass the binnning (unless the cache is not set or
         # there is one of the workspaces missing). For generality, I will pass
