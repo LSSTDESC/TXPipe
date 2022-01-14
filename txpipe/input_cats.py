@@ -631,11 +631,11 @@ class TXCosmoDC2Mock(PipelineStage):
             '2m/mcal_psf_T_mean' : np.repeat(psf_T, nobj),
 
             # Everything that gets this far should be used, so flag=0
-            '00/mcal_flags': np.zeros(nobj, dtype=np.int32),
-            '1p/mcal_flags': np.zeros(nobj, dtype=np.int32),
-            '1m/mcal_flags': np.zeros(nobj, dtype=np.int32),
-            '2p/mcal_flags': np.zeros(nobj, dtype=np.int32),
-            '2m/mcal_flags': np.zeros(nobj, dtype=np.int32),
+            '00/flags': np.zeros(nobj, dtype=np.int32),
+            '1p/flags': np.zeros(nobj, dtype=np.int32),
+            '1m/flags': np.zeros(nobj, dtype=np.int32),
+            '2p/flags': np.zeros(nobj, dtype=np.int32),
+            '2m/flags': np.zeros(nobj, dtype=np.int32),
             # we use weights of one for everything for metacal
             # if that ever changes we may also need to add
             # weight_1p, etc.
