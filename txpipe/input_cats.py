@@ -283,7 +283,7 @@ class TXCosmoDC2Mock(PipelineStage):
             group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
         # Integer columns
-        int_cols = metadetect_variants('id', 'mcal_flags')
+        int_cols = metadetect_variants('id', 'flags')
         for col in int_cols:
             group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='i8')
  
