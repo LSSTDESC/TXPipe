@@ -313,7 +313,9 @@ class TXCosmoDC2Mock(PipelineStage):
             group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
         group.create_dataset('id', (target_size,), maxshape=(target_size,), dtype='i8')
-        group.create_dataset('mcal_flags', (target_size,), maxshape=(target_size,), dtype='i8')
+
+        for col in metacal_variants('mcal_flags'):
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='i8')
 
 
         return cols + ['id',  'mcal_flags']
@@ -840,6 +842,10 @@ class TXCosmoDC2Mock(PipelineStage):
 
             # Everything that gets this far should be used, so flag=0
             'mcal_flags': np.zeros(nobj, dtype=np.int32),
+            'mcal_flags_1p': np.zeros(nobj, dtype=np.int32),
+            'mcal_flags_1m': np.zeros(nobj, dtype=np.int32),
+            'mcal_flags_2p': np.zeros(nobj, dtype=np.int32),
+            'mcal_flags_2m': np.zeros(nobj, dtype=np.int32),
             # we use weights of one for everything for metacal
             # if that ever changes we may also need to add
             # weight_1p, etc.
