@@ -176,7 +176,7 @@ class TXSourceMaps(TXBaseMaps):
             shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
-        elif shear_catalog_type == "metadetect":
+        elif self.config["shear_catalog_type"] == "metadetect":
             shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]

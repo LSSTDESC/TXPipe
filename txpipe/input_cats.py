@@ -993,7 +993,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
         'cat_size': 0,
         'flip_g2': False, # this matches the metacal definition, and the treecorr/namaster one
         'apply_mag_cut': False, #used when comparing to descqa measurements
-        'metadetect': False, # we will mock a  metacal catalog
+        'metadetect': True, # Alternatively we will mock a  metacal catalog
         
         }
 
