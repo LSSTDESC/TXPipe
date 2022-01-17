@@ -17,14 +17,6 @@ TXGaussianSimsMock:
     unit_response: True
     apply_mag_cut: False
 
-TXIngestRedmagic:
-    lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
-
-TXSourceTrueNumberDensity:
-    nz: 601
-    zmax: 3.0
-    chunk_rows: 100000
-
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
@@ -64,45 +56,31 @@ TXSimpleMask:
     bright_object_max: 10.0        
 
 
-PZPDFMLZ:
-    nz: 301
-    zmax: 3.0
-    chunk_rows: 100000
-
-TXPhotozStack:
-    chunk_rows: 100000
-
-# Mock version of stacking:
-TXTrueNumberDensity:
-    nz: 301
-    zmax: 3.0
-    chunk_rows: 100000
-
-TXSourceSelectorMetacal:
+TXSourceSelectorMetadetect:
     input_pz: False
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3. ] # 7 bins
-    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632] # 5 bins
+    # these are not the actual bin-edges of the SRD nzs, but it doesnt matter because the input catalogs are assigned using this fake input.
     chunk_rows: 100000
-    true_z: False
-    shear_prefix: mcal_
+    true_z: True
+    shear_prefix: ''
 
 TXRandomCat:
     chunk_rows: 100000
     density: 10 # gals per sq arcmin
 
 TXJackknifeCenters:
-    npatch: 40
+    npatch: 500
 
 TXSourceDiagnosticPlots:
     shear_prefix: mcal_
 
 TXFourierGaussianCovariance:
-    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+    galaxy_bias: [1., 1., 1., 1., 1.]
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -112,7 +90,7 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
-    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+    galaxy_bias: [1., 1., 1., 1., 1.]
 
 TXTwoPoint:
     bin_slop: 0.0
@@ -145,14 +123,3 @@ TXClusteringNoiseMaps:
 TXLensingNoiseMaps:
     n_realization: 30
 
-TXTruthLensSelector:
-    # Mag cuts
-    chunk_rows: 100000
-    lens_zbin_edges: [0.0,0.2,0.4]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 21.6
-    i_lo_cut: 17.5
-    i_hi_cut: 21.9
-    r_i_cut: 2.0
