@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
-from .utils import unique_list, choose_pixelization
+from .utils import unique_list, choose_pixelization, rename_iterated
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
 from .utils.calibrators import Calibrator
 from .mapping import Mapper, FlagMapper
@@ -174,17 +174,21 @@ class TXSourceMaps(TXBaseMaps):
         # can optionally read truth values
         if self.config["true_shear"]:
             shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
+            rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
         elif self.config["shear_catalog_type"] == "metadetect":
             shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
+            rename = {c: c[3:] for c in shear_cols}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            rename = {}
 
         # use utility function that combines data chunks
         # from different files. Reading from n file sections
         # takes 3n+1 arguments
-        return self.combined_iterators(
+        it = self.combined_iterators(
             self.config["chunk_rows"],  # number of rows to iterate at once
             # first file info
             "shear_catalog",  # tag of input file to iterate through
@@ -195,22 +199,9 @@ class TXSourceMaps(TXBaseMaps):
             "tomography",  # data group within file to look at
             ["source_bin"],  # column(s) to read
         )
+        return rename_iterated(it, rename)
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
-        # rename columns, if needed
-        if self.config["true_shear"]:
-            data["g1"] = data["true_g1"]
-            data["g2"] = data["true_g2"]
-        elif self.config["shear_catalog_type"] == "metadetect":
-            data["g1"] = data["00/g1"]
-            data["g2"] = data["00/g2"]
-            data["weight"] = data["00/weight"]
-        elif self.config["shear_catalog_type"] == "metacal":
-            data["g1"] = data["mcal_g1"]
-            data["g2"] = data["mcal_g2"]
-        # for other catalogs they're just called g1, g2 aready
-
-        # send data to map
         mapper = mappers[0]
         mapper.add_data(data)
 
@@ -336,7 +327,7 @@ class TXLensMaps(TXBaseMaps):
             # next file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin"],
+            ["lens_bin", "lens_weight"],
         )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
@@ -441,14 +432,19 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # lensfit or metacal col names
         if self.config["true_shear"]:
             shear_cols = ["true_g1", "true_g1", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
         elif shear_catalog_type == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
+            rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
         elif shear_catalog_type == "metadetect":
             shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
+            rename = {c: c[3:] for c in shear_cols}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            rename = {}
 
-        return self.combined_iterators(
+
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
             "photometry_catalog",
@@ -467,6 +463,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             "tomography",
             ["source_bin"],
         )
+
+        return rename_iterated(it, rename)
 
     def prepare_mappers(self, pixel_scheme):
         nbin_source, cal = self.get_calibrators()
