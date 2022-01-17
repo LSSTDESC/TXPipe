@@ -43,11 +43,9 @@ class ShearCatalog(HDFFile):
 
         if 'catalog_type' in self.file['shear'].attrs:
             t = self.file['shear'].attrs['catalog_type']
-            print('As attribute.')
         elif 'mcal_g1' in self.file['shear'].keys():
             t = 'metacal'
         elif '1p' in self.file['shear'].keys():
-            print('from 1p')
             t = 'metadetect'
         elif 'c1' in self.file['shear'].keys():
             t = 'lensfit'
@@ -58,7 +56,6 @@ class ShearCatalog(HDFFile):
         return t
 
     def get_size(self):
-        print('self.catalog_type', self.catalog_type)
         if self.catalog_type == 'metadetect':
             return self.file['shear/00/ra'].size
         else:
