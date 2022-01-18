@@ -23,7 +23,8 @@ python_paths:
 
 stages:
     - name: TXJackknifeCenters
-    - name: TXNoiseMaps
+    - name: TXSourceNoiseMaps
+    - name: TXLensNoiseMaps
     - name: TXSourceSelector
     - name: PZRailEstimateSource
     - name: PZRailEstimateLensFromSource

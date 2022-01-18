@@ -172,18 +172,8 @@ class TXSourceMaps(TXBaseMaps):
     def data_iterator(self):
 
         # can optionally read truth values
-        if self.config["true_shear"]:
-            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
-            rename = {"true_g1": "g1", "true_g2": "g2"}
-        elif self.config["shear_catalog_type"] == "metacal":
-            shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
-            rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
-        elif self.config["shear_catalog_type"] == "metadetect":
-            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
-            rename = {c: c[3:] for c in shear_cols}
-        else:
-            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
-            rename = {}
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
 
         # use utility function that combines data chunks
         # from different files. Reading from n file sections
@@ -428,20 +418,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # metacal, lensfit, etc.
         shear_catalog_type = read_shear_catalog_type(self)
 
-        # can optionally read truth values, or otherwise will look for
-        # lensfit or metacal col names
-        if self.config["true_shear"]:
-            shear_cols = ["true_g1", "true_g1", "ra", "dec", "weight"]
-            rename = {"true_g1": "g1", "true_g2": "g2"}
-        elif shear_catalog_type == "metacal":
-            shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
-            rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
-        elif shear_catalog_type == "metadetect":
-            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
-            rename = {c: c[3:] for c in shear_cols}
-        else:
-            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
-            rename = {}
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
 
 
         it = self.combined_iterators(

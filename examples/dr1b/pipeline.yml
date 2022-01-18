@@ -15,7 +15,8 @@ stages:
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
     - name: TXDensityMaps
-    - name: TXNoiseMaps
+    - name: TXSourceNoiseMaps
+    - name: TXLensNoiseMaps
     - name: TXSimpleMask
     - name: TXMapPlots
     - name: TXTracerMetadata

@@ -20,7 +20,9 @@ stages:
     # - name: PZRailEstimateLens # Compute p(z) values for the lens sample
     - name: TXPhotozSourceStack  # Stack p(z) into n(z)
     - name: TXPhotozLensStack    # Stack p(z) into n(z)
-    - name: TXMainMaps           # make source g1, g2 and lens n_gal maps
+    # - name: TXMainMaps
+    - name: TXSourceMaps           # make source g1 and g2 maps
+    - name: TXLensMaps           # make source lens and n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask

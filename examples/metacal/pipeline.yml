@@ -24,6 +24,8 @@ stages:
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXSourceNoiseMaps    # noise maps for sources using random rotations
+    - name: TXLensNoiseMaps      # noise maps for lenses using density splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
@@ -60,7 +62,6 @@ stages:
 
     # Disabling these as they takes too long for a quick test.
     # The latter three need NaMaster
-    # - name: TXNoiseMaps
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
     # - name: TXTwoPointFourier          # Compute power spectra C_ell
     # - name: TXFourierNamasterCovariance # Compute the C_ell covariance

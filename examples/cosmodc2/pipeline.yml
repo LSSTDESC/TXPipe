@@ -36,7 +36,11 @@ stages:
     - name: TXAuxiliaryLensMaps
       nprocess: 8
     - name: TXDensityMaps
-    - name: TXNoiseMaps
+    - name: TXSourceNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
+    - name: TXLensNoiseMaps
       nprocess: 4
       nodes: 1
       threads_per_process: 1
