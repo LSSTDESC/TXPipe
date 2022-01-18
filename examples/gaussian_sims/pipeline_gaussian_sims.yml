@@ -38,9 +38,9 @@ stages:
       threads_per_process: 1
       nodes: 1
     - name: TXAuxiliaryLensMaps
-      nprocess: 8
+      nprocess: 100
       threads_per_process: 1
-      nodes: 1
+      nodes: 4
     - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
