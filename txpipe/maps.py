@@ -189,7 +189,7 @@ class TXSourceMaps(TXBaseMaps):
             "tomography",  # data group within file to look at
             ["source_bin"],  # column(s) to read
         )
-        return rename_iterated(it, rename)
+        return rename_iterated(it, renames)
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
         mapper = mappers[0]
@@ -442,7 +442,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             ["source_bin"],
         )
 
-        return rename_iterated(it, rename)
+        return rename_iterated(it, renames)
 
     def prepare_mappers(self, pixel_scheme):
         nbin_source, cal = self.get_calibrators()
