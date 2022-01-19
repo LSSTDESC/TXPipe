@@ -101,7 +101,7 @@ class TXTwoPointFourier(PipelineStage):
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
 
-        # Load in the per-bin auto-correlation noise levels and 
+        # Load in the per-bin auto-correlation noise levels and
         # mean response values
         # Note - this is currently unused, because we are using the noise
         # maps instead of an analytic form, but that could change later
@@ -213,7 +213,7 @@ class TXTwoPointFourier(PipelineStage):
             lw[g1 == healpy.UNSEEN] = 0
             lw[g2 == healpy.UNSEEN] = 0
             lw[lw == healpy.UNSEEN] = 0
-            
+
         # When running on the CosmoDC2 mocks I've found I need to flip
         # both g1 and g2 in order to get both positive galaxy-galaxy lensing
         # and shear-shear spectra.
@@ -239,7 +239,7 @@ class TXTwoPointFourier(PipelineStage):
             for systmap in systmaps_path.iterdir():
                 try:
                     if systmap.is_file():
-                        if pathlib.Path(systmap).suffix != ".fits":
+                        if pathlib.Path(systmap).suffix not in [".fits", ".fits.gz"]:
                             print('Warning: Problem reading systematics map file', systmap, 'Not a HEALPix .fits file.')
                             warnings.warn("Systematics map file must be a HEALPix .fits file.")
                             print('Ignoring', systmap)
@@ -285,12 +285,12 @@ class TXTwoPointFourier(PipelineStage):
                 npix = healpy.nside2npix(nside)
                 # needed for NaMaster:
                 s_maps_nc = np.array(s_maps).reshape([n_systmaps, 1, npix])
-                
+
          # Load HEALPix systematics maps for shear deprojection
         deproject_syst_weaklensing = self.config['deproject_syst_weaklensing']
-        if deproject_syst_weaklensing:  
+        if deproject_syst_weaklensing:
             print('Deprojecting systematics maps for weak lensing')
-            s_maps_e1_names = [] # list of "_e1" maps that will be paired with "_e2" maps 
+            s_maps_e1_names = [] # list of "_e1" maps that will be paired with "_e2" maps
             s_maps_scalar_names = [] # lsit of scalar maps which do not come in pairs
             systmaps_weaklensing_dir = self.config['systmaps_weaklensing_dir']
             systmaps_path = pathlib.Path(systmaps_weaklensing_dir)
@@ -302,7 +302,7 @@ class TXTwoPointFourier(PipelineStage):
                         s_maps_e1_names.append(systmap_file)
                 else:
                     s_maps_scalar_names.append(systmap_file)
-          
+
             # load scalar maps
             n_systmaps = 0
             n_systmaps_scalar = 0
@@ -318,8 +318,8 @@ class TXTwoPointFourier(PipelineStage):
                         warnings.warn(f'Map from {systmap} is missing. Skipping...')
                 except:
                     print(f'A problem occurred while reading {systmap}. Skipping...')
-                    continue   
-                
+                    continue
+
                 self.config[f'weaklensing_scalar_deproject_{n_systmaps}'] = file # for provenance
                 # normalize map for Namaster
                 # set pixel values to value/mean - 1
@@ -328,14 +328,14 @@ class TXTwoPointFourier(PipelineStage):
                 print('Syst map: mean value = ', mean)
                 if mean != 0:
                     syst_map[syst_map_mask] = syst_map[syst_map_mask] / mean - 1
-                    syst_map[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster 
+                    syst_map[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster
 
                 s_maps_1.append(syst_map)
                 s_maps_2.append(syst_map)
                 n_systmaps_scalar += 1
-      
+
             print('Number of scalar systematics maps read: ', n_systmaps_scalar)
-                    
+
             # load _e1, _e2 maps
             n_systmaps = 0
             n_systmaps_e1 = 0
@@ -349,8 +349,8 @@ class TXTwoPointFourier(PipelineStage):
                         warnings.warn(f'Map from {systmap} is missing. Skipping...')
                 except:
                     print(f'A problem occurred while reading {systmap}. Skipping...')
-                    continue 
-                    
+                    continue
+
                 self.config[f'weaklensing_tensor_deproject_{n_systmaps}'] = file # for provenance
                 # normalize map for Namaster
                 # set pixel values to value/mean - 1
@@ -359,10 +359,10 @@ class TXTwoPointFourier(PipelineStage):
                 print('Syst map: mean value = ', mean)
                 if mean != 0:
                     syst_map_e1[syst_map_mask] = syst_map_e1[syst_map_mask] / mean - 1
-                    syst_map_e1[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster 
-                
+                    syst_map_e1[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster
+
                 n_systmaps += 1
-                
+
                 # get the matching _e2 map
                 file2 = file.replace("_e1", "_e2")
                 systmap = pathlib.Path(file2)
@@ -386,14 +386,14 @@ class TXTwoPointFourier(PipelineStage):
                 if mean != 0:
                     syst_map_e2[syst_map_mask] = syst_map_e2[syst_map_mask] / mean - 1
                     syst_map_e2[~syst_map_mask] = 0 # sets masked pixels to zero for NaMaster
-                
+
                 s_maps_1.append(syst_map_e1)
                 s_maps_2.append(syst_map_e2)
-                n_systmaps += 1 
+                n_systmaps += 1
                 n_systmaps_e1 += 1
 
             print('Number of tensor systematics map pairs read: ', n_systmaps_e1)
-            
+
             if (n_systmaps_scalar == 0 and n_systmaps_e1 == 0):
                 print('No systematics maps found. Skipping wl deprojection.')
                 deproject_syst_weaklensing = False
@@ -402,14 +402,14 @@ class TXTwoPointFourier(PipelineStage):
                 # We assume all systematics maps have the same nside
                 nside = healpy.pixelfunc.get_nside(syst_map)
                 npix = healpy.nside2npix(nside)
-                
+
                 # needed for NaMaster:
                 s_maps_new = np.array(s_maps_1).reshape([n_systmaps_scalar + n_systmaps_e1, 1, npix])
                 s_maps_wl = np.repeat(s_maps_new, 2, axis=1)
                 s_maps_wl[:, 1, :] = s_maps_2
-            
+
         if (not (deproject_syst_clustering or deproject_syst_weaklensing)):
-            print("Not using systematics maps for deprojection in NaMaster")    
+            print("Not using systematics maps for deprojection in NaMaster")
 
         if deproject_syst_clustering:
             density_fields = [(nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0))
@@ -417,14 +417,14 @@ class TXTwoPointFourier(PipelineStage):
         else:
             density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
                               for d in d_maps]
-            
+
         if deproject_syst_weaklensing:
             lensing_fields = [(nmt.NmtField(lw, [g1, g2], templates=s_maps_wl, n_iter=0))
                               for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
         else:
             lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
-                              for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]  
-     
+                              for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
+
 
         # Collect together all the maps we will output
         maps = {
@@ -503,7 +503,7 @@ class TXTwoPointFourier(PipelineStage):
                           for lw, lf in zip(lensing_weights, lensing_fields)]
 
         # The density fields share a mask, so just use the field
-        # object for the first one.  
+        # object for the first one.
         density_field = (density_weight, density_fields[0])
 
         spaces = {}
@@ -646,7 +646,7 @@ class TXTwoPointFourier(PipelineStage):
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
         CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
-       
+
         type_name = NAMES[k]
         print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
         sys.stdout.flush()
@@ -687,12 +687,12 @@ class TXTwoPointFourier(PipelineStage):
         # Run the master algorithm
         c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        
+
         if cl_noise is None:
             noise_out = np.zeros(len(ls))
         else:
             noise_out = workspace.decouple_cell(workspace.couple_cell(cl_noise))[0]
-        
+
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
             x=ell*r_theta
@@ -701,18 +701,18 @@ class TXTwoPointFourier(PipelineStage):
             return np.exp(-y**2/2)
 
         c_beam = c/(window_pixel(ls, self.config['nside']))**2
-        
+
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c_beam[index], noise_out, win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
-        
+
         if self.config['true_shear']:
             # if using true shear (i.e. no shape noise) we do not need to add any noise
             return None
-        
+
         import pymaster as nmt
         import healpy
 
@@ -953,10 +953,10 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         filename = self.get_input('summary_statistics_fourier')
         s = sacc.Sacc.load_fits(filename)
-        nbin_source, nbin_lens = self.read_nbin(s)  
- 
+        nbin_source, nbin_lens = self.read_nbin(s)
+
         filename_theory = self.get_input('twopoint_theory_fourier')
-        
+
         outputs = {
             "galaxy_density_cl": self.open_output('density_cl',
                 figsize=(3.5*nbin_lens, 3*nbin_lens), wrapper=True),
@@ -983,16 +983,16 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures, 
+        full_3x2pt_plots([filename], ['summary_statistics_fourier'], figures=figures,
                          theory_sacc_files=[filename_theory], theory_labels=['Fiducial'],
                          xi=False, xlogscale=True, ratios=True)
 
-        
+
         for fig in outputs.values():
             fig.close()
 
 
-        
+
 
 if __name__ == '__main__':
     PipelineStage.main()
