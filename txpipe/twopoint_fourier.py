@@ -690,6 +690,7 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
         if cl_noise is None:
+            cl_noise = np.zeros((c.shape[0], 3*self.config['nside']))
             noise_out = np.zeros_like(c)
         else:
             noise_out = workspace.decouple_cell(cl_noise)[0]
