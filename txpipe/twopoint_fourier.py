@@ -693,7 +693,7 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise = np.zeros((c.shape[0], 3*self.config['nside']))
             noise_out = np.zeros_like(c)
         else:
-            noise_out = workspace.decouple_cell(cl_noise)[0]
+            noise_out = workspace.decouple_cell(cl_noise)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
