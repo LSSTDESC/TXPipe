@@ -21,7 +21,7 @@ NAMES = {SHEAR_SHEAR:"shear-shear", SHEAR_POS:"shear-position", POS_POS:"positio
 
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'l', 'value', 'noise', 'win', 'i', 'j'])
+    ['corr_type', 'l', 'value', 'noise', 'noise_cp', 'win', 'i', 'j'])
 
 class TXTwoPointFourier(PipelineStage):
     """This Pipeline Stage computes all auto- and cross-correlations
@@ -643,6 +643,7 @@ class TXTwoPointFourier(PipelineStage):
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CEB=sacc.standard_types.galaxy_shear_cl_eb
+        CBE=sacc.standard_types.galaxy_shear_cl_be
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
         CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
@@ -665,7 +666,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             field_i = maps['lf'][i]
             field_j = maps['lf'][j]
-            results_to_use = [(0, CEE, ), (1, CEB, ), (3, CBB, )]
+            results_to_use = [(0, CEE, ), (1, CEB, ), (2, CBE, ), (3, CBB, )]
 
         elif k == POS_POS:
             field_i = maps['df'][i]
@@ -689,9 +690,9 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
         if cl_noise is None:
-            noise_out = np.zeros(len(ls))
+            noise_out = np.zeros_like(c)
         else:
-            noise_out = workspace.decouple_cell(workspace.couple_cell(cl_noise))[0]
+            noise_out = workspace.decouple_cell(cl_noise)[0]
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
@@ -702,9 +703,11 @@ class TXTwoPointFourier(PipelineStage):
 
         c_beam = c/(window_pixel(ls, self.config['nside']))**2
 
-        # Save all the results, skipping things we don't want like EB modes
+        # Save all the results.
         for index, name in results_to_use:
-            self.results.append(Measurement(name, ls, c_beam[index], noise_out, win, i, j))
+            self.results.append(Measurement(name, ls, c_beam[index],
+                                            noise_out[index], cl_noise[index],
+                                            win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
@@ -782,8 +785,9 @@ class TXTwoPointFourier(PipelineStage):
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map)*pxarea
             n_ell = np.zeros((4, 3*nside))
-            n_ell[0, :] = n_ls
-            n_ell[3, :] = n_ls
+            # Note that N_ell = 0 for ell = 1, 2 for shear
+            n_ell[0, 2:] = n_ls
+            n_ell[3, 2:] = n_ls
             return n_ell
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
@@ -856,6 +860,7 @@ class TXTwoPointFourier(PipelineStage):
         CEE=sacc.standard_types.galaxy_shear_cl_ee
         CBB=sacc.standard_types.galaxy_shear_cl_bb
         CEB=sacc.standard_types.galaxy_shear_cl_eb
+        CBE=sacc.standard_types.galaxy_shear_cl_be
         CdE=sacc.standard_types.galaxy_shearDensity_cl_e
         CdB=sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd=sacc.standard_types.galaxy_density_cl
@@ -869,8 +874,8 @@ class TXTwoPointFourier(PipelineStage):
         # bin pair and spectrum type, but many data points at different angles.
         # Here we pull them all out to add to sacc
         for d in self.results:
-            tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CEB, CdE, CdB] else f'lens_{d.i}'
-            tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CEB, CBB] else f'lens_{d.j}'
+            tracer1 = f'source_{d.i}' if d.corr_type in [CEE, CBB, CEB, CBE, CdE, CdB] else f'lens_{d.i}'
+            tracer2 = f'source_{d.j}' if d.corr_type in [CEE, CEB, CBE, CBB] else f'lens_{d.j}'
 
             n = len(d.l)
             for i in range(n):
@@ -879,7 +884,8 @@ class TXTwoPointFourier(PipelineStage):
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
-                    ell=d.l[i], window=win, i=d.i, j=d.j, nl=d.noise[i])
+                    ell=d.l[i], window=win, i=d.i, j=d.j, nl=d.noise[i],
+                                 nl_cp=d.noise_cp[i])
 
         # Save provenance information
         provenance = self.gather_provenance()
