@@ -679,9 +679,9 @@ class TXFourierTJPCovariance(PipelineStage):
         for tr in cl_sacc.tracers.keys():
             # TODO: This could be made more general
             if 'source' in tr:
-                dtype = sacc.standard_types.galaxy_density_cl
-            elif 'lens' in tr:
                 dtype = sacc.standard_types.galaxy_shear_cl_ee
+            elif 'lens' in tr:
+                dtype = sacc.standard_types.galaxy_density_cl
             else:
                 raise ValueError('dtype could not be identified for tracer ' +
                                  f'{tr}')
