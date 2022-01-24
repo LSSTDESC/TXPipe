@@ -5,6 +5,7 @@ import numpy as np
 import warnings
 import os
 import pickle
+import sacc
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
@@ -658,7 +659,9 @@ class TXFourierTJPCovariance(PipelineStage):
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
-        covmat = calculator.get_all_cov_nmt(cache=cache)
+        tracer_nlcp= self.get_tracer_noise_from_sacc(cl_sacc)
+        covmat = calculator.get_all_cov_nmt(cache=cache,
+                                            tracer_noise_coupled=tracer_nlcp)
 
         # Write the sacc file with the covariance
         if self.rank == 0:
@@ -666,6 +669,30 @@ class TXFourierTJPCovariance(PipelineStage):
             output_filename = self.get_output('summary_statistics_fourier')
             cl_sacc.save_fits(output_filename, overwrite=True)
             print("Saved power spectra with its Gaussian covariance")
+
+    def get_tracer_noise_from_sacc(self, cl_sacc):
+        # This could be done inside TJPCov:
+        # https://github.com/LSSTDESC/TJPCov/issues/31
+        tags = cl_sacc.data[0].tags
+
+        tracer_noise = {}
+        for tr in cl_sacc.tracers.keys():
+            # TODO: This could be made more general
+            if 'source' in tr:
+                dtype = sacc.standard_types.galaxy_shear_cl_ee
+            elif 'lens' in tr:
+                dtype = sacc.standard_types.galaxy_density_cl
+            else:
+                raise ValueError('dtype could not be identified for tracer ' +
+                                 f'{tr}')
+            nl = cl_sacc.get_tag('nl_cp', data_type=dtype, tracers=(tr, tr))
+
+            # TJPCov assumes a white coupled noise and requires a float or int
+            # to be passed. Use the last entry element since nl = 0 for ell=1,2
+            # in the case of shear
+            tracer_noise[tr] = nl[-1]
+
+        return tracer_noise
 
     def get_workspaces_dict(self, cl_sacc, masks_names):
         # Based on txpipe/twopoint_fourier.py
@@ -717,13 +744,22 @@ class TXFourierTJPCovariance(PipelineStage):
         # TODO: Move this to txpipe/utils/nmt_utils.py
         from .utils.nmt_utils import MyNmtBin
 
-        ell_min = cl_sacc.metadata['binning/ell_min']
-        ell_max = cl_sacc.metadata['binning/ell_max']
-        ell_spacing = cl_sacc.metadata['binning/ell_spacing']
-        n_ell = cl_sacc.metadata['binning/n_ell']
+        if 'binning/ell_edges' in cl_sacc.metadata:
+            s = cl_sacc.metadata['binning/ell_edges'].strip('[]')
+            s=s.replace(' ', '')
+            s=s.split(',')
+            ell_edges = [int(i) for i in s]
+            print(ell_edges)
+            ell_bins = MyNmtBin.from_edges(ell_edges[:-1], ell_edges[1:],
+                                           is_Dell=False)
+        else:
+            ell_min = cl_sacc.metadata['binning/ell_min']
+            ell_max = cl_sacc.metadata['binning/ell_max']
+            ell_spacing = cl_sacc.metadata['binning/ell_spacing']
+            n_ell = cl_sacc.metadata['binning/n_ell']
 
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
-                                              ell_spacing)
+            ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
+                                                  ell_spacing)
 
         # Check that the binning is compatible with the one in the file
         dtype = cl_sacc.get_data_types()[0]
