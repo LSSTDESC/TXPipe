@@ -70,7 +70,7 @@ class TXTwoPointFourier(PipelineStage):
         "ell_spacing": 'log',
         "true_shear": False,
         "analytic_noise": True,
-        "ell_edges": [float],
+        "ell_edges": [int],  # NaMaster needs ints
     }
 
     def run(self):
@@ -591,12 +591,17 @@ class TXTwoPointFourier(PipelineStage):
         # Can feed these back upstream if useful.
 
         # Creating the ell binning from the edges using this Namaster constructor.
-        ell_min = self.config['ell_min']
-        ell_max = self.config['ell_max']
-        n_ell = self.config['n_ell']
-        ell_spacing = self.config['ell_spacing']
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
-                                              ell_spacing)
+        ell_edges = self.config['ell_edges']
+        if len(ell_edges) >= 2.:
+            ell_bins = MyNmtBin.from_edges(ell_edges[:-1], ell_edges[1:],
+                                           is_Dell=False)
+        else:
+            ell_min = self.config['ell_min']
+            ell_max = self.config['ell_max']
+            n_ell = self.config['n_ell']
+            ell_spacing = self.config['ell_spacing']
+            ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
+                                                  ell_spacing)
         return ell_bins
 
 
@@ -908,10 +913,14 @@ class TXTwoPointFourier(PipelineStage):
 
         # Adding binning information to pass later to TJPCov. I shouldn't be
         # necessary, but it is at the moment.
-        S.metadata['binning/ell_min'] = self.config['ell_min']
-        S.metadata['binning/ell_max'] = self.config['ell_max']
-        S.metadata['binning/ell_spacing'] = self.config['ell_spacing']
-        S.metadata['binning/n_ell'] = self.config['n_ell']
+        ell_edges = self.config['ell_edges']
+        if len(ell_edges) >= 2.:
+            S.metadata['binning/ell_edges'] = str(ell_edges)
+        else:
+            S.metadata['binning/ell_min'] = self.config['ell_min']
+            S.metadata['binning/ell_max'] = self.config['ell_max']
+            S.metadata['binning/ell_spacing'] = self.config['ell_spacing']
+            S.metadata['binning/n_ell'] = self.config['n_ell']
 
         # And we're all done!
         output_filename = self.get_output("twopoint_data_fourier")
