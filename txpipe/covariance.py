@@ -658,7 +658,9 @@ class TXFourierTJPCovariance(PipelineStage):
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
-        covmat = calculator.get_all_cov_nmt(cache=cache)
+        tracer_nlcp = self.get_tracer_noise_from_sacc(cl_sacc)
+        covmat = calculator.get_all_cov_nmt(cache=cache,
+                                            tracer_noise_coupled=tracer_nlcp)
 
         # Write the sacc file with the covariance
         if self.rank == 0:
@@ -666,6 +668,17 @@ class TXFourierTJPCovariance(PipelineStage):
             output_filename = self.get_output('summary_statistics_fourier')
             cl_sacc.save_fits(output_filename, overwrite=True)
             print("Saved power spectra with its Gaussian covariance")
+
+    def get_tracer_noise_from_sacc(self, cl_sacc):
+        # This could be done inside TJPCov:
+        # https://github.com/LSSTDESC/TJPCov/issues/31
+
+        tracer_noise = {}
+        for trn, tr in cl_sacc.tracers.items():
+            if 'nl_cp' in tr.metadata:
+                tracer_noise[trn] = tr.metadata['nl_cp']
+
+        return tracer_noise
 
     def get_workspaces_dict(self, cl_sacc, masks_names):
         # Based on txpipe/twopoint_fourier.py
