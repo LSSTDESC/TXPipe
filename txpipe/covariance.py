@@ -673,24 +673,11 @@ class TXFourierTJPCovariance(PipelineStage):
     def get_tracer_noise_from_sacc(self, cl_sacc):
         # This could be done inside TJPCov:
         # https://github.com/LSSTDESC/TJPCov/issues/31
-        tags = cl_sacc.data[0].tags
 
         tracer_noise = {}
-        for tr in cl_sacc.tracers.keys():
-            # TODO: This could be made more general
-            if 'source' in tr:
-                dtype = sacc.standard_types.galaxy_shear_cl_ee
-            elif 'lens' in tr:
-                dtype = sacc.standard_types.galaxy_density_cl
-            else:
-                raise ValueError('dtype could not be identified for tracer ' +
-                                 f'{tr}')
-            nl = cl_sacc.get_tag('nl_cp', data_type=dtype, tracers=(tr, tr))
-
-            # TJPCov assumes a white coupled noise and requires a float or int
-            # to be passed. Use the last entry element since nl = 0 for ell=1,2
-            # in the case of shear
-            tracer_noise[tr] = nl[-1]
+        for trn, tr in cl_sacc.tracers.items():
+            if 'nl_cp' in tr.metadata:
+                tracer_noise[trn] = tr.metadata['nl_cp']
 
         return tracer_noise
 

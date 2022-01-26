@@ -901,8 +901,14 @@ class TXTwoPointFourier(PipelineStage):
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
-                    ell=d.l[i], window=win, i=d.i, j=d.j, nl=d.noise[i],
-                                 nl_cp=d.noise_cp[i])
+                    ell=d.l[i], window=win, i=d.i, j=d.j, nl=d.noise[i])
+
+            # Add nl_cp to tracer metadata. This will work as far as the
+            # coupled noise is constant
+            tr = S.tracers[tracer1]
+            if (tracer1 == tracer2) and ('nl_cp' not in tr.metadata):
+                # Save the last element because the first one is zero for shear
+                tr.metadata['nl_cp'] = d.noise_cp[-1]
 
         # Save provenance information
         provenance = self.gather_provenance()
