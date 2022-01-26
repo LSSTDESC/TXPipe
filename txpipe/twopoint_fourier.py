@@ -556,11 +556,9 @@ class TXTwoPointFourier(PipelineStage):
             if nl is not None:
                 c = c - nl
             # Writing out the noise for later cross-checks
-
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
-            nl_cp = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-            nl = workspace.decouple_cell(nl_cp)
+            nl, nl_cp = self.compute_noise(i, j, k, ell_bins, maps, workspace)
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
                                         cl_noise=nl_cp, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
@@ -640,7 +638,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             mean_noise /= 4
 
-        return mean_noise
+        return workspace.decouple_cell(mean_noise), mean_noise
 
 
     def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
