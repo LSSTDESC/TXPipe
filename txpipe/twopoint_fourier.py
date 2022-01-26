@@ -687,7 +687,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Get the coupled noise C_ell values to give to the master algorithm
         if self.config['analytic_noise']==False:
-            nl_cp = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            nl, nl_cp = self.compute_noise(i, j, k, ell_bins, maps, workspace)
             # compute_full_master assumes noise from realizations (coupled)
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
             cl_noise=nl_cp, cl_guess=cl_guess, workspace=workspace, n_iter=1)
@@ -736,7 +736,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
-            return None
+            return None, None
 
 
         if k == SHEAR_SHEAR:
@@ -781,7 +781,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             mean_noise /= 4
 
-        return mean_noise
+        return workspace.decouple_cell(mean_noise), mean_noise
 
     def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
         import pymaster
@@ -907,8 +907,15 @@ class TXTwoPointFourier(PipelineStage):
             # coupled noise is constant
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ('nl_cp' not in tr.metadata):
-                # Save the last element because the first one is zero for shear
-                tr.metadata['nl_cp'] = d.noise_cp[-1]
+                if self.config['analytic_noise'] is False:
+                    # If computed through simulations, it might be better to
+                    # take the mean since, for now, only a float can be passed
+                    i = 0 if 'source' in tracer1 else 2
+                    tr.metadata['nl_cp'] = np.mean(d.noise_cp[i:])
+                else:
+                    # Save the last element because the first one is zero for
+                    # shear
+                    tr.metadata['nl_cp'] = d.noise_cp[-1]
 
         # Save provenance information
         provenance = self.gather_provenance()
