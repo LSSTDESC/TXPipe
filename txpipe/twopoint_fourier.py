@@ -593,7 +593,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
-            return None
+            return None, None
 
 
         if k == SHEAR_SHEAR:
