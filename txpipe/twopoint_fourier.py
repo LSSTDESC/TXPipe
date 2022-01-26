@@ -765,6 +765,7 @@ class TXTwoPointFourier(PipelineStage):
                 if self.config['analytic_noise'] is False:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
+                    i = 0 if 'lens' in tracer1 else 2
                     tr.metadata['nl_cp'] = np.mean(d.noise_cp)
                 else:
                     # Save the last element because the first one is zero for
