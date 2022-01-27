@@ -21,7 +21,7 @@ NAMES = {SHEAR_SHEAR:"shear-shear", SHEAR_POS:"shear-position", POS_POS:"positio
 
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'l', 'value', 'win', 'i', 'j'])
+    ['corr_type', 'l', 'value', 'noise', 'noise_coupled', 'win', 'i', 'j'])
 
 class TXTwoPointFourier(PipelineStage):
     """This Pipeline Stage computes all auto- and cross-correlations
@@ -552,16 +552,19 @@ class TXTwoPointFourier(PipelineStage):
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
                                         cl_guess=cl_guess, workspace=workspace, n_iter=1)
             # noise to subtract (already decoupled)
-            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
-            if cl_noise is not None:
-                c = c - cl_noise
+            n_ell, n_ell_coupled = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
+            if n_ell is not None:
+                c = c - n_ell
             # Writing out the noise for later cross-checks
-            
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
-            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            n_ell, n_ell_coupled = self.compute_noise(i, j, k, ell_bins, maps, workspace)
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                        cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+                                        cl_noise=n_ell_coupled, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+
+        if n_ell is None:
+            n_ell_coupled = np.zeros((c.shape[0], 3*self.config['nside']))
+            n_ell = np.zeros_like(c)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
@@ -574,7 +577,9 @@ class TXTwoPointFourier(PipelineStage):
 
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
-            self.results.append(Measurement(name, ls, c_beam[index], win, i, j))
+            self.results.append(Measurement(name, ls, c_beam[index],
+                                            n_ell[index], n_ell_coupled[index],
+                                            win, i, j))
 
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
@@ -588,7 +593,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # No noise contribution in cross-correlations
         if (i!=j) or (k==SHEAR_POS):
-            return None
+            return None, None
 
 
         if k == SHEAR_SHEAR:
@@ -633,15 +638,15 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             mean_noise /= 4
 
-        return mean_noise
+        return workspace.decouple_cell(mean_noise), mean_noise
 
-    
+
     def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
         # Copied from the HSC branch
         import pymaster
         import healpy as hp
         if (i != j) or (k == SHEAR_POS):
-            return None
+            return None, None
         # This bit only works with healpix maps but it's checked beforehand so that's fine
         if k == SHEAR_SHEAR:
             with self.open_input('source_maps', wrapper=True) as f:
@@ -650,19 +655,22 @@ class TXTwoPointFourier(PipelineStage):
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map)*pxarea
-            n_ells = np.array([n_ls*np.ones(3*nside), np.zeros(3*nside), np.zeros(3*nside), n_ls*np.ones(3*nside)])
-            cls_out = workspace.decouple_cell(workspace.couple_cell(n_ells))
-            return cls_out
+            n_ell_coupled = np.zeros((4, 3*nside))
+            # Note that N_ell = 0 for ell = 1, 2 for shear
+            n_ell_coupled[0, 2:] = n_ls
+            n_ell_coupled[3, 2:] = n_ls
 
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
             ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
-            n_ell = np.mean(maps['dw'][maps['dw']>0])/ndens #taking the averages in the mask region for consistency
-            n_ell = [n_ell*np.ones(3*nside)]
-            cls_out = workspace.decouple_cell(workspace.couple_cell(n_ell))
-            return cls_out
-        
+            n_ls = np.mean(maps['dw'][maps['dw']>0])/ndens #taking the averages in the mask region for consistency
+            n_ell_coupled = n_ls * np.ones((1, 3*nside))
+
+        n_ell = workspace.decouple_cell(n_ell_coupled)
+
+        return n_ell, n_ell_coupled
+
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
         # Get lots of bits of metadata from the input file,
@@ -748,7 +756,21 @@ class TXTwoPointFourier(PipelineStage):
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
-                    ell=d.l[i], window=win, i=d.i, j=d.j)
+                    ell=d.l[i], window=win, i=d.i, j=d.j, n_ell=d.noise[i])
+
+            # Add n_ell_coupled to tracer metadata. This will work as far as
+            # the coupled noise is constant
+            tr = S.tracers[tracer1]
+            if (tracer1 == tracer2) and ('n_ell_coupled' not in tr.metadata):
+                if self.config['analytic_noise'] is False:
+                    # If computed through simulations, it might be better to
+                    # take the mean since, for now, only a float can be passed
+                    i = 0 if 'lens' in tracer1 else 2
+                    tr.metadata['n_ell_coupled'] = np.mean(d.noise_coupled)
+                else:
+                    # Save the last element because the first one is zero for
+                    # shear
+                    tr.metadata['n_ell_coupled'] = d.noise_coupled[-1]
 
         # Save provenance information
         provenance = self.gather_provenance()
