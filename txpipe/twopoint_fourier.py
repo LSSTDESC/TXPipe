@@ -21,7 +21,7 @@ NAMES = {SHEAR_SHEAR:"shear-shear", SHEAR_POS:"shear-position", POS_POS:"positio
 
 Measurement = collections.namedtuple(
     'Measurement',
-    ['corr_type', 'l', 'value', 'noise', 'noise_cp', 'win', 'i', 'j'])
+    ['corr_type', 'l', 'value', 'noise', 'noise_coupled', 'win', 'i', 'j'])
 
 class TXTwoPointFourier(PipelineStage):
     """This Pipeline Stage computes all auto- and cross-correlations
@@ -552,19 +552,19 @@ class TXTwoPointFourier(PipelineStage):
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
                                         cl_guess=cl_guess, workspace=workspace, n_iter=1)
             # noise to subtract (already decoupled)
-            nl, nl_cp = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
-            if nl is not None:
-                c = c - nl
+            n_ell, n_ell_coupled = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
+            if n_ell is not None:
+                c = c - n_ell
             # Writing out the noise for later cross-checks
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
-            nl, nl_cp = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            n_ell, n_ell_coupled = self.compute_noise(i, j, k, ell_bins, maps, workspace)
             c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                        cl_noise=nl_cp, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+                                        cl_noise=n_ell_coupled, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
-        if nl is None:
-            nl_cp = np.zeros((c.shape[0], 3*self.config['nside']))
-            nl = np.zeros_like(c)
+        if n_ell is None:
+            n_ell_coupled = np.zeros((c.shape[0], 3*self.config['nside']))
+            n_ell = np.zeros_like(c)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
@@ -578,7 +578,7 @@ class TXTwoPointFourier(PipelineStage):
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(Measurement(name, ls, c_beam[index],
-                                            nl[index], nl_cp[index],
+                                            n_ell[index], n_ell_coupled[index],
                                             win, i, j))
 
 
@@ -655,21 +655,21 @@ class TXTwoPointFourier(PipelineStage):
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map)*pxarea
-            nl_cp = np.zeros((4, 3*nside))
+            n_ell_coupled = np.zeros((4, 3*nside))
             # Note that N_ell = 0 for ell = 1, 2 for shear
-            nl_cp[0, 2:] = n_ls
-            nl_cp[3, 2:] = n_ls
+            n_ell_coupled[0, 2:] = n_ls
+            n_ell_coupled[3, 2:] = n_ls
 
         if k == POS_POS:
             metadata = self.open_input('tracer_metadata')
             nside = hp.get_nside(maps['dw'])
             ndens = metadata['tracers/lens_density'][i]*3600*180/np.pi*180/np.pi
             n_ls = np.mean(maps['dw'][maps['dw']>0])/ndens #taking the averages in the mask region for consistency
-            nl_cp = n_ls * np.ones((1, 3*nside))
+            n_ell_coupled = n_ls * np.ones((1, 3*nside))
 
-        nl = workspace.decouple_cell(nl_cp)
+        n_ell = workspace.decouple_cell(n_ell_coupled)
 
-        return nl, nl_cp
+        return n_ell, n_ell_coupled
 
 
     def load_tomographic_quantities(self, nbin_source, nbin_lens, f_sky):
@@ -756,21 +756,21 @@ class TXTwoPointFourier(PipelineStage):
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
                 S.add_data_point(d.corr_type, (tracer1, tracer2), d.value[i],
-                    ell=d.l[i], window=win, i=d.i, j=d.j, nl=d.noise[i])
+                    ell=d.l[i], window=win, i=d.i, j=d.j, n_ell=d.noise[i])
 
-            # Add nl_cp to tracer metadata. This will work as far as the
-            # coupled noise is constant
+            # Add n_ell_coupled to tracer metadata. This will work as far as
+            # the coupled noise is constant
             tr = S.tracers[tracer1]
-            if (tracer1 == tracer2) and ('nl_cp' not in tr.metadata):
+            if (tracer1 == tracer2) and ('n_ell_coupled' not in tr.metadata):
                 if self.config['analytic_noise'] is False:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
                     i = 0 if 'lens' in tracer1 else 2
-                    tr.metadata['nl_cp'] = np.mean(d.noise_cp)
+                    tr.metadata['n_ell_coupled'] = np.mean(d.noise_coupled)
                 else:
                     # Save the last element because the first one is zero for
                     # shear
-                    tr.metadata['nl_cp'] = d.noise_cp[-1]
+                    tr.metadata['n_ell_coupled'] = d.noise_coupled[-1]
 
         # Save provenance information
         provenance = self.gather_provenance()

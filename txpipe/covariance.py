@@ -658,9 +658,9 @@ class TXFourierTJPCovariance(PipelineStage):
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
-        tracer_nlcp = self.get_tracer_noise_from_sacc(cl_sacc)
+        tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
         covmat = calculator.get_all_cov_nmt(cache=cache,
-                                            tracer_noise_coupled=tracer_nlcp)
+                                            tracer_noise_coupled=tracer_noise_coupled)
 
         # Write the sacc file with the covariance
         if self.rank == 0:
@@ -675,8 +675,12 @@ class TXFourierTJPCovariance(PipelineStage):
 
         tracer_noise = {}
         for trn, tr in cl_sacc.tracers.items():
-            if 'nl_cp' in tr.metadata:
-                tracer_noise[trn] = tr.metadata['nl_cp']
+            if 'n_ell_coupled' in tr.metadata:
+                tracer_noise[trn] = tr.metadata['n_ell_coupled']
+            else:
+                warnings.warn('Missing n_ell_coupled metadata for tracer ' +
+                              f'{trn}. TJPCov will compute it internally. ' +
+                              'Check the consistency.')
 
         return tracer_noise
 
