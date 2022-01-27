@@ -678,9 +678,9 @@ class TXFourierTJPCovariance(PipelineStage):
             if 'n_ell_coupled' in tr.metadata:
                 tracer_noise[trn] = tr.metadata['n_ell_coupled']
             else:
-                warnings.warn('Missing n_ell_coupled metadata for tracer ' +
-                              f'{trn}. TJPCov will compute it internally. ' +
-                              'Check the consistency.')
+                raise KeyError('Missing n_ell_coupled metadata for tracer ' +
+                              f'{trn}. Something is wrong with the input ' +
+                               'sacc file')
 
         return tracer_noise
 
