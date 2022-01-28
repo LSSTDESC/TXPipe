@@ -131,9 +131,9 @@ class TXSourceNoiseMaps(TXBaseMaps):
 
         # Sum everything at root
         if self.comm is not None:
-            mpi_reduce_large(G1, self.comm)
-            mpi_reduce_large(G2, self.comm)
-            mpi_reduce_large(GW, self.comm)
+            mpi_reduce_large(G1, self.comm, max_chunk_count=2**26) # fiducial is 2**30
+            mpi_reduce_large(G2, self.comm, max_chunk_count=2**26)
+            mpi_reduce_large(GW, self.comm, max_chunk_count=2**26)
             if self.rank != 0:
                 del G1, G2, GW
 

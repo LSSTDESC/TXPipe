@@ -28,7 +28,7 @@ class TXMapPlots(PipelineStage):
         ("bright_object_map", PNGFile),
     ]
     config_options = {
-        # can also set Moll
+        # can also set moll
         "projection": "cart",
     }
 
