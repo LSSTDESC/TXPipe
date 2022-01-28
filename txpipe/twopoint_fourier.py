@@ -82,7 +82,6 @@ class TXTwoPointFourier(PipelineStage):
 
         self.setup_results()
 
-
         # Generate namaster fields
         pixel_scheme, maps, f_sky = self.load_maps()
         if self.rank==0:
@@ -91,6 +90,18 @@ class TXTwoPointFourier(PipelineStage):
         nbin_source = len(maps['g'])
         nbin_lens = len(maps['d'])
 
+        # Do this at the beggining since its fast and sometimes crashes.
+        # It is best to avoid loosing running time later.
+        # Load the n(z) values, which are both saved in the output
+        # file alongside the spectra, and then used to calcualate the
+        # fiducial theory C_ell, which is used in the deprojection calculation
+        tracers = self.load_tracers(nbin_source, nbin_lens)
+        theory_cl = theory_3x2pt(
+            self.get_input('fiducial_cosmology'),
+            tracers,
+            nbin_source, nbin_lens,
+            fourier=True)
+        
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
@@ -112,15 +123,6 @@ class TXTwoPointFourier(PipelineStage):
         self.hash_metadata = None  # Filled in make_workspaces
         workspaces = self.make_workspaces(maps, calcs, ell_bins)
 
-        # Load the n(z) values, which are both saved in the output
-        # file alongside the spectra, and then used to calcualate the
-        # fiducial theory C_ell, which is used in the deprojection calculation
-        tracers = self.load_tracers(nbin_source, nbin_lens)
-        theory_cl = theory_3x2pt(
-            self.get_input('fiducial_cosmology'),
-            tracers,
-            nbin_source, nbin_lens,
-            fourier=True)
 
         # If we are rank zero print out some info
         if self.rank==0:
@@ -547,21 +549,25 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspaces[(i,j,k)]
 
-        if self.config['analytic_noise']:
-            # we are going to subtract the noise afterwards
-            c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                        cl_guess=cl_guess, workspace=workspace, n_iter=1)
-            # noise to subtract (already decoupled)
-            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
-            if cl_noise is not None:
-                c = c - cl_noise
-            # Writing out the noise for later cross-checks
+        #if self.config['analytic_noise']:
+        #    # we are going to subtract the noise afterwards
+        c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                    cl_guess=cl_guess, workspace=workspace, n_iter=1)
+        #    # noise to subtract (already decoupled)
+        cl_noise_analytic = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
+        #    if cl_noise is not None:
+        #        c = c - cl_noise
+        # Writing out the noise for later cross-checks
+        if k == POS_POS and i==j:
+            np.save('cl_noise_analytic_%d%d'%(i, j), cl_noise_analytic)
             
-        else:
-            # Get the coupled noise C_ell values to give to the master algorithm
-            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-            c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                        cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+        #else:
+        # Get the coupled noise C_ell values to give to the master algorithm
+        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+        c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                    cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
+        if k == POS_POS	and i==j:
+            np.save('cl_noise_maps_%d%d'%(i, j), cl_noise)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)
