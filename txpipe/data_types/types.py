@@ -192,6 +192,8 @@ class MapsFile(HDFFile):
         metadata: mapping
             Dict or other mapping of metadata to store along with the map
         """
+        if not 'maps' in self.file:
+            self.file.create_group("maps")
         if not 'pixelization' in metadata:
             raise ValueError("Map metadata should include pixelization")
         if not pixel.shape == value.shape:
