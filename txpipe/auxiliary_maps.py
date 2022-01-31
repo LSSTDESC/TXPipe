@@ -273,3 +273,30 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
 
 
         return maps
+
+
+class TXUniformDepthMap(PipelineStage):
+    name = "TXUniformDepthMap"
+    # make a mask from the auxiliary maps
+    inputs = [("mask", MapsFile)]
+    outputs = [("aux_lens_maps", MapsFile)]
+    config_options = {
+        "depth": 25.0,
+    }
+
+    def run(self):
+        import healpy
+
+        with self.open_input("mask", wrapper=True) as f:
+            metadata = dict(f.file["maps"].attrs)
+            mask = f.read_map("mask")
+
+        # Make a fake depth map
+        pix = mask > 0
+        depth = mask.copy()
+        depth[pix] = self.config['depth']  #e.g. 25 everywhere
+
+        with self.open_output("aux_lens_maps", wrapper=True) as f:
+            f.file.create_group("depth")
+            f.write_map("depth/depth", pix, depth[pix], metadata)
+
