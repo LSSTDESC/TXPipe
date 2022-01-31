@@ -42,11 +42,11 @@ class TXMapPlots(PipelineStage):
         # Plot from each file separately, just
         # to organize this file a bit
         methods = [
-            self.aux_source_plots
-            self.aux_lens_plots
-            self.source_plots
-            self.lens_plots
-            self.mask_plots
+            self.aux_source_plots,
+            self.aux_lens_plots,
+            self.source_plots,
+            self.lens_plots,
+            self.mask_plots,
         ]
 
         # We don't want this to fail if some maps are missing.

@@ -288,8 +288,8 @@ class TXUniformDepthMap(PipelineStage):
         import healpy
 
         with self.open_input("mask", wrapper=True) as f:
-            metadata = dict(f.file["maps"].attrs)
-            mask = f.read_map("mask")
+            metadata = dict(f.file["maps/mask"].attrs)
+            mask = f.read_mask()
 
         # Make a fake depth map
         pix = mask > 0
@@ -298,5 +298,5 @@ class TXUniformDepthMap(PipelineStage):
 
         with self.open_output("aux_lens_maps", wrapper=True) as f:
             f.file.create_group("depth")
-            f.write_map("depth/depth", pix, depth[pix], metadata)
+            f.write_map("depth/depth", pix, depth, metadata)
 
