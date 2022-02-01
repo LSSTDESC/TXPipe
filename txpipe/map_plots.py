@@ -1,6 +1,6 @@
 from .data_types import MapsFile, PNGFile
 from .base_stage import PipelineStage
-
+import sys
 
 class TXMapPlots(PipelineStage):
     """
