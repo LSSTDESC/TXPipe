@@ -557,7 +557,7 @@ class TXTwoPointFourier(PipelineStage):
             cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
             if cl_noise is not None:
                 c = c - cl_noise
-                # Writing out the noise for later cross-checks
+            # Writing out the noise for later cross-checks
             
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
