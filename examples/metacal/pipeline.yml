@@ -62,10 +62,10 @@ stages:
 
     # Disabling these as they takes too long for a quick test.
     # The latter three need NaMaster
-    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-    # - name: TXTwoPointFourier          # Compute power spectra C_ell
-    # - name: TXFourierNamasterCovariance # Compute the C_ell covariance
-    # - name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+    - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+    - name: TXTwoPointFourier          # Compute power spectra C_ell
+    - name: TXFourierNamasterCovariance # Compute the C_ell covariance
+    - name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
 
 
 # modules and packages to import that have pipeline

@@ -644,7 +644,7 @@ class TXFourierTJPCovariance(PipelineStage):
         if self.config['cache_dir']:
             tjp_config["outdir"] = self.config['cache_dir']
         else:
-            tjp_config["outdir"] = cl_sacc.metadata.get('cache_dir', None)
+            tjp_config["outdir"] = cl_sacc.metadata.get('cache_dir', '.')
 
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
