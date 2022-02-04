@@ -62,18 +62,8 @@ class TXShearCalibration(PipelineStage):
 
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs
-        if use_true:
-            cat_cols = ["ra", "dec", "weight", "true_g1", "true_g2"]
-            renames = {"true_g1": "g1", "true_g2": "g2"}
-        elif cat_type == "metacal":
-            cat_cols = ["ra", "dec", "weight", "mcal_g1", "mcal_g2"]
-            renames = {"mcal_g1": "g1", "mcal_g2": "g2"}
-        elif cat_type == "metadetect":
-            cat_cols = ["00/ra", "00/dec", "00/weight", "00/g1", "00/g2"]
-            renames = {col: col[3:] for col in cat_cols}
-        else:
-            cat_cols = ["ra", "dec", "weight", "g1", "g2"]
-            renames = {}
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            cat_cols, renames = f.get_primary_catalog_names()
 
         output_cols = ["ra", "dec", "g1", "g2", "weight"]
 

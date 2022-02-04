@@ -673,7 +673,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         if self.config['input_pz']:
             shear_cols += metadetect_variants('mean_z')
         elif self.config['true_z']:
-            shear_cols += metadetect_variants('redshift_true')
+            shear_cols += ['redshift_true']
 
         renames = {}
         for prefix in ['00', '1p', '1m', '2p', '2m']:

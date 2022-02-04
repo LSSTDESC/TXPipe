@@ -1,0 +1,95 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXRandomCat
+    - name: TXUniformDepthMap
+    - name: TXSourceSelectorMetadetect
+      nprocess: 64
+      nodes: 2
+    - name: TXShearCalibration
+      nprocess: 7
+      nodes: 1
+    - name: TXExternalLensCatalogSplitter
+      nprocess: 10
+      nodes: 2
+    - name: TXPhotozPlots
+    - name: TXJackknifeCenters
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXSourceMaps
+      nprocess: 12
+      threads_per_process: 1
+      nodes: 3
+    - name: TXExternalLensMaps
+    - name: TXAuxiliarySourceMaps
+      nprocess: 4
+      threads_per_process: 1
+      nodes: 4
+    - name: TXDensityMaps
+    #- name: TXNullBlinding
+    #- name: TXTwoPoint
+    #  threads_per_process: 32
+    #  nprocess: 4
+    #  nodes: 4
+    #- name: TXTwoPointTheoryReal
+    - name: TXTwoPointTheoryFourier
+    #- name: TXTwoPointPlots
+    #- name: TXRealGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXSourceNoiseMaps
+      nprocess: 6
+      nodes: 6
+      threads_per_process: 1
+    - name: TXExternalLensNoiseMaps
+      nprocess: 16
+      nodes: 4
+      threads_per_process: 1
+    - name: TXTwoPointFourier
+      nprocess: 4
+      nodes: 4
+    #  threads_per_process: 64
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 64
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+      threads_per_process: 32
+    - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXTwoPointPlotsFourier 
+
+
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/with_shape_noise/2022/Feb1/
+config: examples/gaussian_sims/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/shear_catalog.hdf5
+    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/photometry_catalog.hdf5
+    lens_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/lens_catalog.hdf5
+    lens_tomography_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/lens_tomography_catalog.hdf5
+    lens_photoz_stack: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/lens_photoz_stack.hdf5 
+    shear_photoz_stack: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/shear_photoz_stack.hdf5 
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
+    mask:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/mask.hdf5
+
+
+resume: True
+log_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/
+pipeline_log: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/log.txt
+

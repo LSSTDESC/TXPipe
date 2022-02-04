@@ -1,6 +1,6 @@
 from .data_types import MapsFile, PNGFile
 from .base_stage import PipelineStage
-
+import sys
 
 class TXMapPlots(PipelineStage):
     """
@@ -28,7 +28,7 @@ class TXMapPlots(PipelineStage):
         ("bright_object_map", PNGFile),
     ]
     config_options = {
-        # can also set Moll
+        # can also set moll
         "projection": "cart",
     }
 
@@ -41,11 +41,21 @@ class TXMapPlots(PipelineStage):
 
         # Plot from each file separately, just
         # to organize this file a bit
-        self.aux_source_plots()
-        self.aux_lens_plots()
-        self.source_plots()
-        self.lens_plots()
-        self.mask_plots()
+        methods = [
+            self.aux_source_plots,
+            self.aux_lens_plots,
+            self.source_plots,
+            self.lens_plots,
+            self.mask_plots,
+        ]
+
+        # We don't want this to fail if some maps are missing.
+        for m in methods:
+            try:
+                m()
+            except:
+                sys.stderr.write(f"Failed to make maps with method {m.__name__}")
+
 
     def aux_source_plots(self):
         import matplotlib.pyplot as plt

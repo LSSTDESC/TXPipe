@@ -2,7 +2,6 @@ from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 import numpy as np
 
-
 class TXTwoPointTheoryReal(PipelineStage):
     """
     Compute theory in CCL in real space and save to a sacc file.
@@ -73,7 +72,12 @@ class TXTwoPointTheoryReal(PipelineStage):
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
             print("smooth:", smooth)
             # Convert to CCL form
-            tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
+            try:
+                tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
+            except pyccl.errors.CCLError:
+                print('To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d'%i)
+                tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z[::2], nz[::2]))
+                
 
         # And the clustering tracers
         for i in range(nbin_lens):
@@ -259,18 +263,19 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                     s.data[q].value = cl[p]
 
         for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
+            for j in range(i+1):
+                print(f"Computing theory density-density ({i},{j})")
 
-            # compute theory
-            ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{i}")
-            cl = pyccl.angular_cl(
-                cosmo, tracers[f"lens_{i}"], tracers[f"lens_{i}"], ell
-            )
+                # compute theory
+                ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{j}")
+                cl = pyccl.angular_cl(
+                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell
+                )
 
-            # replace data values in the sacc object for the theory ones
-            ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{i}"))
-            for p, q in enumerate(ind):
-                s.data[q].value = cl[p]
+                # replace data values in the sacc object for the theory ones
+                ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
+                for p, q in enumerate(ind):
+                    s.data[q].value = cl[p]
 
         for i in range(nbin_source):
 

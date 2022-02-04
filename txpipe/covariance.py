@@ -168,7 +168,11 @@ class TXFourierGaussianCovariance(PipelineStage):
             if 'source' in tracer or 'src' in tracer:
                 sigma_e = meta['sigma_e'][nbin]
                 n_eff = meta['n_eff'][nbin]
-                ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
+                try:
+                    ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
+                except pyccl.errors.CCLError:
+                    print('To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d'%nbin)
+                    ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z[::2], nz[::2])) #CCL automatically normalizes dNdz
                 tracer_noise[tracer] = sigma_e**2 / n_eff
 
             # or if it is a lens bin then generaete the corresponding
@@ -640,7 +644,7 @@ class TXFourierTJPCovariance(PipelineStage):
         if self.config['cache_dir']:
             tjp_config["outdir"] = self.config['cache_dir']
         else:
-            tjp_config["outdir"] = cl_sacc.metadata.get('cache_dir', None)
+            tjp_config["outdir"] = cl_sacc.metadata.get('cache_dir', '.')
 
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)

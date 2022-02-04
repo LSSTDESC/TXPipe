@@ -82,7 +82,6 @@ class TXTwoPointFourier(PipelineStage):
 
         self.setup_results()
 
-
         # Generate namaster fields
         pixel_scheme, maps, f_sky = self.load_maps()
         if self.rank==0:
@@ -91,6 +90,18 @@ class TXTwoPointFourier(PipelineStage):
         nbin_source = len(maps['g'])
         nbin_lens = len(maps['d'])
 
+        # Do this at the beggining since its fast and sometimes crashes.
+        # It is best to avoid loosing running time later.
+        # Load the n(z) values, which are both saved in the output
+        # file alongside the spectra, and then used to calcualate the
+        # fiducial theory C_ell, which is used in the deprojection calculation
+        tracers = self.load_tracers(nbin_source, nbin_lens)
+        theory_cl = theory_3x2pt(
+            self.get_input('fiducial_cosmology'),
+            tracers,
+            nbin_source, nbin_lens,
+            fourier=True)
+        
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
@@ -112,15 +123,6 @@ class TXTwoPointFourier(PipelineStage):
         self.hash_metadata = None  # Filled in make_workspaces
         workspaces = self.make_workspaces(maps, calcs, ell_bins)
 
-        # Load the n(z) values, which are both saved in the output
-        # file alongside the spectra, and then used to calcualate the
-        # fiducial theory C_ell, which is used in the deprojection calculation
-        tracers = self.load_tracers(nbin_source, nbin_lens)
-        theory_cl = theory_3x2pt(
-            self.get_input('fiducial_cosmology'),
-            tracers,
-            nbin_source, nbin_lens,
-            fourier=True)
 
         # If we are rank zero print out some info
         if self.rank==0:

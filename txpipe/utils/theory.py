@@ -92,7 +92,13 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
     for i in range(nbin_source):
         x = tracers[f'source_{i}']
         tag = ('S', i)
-        CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z, x.nz))
+        try:
+            CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z, x.nz))
+        except pyccl.errors.CCLError:
+            # sometimes there is a CCL_ERROR_INTEG if the binning of z is too sparse.
+            print('To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d'%i)
+            CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z[::2], x.nz[::2]))
+            
     # Position tracers - even more important to think about fiducial biases
     # here - these will be very very wrong otherwise!
     # Important enough that I'll put in a warning.

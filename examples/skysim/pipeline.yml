@@ -62,7 +62,11 @@ stages:
       nprocess: 8
       nodes: 8
       threads_per_process: 32
-    - name: TXNoiseMaps
+    - name: TXSourceNoiseMaps
+      nprocess: 32
+      nodes: 8
+      threads_per_process: 1
+    - name: TXLensNoiseMaps
       nprocess: 32
       nodes: 8
       threads_per_process: 1

@@ -23,7 +23,9 @@ python_paths:
 
 stages:
     - name: TXJackknifeCenters
-    - name: TXNoiseMaps
+    - name: TXSourceNoiseMaps
+      nprocess: 32
+    - name: TXLensNoiseMaps
       nprocess: 32
     - name: TXSourceSelector
       nprocess: 32
