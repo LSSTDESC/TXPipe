@@ -961,6 +961,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
 
     config_options = {
         'cat_name':'GaussianSims',
+        'cat_name_fake': '',
         'visits_per_band':165,  # used in the noise simulation
         'snr_limit': 0.0,  # we want to keep all input objects here
         'max_size': 99999999999999,  #for testing on smaller catalogs

@@ -170,7 +170,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 n_eff = meta['n_eff'][nbin]
                 try:
                     ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz)) #CCL automatically normalizes dNdz
-                except:
+                except pyccl.errors.CCLError:
                     print('To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d'%nbin)
                     ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z[::2], nz[::2])) #CCL automatically normalizes dNdz
                 tracer_noise[tracer] = sigma_e**2 / n_eff

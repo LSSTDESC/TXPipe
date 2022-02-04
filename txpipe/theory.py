@@ -2,7 +2,6 @@ from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 import numpy as np
 
-
 class TXTwoPointTheoryReal(PipelineStage):
     """
     Compute theory in CCL in real space and save to a sacc file.
@@ -75,7 +74,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             # Convert to CCL form
             try:
                 tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
-            except:
+            except pyccl.errors.CCLError:
                 print('To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d'%i)
                 tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z[::2], nz[::2]))
                 
