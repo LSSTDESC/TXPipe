@@ -549,25 +549,21 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspaces[(i,j,k)]
 
-        #if self.config['analytic_noise']:
-        #    # we are going to subtract the noise afterwards
-        c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                    cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        #    # noise to subtract (already decoupled)
-        cl_noise_analytic = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
-        #    if cl_noise is not None:
-        #        c = c - cl_noise
-        # Writing out the noise for later cross-checks
-        if k == POS_POS and i==j:
-            np.save('cl_noise_analytic_%d%d'%(i, j), cl_noise_analytic)
+        if self.config['analytic_noise']:
+            # we are going to subtract the noise afterwards
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                        cl_guess=cl_guess, workspace=workspace, n_iter=1)
+            # noise to subtract (already decoupled)
+            cl_noise = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace)
+            if cl_noise is not None:
+                c = c - cl_noise
+            # Writing out the noise for later cross-checks
             
-        #else:
-        # Get the coupled noise C_ell values to give to the master algorithm
-        cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-        c = nmt.compute_full_master(field_i, field_j, ell_bins,
-                                    cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
-        if k == POS_POS	and i==j:
-            np.save('cl_noise_maps_%d%d'%(i, j), cl_noise)
+        else:
+            # Get the coupled noise C_ell values to give to the master algorithm
+            cl_noise = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            c = nmt.compute_full_master(field_i, field_j, ell_bins,
+                                        cl_noise=cl_noise, cl_guess=cl_guess, workspace=workspace, n_iter=1)
 
         def window_pixel(ell, nside):
             r_theta=1/(np.sqrt(3.)*nside)

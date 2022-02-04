@@ -23,8 +23,8 @@ stages:
       nprocess: 7
       nodes: 1
     - name: TXExternalLensCatalogSplitter
-      nprocess: 5
-      nodes: 1
+      nprocess: 10
+      nodes: 2
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXMapPlots
@@ -35,7 +35,7 @@ stages:
       nodes: 3
     - name: TXExternalLensMaps
     - name: TXAuxiliarySourceMaps
-      nprocess: 8
+      nprocess: 4
       threads_per_process: 1
       nodes: 4
     - name: TXDensityMaps
@@ -54,8 +54,8 @@ stages:
       nodes: 6
       threads_per_process: 1
     - name: TXExternalLensNoiseMaps
-      nprocess: 8
-      nodes: 2
+      nprocess: 16
+      nodes: 4
       threads_per_process: 1
     - name: TXTwoPointFourier
       nprocess: 4
@@ -69,7 +69,7 @@ stages:
     - name: TXTwoPointPlotsFourier 
 
 
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/with_shape_noise/2022/Jan31/
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/with_shape_noise/2022/Feb1/
 config: examples/gaussian_sims/config.yml
 
 # On NERSC, set this before running:

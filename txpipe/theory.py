@@ -264,18 +264,19 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                     s.data[q].value = cl[p]
 
         for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
+            for j in range(i+1):
+                print(f"Computing theory density-density ({i},{j})")
 
-            # compute theory
-            ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{i}")
-            cl = pyccl.angular_cl(
-                cosmo, tracers[f"lens_{i}"], tracers[f"lens_{i}"], ell
-            )
+                # compute theory
+                ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{j}")
+                cl = pyccl.angular_cl(
+                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell
+                )
 
-            # replace data values in the sacc object for the theory ones
-            ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{i}"))
-            for p, q in enumerate(ind):
-                s.data[q].value = cl[p]
+                # replace data values in the sacc object for the theory ones
+                ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
+                for p, q in enumerate(ind):
+                    s.data[q].value = cl[p]
 
         for i in range(nbin_source):
 

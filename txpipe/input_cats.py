@@ -3,7 +3,6 @@ from .data_types import ShearCatalog, HDFFile
 from .utils.calibration_tools import band_variants, metacal_variants, metadetect_variants
 import numpy as np
 from .utils.timer import Timer
-import pdb
 
 class TXCosmoDC2Mock(PipelineStage):
     """
@@ -199,28 +198,6 @@ class TXCosmoDC2Mock(PipelineStage):
             with h5py.File(self.get_output('shear_catalog'), 'r+') as f:
                 f['shear'].visititems(visitor)
 
-    '''    
-    def truncate_outputs(self, n):
-        import h5py
-        if self.comm is not None:
-            self.comm.Barrier()
-
-        if self.rank == 0:
-            # all files should now be closed for all procs
-            print(f"Resizing all outupts to size {n}")
-            f = h5py.File(self.get_output('photometry_catalog'), 'r+')
-            g = f['photometry']
-            for col in list(g.keys()):
-                print(col)
-                g[col].resize((n,))
-            f.close()
-
-            f = h5py.File(self.get_output('shear_catalog'), 'r+')
-            g = f['shear']
-            for col in g.keys():
-                g[col].resize((n,))
-
-    '''
 
     def next_output_indices(self, start, chunk_size):
         if self.comm is None:

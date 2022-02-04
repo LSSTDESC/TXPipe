@@ -5,7 +5,6 @@ from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
-
 class TXAuxiliarySourceMaps(TXBaseMaps):
     """
     This stage generates a set of auxiliary maps from the source catalog.
@@ -290,13 +289,15 @@ class TXUniformDepthMap(PipelineStage):
         with self.open_input("mask", wrapper=True) as f:
             metadata = dict(f.file["maps/mask"].attrs)
             mask = f.read_mask()
+            pix = f.file["maps/mask/pixel"][:]
 
         # Make a fake depth map
-        pix = mask > 0
         depth = mask.copy()
         depth[pix] = self.config['depth']  #e.g. 25 everywhere
-
+        
         with self.open_output("aux_lens_maps", wrapper=True) as f:
             f.file.create_group("depth")
-            f.write_map("depth/depth", pix, depth, metadata)
+            print(len(pix))
+            print(len(depth[pix]))
+            f.write_map("depth/depth", pix, depth[pix], metadata)
 
