@@ -316,6 +316,12 @@ class TXFourierGaussianCovariance(PipelineStage):
             th, cov['final']=WT.projected_covariance2(
                 l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov['final'])
 
+            if not np.allclose(th[s1_s2_1], th[s1_s2_2]):
+                raise ValueError("Theta is different for different tracer combos. "
+                                 "Covariance code is not designed for this")
+            th = th[s1_s2_1]
+
+
         # Normalize
         cov['final'] /= norm
 
