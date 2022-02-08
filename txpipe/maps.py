@@ -211,12 +211,12 @@ class TXSourceMaps(TXBaseMaps):
             # we want to avoid accidentally calibrating any pixels
             # that should be masked.
             mask = (
-                  (g1[i] == healpy.UNSEEN)
+                (g1[i] == healpy.UNSEEN)
                 | (g2[i] == healpy.UNSEEN)
                 | (var_g1[i] == healpy.UNSEEN)
                 | (var_g2[i] == healpy.UNSEEN)
             )
-            if i == '2D':
+            if i == "2D":
                 cal = cal_2D
             else:
                 cal = cals[i]
@@ -233,7 +233,6 @@ class TXSourceMaps(TXBaseMaps):
                 x[mask] = healpy.UNSEEN
 
         return g1_out, g2_out, var_g1_out, var_g2_out
-
 
     def finalize_mappers(self, pixel_scheme, mappers):
         # only one mapper here - we call its finalize method
@@ -260,7 +259,7 @@ class TXSourceMaps(TXBaseMaps):
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
             # added from HSC branch, to get analytic noise in twopoint_fourier
             out_e = np.zeros_like(esq[b])
-            out_e[esq[b]>0] = esq[b][esq[b]>0]
+            out_e[esq[b] > 0] = esq[b][esq[b] > 0]
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
         return maps
@@ -378,7 +377,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
     Combined source and photometric lens maps, from the
     same photometry catalog. This might be slightly faster than
-    running two maps separately, but it only works if the source 
+    running two maps separately, but it only works if the source
     and lens catalogs are the same set of objects. Otherwise use
     TXSourceMaps and TXLensMaps.
     """
@@ -404,23 +403,23 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         print("TODO: no lens weights here")
 
         with self.open_input("photometry_catalog") as f:
-            sz1 = f['photometry/ra'].size
+            sz1 = f["photometry/ra"].size
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             sz2 = f.get_size()
 
         if sz1 != sz2:
-            raise ValueError("Shear and photometry catalogs in TXMainMaps are "
-                             "different sizes. To use separate source and lens "
-                             "samples use TXSourceMaps and TXLensMaps separately."
-                             )
+            raise ValueError(
+                "Shear and photometry catalogs in TXMainMaps are "
+                "different sizes. To use separate source and lens "
+                "samples use TXSourceMaps and TXLensMaps separately."
+            )
 
         # metacal, lensfit, etc.
         shear_catalog_type = read_shear_catalog_type(self)
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
-
 
         it = self.combined_iterators(
             self.config["chunk_rows"],
@@ -469,7 +468,17 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # Still one mapper, but now we read both source and
         # lens maps from it.
         mapper, cal = mappers
-        pix, ngal, weighted_ngal, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
+        (
+            pix,
+            ngal,
+            weighted_ngal,
+            g1,
+            g2,
+            var_g1,
+            var_g2,
+            weights_g,
+            esq,
+        ) = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
@@ -490,7 +499,7 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
 
             out_e = np.zeros_like(esq[b])
-            out_e[esq[b]>0] = esq[b][esq[b]>0]
+            out_e[esq[b] > 0] = esq[b][esq[b] > 0]
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
         return maps
@@ -532,7 +541,9 @@ class TXDensityMaps(PipelineStage):
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
             nbin_lens = meta["nbin_lens"]
-            ngal_maps = [f.read_map(f"weighted_ngal_{b}").flatten() for b in range(nbin_lens)]
+            ngal_maps = [
+                f.read_map(f"weighted_ngal_{b}").flatten() for b in range(nbin_lens)
+            ]
 
         # Convert count maps into density maps
         density_maps = []
@@ -540,9 +551,11 @@ class TXDensityMaps(PipelineStage):
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask.shape, dtype=np.float64)
-            delta_map[mask>0] = ng[mask>0]/mask[mask>0] # Assuming that the weights do not include the mask
-            mu = np.mean(delta_map[mask>0])
-            delta_map[mask>0] = delta_map[mask>0]/mu-1
+            delta_map[mask > 0] = (
+                ng[mask > 0] / mask[mask > 0]
+            )  # Assuming that the weights do not include the mask
+            mu = np.mean(delta_map[mask > 0])
+            delta_map[mask > 0] = delta_map[mask > 0] / mu - 1
             density_maps.append(delta_map)
 
         # write output

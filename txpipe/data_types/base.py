@@ -9,8 +9,10 @@ import shutil
 import pickle
 from io import UnsupportedOperation
 
+
 class FileValidationError(Exception):
     pass
+
 
 class DataFile:
     """
@@ -24,13 +26,15 @@ class DataFile:
     to indicate what kind of file is expected.  The "suffix" attribute,
     which must be defined on subclasses, indicates the file suffix.
 
-    The open method, which can optionally be overridden, is used by the 
+    The open method, which can optionally be overridden, is used by the
     machinery of the PipelineStage class to open an input our output
     named by a tag.
 
     """
+
     supports_parallel_write = False
     suffix = None
+
     def __init__(self, path, mode, extra_provenance=None, validate=True, **kwargs):
         self.path = path
         self.mode = mode
@@ -40,10 +44,10 @@ class DataFile:
 
         self.file = self.open(path, mode, **kwargs)
 
-        if validate and mode == 'r':
+        if validate and mode == "r":
             self.validate()
 
-        if mode == 'w':
+        if mode == "w":
             self.provenance = self.generate_provenance(extra_provenance)
             self.write_provenance()
         else:
@@ -53,20 +57,20 @@ class DataFile:
     def generate_provenance(extra_provenance=None):
         """
         Generate provenance information - a dictionary
-        of useful information about the origina 
+        of useful information about the origina
         """
         UUID = uuid.uuid4().hex
         creation = datetime.datetime.now().isoformat()
         domain = socket.getfqdn()
         username = getpass.getuser()
 
-        # Add other provenance and related 
+        # Add other provenance and related
         provenance = {
-            'uuid': UUID,
-            'creation': creation,
-            'domain': domain,
-            'username': username,
-            }
+            "uuid": UUID,
+            "creation": creation,
+            "domain": domain,
+            "username": username,
+        }
 
         if extra_provenance:
             provenance.update(extra_provenance)
@@ -86,7 +90,6 @@ class DataFile:
         """
         pass
 
-
     def read_provenance(self):
         """
         Concrete subclasses for which it is possible should override
@@ -95,14 +98,13 @@ class DataFile:
         Other classes will return this dictionary of UNKNOWNs
         """
         provenance = {
-            'uuid':     "UNKNOWN",
-            'creation': "UNKNOWN",
-            'domain':   "UNKNOWN",
-            'username': "UNKNOWN",
+            "uuid": "UNKNOWN",
+            "creation": "UNKNOWN",
+            "domain": "UNKNOWN",
+            "username": "UNKNOWN",
         }
 
         return provenance
-
 
     def validate(self):
         """
@@ -130,7 +132,7 @@ class DataFile:
     @classmethod
     def make_name(cls, tag):
         if cls.suffix:
-            return f'{tag}.{cls.suffix}'
+            return f"{tag}.{cls.suffix}"
         else:
             return tag
 
@@ -140,6 +142,7 @@ class DataFile:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
+
 class HDFFile(DataFile):
     supports_parallel_write = True
     """
@@ -148,7 +151,7 @@ class HDFFile(DataFile):
     requires an HDF5 library installation.
 
     """
-    suffix = 'hdf5'
+    suffix = "hdf5"
     required_datasets = []
 
     @classmethod
@@ -166,14 +169,16 @@ class HDFFile(DataFile):
         Write provenance information to a new group,
         called 'provenance'
         """
-        if self.mode == 'r':
-            raise UnsupportedOperation("Cannot write provenance to an HDF5 "
-                                      f"file opened in read-only mode "
-                                      f"({self.mode}")
+        if self.mode == "r":
+            raise UnsupportedOperation(
+                "Cannot write provenance to an HDF5 "
+                f"file opened in read-only mode "
+                f"({self.mode}"
+            )
 
         # This method *must* be called by all the processes in a parallel
-        # run.  
-        self._provenance_group = self.file.create_group('provenance')
+        # run.
+        self._provenance_group = self.file.create_group("provenance")
 
         # Call the sub-method to do each item
         for key, value in self.provenance.items():
@@ -181,34 +186,33 @@ class HDFFile(DataFile):
 
     def read_provenance(self):
         try:
-            group = self.file['provenance']
+            group = self.file["provenance"]
             attrs = group.attrs
         except KeyError:
             group = None
             attrs = {}
-        
+
         provenance = {
-            'uuid':     attrs.get('uuid', "UNKNOWN"),
-            'creation': attrs.get('creation', "UNKNOWN"),
-            'domain':   attrs.get('domain', "UNKNOWN"),
-            'username': attrs.get('username', "UNKNOWN"),
+            "uuid": attrs.get("uuid", "UNKNOWN"),
+            "creation": attrs.get("creation", "UNKNOWN"),
+            "domain": attrs.get("domain", "UNKNOWN"),
+            "username": attrs.get("username", "UNKNOWN"),
         }
 
         self._provenance_group = group
 
         return provenance
 
-
-
     def validate(self):
         missing = [name for name in self.required_datasets if name not in self.file]
         if missing:
             text = "\n".join(missing)
-            raise FileValidationError(f"These data sets are missing from HDF file {self.path}:\n{text}")
+            raise FileValidationError(
+                f"These data sets are missing from HDF file {self.path}:\n{text}"
+            )
 
     def close(self):
         self.file.close()
-
 
 
 class FitsFile(DataFile):
@@ -216,16 +220,18 @@ class FitsFile(DataFile):
     A data file in the FITS format.
     Using these files requires the fitsio package.
     """
-    suffix = 'fits'
+
+    suffix = "fits"
     required_columns = []
 
     @classmethod
     def open(cls, path, mode, **kwargs):
         import fitsio
+
         # Fitsio doesn't have pure 'w' modes, just 'rw'.
         # Maybe we should check if the file already exists here?
-        if mode == 'w':
-            mode = 'rw'
+        if mode == "w":
+            mode = "rw"
         return fitsio.FITS(path, mode=mode, **kwargs)
 
     def missing_columns(self, columns, hdu=1):
@@ -238,38 +244,35 @@ class FitsFile(DataFile):
         missing_columns = [col for col in columns if col not in found_cols]
         return missing_columns
 
-
     def write_provenance(self):
         """
         Write provenance information to a new group,
         called 'provenance'
         """
         # Call the sub-method to do each item
-        if self.mode == 'r':
-            raise UnsupportedOperation("Cannot write provenance to a FITS file opened "
-                                      f"in read-only mode ({self.mode}")
-
+        if self.mode == "r":
+            raise UnsupportedOperation(
+                "Cannot write provenance to a FITS file opened "
+                f"in read-only mode ({self.mode}"
+            )
 
         for key, value in self.provenance.items():
-            if isinstance(value, str) and '\n' in value:
+            if isinstance(value, str) and "\n" in value:
                 values = value.split("\n")
-                for i,v in enumerate(values):
-                    self.file[0].write_key(key+f"_{i}", v)
+                for i, v in enumerate(values):
+                    self.file[0].write_key(key + f"_{i}", v)
             else:
                 self.file[0].write_key(key, value)
-
 
     def read_provenance(self):
         header = self.file[0].read_header()
         provenance = {
-            'uuid':     header.get('uuid', 'UNKNOWN'),
-            'creation': header.get('creation', 'UNKNOWN'),
-            'domain':   header.get('domain', 'UNKNOWN'),
-            'username': header.get('username', 'UNKNOWN'),
+            "uuid": header.get("uuid", "UNKNOWN"),
+            "creation": header.get("creation", "UNKNOWN"),
+            "domain": header.get("domain", "UNKNOWN"),
+            "username": header.get("username", "UNKNOWN"),
         }
         return provenance
-
-
 
     def validate(self):
         """Check that the catalog has all the required columns and complain otherwise"""
@@ -279,7 +282,9 @@ class FitsFile(DataFile):
         # If there are any, raise an exception that lists them explicitly
         if missing:
             text = "\n".join(missing)
-            raise FileValidationError(f"These columns are missing from FITS file {self.path}:\n{text}")
+            raise FileValidationError(
+                f"These columns are missing from FITS file {self.path}:\n{text}"
+            )
 
     def close(self):
         self.file.close()
@@ -289,7 +294,9 @@ class TextFile(DataFile):
     """
     A data file in plain text format.
     """
-    suffix = 'txt'
+
+    suffix = "txt"
+
 
 class YamlFile(DataFile):
     """
@@ -297,23 +304,28 @@ class YamlFile(DataFile):
     The top-level object in TXPipe YAML
     files should always be a dictionary.
     """
-    suffix = 'yml'
 
-    def __init__(self, path, mode, extra_provenance=None, validate=True, load_mode='full'):
+    suffix = "yml"
+
+    def __init__(
+        self, path, mode, extra_provenance=None, validate=True, load_mode="full"
+    ):
         self.path = path
         self.mode = mode
         self.file = self.open(path, mode)
 
         if mode == "r":
-            if load_mode == 'safe':
+            if load_mode == "safe":
                 self.content = yaml.safe_load(self.file)
-            elif load_mode == 'full':
+            elif load_mode == "full":
                 self.content = yaml.full_load(self.file)
-            elif load_mode == 'unsafe':
+            elif load_mode == "unsafe":
                 self.content = yaml.unsafe_load(self.file)
             else:
-                raise ValueError(f"Unknown value {yaml_load} of load_mode. "
-                                  "Should be 'safe', 'full', or 'unsafe'")
+                raise ValueError(
+                    f"Unknown value {yaml_load} of load_mode. "
+                    "Should be 'safe', 'full', or 'unsafe'"
+                )
             # get provenance
             self.provenance = self.read_provenance()
 
@@ -330,23 +342,23 @@ class YamlFile(DataFile):
         yaml.dump(d, self.file)
 
     def write_provenance(self):
-        d = {'provenance': self.provenance}
+        d = {"provenance": self.provenance}
         self.write(d)
 
     def read_provenance(self):
-        prov = self.content.pop('provenance', {})
+        prov = self.content.pop("provenance", {})
         req_provenance = {
-                'uuid':     prov.get('uuid', "UNKNOWN"),
-                'creation': prov.get('creation', "UNKNOWN"),
-                'domain':   prov.get('domain', "UNKNOWN"),
-                'username': prov.get('username', "UNKNOWN"),
+            "uuid": prov.get("uuid", "UNKNOWN"),
+            "creation": prov.get("creation", "UNKNOWN"),
+            "domain": prov.get("domain", "UNKNOWN"),
+            "username": prov.get("username", "UNKNOWN"),
         }
         prov.update(req_provenance)
         return prov
 
 
 class Directory(DataFile):
-    suffix = ''
+    suffix = ""
 
     @classmethod
     def open(self, path, mode):
@@ -367,21 +379,22 @@ class Directory(DataFile):
         called 'provenance'
         """
         # This method *must* be called by all the processes in a parallel
-        # run.  
-        if self.mode == 'r':
-            raise UnsupportedOperation("Cannot write provenance to a directory opened "
-                                       f"in read-only mode ({self.mode})")
+        # run.
+        if self.mode == "r":
+            raise UnsupportedOperation(
+                "Cannot write provenance to a directory opened "
+                f"in read-only mode ({self.mode})"
+            )
 
-        self._provenance_file = open(self.file / 'provenance.yml', 'w')
+        self._provenance_file = open(self.file / "provenance.yml", "w")
 
         # Call the sub-method to do each item
         yaml.dump(self.provenance, self._provenance_file)
         self._provenance_file.flush()
 
-
     def read_provenance(self):
         try:
-            f = open(self.file / 'provenance.yml')
+            f = open(self.file / "provenance.yml")
             attrs = yaml.load(f)
 
         except KeyError:
@@ -389,38 +402,40 @@ class Directory(DataFile):
             attrs = {}
 
         self._provenance_file = f
-        
+
         provenance = {
-            'uuid':     attrs.get('uuid', "UNKNOWN"),
-            'creation': attrs.get('creation', "UNKNOWN"),
-            'domain':   attrs.get('domain', "UNKNOWN"),
-            'username': attrs.get('username', "UNKNOWN"),
+            "uuid": attrs.get("uuid", "UNKNOWN"),
+            "creation": attrs.get("creation", "UNKNOWN"),
+            "domain": attrs.get("domain", "UNKNOWN"),
+            "username": attrs.get("username", "UNKNOWN"),
         }
 
         return provenance
+
 
 class FileCollection(Directory):
     """
     Represents a grouped bundle of files, for cases where you don't
     know the exact list in advance.
     """
-    suffix = ''
+
+    suffix = ""
 
     def write_listing(self, filenames):
         """
         Write a listing file in the directory recording
         (presumably) the filenames put in it.
         """
-        fn = self.path_for_file('txpipe_listing.txt')
-        with open(fn, 'w') as f:
+        fn = self.path_for_file("txpipe_listing.txt")
+        with open(fn, "w") as f:
             yaml.dump(filenames, f)
 
     def read_listing(self):
         """
         Read a listing file from the directory.
         """
-        fn = self.path_for_file('txpipe_listing.txt')
-        with open(fn, 'w') as f:
+        fn = self.path_for_file("txpipe_listing.txt")
+        with open(fn, "w") as f:
             filenames = yaml.safe_load(f)
         return filenames
 
@@ -434,19 +449,20 @@ class FileCollection(Directory):
 
 
 class PNGFile(DataFile):
-    suffix = 'png'
+    suffix = "png"
 
     @classmethod
     def open(self, path, mode, **kwargs):
         import matplotlib
         import matplotlib.pyplot as plt
+
         if mode != "w":
             raise ValueError("Reading existing PNG files is not supported")
         return plt.figure(**kwargs)
 
-
     def close(self):
         import matplotlib.pyplot as plt
+
         self.file.savefig(self.path, metadata=self.provenance)
         plt.close(self.file)
 
@@ -456,6 +472,7 @@ class PNGFile(DataFile):
 
     def read_provenance(self):
         raise ValueError("Reading existing PNG files is not supported")
+
 
 class PickleFile(DataFile):
     suffix = "pkl"
@@ -472,13 +489,14 @@ class PickleFile(DataFile):
 
     def write(self, obj):
         if self.mode != "w":
-            raise UnsupportedOperation("Cannot write to pickle file opened in "
-                                      f"read-only ({self.mode})")
+            raise UnsupportedOperation(
+                "Cannot write to pickle file opened in " f"read-only ({self.mode})"
+            )
         pickle.dump(obj, self.file)
 
     def read(self):
         if self.mode != "r":
-            raise UnsupportedOperation("Cannot read from pickle file opened in "
-                                      f"write-only ({self.mode})")
+            raise UnsupportedOperation(
+                "Cannot read from pickle file opened in " f"write-only ({self.mode})"
+            )
         return pickle.load(self.file)
-

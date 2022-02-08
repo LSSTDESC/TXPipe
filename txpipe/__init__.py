@@ -5,7 +5,11 @@ Pipeline modules for the 3x2pt (TX) project.
 # Make sure any stages you want to use in a pipeline
 # are imported here.
 from .base_stage import PipelineStage
-from .source_selector import TXSourceSelectorMetacal, TXSourceSelectorLensfit, TXSourceSelectorMetadetect
+from .source_selector import (
+    TXSourceSelectorMetacal,
+    TXSourceSelectorLensfit,
+    TXSourceSelectorMetadetect,
+)
 from .lens_selector import TXMeanLensSelector
 from .photoz import TXRandomPhotozPDF
 from .photoz_stack import TXPhotozSourceStack, TXPhotozLensStack
@@ -36,6 +40,7 @@ from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier
 from .calibrate import TXShearCalibration
+
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA

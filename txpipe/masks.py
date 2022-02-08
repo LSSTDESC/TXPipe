@@ -3,6 +3,7 @@ from .utils import choose_pixelization
 from .base_stage import PipelineStage
 from .data_types import MapsFile
 
+
 class TXSimpleMask(PipelineStage):
     name = "TXSimpleMask"
     # make a mask from the auxiliary maps
@@ -37,7 +38,7 @@ class TXSimpleMask(PipelineStage):
         # Total survey area calculation. This is simplistic:
         # TODO: account for weights / hit fractions here, and allow
         # for different lens and shear survey areas
-        num_hit = (mask.sum() * 1.0)
+        num_hit = mask.sum() * 1.0
         area = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = area / 41252.96125
         print(f"f_sky = {f_sky}")
