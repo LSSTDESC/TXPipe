@@ -18,7 +18,7 @@ stages:
       nprocess: 1
       threads_per_process: 20
 
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/with_shape_noise/2022/Feb2/
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/without_shape_noise/2022/Feb4/
 config: examples/gaussian_sims/config.yml
 
 # On NERSC, set this before running:

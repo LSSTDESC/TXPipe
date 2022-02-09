@@ -69,7 +69,7 @@ stages:
     - name: TXTwoPointPlotsFourier 
 
 
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/with_shape_noise/2022/Feb1/
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/012922/area12300/without_shape_noise/2022/Feb4/
 config: examples/gaussian_sims/config.yml
 
 # On NERSC, set this before running:
@@ -77,8 +77,8 @@ config: examples/gaussian_sims/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/shear_catalog.hdf5
-    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/photometry_catalog.hdf5
+    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/no_shape_noise/shear_catalog.hdf5
+    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/no_shape_noise/photometry_catalog.hdf5
     lens_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/lens_catalog.hdf5
     lens_tomography_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/lens_tomography_catalog.hdf5
     lens_photoz_stack: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/012922/area12300/TXPipe_inputs/lens_photoz_stack.hdf5 
