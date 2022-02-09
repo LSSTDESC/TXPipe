@@ -12,12 +12,10 @@ class TXDirectCalibration(PipelineStage):
     inputs = [
         ("calibration_table", TextFile),
         ("photometry_catalog", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog)
+        ("lens_tomography_catalog", TomographyCatalog),
     ]
 
-    outputs = [
-        ("lens_photoz_stack", NOfZFile)
-    ]
+    outputs = [("lens_photoz_stack", NOfZFile)]
 
     config_options = {
         "n_neighbors": 10,
@@ -60,7 +58,6 @@ class TXDirectCalibration(PipelineStage):
         # Save results to our output file
         self.save_results(stack, weights, spec_z, spec_weights)
 
-
     def save_results(self, stack, weights, spec_z, spec_weights):
         # Only the root process saves the data
         if self.rank != 0:
@@ -83,7 +80,7 @@ class TXDirectCalibration(PipelineStage):
     def setup_stack(self):
         # Get the number of tomographic bins we need
         with self.open_input("lens_tomography_catalog") as f:
-            nbin = f['tomography'].attrs["nbin_lens"]
+            nbin = f["tomography"].attrs["nbin_lens"]
 
         # Set up the z grid and the stack object which collects
         # together the n(z) for the different bins
