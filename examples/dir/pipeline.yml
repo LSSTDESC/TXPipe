@@ -1,0 +1,48 @@
+# Stages to run
+stages:
+    - name: TXTruthLensSelector
+    - name: TXDirectCalibration
+
+post_script: "./examples/dir/pz_plot.py"
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: []
+# Where to put outputs
+output_dir: data/example/dir
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# python modules to import to search for stages
+modules: txpipe
+
+# configuration settings
+config: examples/dir/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+# where to put output logs for individual stages
+log_dir: data/example/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log.txt
