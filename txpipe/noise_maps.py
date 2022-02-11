@@ -304,8 +304,8 @@ class TXLensNoiseMaps(TXBaseMaps):
                 # noise, but thought that might add covariance
                 # to the two maps, and this shouldn't be that noisy
                 #half1 and half2 are already weighted by the mask, so we just need the average
-                mu1 = np.average(half1[mask>0])
-                mu2 = np.average(half2[mask>0])
+                mu1 = np.average(half1[mask[reverse_map]>0])
+                mu2 = np.average(half2[mask[reverse_map]>0])
                 
                 # This will produce some mangled sentinel values
                 # but they will be masked out
