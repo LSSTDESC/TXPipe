@@ -1,9 +1,10 @@
 # Stages to run
 stages:
     - name: TXTruthLensSelector
-    - name: TXDirectCalibration
-
-post_script: "./examples/dir/pz_plot.py"
+    - name: TXDirectCalibrationLens
+    - name: TXSourceSelectorMetadetect
+    - name: TXDirectCalibrationSource
+    - name: TXPhotozPlots
 
 # modules and packages to import that have pipeline
 # stages defined in them
@@ -38,6 +39,7 @@ inputs:
     # See README for paths to download these files
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

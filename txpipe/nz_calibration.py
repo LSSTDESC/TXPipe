@@ -1,13 +1,13 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile, TextFile, TomographyCatalog, NOfZFile
+from .data_types import ShearCatalog, HDFFile, TextFile, TomographyCatalog, NOfZFile, ShearCatalog
 from .photoz_stack import Stack
-from .utils import rename_iterated
+from .utils import rename_iterated, read_shear_catalog_type
 import numpy as np
 import os
 
 
-class TXDirectCalibration(PipelineStage):
-    name = "TXDirectCalibration"
+class TXDirectCalibrationLens(PipelineStage):
+    name = "TXDirectCalibrationLens"
 
     inputs = [
         ("calibration_table", TextFile),
@@ -192,3 +192,82 @@ class TXDirectCalibration(PipelineStage):
                 spec_weights[i, j] += weight[index].sum()
 
         return spec_weights
+
+
+class TXDirectCalibrationSource(TXDirectCalibrationLens):
+    name = "TXDirectCalibrationSource"
+
+    inputs = [
+        ("calibration_table", TextFile),
+        ("shear_catalog", ShearCatalog),
+        ("shear_tomography_catalog", TomographyCatalog),
+    ]
+
+    outputs = [("shear_photoz_stack", NOfZFile)]
+
+
+    # Same as the parent class except for the name of the output file
+    def save_results(self, stack, weights, spec_z, spec_weights):
+        # Only the root process saves the data
+        if self.rank != 0:
+            return
+
+        # Make the final n(z) calculation, using a weighted histogram of the
+        # spectroscopic objects.
+        for i in range(stack.nbin):
+            stack.stack[i], _ = np.histogram(
+                spec_z,
+                bins=stack.nz,
+                range=(0, self.config["zmax"]),
+                weights=weights[i] * spec_weights,
+            )
+
+        # Save the result to our chosen file
+        with self.open_output("shear_photoz_stack") as f:
+            stack.save(f)
+
+    def setup_stack(self):
+        # Get the number of tomographic bins we need
+        with self.open_input("shear_tomography_catalog") as f:
+            nbin = f["tomography"].attrs["nbin_source"]
+
+        # Set up the z grid and the stack object which collects
+        # together the n(z) for the different bins
+        z = np.linspace(0, self.config["zmax"], self.config["nz"])
+        stack = Stack("source", z, nbin)
+        return stack
+
+    def data_iterator(self):
+        # Metadetect stores things slightly differently, so we need
+        # a different name in that case.
+        shear_type = read_shear_catalog_type(self)
+
+        # Load magnitude columns and corresponding
+        # lens bin and weight columns
+        tomo_cols = ["source_bin"]
+        renames = {"source_bin": "bin"}
+
+        bands = self.config["bands"]
+        mag_cols = ["weight"]
+        if shear_type == "metacal":
+            for b in bands:
+                mag_cols.append(f"mcal_mag_{b}")
+                renames[f"mcal_mag_{b}"] = f"mag_{b}"
+        else:
+            mag_cols += [f"mag_{b}" for b in self.config["bands"]]
+
+
+        # This is a generator function - it returns a new chunk
+        # of data each step in the for loop we call it in.
+        return rename_iterated(
+            self.combined_iterators(
+                self.config["chunk_rows"],
+                "shear_catalog",
+                "shear/00" if shear_type == "metadetect" else "shear",
+                mag_cols,
+                "shear_tomography_catalog",
+                "tomography",
+                tomo_cols,
+            ),
+            renames,
+        )
