@@ -294,6 +294,7 @@ class TXTwoPointFourier(PipelineStage):
             density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0))
                               for d in d_maps]
 
+
         lensing_fields = [(nmt.NmtField(lw, [g1, g2], n_iter=0))
                           for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)]
 
