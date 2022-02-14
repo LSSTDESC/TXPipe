@@ -213,7 +213,7 @@ jobs:
 
   Delete_Data:
     runs-on: ubuntu-latest
-    needs: ["Redmagic_Pipeline", "Metacal_Pipeline", "Lensfit_Pipeline", "Metadetect_Pipeline"]
+    needs: ["Redmagic_Pipeline", "Metacal_Pipeline", "Lensfit_Pipeline", "Metadetect_Pipeline", "DIR_Pipeline"]
     steps:
       - name: Delete data
         uses: geekyeggo/delete-artifact@v1
