@@ -2,6 +2,7 @@ from .data_types import MapsFile, PNGFile
 from .base_stage import PipelineStage
 import sys
 
+
 class TXMapPlots(PipelineStage):
     """
     Make plots of all the available maps.
@@ -56,7 +57,6 @@ class TXMapPlots(PipelineStage):
             except:
                 sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
-
     def aux_source_plots(self):
         import matplotlib.pyplot as plt
 
@@ -72,7 +72,7 @@ class TXMapPlots(PipelineStage):
         fig = self.open_output("flag_map", wrapper=True, figsize=(5 * flag_max, 5))
         for i in range(flag_max):
             plt.subplot(1, flag_max, i + 1)
-            f = 2 ** i
+            f = 2**i
             m.plot(f"flags/flag_{f}", view=self.config["projection"])
         fig.close()
 
@@ -120,7 +120,7 @@ class TXMapPlots(PipelineStage):
 
             # g2
             plt.sca(axes[1, i])
-            m.plot(f"g2_{i}", view=self.config["projection"], min=-0.1, max=0.1 )
+            m.plot(f"g2_{i}", view=self.config["projection"], min=-0.1, max=0.1)
         fig.close()
 
     def lens_plots(self):

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=False):
     """Use MPI reduce in-place on an array, even a very large one.
 
@@ -9,7 +10,7 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
     It fails whenever the size of the array is greater than 2**31,
     due to an overflow.  This version detects that case and divides
     the array up into chunks, running reduction on each one separately
-    
+
     This specific call does in-place reduction, so that the root
     process overwrites its own array with the result.
     This minimizes memory usage.
@@ -39,7 +40,7 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
     """
     from mpi4py.MPI import IN_PLACE, SUM
 
-    if not data.flags['C_CONTIGUOUS']:
+    if not data.flags["C_CONTIGUOUS"]:
         raise ValueError("Cannot reduce non-contiguous array")
 
     # do a sum by default.  Oher operation
@@ -51,10 +52,12 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
     data = data.reshape(data.size)
     size = data.size
 
-    if not data.flags['C_CONTIGUOUS']:
-        raise RuntimeError("It seems numpy has changed its semantics and "
-                           "has returned a non-contiguous array from reshape. "
-                           "You will have to rewrite the mpi_utils code.")
+    if not data.flags["C_CONTIGUOUS"]:
+        raise RuntimeError(
+            "It seems numpy has changed its semantics and "
+            "has returned a non-contiguous array from reshape. "
+            "You will have to rewrite the mpi_utils code."
+        )
 
     start = 0
     while start < size:
@@ -72,6 +75,7 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
 
 def in_place_reduce(data, comm, allreduce=False):
     import mpi4py.MPI
+
     if allreduce:
         comm.Allreduce(mpi4py.MPI.IN_PLACE, data)
     else:
@@ -83,11 +87,13 @@ def in_place_reduce(data, comm, allreduce=False):
 
 def test_reduce():
     from mpi4py.MPI import COMM_WORLD as comm
-    data = np.zeros((100,200)) + comm.rank + 1
+
+    data = np.zeros((100, 200)) + comm.rank + 1
     mpi_reduce_large(data, comm, max_chunk_count=4500, debug=True)
     if comm.rank == 0:
         expected = (comm.size * (comm.size + 1)) // 2
         assert np.allclose(data, expected)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_reduce()

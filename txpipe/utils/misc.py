@@ -36,6 +36,7 @@ def unique_list(seq):
 PRINTABLE_CHARS = string.ascii_letters + string.digits + string.punctuation + " "
 PRINTABLE_CHARS_INC_NEWLINES = PRINTABLE_CHARS + "\r\n"
 
+
 def hex_escape(s, replace_newlines=False):
     """
     Replace non-printable characters in a string with hex-code equivalents
@@ -59,9 +60,8 @@ def hex_escape(s, replace_newlines=False):
         the bell character becomes "\x07"
     """
     chars = PRINTABLE_CHARS if replace_newlines else PRINTABLE_CHARS_INC_NEWLINES
-    return "".join(
-        c if c in chars else r"\x{0:02x}".format(ord(c)) for c in s
-    )
+    return "".join(c if c in chars else r"\x{0:02x}".format(ord(c)) for c in s)
+
 
 def rename_iterated(it, renames):
     """

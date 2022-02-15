@@ -120,7 +120,9 @@ class TXShearCalibration(PipelineStage):
                 d = {name: data[name][w] for name in output_cols}
 
                 # Calibrate the shear columns
-                d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
+                d["g1"], d["g2"] = cal.apply(
+                    d["g1"], d["g2"], subtract_mean=subtract_mean_shear
+                )
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)

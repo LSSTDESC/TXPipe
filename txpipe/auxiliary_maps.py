@@ -5,6 +5,7 @@ from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
+
 class TXAuxiliarySourceMaps(TXBaseMaps):
     """
     This stage generates a set of auxiliary maps from the source catalog.
@@ -19,6 +20,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
     parent class, which specifies the primary `run` method. This is because most
     mapper classes have the same overall structure. See that class for more details.
     """
+
     name = "TXAuxiliarySourceMaps"
     inputs = [
         ("shear_catalog", ShearCatalog),  # for psfs
@@ -67,14 +69,28 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
 
         # Flag column name depends on catalog type
         if shear_catalog_type == "metacal":
-            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "mcal_flags", "weight", "ra", "dec"]
+            shear_cols = [
+                f"{psf_prefix}g1",
+                f"{psf_prefix}g2",
+                "mcal_flags",
+                "weight",
+                "ra",
+                "dec",
+            ]
             renames = {
                 f"{psf_prefix}g1": "psf_g1",
                 f"{psf_prefix}g2": "psf_g2",
                 "mcal_flags": "flags",
             }
         elif shear_catalog_type == "metadetect":
-            shear_cols = [f"00/{psf_prefix}g1", f"00/{psf_prefix}g2", "00/flags", "00/weight", "00/ra", "00/dec"]
+            shear_cols = [
+                f"00/{psf_prefix}g1",
+                f"00/{psf_prefix}g2",
+                "00/flags",
+                "00/weight",
+                "00/ra",
+                "00/dec",
+            ]
             renames = {
                 f"00/{psf_prefix}g1": "psf_g1",
                 f"00/{psf_prefix}g2": "psf_g2",
@@ -84,7 +100,14 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
                 "00/dec": "dec",
             }
         else:
-            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "flags", "weight", "ra", "dec"]
+            shear_cols = [
+                f"{psf_prefix}g1",
+                f"{psf_prefix}g2",
+                "flags",
+                "weight",
+                "ra",
+                "dec",
+            ]
             renames = {
                 f"{psf_prefix}g1": "psf_g1",
                 f"{psf_prefix}g2": "psf_g2",
@@ -154,14 +177,13 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
 
         # Save flag maps
         for i, (p, m) in enumerate(zip(flag_pixs, flag_maps)):
-            f = 2 ** i
+            f = 2**i
             maps["aux_source_maps", f"flags/flag_{f}"] = (p, m)
             # also print out some stats
             t = m.sum()
             print(f"Map shows total {t} objects with flag {f}")
 
         return maps
-
 
 
 class TXAuxiliaryLensMaps(TXBaseMaps):
@@ -221,8 +243,9 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     def data_iterator(self):
         band = self.config["depth_band"]
         cols = ["ra", "dec", "extendedness", f"snr_{band}", f"mag_{band}"]
-        return self.iterate_hdf("photometry_catalog", "photometry", cols, self.config["chunk_rows"])
-
+        return self.iterate_hdf(
+            "photometry_catalog", "photometry", cols, self.config["chunk_rows"]
+        )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
         depth_mapper, brobj_mapper = mappers
@@ -270,7 +293,6 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         # Save bright object counts
         maps["aux_lens_maps", "bright_objects/count"] = (brobj_pix, brobj_count)
 
-
         return maps
 
 
@@ -293,11 +315,10 @@ class TXUniformDepthMap(PipelineStage):
 
         # Make a fake depth map
         depth = mask.copy()
-        depth[pix] = self.config['depth']  #e.g. 25 everywhere
-        
+        depth[pix] = self.config["depth"]  # e.g. 25 everywhere
+
         with self.open_output("aux_lens_maps", wrapper=True) as f:
             f.file.create_group("depth")
             print(len(pix))
             print(len(depth[pix]))
             f.write_map("depth/depth", pix, depth[pix], metadata)
-
