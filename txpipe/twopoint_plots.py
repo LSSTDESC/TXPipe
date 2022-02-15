@@ -615,7 +615,6 @@ class TXTwoPointPlotsFourier(PipelineStage):
         for fig in outputs.values():
             fig.close()
 
-
         # The same but plotting ratios. The key here is not a mistake -
         # it tells the function calle below what the axis labels etc should be
         outputs = {

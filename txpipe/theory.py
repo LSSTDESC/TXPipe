@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 import numpy as np
 
+
 class TXTwoPointTheoryReal(PipelineStage):
     """
     Compute theory in CCL in real space and save to a sacc file.
@@ -75,9 +76,11 @@ class TXTwoPointTheoryReal(PipelineStage):
             try:
                 tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
             except pyccl.errors.CCLError:
-                print('To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d'%i)
+                print(
+                    "To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d"
+                    % i
+                )
                 tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z[::2], nz[::2]))
-                
 
         # And the clustering tracers
         for i in range(nbin_lens):
@@ -137,16 +140,20 @@ class TXTwoPointTheoryReal(PipelineStage):
             theta, *_ = s.get_theta_xi("galaxy_density_xi", f"lens_{i}", f"lens_{i}")
             wtheta = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GG")
 
-            for j in range(i+1):
+            for j in range(i + 1):
                 print(f"Computing theory density-density ({i},{j})")
 
                 # compute theory
-                cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{j}'], ell)
-                theta, *_  = s.get_theta_xi('galaxy_density_xi', f'lens_{i}' , f'lens_{j}')
-                wtheta = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
+                cl = pyccl.angular_cl(
+                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell
+                )
+                theta, *_ = s.get_theta_xi(
+                    "galaxy_density_xi", f"lens_{i}", f"lens_{j}"
+                )
+                wtheta = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GG")
 
                 # replace data values in the sacc object for the theory ones
-                ind = s.indices('galaxy_density_xi', (f'lens_{i}', f'lens_{j}'))
+                ind = s.indices("galaxy_density_xi", (f"lens_{i}", f"lens_{j}"))
                 for p, q in enumerate(ind):
                     s.data[q].value = wtheta[p]
 
@@ -263,7 +270,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                     s.data[q].value = cl[p]
 
         for i in range(nbin_lens):
-            for j in range(i+1):
+            for j in range(i + 1):
                 print(f"Computing theory density-density ({i},{j})")
 
                 # compute theory

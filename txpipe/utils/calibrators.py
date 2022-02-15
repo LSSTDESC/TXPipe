@@ -69,6 +69,7 @@ class NullCalibrator:
     """
     This calibrator subclass does nothing - it's designed
     """
+
     def __init__(self, mu=None):
         if mu is None:
             self.mu1 = 0.0
@@ -136,10 +137,13 @@ class NullCalibrator:
             mu1_2d = f["tomography/mean_e1_2d"][0]
             mu2_2d = f["tomography/mean_e2_2d"][0]
 
-        return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator([mu1_2d, mu2_2d])
+        return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator(
+            [mu1_2d, mu2_2d]
+        )
 
     def save(self, group, index):
         pass
+
 
 class MetaCalibrator(Calibrator):
     def __init__(self, R, S, mu, mu_is_calibrated=True):
@@ -339,7 +343,6 @@ class LensfitCalibrator(Calibrator):
             outfile["tomography/mean_e1"][i] = self.c[0]
             outfile["tomography/mean_e2"][i] = self.c[1]
 
-
     def apply(self, g1, g2, subtract_mean=True):
         """
         For KiDS (see Joachimi et al., 2020, arXiv:2007.01844):
@@ -370,6 +373,7 @@ class LensfitCalibrator(Calibrator):
             g1 = g1 / (1 + self.K)
             g2 = g2 / (1 + self.K)
         return g1, g2
+
 
 class HSCCalibrator(Calibrator):
     def __init__(self, R, K):
@@ -441,7 +445,6 @@ class HSCCalibrator(Calibrator):
             Shear 2 additive bias component
         """
 
-        g1 = (g1 / (2 * self.R) - c1)/ (1 + self.K)
-        g2 = (g2 / (2 * self.R) - c2)/ (1 + self.K)
+        g1 = (g1 / (2 * self.R) - c1) / (1 + self.K)
+        g2 = (g2 / (2 * self.R) - c2) / (1 + self.K)
         return g1, g2
-

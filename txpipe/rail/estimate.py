@@ -56,11 +56,10 @@ class PZRailEstimateSource(PipelineStage):
         # Load the estimator trained in PZRailTrain
         estimator = self.load_model()
 
-        bands = self.config['bands']
-        convert = self.config['convert_unseen']
-        undet = self.config['undetected_value']
-        unobs = self.config['unobserved_value']
-
+        bands = self.config["bands"]
+        convert = self.config["convert_unseen"]
+        undet = self.config["undetected_value"]
+        unobs = self.config["unobserved_value"]
 
         # prepare the output data - we will save things to this
         # as we go along.  We also need the z grid becauwe we use
@@ -114,7 +113,7 @@ class PZRailEstimateSource(PipelineStage):
     def get_catalog_size(self):
         cat_type = read_shear_catalog_type(self)
         with self.open_input("shear_catalog") as f:
-            if cat_type == 'metadetect':
+            if cat_type == "metadetect":
                 nobj = f["shear/00/ra"].size
             else:
                 nobj = f["shear/ra"].size
