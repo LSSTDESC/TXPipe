@@ -63,6 +63,7 @@ class BatchWriter:
     processes are writing to a file at the same time
     using MPI
     """
+
     def __init__(self, group, col_dtypes, offset, max_size=1_000_000):
         self.group = group
         self.index = 0
@@ -71,8 +72,7 @@ class BatchWriter:
         self.max_size = max_size
         self.cols = list(col_dtypes.keys())
         self.data = {
-            name: np.empty(max_size, dtype=dtype)
-            for name, dtype in col_dtypes.items()
+            name: np.empty(max_size, dtype=dtype) for name, dtype in col_dtypes.items()
         }
 
     def write(self, **data):
@@ -96,7 +96,6 @@ class BatchWriter:
             s = e
             e = min(n, s + self.max_size - self.index)
 
-
     def _batch_chunk(self, data, n):
         s = self.index
         e = s + n
@@ -118,7 +117,7 @@ class BatchWriter:
         e_out = s_out + n
 
         for name, col in self.data.items():
-            self.group[name][s_out+self.offset:e_out+self.offset] = col[s_in:e_in]
+            self.group[name][s_out + self.offset : e_out + self.offset] = col[s_in:e_in]
         self.written_index = e_out
 
     def finish(self):
