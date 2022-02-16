@@ -737,6 +737,7 @@ class TXTwoPointFourier(PipelineStage):
                 #area = info["area"]
                 #f_sky = info["f_sky"]
                 mask = f.read_map("mask")
+                mask[mask==hp.UNSEEN] = 0.
                 if self.rank == 0:
                     print("Loaded mask")
              
