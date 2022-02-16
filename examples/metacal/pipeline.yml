@@ -99,9 +99,7 @@ modules: txpipe
 # configuration settings
 config: examples/metacal/config.yml
 
-# On NERSC, set this before running:
-# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
-
+# These are overall inputs to the whole pipeline, not generated within it
 inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/shear_catalog.hdf5
