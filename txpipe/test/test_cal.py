@@ -1,30 +1,37 @@
-from ..utils.calibration_tools import MeanShearInBins, MetacalCalculator, MetaDetectCalculator
+from ..utils.calibration_tools import (
+    MeanShearInBins,
+    MetacalCalculator,
+    MetaDetectCalculator,
+)
 from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
 import numpy as np
 import mockmpi
 
 
-
 def select_all_bool(data):
-    return np.repeat(True, data['mcal_g2'].size)
+    return np.repeat(True, data["mcal_g2"].size)
+
 
 def select_all_index(data):
-    return np.arange(data['mcal_g2'].size)
+    return np.arange(data["mcal_g2"].size)
+
 
 def select_all_where(data):
     # we just want to select everything here too
-    return np.where(data['mcal_g2'] * 0 == 0)
+    return np.where(data["mcal_g2"] * 0 == 0)
+
 
 def select_all_bool_md(data):
-    return np.repeat(True, data['g2'].size)
+    return np.repeat(True, data["g2"].size)
+
 
 def select_all_index_md(data):
-    return np.arange(data['g2'].size)
+    return np.arange(data["g2"].size)
+
 
 def select_all_where_md(data):
     # we just want to select everything here too
-    return np.where(data['g2'] * 0 == 0)
-
+    return np.where(data["g2"] * 0 == 0)
 
 
 def core_metacal(comm):
@@ -38,10 +45,10 @@ def core_metacal(comm):
     g_true = np.array([g1_true, g2_true])
     R_true = np.array([[0.9, 0.1], [0.07, 0.8]])
     g = R_true @ g_true
-    g_1p = R_true @ (g_true + 0.5*delta_gamma * np.array([+1, 0])[:, np.newaxis])
-    g_1m = R_true @ (g_true + 0.5*delta_gamma * np.array([-1, 0])[:, np.newaxis])
-    g_2p = R_true @ (g_true + 0.5*delta_gamma * np.array([0, +1])[:, np.newaxis])
-    g_2m = R_true @ (g_true + 0.5*delta_gamma * np.array([0, -1])[:, np.newaxis])
+    g_1p = R_true @ (g_true + 0.5 * delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_true @ (g_true + 0.5 * delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    g_2p = R_true @ (g_true + 0.5 * delta_gamma * np.array([0, +1])[:, np.newaxis])
+    g_2m = R_true @ (g_true + 0.5 * delta_gamma * np.array([0, -1])[:, np.newaxis])
     weight = np.ones(N)
 
     data = {
@@ -94,6 +101,7 @@ def core_metacal(comm):
         assert np.allclose(S, 0.0)
         assert n == N * nproc
 
+
 def core_metadet(comm):
     delta_gamma = 0.02
 
@@ -105,10 +113,10 @@ def core_metadet(comm):
     g_true = np.array([g1_true, g2_true])
     R_true = np.array([[0.9, 0.1], [0.07, 0.8]])
     g = R_true @ g_true
-    g_1p = R_true @ (g_true + 0.5*delta_gamma * np.array([+1, 0])[:, np.newaxis])
-    g_1m = R_true @ (g_true + 0.5*delta_gamma * np.array([-1, 0])[:, np.newaxis])
-    g_2p = R_true @ (g_true + 0.5*delta_gamma * np.array([0, +1])[:, np.newaxis])
-    g_2m = R_true @ (g_true + 0.5*delta_gamma * np.array([0, -1])[:, np.newaxis])
+    g_1p = R_true @ (g_true + 0.5 * delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_true @ (g_true + 0.5 * delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    g_2p = R_true @ (g_true + 0.5 * delta_gamma * np.array([0, +1])[:, np.newaxis])
+    g_2m = R_true @ (g_true + 0.5 * delta_gamma * np.array([0, -1])[:, np.newaxis])
     weight = np.ones(N)
 
     data = {
@@ -166,12 +174,13 @@ def core_metadet(comm):
         assert np.allclose(R, R_true)
         assert np.allclose(n, N * nproc)
 
+
 def test_metacalibrator_serial():
     core_metacal(None)
 
+
 def test_metadetect_serial():
     core_metadet(None)
-
 
 
 def test_metadetect_parallel():
@@ -181,7 +190,7 @@ def test_metadetect_parallel():
 
 def test_mean_shear():
     name = "x"
-    limits = [-1., 0., 1.]
+    limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
 
     # equal weights
@@ -197,15 +206,19 @@ def test_mean_shear():
         "x_2p": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "x_2m": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "mcal_g1": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g1_1p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5*delta_gamma,
-        "mcal_g1_1m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5*delta_gamma,
+        "mcal_g1_1p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
+        + 0.5 * delta_gamma,
+        "mcal_g1_1m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
+        - 0.5 * delta_gamma,
         "mcal_g1_2p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "mcal_g1_2m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_1p": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_1m": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_2p": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5*delta_gamma,
-        "mcal_g2_2m": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5*delta_gamma,
+        "mcal_g2": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "mcal_g2_1p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "mcal_g2_1m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "mcal_g2_2p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
+        + 0.5 * delta_gamma,
+        "mcal_g2_2m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
+        - 0.5 * delta_gamma,
         "weight": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
     b1.add_data(data)
@@ -218,13 +231,14 @@ def test_mean_shear():
     # using var([0.7, 0.6, 0.4, 0.3]) == var([-0.2, -0.1, 0.1, 0.2])
     # this should equal the sigma (error on the mean) from the numbers above.
     expected_sigma1 = np.std([-0.2, -0.1, 0.1, 0.2]) / np.sqrt(4)
-    expected_sigma2 = 2*expected_sigma1
+    expected_sigma2 = 2 * expected_sigma1
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
+
 def test_mean_shear_weights():
     name = "x"
-    limits = [-1., 0., 1.]
+    limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
     # downweighting half of samples
     b1 = MeanShearInBins(name, limits, delta_gamma)
@@ -239,15 +253,15 @@ def test_mean_shear_weights():
         "x_2p": x,
         "x_2m": x,
         "mcal_g1": g1,
-        "mcal_g1_1p": g1 + 0.5*delta_gamma,
-        "mcal_g1_1m": g1 - 0.5*delta_gamma,
+        "mcal_g1_1p": g1 + 0.5 * delta_gamma,
+        "mcal_g1_1m": g1 - 0.5 * delta_gamma,
         "mcal_g1_2p": g1,
         "mcal_g1_2m": g1,
-        "mcal_g2":    g2,
+        "mcal_g2": g2,
         "mcal_g2_1p": g2,
         "mcal_g2_1m": g2,
-        "mcal_g2_2p": g2 + 0.5*delta_gamma,
-        "mcal_g2_2m": g2 - 0.5*delta_gamma,
+        "mcal_g2_2p": g2 + 0.5 * delta_gamma,
+        "mcal_g2_2m": g2 - 0.5 * delta_gamma,
         "weight": np.array([1, 1, 0, 0, 0, 0, 1, 1]),
     }
     b1.add_data(data)
@@ -258,7 +272,7 @@ def test_mean_shear_weights():
     assert np.allclose(g1, [-0.65, 0.35])
     assert np.allclose(g2, [-1.3, 0.7])
     expected_sigma1 = np.std([-0.2, -0.1]) / np.sqrt(2)
-    expected_sigma2 = 2*expected_sigma1
+    expected_sigma2 = 2 * expected_sigma1
     print(sigma1, expected_sigma1)
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
@@ -280,6 +294,7 @@ def test_metacal_scalar():
     assert type(g1) == float
     assert type(g2) == float
 
+
 def test_metacal_array():
     # array version
     R = np.array([[2, 3], [4, 5]])
@@ -295,6 +310,7 @@ def test_metacal_array():
     assert np.allclose(g2_, g2)
     assert type(g1) == np.ndarray
     assert type(g2) == np.ndarray
+
 
 def test_metacal_mean():
     # array version with mean
@@ -313,7 +329,6 @@ def test_metacal_mean():
     assert type(g1) == np.ndarray
     assert type(g2) == np.ndarray
 
-
     g_obs = R @ [g1 + mu[0], g2 + mu[1]]
     cal = MetaCalibrator(R, S, mu, mu_is_calibrated=True)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
@@ -321,7 +336,6 @@ def test_metacal_mean():
     assert np.allclose(g2_, g2)
     assert type(g1) == np.ndarray
     assert type(g2) == np.ndarray
-
 
 
 def test_null():
@@ -337,7 +351,7 @@ def test_null():
     assert np.allclose(g2_, g2)
     assert type(g1) == float
     assert type(g2) == float
-    
+
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
     g_obs = R @ [g1, g2]
@@ -347,7 +361,6 @@ def test_null():
     assert np.allclose(g2_, g2)
     assert type(g1) == np.ndarray
     assert type(g2) == np.ndarray
-
 
 
 def test_null_mean():
@@ -376,8 +389,7 @@ def test_null_mean():
     assert type(g2) == np.ndarray
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_metacalibrator_serial()
     test_metacalibrator_parallel()
     test_mean_shear()

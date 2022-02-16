@@ -1,9 +1,29 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, YamlFile, PhotozPDFFile, TomographyCatalog, HDFFile, TextFile
+from .data_types import (
+    ShearCatalog,
+    YamlFile,
+    PhotozPDFFile,
+    TomographyCatalog,
+    HDFFile,
+    TextFile,
+)
 from .utils import SourceNumberDensityStats, rename_iterated
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
-from .utils.calibration_tools import metacal_variants, metadetect_variants, band_variants, MetacalCalculator, LensfitCalculator, HSCCalculator, MetaDetectCalculator
-from .utils.calibrators import MetaCalibrator, MetaDetectCalibrator, LensfitCalibrator, HSCCalibrator
+from .utils.calibration_tools import (
+    metacal_variants,
+    metadetect_variants,
+    band_variants,
+    MetacalCalculator,
+    LensfitCalculator,
+    HSCCalculator,
+    MetaDetectCalculator,
+)
+from .utils.calibrators import (
+    MetaCalibrator,
+    MetaDetectCalibrator,
+    LensfitCalibrator,
+    HSCCalibrator,
+)
 import numpy as np
 import warnings
 
@@ -13,6 +33,7 @@ class BinStats:
     This is a small helper class to store and write the statistics of a
     single tomographic bin. It helps simplify some of the code below.
     """
+
     def __init__(self, source_count, N_eff, mean_e, sigma_e, calibrator):
         """
         Parameters
@@ -45,28 +66,28 @@ class BinStats:
         i: int or str
             The index for this tomographic bin, or "2d"
         """
-        group = outfile['tomography']
-        if i == '2d':
-            group['source_counts_2d'][:] = self.source_count
-            group['N_eff_2d'][:] = self.N_eff
+        group = outfile["tomography"]
+        if i == "2d":
+            group["source_counts_2d"][:] = self.source_count
+            group["N_eff_2d"][:] = self.N_eff
             # This might get saved by the calibrator also
             # but in case not we do it here.
-            group['mean_e1_2d'][:] = self.mean_e[0]
-            group['mean_e2_2d'][:] = self.mean_e[1]
-            group['sigma_e_2d'][:] = self.sigma_e
+            group["mean_e1_2d"][:] = self.mean_e[0]
+            group["mean_e2_2d"][:] = self.mean_e[1]
+            group["sigma_e_2d"][:] = self.sigma_e
         else:
-            group['source_counts'][i] = self.source_count
-            group['N_eff'][i] = self.N_eff
-            group['mean_e1'][i] = self.mean_e[0]
-            group['mean_e2'][i] = self.mean_e[1]
-            group['sigma_e'][i] = self.sigma_e
+            group["source_counts"][i] = self.source_count
+            group["N_eff"][i] = self.N_eff
+            group["mean_e1"][i] = self.mean_e[0]
+            group["mean_e2"][i] = self.mean_e[1]
+            group["sigma_e"][i] = self.sigma_e
 
         self.calibrator.save(outfile, i)
 
 
 class TXSourceSelectorBase(PipelineStage):
     """
-    The subclasses of this pipeline stage select 
+    The subclasses of this pipeline stage select
     objects to be used as the source sample for
     the shear-shear and shear-position calibrations.
 
@@ -81,35 +102,34 @@ class TXSourceSelectorBase(PipelineStage):
     It also splits those objects into tomographic
     bins using either a random forest algorithm, with
     the training data in calibration_table, or according to
-    the true shear (if present), according to the choice the 
+    the true shear (if present), according to the choice the
     user makes in the configuration.
 
     Once these selections are made it constructs
     the quantities needed to calibrate each bin,
     generating a set of Calibrator objects.
     """
+
     name = "TXSourceSelector"
 
     inputs = [
-        ('shear_catalog', ShearCatalog),
-        ('calibration_table', TextFile),
+        ("shear_catalog", ShearCatalog),
+        ("calibration_table", TextFile),
     ]
 
-    outputs = [
-        ('shear_tomography_catalog', TomographyCatalog)
-    ]
+    outputs = [("shear_tomography_catalog", TomographyCatalog)]
 
     config_options = {
-        'input_pz': False,
-        'true_z': False,
-        'bands': 'riz', # bands from metacal to use
-        'verbose': False,
-        'T_cut': float,
-        's2n_cut': float,
-        'delta_gamma': float,
-        'chunk_rows': 10000,
-        'source_zbin_edges': [float],
-        'random_seed': 42,
+        "input_pz": False,
+        "true_z": False,
+        "bands": "riz",  # bands from metacal to use
+        "verbose": False,
+        "T_cut": float,
+        "s2n_cut": float,
+        "delta_gamma": float,
+        "chunk_rows": 10000,
+        "source_zbin_edges": [float],
+        "random_seed": 42,
     }
 
     def run(self):
@@ -119,11 +139,13 @@ class TXSourceSelectorBase(PipelineStage):
         # This base class should no longer be used, so to avoid people
         # accidentally doing so we give a clear message if they try.
         if self.name == "TXSourceSelector":
-            raise ValueError("Do not use the class TXSourceSelector any more. "
-                             "Use one of the subclasses like TXSourceSelectorMetacal")
+            raise ValueError(
+                "Do not use the class TXSourceSelector any more. "
+                "Use one of the subclasses like TXSourceSelectorMetacal"
+            )
 
         # Suppress some warnings from numpy that are not relevant
-        original_warning_settings = np.seterr(all='ignore')
+        original_warning_settings = np.seterr(all="ignore")
 
         # Are we using a metacal or lensfit catalog?
         shear_catalog_type = read_shear_catalog_type(self)
@@ -138,18 +160,16 @@ class TXSourceSelectorBase(PipelineStage):
         it = self.data_iterator()
 
         # Build a classifier used to put objects into tomographic bins
-        if not (self.config['input_pz'] or self.config['true_z']):
+        if not (self.config["input_pz"] or self.config["true_z"]):
             classifier, features = self.build_tomographic_classifier()
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config['source_zbin_edges'])-1
+        nbin_source = len(self.config["source_zbin_edges"]) - 1
 
         number_density_stats = SourceNumberDensityStats(
-            nbin_source, 
-            comm=self.comm,
-            shear_type=shear_catalog_type
+            nbin_source, comm=self.comm, shear_type=shear_catalog_type
         )
 
         calculators = self.setup_response_calculators(nbin_source)
@@ -160,7 +180,7 @@ class TXSourceSelectorBase(PipelineStage):
 
             # Either apply a simple z cut if we have an input PZ estimate or
             # the truth value (in simulations)
-            if self.config['true_z'] or self.config['input_pz']:
+            if self.config["true_z"] or self.config["input_pz"]:
                 pz_data = self.apply_simple_redshift_cut(shear_data)
 
             else:
@@ -169,7 +189,9 @@ class TXSourceSelectorBase(PipelineStage):
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
-            tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calculators)
+            tomo_bin, R, counts = self.calculate_tomography(
+                pz_data, shear_data, calculators
+            )
 
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, R)
@@ -186,7 +208,6 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
-
 
     def build_tomographic_classifier(self):
         # Load the training data
@@ -205,10 +226,10 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Load the training data
         training_file = self.get_input("calibration_table")
-        training_data_table = Table.read(training_file, format='ascii')
+        training_data_table = Table.read(training_file, format="ascii")
 
         # Pull out the appropriate columns and combinations of the data
-        bands = self.config['bands']
+        bands = self.config["bands"]
         print(f"Using these bands to train the tomography selector: {bands}")
 
         # Generate the training data that we will use
@@ -221,27 +242,33 @@ class TXSourceSelectorBase(PipelineStage):
             training_data.append(training_data_table[b1])
             # We also use the colours as training data, even the redundant ones
             for b2 in bands[:]:
-                if b1<b2:
-                    features.append(f'{b1}-{b2}')
-                    training_data.append(training_data_table[b1] - training_data_table[b2])
+                if b1 < b2:
+                    features.append(f"{b1}-{b2}")
+                    training_data.append(
+                        training_data_table[b1] - training_data_table[b2]
+                    )
         training_data = np.array(training_data).T
 
         print("Training data for bin classifier has shape ", training_data.shape)
 
         # Now put the training data into redshift bins
         # We use -1 to indicate that we are outside the desired ranges
-        z = training_data_table['sz']
+        z = training_data_table["sz"]
         training_bin = np.repeat(-1, len(z))
-        print("Using these bin edges:", self.config['source_zbin_edges'])
-        for i, zmin in enumerate(self.config['source_zbin_edges'][:-1]):
-            zmax = self.config['source_zbin_edges'][i+1]
-            training_bin[(z>zmin) & (z<zmax)] = i
-            ntrain_bin = ((z>zmin) & (z<zmax)).sum()
+        print("Using these bin edges:", self.config["source_zbin_edges"])
+        for i, zmin in enumerate(self.config["source_zbin_edges"][:-1]):
+            zmax = self.config["source_zbin_edges"][i + 1]
+            training_bin[(z > zmin) & (z < zmax)] = i
+            ntrain_bin = ((z > zmin) & (z < zmax)).sum()
             print(f"Training set: {ntrain_bin} objects in tomographic bin {i}")
 
         # Can be replaced with any classifier
-        classifier = RandomForestClassifier(max_depth=10, max_features=None, n_estimators=20,
-            random_state=self.config['random_seed'])
+        classifier = RandomForestClassifier(
+            max_depth=10,
+            max_features=None,
+            n_estimators=20,
+            random_state=self.config["random_seed"],
+        )
         classifier.fit(training_data, training_bin)
 
         # Sklearn fitters can be pickled, which means they can also be sent through
@@ -252,20 +279,19 @@ class TXSourceSelectorBase(PipelineStage):
 
         return classifier, features
 
-
     def apply_classifier(self, classifier, features, shear_data):
         """Apply the classifier to the measured magnitudes"""
-        bands = self.config['bands']
+        bands = self.config["bands"]
 
-        if self.config['shear_catalog_type'] == 'metacal':
-            prefixes = ['mcal_', 'mcal_', 'mcal_', 'mcal_', 'mcal_']
-            suffixes = ['', '_1p', '_2p', '_1m', '_2m']
-        elif self.config['shear_catalog_type'] == 'metadetect':
-            prefixes = ['00/', '1p/', '2p/', '1m/', '2m/']
-            suffixes = ['', '', '', '' '', '']
+        if self.config["shear_catalog_type"] == "metacal":
+            prefixes = ["mcal_", "mcal_", "mcal_", "mcal_", "mcal_"]
+            suffixes = ["", "_1p", "_2p", "_1m", "_2m"]
+        elif self.config["shear_catalog_type"] == "metadetect":
+            prefixes = ["00/", "1p/", "2p/", "1m/", "2m/"]
+            suffixes = ["", "", "", "" "", ""]
         else:
-            prefixes = ['']
-            suffixes = ['']
+            prefixes = [""]
+            suffixes = [""]
 
         pz_data = {}
 
@@ -276,11 +302,14 @@ class TXSourceSelectorBase(PipelineStage):
             for f in features:
                 # may be a single band
                 if len(f) == 1:
-                    col = shear_data[f'{prefix}mag_{f}{suffix}']
+                    col = shear_data[f"{prefix}mag_{f}{suffix}"]
                 # or a colour
                 else:
-                    b1,b2 = f.split('-')
-                    col = shear_data[f'{prefix}mag_{b1}{suffix}'] - shear_data[f'{prefix}mag_{b2}{suffix}']
+                    b1, b2 = f.split("-")
+                    col = (
+                        shear_data[f"{prefix}mag_{b1}{suffix}"]
+                        - shear_data[f"{prefix}mag_{b2}{suffix}"]
+                    )
                 if np.all(~np.isfinite(col)):
                     # entire column is NaN.  Hopefully this will get deselected elsewhere
                     col[:] = 30.0
@@ -291,25 +320,26 @@ class TXSourceSelectorBase(PipelineStage):
             data = np.array(data).T
 
             # Run the random forest on this data chunk
-            pz_data[f'{prefix}zbin{suffix}'] = classifier.predict(data)
-            if self.config['shear_catalog_type'] == 'metacal':
-                pz_data[f'zbin{suffix}'] = pz_data[f'{prefix}zbin{suffix}']
+            pz_data[f"{prefix}zbin{suffix}"] = classifier.predict(data)
+            if self.config["shear_catalog_type"] == "metacal":
+                pz_data[f"zbin{suffix}"] = pz_data[f"{prefix}zbin{suffix}"]
         return pz_data
 
     def apply_simple_redshift_cut(self, shear_data):
         pz_data = {}
-        if self.config['input_pz']:
-            zz = shear_data['mean_z']
+        if self.config["input_pz"]:
+            zz = shear_data["mean_z"]
         else:
-            zz = shear_data['redshift_true']
+            zz = shear_data["redshift_true"]
 
-        pz_data_bin = np.zeros(len(zz), dtype=int) -1
-        for zi in range(len(self.config['source_zbin_edges'])-1):
-            mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+        pz_data_bin = np.zeros(len(zz), dtype=int) - 1
+        for zi in range(len(self.config["source_zbin_edges"]) - 1):
+            mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
+                zz < self.config["source_zbin_edges"][zi + 1]
+            )
             pz_data_bin[mask_zbin] = zi
 
-        return {'zbin': pz_data_bin}
-
+        return {"zbin": pz_data_bin}
 
     def calculate_tomography(self, pz_data, shear_data, calculators):
         """
@@ -323,7 +353,7 @@ class TXSourceSelectorBase(PipelineStage):
         shear_data: table or dict of arrays
             A chunk of input shear data with metacalibration variants.
         """
-        nbin = len(self.config['source_zbin_edges'])-1
+        nbin = len(self.config["source_zbin_edges"]) - 1
         n = len(list(shear_data.values())[0])
 
         # The main output data - the tomographic
@@ -365,31 +395,31 @@ class TXSourceSelectorBase(PipelineStage):
         in the shear_tomography_catalog output file.
         """
         cat_type = read_shear_catalog_type(self)
-        with self.open_input('shear_catalog', wrapper=True) as f:
+        with self.open_input("shear_catalog", wrapper=True) as f:
             n = f.get_size()
 
-        zbins = self.config['source_zbin_edges']
+        zbins = self.config["source_zbin_edges"]
         nbin_source = len(zbins) - 1
 
-        outfile = self.open_output('shear_tomography_catalog', parallel=True)
-        group = outfile.create_group('tomography')
-        group.create_dataset('source_bin', (n,), dtype='i')
-        group.create_dataset('source_counts', (nbin_source,), dtype='i')
-        group.create_dataset('source_counts_2d', (1,), dtype='i')
-        group.create_dataset('sigma_e', (nbin_source,), dtype='f')
-        group.create_dataset('sigma_e_2d', (1,), dtype='f')
-        group.create_dataset('mean_e1', (nbin_source,), dtype='f')
-        group.create_dataset('mean_e2', (nbin_source,), dtype='f')
-        group.create_dataset('mean_e1_2d', (1,), dtype='f')
-        group.create_dataset('mean_e2_2d', (1,), dtype='f')
-        group.create_dataset('N_eff', (nbin_source,), dtype='f')
-        group.create_dataset('N_eff_2d', (1,), dtype='f')
+        outfile = self.open_output("shear_tomography_catalog", parallel=True)
+        group = outfile.create_group("tomography")
+        group.create_dataset("source_bin", (n,), dtype="i")
+        group.create_dataset("source_counts", (nbin_source,), dtype="i")
+        group.create_dataset("source_counts_2d", (1,), dtype="i")
+        group.create_dataset("sigma_e", (nbin_source,), dtype="f")
+        group.create_dataset("sigma_e_2d", (1,), dtype="f")
+        group.create_dataset("mean_e1", (nbin_source,), dtype="f")
+        group.create_dataset("mean_e2", (nbin_source,), dtype="f")
+        group.create_dataset("mean_e1_2d", (1,), dtype="f")
+        group.create_dataset("mean_e2_2d", (1,), dtype="f")
+        group.create_dataset("N_eff", (nbin_source,), dtype="f")
+        group.create_dataset("N_eff_2d", (1,), dtype="f")
 
-        group.attrs['nbin_source'] = nbin_source
-        group.attrs['catalog_type'] = self.config["shear_catalog_type"]
+        group.attrs["nbin_source"] = nbin_source
+        group.attrs["catalog_type"] = self.config["shear_catalog_type"]
         for i in range(nbin_source):
-            group.attrs[f'source_zmin_{i}'] = zbins[i]
-            group.attrs[f'source_zmax_{i}'] = zbins[i+1]
+            group.attrs[f"source_zmin_{i}"] = zbins[i]
+            group.attrs[f"source_zmax_{i}"] = zbins[i + 1]
 
         return outfile
 
@@ -417,8 +447,8 @@ class TXSourceSelectorBase(PipelineStage):
 
 
         """
-        group = outfile['tomography']
-        group['source_bin'][start:end] = source_bin
+        group = outfile["tomography"]
+        group["source_bin"][start:end] = source_bin
 
     def write_global_values(self, outfile, calculators, number_density_stats):
         """
@@ -439,8 +469,7 @@ class TXSourceSelectorBase(PipelineStage):
         for i in range(nbin_source + 1):
             stats = self.compute_output_stats(calculators[i], means[i], variances[i])
             if self.rank == 0:
-                stats.write_to(outfile, i if i < nbin_source else '2d')
-
+                stats.write_to(outfile, i if i < nbin_source else "2d")
 
     def select(self, data, bin_index):
         """
@@ -452,11 +481,11 @@ class TXSourceSelectorBase(PipelineStage):
         we pass it to the Calculator objects that call it, sometimes on different
         columns of data.
         """
-        zbin = data['zbin']
-        verbose = self.config['verbose']
+        zbin = data["zbin"]
+        verbose = self.config["verbose"]
 
         sel = self.select_2d(data, calling_from_select=True)
-        sel &= (zbin == bin_index)
+        sel &= zbin == bin_index
         f4 = sel.sum() / sel.size
 
         if verbose:
@@ -471,23 +500,23 @@ class TXSourceSelectorBase(PipelineStage):
         # are calling this function from within the select
         # method above, because the useful printed verbose
         # output is different in each case
-        s2n_cut = self.config['s2n_cut']
-        T_cut = self.config['T_cut']
-        verbose = self.config['verbose']
+        s2n_cut = self.config["s2n_cut"]
+        T_cut = self.config["T_cut"]
+        verbose = self.config["verbose"]
         variant = data.suffix
 
-        shear_prefix = self.config['shear_prefix']
-        s2n = data[f'{shear_prefix}s2n']
-        T = data[f'{shear_prefix}T']
+        shear_prefix = self.config["shear_prefix"]
+        s2n = data[f"{shear_prefix}s2n"]
+        T = data[f"{shear_prefix}T"]
 
-        Tpsf = data[f'{shear_prefix}psf_T_mean']
-        flag = data[f'{shear_prefix}flags']
+        Tpsf = data[f"{shear_prefix}psf_T_mean"]
+        flag = data[f"{shear_prefix}flags"]
 
         # Apply our cuts.  We keep track of the number of objects
         # reject by each cut in case it's important.
         # First we require flag = 0
         n0 = len(flag)
-        sel  = flag==0
+        sel = flag == 0
         f1 = sel.sum() / n0
 
         # Next we required a minimum object size compared to the PSF
@@ -495,12 +524,12 @@ class TXSourceSelectorBase(PipelineStage):
         f2 = sel.sum() / n0
 
         # Then we require a signal-to-noise minimum
-        sel &= s2n>s2n_cut
+        sel &= s2n > s2n_cut
         f3 = sel.sum() / n0
 
         # Finally we want objects that have been put into any of our other
         # tomographic bins
-        sel &= data['zbin'] >= 0
+        sel &= data["zbin"] >= 0
         f4 = sel.sum() / n0
 
         # Print out a message.  If we are selecting a 2D sample
@@ -508,13 +537,19 @@ class TXSourceSelectorBase(PipelineStage):
         # to also apply a redshift bin cut about then the message will continue
         # as above
         if verbose and calling_from_select:
-            print(f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR, ", end="")
+            print(
+                f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
+                f"{f3:.2%} SNR, ",
+                end="",
+            )
         elif verbose:
-            print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                  f"{f3:.2%} SNR, {f4:.2%} any z bin")
+            print(
+                f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
+                f"{f3:.2%} SNR, {f4:.2%} any z bin"
+            )
             print("total 2D", sel.sum())
         return sel
+
 
 class TXSourceSelectorMetacal(TXSourceSelectorBase):
     """
@@ -522,7 +557,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     used in Dark Energy Survey Y1 and Y3 data releases. In DESC they are
     superseded by MetaDetect, see below.
     """
-    name='TXSourceSelectorMetacal'
+
+    name = "TXSourceSelectorMetacal"
 
     # The main differences between the classes are to do with how the data is read
     # and what output response values are generated.
@@ -533,18 +569,22 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         We call to a parent class method to do the main iteration; the work here is
         just choosing which columns to read.
         """
-        bands = self.config['bands']
-        shear_cols = metacal_variants('mcal_T', 'mcal_s2n', 'mcal_g1', 'mcal_g2', 'mcal_flags')
-        shear_cols += ['ra', 'dec', 'mcal_psf_T_mean', 'weight']
-        shear_cols += band_variants(bands, 'mcal_mag', 'mcal_mag_err', shear_catalog_type='metacal')
+        bands = self.config["bands"]
+        shear_cols = metacal_variants(
+            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags"
+        )
+        shear_cols += ["ra", "dec", "mcal_psf_T_mean", "weight"]
+        shear_cols += band_variants(
+            bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
+        )
 
-        if self.config['input_pz']:
-            shear_cols += metacal_variants('mean_z')
-        elif self.config['true_z']:
-            shear_cols += ['redshift_true']
+        if self.config["input_pz"]:
+            shear_cols += metacal_variants("mean_z")
+        elif self.config["true_z"]:
+            shear_cols += ["redshift_true"]
 
-        chunk_rows = self.config['chunk_rows']
-        return self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
+        chunk_rows = self.config["chunk_rows"]
+        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_output(self):
         """
@@ -561,21 +601,23 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile['tomography/source_bin'].size
-        nbin_source = outfile['tomography/source_counts'].size
-        group = outfile.create_group('response')
-        group.create_dataset('R_gamma', (n,2,2), dtype='f')
-        group.create_dataset('R_S', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_gamma_mean', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_total', (nbin_source,2,2), dtype='f')
-        group.create_dataset('R_S_2d', (2,2), dtype='f')
-        group.create_dataset('R_gamma_mean_2d', (2,2), dtype='f')
-        group.create_dataset('R_total_2d', (2,2), dtype='f')
+        n = outfile["tomography/source_bin"].size
+        nbin_source = outfile["tomography/source_counts"].size
+        group = outfile.create_group("response")
+        group.create_dataset("R_gamma", (n, 2, 2), dtype="f")
+        group.create_dataset("R_S", (nbin_source, 2, 2), dtype="f")
+        group.create_dataset("R_gamma_mean", (nbin_source, 2, 2), dtype="f")
+        group.create_dataset("R_total", (nbin_source, 2, 2), dtype="f")
+        group.create_dataset("R_S_2d", (2, 2), dtype="f")
+        group.create_dataset("R_gamma_mean_2d", (2, 2), dtype="f")
+        group.create_dataset("R_total_2d", (2, 2), dtype="f")
         return outfile
 
     def setup_response_calculators(self, nbin_source):
-        delta_gamma = self.config['delta_gamma']
-        calculators = [MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)]
+        delta_gamma = self.config["delta_gamma"]
+        calculators = [
+            MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)
+        ]
         calculators.append(MetacalCalculator(self.select_2d, delta_gamma))
         return calculators
 
@@ -583,23 +625,23 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         # This write the per-object response values as well in addition
         # to the general values that are written in the base class.
         super().write_tomography(outfile, start, end, source_bin, R)
-        group = outfile['response']
-        group['R_gamma'][start:end,:,:] = R
+        group = outfile["response"]
+        group["R_gamma"][start:end, :, :] = R
 
     def compute_per_object_response(self, data):
-        delta_gamma = self.config['delta_gamma']
-        n = data['mcal_g1_1p'].size
+        delta_gamma = self.config["delta_gamma"]
+        n = data["mcal_g1_1p"].size
         R = np.zeros((n, 2, 2))
-        R[:,0,0] = (data['mcal_g1_1p'] - data['mcal_g1_1m']) / delta_gamma
-        R[:,0,1] = (data['mcal_g1_2p'] - data['mcal_g1_2m']) / delta_gamma
-        R[:,1,0] = (data['mcal_g2_1p'] - data['mcal_g2_1m']) / delta_gamma
-        R[:,1,1] = (data['mcal_g2_2p'] - data['mcal_g2_2m']) / delta_gamma
+        R[:, 0, 0] = (data["mcal_g1_1p"] - data["mcal_g1_1m"]) / delta_gamma
+        R[:, 0, 1] = (data["mcal_g1_2p"] - data["mcal_g1_2m"]) / delta_gamma
+        R[:, 1, 0] = (data["mcal_g2_1p"] - data["mcal_g2_1m"]) / delta_gamma
+        R[:, 1, 1] = (data["mcal_g2_2p"] - data["mcal_g2_2m"]) / delta_gamma
         return R
 
     def apply_simple_redshift_cut(self, data):
         # If we have the truth pz then we just need to do the binning once,
         # as in the parent class
-        if self.config['true_z']:
+        if self.config["true_z"]:
             return super().apply_simple_redshift_cut(data)
 
         # Otherwise we have to do it once for each variant, because
@@ -607,16 +649,18 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         # values of it for each shear.
 
         pz_data = {}
-        variants = ['', '_1p', '_2p', '_1m', '_2m']
+        variants = ["", "_1p", "_2p", "_1m", "_2m"]
         for v in variants:
-            zz = shear_data[f'mean_z{v}']
+            zz = shear_data[f"mean_z{v}"]
 
-            pz_data_v = np.zeros(len(zz), dtype=int) -1
-            for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+            pz_data_v = np.zeros(len(zz), dtype=int) - 1
+            for zi in range(len(self.config["source_zbin_edges"]) - 1):
+                mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
+                    zz < self.config["source_zbin_edges"][zi + 1]
+                )
                 pz_data_v[mask_zbin] = zi
 
-            pz_data[f'zbin{v}'] = pz_data_v
+            pz_data[f"zbin{v}"] = pz_data_v
 
         return pz_data
 
@@ -643,8 +687,6 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         return BinStats(N, N, mean_e, sigma_e, calibrator)
 
 
-
-
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     """
     This subclass selects for MetaDetect catalogs, which is expected to be used for
@@ -654,63 +696,71 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     As a consequence the different calibration columns have different lengths, since
     different objects are detected in each case.
     """
+
     name = "TXSourceSelectorMetadetect"
+
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
-        chunk_rows = self.config['chunk_rows']
-        bands = self.config['bands']
+        chunk_rows = self.config["chunk_rows"]
+        bands = self.config["bands"]
 
         # Core quantities we need
         shear_cols = metadetect_variants(
-                'T', 's2n', 'g1', 'g2',
-                'ra', 'dec', 'mcal_psf_T_mean', 'weight', 'flags'
-                )
+            "T", "s2n", "g1", "g2", "ra", "dec", "mcal_psf_T_mean", "weight", "flags"
+        )
 
         # Magnitudes and errors
-        shear_cols += band_variants(bands, 'mag', 'mag_err', shear_catalog_type='metadetect')
+        shear_cols += band_variants(
+            bands, "mag", "mag_err", shear_catalog_type="metadetect"
+        )
 
         # We need truth shears and/or PZ point-estimates for each shear too
-        if self.config['input_pz']:
-            shear_cols += metadetect_variants('mean_z')
-        elif self.config['true_z']:
-            shear_cols += ['redshift_true']
+        if self.config["input_pz"]:
+            shear_cols += metadetect_variants("mean_z")
+        elif self.config["true_z"]:
+            shear_cols += ["redshift_true"]
 
         renames = {}
-        for prefix in ['00', '1p', '1m', '2p', '2m']:
-            renames[f'{prefix}/mcal_psf_T_mean'] = f'{prefix}/psf_T_mean'
+        for prefix in ["00", "1p", "1m", "2p", "2m"]:
+            renames[f"{prefix}/mcal_psf_T_mean"] = f"{prefix}/psf_T_mean"
 
         # This is a parent ceci.PipelineStage method.
         # It returns an iterator we loop through
-        it = self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows, longest=True)
+        it = self.iterate_hdf(
+            "shear_catalog", "shear", shear_cols, chunk_rows, longest=True
+        )
         return rename_iterated(it, renames)
 
     def setup_response_calculators(self, nbin_source):
-        delta_gamma = self.config['delta_gamma']
-        calculators = [MetaDetectCalculator(self.select, delta_gamma) for i in range(nbin_source)]
+        delta_gamma = self.config["delta_gamma"]
+        calculators = [
+            MetaDetectCalculator(self.select, delta_gamma) for i in range(nbin_source)
+        ]
         calculators.append(MetaDetectCalculator(self.select_2d, delta_gamma))
         return calculators
 
     def apply_simple_redshift_cut(self, data):
         # If we have the truth pz then we just need to do the binning once,
         # as in the parent class
-        if self.config['true_z']:
+        if self.config["true_z"]:
             return super().apply_simple_redshift_cut(data)
 
         # Otherwise we have to do it once for each variant
         pz_data = {}
-        variants = ['00/', '1p/', '2p/', '1m/', '2m/']
+        variants = ["00/", "1p/", "2p/", "1m/", "2m/"]
         for v in variants:
-            zz = shear_data[f'{v}mean_z']
+            zz = shear_data[f"{v}mean_z"]
 
-            pz_data_v = np.zeros(len(zz), dtype=int) -1
-            for zi in range(len(self.config['source_zbin_edges'])-1):
-                mask_zbin = (zz>=self.config['source_zbin_edges'][zi]) & (zz<self.config['source_zbin_edges'][zi+1])
+            pz_data_v = np.zeros(len(zz), dtype=int) - 1
+            for zi in range(len(self.config["source_zbin_edges"]) - 1):
+                mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
+                    zz < self.config["source_zbin_edges"][zi + 1]
+                )
                 pz_data_v[mask_zbin] = zi
 
-            pz_data[f'{v}zbin'] = pz_data_v
+            pz_data[f"{v}zbin"] = pz_data_v
 
         return pz_data
-
 
     def setup_output(self):
         """
@@ -721,14 +771,14 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile['tomography/source_bin'].size
-        nbin_source = outfile['tomography/source_counts'].size
-        group = outfile.create_group('response')
+        n = outfile["tomography/source_bin"].size
+        nbin_source = outfile["tomography/source_counts"].size
+        group = outfile.create_group("response")
 
         # Per-bin 2x2 calibration matrix
-        group.create_dataset('R', (nbin_source,2,2), dtype='f')
+        group.create_dataset("R", (nbin_source, 2, 2), dtype="f")
         # Global calibration matrix
-        group.create_dataset('R_2d', (2,2), dtype='f')
+        group.create_dataset("R_2d", (2, 2), dtype="f")
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
@@ -752,22 +802,40 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     It is a simpler calibration scheme than the above two, and does not involve
     variant catalogs, just taking the mean of a value for one catalog.
     """
+
     name = "TXSourceSelectorLensfit"
 
     def data_iterator(self):
-        chunk_rows = self.config['chunk_rows']
-        bands = self.config['bands']
-        shear_cols = ['psf_T_mean', 'weight', 'flags', 'T', 's2n', 'g1', 'g2','weight','m']
-        shear_cols += band_variants(bands, 'mag', 'mag_err', shear_catalog_type='lensfit')
-        if self.config['input_pz']:
-            shear_cols += ['mean_z']
-        elif self.config['true_z']:
-            shear_cols += ['redshift_true']
-        return self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
+        chunk_rows = self.config["chunk_rows"]
+        bands = self.config["bands"]
+        shear_cols = [
+            "psf_T_mean",
+            "weight",
+            "flags",
+            "T",
+            "s2n",
+            "g1",
+            "g2",
+            "weight",
+            "m",
+        ]
+        shear_cols += band_variants(
+            bands, "mag", "mag_err", shear_catalog_type="lensfit"
+        )
+        if self.config["input_pz"]:
+            shear_cols += ["mean_z"]
+        elif self.config["true_z"]:
+            shear_cols += ["redshift_true"]
+        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_response_calculators(self, nbin_source):
-        calculators = [LensfitCalculator(self.select,self.config['input_m_is_weighted']) for i in range(nbin_source)]
-        calculators.append(LensfitCalculator(self.select_2d,self.config['input_m_is_weighted']))
+        calculators = [
+            LensfitCalculator(self.select, self.config["input_m_is_weighted"])
+            for i in range(nbin_source)
+        ]
+        calculators.append(
+            LensfitCalculator(self.select_2d, self.config["input_m_is_weighted"])
+        )
         return calculators
 
     def setup_output(self):
@@ -775,15 +843,14 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile['tomography/source_bin'].size
-        nbin_source = outfile['tomography/source_counts'].size
-        group = outfile.create_group('response')
-        group.create_dataset('K', (nbin_source,), dtype='f')
-        group.create_dataset('C', (nbin_source,2), dtype='f')
-        group.create_dataset('K_2d', (1,), dtype='f')
-        group.create_dataset('C_2d', (2), dtype='f')
+        n = outfile["tomography/source_bin"].size
+        nbin_source = outfile["tomography/source_counts"].size
+        group = outfile.create_group("response")
+        group.create_dataset("K", (nbin_source,), dtype="f")
+        group.create_dataset("C", (nbin_source, 2), dtype="f")
+        group.create_dataset("K_2d", (1,), dtype="f")
+        group.create_dataset("C_2d", (2), dtype="f")
         return outfile
-
 
     def compute_output_stats(self, calculator, mean, variance):
         K, C, N = calculator.collect(self.comm, allgather=True)
@@ -804,52 +871,70 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
     TODO: The HSC calibrator is currently broken, and will crash when it gets
     to compute_output_stats
     """
+
     name = "TXSourceSelectorHSC"
+
     def data_iterator(self):
-        chunk_rows = self.config['chunk_rows']
-        bands = self.config['bands']
+        chunk_rows = self.config["chunk_rows"]
+        bands = self.config["bands"]
 
         # Select columns we need.
-        shear_cols = ['psf_T_mean', 'weight', 'flags', 'T', 's2n', 'g1', 'g2','weight','m','c1','c2','sigma_e']
-        shear_cols += band_variants(bands, 'mag', 'mag_err', shear_catalog_type='hsc')
-        if self.config['input_pz']:
-            shear_cols += ['mean_z']
-        elif self.config['true_z']:
-            shear_cols += ['redshift_true']
+        shear_cols = [
+            "psf_T_mean",
+            "weight",
+            "flags",
+            "T",
+            "s2n",
+            "g1",
+            "g2",
+            "weight",
+            "m",
+            "c1",
+            "c2",
+            "sigma_e",
+        ]
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="hsc")
+        if self.config["input_pz"]:
+            shear_cols += ["mean_z"]
+        elif self.config["true_z"]:
+            shear_cols += ["redshift_true"]
 
         # Iterate using parent class method
-        return self.iterate_hdf('shear_catalog', 'shear', shear_cols, chunk_rows)
+        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_output(self):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile['tomography/source_bin'].size
-        nbin_source = outfile['tomography/source_counts'].size
-        group = outfile.create_group('response')
+        n = outfile["tomography/source_bin"].size
+        nbin_source = outfile["tomography/source_counts"].size
+        group = outfile.create_group("response")
 
         # There is a single scalar per-object value for this scheme
-        group.create_dataset('R', (n,), dtype='f')
+        group.create_dataset("R", (n,), dtype="f")
 
         # and a set of additive and multiplicative factors.
         # The K and R values are degenerate.
-        group.create_dataset('K', (nbin_source,), dtype='f')
-        group.create_dataset('C', (nbin_source,2), dtype='f')
-        group.create_dataset('R_mean', (nbin_source,), dtype='f')
-        group.create_dataset('K_2d', (1,), dtype='f')
-        group.create_dataset('C_2d', (2), dtype='f')
-        group.create_dataset('R_mean_2d', (1,), dtype='f')
+        group.create_dataset("K", (nbin_source,), dtype="f")
+        group.create_dataset("C", (nbin_source, 2), dtype="f")
+        group.create_dataset("R_mean", (nbin_source,), dtype="f")
+        group.create_dataset("K_2d", (1,), dtype="f")
+        group.create_dataset("C_2d", (2), dtype="f")
+        group.create_dataset("R_mean_2d", (1,), dtype="f")
         return outfile
 
     def write_tomography(self, outfile, start, end, source_bin, R):
         super().write_tomography(outfile, start, end, source_bin, R)
-        group = outfile['response']
-        group['R'][start:end] = R
+        group = outfile["response"]
+        group["R"][start:end] = R
 
     def compute_per_object_response(self, data):
-        w_tot = np.sum(data['weight'])
-        R =  np.array([1. - np.sum(data['weight']*data['sigma_e'])/w_tot]*len(data['weight']))
+        w_tot = np.sum(data["weight"])
+        R = np.array(
+            [1.0 - np.sum(data["weight"] * data["sigma_e"]) / w_tot]
+            * len(data["weight"])
+        )
         return R
 
     def compute_output_stats(self, calculator, mean, variance):
@@ -861,7 +946,5 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return BinStats(N, N, mean_e, sigma_e, calibrator)
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     PipelineStage.main()
