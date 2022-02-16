@@ -732,6 +732,14 @@ class TXTwoPointFourier(PipelineStage):
             ndens = (
                 metadata["tracers/lens_density"][i] * 3600 * 180 / np.pi * 180 / np.pi
             )
+            with self.open_input("mask", wrapper=True) as f:
+                info = f.read_map_info("mask")
+                #area = info["area"]
+                #f_sky = info["f_sky"]
+                mask = f.read_map("mask")
+                if self.rank == 0:
+                    print("Loaded mask")
+             
             n_ls = np.mean(mask) / ndens # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and 
             # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
 
