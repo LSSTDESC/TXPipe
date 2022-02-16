@@ -11,4 +11,5 @@ You can get a complete, isolated, environment from scratch that can run TXPipe o
 Then whenever you start a new terminal, enable the system with:
 
 .. code-block:: bash
+
     source ./conda/bin/activate

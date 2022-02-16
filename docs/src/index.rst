@@ -17,6 +17,7 @@ TXPipe documentation
    hdf5
    adding
    parallel
+   finding_txpipe_data
    nersc
    lsst
    stages/stages

@@ -1,8 +1,8 @@
 Reading HDF5 Files
 ==================
 
-Overview
---------
+HDF5 Overview
+-------------
 
 Many TXPipe outputs are in the HDF5 format. This is a fast and flexible file type that can also be easily read/written in parallel.
 
@@ -17,6 +17,10 @@ The name scheme for datasets and groups is the same a for Unix files and folders
 From the command line, you can use the ``h5ls`` command to list the contents of an HDF5 file::
 
     h5ls -r filename.hdf5
+
+or the TXPipe command::
+
+    python bin/h5show.py filename_or_directory
 
 h5py
 ----

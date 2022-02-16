@@ -36,19 +36,7 @@ Mapping Parallelization
 The mapping stages allocate quite a lot of memory, and there is a trade-off between speeding up the initial I/O phase and the final reduction phase (the latter could be speeded up), so there is a limit to how many processes it's worth using.  In general I find using about 8 processes on a node works well.
 
 Two-point Parallelization
-------------------------
+-------------------------
 
 Both the real-space and fourier-space two-point and covariance stages can efficiently use threads, so it's worth using the maximum number of them (64 on Cori Haswell).  The stages that do tomography (i.e. not the systematics ones) can also split the pairs over several nodes - it's worth doing so and using all your nodes.
 not parallelize very well, so in general it's only worth using a single process with a single thread for ingestion stages.
-
-
-Selection Parallelization
---------------------------
-
-The selection stages parallelize I/O, so it's worth using lots of processes as long as striping is switched on.  There is no threading.
-
-Photo-Z Parallelization
-------------------------
-
-Internally some of the photo-z codes (including FlexCode and I think MLZ) can use threads, so it's worth having a small number of threads per process, e.g. 2-4
-

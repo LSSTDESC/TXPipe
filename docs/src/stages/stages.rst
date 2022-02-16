@@ -80,5 +80,4 @@ These are a bunch of shared utilities and plotting functions
     mapping
     plotting
     randoms 
-    ui 
     utils
