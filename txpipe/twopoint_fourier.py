@@ -732,10 +732,10 @@ class TXTwoPointFourier(PipelineStage):
             ndens = (
                 metadata["tracers/lens_density"][i] * 3600 * 180 / np.pi * 180 / np.pi
             )
-            n_ls = (
-                np.mean(maps["dw"][maps["dw"] > 0]) / ndens
-            )  # taking the averages in the mask region for consistency
-            n_ell_coupled = workspace.couple_cell(n_ls * np.ones((1, 3 * nside)))
+            n_ls = np.mean(mask) / ndens # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and 
+            # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
+
+            n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
 
