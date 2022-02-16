@@ -1,0 +1,5 @@
+# minimal env for readthedocs
+numpy
+parallel_statistics
+scipy
+h5py
