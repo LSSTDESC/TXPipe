@@ -50,7 +50,8 @@ class TXBaseMaps(PipelineStage):
         # and select pixel scheme. Also save the scheme
         # metadata so we can save it later
         pixel_scheme = self.choose_pixel_scheme()
-        self.config.update(pixel_scheme.metadata)
+        self.pixel_metadata = pixel_scheme.metadata
+        self.config.update(self.pixel_metadata)
 
         # Initialize our maps
         mappers = self.prepare_mappers(pixel_scheme)
@@ -121,7 +122,7 @@ class TXBaseMaps(PipelineStage):
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():
-            output_files[tag].write_map(map_name, pix, map_data, self.config)
+            output_files[tag].write_map(map_name, pix, map_data, self.pixel_metadata)
 
 
 class TXSourceMaps(TXBaseMaps):

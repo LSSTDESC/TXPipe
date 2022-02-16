@@ -51,6 +51,7 @@ class PZRailEstimateSource(PipelineStage):
 
     def run(self):
         # Importing this means that we can unpickle the relevant class
+        import h5py
         import rail.estimation
 
         # Load the estimator trained in PZRailTrain

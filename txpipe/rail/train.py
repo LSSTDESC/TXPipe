@@ -40,6 +40,7 @@ class PZRailTrainSource(PipelineStage):
     }
 
     def run(self):
+        import h5py
         from rail.estimation.estimator import Estimator
         from rail.fileIO import load_training_data
 
