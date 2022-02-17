@@ -6,6 +6,16 @@ import numpy as np
 
 
 class TXMapCorrelations(PipelineStage):
+    """
+    Plot shear, density, and convergence correlations with survey property maps
+
+    The Supreme code generates survey property maps; this stage makes
+    plots of the correlations with those maps with a simple linear fit.
+
+    Since the Supreme maps are loaded from a directory, outside the pipeline,
+    we don't know in advance what plots will be generated, so the formal output
+    is a directory.
+    """
     name = "TXMapCorrelations"
     inputs = [
         ("lens_maps", MapsFile),

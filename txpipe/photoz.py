@@ -5,6 +5,8 @@ import numpy as np
 
 class TXRandomPhotozPDF(PipelineStage):
     """
+    Generate random log-normal photo-zs
+
     This is a placeholder for an actual photoz pipeline!
 
     At the moment it just randomly generates a log-normal PDF for each object.

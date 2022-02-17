@@ -5,7 +5,11 @@ import numpy as np
 
 
 class PZPDFMLZ(PipelineStage):
-    """ """
+    """
+    Generate photo-z PDFs using MLZ
+
+    This is deprecated; use the RAIL stages.
+    """
 
     name = "PZPDFMLZ"
 

@@ -31,6 +31,14 @@ POS_POS = 2
 
 
 class TXTwoPoint(PipelineStage):
+    """
+    Make 2pt measurements using TreeCorr
+
+    This stage make the full set of cosmic shear, galaxy-galaxy lensing, 
+    and galaxy density measurements on the tomographic catalog using TreeCorr.
+
+    Results are saved to a sacc file.
+    """
     name = "TXTwoPoint"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),

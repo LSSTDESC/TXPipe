@@ -7,11 +7,32 @@ TXPipe documentation
 ====================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Getting started:
 
    installation
-   api
+   example
+   structure
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Using & Contributing:
+
+   running
+   adding
+   parallel
+   nersc
+   lsst
+
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Reference:
+
+   hdf5
+   stages
+   datatypes
    utils
 
 

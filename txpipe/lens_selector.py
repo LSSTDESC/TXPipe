@@ -8,9 +8,13 @@ import warnings
 
 class TXBaseLensSelector(PipelineStage):
     """
-    This pipeline stage selects objects to be used
+    Base class for lens object selection, using the BOSS Target Selection.
+
+    Subclasses of this pipeline stage select objects to be used
     as the lens sample for the galaxy clustering and
     shear-position calibrations.
+
+    The cut used here is simplistic and should be replaced.
     """
 
     name = "TXBaseLensSelector"
@@ -249,6 +253,11 @@ class TXBaseLensSelector(PipelineStage):
 
 
 class TXTruthLensSelector(TXBaseLensSelector):
+    """
+    Select lens objects based on true redshifts and BOSS criteria
+
+    This is useful for testing with idealised lens bins.
+    """
     name = "TXTruthLensSelector"
 
     inputs = [
@@ -271,6 +280,11 @@ class TXTruthLensSelector(TXBaseLensSelector):
 
 
 class TXMeanLensSelector(TXBaseLensSelector):
+    """
+    Select lens objects based on mean redshifts and BOSS criteria
+
+    This requires PDFs to have been estimated earlier.
+    """
     name = "TXMeanLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
@@ -293,6 +307,11 @@ class TXMeanLensSelector(TXBaseLensSelector):
 
 
 class TXModeLensSelector(TXBaseLensSelector):
+    """
+    Select lens objects based on best-fit redshifts and BOSS criteria
+
+    This requires PDFs to have been estimated earlier.
+    """
     name = "TXModeLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
@@ -316,7 +335,9 @@ class TXModeLensSelector(TXBaseLensSelector):
 
 class TXLensCatalogSplitter(PipelineStage):
     """
-    Split a lens catalog file into a new file with separate bins.
+    Split a lens catalog file into a new file with separate bins
+
+    Splitting up like this helps reduce memory usage in TreeCorr later
     """
 
     name = "TXLensCatalogSplitter"
@@ -395,10 +416,13 @@ class TXLensCatalogSplitter(PipelineStage):
 
 
 class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
-    name = "TXExternalLensCatalogSplitter"
     """
     Split an external lens catalog into bins
+
+    Implemented as a subclass of TXLensCatalogSplitter, and
+    changes only file names.
     """
+    name = "TXExternalLensCatalogSplitter"
     inputs = [
         ("lens_tomography_catalog", TomographyCatalog),
         ("lens_catalog", HDFFile),

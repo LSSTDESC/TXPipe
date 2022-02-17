@@ -22,7 +22,12 @@ STAR_COLORS = ["blue", "orange", "green"]
 
 
 class TXPSFDiagnostics(PipelineStage):
-    """ """
+    """
+    Make histograms of PSF values
+
+    This makes histograms of e1 and e2 residuals, and of the fractional
+    PSF size excess.
+    """
 
     name = "TXPSFDiagnostics"
 
@@ -169,6 +174,8 @@ class TXPSFDiagnostics(PipelineStage):
 
 class TXRoweStatistics(PipelineStage):
     """
+    Compute and plot PSF Rowe statistics
+
     People sometimes think that these statistics are called the Rho statistics,
     because we usually use that letter for them.  Not so.  They are named after
     the wonderfully incorrigible rogue Barney Rowe, now sadly lost to high finance,
@@ -335,7 +342,10 @@ class TXRoweStatistics(PipelineStage):
 
 class TXStarShearTests(PipelineStage):
     """
-    Star cross galaxy and star autocorrelation.
+    Compute and plot star x galaxy and star x star correlations.
+
+    These are shape correlations; they differ from the Rowe stats slightly
+    because they measure star values not interpolated PSF values.
     """
 
     name = "TXGalaxyStarShear"
@@ -607,7 +617,10 @@ class TXStarShearTests(PipelineStage):
 
 class TXStarDensityTests(PipelineStage):
     """
-    Star cross galaxy and star autocorrelation density stats.
+    Compute and plot star x galaxy and star x star density correlations
+
+    This version uses the source catalog, though a version with lens
+    samples might also be useful.
     """
 
     name = "TXGalaxyStarDensity"
@@ -803,6 +816,13 @@ class TXStarDensityTests(PipelineStage):
 
 
 class TXBrighterFatterPlot(PipelineStage):
+    """
+    Compute and plot a diagnostic of the brighter-fatter effect
+
+    This plots the mean e1, e2, and size difference between that interpolated
+    at star locations and the star values themselves, as a function of magnitude.
+    """
+
     name = "TXBrighterFatterPlot"
 
     inputs = [("star_catalog", HDFFile)]

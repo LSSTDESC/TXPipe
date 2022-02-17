@@ -8,13 +8,10 @@ import re
 
 class TXMetacalGCRInput(PipelineStage):
     """
-    This stage simulates metacal data and metacalibrated
-    photometry measurements, starting from a cosmology catalogs
-    of the kind used as an input to DC2 image and obs-catalog simulations.
+    Ingest metacal catalogs from GCRCatalogs
 
-    This is mainly useful for testing infrastructure in advance
-    of the DC2 catalogs being available, but might also be handy
-    for starting from a purer simulation.
+    This loads a matched shear and photometry catalog.
+
     """
 
     name = "TXMetacalGCRInput"
@@ -188,6 +185,12 @@ class TXMetacalGCRInput(PipelineStage):
 
 
 class TXIngestStars(PipelineStage):
+    """
+    Ingest a star catalog from GCRCatalogs
+
+    Includes shape information (i.e. PSF samples) and whether the star was used
+    in PSF estimation.
+    """
     name = "TXIngestStars"
     inputs = []
 
