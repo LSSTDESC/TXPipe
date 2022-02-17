@@ -8,20 +8,33 @@ TXPipe documentation
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: Getting started:
 
    installation
    example
    structure
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Using & Contributing:
+
    running
-   hdf5
    adding
    parallel
    nersc
    lsst
+
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Reference:
+
+   hdf5
    stages
    datatypes
    utils
+
 
 
 Indices and tables

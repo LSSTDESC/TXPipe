@@ -1,5 +1,5 @@
-Running pipelines
-==================
+Configuration Files
+===================
 
 Two files specify a TXPipe pipeline: *pipeline file* and a *configuration file*.
 
