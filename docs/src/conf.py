@@ -23,9 +23,10 @@ import sphinx_rtd_theme
 #sys.path.insert(0, os.path.abspath('..'))
 
 this_dir = dirname(abspath(__file__))
-root_path = abspath(pjoin(this_dir, '../../'))
-if os.path.isdir(root_path):
-    sys.path.insert(0, root_path)
+root_path1 = abspath(pjoin(this_dir, '../'))
+root_path2 = abspath(pjoin(this_dir, '../../'))
+sys.path.insert(0, root_path1)
+sys.path.insert(0, root_path2)
 
 # -- General configuration ------------------------------------------------
 
