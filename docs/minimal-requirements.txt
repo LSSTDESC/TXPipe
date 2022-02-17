@@ -3,3 +3,4 @@ numpy
 parallel_statistics
 scipy
 h5py
+pyyaml
