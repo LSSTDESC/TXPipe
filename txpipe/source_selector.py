@@ -87,6 +87,8 @@ class BinStats:
 
 class TXSourceSelectorBase(PipelineStage):
     """
+    Base stage for source selection using S/N, size, and flag cuts and tomography
+
     The subclasses of this pipeline stage select
     objects to be used as the source sample for
     the shear-shear and shear-position calibrations.
@@ -553,6 +555,8 @@ class TXSourceSelectorBase(PipelineStage):
 
 class TXSourceSelectorMetacal(TXSourceSelectorBase):
     """
+    Source selection and tomography for metacal catalogs
+
     This selector subclass is designed for metacal-type catalogs like those
     used in Dark Energy Survey Y1 and Y3 data releases. In DESC they are
     superseded by MetaDetect, see below.
@@ -689,6 +693,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     """
+    Source selection and tomography for metadetect catalogs
+
     This subclass selects for MetaDetect catalogs, which is expected to be used for
     Rubin data. It computes the selection bias due to object detection by repeating
     the detection process under different applied shears.
@@ -797,6 +803,8 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
+    Source selection and tomography for lensfit catalogs
+
     This selector class is for Lensfit catalogs like those used in KIDS.
 
     It is a simpler calibration scheme than the above two, and does not involve
@@ -863,6 +871,8 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
 
 class TXSourceSelectorHSC(TXSourceSelectorBase):
     """
+    Source selection and tomography for HSC catalogs
+
     This subclass is for selecting objects on catalogs of the form made by HSC.
 
     This scheme is quite similar to the one used by lensfit. The main difference is in

@@ -5,7 +5,7 @@ import numpy as np
 
 
 class TXShearCalibration(PipelineStage):
-    """Split the shear catalog into calibrated bins suitable for 2pt analysis.
+    """Split the shear catalog into calibrated bins
 
     This class runs after source selection has been done, because the final
     calibration factor can only be estimated once we have read the entire catalog

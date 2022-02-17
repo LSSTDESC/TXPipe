@@ -8,7 +8,12 @@ import socket
 
 
 class PipelineStage(PipelineStageBase):
-    name = "Error"
+    """
+    The parent class for all TXPipe stages
+
+    This stage should not be used directly (hence the name)
+    """
+    name = "BaseStageDoNotRunDirectly"
     inputs = []
     outputs = []
     config_options = {}

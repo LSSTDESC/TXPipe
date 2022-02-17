@@ -9,7 +9,7 @@ import shutil
 
 class PZRailEstimateSource(PipelineStage):
     """
-    Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
+    Estimate source redshift PDFs and best-fits using RAIL
 
     We load a redshift Estimator model, typically saved by the PZRailTrainSource stage,
     and then load chunks of photometry and run the estimator on it, and save the
@@ -177,15 +177,14 @@ class PZRailEstimateSource(PipelineStage):
 
 
 class PZRailEstimateLens(PZRailEstimateSource):
-    name = "PZRailEstimateLens"
     """
-    Use RAIL to estimate the PDFs of the source sample.
+    Estimate source redshift PDFs and best-fits using RAIL
 
     This is implemented as a subclass of PZRailEstimateSource
     but with the loaded input data changed - see that class
     for more details.
-
     """
+    name = "PZRailEstimateLens"
 
     model_input = "photoz_lens_model"
     pdf_output = "lens_photoz_pdfs"
@@ -236,8 +235,10 @@ class PZRailEstimateLens(PZRailEstimateSource):
 
 class PZRailEstimateSourceFromLens(PipelineStage):
     """
+    Make a source redshifts file by copying lens redshifts
+
     In cases where source and lens come from the same base sample
-    we can simply copy the computed PDFs from lens to source.
+    we can simply copy the computed PDFs.
     """
 
     name = "PZRailEstimateSourceFromLens"
@@ -254,8 +255,10 @@ class PZRailEstimateSourceFromLens(PipelineStage):
 
 class PZRailEstimateLensFromSource(PipelineStage):
     """
+    Make a lens  redshifts file by copying source redshifts
+
     In cases where source and lens come from the same base sample
-    we can simply copy the computed PDFs from lens to source.
+    we can simply copy the computed PDFs.
     """
 
     name = "PZRailEstimateLensFromSource"

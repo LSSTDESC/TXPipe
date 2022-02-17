@@ -8,6 +8,8 @@ from .utils import choose_pixelization
 
 class TXTracerMetadata(PipelineStage):
     """
+    Collate metadata from various other files
+
     This stage doesn't actually calculate anything, it just
     collates together metadata about our sources, so that we
     don't need to pass around catalog sized objects as much.

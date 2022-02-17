@@ -37,7 +37,10 @@ Measurement = collections.namedtuple(
 
 
 class TXTwoPointFourier(PipelineStage):
-    """This Pipeline Stage computes all auto- and cross-correlations
+    """
+    Make Fourier space 3x2pt measurements using NaMaster
+
+    This Pipeline Stage computes all auto- and cross-correlations
     for a list of tomographic bins, including all galaxy-galaxy,
     galaxy-shear and shear-shear power spectra. Sources and lenses
     both come from the same shear_catalog and tomography_catalog objects.

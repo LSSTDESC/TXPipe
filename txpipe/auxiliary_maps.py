@@ -8,8 +8,9 @@ from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
 class TXAuxiliarySourceMaps(TXBaseMaps):
     """
-    This stage generates a set of auxiliary maps from the source catalog.
-    It makes maps of:
+    Generate auxiliary maps from the source catalog
+
+    This stage makes maps of:
     - the count of different flag values
     - the mean PSF
 
@@ -187,14 +188,16 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
 
 
 class TXAuxiliaryLensMaps(TXBaseMaps):
+    """
+    Generate auxiliary maps from the lens catalog
+
+    This class generates maps of:
+        - depth
+        - psf
+        - bright object counts
+        - flags
+    """
     name = "TXAuxiliaryLensMaps"
-    """
-    This class generates:
-        - depth maps
-        - psf maps
-        - bright object maps
-        - flag maps
-    """
     inputs = [
         ("photometry_catalog", HDFFile),  # for mags etc
         ("lens_maps", MapsFile),  # we copy the pixel scheme from here
@@ -297,6 +300,13 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
 
 
 class TXUniformDepthMap(PipelineStage):
+    """
+    Generate a uniform depth map from the mask
+
+    This is useful for testing on uniform patches.
+    It doesn't generate all the other maps that the other stages that
+    make aux_lens_maps do, so may not always be useful.
+    """
     name = "TXUniformDepthMap"
     # make a mask from the auxiliary maps
     inputs = [("mask", MapsFile)]

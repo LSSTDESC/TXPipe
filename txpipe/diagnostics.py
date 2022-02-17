@@ -18,7 +18,13 @@ import numpy as np
 
 
 class TXSourceDiagnosticPlots(PipelineStage):
-    """ """
+    """
+    Make diagnostic plots of the shear catalog
+
+    This includes both tomographic and 2D measurements, and includes
+    the PSF as a function of various quantities as well as overall
+    histograms.
+    """
 
     name = "TXSourceDiagnosticPlots"
 
@@ -822,7 +828,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
 
 class TXLensDiagnosticPlots(PipelineStage):
-    """ """
+    """
+    Make diagnostic plots of the lens catalog
+
+    Currently this consists only of histograms of SNR and mag.
+    """
 
     name = "TXLensDiagnosticPlots"
     # This tells ceci to launch under dask:

@@ -21,6 +21,14 @@ sq_deg_on_sky = 360**2 / np.pi
 
 
 class TXFourierGaussianCovariance(PipelineStage):
+    """
+    Compute a Gaussian Fourier-space covariance with TJPCov using f_sky only
+
+    It imports TJPCov to do so, and runs at a fiducial cosmology.
+
+    This version does not account for mask geometry, only the total sky area
+    measured.
+    """
     name = "TXFourierGaussianCovariance"
     do_xi = False
 
@@ -558,6 +566,15 @@ class TXFourierGaussianCovariance(PipelineStage):
 
 
 class TXRealGaussianCovariance(TXFourierGaussianCovariance):
+    """
+    Compute a Gaussian real-space covariance with TJPCov using f_sky only
+
+    This version does not account for mask geometry, only the total sky area
+    measured.
+
+    It is implemented as a subclass of the Fourier-space version, so also uses
+    TJPCov and a fiducial cosmology.
+    """
     name = "TXRealGaussianCovariance"
     do_xi = True
 
@@ -618,6 +635,14 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
 
 
 class TXFourierTJPCovariance(PipelineStage):
+    """
+    Compute a Gaussian Fourier-space covariance with TJPCov using mask geometry
+
+    This also calls out to TJPCov, using more recent additions to that package.
+
+    This version, for speed, re-uses the workspace objects cached in the twopoint
+    fourier measurement stage.
+    """
     name = "TXFourierTJPCovariance"
     do_xi = False
 

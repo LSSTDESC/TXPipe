@@ -5,8 +5,10 @@ import numpy as np
 
 class TXJackknifeCenters(PipelineStage):
     """
-    This is the pipeline stage that is run to generate the patch centers for
-    the Jackknife method.
+    Generate jack-knife centers from random catalogs.
+
+    This uses TreeCorr but cuts down the amount of data by taking
+    only every n'th point.
     """
 
     name = "TXJackknifeCenters"

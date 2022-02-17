@@ -4,7 +4,11 @@ import numpy as np
 
 
 class TXExposureInfo(PipelineStage):
-    """ """
+    """
+    Ingest exposure information from an OpSim database
+
+    This is used later for measurements, e.g. shear around exposure centers.
+    """
 
     name = "TXExposureInfo"
 

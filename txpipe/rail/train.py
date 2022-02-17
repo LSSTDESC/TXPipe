@@ -5,7 +5,8 @@ import shutil
 
 
 class PZRailTrainSource(PipelineStage):
-    """Train a photo-z model using RAIL.
+    """
+    Train a photo-z model on the source sample using RAIL
 
     The Redshift Assessment Infrastructure Layers (RAIL) library provides a uniform
     interface to DESC photo-z code.
@@ -84,7 +85,8 @@ class PZRailTrainSource(PipelineStage):
 
 
 class PZRailTrainLens(PZRailTrainSource):
-    """Train a photo-z model using RAIL.
+    """
+    Train a photo-z model on the lens sample using RAIL
 
     The Redshift Assessment Infrastructure Layers (RAIL) library provides a uniform
     interface to DESC photo-z code.
@@ -110,6 +112,8 @@ class PZRailTrainLens(PZRailTrainSource):
 
 class PZRailTrainLensFromSource(PipelineStage):
     """
+    Copy the RAIL source trained model to the lens file
+
     Where the same underlying training data is used for
     both source and lens samples, copy the PZ trained model
     for the sources to the one for the lenses.
@@ -128,6 +132,8 @@ class PZRailTrainLensFromSource(PipelineStage):
 
 class PZRailTrainSourceFromLens(PipelineStage):
     """
+    Copy the RAIL lens trained model to the source file
+
     Where the same underlying training data is used for
     both source and lens samples, copy the PZ trained model
     for the sources to the one for the lenses.
