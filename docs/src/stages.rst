@@ -7,6 +7,7 @@ Stages In TXPipe
    :maxdepth: 1
    :caption: Contents:
 
+   stages/base
    stages/Ingestion
    stages/Photo-z
    stages/Selection
