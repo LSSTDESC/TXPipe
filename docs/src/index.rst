@@ -20,7 +20,7 @@ TXPipe documentation
    finding_txpipe_data
    nersc
    lsst
-   stages/stages
+   stages
 
 
 Indices and tables
