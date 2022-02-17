@@ -222,4 +222,4 @@ autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrow
                         'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
                         'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
                         'parallel_statistics', 'mpmath','tkinter','paramiko', 
-						 'pygraphviz', 'pymaster', 'PIL', 'IPython']
+						 'pygraphviz', 'pymaster', 'PIL', 'IPython', 'healpy']
