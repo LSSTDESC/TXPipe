@@ -46,7 +46,7 @@ You can find the outputs in the directory `data/example/outputs_metadetect`
 Learning more
 -------------
 
-See the [ReadTheDocs page for much more documentation](https://txpipe.readthedocs.io/en/).
+See the [ReadTheDocs page for much more documentation](https://txpipe.readthedocs.io/en/latest).
 
 
 Permissions
