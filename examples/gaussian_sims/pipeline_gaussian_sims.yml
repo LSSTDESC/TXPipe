@@ -15,6 +15,8 @@ python_paths:
 
 stages:
     - name: TXRandomCat
+      nodes: 4
+      nprocess: 64
     - name: TXUniformDepthMap
     - name: TXSourceSelectorMetadetect
       nprocess: 64
@@ -39,16 +41,16 @@ stages:
       threads_per_process: 1
       nodes: 4
     - name: TXDensityMaps
-    #- name: TXNullBlinding
-    #- name: TXTwoPoint
-    #  threads_per_process: 32
-    #  nprocess: 4
-    #  nodes: 4
-    #- name: TXTwoPointTheoryReal
+    - name: TXNullBlinding
+    - name: TXTwoPoint
+      threads_per_process: 6
+      nprocess: 6
+      nodes: 6
+    - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
-    #- name: TXTwoPointPlots
-    #- name: TXRealGaussianCovariance
-    #  threads_per_process: 64
+    - name: TXTwoPointPlots
+    - name: TXRealGaussianCovariance
+      threads_per_process: 64
     - name: TXSourceNoiseMaps
       nprocess: 6
       nodes: 6
@@ -60,7 +62,7 @@ stages:
     - name: TXTwoPointFourier
       nprocess: 4
       nodes: 4
-    #  threads_per_process: 64
+      threads_per_process: 64
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps

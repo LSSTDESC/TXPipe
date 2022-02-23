@@ -78,8 +78,8 @@ TXSourceSelectorMetadetect:
     shear_prefix: ''
 
 TXRandomCat:
-    chunk_rows: 100000
-    density: 10 # gals per sq arcmin
+    chunk_rows: 10000000 
+    density: 30 # gals per sq arcmin
 
 TXJackknifeCenters:
     npatch: 500
@@ -112,18 +112,19 @@ TXTwoPoint:
     nbins: 15
     verbose: 0
     var_method: jackknife
-
+    low_mem: True
+    
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g1: True
-    flip_g2: False
+    flip_g2: True
     apodization_size: 0.0
     cache_dir: ./cache
     true_shear: False
     n_ell: 20
     ell_max: 3000
     nside: 2048
-    analytic_noise: False
+    analytic_noise: True
     
 TXClusteringNoiseMaps:
     n_realization: 30
