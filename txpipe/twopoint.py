@@ -445,11 +445,11 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                cat.get_patches(low_mem=False)
+                cat.get_patches(low_mem=self.config['low_mem'])
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                cat.get_patches(low_mem=False)
+                cat.get_patches(low_mem=self.config['low_mem'])
                 del cat
                 ran_cat = self.get_random_catalog(h)
 
@@ -457,7 +457,7 @@ class TXTwoPoint(PipelineStage):
                 if ran_cat is None:
                     continue
 
-                ran_cat.get_patches(low_mem=False)
+                ran_cat.get_patches(low_mem=self.config['low_mem'])
                 del ran_cat
 
         # stop other processes progressing to the rest of the code and
