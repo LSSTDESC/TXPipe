@@ -3,6 +3,7 @@ import numpy as np
 
 class HealpixScheme:
     name = "healpix"
+    equal_area = True
     """A pixelization scheme using Healpix pixels.
 
     Attributes
@@ -160,6 +161,7 @@ class HealpixScheme:
 
 
 class GnomonicPixelScheme:
+    equal_area = True # ish
     name = "gnomonic"
     """A pixelization scheme using the Gnomonic (aka tangent plane) projection.
 
@@ -487,6 +489,138 @@ def round_approx(x):
     near_integer = np.isclose(x, x_round, rtol=0.0, atol=1e-10)
     out[near_integer] = x_round[near_integer]
     return out
+
+class McEwenWiauxScheme:
+    """
+    Pixelization scheme following McEwen & Wiaux 2011, which supports
+    a fast SHT
+
+    Pixel centres are defined by
+    theta_i = pi * (2 * i + 1) / (2 * L - 1) for i = 0 .. L - 1
+    phi_j = 2 * pi * j / (2 * L - 1) for j = 0 .. 2 * L - 2
+    """
+    equal_area = False
+    def __init__(self, L):
+        """Make a converter object.
+
+        Parameters
+        ----------
+
+        bandwidth: int
+            The bandwidth L parameter
+        nest: bool, optional
+            Whether to use the nested pixel ordering scheme.  Default=False
+        """
+        self.L = L
+        self.npix = L * (2 * L - 1)
+
+        self.metadata = {
+            "L": self.L,
+            "npix": self.npix,
+            "pixelization": "mcewen-wiaux",
+        }   
+        # ntheta * nphi
+        self.nx = 2 * L - 1
+        self.ny = L
+        self.shape = (self.ny, self.nx)
+
+    def ang2pix(self, ra, dec, radians=False, theta=False):
+        """Convert angular sky coordinates to pixel indices.
+
+        Parameters
+        ----------
+
+        ra: array or float
+            Right ascension coordinates, in degrees unless radians=True
+        dec: array or float
+            Declination coordinates, in degrees unless radians=True
+        radians: bool, optional
+            if True, assume the input values are in radians.
+        theta: bool, optional
+            If True, assume the input "dec" values are co-latitude theta (90-declination, the "angle from north").
+
+        Returns
+        -------
+        pix: array
+            MW Index of all the specified angles.
+        """
+
+        # convert ra, dec to phi, theta
+        if not radians:
+            ra = np.radians(ra)
+            dec = np.radians(dec)
+        if not theta:
+            dec = np.pi / 2.0 - dec
+
+
+        x = round_approx((2 * self.L - 1) * ra / 2 / np.pi)
+        y = round_approx(dec * (2 * L - 1) / np.pi)
+
+        p = x + y * self.nx
+        raise RuntimeError("Untested!")
+        return p
+
+    def pix2ang(self, pix, radians=False, theta=False):
+        """Convert pixel indices to angular sky coordinates.
+
+        Parameters
+        ----------
+
+        pix: array
+            Pixel index
+        radians: bool, optional
+            if True, return output in radians not degrees
+        theta: bool, optional
+            If True, return the co-latitude theta (90-declination, the "angle from north").
+
+        Returns
+        -------
+        ra: array or float
+            Right ascension coordinates, in degrees unless radians=True
+
+        dec: array or float
+            Declination coordinates, in degrees unless radians=True.
+            If theta=True instead return the co-latitude theta (90-declination, the "angle from north").
+
+        """
+
+        pix = np.atleast_1d(pix)
+        x = pix % self.nx
+        y = pix // self.nx
+
+        # This is the co-latitude
+        thet = (2 * y + 1) * np.pi / (2 * L - 1)
+        phi = 2 * np.pi * x / (2 * L - 1)
+
+        # if desired, convert to angle from equator (dec)
+        if not theta:
+            thet = np.pi / 2 - thet
+        if not radians:
+            thet = np.degrees(thet)
+            phi = np.degrees(phi)
+        raise RuntimeError("Untested!")
+        return phi, thet
+
+    def pixel_area(self, index, degrees=False):
+        """
+        Return the area of one pixel in radians (default) or degrees
+
+        degrees: bool, optional
+            If true, return the area in square degrees. Default is False.
+
+        Returns
+
+        area: float
+            area in deg^2 or square radians, depending on degrees parameter
+
+        """
+        
+
+        raise RuntimeError("Incomplete!")
+
+    def vertices(self, pix):
+        raise RuntimeError("Incomplete!")
+
 
 
 def choose_pixelization(**config):
