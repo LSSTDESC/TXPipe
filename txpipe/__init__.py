@@ -39,3 +39,4 @@ from .extensions.twopoint_scia import TXSelfCalibrationIA
 from .cosmos_weight import TXCOSMOSWeight
 from .photoz_dir import TXPhotozSourceDIR
 from .photoz_dir import TXPhotozDIR
+from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
