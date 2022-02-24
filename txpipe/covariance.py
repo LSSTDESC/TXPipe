@@ -5,6 +5,7 @@ import numpy as np
 import warnings
 import os
 import pickle
+import sacc
 
 # require TJPCov to be in PYTHONPATH
 d2r=np.pi/180
@@ -645,6 +646,11 @@ class TXFourierTJPCovariance(PipelineStage):
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
 
+        # MPI
+        if self.comm:
+            self.comm.Barrier()
+            tjp_config['use_mpi'] = True
+
         # Run TJPCov
         # I shouldn't need to pass the binnning (unless the cache is not set or
         # there is one of the workspaces missing). For generality, I will pass
@@ -653,7 +659,9 @@ class TXFourierTJPCovariance(PipelineStage):
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov":tjp_config})
 
         cache = {'workspaces': workspaces}
-        covmat = calculator.get_all_cov_nmt(cache=cache)
+        tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
+        covmat = calculator.get_all_cov_nmt(cache=cache,
+                                            tracer_noise_coupled=tracer_noise_coupled)
 
         # Write the sacc file with the covariance
         if self.rank == 0:
@@ -661,6 +669,21 @@ class TXFourierTJPCovariance(PipelineStage):
             output_filename = self.get_output('summary_statistics_fourier')
             cl_sacc.save_fits(output_filename, overwrite=True)
             print("Saved power spectra with its Gaussian covariance")
+
+    def get_tracer_noise_from_sacc(self, cl_sacc):
+        # This could be done inside TJPCov:
+        # https://github.com/LSSTDESC/TJPCov/issues/31
+
+        tracer_noise = {}
+        for trn, tr in cl_sacc.tracers.items():
+            if 'n_ell_coupled' in tr.metadata:
+                tracer_noise[trn] = tr.metadata['n_ell_coupled']
+            else:
+                raise KeyError('Missing n_ell_coupled metadata for tracer ' +
+                              f'{trn}. Something is wrong with the input ' +
+                               'sacc file')
+
+        return tracer_noise
 
     def get_workspaces_dict(self, cl_sacc, masks_names):
         # Based on txpipe/twopoint_fourier.py
@@ -719,6 +742,22 @@ class TXFourierTJPCovariance(PipelineStage):
 
         ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
                                               ell_spacing)
+        if 'binning/ell_edges' in cl_sacc.metadata:
+            s = cl_sacc.metadata['binning/ell_edges'].strip('[]')
+            s=s.replace(' ', '')
+            s=s.split(',')
+            ell_edges = [int(i) for i in s]
+            print(ell_edges)
+            ell_bins = MyNmtBin.from_edges(ell_edges[:-1], ell_edges[1:],
+                                           is_Dell=False)
+        else:
+            ell_min = cl_sacc.metadata['binning/ell_min']
+            ell_max = cl_sacc.metadata['binning/ell_max']
+            ell_spacing = cl_sacc.metadata['binning/ell_spacing']
+            n_ell = cl_sacc.metadata['binning/n_ell']
+
+            ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell,
+                                                  ell_spacing)
 
         # Check that the binning is compatible with the one in the file
         dtype = cl_sacc.get_data_types()[0]
