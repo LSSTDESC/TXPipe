@@ -75,6 +75,7 @@ class TXTwoPointFourier(PipelineStage):
         "ell_min": 100,
         "ell_max": 1500,
         "n_ell": 20,
+        "ell_edges": [int],
         "ell_spacing": "log",
         "true_shear": False,
         "analytic_noise": False,
@@ -129,8 +130,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
-        ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
-
+        ell_bins = self.choose_ell_bins(pixel_scheme, f_sky, edges=self.config["ell_edges"])
         self.hash_metadata = None  # Filled in make_workspaces
         workspaces = self.make_workspaces(maps, calcs, ell_bins)
 
@@ -468,7 +468,7 @@ class TXTwoPointFourier(PipelineStage):
     def setup_results(self):
         self.results = []
 
-    def choose_ell_bins(self, pixel_scheme, f_sky):
+    def choose_ell_bins(self, pixel_scheme, f_sky, edges=[]):
         from .utils.nmt_utils import MyNmtBin
 
         # commented code below is not needed anymore
@@ -486,13 +486,16 @@ class TXTwoPointFourier(PipelineStage):
         # The subclass of NmtBin that we use here just adds some
         # helper methods compared to the default NaMaster one.
         # Can feed these back upstream if useful.
-
+        
         # Creating the ell binning from the edges using this Namaster constructor.
-        ell_min = self.config["ell_min"]
-        ell_max = self.config["ell_max"]
-        n_ell = self.config["n_ell"]
-        ell_spacing = self.config["ell_spacing"]
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
+        if len(edges) <= 1:
+            ell_min = self.config["ell_min"]
+            ell_max = self.config["ell_max"]
+            n_ell = self.config["n_ell"]
+            ell_spacing = self.config["ell_spacing"]
+            ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
+        else:
+            ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
         return ell_bins
 
     def select_calculations(self, nbins_source, nbins_lens):
