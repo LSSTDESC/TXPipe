@@ -21,8 +21,6 @@ from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
-from .twopoint import TXGammaTDimStars
-from .twopoint import TXGammaTBrightStars
 from .noise_maps import TXNoiseMaps
 from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
@@ -39,4 +37,7 @@ from .extensions.twopoint_scia import TXSelfCalibrationIA
 from .cosmos_weight import TXCOSMOSWeight
 from .photoz_dir import TXPhotozSourceDIR
 from .photoz_dir import TXPhotozDIR
+from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
+from .jackknife import TXJackknifeCenters
+from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
