@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile
 from .utils import LensNumberDensityStats
-from .utils import Splitter
 import numpy as np
 import warnings
 
@@ -18,7 +17,7 @@ class TXBaseLensSelector(PipelineStage):
     name='TXBaseLensSelector'
 
     outputs = [
-        ('lens_tomography_catalog', TomographyCatalog),
+        ('lens_tomography_catalog', TomographyCatalog)
     ]
 
     config_options = {
@@ -279,7 +278,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
     name = "TXMeanLensSelector"
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('lens_photoz_pdfs', HDFFile),
+        ('photoz_pdfs', HDFFile),
     ]
 
 
@@ -288,7 +287,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
         phot_cols = ['mag_i','mag_r','mag_g']
         z_cols = ['z_mean']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-        iter_pz = self.iterate_hdf('lens_photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
+        iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
             data['z'] = z_data['z_mean']
             yield s, e, data
@@ -297,7 +296,7 @@ class TXModeLensSelector(TXBaseLensSelector):
     name = "TXModeLensSelector"
     inputs = [
         ('photometry_catalog', HDFFile),
-        ('lens_photoz_pdfs', HDFFile),
+        ('photoz_pdfs', HDFFile),
     ]
 
 
@@ -306,106 +305,16 @@ class TXModeLensSelector(TXBaseLensSelector):
         phot_cols = ['mag_i','mag_r','mag_g']
         z_cols = ['z_mode']
         iter_phot = self.iterate_hdf('photometry_catalog', 'photometry', phot_cols, chunk_rows)
-        iter_pz = self.iterate_hdf('lens_photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
+        iter_pz = self.iterate_hdf('photoz_pdfs', 'point_estimates', z_cols, chunk_rows)
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
             data['z'] = z_data['z_mode']
             yield s, e, data
 
 
 
+def flatten_list(lst):
+    return [item for sublist in lst for item in sublist]
 
-class TXLensCatalogSplitter(PipelineStage):
-    """
-    Split a lens catalog file into a new file with separate bins.
-    """
-    name='TXLensCatalogSplitter'
-
-    inputs = [
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('photometry_catalog', HDFFile),
-    ]
-
-    outputs = [
-        ("binned_lens_catalog", HDFFile),
-    ]
-
-    config_options = {
-        "initial_size": 100_000,
-        "chunk_rows": 100_000,
-    }
-
-    lens_cat_tag = "photometry_catalog"
-    lens_cat_sec = "photometry"
-
-    def run(self):
-
-        with self.open_input("lens_tomography_catalog") as f:
-            nbin = f["tomography"].attrs["nbin_lens"]
-            counts = f["tomography/lens_counts"][:]
-            count2d = f["tomography/lens_counts_2d"][:]
-
-        cols = ["ra", "dec", "weight"]
-
-        # Object we use to make the separate lens bins catalog
-        cat_output = self.open_output("binned_lens_catalog", parallel=True)
-        cat_group = cat_output.create_group("lens")
-        cat_group.attrs['nbin'] = len(counts)
-        cat_group.attrs['nbin_lens'] = len(counts)
-
-
-        bins = {b:c for b,c in enumerate(counts)}
-        bins["all"] = count2d
-        splitter = Splitter(cat_group, "bin", cols, bins)
-
-        my_bins = list(self.split_tasks_by_rank(bins))
-        if my_bins:
-            my_bins_text = ", ".join(str(x) for x in my_bins)
-            print(f"Process {self.rank} collating bins: [{my_bins_text}]")
-        else:
-            print(f"Note: Process {self.rank} will not do anything.")
-
-        it = self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "lens_tomography_catalog",
-            "tomography",
-            ["lens_bin", "lens_weight"],
-            # second file
-            self.lens_cat_tag,
-            self.lens_cat_sec,
-            ["ra", "dec"],
-            parallel=False,
-        )
-
-        for s, e, data in it:
-            if self.rank == 0:
-                print(f"Process 0 binning data in range {s:,} - {e:,}")
-
-            data["weight"] = data["lens_weight"]
-            for b in my_bins:
-                if b == "all":
-                    w = np.where(data["lens_bin"] >= 0)
-                else:
-                    w = np.where(data["lens_bin"] == b)
-                d = {name: col[w] for name, col in data.items()}
-                splitter.write_bin(d, b)
-
-        splitter.finish(my_bins)
-        cat_output.close()
-
-
-class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
-    name = "TXExternalLensCatalogSplitter"
-    """
-    Split an external lens catalog into bins
-    """
-    inputs = [
-        ('lens_tomography_catalog', TomographyCatalog),
-        ('lens_catalog', HDFFile),
-    ]
-    lens_cat_tag = "lens_catalog"
-
-    lens_cat_sec = "lens"
 
 
 if __name__ == '__main__':

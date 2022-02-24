@@ -11,7 +11,7 @@ def test_combine():
     s = Stage({
         'tag1':'data/testing/test1.hdf',
         'tag2':'data/testing/test2.hdf',
-        'config':'examples/metacal/config.yml'
+        'config':'examples/config/laptop_config.yml'
     })
 
     it = s.combined_iterators(10,

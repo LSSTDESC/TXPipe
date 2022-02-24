@@ -3,8 +3,6 @@ from .data_types import HDFFile
 from textwrap import dedent
 from .utils.provenance import find_module_versions, git_diff, git_current_revision
 import sys
-import datetime
-import socket
 
 class PipelineStage(PipelineStageBase):
     name = "Error"
@@ -15,38 +13,8 @@ class PipelineStage(PipelineStageBase):
     def run(self):
         print("Please do not execute this stage again.")
 
-    def memory_report(self, tag=None):
-        """
-        Print a report about memory currently available
-        on the node the process is running on.
 
-        Parameters
-        ----------
-        tag: str
-            Additional info to print in the output line. Default is empty.
-        """
-        import psutil
-        t = datetime.datetime.now()
-
-        # The different types of memory are really fiddly and don't
-        # correspond to how you usually imagine. The simplest thing
-        # to report here is just how much memory is left on the machine.
-        mem = psutil.virtual_memory()
-        avail = mem.available / 1024**3
-        total = mem.total / 1024**3
-
-        if tag is None:
-            tag = ""
-        else:
-            tag = f" {tag}:"
-
-        # This gives you the name of the host.  At NERSC that is the node name
-        host = socket.gethostname()
-
-        # Print messsage
-        print(f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB")
-
-    def combined_iterators(self, rows, *inputs, parallel=True):
+    def combined_iterators(self, rows, *inputs):
         if not len(inputs) % 3 == 0:
             raise ValueError("Arguments to combined_iterators should be in threes: "
                 "tag, group, value"
@@ -58,7 +26,7 @@ class PipelineStage(PipelineStageBase):
             tag = inputs[3 * i]
             section = inputs[3 * i + 1]
             cols = inputs[3 * i + 2]
-            iterators.append(self.iterate_hdf(tag, section, cols, rows, parallel=parallel))
+            iterators.append(self.iterate_hdf(tag, section, cols, rows))
 
         for it in zip(*iterators):
             data = {}

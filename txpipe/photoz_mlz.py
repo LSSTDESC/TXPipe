@@ -15,7 +15,7 @@ class PZPDFMLZ(PipelineStage):
         ('photoz_trained_model', DataFile),
     ]
     outputs = [
-        ('lens_photoz_pdfs', PhotozPDFFile),
+        ('photoz_pdfs', PhotozPDFFile),
     ]
 
     config_options = {
@@ -235,7 +235,7 @@ class PZPDFMLZ(PipelineStage):
         # Open the output file.
         # This will automatically open using the HDF5 mpi-io driver 
         # if we are running under MPI and the output type is parallel
-        f = self.open_output('lens_photoz_pdfs', parallel=True)
+        f = self.open_output('photoz_pdfs', parallel=True)
             
         z_mid = 0.5*(z[1:] + z[:-1])
         # Create the space for output data

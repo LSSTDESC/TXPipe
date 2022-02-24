@@ -373,53 +373,38 @@ class TXStarShearTests(PipelineStage):
 
         # Columns we need from the shear catalog
         # TODO: not sure of an application where we would want to use true shear but can be added
-        cat_type = read_shear_catalog_type(self)
+        read_shear_catalog_type(self)
 
         # load tomography data
-        with self.open_input('shear_tomography_catalog') as f:
-            source_bin = f['tomography/source_bin'][:]
-            mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
-            if cat_type == 'metacal':
-                R_total_2d = f['response/R_total_2d'][:]
-            elif cat_type == 'metadetect':
-                R_total_2d = f['response/R_2d'][:]
+        f = self.open_input('shear_tomography_catalog')
+        source_bin = f['tomography/source_bin'][:]
+        mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
+        if self.config['shear_catalog_type']=='metacal':
+            R_total_2d = f['metacal_response/R_total_2d'][:]
 
-
-        with self.open_input('shear_catalog') as f:
-            g = f['shear']
-
-            # Get the base catalog for metadetect
-            if cat_type == "metadetect":
-                g = g['00']
-
-            ra = g['ra'][:][mask]
-            dec = g['dec'][:][mask]
-
-            if cat_type == 'metacal':
-                g1 = g['mcal_g1'][:][mask]
-                g2 = g['mcal_g2'][:][mask]
-                weight = g['weight'][:][mask]
-
-            elif cat_type == 'metadetect':
-                g1 = g['g1'][:][mask]
-                g2 = g['g2'][:][mask]
-                weight = g['weight'][:][mask]
-
-            else:
-                g1 = g['g1'][:][mask]
-                g2 = g['g2'][:][mask]
-                weight = g['weight'][:][mask]
-                sigma_e = g['sigma_e'][:][mask]
-                m = g['m'][:][mask]
+        f = self.open_input('shear_catalog')
+        g = f['shear']
+        ra = g['ra'][:][mask]
+        dec = g['dec'][:][mask]
+        if self.config['shear_catalog_type']=='metacal':
+            g1 = g['mcal_g1'][:][mask]
+            g2 = g['mcal_g2'][:][mask]
+            weight = g['weight'][:][mask]
+        else:
+            g1 = g['g1'][:][mask]
+            g2 = g['g2'][:][mask]
+            weight = g['weight'][:][mask]
+            sigma_e = g['sigma_e'][:][mask]
+            m = g['m'][:][mask]
 
         if self.config['flip_g2']:
             g2 *= -1
 
-        if cat_type == 'metacal' or cat_type == 'metadetect':
+        if self.config['shear_catalog_type']=='metacal':
             # We use S=0 here because we have already included it in R_total
             g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
 
-        elif cat_type == 'lensfit':
+        elif self.config['shear_catalog_type']=='lensfit':
             g1, g2, weight, _ = apply_lensfit_calibration(g1 = g1,g2 = g2,weight = weight,sigma_e = sigma_e, m = m)
         else:
             print('Shear calibration type not recognized.')
@@ -599,10 +584,8 @@ class TXStarDensityTests(PipelineStage):
             source_bin = f['tomography/source_bin'][:]
             mask = (source_bin!=-1) # Only use the sources that pass the fiducial cuts
 
-        with self.open_input('shear_catalog', wrapper=True) as f:
-            g = f.file['shear']
-            if f.catalog_type == "metadetect":
-                g = g['00']
+        with self.open_input('shear_catalog') as f:
+            g = f['shear']
             ra = g['ra'][:][mask]
             dec = g['dec'][:][mask]
 

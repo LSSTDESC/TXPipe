@@ -34,7 +34,6 @@ class TXCosmoDC2Mock(PipelineStage):
         'extra_cols': "", # string-separated list of columns to include
         'max_npix':99999999999999,
         'unit_response': False,
-        'cat_size': 0,
         'flip_g2': True, # this matches the metacal definition, and the treecorr/namaster one
         'apply_mag_cut': False, #used when comparing to descqa measurements
         'Mag_r_limit': -19, # used to decide what objects to cut out  
@@ -70,20 +69,57 @@ class TXCosmoDC2Mock(PipelineStage):
         cat_name = self.config['cat_name']
         self.bands = ('u', 'g', 'r', 'i', 'z', 'y')
 
-        print(f"Loading from catalog {cat_name}")
+        if self.rank == 0:
+            print(f"Loading from catalog {cat_name}")
+            # Load the input catalog (this is lazy)
+            # For testing we may want to cut down to a smaller number of pixels.
+            # This is separate from the split by processor later on
+            if 'cosmoDC2' in cat_name:
+                all_healpix_pixels = GCRCatalogs.get_available_catalogs()[cat_name]['healpix_pixels']
+            elif 'buzzard' in cat_name:
+                all_healpix_pixels = GCRCatalogs.load_catalog(cat_name).healpix_pixels
+            else:
+                raise NotImplementedError
 
+            max_npix = self.config['max_npix']
+            if max_npix != 99999999999999:
+                print(f"Cutting down initial catalog to {max_npix} healpix pixels")
+                all_healpix_pixels = all_healpix_pixels[:max_npix]
 
-        gc = GCRCatalogs.load_catalog(cat_name)
+            # complete_cat = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
+            # print(f"Loaded overall catalog {cat_name}")
 
-        # GCR sometimes tries to read the entire catalog
-        # to measure its length rather than looking at metadata
-        # this can take a very long time.
-        # allow the user to say that already know it.
-        N = self.config['cat_size']
-        if N == 0:
-            N = len(gc)
+            # # Get the size, and optionally cut down to a smaller
+            # # size if we want to test
+            # N = len(complete_cat)
+            # print(f"Measured catalog length: {N}")
 
-        print(f"Rank {self.rank} loaded: length = {N}.")
+        else:
+            N = 0
+            all_healpix_pixels = None
+
+        if self.comm:
+            # Split up the pixels to load among the processors
+            all_healpix_pixels = self.comm.bcast(all_healpix_pixels)
+            all_npix = len(all_healpix_pixels)
+            my_healpix_pixels = all_healpix_pixels[self.rank::self.size]
+            my_npix = len(my_healpix_pixels)
+
+            # Load the catalog for this processor
+            print(f"Rank {self.rank} loading catalog with {my_npix} pixels from total {all_npix}.")
+            gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':my_healpix_pixels})
+
+            # Work out my local length and the total length (from the sum of all the local lengths)
+            my_N = len(gc)
+            N = self.comm.allreduce(my_N)
+            print(f"Rank {self.rank}: loaded. Have {my_N} objects from total {N}")
+
+        else:
+            all_npix = len(all_healpix_pixels)
+            print(f"Rank {self.rank} loading catalog with all {all_npix} pixels.")
+            gc = GCRCatalogs.load_catalog(cat_name, {'healpix_pixels':all_healpix_pixels})
+            N = my_N = len(gc)
+            print(f"Rank {self.rank} loaded: length = {N}.")
 
         target_size = min(N, self.config['max_size'])
         select_fraction = target_size / N
@@ -112,7 +148,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # This will be reduced later as we remove objects
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
-            print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {N}")
+            print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {my_N}")
             count += chunk_size
             # Select a random fraction of the catalog if we are cutting down
             # We can't just take the earliest galaxies because they are ordered
@@ -228,12 +264,12 @@ class TXCosmoDC2Mock(PipelineStage):
 
 
 
-    def setup_metadetect_output(self, metacal_file, target_size):
+    def setup_metacal_output(self, metacal_file, target_size):
         # Get a list of all the column names
         cols = (
             ['ra', 'dec', 'psf_g1', 'psf_g2', 'mcal_psf_g1', 'mcal_psf_g2', 'mcal_psf_T_mean']
-            + metadetect_variants('g1', 'g2', 'T', 's2n',  'T_err')
-            + band_variants('riz', 'mag', 'mag_err', shear_catalog_type='metadetect')
+            + metacal_variants('mcal_g1', 'mcal_g2', 'mcal_T', 'mcal_s2n',  'mcal_T_err')
+            + band_variants('riz', 'mcal_mag', 'mcal_mag_err',shear_catalog_type='metacal')
             + ['weight']
         )
 
@@ -244,6 +280,8 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
+        
+
         for col in cols:
             group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype='f8')
 
@@ -443,78 +481,78 @@ class TXCosmoDC2Mock(PipelineStage):
             
 
             # g1
-            "00/g1": e1*R,
-            "1p/g1": (e1+delta_gamma)*R,
-            "1m/g1": (e1-delta_gamma)*R,
-            "2p/g1": e1*R,
-            "2m/g1": e1*R,
+            "mcal_g1": e1*R,
+            "mcal_g1_1p": (e1+delta_gamma)*R,
+            "mcal_g1_1m": (e1-delta_gamma)*R,
+            "mcal_g1_2p": e1*R,
+            "mcal_g1_2m": e1*R,
 
             # g2
-            "00/g2": e2*R,
-            "1p/g2": e2*R,
-            "1m/g2": e2*R,
-            "2p/g2": (e2+delta_gamma)*R,
-            "2m/g2": (e2-delta_gamma)*R,
+            "mcal_g2": e2*R,
+            "mcal_g2_1p": e2*R,
+            "mcal_g2_1m": e2*R,
+            "mcal_g2_2p": (e2+delta_gamma)*R,
+            "mcal_g2_2m": (e2-delta_gamma)*R,
 
             # T
-            "00/T": size_T,
-            "1p/T": size_T + R_size*delta_gamma,
-            "1m/T": size_T - R_size*delta_gamma,
-            "2p/T": size_T + R_size*delta_gamma,
-            "2m/T": size_T - R_size*delta_gamma,
+            "mcal_T": size_T,
+            "mcal_T_1p": size_T + R_size*delta_gamma,
+            "mcal_T_1m": size_T - R_size*delta_gamma,
+            "mcal_T_2p": size_T + R_size*delta_gamma,
+            "mcal_T_2m": size_T - R_size*delta_gamma,
 
             # Terr
-            "00/T_err":    zero,
-            "1p/T_err": zero,
-            "1m/T_err": zero,
-            "2p/T_err": zero,
-            "2m/T_err": zero,
+            "mcal_T_err":    zero,
+            "mcal_T_err_1p": zero,
+            "mcal_T_err_1m": zero,
+            "mcal_T_err_2p": zero,
+            "mcal_T_err_2m": zero,
 
             # size 
-            "00/s2n": snr,
-            "1p/s2n": snr_1p,
-            "1m/s2n": snr_1m,
-            "2p/s2n": snr_2p,
-            "2m/s2n": snr_2m,
+            "mcal_s2n": snr,
+            "mcal_s2n_1p": snr_1p,
+            "mcal_s2n_1m": snr_1m,
+            "mcal_s2n_2p": snr_2p,
+            "mcal_s2n_2m": snr_2m,
 
             # Magntiudes and fluxes, just copied from the inputs.
-            '00/mag_r': photo['mag_r'],
-            '00/mag_i': photo['mag_i'],
-            '00/mag_z': photo['mag_z'],
+            'mcal_mag_r': photo['mag_r'],
+            'mcal_mag_i': photo['mag_i'],
+            'mcal_mag_z': photo['mag_z'],
 
-            '00/mag_err_r': photo['mag_r_err'],
-            '00/mag_err_i': photo['mag_i_err'],
-            '00/mag_err_z': photo['mag_z_err'],
+            'mcal_mag_err_r': photo['mag_r_err'],
+            'mcal_mag_err_i': photo['mag_i_err'],
+            'mcal_mag_err_z': photo['mag_z_err'],
 
-            '1p/mag_r': photo['mag_r_1p'],
-            '2p/mag_r': photo['mag_r_2p'],
-            '1m/mag_r': photo['mag_r_1m'],
-            '2m/mag_r': photo['mag_r_2m'],
+            'mcal_mag_r_1p': photo['mag_r_1p'],
+            'mcal_mag_r_2p': photo['mag_r_2p'],
+            'mcal_mag_r_1m': photo['mag_r_1m'],
+            'mcal_mag_r_2m': photo['mag_r_2m'],
 
-            '1p/mag_i': photo['mag_i_1p'],
-            '2p/mag_i': photo['mag_i_2p'],
-            '1m/mag_i': photo['mag_i_1m'],
-            '2m/mag_i': photo['mag_i_2m'],
+            'mcal_mag_i_1p': photo['mag_i_1p'],
+            'mcal_mag_i_2p': photo['mag_i_2p'],
+            'mcal_mag_i_1m': photo['mag_i_1m'],
+            'mcal_mag_i_2m': photo['mag_i_2m'],
             
-            '1p/mag_z': photo['mag_z_1p'],
-            '2p/mag_z': photo['mag_z_2p'],
-            '1m/mag_z': photo['mag_z_1m'],
-            '2m/mag_z': photo['mag_z_2m'],
+            'mcal_mag_z_1p': photo['mag_z_1p'],
+            'mcal_mag_z_2p': photo['mag_z_2p'],
+            'mcal_mag_z_1m': photo['mag_z_1m'],
+            'mcal_mag_z_2m': photo['mag_z_2m'],
 
-            '1p/mag_err_r': photo['mag_r_err'],
-            '2p/mag_err_r': photo['mag_r_err'],
-            '1m/mag_err_r': photo['mag_r_err'],
-            '2m/mag_err_r': photo['mag_r_err'],
+            'mcal_mag_err_r_1p': photo['mag_r_err'],
+            'mcal_mag_err_r_2p': photo['mag_r_err'],
+            'mcal_mag_err_r_1m': photo['mag_r_err'],
+            'mcal_mag_err_r_2m': photo['mag_r_err'],
 
-            '1p/mag_err_i': photo['mag_i_err'],
-            '2p/mag_err_i': photo['mag_i_err'],
-            '1m/mag_err_i': photo['mag_i_err'],
-            '2m/mag_err_i': photo['mag_i_err'],
+            'mcal_mag_err_i_1p': photo['mag_i_err'],
+            'mcal_mag_err_i_2p': photo['mag_i_err'],
+            'mcal_mag_err_i_1m': photo['mag_i_err'],
+            'mcal_mag_err_i_2m': photo['mag_i_err'],
 
-            '1p/mag_err_z': photo['mag_z_err'],
-            '2p/mag_err_z': photo['mag_z_err'],
-            '1m/mag_err_z': photo['mag_z_err'],
-            '2m/mag_err_z': photo['mag_z_err'],
+            'mcal_mag_err_z_1p': photo['mag_z_err'],
+            'mcal_mag_err_z_2p': photo['mag_z_err'],
+            'mcal_mag_err_z_1m': photo['mag_z_err'],
+            'mcal_mag_err_z_2m': photo['mag_z_err'],
 
             # Fixed PSF parameters - all round with same size
             'mcal_psf_g1': zero,
@@ -754,6 +792,7 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
 
 
 def generate_mock_metacal_mag_responses(bands, nobj):
+    print("WARNING: getting oddly large S/N variation from mock metacal mags")
     nband = len(bands)
     mu = np.zeros(nband) # seems approx mean of response across bands, from HSC tract
     rho = 0.25  #  approx correlation between response in bands, from HSC tract

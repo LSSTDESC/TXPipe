@@ -36,7 +36,7 @@ stages_to_delete = {stage}
 # loop through nstage times (the maximum it could be)
 for i in range(len(stage_names)):
     # take all tags we currently know we have to delete
-    for tag in tags_to_delete[:]:
+    for tag in tags_to_delete:
         # find out which stages to clear because they need
         # this tag which we are deleting
         deps = set(dependencies[tag])

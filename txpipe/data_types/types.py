@@ -45,8 +45,6 @@ class ShearCatalog(HDFFile):
             t = self.file['shear'].attrs['catalog_type']
         elif 'mcal_g1' in self.file['shear'].keys():
             t = 'metacal'
-        elif '1p' in self.file['shear'].keys():
-            t = 'metadetect'
         elif 'c1' in self.file['shear'].keys():
             t = 'lensfit'
         else:
@@ -54,12 +52,6 @@ class ShearCatalog(HDFFile):
 
         self._catalog_type = t
         return t
-
-    def get_size(self):
-        if self.catalog_type == 'metadetect':
-            return self.file['shear/00/ra'].size
-        else:
-            return self.file['shear/ra'].size
 
 
 class TomographyCatalog(HDFFile):
@@ -203,7 +195,6 @@ class MapsFile(HDFFile):
             w = None
         lon_range = [lon[w].min()-0.1, lon[w].max()+0.1]
         lat_range = [lat[w].min()-0.1, lat[w].max()+0.1]
-        lat_range = np.clip(lat_range, -90, 90)
         m[m==0] = healpy.UNSEEN
         title = kwargs.pop('title', map_name)
         if view == 'cart':

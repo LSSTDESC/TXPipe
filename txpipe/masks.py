@@ -7,7 +7,7 @@ from .data_types import MapsFile
 class TXSimpleMask(PipelineStage):
     name = "TXSimpleMask"
     # make a mask from the auxiliary maps
-    inputs = [("aux_lens_maps", MapsFile)]
+    inputs = [("aux_maps", MapsFile)]
     outputs = [("mask", MapsFile)]
     config_options = {
         "depth_cut": 23.5,
@@ -17,7 +17,7 @@ class TXSimpleMask(PipelineStage):
     def run(self):
         import healpy
 
-        with self.open_input("aux_lens_maps", wrapper=True) as f:
+        with self.open_input("aux_maps", wrapper=True) as f:
             metadata = dict(f.file["maps"].attrs)
             bright_obj = f.read_map("bright_objects/count")
             depth = f.read_map("depth/depth")
@@ -36,9 +36,6 @@ class TXSimpleMask(PipelineStage):
         # Overall mask
         mask = np.logical_and.reduce([mask for _, mask in masks])
 
-        # Total survey area calculation. This is simplistic:
-        # TODO: account for weights / hit fractions here, and allow
-        # for different lens and shear survey areas
         num_hit = (mask.sum() * 1.0)
         area = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = area / 41252.96125
