@@ -14,7 +14,8 @@ class TXMapPlots(PipelineStage):
         ("lens_maps", MapsFile),
         ("density_maps", MapsFile),
         ("mask", MapsFile),
-        ("aux_maps", MapsFile),
+        ("aux_source_maps", MapsFile),
+        ("aux_lens_maps", MapsFile),
     ]
 
     outputs = [
@@ -40,30 +41,21 @@ class TXMapPlots(PipelineStage):
 
         # Plot from each file separately, just
         # to organize this file a bit
-        self.aux_plots()
+        self.aux_source_plots()
+        self.aux_lens_plots()
         self.source_plots()
         self.lens_plots()
         self.mask_plots()
 
-    def aux_plots(self):
+    def aux_source_plots(self):
         import matplotlib.pyplot as plt
 
-        m = self.open_input("aux_maps", wrapper=True)
+        m = self.open_input("aux_source_maps", wrapper=True)
 
         # Get these two config options from the maps where
         # they were originally saved
         nbin_source = m.file["maps"].attrs["nbin_source"]
         flag_max = m.file["maps"].attrs["flag_exponent_max"]
-
-        # Depth plots
-        fig = self.open_output("depth_map", wrapper=True, figsize=(5, 5))
-        m.plot("depth/depth", view=self.config["projection"])
-        fig.close()
-
-        # Bright objects
-        fig = self.open_output("bright_object_map", wrapper=True, figsize=(5, 5))
-        m.plot("bright_objects/count", view=self.config["projection"])
-        fig.close()
 
         # Flag count plots - flags are assumed to be bitsets, so
         # we make maps of 1, 2, 4, 8, 16, ...
@@ -82,6 +74,21 @@ class TXMapPlots(PipelineStage):
             m.plot(f"psf/g1_{i}", view=self.config["projection"])
             plt.sca(axes[1, i])
             m.plot(f"psf/g2_{i}", view=self.config["projection"])
+        fig.close()
+
+    def aux_lens_plots(self):
+        import matplotlib.pyplot as plt
+
+        m = self.open_input("aux_lens_maps", wrapper=True)
+
+        # Depth plots
+        fig = self.open_output("depth_map", wrapper=True, figsize=(5, 5))
+        m.plot("depth/depth", view=self.config["projection"])
+        fig.close()
+
+        # Bright objects
+        fig = self.open_output("bright_object_map", wrapper=True, figsize=(5, 5))
+        m.plot("bright_objects/count", view=self.config["projection"])
         fig.close()
 
     def source_plots(self):

@@ -1,0 +1,28 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+stages:
+    - name: TXBuzzardMock
+      nprocess: 4
+
+output_dir: data/buzzard/outputs
+config: examples/buzzard/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5
+
+resume: True
+log_dir: data/buzzard/logs
+pipeline_log: data/buzzard/log.txt
+

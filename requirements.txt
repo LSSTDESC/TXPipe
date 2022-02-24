@@ -1,4 +1,4 @@
-ceci==1.1
+ceci>=1.6
 h5py
 pandas
 sacc
@@ -9,13 +9,13 @@ fitsio
 git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
-treecorr
+treecorr>=4.2.2
 sklearn
 astropy
 healpy
 camb
 threadpoolctl
-#pymaster
+pymaster
 cosmosis-standalone
 git+https://github.com/LSSTDESC/firecrown@v0.4
 psutil
@@ -23,3 +23,7 @@ parallel_statistics
 healsparse
 flexcode
 xgboost==1.1.0
+git+git://github.com/LSSTDESC/qp
+dask[distributed]
+git+git://github.com/joezuntz/dask-mpi
+git+git://github.com/LSSTDESC/desc_bpz

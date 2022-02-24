@@ -71,7 +71,30 @@ Getting Dependencies
 
 TXPipe requires python>=3.6.
 
-**Dependencies on your laptop**
+
+**Dependencies with Conda**
+
+You can use the commands below to get a conda environment with everything you need.
+
+On a cluster with an existing MPI implementation you should modify `mpich` to `mpich=3.4.*=external_*` or whatever version of MPI you have.
+
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+chmod +x Miniforge3-Linux-x86_64.sh 
+./Miniforge3-Linux-x86_64.sh -b -p ./conda
+source ./conda/bin/activate
+
+
+# conda forge installations
+conda install -y scipy matplotlib camb healpy psutil numpy scikit-learn fitsio pandas astropy pyccl mpi4py treecorr namaster  dask mpich 'h5py=*=mpi_mpich_*'
+
+# pip installations
+pip install threadpoolctl ceci sacc parallel_statistics git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs  git+git://github.com/LSSTDESC/qp git+git://github.com/LSSTDESC/desc_bpz healsparse flexcode  xgboost==1.1.1  git+https://github.com/dask/dask-mpi cosmosis-standalone git+https://github.com/LSSTDESC/firecrown@v0.4 git+git://github.com/LSSTDESC/desc_bpz git+git://github.com/LSSTDESC/qp
+```
+
+
+
+**Dependencies with pip**
 
 The various stages within it depend on the python packages listed in requirements.txt, and can be install using:
 ```
@@ -124,13 +147,14 @@ pip install ceci numpy scipy parallel_statistics
 Then use shifter to run the actual jobs.
 
 
+
 Running the pipeline
 --------------------
 
 Once you have installed the dependecies you can run this using the test data you downloaded above
 
 ```bash
-ceci examples/laptop_pipeline.yml
+ceci examples/metacal/pipeline.yml
 ```
 
 to run the implemented stages.
@@ -138,7 +162,7 @@ to run the implemented stages.
 You can get a list of the individual commands that will be run like this:
 
 ```bash
-ceci --dry-run examples/laptop_pipeline.yml
+ceci --dry-run examples/metacal/pipeline.yml
 ```
 
 so that you can run and examine them individually.
@@ -153,10 +177,10 @@ Example larger runs, which can be run on NERSC under interactive jobs (for now) 
 # To get an interactive job:
 salloc -N 2  -q interactive -C haswell -t 01:00:00 -A m1727
 # <wait for allocation>
-ceci examples/2.2i_pipeline.yml
+ceci examples/2.2i/pipeline.yml
 ```
 
-A smaller run is in `examples/2.2i_single_tract_pipeline.yml`.
+A smaller run is in `examples/2.2i/pipeline_1tract.yml`.
 
 Batch runs
 ----------
@@ -164,10 +188,9 @@ Batch runs
 You can launch an example of a batch run (a submitted job that queues so you don't have to wait around), by executing this on cori:
 
 ```bash
-sbatch examples/cori-2.2i.sub
+sbatch examples/skysim/cori-skysim.sub
 ```
 
-It will generate an output log `2.2i.log`.
 
 Implementation
 --------------

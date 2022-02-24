@@ -1,0 +1,70 @@
+# This moderately-sized run has 7M galaxies in
+launcher:
+    name: mini
+    interval: 1.0
+
+
+# These site options tell the launcher to use shifter
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+    volume: ${PWD}:/opt/txpipe
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXJackknifeCenters
+    - name: TXNoiseMaps
+    - name: TXSourceSelector
+    - name: PZRailEstimateSource
+    - name: PZRailEstimateLensFromSource
+    - name: TXShearCalibration
+    - name: TXTruthLensSelector
+    - name: TXLensCatalogSplitter
+    - name: TXPhotozSourceStack
+    - name: TXPhotozLensStack
+    - name: TXPhotozPlots
+    - name: TXMainMaps
+    - name: TXAuxiliarySourceMaps
+    - name: TXAuxiliaryLensMaps
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXRandomCat
+    - name: TXTwoPoint
+    - name: TXNullBlinding
+    - name: TXTwoPointTheoryReal
+    - name: TXStarCatalogSplitter
+    - name: TXTwoPointPlots
+    - name: TXSourceDiagnosticPlots
+    - name: TXLensDiagnosticPlots
+    - name: TXGammaTStars
+    - name: TXBrighterFatterPlot
+    - name: TXRoweStatistics
+    - name: TXPSFDiagnostics
+
+output_dir: data/2.2i-single-tract/outputs
+config: examples/2.2i/config.yml
+
+inputs:
+    shear_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/shear_catalog.hdf5
+    photometry_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/photometry_catalog.hdf5
+    photoz_source_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/cosmoDC2_trees_i25.3.npy
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/sample_cosmodc2_w10year_errors.dat
+    star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-t3828-inputs/star_catalog.hdf5
+
+resume: True
+log_dir: data/2.2i-single-tract/logs
+pipeline_log: data/2.2i-single-tract/log.txt
+

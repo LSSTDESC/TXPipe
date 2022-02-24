@@ -3,7 +3,11 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+<<<<<<< HEAD
 from .utils.calibration_tools import apply_hsc_calibration, apply_lensfit_calibration
+=======
+from .utils.calibrators import Calibrator
+>>>>>>> master
 from .mapping import Mapper, FlagMapper
 
 
@@ -165,6 +169,7 @@ class TXSourceMaps(TXBaseMaps):
 
     def get_calibrators(self):
         shear_catalog_type = read_shear_catalog_type(self)
+<<<<<<< HEAD
         with self.open_input("shear_tomography_catalog") as f:
             nbin_source = f["tomography"].attrs["nbin_source"]
 
@@ -185,6 +190,11 @@ class TXSourceMaps(TXBaseMaps):
             else:
                 raise ValueError("Unknown calibration")
         return nbin_source, cal
+=======
+        cal, cal2D = Calibrator.load(self.get_input("shear_tomography_catalog"))
+        nbin_source = len(cal)
+        return nbin_source, [cal, cal2D]
+>>>>>>> master
 
     def data_iterator(self):
 
@@ -193,6 +203,8 @@ class TXSourceMaps(TXBaseMaps):
             shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
         elif self.config["shear_catalog_type"] == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
+        elif shear_catalog_type == "metadetect":
+            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight", "c1", "c2", "sigma_e", "m"]
 
@@ -216,6 +228,10 @@ class TXSourceMaps(TXBaseMaps):
         if self.config["true_shear"]:
             data["g1"] = data["true_g1"]
             data["g2"] = data["true_g2"]
+        elif self.config["shear_catalog_type"] == "metadetect":
+            data["g1"] = data["00/g1"]
+            data["g2"] = data["00/g2"]
+            data["weight"] = data["00/weight"]
         elif self.config["shear_catalog_type"] == "metacal":
             data["g1"] = data["mcal_g1"]
             data["g2"] = data["mcal_g2"]
@@ -251,6 +267,7 @@ class TXSourceMaps(TXBaseMaps):
         mapper = mappers[0]
         mapper.add_data(data)
 
+<<<<<<< HEAD
     def calibrate_map_metacal(self, g1, g2, var_g1, var_g2, R):
         g1, g2 = apply_metacal_response(R, 0, g1, g2)
 
@@ -303,6 +320,9 @@ class TXSourceMaps(TXBaseMaps):
         return g1, g2, var_g1, var_g2
 
     def calibrate_maps(self, g1, g2, var_g1, var_g2, cal, precal=True):
+=======
+    def calibrate_maps(self, g1, g2, var_g1, var_g2, cals):
+>>>>>>> master
         import healpy
 
         # We will return lists of calibrated maps
@@ -310,6 +330,8 @@ class TXSourceMaps(TXBaseMaps):
         g2_out = {}
         var_g1_out = {}
         var_g2_out = {}
+
+        cals, cal_2D = cals
 
         # We calibrate the 2D case separately
         for i in g1.keys():
@@ -321,6 +343,7 @@ class TXSourceMaps(TXBaseMaps):
                 | (var_g1[i] == healpy.UNSEEN)
                 | (var_g2[i] == healpy.UNSEEN)
             )
+<<<<<<< HEAD
             if self.config['shear_catalog_type'] == 'metacal':
                 out = self.calibrate_map_metacal(g1[i], g2[i], var_g1[i], var_g2[i], cal[i])
             elif self.config['shear_catalog_type'] == 'lensfit':
@@ -329,18 +352,23 @@ class TXSourceMaps(TXBaseMaps):
             elif self.config['shear_catalog_type'] == 'hsc':
                 R, K, c = cal[i]
                 out = self.calibrate_map_hsc(g1[i], g2[i], var_g1[i], var_g2[i], R, K, c, precal=precal)
+=======
+            if i == '2D':
+                cal = cal_2D
+>>>>>>> master
             else:
-                raise ValueError("Unknown calibration")
+                cal = cals[i]
+            g1_out[i], g2_out[i] = cal.apply(g1[i], g2[i])
+            std1 = np.sqrt(g1[i])
+            std2 = np.sqrt(g2[i])
+            std1, std2 = cal.apply(std1, std2, subtract_mean=False)
+            var_g1_out[i] = std1**2
+            var_g2_out[i] = std2**2
 
             # re-apply the masking, just to make sure
-            for x in out:
+        for y in g1_out, g2_out, var_g1_out, var_g2_out:
+            for x in y.values():
                 x[mask] = healpy.UNSEEN
-
-            # append our results for this tomographic bin
-            g1_out[i] = out[0]
-            g2_out[i] = out[1]
-            var_g1_out[i] = out[2]
-            var_g2_out[i] = out[3]
 
         return g1_out, g2_out, var_g1_out, var_g2_out
 
@@ -486,8 +514,10 @@ class TXExternalLensMaps(TXLensMaps):
 class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
     Combined source and photometric lens maps, from the
-    same photometry catalog.  Same as running TXSourceMaps
-    and then TXLensMaps but faster as we only do the I/O once.
+    same photometry catalog. This might be slightly faster than
+    running two maps separately, but it only works if the source 
+    and lens catalogs are the same set of objects. Otherwise use
+    TXSourceMaps and TXLensMaps.
     """
 
     name = "TXMainMaps"
@@ -510,6 +540,18 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
         # the source and lens map columns
         print("TODO: no lens weights here")
 
+        with self.open_input("photometry_catalog") as f:
+            sz1 = f['photometry/ra'].size
+
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            sz2 = f.get_size()
+
+        if sz1 != sz2:
+            raise ValueError("Shear and photometry catalogs in TXMainMaps are "
+                             "different sizes. To use separate source and lens "
+                             "samples use TXSourceMaps and TXLensMaps separately."
+                             )
+
         # metacal, lensfit, etc.
         shear_catalog_type = read_shear_catalog_type(self)
 
@@ -519,6 +561,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
             shear_cols = ["true_g1", "true_g1", "ra", "dec", "weight"]
         elif shear_catalog_type == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
+        elif shear_catalog_type == "metadetect":
+            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight", 
                           "c1", "c2", "sigma_e", "m"]
