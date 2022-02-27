@@ -471,9 +471,6 @@ class TXTwoPoint(PipelineStage):
         if self.comm is not None:
             self.comm.Barrier()
 
-
-
-
     def get_patch_dir(self, input_tag, b):
         """
         Select a patch directory for the file  with the given input tag
@@ -706,10 +703,6 @@ class TXTwoPoint(PipelineStage):
         meta["mean_e2"] = mean_e2
 
         return meta
-
-
-
-
 
 
 if __name__ == "__main__":

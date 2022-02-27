@@ -734,14 +734,16 @@ class TXTwoPointFourier(PipelineStage):
             )
             with self.open_input("mask", wrapper=True) as f:
                 info = f.read_map_info("mask")
-                #area = info["area"]
-                #f_sky = info["f_sky"]
+                # area = info["area"]
+                # f_sky = info["f_sky"]
                 mask = f.read_map("mask")
-                mask[mask==hp.UNSEEN] = 0.
+                mask[mask == hp.UNSEEN] = 0.0
                 if self.rank == 0:
                     print("Loaded mask")
-             
-            n_ls = np.mean(mask) / ndens # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and 
+
+            n_ls = (
+                np.mean(mask) / ndens
+            )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
             # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
 
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
