@@ -12,6 +12,7 @@ from .data_types import (
 )
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .utils.calibration_tools import read_shear_catalog_type
+from .utils.patches import PatchMaker
 import numpy as np
 import random
 import collections
@@ -65,6 +66,7 @@ class TXTwoPoint(PipelineStage):
         "use_randoms": True,
         "low_mem": False,
         "patch_dir": "./cache/patches",
+        "chunk_rows": 100_000,
     }
 
     def run(self):
@@ -435,35 +437,42 @@ class TXTwoPoint(PipelineStage):
         cats = list(cats)
         cats.sort(key=str)
 
+        shear_cols = ["ra", "dec", "g1", "g2", "weight"]
+        pos_cols = ["ra", "dec", "weight"]
+        ran_cols = ["ra", "dec"]
+        chunk_rows = self.config["chunk_rows"]
+
         # This does a round-robin assignment to processes
         for (h, k) in self.split_tasks_by_rank(cats):
-
-            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+            ktxt = "shear" if k == SHEAR_SHEAR else "position"
+            print(f"Rank {self.rank} making patches for {ktxt} catalog bin {h}")
 
             # For shear we just have the one catalog. For position we may
             # have randoms also. We explicitly delete catalogs after loading
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                cat.get_patches(low_mem=self.config['low_mem'])
+                PatchMaker.run(cat, shear_cols, chunk_rows, self.comm)
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                cat.get_patches(low_mem=self.config['low_mem'])
+                PatchMaker.run(cat, pos_cols, chunk_rows, self.comm)
                 del cat
-                ran_cat = self.get_random_catalog(h)
 
+                ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-
-                ran_cat.get_patches(low_mem=self.config['low_mem'])
+                PatchMaker.run(ran_cat, ran_cols, chunk_rows, self.comm)
                 del ran_cat
 
         # stop other processes progressing to the rest of the code and
         # trying to load things we have not written yet
         if self.comm is not None:
             self.comm.Barrier()
+
+
+
 
     def get_patch_dir(self, input_tag, b):
         """
@@ -697,6 +706,10 @@ class TXTwoPoint(PipelineStage):
         meta["mean_e2"] = mean_e2
 
         return meta
+
+
+
+
 
 
 if __name__ == "__main__":
