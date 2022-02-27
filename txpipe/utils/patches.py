@@ -109,9 +109,16 @@ class PatchMaker:
     def run(cls, cat, cols, chunk_rows, comm=None):
         import h5py
 
+        is_root = comm is None or comm.rank == 0
+
+        if cat.save_patch_dir is None:
+            if is_root:
+                print(f"Catalog {cat} does not have a patch directory set.")
+                print("Not making patches")
+            return
+
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
 
-        is_root = comm is None or comm.rank == 0
 
         if all(os.path.exists(p) for p in patch_filenames):
             if comm is None or comm.rank == 0:
