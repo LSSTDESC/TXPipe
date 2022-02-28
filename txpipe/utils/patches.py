@@ -17,8 +17,7 @@ class PatchMaker:
         if my_patches is None:
             my_patches = np.arange(len(patch_centers))
 
-        self.renames = {"weight": "w"}
-        self.columns = [self.renames.get(c, c) for c in columns]
+        self.columns = columns
         self.ball = sklearn.neighbors.BallTree(patch_centers)
         self.files = {
             i: self.setup_file(patch_filenames[i], initial_size, max_size)
@@ -37,14 +36,17 @@ class PatchMaker:
 
     def find_patch(self, data):
         # convert to spherical coordinates and find sin/cos
-        lon = np.radians(data["ra"])
-        lat = np.radians(data["dec"])
+        lon = np.radians(data[self.columns["ra"]])
+        lat = np.radians(data[self.columns["dec"]])
         sin_lat = np.sin(lat)
         sin_lon = np.sin(lon)
         cos_lat = np.cos(lat)
         cos_lon = np.cos(lon)
 
-        # Convert to Euclidean coordinates
+        # Convert to Euclidean coordinates.
+        # I established the convention here just by
+        # trying each combination until plotting
+        # the center points matched up
         n = len(lat)
         xyz = np.empty((n, 3))
         xyz[:, 0] = cos_lon * cos_lat
@@ -86,15 +88,17 @@ class PatchMaker:
 
             # Check if we need to re-size our columns
             # because more data than we start with is in there
-            col = f[self.columns[0]]
+            col = f["ra"]
             while col.size < e:
                 new_size = min(int(col.size * 1.5), self.max_size)
                 self.resize(f, new_size)
 
             # At lat we can write out this chunk of data
-            for col in self.columns:
-                c = "weight" if col == "w" else col
-                f[col][s:e] = data[c][sel]
+            # Need to convert from the name in the patch file, which
+            # is always the plain ra, dec, g1, g2, w, to whatever it's
+            # called in the input file
+            for col, name in self.columns.items():
+                f[col][s:e] = data[name][sel]
 
             # Update this output index
             self.index[i] = e
@@ -106,10 +110,18 @@ class PatchMaker:
             f.close()
 
     @classmethod
-    def run(cls, cat, cols, chunk_rows, comm=None):
+    def run(cls, cat, chunk_rows, comm=None):
         import h5py
 
         is_root = comm is None or comm.rank == 0
+
+        # Get the columns
+        cols = {}
+        for col in ["ra", "dec", "g1", "g2", "w"]:
+            name = cat.config[f"{col}_col"]
+            if name != "0":
+                cols[col] = name
+
 
         if cat.save_patch_dir is None:
             if is_root:
@@ -128,7 +140,8 @@ class PatchMaker:
         # find the catalog full length, which we use as a maximum possible size
         with h5py.File(cat.file_name, "r") as f:
             g = f[cat.config["ext"]]
-            max_size = g["ra"].size
+            ra_col = cat.config["ra_col"]
+            max_size = g[ra_col].size
 
         npatch = len(cat.patch_centers)
 
@@ -155,7 +168,7 @@ class PatchMaker:
             for i in range(nchunk):
                 s = i * chunk_rows
                 e = s + chunk_rows
-                data = {col: g[col][s:e] for col in cols}
+                data = {col: g[col][s:e] for col in cols.values()}
                 patchmaker.add_data(data)
 
         patchmaker.finish()

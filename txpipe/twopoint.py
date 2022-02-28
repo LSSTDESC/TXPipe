@@ -449,27 +449,27 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                shear_cols = ["ra", "dec", "g1", "g2"]
-                if cat.config["w_col"] != '0':
-                    shear_cols.append("weight")
-                PatchMaker.run(cat, shear_cols, chunk_rows, self.comm)
+                # shear_cols = ["ra", "dec", "g1", "g2"]
+                # if cat.config["w_col"] != '0':
+                #     shear_cols.append("weight")
+                PatchMaker.run(cat, chunk_rows, self.comm)
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                pos_cols = ["ra", "dec"]
-                if cat.config["w_col"] != '0':
-                    pos_cols.append("weight")
-                PatchMaker.run(cat, pos_cols, chunk_rows, self.comm)
+                # pos_cols = ["ra", "dec"]
+                # if cat.config["w_col"] != '0':
+                #     pos_cols.append("w")
+                PatchMaker.run(cat, chunk_rows, self.comm)
                 del cat
 
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-                ran_cols = ["ra", "dec"]
-                if cat.config["w_col"] != "0":
-                    ran_cols.append("weight")
-                PatchMaker.run(ran_cat, ran_cols, chunk_rows, self.comm)
+                # ran_cols = ["ra", "dec"]
+                # if cat.config["w_col"] != "0":
+                #     ran_cols.append("w")
+                PatchMaker.run(ran_cat, chunk_rows, self.comm)
                 del ran_cat
 
         # stop other processes progressing to the rest of the code and
