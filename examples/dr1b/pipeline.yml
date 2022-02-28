@@ -1,7 +1,7 @@
 # Stages to run
 stages:
     - name: TXRandomCat
-    - name: TXSourceSelector
+    - name: TXSourceSelectorMetacal
     - name: TXTruthLensSelector
     - name: TXSourceTrueNumberDensity
     - name: TXLensTrueNumberDensity
