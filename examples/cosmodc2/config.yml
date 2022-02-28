@@ -27,6 +27,11 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
+TXLensTrueNumberDensity:
+    nz: 601
+    zmax: 3.0
+    chunk_rows: 100000
+
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix

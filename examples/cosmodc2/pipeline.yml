@@ -15,7 +15,7 @@ python_paths:
 
 stages:
     - name: TXRandomCat
-    - name: TXSourceSelector
+    - name: TXSourceSelectorMetacal
       nprocess: 32
     - name: TXTruthLensSelector
       nprocess: 32
