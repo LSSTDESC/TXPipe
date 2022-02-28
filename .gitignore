@@ -19,3 +19,5 @@ data/2.2i-t3828/
 data/2.2i/
 data/cosmodc2/
 data/supreme
+cache/
+dask-worker-space/

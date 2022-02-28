@@ -119,7 +119,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "patch_dir": "./cache/patches",
         "low_mem": False,
         "chunk_rows": 100_000,
-        "share_patches": False,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -298,7 +298,7 @@ class TXGammaTStars(TXTwoPoint):
         "patch_dir": "./cache/patches",
         "low_mem": False,
         "chunk_rows": 100_000,
-        "share_patches": False,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -478,7 +478,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "patch_dir": "./cache/patches",
         "low_mem": False,
         "chunk_rows": 100_000,
-        "share_patches": False,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -651,7 +651,7 @@ class TXApertureMass(TXTwoPoint):
         "patch_dir": "./cache/patches",
         "low_mem": False,
         "chunk_rows": 100_000,
-        "share_patches": False,
+        "share_patch_files": False,
     }
 
     # These two functions can be combined into a single one.
