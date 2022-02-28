@@ -118,6 +118,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "use_randoms": True,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patches": False,
     }
 
     def run(self):
@@ -165,7 +167,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("exposures", i)
+            save_patch_dir=self.get_patch_dir("exposures", i),
         )
         return cat
 
@@ -295,6 +297,8 @@ class TXGammaTStars(TXTwoPoint):
         "use_randoms": True,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patches": False,
     }
 
     def run(self):
@@ -337,6 +341,7 @@ class TXGammaTStars(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return rancat
 
@@ -472,6 +477,8 @@ class TXGammaTRandoms(TXTwoPoint):
         "use_randoms": False,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patches": False,
     }
 
     def run(self):
@@ -643,6 +650,8 @@ class TXApertureMass(TXTwoPoint):
         "low_mem": False,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patches": False,
     }
 
     # These two functions can be combined into a single one.

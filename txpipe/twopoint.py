@@ -67,6 +67,7 @@ class TXTwoPoint(PipelineStage):
         "low_mem": False,
         "patch_dir": "./cache/patches",
         "chunk_rows": 100_000,
+        "share_patches": False,
     }
 
     def run(self):
@@ -506,6 +507,13 @@ class TXTwoPoint(PipelineStage):
             name = f"{input_tag}_{ident}"
         else:
             name = f"{input_tag}_{uuid}"
+
+        # Include a tag for the current stage name, so that
+        # if we are running several subclasses at the same time
+        # they don't interfere with each other. This is a waste of
+        # disc space, but hopefully we are not short of that.
+        if not self.config["share_patches"]:
+            name = self.instance_name + name
 
         # And finally append the bin name or number
         patch_dir = pathlib.Path(patch_base) / name / str(b)

@@ -197,8 +197,9 @@ class PatchMaker:
 
         if cat.save_patch_dir is None:
             if is_root:
-                print(f"Catalog {cat} does not have a patch directory set.")
-                print("Not making patches")
+                print(
+                    f"Catalog {cat.file_name} does not have a patch directory set, so not making patches."
+                )
             return
 
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
