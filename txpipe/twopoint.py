@@ -440,8 +440,8 @@ class TXTwoPoint(PipelineStage):
 
         chunk_rows = self.config["chunk_rows"]
 
-        # This does a round-robin assignment to processes
-        for (h, k) in self.split_tasks_by_rank(cats):
+        # Parallelization is now done at the patch level
+        for (h, k) in cats:
             ktxt = "shear" if k == SHEAR_SHEAR else "position"
             print(f"Rank {self.rank} making patches for {ktxt} catalog bin {h}")
 
