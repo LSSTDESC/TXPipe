@@ -248,7 +248,14 @@ class PatchMaker:
             for i in range(nchunk):
                 s = i * chunk_rows
                 e = s + chunk_rows
-                data = {col: g[col][s:e] for col in cols.values()}
+                data = {}
+                for (simple_name, cat_name) in cols.items():
+                    d = g[cat_name][s:e]
+                    if simple_name == "g1" and cat.config["flip_g1"]:
+                        d = -d
+                    elif simple_name == "g2" and cat.config["flip_g2"]:
+                        d = -d
+                    data[cat_name] = d
                 patchmaker.add_data(data)
 
         nonempty = patchmaker.finish()
