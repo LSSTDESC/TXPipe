@@ -1,8 +1,21 @@
 import numpy as np
 import os
+import pathlib
 
 
 class PatchMaker:
+    """
+    Split a TreeCorr catalog into patches, hopefully faster than the native version.
+
+    The native TreeCorr catalog patch splitter can end up using large amounts of memory
+    and/or being very slow. This code re-creates some of its behaviour.
+
+    If it proves faster, some of the ideas in this approach could be upstreamed to
+    TreeCorr, though it currently only works for HDF5 not FITS.
+
+    The main entry point for this class is the run class method.
+    """
+
     def __init__(
         self,
         patch_filenames,
@@ -12,17 +25,45 @@ class PatchMaker:
         max_size,
         my_patches=None,
     ):
+        """
+        Set up the patch maker object.
+
+        Parameters
+        ----------
+        patch_filenames: List[str]
+            A list of all the patch file names. Can include ones not made by this
+            process
+        patch_centers: array
+            xyz coordinates of patch centers shape (npatch, 3)
+        columns: Dict[str: str]
+            Old names of columns mapped to new names
+        initial_size: int
+            Guess at initial number of objects in each patch
+        max_size: int
+            Maximum possible number of objects in each patch
+        my_patches: List[int] or None
+            Sequence of patch indices for this process
+        """
         import sklearn.neighbors
 
+        # Support parallelization through this mechanism - each
+        # process is given some patches to work on.
         if my_patches is None:
             my_patches = np.arange(len(patch_centers))
 
+        # Different
         self.columns = columns
+
+        # This is used to work out the nearest patch center to each galaxy
         self.ball = sklearn.neighbors.BallTree(patch_centers)
+
+        # Open and set up the output patch files.
         self.files = {
             i: self.setup_file(patch_filenames[i], initial_size, max_size)
             for i in my_patches
         }
+
+        # The current and maximum size of each patch
         self.max_size = max_size
         self.index = {i: 0 for i in my_patches}
 
@@ -104,24 +145,55 @@ class PatchMaker:
             self.index[i] = e
 
     def finish(self):
+        empty = []
+        nonempty = []
         for i, f in self.files.items():
             e = self.index[i]
-            self.resize(f, e)
+            if e == 0:
+                empty.append(f.filename)
+            else:
+                nonempty.append(f.filename)
+                self.resize(f, e)
             f.close()
+        # Now we have to delete any files
+        # that don't have any objects in.
+        for f in empty:
+            os.remove(f)
+
+        # Then we have to rename the patches
+        # to remove the gaps in the numbering.
+        # But we have to do that in the run class method,
+        # because different processes are running different
+        # patches
+        return nonempty
 
     @classmethod
     def run(cls, cat, chunk_rows, comm=None):
+        """
+        Create a patchmaker for a catalog and run it.
+
+        Parameters
+        ----------
+        cat: Catalog
+            The treecorr.Catalog object to split up. Should not have already loaded
+            the catalog data, since that defeats the point
+        chunk_rows: int
+            Number of rows of data to read at once on each process
+        comm: communicator or None
+            MPI communicator for parallel runs
+        """
         import h5py
 
         is_root = comm is None or comm.rank == 0
 
-        # Get the columns
+        # Get the columns to be used here. Do all the ones
+        # that are needed in this case
         cols = {}
         for col in ["ra", "dec", "g1", "g2", "w"]:
+            # Check if the name of the column is set
             name = cat.config[f"{col}_col"]
             if name != "0":
                 cols[col] = name
-
 
         if cat.save_patch_dir is None:
             if is_root:
@@ -131,10 +203,10 @@ class PatchMaker:
 
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
 
-
-        if all(os.path.exists(p) for p in patch_filenames):
+        # Check for existing patches.
+        if pathlib.Path(cat.save_patch_dir, "done").exists():
             if comm is None or comm.rank == 0:
-                print(f"Patches already exist for {cat.save_patch_dir}")
+                print(f"Patches already done for {cat.save_patch_dir}")
             return
 
         # find the catalog full length, which we use as a maximum possible size
@@ -145,7 +217,7 @@ class PatchMaker:
 
         npatch = len(cat.patch_centers)
 
-        # Do the parallelization
+        # Do the parallelization - split up the patches in chunks
         if comm is None:
             my_patches = None
         else:
@@ -153,6 +225,8 @@ class PatchMaker:
 
         initial_size = max_size // npatch
         patch_centers = cat.patch_centers
+
+        # make the patchmaker object
         patchmaker = cls(
             patch_filenames,
             patch_centers,
@@ -162,13 +236,57 @@ class PatchMaker:
             my_patches=my_patches,
         )
 
+        # Read the data in the input catalog in chunks
         with h5py.File(cat.file_name, "r") as f:
+            # Get the group within the file
             g = f[cat.config["ext"]]
             nchunk = int(np.ceil(max_size / chunk_rows))
+
+            # Loop through reading chunks of data and adding them
+            # to the patches
             for i in range(nchunk):
                 s = i * chunk_rows
                 e = s + chunk_rows
                 data = {col: g[col][s:e] for col in cols.values()}
                 patchmaker.add_data(data)
 
-        patchmaker.finish()
+        nonempty = patchmaker.finish()
+
+        # Collect the list of all non-empty patch files
+        # that were made
+        if comm is not None:
+            # collect and flatten the list of non-empty patches
+            nonempty = comm.gather(nonempty)
+            if comm.rank == 0:
+                nonempty = [f for fs in nonempty for f in fs]
+
+        # Some patches are omitted if they are empty, but that
+        # can mean we have gaps in the numbering. So this bit renames
+        # the patch files so they are contiguous again, which seems
+        # to be what TreeCorr does
+        if (comm is None) or (comm.rank == 0):
+            # build up this dict of renamings
+            renames = {}
+            # q is the index of the new file (renamed), and
+            # it only increments when a file is actually found
+            q = 0
+            for i, fn in enumerate(patch_filenames[:]):
+                if fn in nonempty:
+                    if i != q:
+                        renames[fn] = patch_filenames[q]
+                    q += 1
+            # Since the order is guaranteed this should never end up overwriting
+            # an existing patch before it is moved.
+            for old_name, new_name in renames.items():
+                print(
+                    f"Renaming patch {old_name} - {new_name} since some patches empty"
+                )
+                os.rename(old_name, new_name)
+
+            # Touch a sentinel file to indicate that this completed
+            pathlib.Path(cat.save_patch_dir, "done").touch()
+
+        # make the rest of the processes wait until root has
+        # finished renaming
+        if comm is not None:
+            comm.Barrier()
