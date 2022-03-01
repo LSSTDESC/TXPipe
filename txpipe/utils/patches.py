@@ -139,7 +139,10 @@ class PatchMaker:
             # is always the plain ra, dec, g1, g2, w, to whatever it's
             # called in the input file
             for col, name in self.columns.items():
-                f[col][s:e] = data[name][sel]
+                d = data[name][sel]
+                if (col == "ra") or (col == "dec"):
+                    d = np.radians(d)
+                f[col][s:e] = d
 
             # Update this output index
             self.index[i] = e
