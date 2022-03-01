@@ -9,6 +9,7 @@ class TXConvergenceMaps(PipelineStage):
 
     This uses the wlmassmap library, which is included as a submodule in TXPipe.
     """
+
     name = "TXConvergenceMaps"
     inputs = [
         ("source_maps", MapsFile),
@@ -79,6 +80,56 @@ class TXConvergenceMaps(PipelineStage):
             print(" - saved")
 
         output.close()
+
+
+class TXDarkMappy(PipelineStage):
+    name = "TXDarkMappy"
+    inputs = [
+        ("source_maps", MapsFile),
+    ]
+
+    outputs = [
+        ("convergence_maps", MapsFile),
+    ]
+
+    config_options = {
+        "tol": 1.0e-4,  # Converges once the optimisation update falls below this value
+        "positivity": False,  # Includes a positivity constraint on the reconstruction
+        "real": False,  # Includes a reality constraint on the reconstruction
+        "constrained": False,  # Solve the (un)constrained optimisation problem
+        "update_iter": 10,  # Iterations before printing solver diagnostics (and image)
+        "iter": 1000,  # Maximum number of iterations
+    }
+
+    def run(self):
+        import darkmappy.estimators as dm
+
+        with self.open_input("source_maps") as f:
+            nbin_source = f.file["maps"].attrs["nbin_source"]
+            g1_maps = [m.read_map(f"g1_{i}") for i in range(nbin_source)]
+            g2_maps = [m.read_map(f"g2_{i}") for i in range(nbin_source)]
+            weights = [m.read_map(f"lensing_weight_{i}") for i in range(nbin_source)]
+            Ls = [m.read_map_info(f"g1_{b}")["L"] for b in range(nbin_source)]
+
+        for i in range(nbin_source):
+            data = g1_maps[i] + 1j * g2_maps[i]
+            weight = weights[i]
+            mask = weights[i] > 0
+            L = Ls[i]
+            dm_estimator = dm.DarkMapperSphere(L=L, data=data, mask=mask, ngal=weight)
+
+            # Manually adjust the optional parameters
+            darkmapper_estimator.options.update(self.config)["tol"] = 1e-4
+            darkmapper_estimator.options["positivity"] = False
+            darkmapper_estimator.options["real"] = False
+            darkmapper_estimator.options["constrained"] = False
+            darkmapper_estimator.options["update_iter"] = 200
+            darkmapper_estimator.options["iter"] = 1000
+
+            # Run the optimization and recover the MAP solution 'sol'
+            sol, diag = darkmapper_estimator.run_estimator(mu=7)
+
+            print("should save maps here!")
 
 
 class TXConvergenceMapPlots(PipelineStage):

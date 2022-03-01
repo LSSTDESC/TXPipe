@@ -161,7 +161,7 @@ class HealpixScheme:
 
 
 class GnomonicPixelScheme:
-    equal_area = True # ish
+    equal_area = True  # ish
     name = "gnomonic"
     """A pixelization scheme using the Gnomonic (aka tangent plane) projection.
 
@@ -490,6 +490,7 @@ def round_approx(x):
     out[near_integer] = x_round[near_integer]
     return out
 
+
 class McEwenWiauxScheme:
     """
     Pixelization scheme following McEwen & Wiaux 2011, which supports
@@ -499,7 +500,9 @@ class McEwenWiauxScheme:
     theta_i = pi * (2 * i + 1) / (2 * L - 1) for i = 0 .. L - 1
     phi_j = 2 * pi * j / (2 * L - 1) for j = 0 .. 2 * L - 2
     """
+
     equal_area = False
+
     def __init__(self, L):
         """Make a converter object.
 
@@ -513,15 +516,17 @@ class McEwenWiauxScheme:
         """
         self.L = L
         self.npix = L * (2 * L - 1)
+        self.nx = 2 * L - 1
+        self.ny = L
 
         self.metadata = {
             "L": self.L,
+            "nx": self.nx,
+            "ny": self.ny,
             "npix": self.npix,
             "pixelization": "mcewen-wiaux",
-        }   
+        }
         # ntheta * nphi
-        self.nx = 2 * L - 1
-        self.ny = L
         self.shape = (self.ny, self.nx)
 
     def ang2pix(self, ra, dec, radians=False, theta=False):
@@ -544,6 +549,7 @@ class McEwenWiauxScheme:
         pix: array
             MW Index of all the specified angles.
         """
+        import pyssht
 
         # convert ra, dec to phi, theta
         if not radians:
@@ -552,12 +558,11 @@ class McEwenWiauxScheme:
         if not theta:
             dec = np.pi / 2.0 - dec
 
-
-        x = round_approx((2 * self.L - 1) * ra / 2 / np.pi)
-        y = round_approx(dec * (2 * L - 1) / np.pi)
+        x = np.array([pyssht.cpyssht.phi_to_index(a, self.L, "MW") for a in ra])
+        y = np.array([pyssht.cpyssht.theta_to_index(a, self.L, "MW") for a in dec])
 
         p = x + y * self.nx
-        raise RuntimeError("Untested!")
+
         return p
 
     def pix2ang(self, pix, radians=False, theta=False):
@@ -583,14 +588,14 @@ class McEwenWiauxScheme:
             If theta=True instead return the co-latitude theta (90-declination, the "angle from north").
 
         """
+        import pyssht
 
         pix = np.atleast_1d(pix)
         x = pix % self.nx
         y = pix // self.nx
 
-        # This is the co-latitude
-        thet = (2 * y + 1) * np.pi / (2 * L - 1)
-        phi = 2 * np.pi * x / (2 * L - 1)
+        phi = np.array([pyssht.cpyssht.index_to_phi(a, self.L, "MW") for a in x])
+        thet = np.array([pyssht.cpyssht.index_to_theta(a, self.L, "MW") for a in y])
 
         # if desired, convert to angle from equator (dec)
         if not theta:
@@ -598,7 +603,7 @@ class McEwenWiauxScheme:
         if not radians:
             thet = np.degrees(thet)
             phi = np.degrees(phi)
-        raise RuntimeError("Untested!")
+
         return phi, thet
 
     def pixel_area(self, index, degrees=False):
@@ -614,13 +619,15 @@ class McEwenWiauxScheme:
             area in deg^2 or square radians, depending on degrees parameter
 
         """
-        
+        raise NotImplementedError("Not done yet")
+        # index = np.atleast_1d(index)
+        # x = pix % self.nx
+        # y = pix // self.nx
 
-        raise RuntimeError("Incomplete!")
+        # thet = np.array([pyssht.cpyssht.index_to_theta(a, self.L, "MW") for a in y])
 
     def vertices(self, pix):
-        raise RuntimeError("Incomplete!")
-
+        raise NotImplementedError("Not done yet")
 
 
 def choose_pixelization(**config):
@@ -671,6 +678,9 @@ def choose_pixelization(**config):
                 "Must set ra_cent, dec_cent, nx, ny, pixel_size to use Gnomonic/Tangent pixelization"
             )
         scheme = GnomonicPixelScheme(ra_cent, dec_cent, pixel_size, nx, ny)
+    elif pixelization == "mcewen-wiaux":
+        L = config["L"]
+        scheme = McEwenWiauxScheme(L)
     else:
         raise ValueError(f"Pixelization scheme {pixelization} unknown")
 

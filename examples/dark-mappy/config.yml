@@ -1,0 +1,31 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: mcewen-wiaux
+    L: 3200
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+
+TXSourceSelectorMetadetect:
+    input_pz: False
+    true_z: True
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ""
+    true_z: False
+
+TXSourceMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXConvergenceMaps: {}
+
+TXConvergenceMapPlots: {}

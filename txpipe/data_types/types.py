@@ -166,6 +166,8 @@ class MapsFile(HDFFile):
             m = self.read_gnomonic(map_name)
         elif pixelization == "healpix":
             m = self.read_healpix(map_name)
+        elif pixelization == "mcewen-wiaux":
+            m = self.read_mcewen_wiaux(map_name)
         else:
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
@@ -236,6 +238,10 @@ class MapsFile(HDFFile):
             healpy.mollview(m, title=title, hold=True, **kwargs)
         else:
             raise ValueError(f"Unknown Healpix view mode {mode}")
+
+    def read_mcewen_wiaux(self, map_name):
+        # same planar map structure
+        return self.read_gnomonic(map_name)
 
     def read_gnomonic(self, map_name):
         import numpy as np
