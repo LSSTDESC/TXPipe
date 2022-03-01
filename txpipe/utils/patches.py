@@ -170,6 +170,44 @@ class PatchMaker:
         # patches
         return nonempty
 
+    @staticmethod
+    def patches_already_made(cat):
+        # Check if the patches files have already been made, and if so
+        # whether they were made with the same configuration. We do this
+        # by dumping the catalog config at the end of the patch making and
+        # trying to load it at the start, comparing its contents to the
+        # curent cat config
+
+        import yaml
+
+        fn = pathlib.Path(cat.save_patch_dir, "done.yml")
+
+        if not fn.exists():
+            return False
+
+        with fn.open() as f:
+            info = yaml.safe_load(f)
+
+        # If the file isn't properly written something
+        # must have gone wrong
+        if info is None:
+            return False
+
+        # Check that the full configuration is the same.
+        # This might be unnecessary, but hopefully remaking
+        # the patches is not too slow.
+        return info == cat.config
+
+    @staticmethod
+    def write_sentinel_file(cat):
+        # Write the catalog config to a file to indicate that
+        # the patches are fully written
+        import yaml
+
+        fn = pathlib.Path(cat.save_patch_dir, "done.yml")
+        with fn.open("w") as f:
+            yaml.dump(cat.config, f)
+
     @classmethod
     def run(cls, cat, chunk_rows, comm=None):
         """
@@ -208,7 +246,7 @@ class PatchMaker:
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
 
         # Check for existing patches.
-        if pathlib.Path(cat.save_patch_dir, "done").exists():
+        if cls.patches_already_made(cat):
             if comm is None or comm.rank == 0:
                 print(f"Patches already done for {cat.save_patch_dir}")
             return
@@ -295,7 +333,7 @@ class PatchMaker:
                 os.rename(old_name, new_name)
 
             # Touch a sentinel file to indicate that this completed
-            pathlib.Path(cat.save_patch_dir, "done").touch()
+            cls.write_sentinel_file(cat)
 
         # make the rest of the processes wait until root has
         # finished renaming
