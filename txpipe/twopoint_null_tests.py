@@ -120,6 +120,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "use_randoms": True,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -151,6 +153,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return rancat
 
@@ -166,6 +169,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("exposures", i),
         )
         return cat
 
@@ -297,6 +301,8 @@ class TXGammaTStars(TXTwoPoint):
         "use_randoms": True,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -321,6 +327,7 @@ class TXGammaTStars(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_star_catalog", i),
         )
         return cat
 
@@ -338,6 +345,7 @@ class TXGammaTStars(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return rancat
 
@@ -478,6 +486,8 @@ class TXGammaTRandoms(TXTwoPoint):
         "use_randoms": False,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -514,6 +524,7 @@ class TXGammaTRandoms(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return cat
 
@@ -543,7 +554,6 @@ class TXGammaTRandoms(TXTwoPoint):
         z = (dvalue - flat1) / derror
         chi2 = np.sum(z**2)
         chi2dof = chi2 / (len(dtheta) - 1)
-        print("error,", derror)
 
         plt.errorbar(
             dtheta,
@@ -560,7 +570,6 @@ class TXGammaTRandoms(TXTwoPoint):
         plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
         plt.title("Randoms Tangential Shear")
 
-        print("type", type(fig))
         fig.close()
 
     def write_output_sacc(self, meta, results):
@@ -655,6 +664,8 @@ class TXApertureMass(TXTwoPoint):
         "low_mem": False,
         "patch_dir": "./cache/patches",
         "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     # These two functions can be combined into a single one.

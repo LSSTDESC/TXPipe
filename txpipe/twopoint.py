@@ -12,6 +12,7 @@ from .data_types import (
 )
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .utils.calibration_tools import read_shear_catalog_type
+from .utils.patches import PatchMaker
 import numpy as np
 import random
 import collections
@@ -73,6 +74,8 @@ class TXTwoPoint(PipelineStage):
         "use_randoms": True,
         "low_mem": False,
         "patch_dir": "./cache/patches",
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -443,29 +446,30 @@ class TXTwoPoint(PipelineStage):
         cats = list(cats)
         cats.sort(key=str)
 
-        # This does a round-robin assignment to processes
-        for (h, k) in self.split_tasks_by_rank(cats):
+        chunk_rows = self.config["chunk_rows"]
 
-            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+        # Parallelization is now done at the patch level
+        for (h, k) in cats:
+            ktxt = "shear" if k == SHEAR_SHEAR else "position"
+            print(f"Rank {self.rank} making patches for {ktxt} catalog bin {h}")
 
             # For shear we just have the one catalog. For position we may
             # have randoms also. We explicitly delete catalogs after loading
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                cat.get_patches(low_mem=False)
+                PatchMaker.run(cat, chunk_rows, self.comm)
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                cat.get_patches(low_mem=False)
+                PatchMaker.run(cat, chunk_rows, self.comm)
                 del cat
-                ran_cat = self.get_random_catalog(h)
 
+                ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-
-                ran_cat.get_patches(low_mem=False)
+                PatchMaker.run(ran_cat, chunk_rows, self.comm)
                 del ran_cat
 
         # stop other processes progressing to the rest of the code and
@@ -511,6 +515,13 @@ class TXTwoPoint(PipelineStage):
             name = f"{input_tag}_{ident}"
         else:
             name = f"{input_tag}_{uuid}"
+
+        # Include a tag for the current stage name, so that
+        # if we are running several subclasses at the same time
+        # they don't interfere with each other. This is a waste of
+        # disc space, but hopefully we are not short of that.
+        if not self.config["share_patch_files"]:
+            name = self.instance_name + name
 
         # And finally append the bin name or number
         patch_dir = pathlib.Path(patch_base) / name / str(b)

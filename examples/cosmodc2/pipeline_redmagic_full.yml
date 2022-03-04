@@ -14,13 +14,11 @@ python_paths:
     - submodules/FlexZPipe
 
 stages:
-    - name: TXGaussianSimsMock
+    - name: TXCosmoDC2Mock
       nprocess: 1
       threads_per_process: 20
     - name: TXRandomCat
-      nodes: 4
-      nprocess: 64
-    - name: TXUniformDepthMap
+    - name: TXIngestRedmagic
     - name: TXSourceSelectorMetadetect
       nprocess: 64
       nodes: 2
@@ -28,8 +26,9 @@ stages:
       nprocess: 7
       nodes: 1
     - name: TXExternalLensCatalogSplitter
-      nprocess: 10
-      nodes: 2
+      nprocess: 5
+      nodes: 1
+    - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXMapPlots
@@ -40,59 +39,61 @@ stages:
       nodes: 3
     - name: TXExternalLensMaps
     - name: TXAuxiliarySourceMaps
-      nprocess: 4
+      nprocess: 8
       threads_per_process: 1
-      nodes: 4
+      nodes: 1
+    - name: TXAuxiliaryLensMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
+    - name: TXSimpleMask
     - name: TXDensityMaps
     - name: TXNullBlinding
     - name: TXTwoPoint
       threads_per_process: 32
-      nprocess: 6
-      nodes: 6
+      nprocess: 4
+      nodes: 4
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
     - name: TXRealGaussianCovariance
       threads_per_process: 64
     - name: TXSourceNoiseMaps
-      nprocess: 6
-      nodes: 6
+      nprocess: 4
+      nodes: 1
       threads_per_process: 1
     - name: TXExternalLensNoiseMaps
-      nprocess: 16
-      nodes: 4
+      nprocess: 8
+      nodes: 2
       threads_per_process: 1
     - name: TXTwoPointFourier
-      nprocess: 4
-      nodes: 4
-      threads_per_process: 32
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 64
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     - name: TXConvergenceMapPlots # Plot the convergence map
-    #- name: TXTwoPointPlotsFourier 
+    - name: TXTwoPointPlotsFourier 
 
-
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/022422/12300area/2022/March2/
-config: examples/gaussian_sims/config.yml
+output_dir: data/cosmodc2/outputs_redmagic/2022/feb11/7sbins/
+config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
-    lens_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/TXPipe_inputs/lens_catalog.hdf5
-    lens_tomography_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/TXPipe_inputs/lens_tomography_catalog.hdf5
-    lens_photoz_stack: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/TXPipe_inputs/lens_photoz_stack.hdf5 
-    shear_photoz_stack: /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/TXPipe_inputs/shear_photoz_stack.hdf5 
+    lens_photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+    redmagic_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
     response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
-    mask:  /global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/TXPipe_inputs/mask.hdf5
 
 
 resume: True
-log_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/
-pipeline_log: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/log.txt
+log_dir: data/cosmodc2/logs_redmagic
+pipeline_log: data/cosmodc2/log.txt
 

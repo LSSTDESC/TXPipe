@@ -78,6 +78,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "redshift_shearcatalog": False,
+        "chunk_rows": 100_000,
     }
 
     def run(self):

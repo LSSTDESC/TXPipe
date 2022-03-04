@@ -2,7 +2,6 @@ from .base_stage import PipelineStage
 from .data_types import RandomsCatalog, PNGFile, TextFile
 import numpy as np
 
-
 class TXJackknifeCenters(PipelineStage):
     """
     Generate jack-knife centers from random catalogs.
@@ -37,8 +36,10 @@ class TXJackknifeCenters(PipelineStage):
 
         jk_plot = self.open_output("jk", wrapper=True, figsize=(6.0, 4.5))
         # Choose colormap
-        cm = plt.cm.get_cmap("Set3")
-        sc = plt.scatter(ra, dec, c=patch, cmap=cm, s=20, vmin=0)
+        #cm = plt.cm.get_cmap("tab20c")
+        rng = np.random.default_rng(12345)
+        cm = matplotlib.colors.ListedColormap(rng.random(size=(256,3)))
+        sc = plt.scatter(ra, dec, c=patch,cmap=cm,  s=1, vmin=0)
         plt.xlabel("RA")
         plt.ylabel("DEC")
         plt.tight_layout()

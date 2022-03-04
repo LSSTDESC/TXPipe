@@ -24,6 +24,7 @@ class TXRandomCat(PipelineStage):
         "density": 100.0,  # number per square arcmin at median depth depth.  Not sure if this is right.
         "Mstar": 23.0,  # Schecther distribution Mstar parameter
         "alpha": -1.25,  # Schecther distribution alpha parameter
+        "chunk_rows": 100_000,
     }
 
     def run(self):
@@ -31,6 +32,7 @@ class TXRandomCat(PipelineStage):
         import scipy.stats
         import healpy
         from . import randoms
+        from .utils.hdf_tools import BatchWriter
 
         # Load the input depth map
         with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
@@ -148,7 +150,30 @@ class TXRandomCat(PipelineStage):
             subgroup = subgroups[j]
             # Generate the random points in each pixel
             ndone = 0
-            for i, (vertices_i) in self.split_tasks_by_rank(enumerate(vertices)):
+
+            nvertex = len(vertices)
+            my_nvertex = int(np.ceil(nvertex / self.size))
+            start_vertex = self.rank * my_nvertex
+            end_vertex = min(start_vertex + my_nvertex, nvertex)
+
+            # These two classes batch up chunks of output to be done in large
+            # sets, so that whatever the size of the randoms in this bin it will
+            # still work.
+            batch1 = BatchWriter(
+                group,
+                {"ra": np.float64, "dec": np.float64, "z": np.float64, "bin": np.int16},
+                offset=bin_starts[j] + pix_starts[j, start_vertex],
+                max_size=self.config["chunk_rows"],
+            )
+            batch2 = BatchWriter(
+                subgroup,
+                {"ra": np.float64, "dec": np.float64, "z": np.float64},
+                offset=pix_starts[j, start_vertex],
+                max_size=self.config["chunk_rows"],
+            )
+
+            for i in range(start_vertex, end_vertex):
+                vertices_i = vertices[i]
                 if ndone % 1000 == 0:
                     print(
                         f"Rank {self.rank} done {ndone:,} of its {pixels_per_proc:,} pixels for bin {j}"
@@ -176,18 +201,16 @@ class TXRandomCat(PipelineStage):
 
                 # Save output to the generic non-binned output
                 index = bin_starts[j] + pix_starts[j, i]
-                ra_out[index : index + N] = ra
-                dec_out[index : index + N] = dec
-                z_out[index : index + N] = z_photo_rand
-                bin_out[index : index + N] = bin_index
+                batch1.write(ra=ra, dec=dec, z=z_photo_rand, bin=bin_index)
 
                 # Save to the bit that is specific to this bin
                 index = pix_starts[j, i]
-                subgroup["ra"][index : index + N] = ra
-                subgroup["dec"][index : index + N] = dec
-                subgroup["z"][index : index + N] = z_photo_rand
+                batch2.write(ra=ra, dec=dec, z=z_photo_rand)
 
                 ndone += 1
+
+            batch1.finish()
+            batch2.finish()
 
         if self.comm is not None:
             self.comm.Barrier()

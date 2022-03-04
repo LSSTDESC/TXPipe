@@ -96,7 +96,7 @@ def theory_3x2pt(cosmology_file, tracers, nbin_source, nbin_lens, fourier=True):
         tag = ("S", i)
         try:
             CTracers[tag] = ccl.WeakLensingTracer(cosmo, dndz=(x.z, x.nz))
-        except pyccl.errors.CCLError:
+        except ccl.errors.CCLError:
             # sometimes there is a CCL_ERROR_INTEG if the binning of z is too sparse.
             print(
                 "To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d"

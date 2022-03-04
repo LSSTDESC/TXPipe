@@ -19,7 +19,7 @@ data/2.2i-t3828/
 data/2.2i/
 data/cosmodc2/
 data/supreme
-dask-worker-space
+dask-worker-space/
 example.tar.gz
 docs/build
 cache/

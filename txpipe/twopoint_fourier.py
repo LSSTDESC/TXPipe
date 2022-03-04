@@ -92,7 +92,6 @@ class TXTwoPointFourier(PipelineStage):
         import pyccl
 
         config = self.config
-
         if self.comm:
             self.comm.Barrier()
 
@@ -603,8 +602,16 @@ class TXTwoPointFourier(PipelineStage):
                 n_iter=1,
             )
             # noise to subtract (already decoupled)
+
+            # Load mask and pass to function below. 
+            with self.open_input("mask", wrapper=True) as f:
+                mask = f.read_map("mask")
+                mask[mask == hp.UNSEEN] = 0.0
+                if self.rank == 0:
+                    print("Loaded mask")
+            
             n_ell, n_ell_coupled = self.compute_noise_analytic(
-                i, j, k, maps, f_sky, workspace
+                i, j, k, maps, f_sky, workspace, mask
             )
             if n_ell is not None:
                 c = c - n_ell
@@ -709,7 +716,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return workspace.decouple_cell(mean_noise), mean_noise
 
-    def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
+    def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace, mask):
         # Copied from the HSC branch
         import pymaster
         import healpy as hp
@@ -736,8 +743,10 @@ class TXTwoPointFourier(PipelineStage):
                 metadata["tracers/lens_density"][i] * 3600 * 180 / np.pi * 180 / np.pi
             )
             n_ls = (
-                np.mean(maps["dw"][maps["dw"] > 0]) / ndens
-            )  # taking the averages in the mask region for consistency
+                np.mean(mask) / ndens
+            )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
+            # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
+
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
