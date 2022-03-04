@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import RandomsCatalog, PNGFile, TextFile
 import numpy as np
-
+import itertools
 
 class TXJackknifeCenters(PipelineStage):
     """
@@ -35,8 +35,11 @@ class TXJackknifeCenters(PipelineStage):
 
         jk_plot = self.open_output("jk", wrapper=True, figsize=(6.0, 4.5))
         # Choose colormap
-        cm = plt.cm.get_cmap("Set3")
-        sc = plt.scatter(ra, dec, c=patch, cmap=cm, s=20, vmin=0)
+        #cm = plt.cm.get_cmap("tab20c")
+        colorlist = ["#EE91CE", "#20B2AA","#008080","#5EC962","#440154", "#B32222", "#FEB580", "#FADA77","#C0E0FF","#6992C2","#264D73", "#474747"]
+        colors = itertools.cycle(colorlist)
+        
+        sc = plt.scatter(ra, dec, c=patch, s=1, vmin=0)
         plt.xlabel("RA")
         plt.ylabel("DEC")
         plt.tight_layout()
