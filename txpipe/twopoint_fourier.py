@@ -89,7 +89,7 @@ class TXTwoPointFourier(PipelineStage):
         import pyccl
 
         config = self.config
-
+        print(config)
         if self.comm:
             self.comm.Barrier()
 
