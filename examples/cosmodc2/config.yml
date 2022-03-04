@@ -150,8 +150,8 @@ TXTwoPoint:
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: True
     flip_g1: True
+    flip_g2: True
     apodization_size: 0.0
     cache_dir: ./cache
     true_shear: False
