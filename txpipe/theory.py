@@ -110,7 +110,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         ell = np.unique(np.logspace(np.log10(2), 5, 400).astype(int))
         tracers = self.get_ccl_tracers(s, cosmo)
 
-        if "galaxy_shear_xi_plus" and "galaxy_shear_xi_minus" in s.get_data_types():
+        if "galaxy_shear_xi_plus" in s.get_data_types():
             for i in range(nbin_source):
                 for j in range(i + 1):
                     print(f"Computing theory lensing-lensing ({i},{j})")
@@ -123,6 +123,7 @@ class TXTwoPointTheoryReal(PipelineStage):
                     theta, *_ = s.get_theta_xi(
                         "galaxy_shear_xi_plus", f"source_{i}", f"source_{j}"
                     )
+                    # CCL inputs theta in degrees. 
                     xip = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L+")
                     xim = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L-")
 
@@ -141,15 +142,6 @@ class TXTwoPointTheoryReal(PipelineStage):
         
         if "galaxy_density_xi" in s.get_data_types():
             for i in range(nbin_lens):
-                print(f"Computing theory density-density ({i},{i})")
-
-                # compute theory
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{i}"], ell
-                )
-                theta, *_ = s.get_theta_xi("galaxy_density_xi", f"lens_{i}", f"lens_{i}")
-                wtheta = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GG")
-
                 for j in range(i + 1):
                     print(f"Computing theory density-density ({i},{j})")
 
