@@ -599,8 +599,16 @@ class TXTwoPointFourier(PipelineStage):
                 n_iter=1,
             )
             # noise to subtract (already decoupled)
+
+            # Load mask and pass to function below. 
+            with self.open_input("mask", wrapper=True) as f:
+                mask = f.read_map("mask")
+                mask[mask == hp.UNSEEN] = 0.0
+                if self.rank == 0:
+                    print("Loaded mask")
+            
             n_ell, n_ell_coupled = self.compute_noise_analytic(
-                i, j, k, maps, f_sky, workspace
+                i, j, k, maps, f_sky, workspace, mask
             )
             if n_ell is not None:
                 c = c - n_ell
@@ -705,7 +713,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return workspace.decouple_cell(mean_noise), mean_noise
 
-    def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace):
+    def compute_noise_analytic(self, i, j, k, maps, f_sky, workspace, mask):
         # Copied from the HSC branch
         import pymaster
         import healpy as hp
@@ -731,15 +739,6 @@ class TXTwoPointFourier(PipelineStage):
             ndens = (
                 metadata["tracers/lens_density"][i] * 3600 * 180 / np.pi * 180 / np.pi
             )
-            with self.open_input("mask", wrapper=True) as f:
-                info = f.read_map_info("mask")
-                # area = info["area"]
-                # f_sky = info["f_sky"]
-                mask = f.read_map("mask")
-                mask[mask == hp.UNSEEN] = 0.0
-                if self.rank == 0:
-                    print("Loaded mask")
-
             n_ls = (
                 np.mean(mask) / ndens
             )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
