@@ -11,6 +11,8 @@ from .utils.timer import Timer
 
 class TXCosmoDC2Mock(PipelineStage):
     """
+    Simulate mock shear and photometry measurements from CosmoDC2 (or similar)
+
     This stage simulates metacal data and metacalibrated
     photometry measurements, starting from a cosmology catalogs
     of the kind used as an input to DC2 image and obs-catalog simulations.
@@ -941,13 +943,9 @@ class TXCosmoDC2Mock(PipelineStage):
 
 class TXBuzzardMock(TXCosmoDC2Mock):
     """
-    This stage simulates metacal data and metacalibrated
-    photometry measurements, starting from a cosmology catalogs
-    of the kind used as an input to DC2 image and obs-catalog simulations.
+    Simulate mock photometry from Buzzard.
 
-    This is mainly useful for testing infrastructure in advance
-    of the DC2 catalogs being available, but might also be handy
-    for starting from a purer simulation.
+    May be obsolete.
     """
 
     name = "TXBuzzardMock"
@@ -973,6 +971,8 @@ class TXBuzzardMock(TXCosmoDC2Mock):
 
 class TXGaussianSimsMock(TXCosmoDC2Mock):
     """
+    Simulate mock photometry from gaussian simulations
+
     This stage simulates metacal data and metacalibrated
     photometry measurements, starting from simple Gaussian simulations
     produced starting from CCL power spectra and poission sampling galaxies

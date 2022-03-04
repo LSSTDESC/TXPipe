@@ -19,6 +19,12 @@ from .utils import (
 
 
 class TXSourceNoiseMaps(TXBaseMaps):
+    """
+    Generate realizations of shear noise maps with random rotations
+
+    This takes the shear catalogs and tomography and randomly spins the
+    shear values in it, removing the shear signal and leaving only shape noise
+    """
     name = "TXSourceNoiseMaps"
 
     inputs = [
@@ -186,6 +192,12 @@ class TXSourceNoiseMaps(TXBaseMaps):
 
 
 class TXLensNoiseMaps(TXBaseMaps):
+    """
+    Generate lens density noise realizations using random splits
+
+    This randomly assigns each galaxy to one of two bins and uses the
+    different between the halves to get a noise estimate.
+    """
     name = "TXLensNoiseMaps"
 
     inputs = [
@@ -342,6 +354,12 @@ class TXLensNoiseMaps(TXBaseMaps):
 
 
 class TXExternalLensNoiseMaps(TXLensNoiseMaps):
+    """
+    Generate lens density noise realizations using random splits of an external catalog
+
+    This randomly assigns each galaxy to one of two bins and uses the
+    different between the halves to get a noise estimate.
+    """
     name = "TXExternalLensNoiseMaps"
 
     inputs = [
@@ -392,7 +410,15 @@ def ngal_split_add(
 
 
 class TXNoiseMapsJax(PipelineStage):
-    """TXNoiseMaps implementation using Google Jax for GPU acceleration"""
+    """
+    Generate noise realisations of lens and source maps using JAX
+
+    This is a JAX/GPU version of the noise map stages.
+
+    Need to update to stop assuming lens and source are the same
+    and split into two stages.
+
+    """
 
     name = "TXNoiseMapsJax"
     inputs = [

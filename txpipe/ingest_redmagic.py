@@ -4,6 +4,11 @@ import numpy as np
 
 
 class TXIngestRedmagic(PipelineStage):
+    """
+    Ingest a redmagic catalog
+
+    This starts with the FITS file format, but may be outdated.
+    """
     name = "TXIngestRedmagic"
     inputs = [
         ("redmagic_catalog", FitsFile),

@@ -7,8 +7,12 @@ import os
 
 class TXBlinding(PipelineStage):
     """
-    Blinding the data vectors.
+    Blinds real-space measurements following Muir et al
 
+    This stage computes the shift in theory predictions between a fiducial cosmology
+    and a cosmology randomly chosen based on a seed value.
+
+    It then applies that shift to the observations in a sacc file.
     """
 
     name = "TXBlinding"
@@ -224,9 +228,10 @@ class TXBlinding(PipelineStage):
 
 class TXNullBlinding(PipelineStage):
     """
-    A null stage to trivially copy the real raw data to real without blinding,
-    for use with simulations data.
+    Pretend to blind but actually do nothing.
 
+    This null stage trivially copies the real raw data to real without blinding,
+    for use with simulated data, etc.
     """
 
     name = "TXNullBlinding"

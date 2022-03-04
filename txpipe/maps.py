@@ -30,7 +30,9 @@ map_config_options = {
 
 class TXBaseMaps(PipelineStage):
     """
-    This is an abstract base mapping class, which other subclasses
+    A base class for mapping stages
+
+    This is an abstract base class, which other subclasses
     inherit from to use the same basic structure, which is:
     - select pixelization
     - prepare some mapper objects
@@ -50,7 +52,8 @@ class TXBaseMaps(PipelineStage):
         # and select pixel scheme. Also save the scheme
         # metadata so we can save it later
         pixel_scheme = self.choose_pixel_scheme()
-        self.config.update(pixel_scheme.metadata)
+        self.pixel_metadata = pixel_scheme.metadata
+        self.config.update(self.pixel_metadata)
 
         # Initialize our maps
         mappers = self.prepare_mappers(pixel_scheme)
@@ -121,13 +124,18 @@ class TXBaseMaps(PipelineStage):
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():
-            output_files[tag].write_map(map_name, pix, map_data, self.config)
+            output_files[tag].write_map(map_name, pix, map_data, self.pixel_metadata)
 
 
 class TXSourceMaps(TXBaseMaps):
     """
+    Make tomographic shear maps
+
     Make g1, g2, var(g1), var(g2), and lensing weight maps
-    from shear catalogs and tomography
+    from shear catalogs and tomography.
+
+    Should be replaced to use the binned_shear_catalog since that's
+    calibrated already.
     """
 
     name = "TXSourceMaps"
@@ -267,8 +275,9 @@ class TXSourceMaps(TXBaseMaps):
 
 class TXLensMaps(TXBaseMaps):
     """
-    Make galaxy number count maps from photometry
-    and lens tomography.
+    Make tomographic lens number count maps
+
+    Uses photometry and lens tomography catalogs.
 
     Density maps are made later once masks are generated.
     """
@@ -344,6 +353,8 @@ class TXLensMaps(TXBaseMaps):
 
 class TXExternalLensMaps(TXLensMaps):
     """
+    Make tomographic lens number count maps from external data
+
     Same as TXLensMaps except it reads from an external
     lens catalog.
     """
@@ -375,6 +386,8 @@ class TXExternalLensMaps(TXLensMaps):
 
 class TXMainMaps(TXSourceMaps, TXLensMaps):
     """
+    Make both shear and number count maps
+
     Combined source and photometric lens maps, from the
     same photometry catalog. This might be slightly faster than
     running two maps separately, but it only works if the source
@@ -507,7 +520,8 @@ class TXMainMaps(TXSourceMaps, TXLensMaps):
 
 class TXDensityMaps(PipelineStage):
     """
-    Convert n_gal maps to overdensity delta maps
+    Convert galaxy count maps to overdensity delta maps
+
     delta = (ngal - <ngal>) / <ngal>
 
     This has to be separate from the lens mappers above

@@ -80,6 +80,8 @@ class TXStarCatalogSplitter(PipelineStage):
 
 class TXGammaTFieldCenters(TXTwoPoint):
     """
+    Make diagnostic 2pt measurements of tangential shear around field centers
+
     This subclass of the standard TXTwoPoint uses the centers
     of exposure fields as "lenses", as a systematics test.
     """
@@ -255,6 +257,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
 class TXGammaTStars(TXTwoPoint):
     """
+    Make diagnostic 2pt measurements of tangential shear around stars
+
     This subclass of the standard TXTwoPoint uses the centers
     of stars as "lenses", as a systematics test.
     """
@@ -441,6 +445,11 @@ class TXGammaTStars(TXTwoPoint):
 
 class TXGammaTRandoms(TXTwoPoint):
     """
+    Make diagnostic 2pt measurements of tangential shear around randoms
+
+    It's not clear to me that this is a useful null test; if it was we
+    wouldn't need to subtrac this term in the Landay-Szalay estimator.
+
     This subclass of the standard TXTwoPoint uses the centers
     of stars as "lenses", as a systematics test.
     """
@@ -617,7 +626,12 @@ class TXGammaTRandoms(TXTwoPoint):
 
 # Aperture Mass class that inherits from TXTwoPoint
 class TXApertureMass(TXTwoPoint):
+    """
+    Measure the aperture mass statistics with TreeCorr
 
+    There are real and imaginary components of the aperture mass
+    and its cross term.
+    """
     name = "TXApertureMass"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),

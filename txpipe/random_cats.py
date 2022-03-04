@@ -5,6 +5,12 @@ import numpy as np
 
 
 class TXRandomCat(PipelineStage):
+    """
+    Generate a catalog of randomly positioned points
+
+    This accounts for the depth being different in each pixel, but probably
+    does still need updates, and testing.
+    """
     name = "TXRandomCat"
     inputs = [
         ("aux_lens_maps", MapsFile),

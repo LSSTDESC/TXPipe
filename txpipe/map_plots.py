@@ -5,7 +5,18 @@ import sys
 
 class TXMapPlots(PipelineStage):
     """
-    Make plots of all the available maps.
+    Make plots of all the available maps
+
+    This makes plots of:
+    - depth
+    - lens density
+    - shear
+    - flag values
+    - PSF
+    - mask
+    - bright object counts
+
+    If one map fails for any reason it is just skipped.
     """
 
     name = "TXMapPlots"

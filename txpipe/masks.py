@@ -5,6 +5,10 @@ from .data_types import MapsFile
 
 
 class TXSimpleMask(PipelineStage):
+    """
+    Make a simple binary mask using a depth cut and bright object cut
+
+    """
     name = "TXSimpleMask"
     # make a mask from the auxiliary maps
     inputs = [("aux_lens_maps", MapsFile)]

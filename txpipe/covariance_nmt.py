@@ -13,6 +13,12 @@ d2r = np.pi / 180
 
 
 class TXFourierNamasterCovariance(PipelineStage):
+    """
+    Compute a Gaussian Fourier-space covariance with NaMaster
+
+    This functionality duplicates that of TXFourierTJPCovariance, and we should
+    rationalize.
+    """
     name = "TXFourierNamasterCovariance"
     do_xi = False
 
@@ -994,6 +1000,12 @@ class TXFourierNamasterCovariance(PipelineStage):
 
 
 class TXRealNamasterCovariance(TXFourierNamasterCovariance):
+    """
+    Compute a Gaussian real-space covariance with NaMaster
+
+    We don't yet have another stage for this, but should rationalize
+    when comparing to TJPCov.
+    """
     name = "TXRealNamasterCovariance"
     do_xi = True
 
