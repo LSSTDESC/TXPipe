@@ -606,7 +606,7 @@ class TXTwoPointFourier(PipelineStage):
             # Load mask and pass to function below. 
             with self.open_input("mask", wrapper=True) as f:
                 mask = f.read_map("mask")
-                mask[mask == hp.UNSEEN] = 0.0
+                mask[mask == healpy.UNSEEN] = 0.0
                 if self.rank == 0:
                     print("Loaded mask")
             

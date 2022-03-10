@@ -79,7 +79,7 @@ TXSourceSelectorMetadetect:
 
 TXRandomCat:
     chunk_rows: 10000000 
-    density: 5 # gals per sq arcmin
+    density: 3 # gals per sq arcmin
 
 TXJackknifeCenters:
     npatch: 500
@@ -89,6 +89,7 @@ TXSourceDiagnosticPlots:
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
+    cache_dir: ./cache_nmt
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -105,15 +106,15 @@ TXTwoPointFourier:
     flip_g1: False
     flip_g2: False
     apodization_size: 0.0
-    cache_dir: ./cache
+    cache_dir: ./cache_nmt
     true_shear: False
-    n_ell: 20
-    ell_max: 3000
+    n_ell: 30
+    ell_max: 6143 # nside * 3 - 1, since Namaster computes that anyway. 
     nside: 2048
     analytic_noise: True
 
 TXTwoPoint:
-    bin_slop: 0.0
+    bin_slop: 0.05
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
