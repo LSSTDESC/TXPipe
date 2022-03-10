@@ -44,16 +44,6 @@ stages:
       threads_per_process: 1
       nodes: 4
     - name: TXDensityMaps
-    - name: TXNullBlinding
-    - name: TXTwoPoint
-      threads_per_process: 32
-      nprocess: 6
-      nodes: 6
-    - name: TXTwoPointTheoryReal
-    - name: TXTwoPointTheoryFourier
-    - name: TXTwoPointPlots
-    - name: TXRealGaussianCovariance
-      threads_per_process: 64
     - name: TXSourceNoiseMaps
       nprocess: 6
       nodes: 6
@@ -66,12 +56,24 @@ stages:
       nprocess: 4
       nodes: 4
       threads_per_process: 32
-    - name: TXFourierGaussianCovariance
+    #- name: TXFourierGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXFourierTJPCovariance
       threads_per_process: 64
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     - name: TXConvergenceMapPlots # Plot the convergence map
     #- name: TXTwoPointPlotsFourier 
+    # - name: TXNullBlinding
+    #- name: TXTwoPoint
+    #  threads_per_process: 32
+    #  nprocess: 6
+    #  nodes: 6
+    #- name: TXTwoPointTheoryReal
+    #- name: TXTwoPointTheoryFourier
+    #- name: TXTwoPointPlots
+    #- name: TXRealGaussianCovariance
+      threads_per_process: 64
 
 
 output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/022422/12300area/2022/March2/
