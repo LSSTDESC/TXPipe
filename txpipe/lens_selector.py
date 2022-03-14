@@ -342,7 +342,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
-    name = "TXRandomForestSelector"
+    name = "TXRandomForestLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
         ("calibration_table", TextFile),
