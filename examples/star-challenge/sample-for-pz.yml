@@ -16,7 +16,9 @@ stages:
     - name: TXRandomForestLensSelector
       nprocess: 32
     - name: TXLensCatalogSplitter
-      nprocess: 5
+      nprocess: 6
+    - name: TXShearCalibration
+      nprocess: 6
 
 output_dir: data/star-challenge/outputs
 config: examples/star-challenge/config.yml

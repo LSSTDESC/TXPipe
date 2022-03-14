@@ -10,7 +10,7 @@ TXSourceSelectorMetadetect:
     # for selected objects
     source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
     random_seed: 6765675
-
+    shear_prefix: ''
 
 TXRandomForestLensSelector:
     verbose: False
@@ -42,6 +42,7 @@ TXLensCatalogSplitter:
 
 TXShearCalibration:
     extra_cols:
+        - id
         - mag_err_i
         - mag_err_r
         - mag_err_z
