@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile
 from .utils import LensNumberDensityStats
 from .utils import Splitter
+from .binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
 
@@ -378,10 +379,10 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         classifier, features = selector
         shear_catalog_type = "not applicable"
         bands = self.config["bands"]
-        zbin = apply_classifier(
+        pz_data = apply_classifier(
             classifier, features, bands, shear_catalog_type, phot_data
         )
-        return {"zbin": zbin}
+        return pz_data
 
     def select_lens(self, phot_data):
         mag_i = phot_data["mag_i"]
