@@ -30,11 +30,22 @@ TXLensCatalogSplitter:
         - mag_i
         - mag_z
         - mag_y
-        - mag_err_u
-        - mag_err_g
-        - mag_err_r
-        - mag_err_i
-        - mag_err_z
-        - mag_err_y
+        - mag_u_err
+        - mag_g_err
+        - mag_r_err
+        - mag_i_err
+        - mag_z_err
+        - mag_y_err
         - redshift_true
     initial_size: 1000000
+
+
+TXShearCalibration:
+    extra_cols:
+        - mag_err_i
+        - mag_err_r
+        - mag_err_z
+        - mag_i
+        - mag_r
+        - mag_z
+        - redshift_true
