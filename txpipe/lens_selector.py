@@ -435,7 +435,8 @@ class TXLensCatalogSplitter(PipelineStage):
 
         bins = {b: c for b, c in enumerate(counts)}
         bins["all"] = count2d
-        splitter = Splitter(cat_group, "bin", cols + extra_cols, bins)
+        dtypes = {"id": "i8", "flags": "i8"}
+        splitter = Splitter(cat_group, "bin", cols + extra_cols, bins, dtypes=dtypes)
 
         my_bins = list(self.split_tasks_by_rank(bins))
         if my_bins:
