@@ -59,15 +59,17 @@ stages:
     #- name: TXFourierGaussianCovariance
     #  threads_per_process: 64
     - name: TXFourierTJPCovariance
-      threads_per_process: 64
+      nodes: 4
+      nprocess: 4
+      threads_per_process: 32
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     - name: TXConvergenceMapPlots # Plot the convergence map
     #- name: TXTwoPointPlotsFourier 
     # - name: TXNullBlinding
-    #- name: TXTwoPoint
-    #  threads_per_process: 32
-    #  nprocess: 6
+    - name: TXTwoPoint
+      threads_per_process: 32
+      nprocess: 6
     #  nodes: 6
     #- name: TXTwoPointTheoryReal
     #- name: TXTwoPointTheoryFourier

@@ -91,6 +91,11 @@ TXFourierGaussianCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
     cache_dir: ./cache_nmt
 
+TXFourierTJPCovariance:
+    galaxy_bias: [1., 1., 1., 1., 1.]
+    cache_dir: ./cache_nmt
+    IA: 0.
+
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 250.
@@ -109,9 +114,9 @@ TXTwoPointFourier:
     cache_dir: ./cache_nmt
     true_shear: False
     n_ell: 30
-    ell_max: 6143 # nside * 3 - 1, since Namaster computes that anyway. 
+    ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
     nside: 2048
-    analytic_noise: True
+    analytic_noise: False
 
 TXTwoPoint:
     bin_slop: 0.05
@@ -126,7 +131,7 @@ TXTwoPoint:
     nbins: 20
     verbose: 0
     var_method: jackknife
-    low_mem: False
+    low_mem: True
     chunk_rows: 1000000
     
 TXClusteringNoiseMaps:
