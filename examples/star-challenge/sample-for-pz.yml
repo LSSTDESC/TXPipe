@@ -19,6 +19,11 @@ stages:
       nprocess: 6
     - name: TXShearCalibration
       nprocess: 6
+    - name: TXSourceTrueNumberDensity
+      nprocess: 32
+    - name: TXLensTrueNumberDensity
+      nprocess: 32
+    - name: TXPhotozPlots
 
 output_dir: data/star-challenge/outputs
 config: examples/star-challenge/config.yml

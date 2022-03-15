@@ -50,3 +50,12 @@ TXShearCalibration:
         - mag_r
         - mag_z
         - redshift_true
+
+
+TXSourceTrueNumberDensity:
+    zmax: 3.0
+    nz: 301
+
+TXLensTrueNumberDensity:
+    zmax: 3.0
+    nz: 301
