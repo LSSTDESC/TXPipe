@@ -268,15 +268,6 @@ class TXTwoPointFourier(PipelineStage):
                             )
                             syst_map = healpy.read_map(systmap_file, verbose=False)
 
-                            #                             # Find value at given ra,dec
-                            #                             ra = 55.
-                            #                             dec = -30.
-                            #                             theta = 0.5 * np.pi - np.deg2rad(dec)
-                            #                             phi = np.deg2rad(ra)
-                            #                             nside = healpy.pixelfunc.get_nside(syst_map)
-                            #                             ipix = healpy.ang2pix(nside, theta, phi)
-                            #                             print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
-
                             # normalize map for Namaster
                             # set pixel values to value/mean - 1
                             syst_map_mask = syst_map != healpy.UNSEEN
