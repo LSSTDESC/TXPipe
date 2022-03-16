@@ -405,7 +405,7 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
             has_z = "redshift_true" in photo_file["shear"].keys()
             if not has_z:
                 msg = (
-                    "The photometry_catalog file you supplied does not have a redshift_true column. "
+                    "The shear_catalog file you supplied does not have a redshift_true column. "
                     "If you're running on sims you need to make sure to ingest that column from GCR. "
                     "If you're running on real data then sadly this isn't going to work. "
                     "Use a different stacking stage."
