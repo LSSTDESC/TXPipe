@@ -7,7 +7,7 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 512
+    nside: 64
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
@@ -226,7 +226,10 @@ TXJackknifeCenters:
 
 TXTwoPointFourier:
     flip_g2: True
-    bandwidth: 100
+    ell_min: 30
+    ell_max: 150
+    bandwidth: 20
+    cache_dir: ./cache/workspaces
 
 TXSimpleMask:
     depth_cut : 23.5
