@@ -98,7 +98,7 @@ class TXTwoPoint(PipelineStage):
         sys.stdout.flush()
 
         # Split the catalogs into patch files
-        self.prepare_patches(calcs)
+        self.prepare_patches(calcs, meta)
 
         results = []
         for i, j, k in calcs:
@@ -414,7 +414,7 @@ class TXTwoPoint(PipelineStage):
         sys.stdout.flush()
         return result
 
-    def prepare_patches(self, calcs):
+    def prepare_patches(self, calcs, meta):
         """
         For each catalog to be generated, have one process load the catalog
         and write its patch files out to disc.  These are then re-used later
@@ -447,6 +447,9 @@ class TXTwoPoint(PipelineStage):
         cats.sort(key=str)
 
         chunk_rows = self.config["chunk_rows"]
+        npatch_shear = 0
+        npatch_pos = 0
+        npatch_ran = 0
 
         # Parallelization is now done at the patch level
         for (h, k) in cats:
@@ -458,20 +461,23 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_shear = PatchMaker.run(cat, chunk_rows, self.comm)
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_pos = PatchMaker.run(cat, chunk_rows, self.comm)
                 del cat
 
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-                PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                npatch_ran = PatchMaker.run(ran_cat, chunk_rows, self.comm)
                 del ran_cat
 
+        meta["npatch_shear"] = npatch_shear
+        meta["npatch_pos"] = npatch_pos
+        meta["npatch_ran"] = npatch_ran
         # stop other processes progressing to the rest of the code and
         # trying to load things we have not written yet
         if self.comm is not None:

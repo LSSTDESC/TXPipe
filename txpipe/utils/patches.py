@@ -241,15 +241,17 @@ class PatchMaker:
                 print(
                     f"Catalog {cat.file_name} does not have a patch directory set, so not making patches."
                 )
-            return
+            return 0
 
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
+
+        npatch = len(cat.patch_centers)
 
         # Check for existing patches.
         if cls.patches_already_made(cat):
             if comm is None or comm.rank == 0:
                 print(f"Patches already done for {cat.save_patch_dir}")
-            return
+            return npatch
 
         # find the catalog full length, which we use as a maximum possible size
         with h5py.File(cat.file_name, "r") as f:
@@ -257,7 +259,6 @@ class PatchMaker:
             ra_col = cat.config["ra_col"]
             max_size = g[ra_col].size
 
-        npatch = len(cat.patch_centers)
 
         # Do the parallelization - split up the patches in chunks
         if comm is None:
@@ -339,3 +340,5 @@ class PatchMaker:
         # finished renaming
         if comm is not None:
             comm.Barrier()
+
+        return npatch
