@@ -309,7 +309,8 @@ class TXTwoPoint(PipelineStage):
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
 
         covs = []
-        for d in results:
+        for index, d in enumerate(results):
+            self.memory_report(f"ADDING GAMMA X POINT {index}")
             tracer1 = (
                 f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
             )
@@ -334,7 +335,9 @@ class TXTwoPoint(PipelineStage):
                         weight=weight[i],
                     )
 
+        self.memory_report(f"BEFORE GAMMA_X ADD_COVARIANCE")
         S.add_covariance(covs)
+        self.memory_report(f"AFTER GAMMA_X ADD_COVARIANCE")
 
 
     def write_output(self, source_list, lens_list, meta, results):
@@ -700,6 +703,7 @@ class TXTwoPoint(PipelineStage):
         rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
+        self.memory_report(f"POS_POS {i} {j} GOT CAT i")
 
         if i == j:
             cat_j = None
@@ -712,6 +716,8 @@ class TXTwoPoint(PipelineStage):
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
+        self.memory_report(f"POS_POS {i} {j} GOT CAT j")
+
         if self.rank == 0:
             print(
                 f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms"
@@ -721,9 +727,11 @@ class TXTwoPoint(PipelineStage):
 
         nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        self.memory_report(f"POS_POS {i} {j} PROCESSED 1")
 
         nr = treecorr.NNCorrelation(self.config)
         nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        self.memory_report(f"POS_POS {i} {j} PROCESSED 2")
 
         # The next calculation is faster if we explicitly tell TreeCorr
         # that its two catalogs here are the same one.
@@ -732,16 +740,19 @@ class TXTwoPoint(PipelineStage):
 
         rr = treecorr.NNCorrelation(self.config)
         rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        self.memory_report(f"POS_POS {i} {j} PROCESSED 3")
 
         if i == j:
             rn = None
         else:
             rn = treecorr.NNCorrelation(self.config)
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+            self.memory_report(f"POS_POS {i} {j} PROCESSED 4")
 
         if self.rank == 0:
             t2 = perf_counter()
             nn.calculateXi(rr, dr=nr, rd=rn)
+            self.memory_report(f"POS_POS {i} {j} CALCULATED XI")
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return nn
