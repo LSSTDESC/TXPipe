@@ -427,6 +427,11 @@ class TXTwoPoint(PipelineStage):
             A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
             or bin labels and bin_type is one of the constants SHEAR_SHEAR,
             SHEAR_POS, or POS_POS.
+
+        meta: dict
+            A dict to which the number of patches (or zero, if no patches) will
+            be added for each catalog type, with keys "npatch_shear", "npatch_pos",
+            and "npatch_ran".
         """
         # Make the full list of catalogs to run
         cats = set()
