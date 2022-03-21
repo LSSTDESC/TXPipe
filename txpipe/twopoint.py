@@ -95,6 +95,8 @@ class TXTwoPoint(PipelineStage):
 
         # Choose which pairs of bins to calculate
         calcs = self.select_calculations(source_list, lens_list)
+        #print('Hacking number of correlations!!!')
+        #calcs = [(4, 4, POS_POS)]
         sys.stdout.flush()
 
         # Split the catalogs into patch files
