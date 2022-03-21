@@ -222,6 +222,11 @@ class PatchMaker:
             Number of rows of data to read at once on each process
         comm: communicator or None
             MPI communicator for parallel runs
+
+        Returns
+        -------
+        npatch: int
+            The number of patches created for this file, or 0 if there are none
         """
         import h5py
 
