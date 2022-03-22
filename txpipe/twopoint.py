@@ -295,6 +295,8 @@ class TXTwoPoint(PipelineStage):
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
+        print(comb[0])
+        print(dir(comb[0]))
         self.memory_report(f"BEFORE ESTIMATE_MULTI_COV")
         cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
         self.memory_report(f"AFTER ESTIMATE_MULTI_COV")
@@ -438,6 +440,13 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
+        import pickle
+        pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
+
+        if os.path.exists(pickle_filename):
+            with open(pickle_filename, "rb") as f:
+                result = pickle.load(f)
+            return result
 
         if k == SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
@@ -461,6 +470,11 @@ class TXTwoPoint(PipelineStage):
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
+
+        if self.rank == 0:
+            with open(pickle_filename, "wb") as f:
+                pickle.dump(result, f)
+
         return result
 
     def prepare_patches(self, calcs):
