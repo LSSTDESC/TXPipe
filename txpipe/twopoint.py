@@ -444,6 +444,7 @@ class TXTwoPoint(PipelineStage):
         pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
         if os.path.exists(pickle_filename):
+            print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
             with open(pickle_filename, "rb") as f:
                 result = pickle.load(f)
             return result
@@ -471,7 +472,11 @@ class TXTwoPoint(PipelineStage):
 
         sys.stdout.flush()
 
+        if self.comm:
+            self.comm.Barrier()
+
         if self.rank == 0:
+            print(f"Pickling result to {pickle_filename}")
             with open(pickle_filename, "wb") as f:
                 pickle.dump(result, f)
 
