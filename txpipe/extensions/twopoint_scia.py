@@ -1,5 +1,15 @@
-from ..twopoint import TXTwoPoint 
-from ..data_types import HDFFile, ShearCatalog, TomographyCatalog, RandomsCatalog, FiducialCosmology, SACCFile, PhotozPDFFile, PNGFile, TextFile
+from ..twopoint import TXTwoPoint
+from ..data_types import (
+    HDFFile,
+    ShearCatalog,
+    TomographyCatalog,
+    RandomsCatalog,
+    FiducialCosmology,
+    SACCFile,
+    PhotozPDFFile,
+    PNGFile,
+    TextFile,
+)
 from ..utils.calibration_tools import read_shear_catalog_type
 import numpy as np
 import random
@@ -12,29 +22,29 @@ import gc
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
-Measurement = collections.namedtuple(
-    'Measurement',
-    ['corr_type', 'object', 'i', 'j'])
+Measurement = collections.namedtuple("Measurement", ["corr_type", "object", "i", "j"])
 
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 SHEAR_POS_SELECT = 3
 
+
 class TXSelfCalibrationIA(TXTwoPoint):
     """
     This is the subclass of the Twopoint class that will handle calculating the
     correlations needed for doing the Self-calibration Intrinsic alignment
-    estimation. 
+    estimation.
 
-    It requires estimating 3d two-point correlations. We calculate the 
+    It requires estimating 3d two-point correlations. We calculate the
     galaxy - galaxy lensing auto-correlation in each source bin.
-    We do this twice, once we add a selection-function, such that we only selects 
+    We do this twice, once we add a selection-function, such that we only selects
     the pairs where we have the shear object in front of the object used for density,
-    these are the pairs we would expect should not contribute to the actual signal.  
-    Once without imposing this selection funciton. 
+    these are the pairs we would expect should not contribute to the actual signal.
+    Once without imposing this selection funciton.
     """
-    name = 'TXSelfCalibrationIA'
+
+    name = "TXSelfCalibrationIA"
     inputs = [
         ('binned_shear_catalog', ShearCatalog),
         ('binned_lens_catalog', HDFFile),
@@ -46,8 +56,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ('tracer_metadata', HDFFile),
     ]
     outputs = [
-        ('twopoint_data_SCIA', SACCFile),
-        ('gammaX_scia', SACCFile),
+        ("twopoint_data_SCIA", SACCFile),
+        ("gammaX_scia", SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
@@ -79,10 +89,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
     def select_calculations(self, source_list, lens_list):
         calcs = []
-        
-        if self.config['do_shear_pos']:
+
+        if self.config["do_shear_pos"]:
             k = SHEAR_POS
-            l = SHEAR_POS_SELECT # adding extra calls to do the selection function version for the shear_position. 
+            l = SHEAR_POS_SELECT  # adding extra calls to do the selection function version for the shear_position.
             for i in source_list:
                 calcs.append((i,i,k))
                 calcs.append((i,i,l))
@@ -92,19 +102,18 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             for i in source_list:
-                calcs.append((i,i,k))
-        
-        if self.config['do_shear_shear']:
+                calcs.append((i, i, k))
+
+        if self.config["do_shear_shear"]:
             k = SHEAR_SHEAR
             for i in source_list:
-                for j in range(i+1):
+                for j in range(i + 1):
                     if j in source_list:
-                        calcs.append((i,j,k))
+                        calcs.append((i, j, k))
 
-
-        if self.rank==0:
+        if self.rank == 0:
             print(f"Running these calculations: {calcs}")
-        
+
         return calcs
 
     def get_lens_catalog(self, i):
@@ -153,8 +162,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
     def calculate_shear_pos_select(self, i, j):
         # This is the added calculation that uses the selection function, as defined in our paper. it picks
-        # out all the pairs where the object in the source catalog is in front of the lens object. 
-        # Again the pairs picked out, are the pairs that should not be there. 
+        # out all the pairs where the object in the source catalog is in front of the lens object.
+        # Again the pairs picked out, are the pairs that should not be there.
         # note we are looking at auto-correlations for the source bins!
         import treecorr 
         import pyccl as ccl
@@ -328,24 +337,29 @@ class TXSelfCalibrationIA(TXTwoPoint):
     def write_output(self, source_list, lens_list, meta, results):
         import sacc
         import treecorr
+
         XI = "combined"
         XIP = sacc.standard_types.galaxy_shear_xi_plus
         XIM = sacc.standard_types.galaxy_shear_xi_minus
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
         # We define a new sacc data type for our selection function results.
-        GAMMATS = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
+        GAMMATS = sacc.build_data_type_name(
+            "galaxy", ["shear", "Density"], "xi", subtype="ts"
+        )
         WTHETA = sacc.standard_types.galaxy_density_xi
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
-        # We must add these new data types for both the ts result and the xs. 
-        GAMMAXS = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='xs')
+        # We must add these new data types for both the ts result and the xs.
+        GAMMAXS = sacc.build_data_type_name(
+            "galaxy", ["shear", "Density"], "xi", subtype="xs"
+        )
 
         S = sacc.Sacc()
-        if self.config['do_shear_pos'] == True:
+        if self.config["do_shear_pos"] == True:
             S2 = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
-        f = self.open_input('shear_photoz_stack')
+        f = self.open_input("shear_photoz_stack")
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
@@ -364,8 +378,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         comb = []
         for d in results:
             # First the tracers and generic tags
-            tracer1 = f'source_{d.i}' #if d.corr_type in [XI, GAMMAT,GAMMATS, ] else f'lens_{d.i}'
-            tracer2 = f'source_{d.j}' #if d.corr_type in [XI, GAMMAT, GAMMATS] else f'lens_{d.j}'
+            tracer1 = f"source_{d.i}"  # if d.corr_type in [XI, GAMMAT,GAMMATS, ] else f'lens_{d.i}'
+            tracer2 = f"source_{d.j}"  # if d.corr_type in [XI, GAMMAT, GAMMATS] else f'lens_{d.j}'
 
             # We build up the comb list to get the covariance of it later
             # in the same order as our data points
@@ -377,8 +391,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
             # account for double-counting
             if d.i == d.j:
-                npair = npair/2
-                weight = weight/2
+                npair = npair / 2
+                weight = weight / 2
             # xip / xim is a special case because it has two observables.
             # the other two are together below
             if d.corr_type == XI:
@@ -389,63 +403,96 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 n = len(xip)
                 # add all the data points to the sacc
                 for i in range(n):
-                    S.add_data_point(XIP, (tracer1,tracer2), xip[i],
-                        theta=theta[i], error=xiperr[i], npair=npair[i], weight= weight[i])
-                    S.add_data_point(XIM, (tracer1,tracer2), xim[i],
-                        theta=theta[i], error=ximerr[i], npair=npair[i], weight= weight[i])
+                    S.add_data_point(
+                        XIP,
+                        (tracer1, tracer2),
+                        xip[i],
+                        theta=theta[i],
+                        error=xiperr[i],
+                        npair=npair[i],
+                        weight=weight[i],
+                    )
+                    S.add_data_point(
+                        XIM,
+                        (tracer1, tracer2),
+                        xim[i],
+                        theta=theta[i],
+                        error=ximerr[i],
+                        npair=npair[i],
+                        weight=weight[i],
+                    )
             else:
                 xi = d.object.xi
                 err = np.sqrt(d.object.varxi)
                 n = len(xi)
                 for i in range(n):
-                    S.add_data_point(d.corr_type, (tracer1,tracer2), xi[i],
-                        theta=theta[i], error=err[i], npair=npair[i], weight=weight[i])
+                    S.add_data_point(
+                        d.corr_type,
+                        (tracer1, tracer2),
+                        xi[i],
+                        theta=theta[i],
+                        error=err[i],
+                        npair=npair[i],
+                        weight=weight[i],
+                    )
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
-        cov = treecorr.estimate_multi_cov(comb, self.config['var_method'])
+        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
         S.add_covariance(cov)
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
-        self.write_metadata(S,meta)
+        self.write_metadata(S, meta)
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('twopoint_data_SCIA'), overwrite=True)
+        S.save_fits(self.get_output("twopoint_data_SCIA"), overwrite=True)
 
         # In the case we do shear_position we can also look at the gamma_x product,
         # We expect this to be a null test, but it should still be saved. To not mess with
-        # how the covariance is structured we save these in a seperate file here.  
-        if self.config['do_shear_pos'] == True:
+        # how the covariance is structured we save these in a seperate file here.
+        if self.config["do_shear_pos"] == True:
             comb = []
             for d in results:
-                tracer1 = f'source_{d.i}' 
-                tracer2 = f'source_{d.j}'    
-                
+                tracer1 = f"source_{d.i}"
+                tracer2 = f"source_{d.j}"
+
                 if d.corr_type == GAMMAT:
                     theta = np.exp(d.object.meanlogr)
                     npair = d.object.npairs
                     weight = d.object.weight
                     xi_x = d.object.xi_im
-                    covX = d.object.estimate_cov('shot')
+                    covX = d.object.estimate_cov("shot")
                     comb.append(covX)
                     err = np.sqrt(np.diag(covX))
                     n = len(xi_x)
                     for i in range(n):
-                        S2.add_data_point(GAMMAX, (tracer1,tracer2), xi_x[i],
-                            theta=theta[i], error=err[i], weight=weight[i])
+                        S2.add_data_point(
+                            GAMMAX,
+                            (tracer1, tracer2),
+                            xi_x[i],
+                            theta=theta[i],
+                            error=err[i],
+                            weight=weight[i],
+                        )
                 if d.corr_type == GAMMATS:
                     theta = np.exp(d.object.meanlogr)
                     npair = d.object.npairs
                     weight = d.object.weight
                     xi_x = d.object.xi_im
-                    covX = d.object.estimate_cov('shot')
+                    covX = d.object.estimate_cov("shot")
                     comb.append(covX)
                     err = np.sqrt(np.diag(covX))
                     n = len(xi_x)
                     for i in range(n):
-                        S2.add_data_point(GAMMAXS, (tracer1,tracer2), xi_x[i],
-                            theta=theta[i], error=err[i], weight=weight[i])
+                        S2.add_data_point(
+                            GAMMAXS,
+                            (tracer1, tracer2),
+                            xi_x[i],
+                            theta=theta[i],
+                            error=err[i],
+                            weight=weight[i],
+                        )
             S2.add_covariance(comb)
             S2.to_canonical_order
             self.write_metadata(S2,meta)

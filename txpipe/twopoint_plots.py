@@ -5,8 +5,9 @@ import numpy as np
 
 class TXTwoPointPlots(PipelineStage):
     """
-    Make plots of the correlation functions and their ratios to
-    a fiducial theory prediction.
+    Make plots of the correlation functions and their ratios to theory
+
+    The theory prediction is taken from CCL's calculation.
     """
 
     name = "TXTwoPointPlots"
@@ -539,6 +540,9 @@ class TXTwoPointPlots(PipelineStage):
 
 
 class TXTwoPointPlotsFourier(PipelineStage):
+    """
+    Make plots of the C_ell and their ratios to theory
+    """
 
     name = "TXTwoPointPlotsFourier"
     inputs = [
@@ -614,7 +618,6 @@ class TXTwoPointPlotsFourier(PipelineStage):
 
         for fig in outputs.values():
             fig.close()
-
 
         # The same but plotting ratios. The key here is not a mistake -
         # it tells the function calle below what the axis labels etc should be

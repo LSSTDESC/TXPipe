@@ -1,4 +1,4 @@
-ceci>=1.5
+ceci>=1.6
 h5py
 pandas
 sacc
@@ -15,7 +15,7 @@ astropy
 healpy
 camb
 threadpoolctl
-#pymaster
+pymaster
 cosmosis-standalone
 git+https://github.com/LSSTDESC/firecrown@v0.4
 psutil

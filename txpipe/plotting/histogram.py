@@ -1,7 +1,8 @@
 def manual_step_histogram(edges, counts, ax=None, **kwargs):
     import matplotlib.pyplot as plt
+
     if ax is None:
-        ax=plt.gca()
+        ax = plt.gca()
 
     x = [edges[0]]
     y = [0]
@@ -9,7 +10,7 @@ def manual_step_histogram(edges, counts, ax=None, **kwargs):
     for i, c in enumerate(counts):
         x.append(edges[i])
         y.append(c)
-        x.append(edges[i+1])
+        x.append(edges[i + 1])
         y.append(c)
     x.append(edges[-1])
     y.append(0)

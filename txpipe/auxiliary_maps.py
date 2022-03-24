@@ -3,19 +3,26 @@ import numpy as np
 from .base_stage import PipelineStage
 from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
-from .utils import choose_pixelization
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
 
 class TXAuxiliarySourceMaps(TXBaseMaps):
+    """
+    Generate auxiliary maps from the source catalog
+
+    This stage makes maps of:
+    - the count of different flag values
+    - the mean PSF
+
+    These are currently only used for making visualizations in the later TXMapPlots
+    stage, and are not otherwise used directly.
+
+    Like most of the mapping stages it inherits most behavior from the TXBaseMaps
+    parent class, which specifies the primary `run` method. This is because most
+    mapper classes have the same overall structure. See that class for more details.
+    """
+
     name = "TXAuxiliarySourceMaps"
-    """
-    This class generates:
-        - depth maps
-        - psf maps
-        - bright object maps
-        - flag maps
-    """
     inputs = [
         ("shear_catalog", ShearCatalog),  # for psfs
         ("shear_tomography_catalog", HDFFile),  # for per-bin psf maps
@@ -31,16 +38,14 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         "flag_exponent_max": 8,  # flag bits go up to 2**8 by default
         "psf_prefix": "psf_",  # prefix name for columns
     }
-    # instead of reading from config we match the basic maps
+
     def choose_pixel_scheme(self):
         with self.open_input("source_maps", wrapper=True) as maps_file:
             pix_info = dict(maps_file.file["maps"].attrs)
-
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
         # We make a suite of mappers here.
-
         # We read nbin_source because we want PSF maps per-bin
         with self.open_input("shear_tomography_catalog") as f:
             nbin_source = f["tomography"].attrs["nbin_source"]
@@ -65,14 +70,52 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
 
         # Flag column name depends on catalog type
         if shear_catalog_type == "metacal":
-            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "mcal_flags", "weight"]
+            shear_cols = [
+                f"{psf_prefix}g1",
+                f"{psf_prefix}g2",
+                "mcal_flags",
+                "weight",
+                "ra",
+                "dec",
+            ]
+            renames = {
+                f"{psf_prefix}g1": "psf_g1",
+                f"{psf_prefix}g2": "psf_g2",
+                "mcal_flags": "flags",
+            }
+        elif shear_catalog_type == "metadetect":
+            shear_cols = [
+                f"00/{psf_prefix}g1",
+                f"00/{psf_prefix}g2",
+                "00/flags",
+                "00/weight",
+                "00/ra",
+                "00/dec",
+            ]
+            renames = {
+                f"00/{psf_prefix}g1": "psf_g1",
+                f"00/{psf_prefix}g2": "psf_g2",
+                "00/flags": "flags",
+                "00/weight": "weight",
+                "00/ra": "ra",
+                "00/dec": "dec",
+            }
         else:
-            shear_cols = [f"{psf_prefix}g1", f"{psf_prefix}g2", "flags", "weight"]
-
-        shear_cols += ["ra", "dec"]
+            shear_cols = [
+                f"{psf_prefix}g1",
+                f"{psf_prefix}g2",
+                "flags",
+                "weight",
+                "ra",
+                "dec",
+            ]
+            renames = {
+                f"{psf_prefix}g1": "psf_g1",
+                f"{psf_prefix}g2": "psf_g2",
+            }
 
         # See maps.py for an explanation of this
-        return self.combined_iterators(
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
             "shear_catalog",
@@ -84,6 +127,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
             ["source_bin"],
         )
 
+        return rename_iterated(it, renames)
+
     def accumulate_maps(self, pixel_scheme, data, mappers):
         psf_mapper, flag_mapper = mappers
 
@@ -93,8 +138,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         # We pull out the bits they need and give them just those.
 
         psf_data = {
-            "g1": data[f"{psf_prefix}g1"],
-            "g2": data[f"{psf_prefix}g2"],
+            "g1": data["psf_g1"],
+            "g2": data["psf_g2"],
             "ra": data["ra"],
             "dec": data["dec"],
             "source_bin": data["source_bin"],
@@ -104,13 +149,8 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         flag_data = {
             "ra": data["ra"],
             "dec": data["dec"],
+            "flags": data["flags"],
         }
-
-        # Flag column names depends on catalog type.
-        if self.config["shear_catalog_type"] == "metacal":
-            flag_data["flags"] = data["mcal_flags"]
-        else:
-            flag_data["flags"] = data["flags"]
 
         psf_mapper.add_data(psf_data)
         flag_mapper.add_data(flag_data)
@@ -119,7 +159,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         psf_mapper, flag_mapper = mappers
 
         # Four different mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weight = psf_mapper.finalize(self.comm)
+        pix, _, _, g1, g2, var_g1, var_g2, weight, _ = psf_mapper.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
         # Collect all the maps
@@ -138,7 +178,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
 
         # Save flag maps
         for i, (p, m) in enumerate(zip(flag_pixs, flag_maps)):
-            f = 2 ** i
+            f = 2**i
             maps["aux_source_maps", f"flags/flag_{f}"] = (p, m)
             # also print out some stats
             t = m.sum()
@@ -147,16 +187,17 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         return maps
 
 
-
 class TXAuxiliaryLensMaps(TXBaseMaps):
+    """
+    Generate auxiliary maps from the lens catalog
+
+    This class generates maps of:
+        - depth
+        - psf
+        - bright object counts
+        - flags
+    """
     name = "TXAuxiliaryLensMaps"
-    """
-    This class generates:
-        - depth maps
-        - psf maps
-        - bright object maps
-        - flag maps
-    """
     inputs = [
         ("photometry_catalog", HDFFile),  # for mags etc
         ("lens_maps", MapsFile),  # we copy the pixel scheme from here
@@ -205,8 +246,9 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     def data_iterator(self):
         band = self.config["depth_band"]
         cols = ["ra", "dec", "extendedness", f"snr_{band}", f"mag_{band}"]
-        return self.iterate_hdf("photometry_catalog", "photometry", cols, self.config["chunk_rows"])
-
+        return self.iterate_hdf(
+            "photometry_catalog", "photometry", cols, self.config["chunk_rows"]
+        )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
         depth_mapper, brobj_mapper = mappers
@@ -254,5 +296,39 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         # Save bright object counts
         maps["aux_lens_maps", "bright_objects/count"] = (brobj_pix, brobj_count)
 
-
         return maps
+
+
+class TXUniformDepthMap(PipelineStage):
+    """
+    Generate a uniform depth map from the mask
+
+    This is useful for testing on uniform patches.
+    It doesn't generate all the other maps that the other stages that
+    make aux_lens_maps do, so may not always be useful.
+    """
+    name = "TXUniformDepthMap"
+    # make a mask from the auxiliary maps
+    inputs = [("mask", MapsFile)]
+    outputs = [("aux_lens_maps", MapsFile)]
+    config_options = {
+        "depth": 25.0,
+    }
+
+    def run(self):
+        import healpy
+
+        with self.open_input("mask", wrapper=True) as f:
+            metadata = dict(f.file["maps/mask"].attrs)
+            mask = f.read_mask()
+            pix = f.file["maps/mask/pixel"][:]
+
+        # Make a fake depth map
+        depth = mask.copy()
+        depth[pix] = self.config["depth"]  # e.g. 25 everywhere
+
+        with self.open_output("aux_lens_maps", wrapper=True) as f:
+            f.file.create_group("depth")
+            print(len(pix))
+            print(len(depth[pix]))
+            f.write_map("depth/depth", pix, depth[pix], metadata)

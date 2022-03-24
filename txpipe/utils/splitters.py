@@ -50,7 +50,7 @@ class Splitter:
         self.bins = list(bin_sizes.keys())
 
         self.group = group
-        self.group.attrs['nbin'] = len(self.bins)
+        self.group.attrs["nbin"] = len(self.bins)
 
         self.columns = columns
 
@@ -75,7 +75,6 @@ class Splitter:
             for col in self.columns:
                 dt = dtypes.get(col, "f8")
                 sub.create_dataset(col, (sz,), dtype=dt)
-
 
     def write_bin(self, data, b):
         """

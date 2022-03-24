@@ -4,17 +4,17 @@ import numpy as np
 import mockmpi
 
 
-
 def select_all_bool(data):
-    return np.repeat(True, data['g2'].size)
+    return np.repeat(True, data["g2"].size)
+
 
 def select_all_index(data):
-    return np.arange(data['g2'].size)
+    return np.arange(data["g2"].size)
+
 
 def select_all_where(data):
     # we just want to select everything here too
-    return np.where(data['g2'] * 0 == 0)
-
+    return np.where(data["g2"] * 0 == 0)
 
 
 def core_lensfit(comm):
@@ -25,15 +25,14 @@ def core_lensfit(comm):
     g1_true = np.random.normal(0, 0.1, size=N)
     g2_true = np.random.normal(0, 0.1, size=N)
     K_true = np.array([0.11])
-    m = np.array([K_true[0]]*len(g1_true))
-    g1 = ((g1_true)*(1+K_true[0]))
-    g2 = ((g1_true)*(1+K_true[0]))
+    m = np.array([K_true[0]] * len(g1_true))
+    g1 = (g1_true) * (1 + K_true[0])
+    g2 = (g1_true) * (1 + K_true[0])
     weight = np.random.uniform(0, 1, size=N)
 
-
     if comm is None:
-        C1_true = np.average(g1,weights=weight)
-        C2_true = np.average(g2,weights=weight)
+        C1_true = np.average(g1, weights=weight)
+        C2_true = np.average(g2, weights=weight)
     else:
         wsum = np.zeros_like(g1)
         comm.Allreduce(weight, wsum)
@@ -43,10 +42,7 @@ def core_lensfit(comm):
         comm.Allreduce(g2 * weight, csum)
         C2_true = csum.sum() / wsum.sum()
 
-
-
-    C_true = np.array([C1_true,C2_true]) # mean of g1, g2
-
+    C_true = np.array([C1_true, C2_true])  # mean of g1, g2
 
     data = {
         "g1": g1,
@@ -65,8 +61,10 @@ def core_lensfit(comm):
         assert np.allclose(K, K_true)
         assert n == N * nproc
 
+
 def test_lensfit_serial():
     core_lensfit(None)
+
 
 def test_lensfit_parallel():
     mockmpi.mock_mpiexec(2, core_lensfit)
@@ -75,11 +73,11 @@ def test_lensfit_parallel():
 
 def test_mean_shear():
     name = "x"
-    limits = [-1., 0., 1.]
+    limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
 
     # equal weights
-    b1 = MeanShearInBins(name, limits, delta_gamma, shear_catalog_type='lensfit')
+    b1 = MeanShearInBins(name, limits, delta_gamma, shear_catalog_type="lensfit")
 
     # fake data set in two bins, with the x values in the middle
     # of the bins and the g1, g2 some fixed simple values, with metacal
@@ -87,8 +85,8 @@ def test_mean_shear():
     data = {
         "x": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "g1": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "g2": 2*np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "m": np.array([0., 0., 0., 0., 0., 0., 0., 0.]),
+        "g2": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "m": np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
         "weight": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
     b1.add_data(data)
@@ -102,17 +100,18 @@ def test_mean_shear():
     # using var([0.7, 0.6, 0.4, 0.3]) == var([-0.2, -0.1, 0.1, 0.2])
     # this should equal the sigma (error on the mean) from the numbers above.
     expected_sigma1 = np.std([-0.2, -0.1, 0.1, 0.2]) / np.sqrt(4)
-    expected_sigma2 = 2*expected_sigma1
+    expected_sigma2 = 2 * expected_sigma1
 
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
+
 def test_mean_shear_weights():
     name = "x"
-    limits = [-1., 0., 1.]
+    limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
     # downweighting half of samples
-    b1 = MeanShearInBins(name, limits, delta_gamma, shear_catalog_type='lensfit')
+    b1 = MeanShearInBins(name, limits, delta_gamma, shear_catalog_type="lensfit")
 
     x = np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5])
     g1 = np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
@@ -120,7 +119,7 @@ def test_mean_shear_weights():
     data = {
         "x": x,
         "g1": g1,
-        "g2":    g2,
+        "g2": g2,
         "m": np.array([0, 0, 0, 0, 0, 0, 0, 0]),
         "weight": np.array([1, 1, 0, 0, 0, 0, 1, 1]),
     }
@@ -132,7 +131,7 @@ def test_mean_shear_weights():
     assert np.allclose(g1, [-0.65, 0.35])
     assert np.allclose(g2, [-1.3, 0.7])
     expected_sigma1 = np.std([-0.2, -0.1]) / np.sqrt(2)
-    expected_sigma2 = 2*expected_sigma1
+    expected_sigma2 = 2 * expected_sigma1
 
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
@@ -141,12 +140,12 @@ def test_mean_shear_weights():
 def test_lensfit_scalar():
     # lensfit calibrator
     K = np.array([0.9])
-    C = np.array([0.11,0.22])
+    C = np.array([0.11, 0.22])
     g1 = 0.2
     g2 = -0.3
-    g1_obs = (g1)*(1+K[0])+C[0]
-    g2_obs = (g2)*(1+K[0])+C[1]
-    g_obs = np.array([g1_obs,g2_obs])
+    g1_obs = (g1) * (1 + K[0]) + C[0]
+    g2_obs = (g2) * (1 + K[0]) + C[1]
+    g_obs = np.array([g1_obs, g2_obs])
     cal = LensfitCalibrator(K, C)
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1], subtract_mean=True)
 
@@ -155,16 +154,17 @@ def test_lensfit_scalar():
     assert type(g1) == float
     assert type(g2) == float
 
+
 def test_lensfit_array():
     # array version
     K = np.array([0.9])
-    C = np.array([0.11,0.22])
+    C = np.array([0.11, 0.22])
     cal = LensfitCalibrator(K, C)
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
-    g1_obs = (g1)*(1+K[0])+C[0]
-    g2_obs = (g2)*(1+K[0])+C[1]
-    g_obs = [g1_obs,g2_obs]
+    g1_obs = (g1) * (1 + K[0]) + C[0]
+    g2_obs = (g2) * (1 + K[0]) + C[1]
+    g_obs = [g1_obs, g2_obs]
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
 
     assert np.allclose(g1_, g1)
@@ -175,12 +175,12 @@ def test_lensfit_array():
 
 def test_null():
     # null calibrator
-    K = 1.
-    C = [0., 0.]
+    K = 1.0
+    C = [0.0, 0.0]
     g1 = 0.2
     g2 = -0.3
-    g1 = (g1+C[0])*(K)
-    g2 = (g2+C[1])*(K)
+    g1 = (g1 + C[0]) * (K)
+    g2 = (g2 + C[1]) * (K)
     g_obs = np.array([g1, g2])
     assert g_obs.shape == (2,)
     cal = NullCalibrator()
@@ -192,8 +192,8 @@ def test_null():
 
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
-    g1 = (g1+C[0])*(K)
-    g2 = (g2+C[1])*(K)
+    g1 = (g1 + C[0]) * (K)
+    g2 = (g2 + C[1]) * (K)
     g_obs = [g1, g2]
     g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
 
@@ -203,8 +203,7 @@ def test_null():
     assert type(g2) == np.ndarray
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_lensfit_serial()
     test_lensfit_parallel()
     test_mean_shear()

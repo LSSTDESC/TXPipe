@@ -4,7 +4,18 @@ import pathlib
 import glob
 import numpy as np
 
+
 class TXMapCorrelations(PipelineStage):
+    """
+    Plot shear, density, and convergence correlations with survey property maps
+
+    The Supreme code generates survey property maps; this stage makes
+    plots of the correlations with those maps with a simple linear fit.
+
+    Since the Supreme maps are loaded from a directory, outside the pipeline,
+    we don't know in advance what plots will be generated, so the formal output
+    is a directory.
+    """
     name = "TXMapCorrelations"
     inputs = [
         ("lens_maps", MapsFile),
@@ -65,7 +76,6 @@ class TXMapCorrelations(PipelineStage):
 
         output_dir = self.open_output("map_systematic_correlations", wrapper=True)
 
-
         root = self.config["supreme_path_root"]
         sys_maps = glob.glob(f"{root}*.hs")
         nsys = len(sys_maps)
@@ -74,7 +84,7 @@ class TXMapCorrelations(PipelineStage):
         outputs = []
         for i, map_path in enumerate(sys_maps):
             # strip root, .hs, and underscores to get friendly name
-            sys_name = map_path[len(root):-3].strip("_")
+            sys_name = map_path[len(root) : -3].strip("_")
 
             # get actual data for this map
             sys_map = self.read_healsparse(map_path, nside)
@@ -82,21 +92,20 @@ class TXMapCorrelations(PipelineStage):
             # Correlate with g1, g2, ngal, kappa
             print(f"Correlating systematic {i+1}/{nsys} {sys_name}")
             corr = self.correlate(sys_map, source_g1, mask)
-            outfile = self.save(sys_name, 'g1', corr, output_dir)
-            outputs.append(outfile)
-            
-            corr = self.correlate(sys_map, source_g2, mask)
-            outfile = self.save(sys_name, 'g2', corr, output_dir)
-            outputs.append(outfile)
-            
-            corr = self.correlate(sys_map, ngal, mask)
-            outfile = self.save(sys_name, 'number_density', corr, output_dir)
-            outputs.append(outfile)
-            
-            corr = self.correlate(sys_map, kappa, mask)
-            outfile = self.save(sys_name, 'convergence', corr, output_dir)
+            outfile = self.save(sys_name, "g1", corr, output_dir)
             outputs.append(outfile)
 
+            corr = self.correlate(sys_map, source_g2, mask)
+            outfile = self.save(sys_name, "g2", corr, output_dir)
+            outputs.append(outfile)
+
+            corr = self.correlate(sys_map, ngal, mask)
+            outfile = self.save(sys_name, "number_density", corr, output_dir)
+            outputs.append(outfile)
+
+            corr = self.correlate(sys_map, kappa, mask)
+            outfile = self.save(sys_name, "convergence", corr, output_dir)
+            outputs.append(outfile)
 
         output_dir.write_listing(outputs)
 
@@ -139,7 +148,7 @@ class TXMapCorrelations(PipelineStage):
         # itself, and of the y and y^2 values
         x = np.bincount(bins, weights=sys_map) / counts
         y = np.bincount(bins, weights=data_map) / counts
-        y2 = np.bincount(bins, weights=data_map ** 2) / counts
+        y2 = np.bincount(bins, weights=data_map**2) / counts
 
         # the var on the mean = var / count
         yerr = np.sqrt((y2 - y**2) / counts)

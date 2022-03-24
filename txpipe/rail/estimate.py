@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
-from ..data_types import PhotozPDFFile, HDFFile, PickleFile
+from ..data_types import PhotozPDFFile, HDFFile, PickleFile, ShearCatalog
 from ..utils import rename_iterated
+from ..utils.calibration_tools import read_shear_catalog_type
 from .utils import convert_unseen
 import numpy as np
 import shutil
@@ -8,7 +9,7 @@ import shutil
 
 class PZRailEstimateSource(PipelineStage):
     """
-    Run a trained RAIL estimator to estimate PDFs and best-fit redshifts
+    Estimate source redshift PDFs and best-fits using RAIL
 
     We load a redshift Estimator model, typically saved by the PZRailTrainSource stage,
     and then load chunks of photometry and run the estimator on it, and save the
@@ -31,7 +32,7 @@ class PZRailEstimateSource(PipelineStage):
     pdf_output = "source_photoz_pdfs"
 
     inputs = [
-        ("shear_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("photoz_source_model", PickleFile),
     ]
 
@@ -50,16 +51,16 @@ class PZRailEstimateSource(PipelineStage):
 
     def run(self):
         # Importing this means that we can unpickle the relevant class
+        import h5py
         import rail.estimation
 
         # Load the estimator trained in PZRailTrain
         estimator = self.load_model()
 
-        bands = self.config['bands']
-        convert = self.config['convert_unseen']
-        undet = self.config['undetected_value']
-        unobs = self.config['unobserved_value']
-
+        bands = self.config["bands"]
+        convert = self.config["convert_unseen"]
+        undet = self.config["undetected_value"]
+        unobs = self.config["unobserved_value"]
 
         # prepare the output data - we will save things to this
         # as we go along.  We also need the z grid becauwe we use
@@ -111,8 +112,12 @@ class PZRailEstimateSource(PipelineStage):
         return rename_iterated(it, renames)
 
     def get_catalog_size(self):
+        cat_type = read_shear_catalog_type(self)
         with self.open_input("shear_catalog") as f:
-            nobj = f["shear/ra"].size
+            if cat_type == "metadetect":
+                nobj = f["shear/00/ra"].size
+            else:
+                nobj = f["shear/ra"].size
         return nobj
 
     def setup_output_file(self, estimator):
@@ -172,15 +177,14 @@ class PZRailEstimateSource(PipelineStage):
 
 
 class PZRailEstimateLens(PZRailEstimateSource):
-    name = "PZRailEstimateLens"
     """
-    Use RAIL to estimate the PDFs of the source sample.
+    Estimate source redshift PDFs and best-fits using RAIL
 
     This is implemented as a subclass of PZRailEstimateSource
     but with the loaded input data changed - see that class
     for more details.
-
     """
+    name = "PZRailEstimateLens"
 
     model_input = "photoz_lens_model"
     pdf_output = "lens_photoz_pdfs"
@@ -231,8 +235,10 @@ class PZRailEstimateLens(PZRailEstimateSource):
 
 class PZRailEstimateSourceFromLens(PipelineStage):
     """
+    Make a source redshifts file by copying lens redshifts
+
     In cases where source and lens come from the same base sample
-    we can simply copy the computed PDFs from lens to source.
+    we can simply copy the computed PDFs.
     """
 
     name = "PZRailEstimateSourceFromLens"
@@ -249,8 +255,10 @@ class PZRailEstimateSourceFromLens(PipelineStage):
 
 class PZRailEstimateLensFromSource(PipelineStage):
     """
+    Make a lens  redshifts file by copying source redshifts
+
     In cases where source and lens come from the same base sample
-    we can simply copy the computed PDFs from lens to source.
+    we can simply copy the computed PDFs.
     """
 
     name = "PZRailEstimateLensFromSource"

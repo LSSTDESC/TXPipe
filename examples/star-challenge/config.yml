@@ -1,0 +1,61 @@
+global:
+    chunk_rows: 1000000
+
+TXSourceSelectorMetadetect:
+    bands: riz
+    T_cut: 0.5
+    s2n_cut: 10.0
+    delta_gamma: 0.02
+    # found approximately to split data into equal number counts
+    # for selected objects
+    source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
+    random_seed: 6765675
+    shear_prefix: ''
+
+TXRandomForestLensSelector:
+    verbose: False
+    bands: ugrizy
+    lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    random_seed: 79521
+    mag_i_limit: 24.1
+
+
+TXLensCatalogSplitter:
+    # save these for the PZ team to play with
+    extra_cols:
+        - id
+        - mag_u
+        - mag_g
+        - mag_r
+        - mag_i
+        - mag_z
+        - mag_y
+        - mag_u_err
+        - mag_g_err
+        - mag_r_err
+        - mag_i_err
+        - mag_z_err
+        - mag_y_err
+        - redshift_true
+    initial_size: 1000000
+
+
+TXShearCalibration:
+    extra_cols:
+        - id
+        - mag_err_i
+        - mag_err_r
+        - mag_err_z
+        - mag_i
+        - mag_r
+        - mag_z
+        - redshift_true
+
+
+TXSourceTrueNumberDensity:
+    zmax: 3.0
+    nz: 301
+
+TXLensTrueNumberDensity:
+    zmax: 3.0
+    nz: 301
