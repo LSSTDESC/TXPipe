@@ -239,5 +239,5 @@ TXShearCalibration:
     redshift_shearcatalog: True
 
 TXSelfCalibrationIA:
-    do_pos_pos: True
-    use_randoms: True
+    do_pos_pos: False
+    use_randoms: False

@@ -58,7 +58,8 @@ stages:
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
     # Disabled since not yet synchronised with new Treecorr MPI
-    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+    - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+      threads_per_process: 2
 
     # Disabling these as they takes too long for a quick test.
     # The latter three need NaMaster

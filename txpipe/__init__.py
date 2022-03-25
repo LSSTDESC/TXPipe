@@ -44,5 +44,4 @@ from .calibrate import TXShearCalibration
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
-from .extensions.random_cats_source import TXRandomCat_source
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
