@@ -89,8 +89,9 @@ TXSourceDiagnosticPlots:
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
-    cache_dir: ./cache_nmt
-
+    cache_dir: ./cache_nmt_gauss
+    gaussian_sims_factor: [4.5, 4., 3.5, 3., 3.]
+    
 TXFourierTJPCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
     cache_dir: ./cache_nmt
@@ -105,6 +106,7 @@ TXRealGaussianCovariance:
     threads_per_process: 2
     nodes: 4
     galaxy_bias: [1., 1., 1., 1., 1.]
+    gaussian_sims_factor: [4.5, 4., 3.5, 3., 3.]
 
 TXTwoPointFourier:
     chunk_rows: 100000
@@ -119,7 +121,7 @@ TXTwoPointFourier:
     analytic_noise: False
 
 TXTwoPoint:
-    bin_slop: 0.05
+    bin_slop: 1 #0.05
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
@@ -131,7 +133,7 @@ TXTwoPoint:
     nbins: 20
     verbose: 0
     var_method: jackknife
-    low_mem: True
+    low_mem: False
     chunk_rows: 1000000
     
 TXClusteringNoiseMaps:
