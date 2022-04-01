@@ -1,0 +1,45 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths: []
+
+stages:
+    - name: TXSourceSelectorMetadetect
+      nprocess: 32
+    - name: TXRandomForestLensSelector
+      nprocess: 32
+    - name: TXLensCatalogSplitter
+      nprocess: 6
+    - name: TXShearCalibration
+      nprocess: 6
+    - name: TXSourceTrueNumberDensity
+      nprocess: 32
+    - name: TXLensTrueNumberDensity
+      nprocess: 32
+    - name: TXPhotozPlots
+
+output_dir: data/star-challenge/outputs
+config: examples/star-challenge/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/metadetect_shear_catalog.hdf5
+    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/photometry_catalog.hdf5
+    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/sample_cosmodc2_w10year_errors.dat
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+
+resume: True
+log_dir: data/star-challenge/logs
+pipeline_log: data/star-challenge/log.txt
+

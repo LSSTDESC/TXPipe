@@ -41,6 +41,7 @@ class TXShearCalibration(PipelineStage):
         "use_true_shear": False,
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
+        "extra_cols": [""],
     }
 
     def run(self):
@@ -48,12 +49,13 @@ class TXShearCalibration(PipelineStage):
         #  Extract the configuration parameters
         cat_type = read_shear_catalog_type(self)
         use_true = self.config["use_true_shear"]
+        extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
-        output_file, splitter, nbin = self.setup_output()
+        output_file, splitter, nbin = self.setup_output(extra_cols)
 
         #  Load the calibrators.  If using the true shear no calibration
         # is needed
@@ -65,7 +67,10 @@ class TXShearCalibration(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
 
-        output_cols = ["ra", "dec", "g1", "g2", "weight"]
+            cat_cols += [f"00/{c}" for c in extra_cols]
+            renames.update({f"00/{c}":c for c in extra_cols})
+
+        output_cols = ["ra", "dec", "g1", "g2", "weight"] + extra_cols
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -130,7 +135,7 @@ class TXShearCalibration(PipelineStage):
         splitter.finish(my_bins)
         output_file.close()
 
-    def setup_output(self):
+    def setup_output(self, extra_cols):
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["tomography/source_counts"][:]
@@ -141,7 +146,7 @@ class TXShearCalibration(PipelineStage):
         f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
-        cols = ["ra", "dec", "weight", "g1", "g2"]
+        cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
@@ -157,7 +162,9 @@ class TXShearCalibration(PipelineStage):
         # to initialize the output groups.
         bins = {b: c for b, c in enumerate(counts)}
         bins["all"] = count2d
-        splitter = Splitter(g, "bin", cols, bins)
+        # These are the possible integer columns
+        dtypes = {"id": "i8", "flags": "i8"}
+        splitter = Splitter(g, "bin", cols, bins, dtypes=dtypes)
 
         return f, splitter, nbin
 

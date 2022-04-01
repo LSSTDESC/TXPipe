@@ -268,15 +268,6 @@ class TXTwoPointFourier(PipelineStage):
                             )
                             syst_map = healpy.read_map(systmap_file, verbose=False)
 
-                            #                             # Find value at given ra,dec
-                            #                             ra = 55.
-                            #                             dec = -30.
-                            #                             theta = 0.5 * np.pi - np.deg2rad(dec)
-                            #                             phi = np.deg2rad(ra)
-                            #                             nside = healpy.pixelfunc.get_nside(syst_map)
-                            #                             ipix = healpy.ang2pix(nside, theta, phi)
-                            #                             print('Syst map: value at ra,dec = 55,-30: ', syst_map[ipix])
-
                             # normalize map for Namaster
                             # set pixel values to value/mean - 1
                             syst_map_mask = syst_map != healpy.UNSEEN
@@ -557,7 +548,6 @@ class TXTwoPointFourier(PipelineStage):
         # The binning information - effective (mid) ell values and
         # the window information
         ls = ell_bins.get_effective_ells()
-        win = [ell_bins.get_window(b) for b, l in enumerate(ls)]
 
         # We need the theory spectrum for this pair
         # TODO: when we have templates to deproject, use this.
@@ -644,8 +634,13 @@ class TXTwoPointFourier(PipelineStage):
 
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
 
+        # this has shape n_cls, n_bpws, n_cls, lmax+1
+        bandpowers = workspace.get_bandpower_windows()
+
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
+            # this is shape (n_ell, lmax)
+            win = bandpowers[index, :, index, :]
             self.results.append(
                 Measurement(
                     name,
@@ -808,7 +803,7 @@ class TXTwoPointFourier(PipelineStage):
 
     def save_power_spectra(self, tracers, nbin_source, nbin_lens):
         import sacc
-        from sacc.windows import TopHatWindow
+        from sacc.windows import BandpowerWindow
 
         CEE = sacc.standard_types.galaxy_shear_cl_ee
         CBB = sacc.standard_types.galaxy_shear_cl_bb
@@ -833,9 +828,11 @@ class TXTwoPointFourier(PipelineStage):
             tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CBB] else f"lens_{d.j}"
 
             n = len(d.l)
+            # The full set of ell values (unbinned), used to store the
+            # bandpowers
+            ell_full = np.arange(d.win.shape[1])
+            win = BandpowerWindow(ell_full, d.win.T)
             for i in range(n):
-                ell_vals = d.win[i][0]  # second term is weights
-                win = TopHatWindow(ell_vals[0], ell_vals[-1])
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
                 S.add_data_point(
@@ -847,6 +844,7 @@ class TXTwoPointFourier(PipelineStage):
                     i=d.i,
                     j=d.j,
                     n_ell=d.noise[i],
+                    bandpower_index=i,
                 )
 
             # Add n_ell_coupled to tracer metadata. This will work as far as
