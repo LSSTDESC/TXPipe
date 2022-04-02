@@ -76,6 +76,7 @@ class TXTwoPoint(PipelineStage):
         "patch_dir": "./cache/patches",
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "metric": "Euclidean",
     }
 
     def run(self):
@@ -88,6 +89,12 @@ class TXTwoPoint(PipelineStage):
 
         # Binning information
         source_list, lens_list = self.read_nbin()
+
+        if self.rank == 0:
+            # This is a workaround for the fact the the ceci config stuff doesn't
+            # quite handle the get method properly.
+            metric = self.config["metric"] if "metric" in self.config else "Euclidean"
+            print(f"Running TreeCorr with metric \"{metric}\"")
 
         # Calculate metadata like the area and related
         # quantities
