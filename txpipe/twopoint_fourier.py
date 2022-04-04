@@ -844,7 +844,7 @@ class TXTwoPointFourier(PipelineStage):
                     i=d.i,
                     j=d.j,
                     n_ell=d.noise[i],
-                    bandpower_index=i,
+                    window_ind=i,
                 )
 
             # Add n_ell_coupled to tracer metadata. This will work as far as
