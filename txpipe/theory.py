@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 import numpy as np
-
+import pdb
 
 class TXTwoPointTheoryReal(PipelineStage):
     """
@@ -261,18 +261,23 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         for i in range(nbin_source):
             for j in range(i + 1):
                 print(f"Computing theory lensing-lensing ({i},{j})")
-
-                # compute theory
                 print(tracers[f"source_{i}"], tracers[f"source_{j}"])
-                ell, *_ = s.get_ell_cl(
-                    "galaxy_shear_cl_ee", f"source_{i}", f"source_{j}"
+
+                ind = s.indices("galaxy_shear_cl_ee", (f"source_{i}", f"source_{j}"))
+                bpw = s.get_bandpower_windows(ind)
+                ell_unbinned = bpw.values
+                
+                # compute theory
+                #ell, *_ = s.get_ell_cl(
+                #    "galaxy_shear_cl_ee", f"source_{i}", f"source_{j}"
+                #)
+                
+                cl_unbinned = pyccl.angular_cl(
+                    cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell_unbinned
                 )
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell
-                )
+                cl = np.dot(bpw.weight.T, cl_unbinned)
 
                 # replace data values in the sacc object for the theory ones
-                ind = s.indices("galaxy_shear_cl_ee", (f"source_{i}", f"source_{j}"))
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
 
@@ -280,14 +285,22 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
             for j in range(i + 1):
                 print(f"Computing theory density-density ({i},{j})")
 
+                # get indices for this block
+                ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
+
                 # compute theory
-                ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{j}")
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell
+                #ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{j}")
+                
+                bpw = s.get_bandpower_windows(ind)
+                ell_unbinned = bpw.values
+                
+                cl_unbinned = pyccl.angular_cl(
+                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell_unbinned
                 )
 
+                cl = np.dot(bpw.weight.T, cl_unbinned)
+
                 # replace data values in the sacc object for the theory ones
-                ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
 
@@ -296,18 +309,22 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
             for j in range(nbin_lens):
                 print(f"Computing theory lensing-density (S{i},L{j})")
 
-                # compute theory
-                ell, *_ = s.get_ell_cl(
-                    "galaxy_shearDensity_cl_e", f"source_{i}", f"lens_{j}"
-                )
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell
-                )
-
-                # replace data values in the sacc object for the theory ones
                 ind = s.indices(
                     "galaxy_shearDensity_cl_e", (f"source_{i}", f"lens_{j}")
                 )
+                # compute theory
+                #ell, *_ = s.get_ell_cl(
+                #    "galaxy_shearDensity_cl_e", f"source_{i}", f"lens_{j}"
+                #)
+                bpw = s.get_bandpower_windows(ind)
+                ell_unbinned = bpw.values
+                cl_unbinned = pyccl.angular_cl(
+                    cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell_unbinned
+                )
+
+                cl = np.dot(bpw.weight.T, cl_unbinned)
+                
+                # replace data values in the sacc object for the theory ones
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
 
