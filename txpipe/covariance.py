@@ -788,12 +788,24 @@ class TXFourierTJPCovariance(PipelineStage):
                 hashes[m] = cl_sacc.metadata[f"hash/{m}"]
         ell_hash = cl_sacc.metadata["hash/ell_hash"]
 
-        w = {}
+        w = {'00': {}, '02': {}, '22': {}}
+        n_ell = cl_sacc.metadata["binning/n_ell"]
         for tr1, tr2 in cl_sacc.get_tracer_combinations():
+            # This assumes that B-modes will be in the file
+            ncell = cl_sacc.indices(tracers=(tr1, tr2)).size / n_ell
+            if ncell == 1:
+                sk = '00'
+            elif ncell == 2:
+                sk = '02'
+            elif ncell == 4:
+                sk = '22'
+            else:
+                raise ValueError('Number of cell = {ncell}, cannot be ' +
+                                 'converted to a combination of spins.')
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
-            if (key in w) or (key[::-1] in w):
+            if (key in w[sk]) or (key[::-1] in w[sk]):
                 continue
             # Build workspace hash (twopoint_fourier.py:387-395)
             h1 = hashes[m1]
@@ -802,7 +814,7 @@ class TXFourierTJPCovariance(PipelineStage):
             if h2 != h1:
                 cache_key ^= h2
 
-            w[key] = str(cache.get_path(cache_key))
+            w[sk][key] = str(cache.get_path(cache_key))
 
         return w
 
