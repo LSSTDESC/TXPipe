@@ -12,6 +12,7 @@ import numpy as np
 import warnings
 import os
 import pickle
+import pdb
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -46,6 +47,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         "pickled_wigner_transform": "",
         "use_true_shear": False,
         "galaxy_bias": [0.0],
+        "gaussian_sims_factor": [1.],
     }
 
     def run(self):
@@ -116,6 +118,17 @@ class TXFourierGaussianCovariance(PipelineStage):
         # per-bin quantities
         N_eff = input_data["tracers/N_eff"][:]
         N_lens = input_data["tracers/lens_counts"][:]
+        # For the gaussian sims, lambda = nbar(1+b*delta),
+        # instead of lambda = nbar(1+delta), where delta is the density contrast field.
+        # Then, we need to scale up the shot noise term for the lenses
+        # in the covariance for the same b factor.
+        # Here we decrease the number density for this factor, since shot noise term is 1/nbar. 
+        print('N_lens:', N_lens)
+        N_lens = N_lens/np.array(self.config["gaussian_sims_factor"])
+        if self.config["gaussian_sims_factor"] != [1.]:
+            print("ATTENTION: We are dividing N_lens by the gaussian sims factor:", self.config["gaussian_sims_factor"])
+            print("Scaled N_lens is:", N_lens)
+            
         if self.config["use_true_shear"]:
             nbins = len(input_data["tracers/sigma_e"][:])
             sigma_e = np.array([0.0 for i in range(nbins)])
@@ -386,6 +399,33 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb, cov["final_b"] = bin_cov(r=ell, r_bins=ell_bins, cov=cov["final"])
         return cov
+    """
+    def get_angular_bins(self, cl_sacc):
+        # This function replicates `choose_ell_bins` in twopoint_fourier.py
+        # TODO: Move this to txpipe/utils/nmt_utils.py
+        from .utils.nmt_utils import MyNmtBin
+
+        ell_min = cl_sacc.metadata["binning/ell_min"]
+        ell_max = cl_sacc.metadata["binning/ell_max"]
+        ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
+        n_ell = cl_sacc.metadata["binning/n_ell"]
+
+        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
+
+        # Check that the binning is compatible with the one in the file
+        dtype = cl_sacc.get_data_types()[0]
+        trs = cl_sacc.get_tracer_combinations()[0]
+        ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
+        if not np.all(ell_bins.get_effective_ells() == ell_eff):
+            print(ell_bins.get_effective_ells())
+            print(ell_eff)
+            raise ValueError(
+                "The reconstructed NmtBin object is not "
+                + "compatible with the ells in the sacc file"
+            )
+        pdb.set_trace()
+        return ell_bins
+    """
 
     def get_angular_bins(self, two_point_data):
         # Assume that the ell binning is the same for each of the bins.
@@ -395,11 +435,11 @@ class TXFourierGaussianCovariance(PipelineStage):
         # the max value of one window is the min value of the next.
         # So we just need the lower edges of each bin and then the
         # final maximum value of the last bin
-        ell_edges = [x["window"].min for x in X]
-        ell_edges.append(X[-1]["window"].max)
-
+        #ell_edges = [x["window"].min for x in X]
+        #ell_edges.append(X[-1]["window"].max)
+        ell_edges = X[0]["window"].values 
         return np.array(ell_edges)
-
+    
     def make_wigner_transform(self, meta):
         import threadpoolctl
         from tjpcov import wigner_transform
@@ -588,6 +628,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         "pickled_wigner_transform": "",
         "use_true_shear": False,
         "galaxy_bias": [0.0],
+        "gaussian_sims_factor": [1.],        
     }
 
     def run(self):
@@ -841,7 +882,6 @@ class TXFourierTJPCovariance(PipelineStage):
                 "The reconstructed NmtBin object is not "
                 + "compatible with the ells in the sacc file"
             )
-
         return ell_bins
 
     def read_sacc(self):
