@@ -800,7 +800,7 @@ class TXFourierTJPCovariance(PipelineStage):
             elif ncell == 4:
                 sk = '22'
             else:
-                raise ValueError('Number of cell = {ncell}, cannot be ' +
+                raise ValueError(f'Number of cell = {ncell}, cannot be ' +
                                  'converted to a combination of spins.')
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
