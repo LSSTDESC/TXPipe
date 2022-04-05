@@ -789,7 +789,11 @@ class TXFourierTJPCovariance(PipelineStage):
         ell_hash = cl_sacc.metadata["hash/ell_hash"]
 
         w = {'00': {}, '02': {}, '22': {}}
-        n_ell = cl_sacc.metadata["binning/n_ell"]
+        # Get the number of data points per Cell
+        dtype = cl_sacc.get_data_types()[0]
+        trs = cl_sacc.get_tracer_combinations()[0]
+        ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
+        n_ell = ell_eff.size
         for tr1, tr2 in cl_sacc.get_tracer_combinations():
             # This assumes that B-modes will be in the file
             ncell = cl_sacc.indices(tracers=(tr1, tr2)).size / n_ell
