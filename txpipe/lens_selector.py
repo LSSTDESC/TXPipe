@@ -1,5 +1,11 @@
 from .base_stage import PipelineStage
-from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile, FiducialCosmology
+from .data_types import (
+    YamlFile,
+    TomographyCatalog,
+    HDFFile,
+    TextFile,
+    FiducialCosmology,
+)
 from .utils import LensNumberDensityStats
 from .utils import Splitter
 from .binning import build_tomographic_classifier, apply_classifier
@@ -411,7 +417,7 @@ class TXLensCatalogSplitter(PipelineStage):
     config_options = {
         "initial_size": 100_000,
         "chunk_rows": 100_000,
-        "extra_cols": [""]
+        "extra_cols": [""],
     }
 
     def run(self):
@@ -512,6 +518,7 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
     The radial coordinate is generated from the redshift and a fiducial cosmology.
     The redshift column can be selected; by default it is the mean z.
     """
+
     name = "TXLensCatalogSplitter3D"
     inputs = [
         ("lens_tomography_catalog", TomographyCatalog),
@@ -532,7 +539,9 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
         import pyccl
 
         z_col = self.config["redshift_column"]
-        extra_cols = [c for c in self.config["extra_cols"] if c and c != "comoving_distance"]
+        extra_cols = [
+            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
+        ]
 
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
@@ -560,6 +569,7 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
             data["comoving_distance"] = d
             yield s, e, data
 
+
 class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
     """
     Split an external lens catalog into bins, and add a radial coordinate.
@@ -567,6 +577,7 @@ class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
     Like TXLensCatalogSplitter3D this adds uses the redshift (z_mean, by default)
     and a fiducial cosmology.
     """
+
     name = "TXExternalLensCatalogSplitter3D"
     inputs = [
         ("lens_tomography_catalog", TomographyCatalog),
@@ -582,7 +593,9 @@ class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
         import pyccl
 
         # We load all cols except for comoving distance, which we calculate
-        extra_cols = [c for c in self.config["extra_cols"] if c and c != "comoving_distance"]
+        extra_cols = [
+            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
+        ]
 
         # We need to read the redshift in to compute the distance
         if "redshift" not in extra_cols:
@@ -610,7 +623,6 @@ class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
             d = pyccl.comoving_radial_distance(cosmo, a)
             data["comoving_distance"] = d
             yield s, e, data
-
 
 
 if __name__ == "__main__":

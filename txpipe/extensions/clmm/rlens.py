@@ -35,12 +35,11 @@ class TXTwoPointRLens(TXTwoPoint):
     ]
     outputs = []
 
-
     config_options = {
         # TODO: Allow more fine-grained selection of 2pt subsets to compute
         "calcs": [0, 1, 2],
         "min_sep": 1.0,  # Megaparsec
-        "max_sep": 50.0, # Megaparsec
+        "max_sep": 50.0,  # Megaparsec
         "nbins": 9,
         "bin_slop": 0.1,
         "flip_g1": False,
@@ -107,8 +106,7 @@ class TXTwoPointRLens(TXTwoPoint):
         # here, so we overwrite it.
         result = super().call_treecorr(i, j, k)
         # choose a better name maybe!
-        return result._replace(corr_type = "galaxy_shearDensity_rlens")
-
+        return result._replace(corr_type="galaxy_shearDensity_rlens")
 
     def write_output(self, source_list, lens_list, meta, results):
         for result in results:

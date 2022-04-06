@@ -1,5 +1,12 @@
 from .base_stage import PipelineStage
-from .data_types import MapsFile, YamlFile, RandomsCatalog, TomographyCatalog, HDFFile, FiducialCosmology
+from .data_types import (
+    MapsFile,
+    YamlFile,
+    RandomsCatalog,
+    TomographyCatalog,
+    HDFFile,
+    FiducialCosmology,
+)
 from .utils import choose_pixelization, Splitter
 import numpy as np
 
@@ -171,13 +178,24 @@ class TXRandomCat(PipelineStage):
             # still work.
             batch1 = BatchWriter(
                 group,
-                {"ra": np.float64, "dec": np.float64, "z": np.float64, "comoving_distance": np.float64, "bin": np.int16},
+                {
+                    "ra": np.float64,
+                    "dec": np.float64,
+                    "z": np.float64,
+                    "comoving_distance": np.float64,
+                    "bin": np.int16,
+                },
                 offset=bin_starts[j] + pix_starts[j, start_vertex],
                 max_size=self.config["chunk_rows"],
             )
             batch2 = BatchWriter(
                 subgroup,
-                {"ra": np.float64, "dec": np.float64, "z": np.float64, "comoving_distance": np.float64},
+                {
+                    "ra": np.float64,
+                    "dec": np.float64,
+                    "z": np.float64,
+                    "comoving_distance": np.float64,
+                },
                 offset=pix_starts[j, start_vertex],
                 max_size=self.config["chunk_rows"],
             )
@@ -208,11 +226,19 @@ class TXRandomCat(PipelineStage):
                 # Sometimes we don't quite go down to z - deal with that
                 cdf_rand_val = cdf_rand_val.clip(z_cdf_norm.min(), z_cdf_norm.max())
                 z_photo_rand = z_interp_func(cdf_rand_val)
-                distance = pyccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_photo_rand))
+                distance = pyccl.comoving_radial_distance(
+                    cosmo, 1.0 / (1 + z_photo_rand)
+                )
 
                 # Save output to the generic non-binned output
                 index = bin_starts[j] + pix_starts[j, i]
-                batch1.write(ra=ra, dec=dec, z=z_photo_rand, comoving_distance=distance, bin=bin_index)
+                batch1.write(
+                    ra=ra,
+                    dec=dec,
+                    z=z_photo_rand,
+                    comoving_distance=distance,
+                    bin=bin_index,
+                )
 
                 # Save to the bit that is specific to this bin
                 index = pix_starts[j, i]
