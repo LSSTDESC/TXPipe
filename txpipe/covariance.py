@@ -697,14 +697,24 @@ class TXFourierTJPCovariance(PipelineStage):
             tjp_config[f"sigma_e_source_{i}"] = meta["sigma_e"][i]
 
         # Load masks
-        # Would it be better to pass a path? Masks are not that heavy, so we
-        # might save some I/O overhead reading them at once here)
+        # For clustering, we follow twopoint_fourier.py:214-219
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
             mask[mask == healpy.UNSEEN] = 0.0
             if self.rank == 0:
                 print("Loaded mask")
 
+        # Set any unseen pixels to zero weight.
+        with self.open_input("density_maps", wrapper=True) as f:
+            nbin_lens = f.file["maps"].attrs["nbin_lens"]
+            d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+            print(f"Loaded {nbin_lens} overdensity maps")
+
+        # twopoint_fourier.py:219
+        for d in d_maps:
+            mask[d == healpy.UNSEEN] = 0
+
+        # twopoint_fourier.py:225
         with self.open_input("source_maps", wrapper=True) as f:
             lensing_weights = []
             for b in range(nbin_sources):
