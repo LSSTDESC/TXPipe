@@ -644,6 +644,7 @@ class TXFourierTJPCovariance(PipelineStage):
         ("twopoint_data_fourier", SACCFile),  # For the binning information
         ("tracer_metadata_yml", YamlFile),  # For metadata
         ("mask", MapsFile),  # For the lens mask
+        ("density_maps", MapsFile),  # For the clustering mask
         ("source_maps", MapsFile),  # For the sources masks
     ]
 
