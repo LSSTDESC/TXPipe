@@ -2,19 +2,11 @@ from .base_stage import PipelineStage
 from .data_types import (
     HDFFile,
     ShearCatalog,
-    TomographyCatalog,
-    RandomsCatalog,
-    FiducialCosmology,
     SACCFile,
-    PhotozPDFFile,
-    PNGFile,
     TextFile,
 )
-from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
-from .utils.calibration_tools import read_shear_catalog_type
 from .utils.patches import PatchMaker
 import numpy as np
-import random
 import collections
 import sys
 import os
@@ -734,6 +726,7 @@ class TXTwoPoint(PipelineStage):
         meta["mean_e2"] = mean_e2
 
         return meta
+
 
 
 if __name__ == "__main__":
