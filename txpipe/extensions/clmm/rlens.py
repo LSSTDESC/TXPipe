@@ -33,7 +33,7 @@ class TXTwoPointRLens(TXTwoPoint):
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
     ]
-    outputs = []
+    outputs = [("rlens_measurement", TextFile)]
 
     config_options = {
         # TODO: Allow more fine-grained selection of 2pt subsets to compute
@@ -109,6 +109,10 @@ class TXTwoPointRLens(TXTwoPoint):
         return result._replace(corr_type="galaxy_shearDensity_rlens")
 
     def write_output(self, source_list, lens_list, meta, results):
-        for result in results:
-            print(result.i, result.j, result.object.xi)
-            print("")
+        with self.open_output("rlens_measurement") as f:
+            print("#i_bin  j_bin  mean_r_Mpc  rlens")
+            print("#i_bin  j_bin  mean_r_Mpc  rlens", file=f)
+            for result in results:
+                for logr, xi in zip(result.object.meanlogr, result.object.xi):
+                    print(result.i, result.j, np.exp(logr), xi)
+                    print(result.i, result.j, np.exp(logr), xi, file=f)
