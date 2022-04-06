@@ -441,14 +441,15 @@ class TXTwoPoint(PipelineStage):
         """
         import sacc
         import pickle
-        pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+        if self.name == "TXTwoPoint":
+            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
 
-        if os.path.exists(pickle_filename):
-            print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
-            with open(pickle_filename, "rb") as f:
-                result = pickle.load(f)
-            return result
-
+            if os.path.exists(pickle_filename):
+                print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
+                with open(pickle_filename, "rb") as f:
+                    result = pickle.load(f)
+                return result
+ 
         if k == SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -475,11 +476,12 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if self.rank == 0:
-            print(f"Pickling result to {pickle_filename}")
-            with open(pickle_filename, "wb") as f:
-                pickle.dump(result, f)
-
+        if self.name == "TXTwoPoint"
+            if self.rank == 0:
+                print(f"Pickling result to {pickle_filename}")
+                with open(pickle_filename, "wb") as f:
+                    pickle.dump(result, f)
+ 
         return result
 
     def prepare_patches(self, calcs, meta):
