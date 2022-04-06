@@ -476,7 +476,7 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if self.name == "TXTwoPoint"
+        if self.name == "TXTwoPoint":
             if self.rank == 0:
                 print(f"Pickling result to {pickle_filename}")
                 with open(pickle_filename, "wb") as f:
