@@ -701,13 +701,17 @@ class TXFourierTJPCovariance(PipelineStage):
         # might save some I/O overhead reading them at once here)
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
+            mask[mask == healpy.UNSEEN] = 0.0
             if self.rank == 0:
                 print("Loaded mask")
 
         with self.open_input("source_maps", wrapper=True) as f:
-            lensing_weights = [
-                f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)
-            ]
+            lensing_weights = []
+            for b in range(nbin_sources):
+                lw = f.read_map(f"lensing_weight_{b}")
+                lw[lw == healpy.UNSEEN] = 0.0
+                lensing_weights.append(lw)
+
             if self.rank == 0:
                 print(f"Loaded {nbin_source} lensing weight maps")
 
