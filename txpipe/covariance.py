@@ -701,7 +701,8 @@ class TXFourierTJPCovariance(PipelineStage):
 
     def run(self):
         import tjpcov.main
-
+        import healpy
+        
         # Read the metadata from earlier in the pipeline
         with self.open_input("tracer_metadata_yml", wrapper=True) as f:
             meta = f.content
@@ -763,7 +764,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # twopoint_fourier.py:225
         with self.open_input("source_maps", wrapper=True) as f:
             lensing_weights = []
-            for b in range(nbin_sources):
+            for b in range(nbin_source):
                 lw = f.read_map(f"lensing_weight_{b}")
                 lw[lw == healpy.UNSEEN] = 0.0
                 lensing_weights.append(lw)
