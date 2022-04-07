@@ -689,6 +689,7 @@ class TXFourierTJPCovariance(PipelineStage):
         ("twopoint_data_fourier", SACCFile),  # For the binning information
         ("tracer_metadata_yml", YamlFile),  # For metadata
         ("mask", MapsFile),  # For the lens mask
+        ("density_maps", MapsFile),  # For the clustering mask
         ("source_maps", MapsFile),  # For the sources masks
     ]
 
@@ -742,17 +743,31 @@ class TXFourierTJPCovariance(PipelineStage):
             tjp_config[f"sigma_e_source_{i}"] = meta["sigma_e"][i]
 
         # Load masks
-        # Would it be better to pass a path? Masks are not that heavy, so we
-        # might save some I/O overhead reading them at once here)
+        # For clustering, we follow twopoint_fourier.py:214-219
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
+            mask[mask == healpy.UNSEEN] = 0.0
             if self.rank == 0:
                 print("Loaded mask")
 
+        # Set any unseen pixels to zero weight.
+        with self.open_input("density_maps", wrapper=True) as f:
+            nbin_lens = f.file["maps"].attrs["nbin_lens"]
+            d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+            print(f"Loaded {nbin_lens} overdensity maps")
+
+        # twopoint_fourier.py:219
+        for d in d_maps:
+            mask[d == healpy.UNSEEN] = 0
+
+        # twopoint_fourier.py:225
         with self.open_input("source_maps", wrapper=True) as f:
-            lensing_weights = [
-                f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)
-            ]
+            lensing_weights = []
+            for b in range(nbin_sources):
+                lw = f.read_map(f"lensing_weight_{b}")
+                lw[lw == healpy.UNSEEN] = 0.0
+                lensing_weights.append(lw)
+
             if self.rank == 0:
                 print(f"Loaded {nbin_source} lensing weight maps")
 
@@ -833,12 +848,28 @@ class TXFourierTJPCovariance(PipelineStage):
                 hashes[m] = cl_sacc.metadata[f"hash/{m}"]
         ell_hash = cl_sacc.metadata["hash/ell_hash"]
 
-        w = {}
+        w = {'00': {}, '02': {}, '22': {}}
+        # Get the number of data points per Cell
+        dtype = cl_sacc.get_data_types()[0]
+        trs = cl_sacc.get_tracer_combinations()[0]
+        ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
+        n_ell = ell_eff.size
         for tr1, tr2 in cl_sacc.get_tracer_combinations():
+            # This assumes that B-modes will be in the file
+            ncell = cl_sacc.indices(tracers=(tr1, tr2)).size / n_ell
+            if ncell == 1:
+                sk = '00'
+            elif ncell == 2:
+                sk = '02'
+            elif ncell == 4:
+                sk = '22'
+            else:
+                raise ValueError(f'Number of cell = {ncell}, cannot be ' +
+                                 'converted to a combination of spins.')
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
-            if (key in w) or (key[::-1] in w):
+            if (key in w[sk]) or (key[::-1] in w[sk]):
                 continue
             # Build workspace hash (twopoint_fourier.py:387-395)
             h1 = hashes[m1]
@@ -847,7 +878,7 @@ class TXFourierTJPCovariance(PipelineStage):
             if h2 != h1:
                 cache_key ^= h2
 
-            w[key] = str(cache.get_path(cache_key))
+            w[sk][key] = str(cache.get_path(cache_key))
 
         return w
 
