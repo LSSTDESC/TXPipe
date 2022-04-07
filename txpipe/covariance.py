@@ -399,7 +399,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             if ell_bins is not None:
                 lb, cov["final_b"] = bin_cov(r=ell, r_bins=ell_bins, cov=cov["final"])
         return cov
-    """
+
     def get_angular_bins(self, cl_sacc):
         # This function replicates `choose_ell_bins` in twopoint_fourier.py
         # TODO: Move this to txpipe/utils/nmt_utils.py
@@ -409,9 +409,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         ell_max = cl_sacc.metadata["binning/ell_max"]
         ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
         n_ell = cl_sacc.metadata["binning/n_ell"]
-
+        edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
+        '''
         ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
-
+        print("ell_min, ell_max, n_ell:", ell_min, ell_max, n_ell)
         # Check that the binning is compatible with the one in the file
         dtype = cl_sacc.get_data_types()[0]
         trs = cl_sacc.get_tracer_combinations()[0]
@@ -423,10 +424,12 @@ class TXFourierGaussianCovariance(PipelineStage):
                 "The reconstructed NmtBin object is not "
                 + "compatible with the ells in the sacc file"
             )
+        print("ell_bins:", ell_bins)
         pdb.set_trace()
-        return ell_bins
-    """
+        '''
+        return edges
 
+    '''
     def get_angular_bins(self, two_point_data):
         # Assume that the ell binning is the same for each of the bins.
         # This is true in the current pipeline.
@@ -437,9 +440,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         # final maximum value of the last bin
         #ell_edges = [x["window"].min for x in X]
         #ell_edges.append(X[-1]["window"].max)
-        ell_edges = X[0]["window"].values 
+        ell_edges = X[0]["window"].values
+        # this are not the proper edges
         return np.array(ell_edges)
-    
+    '''
     def make_wigner_transform(self, meta):
         import threadpoolctl
         from tjpcov import wigner_transform
