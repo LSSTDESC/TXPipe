@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 import numpy as np
-import pdb
 
 class TXTwoPointTheoryReal(PipelineStage):
     """
@@ -267,11 +266,6 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 
-                # compute theory
-                #ell, *_ = s.get_ell_cl(
-                #    "galaxy_shear_cl_ee", f"source_{i}", f"source_{j}"
-                #)
-                
                 cl_unbinned = pyccl.angular_cl(
                     cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell_unbinned
                 )
@@ -287,9 +281,6 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
                 # get indices for this block
                 ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
-
-                # compute theory
-                #ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{j}")
                 
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
@@ -312,10 +303,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 ind = s.indices(
                     "galaxy_shearDensity_cl_e", (f"source_{i}", f"lens_{j}")
                 )
-                # compute theory
-                #ell, *_ = s.get_ell_cl(
-                #    "galaxy_shearDensity_cl_e", f"source_{i}", f"lens_{j}"
-                #)
+
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 cl_unbinned = pyccl.angular_cl(

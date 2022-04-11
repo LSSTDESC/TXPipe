@@ -118,7 +118,7 @@ TXTwoPointFourier:
     n_ell: 30
     ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
     nside: 2048
-    analytic_noise: False
+    analytic_noise: True
 
 TXTwoPoint:
     bin_slop: 0.05

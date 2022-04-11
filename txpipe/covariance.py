@@ -12,7 +12,6 @@ import numpy as np
 import warnings
 import os
 import pickle
-import pdb
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -410,40 +409,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
         n_ell = cl_sacc.metadata["binning/n_ell"]
         edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
-        '''
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
-        print("ell_min, ell_max, n_ell:", ell_min, ell_max, n_ell)
-        # Check that the binning is compatible with the one in the file
-        dtype = cl_sacc.get_data_types()[0]
-        trs = cl_sacc.get_tracer_combinations()[0]
-        ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
-        if not np.all(ell_bins.get_effective_ells() == ell_eff):
-            print(ell_bins.get_effective_ells())
-            print(ell_eff)
-            raise ValueError(
-                "The reconstructed NmtBin object is not "
-                + "compatible with the ells in the sacc file"
-            )
-        print("ell_bins:", ell_bins)
-        pdb.set_trace()
-        '''
         return edges
 
-    '''
-    def get_angular_bins(self, two_point_data):
-        # Assume that the ell binning is the same for each of the bins.
-        # This is true in the current pipeline.
-        X = two_point_data.get_data_points("galaxy_shear_cl_ee", i=0, j=0)
-        # Further assume that the ell ranges are contiguous, so that
-        # the max value of one window is the min value of the next.
-        # So we just need the lower edges of each bin and then the
-        # final maximum value of the last bin
-        #ell_edges = [x["window"].min for x in X]
-        #ell_edges.append(X[-1]["window"].max)
-        ell_edges = X[0]["window"].values
-        # this are not the proper edges
-        return np.array(ell_edges)
-    '''
     def make_wigner_transform(self, meta):
         import threadpoolctl
         from tjpcov import wigner_transform
@@ -702,7 +669,6 @@ class TXFourierTJPCovariance(PipelineStage):
     def run(self):
         import tjpcov.main
         import healpy
-        
         # Read the metadata from earlier in the pipeline
         with self.open_input("tracer_metadata_yml", wrapper=True) as f:
             meta = f.content
@@ -857,17 +823,11 @@ class TXFourierTJPCovariance(PipelineStage):
         ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
         n_ell = ell_eff.size
         for tr1, tr2 in cl_sacc.get_tracer_combinations():
-            # This assumes that B-modes will be in the file
-            ncell = cl_sacc.indices(tracers=(tr1, tr2)).size / n_ell
-            if ncell == 1:
-                sk = '00'
-            elif ncell == 2:
-                sk = '02'
-            elif ncell == 4:
-                sk = '22'
-            else:
-                raise ValueError(f'Number of cell = {ncell}, cannot be ' +
-                                 'converted to a combination of spins.')
+            # This assumes that the name of the tracers will be 'lens'or
+            # 'source'
+            s1 = 0 if 'lens' in tr1 else 2
+            s2 = 0 if 'lens' in tr2 else 2
+            sk = ''.join(sorted(f'{s1}{s2}'))
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)

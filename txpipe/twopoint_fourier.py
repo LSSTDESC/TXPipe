@@ -534,6 +534,8 @@ class TXTwoPointFourier(PipelineStage):
         import healpy
 
         CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEB = sacc.standard_types.galaxy_shear_cl_eb
+        CBE = sacc.standard_types.galaxy_shear_cl_be
         CBB = sacc.standard_types.galaxy_shear_cl_bb
         CdE = sacc.standard_types.galaxy_shearDensity_cl_e
         CdB = sacc.standard_types.galaxy_shearDensity_cl_b
@@ -562,6 +564,14 @@ class TXTwoPointFourier(PipelineStage):
                 (
                     0,
                     CEE,
+                ),
+                (
+                    1,
+                    CEB,
+                ),
+                (
+                    2,
+                    CBE,
                 ),
                 (
                     3,
@@ -593,13 +603,13 @@ class TXTwoPointFourier(PipelineStage):
             )
             # noise to subtract (already decoupled)
 
-            # Load mask and pass to function below. 
+            # Load mask and pass to function below.
             with self.open_input("mask", wrapper=True) as f:
                 mask = f.read_map("mask")
                 mask[mask == healpy.UNSEEN] = 0.0
                 if self.rank == 0:
                     print("Loaded mask")
-            
+
             n_ell, n_ell_coupled = self.compute_noise_analytic(
                 i, j, k, maps, f_sky, workspace, mask
             )
@@ -806,6 +816,8 @@ class TXTwoPointFourier(PipelineStage):
         from sacc.windows import BandpowerWindow
 
         CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEB = sacc.standard_types.galaxy_shear_cl_eb
+        CBE = sacc.standard_types.galaxy_shear_cl_be
         CBB = sacc.standard_types.galaxy_shear_cl_bb
         CdE = sacc.standard_types.galaxy_shearDensity_cl_e
         CdB = sacc.standard_types.galaxy_shearDensity_cl_b
@@ -822,10 +834,10 @@ class TXTwoPointFourier(PipelineStage):
         for d in self.results:
             tracer1 = (
                 f"source_{d.i}"
-                if d.corr_type in [CEE, CBB, CdE, CdB]
+                if d.corr_type in [CEE, CEB, CBE, CBB, CdE, CdB]
                 else f"lens_{d.i}"
             )
-            tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CBB] else f"lens_{d.j}"
+            tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CEB, CBE, CBB] else f"lens_{d.j}"
 
             n = len(d.l)
             # The full set of ell values (unbinned), used to store the
