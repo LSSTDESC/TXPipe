@@ -746,7 +746,6 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
-        print(workspaces)
 
         # MPI
         if self.comm:
