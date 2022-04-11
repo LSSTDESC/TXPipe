@@ -810,17 +810,11 @@ class TXFourierTJPCovariance(PipelineStage):
         ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
         n_ell = ell_eff.size
         for tr1, tr2 in cl_sacc.get_tracer_combinations():
-            # This assumes that B-modes will be in the file
-            ncell = cl_sacc.indices(tracers=(tr1, tr2)).size / n_ell
-            if ncell == 1:
-                sk = '00'
-            elif ncell == 2:
-                sk = '02'
-            elif ncell == 4:
-                sk = '22'
-            else:
-                raise ValueError(f'Number of cell = {ncell}, cannot be ' +
-                                 'converted to a combination of spins.')
+            # This assumes that the name of the tracers will be 'lens'or
+            # 'source'
+            s1 = 0 if 'lens' in tr1 else 2
+            s2 = 0 if 'lens' in tr2 else 2
+            sk = f'{s1}{s2}'
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
