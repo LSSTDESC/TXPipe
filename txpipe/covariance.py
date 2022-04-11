@@ -656,6 +656,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
     def run(self):
         import tjpcov.main
+        import healpy
 
         # Read the metadata from earlier in the pipeline
         with self.open_input("tracer_metadata_yml", wrapper=True) as f:
@@ -718,7 +719,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # twopoint_fourier.py:225
         with self.open_input("source_maps", wrapper=True) as f:
             lensing_weights = []
-            for b in range(nbin_sources):
+            for b in range(nbin_source):
                 lw = f.read_map(f"lensing_weight_{b}")
                 lw[lw == healpy.UNSEEN] = 0.0
                 lensing_weights.append(lw)
@@ -745,6 +746,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
+        print(workspaces)
 
         # MPI
         if self.comm:
@@ -814,7 +816,7 @@ class TXFourierTJPCovariance(PipelineStage):
             # 'source'
             s1 = 0 if 'lens' in tr1 else 2
             s2 = 0 if 'lens' in tr2 else 2
-            sk = f'{s1}{s2}'
+            sk = ''.join(sorted(f'{s1}{s2}'))
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
