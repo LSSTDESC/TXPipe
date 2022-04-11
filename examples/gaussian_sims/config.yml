@@ -121,7 +121,7 @@ TXTwoPointFourier:
     analytic_noise: False
 
 TXTwoPoint:
-    bin_slop: 1 #0.05
+    bin_slop: 0.05
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True

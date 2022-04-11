@@ -298,7 +298,7 @@ class TXTwoPoint(PipelineStage):
         print(comb[0])
         print(dir(comb[0]))
         self.memory_report(f"BEFORE ESTIMATE_MULTI_COV")
-        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])#, comm=self.comm)
         self.memory_report(f"AFTER ESTIMATE_MULTI_COV")
         S.add_covariance(cov)
 
@@ -442,7 +442,8 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import pickle
         if self.name == "TXTwoPoint":
-            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            #pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
                 print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
