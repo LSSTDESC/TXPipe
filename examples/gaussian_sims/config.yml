@@ -96,6 +96,8 @@ TXFourierTJPCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
     cache_dir: ./cache_nmt
     IA: 0.
+    #gaussian_sims_factor: [4.5, 4., 3.5, 3., 3.]    
+    gaussian_sims_factor: [1., 1., 1., 1., 1.]    
 
 TXRealGaussianCovariance:
     min_sep: 2.5
