@@ -296,7 +296,7 @@ class TXTwoPoint(PipelineStage):
         print(comb[0])
         print(dir(comb[0]))
         self.memory_report(f"BEFORE ESTIMATE_MULTI_COV")
-        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])#, comm=self.comm)
+        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
         self.memory_report(f"AFTER ESTIMATE_MULTI_COV")
         S.add_covariance(cov)
 

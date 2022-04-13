@@ -752,7 +752,7 @@ class TXTwoPointFourier(PipelineStage):
                 np.mean(mask) / ndens
             )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
             # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
-
+            print("np.mean(mask)", np.mean(mask))
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)

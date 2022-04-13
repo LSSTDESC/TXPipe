@@ -664,7 +664,7 @@ class TXFourierTJPCovariance(PipelineStage):
         ("summary_statistics_fourier", SACCFile),
     ]
 
-    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": ""}
+    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "", "gaussian_sims_factor": [1.],}
 
     def run(self):
         import tjpcov.main
@@ -704,10 +704,6 @@ class TXFourierTJPCovariance(PipelineStage):
         for i in range(nbin_lens):
             tjp_config[f"bias_lens_{i}"] = bias[i]
             tjp_config[f"Ngal_lens_{i}"] = meta["lens_density"][i]
-
-        for i in range(nbin_source):
-            tjp_config[f"Ngal_source_{i}"] = meta["n_eff"][i]
-            tjp_config[f"sigma_e_source_{i}"] = meta["sigma_e"][i]
 
         # Load masks
         # For clustering, we follow twopoint_fourier.py:214-219
@@ -792,10 +788,20 @@ class TXFourierTJPCovariance(PipelineStage):
         for trn, tr in cl_sacc.tracers.items():
             if "n_ell_coupled" in tr.metadata:
                 tracer_noise[trn] = tr.metadata["n_ell_coupled"]
+                '''
+                if "lens" in trn:
+                    print("Tracer_noise for %s"%trn, tracer_noise[trn])
+                    lens_bin = int(trn[-1])
+                    tracer_noise[trn] = tracer_noise[trn]*np.array(self.config["gaussian_sims_factor"][lens_bin])
+                    if self.config["gaussian_sims_factor"][lens_bin] != [1.]:
+                        print("ATTENTION: We are multiplying the tracer noise by the gaussian sims factor:", self.config["gaussian_sims_factor"][lens_bin])
+                        print("Scaled tracer noise is:", tracer_noise[trn])
+                '''
+     
             else:
                 raise KeyError(
                     "Missing n_ell_coupled metadata for tracer "
-                    + f"{trn}. Something is wrong with the input "
+                    + trn + f"Something is wrong with the input "
                     + "sacc file"
                 )
 
