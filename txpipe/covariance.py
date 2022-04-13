@@ -788,16 +788,6 @@ class TXFourierTJPCovariance(PipelineStage):
         for trn, tr in cl_sacc.tracers.items():
             if "n_ell_coupled" in tr.metadata:
                 tracer_noise[trn] = tr.metadata["n_ell_coupled"]
-                '''
-                if "lens" in trn:
-                    print("Tracer_noise for %s"%trn, tracer_noise[trn])
-                    lens_bin = int(trn[-1])
-                    tracer_noise[trn] = tracer_noise[trn]*np.array(self.config["gaussian_sims_factor"][lens_bin])
-                    if self.config["gaussian_sims_factor"][lens_bin] != [1.]:
-                        print("ATTENTION: We are multiplying the tracer noise by the gaussian sims factor:", self.config["gaussian_sims_factor"][lens_bin])
-                        print("Scaled tracer noise is:", tracer_noise[trn])
-                '''
-     
             else:
                 raise KeyError(
                     "Missing n_ell_coupled metadata for tracer "
