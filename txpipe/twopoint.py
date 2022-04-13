@@ -295,7 +295,15 @@ class TXTwoPoint(PipelineStage):
         print(comb[0])
         print(dir(comb[0]))
         self.memory_report(f"BEFORE ESTIMATE_MULTI_COV")
-        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
+        if treecorr.__version__.startswith("4.2."):
+            if self.rank == 0:
+                print("Using old TreeCorr - covariance may be slow. "
+                      "Consider using 4.3 from github main branch.")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        else:
+            if self.rank == 0:
+                print("Using new TreeCorr 4.3 or above")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
         self.memory_report(f"AFTER ESTIMATE_MULTI_COV")
         S.add_covariance(cov)
 
