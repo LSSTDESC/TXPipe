@@ -111,8 +111,7 @@ class TXTwoPoint(PipelineStage):
             self.memory_report("DONE_ALL_TREECORR")
 
         # Save the results
-        if self.rank == 0:
-            self.write_output(source_list, lens_list, meta, results)
+        self.write_output(source_list, lens_list, meta, results)
 
     def select_calculations(self, source_list, lens_list):
         calcs = []
@@ -368,6 +367,8 @@ class TXTwoPoint(PipelineStage):
             if self.config["do_shear_pos"] == True:
                 S2.add_tracer("NZ", f"source_{i}", z, Nz)
 
+        f.close()
+
         f = self.open_input("lens_photoz_stack")
         # For both source and lens
         for i in lens_list:
@@ -382,6 +383,13 @@ class TXTwoPoint(PipelineStage):
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
         self.add_data_points(S, results)
+
+        # The other processes are only needed for the covariance estimation.
+        # They do a bunch of other stuff here that isn't actually needed, but
+        # it should all be very fast. After this point they are not needed
+        # at all so return
+        if self.rank != 0:
+            return
 
         self.memory_report(f"AFTER ADD_DATA_POINTS")
 
