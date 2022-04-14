@@ -664,7 +664,7 @@ class TXFourierTJPCovariance(PipelineStage):
         ("summary_statistics_fourier", SACCFile),
     ]
 
-    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "", "gaussian_sims_factor": [1.],}
+    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",}
 
     def run(self):
         import tjpcov.main

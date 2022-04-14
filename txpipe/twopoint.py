@@ -456,8 +456,8 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import pickle
         if self.name == "TXTwoPoint":
-            #pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
-            pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
+            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
                 print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
