@@ -888,7 +888,6 @@ class TXTwoPointFourier(PipelineStage):
             S.metadata["binning/ell_max"] = self.config["ell_edges"][-1]
             S.metadata["binning/ell_spacing"] = self.config["ell_edges"][1] - self.config["ell_edges"][0]
             S.metadata["binning/n_ell"] = len(self.config["ell_edges"]) - 1
-            S.metadata["binning/ell_edges"] = self.config["ell_edges"]
         else:
             S.metadata["binning/ell_min"] = self.config["ell_min"]
             S.metadata["binning/ell_max"] = self.config["ell_max"]

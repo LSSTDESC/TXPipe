@@ -797,7 +797,8 @@ class TXFourierTJPCovariance(PipelineStage):
         # This function replicates `choose_ell_bins` in twopoint_fourier.py
         # TODO: Move this to txpipe/utils/nmt_utils.py
         from .utils.nmt_utils import MyNmtBin
-        if "binning/ell_edges" in cl_sacc.metadata.keys():
+        if "provenance/config/ell_edges" in cl_sacc.metadata.keys():
+            ell_edges = eval(cl_sacc.metadata["provenance/config/ell_edges"])
             ell_bins = MyNmtBin.from_edges(ell_edges[:-1], ell_edges[1:],
                                            is_Dell=False)
         else:
