@@ -797,13 +797,16 @@ class TXFourierTJPCovariance(PipelineStage):
         # This function replicates `choose_ell_bins` in twopoint_fourier.py
         # TODO: Move this to txpipe/utils/nmt_utils.py
         from .utils.nmt_utils import MyNmtBin
+        if "binning/ell_edges" in cl_sacc.metadata.keys():
+            ell_bins = MyNmtBin.from_edges(ell_edges[:-1], ell_edges[1:],
+                                           is_Dell=False)
+        else:
+            ell_min = cl_sacc.metadata["binning/ell_min"]
+            ell_max = cl_sacc.metadata["binning/ell_max"]
+            ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
+            n_ell = cl_sacc.metadata["binning/n_ell"]
 
-        ell_min = cl_sacc.metadata["binning/ell_min"]
-        ell_max = cl_sacc.metadata["binning/ell_max"]
-        ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
-        n_ell = cl_sacc.metadata["binning/n_ell"]
-
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
+            ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
 
         # Check that the binning is compatible with the one in the file
         dtype = cl_sacc.get_data_types()[0]

@@ -139,6 +139,7 @@ class TXTwoPointFourier(PipelineStage):
             nband = ell_bins.get_n_bands()
             ell_effs = ell_bins.get_effective_ells()
             print(f"Chosen {nband} ell bin bands with effective ell values and ranges:")
+            print("Chosen ell centers: ", ell_effs)
             for i in range(nband):
                 leff = ell_effs[i]
                 lmin = ell_bins.get_ell_min(i)
@@ -496,6 +497,9 @@ class TXTwoPointFourier(PipelineStage):
             ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
         else:
             ell_bins = MyNmtBin.from_edges(edges[:-1], edges[1:], is_Dell=False)
+            self.config["ell_min"] = np.min(edges)
+            self.config["ell_max"] = np.max(edges)
+            self.config["n_ell"] = len(edges)-1
         return ell_bins
 
     def select_calculations(self, nbins_source, nbins_lens):
@@ -633,7 +637,7 @@ class TXTwoPointFourier(PipelineStage):
             return np.exp(-(y**2) / 2)
 
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
-
+        print(n_ell, n_ell_coupled, c)
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
             self.results.append(
@@ -693,7 +697,8 @@ class TXTwoPointFourier(PipelineStage):
             # Analyze it with namaster
             field = nmt.NmtField(w, realization, n_iter=0)
             cl_coupled = nmt.compute_coupled_cell(field, field)
-
+            cl_coupled[0, :2] = 0
+            cl_coupled[3, :2] = 0
             # Accumulate
             noise_c_ells.append(cl_coupled)
 
@@ -878,13 +883,18 @@ class TXTwoPointFourier(PipelineStage):
         if self.config["cache_dir"]:
             S.metadata["cache_dir"] = self.config["cache_dir"]
 
-        # Adding binning information to pass later to TJPCov. I shouldn't be
-        # necessary, but it is at the moment.
-        S.metadata["binning/ell_min"] = self.config["ell_min"]
-        S.metadata["binning/ell_max"] = self.config["ell_max"]
-        S.metadata["binning/ell_spacing"] = self.config["ell_spacing"]
-        S.metadata["binning/n_ell"] = self.config["n_ell"]
-
+        if "ell_edges" in self.config.keys():
+            S.metadata["binning/ell_min"] = self.config["ell_edges"][0]
+            S.metadata["binning/ell_max"] = self.config["ell_edges"][-1]
+            S.metadata["binning/ell_spacing"] = self.config["ell_edges"][1] - self.config["ell_edges"][0]
+            S.metadata["binning/n_ell"] = len(self.config["ell_edges"]) - 1
+            S.metadata["binning/ell_edges"] = self.config["ell_edges"]
+        else:
+            S.metadata["binning/ell_min"] = self.config["ell_min"]
+            S.metadata["binning/ell_max"] = self.config["ell_max"]
+            S.metadata["binning/ell_spacing"] = self.config["ell_spacing"]
+            S.metadata["binning/n_ell"] = self.config["n_ell"]
+        
         # And we're all done!
         output_filename = self.get_output("twopoint_data_fourier")
         S.save_fits(output_filename, overwrite=True)
