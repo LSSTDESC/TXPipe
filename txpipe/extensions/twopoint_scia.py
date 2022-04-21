@@ -353,6 +353,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
             f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms"
         )
 
+        if n_i == 0 or n_j == 0:
+            if self.rank == 0:
+                print("Empty catalog: returning None")
+            return None
+
         ng = treecorr.NGCorrelation(
             self.config, max_rpar=0.0
         )  # The max_rpar = 0.0, is in fact the same as our selection function.
@@ -381,6 +386,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         print(
             f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms"
         )
+
+        if n_i == 0 or n_j == 0:
+            if self.rank == 0:
+                print("Empty catalog: returning None")
+            return None
 
         ng = treecorr.NGCorrelation(self.config)
         ng.process(cat_j, cat_i)
@@ -467,6 +477,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
             # First the tracers and generic tags
             tracer1 = f"source_{d.i}"  # if d.corr_type in [XI, GAMMAT,GAMMATS, ] else f'lens_{d.i}'
             tracer2 = f"source_{d.j}"  # if d.corr_type in [XI, GAMMAT, GAMMATS] else f'lens_{d.j}'
+
+            # Skip empty bins
+            if d.object is None:
+                continue
 
             # We build up the comb list to get the covariance of it later
             # in the same order as our data points
