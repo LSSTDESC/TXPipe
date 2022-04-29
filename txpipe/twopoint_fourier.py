@@ -17,6 +17,7 @@ from .utils.theory import theory_3x2pt
 import sys
 import warnings
 import pathlib
+import pdb
 
 # Using the same convention as in twopoint.py
 SHEAR_SHEAR = 0
@@ -554,7 +555,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # We need the theory spectrum for this pair
         # TODO: when we have templates to deproject, use this.
-        theory = cl_theory[(i, j, k)]
+        theory = cl_theory[(i, j, k)] # this is not needed anymore. Should I remove it? 
         ell_guess = cl_theory["ell"]
         cl_guess = None
 
@@ -616,6 +617,7 @@ class TXTwoPointFourier(PipelineStage):
             )
             if n_ell is not None:
                 c = c - n_ell
+                
             # Writing out the noise for later cross-checks
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
@@ -644,7 +646,9 @@ class TXTwoPointFourier(PipelineStage):
             return np.exp(-(y**2) / 2)
 
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
-
+        #print("window_pixel(ls, pixel_scheme.nside) ** 2", window_pixel(ls, pixel_scheme.nside) ** 2)
+        print("c_beam, k, i, j", c_beam, k, i, j)
+        
         # this has shape n_cls, n_bpws, n_cls, lmax+1
         bandpowers = workspace.get_bandpower_windows()
 
@@ -652,6 +656,7 @@ class TXTwoPointFourier(PipelineStage):
         for index, name in results_to_use:
             # this is shape (n_ell, lmax)
             win = bandpowers[index, :, index, :]
+            #["corr_type", "l", "value", "noise", "noise_coupled", "win", "i", "j"],
             self.results.append(
                 Measurement(
                     name,
@@ -737,6 +742,7 @@ class TXTwoPointFourier(PipelineStage):
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map) * pxarea
+            print('np.mean(var_map) * pxarea',i,j,k, n_ls)
             n_ell_coupled = np.zeros((4, 3 * nside))
             # Note that N_ell = 0 for ell = 1, 2 for shear
             n_ell_coupled[0, 2:] = n_ls
@@ -755,6 +761,7 @@ class TXTwoPointFourier(PipelineStage):
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
+        
 
         return n_ell, n_ell_coupled
 
@@ -874,11 +881,11 @@ class TXTwoPointFourier(PipelineStage):
                         # If computed through simulations, it might be better to
                         # take the mean since, for now, only a float can be passed
                         i = 0 if "lens" in tracer1 else 2
-                        tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled*self.config["gaussian_sims_factor"][int(tracer1[-1])])
+                        tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled*self.config["gaussian_sims_factor"][int(tracer1[-1])]**2)
                     else:
                         # Save the last element because the first one is zero for
                         # shear
-                        tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]*self.config["gaussian_sims_factor"][int(tracer1[-1])]
+                        tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]*self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
                     print("Noise after scaling:", tr.metadata["n_ell_coupled"])
                         
                 else:

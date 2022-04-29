@@ -523,6 +523,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # Use a fixed shape noise per component to generate
         # an overall
         shape_noise = 0.26
+        print('!!!Setting shape noise to', shape_noise)
         eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(
             0, shape_noise, nobj
         )
@@ -1069,8 +1070,8 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
 
         print(f"Loading from catalog {cat_name}")
 
-        cat = np.load(cat_name)
-
+        cat = np.load(cat_name, allow_pickle = True)
+    
         N = len(cat[0])
 
         return cat, N

@@ -115,7 +115,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         input_data = self.open_input("tracer_metadata")
 
         # per-bin quantities
-        N_eff = input_data["tracers/N_eff"][:]
+        N_eff = input_data["tracers/N_eff"][:] # for sources
         N_lens = input_data["tracers/lens_counts"][:]
         # For the gaussian sims, lambda = nbar(1+b*delta),
         # instead of lambda = nbar(1+delta), where delta is the density contrast field.
@@ -123,9 +123,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         # in the covariance for the same b factor.
         # Here we decrease the number density for this factor, since shot noise term is 1/nbar. 
         print('N_lens:', N_lens)
-        N_lens = N_lens/np.array(self.config["gaussian_sims_factor"])
+        N_lens = N_lens/np.array(self.config["gaussian_sims_factor"])**2
+        
         if self.config["gaussian_sims_factor"] != [1.]:
-            print("ATTENTION: We are dividing N_lens by the gaussian sims factor:", self.config["gaussian_sims_factor"])
+            print("ATTENTION: We are dividing N_lens by the gaussian sims factor squared:", np.array(self.config["gaussian_sims_factor"])**2)
             print("Scaled N_lens is:", N_lens)
             
         if self.config["use_true_shear"]:
