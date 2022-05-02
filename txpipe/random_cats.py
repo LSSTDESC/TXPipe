@@ -136,7 +136,7 @@ class TXRandomCat(PipelineStage):
         ra_out = group.create_dataset("ra", (n_total,), dtype=np.float64)
         dec_out = group.create_dataset("dec", (n_total,), dtype=np.float64)
         z_out = group.create_dataset("z", (n_total,), dtype=np.float64)
-        z_out = group.create_dataset("comoving_distance", (n_total,), dtype=np.float64)
+        chi_out = group.create_dataset("comoving_distance", (n_total,), dtype=np.float64)
         bin_out = group.create_dataset("bin", (n_total,), dtype=np.int16)
 
         # Second output is specific to an individual bin, so we can just load
