@@ -1,0 +1,66 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 64
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+
+FlowEngine:
+    n_samples: 10000
+    seed: 5763248
+    aliases:
+        # This input was generated using get_example_flow in pzflow,
+        # not something specific.
+        output: ideal_specz_catalog
+
+InvRedshiftIncompleteness:
+    pivot_redshift: 0.8
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+
+TXParqetToHDF:
+    hdf_group: photometry
+    aliases:
+        input: specz_catalog_pq
+        output: specz_catalog_hdf
+
+Inform_NZDir:
+    usecols: [u, g, r, i, z, "y"]
+    hdf5_groupname: photometry
+    aliases:
+        input: specz_catalog_hdf
+        model: nz_dir_model
+
+
+TXTruthLensSelector:
+    # Mag cuts
+    input_pz: False
+    true_z: True
+    lens_zbin_edges: [0.1, 0.3, 0.5]
+
+NZDir: 
+    usecols: [u_mag, g_mag, r_mag, i_mag, z_mag, y_mag]
+    aliases:
+        model: nz_dir_model
+        input: photometry_catalog
+        output: nz_result
+
+# TXSourceSelectorMetadetect:
+#     input_pz: False
+#     true_z: True
+#     bands: riz #used for selection
+#     T_cut: 0.5
+#     s2n_cut: 10.0
+#     max_rows: 1000
+#     delta_gamma: 0.02
+#     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+#     shear_prefix: ""
+#     true_z: False
+

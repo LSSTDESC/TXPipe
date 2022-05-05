@@ -117,8 +117,9 @@ class PipelineStage(PipelineStageBase):
         now for testing.
 
         """
-        path = self.get_output(tag)
         output_class = self.get_output_type(tag)
+        new_tag = self.get_aliased_tag(tag)
+        path = self.get_output(new_tag)
 
         # HDF files can be opened for parallel writing
         # under MPI.  This checks if:
@@ -166,3 +167,19 @@ class PipelineStage(PipelineStageBase):
             return obj
         else:
             return obj.file
+
+    def open_input(self, tag, wrapper=False, **kwargs):
+        """
+        TEMPORARY!
+
+        WORKING AROUND https://github.com/LSSTDESC/ceci/issues/71
+        """
+        print("Remove the temporary open_input before merging this!")
+        new_tag = self.get_aliased_tag(tag)
+        path = self.get_input(new_tag)
+        input_class = self.get_input_type(tag)
+        obj = input_class(path, "r", **kwargs)
+
+        if wrapper:  #pragma: no cover
+            return obj
+        return obj.file

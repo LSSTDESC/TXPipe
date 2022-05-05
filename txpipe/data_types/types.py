@@ -2,7 +2,7 @@
 This file contains TXPipe-specific file types, subclassing the more
 generic types in base.py
 """
-from .base import HDFFile, DataFile, YamlFile
+from .base import HDFFile, DataFile, YamlFile, ParquetFile
 import yaml
 
 
