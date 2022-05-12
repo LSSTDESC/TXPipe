@@ -562,6 +562,9 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
             parallel=False,
         )
 
+        # This iterates through chunks of the input catalogs, but for each
+        # chunk it also intercepts and adds the radial distance. So this function
+        # returns an iterator, just like combined_iterators does.
         for s, e, data in it:
             z = data[z_col]
             a = 1.0 / (1 + z)
@@ -617,6 +620,8 @@ class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
             parallel=False,
         )
 
+        # See the explanation of this in the TXLensCatalogSplitter3D
+        # class above
         for s, e, data in it:
             z = data.pop("redshift")
             a = 1.0 / (1 + z)

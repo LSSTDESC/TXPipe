@@ -85,6 +85,10 @@ class TXTwoPoint(PipelineStage):
         if self.rank == 0:
             # This is a workaround for the fact the the ceci config stuff doesn't
             # quite handle the get method properly.
+            # Which metrics are available, and how they are interpreted, depends on
+            # whether a distance is in the catalogs returned in get_shear_catalog
+            # and friends, below. In this base class only the 2D metrics will be
+            # available, but subclasses can specify to load a distance column too.
             metric = self.config["metric"] if "metric" in self.config else "Euclidean"
             print(f"Running TreeCorr with metric \"{metric}\"")
 
