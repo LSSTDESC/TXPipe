@@ -53,12 +53,12 @@ class TXSourceSelector(PipelineStage):
         'source_zbin_edges':[float],
         'random_seed': 42,
         'shear_prefix': 'mcal_',
-        'g_hi_cut': -99,
-        'r_hi_cut': -99,
-        'i_hi_cut': -99,
-        'g_lo_cut': -99,
-        'r_lo_cut': -99,
-        'i_lo_cut': -99,
+        'g_hi_cut': -99.,
+        'r_hi_cut': -99.,
+        'i_hi_cut': -99.,
+        'g_lo_cut': -99.,
+        'r_lo_cut': -99.,
+        'i_lo_cut': -99.,
     }
 
     def run(self):
@@ -641,6 +641,8 @@ class TXSourceSelector(PipelineStage):
                                       shear_catalog_type=shear_catalog_type)[0]
             lo_cut = self.config[f'{band}_lo_cut']
             hi_cut = self.config[f'{band}_hi_cut']
+            if verbose:
+                print("mag cuts", lo_cut, hi_cut, band)
             if lo_cut != -99:
                 sel &= data[mag_name] > lo_cut
             if hi_cut != -99:
@@ -653,7 +655,7 @@ class TXSourceSelector(PipelineStage):
         # this is the complete message.  Otherwise if we are about
         # to also apply a redshift bin cut about then the message will continue
         # as above
-        if verbose and is_2d:
+        if verbose:
             print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
                     f"{f3:.2%} SNR, {f4:.2%} mag")
         elif verbose:
