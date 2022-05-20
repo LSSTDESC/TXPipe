@@ -733,6 +733,10 @@ class TXApertureMass(TXTwoPoint):
             tracer1 = f"source_{d.i}"
             tracer2 = f"source_{d.j}"
 
+            # Skip empty bins
+            if d.object is None:
+                continue
+
             theta = np.exp(d.object.meanlogr)
             weight = d.object.weight
             err = np.sqrt(d.object.mapsq[4])
