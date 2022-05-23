@@ -44,6 +44,7 @@ class TXCosmoDC2Mock(PipelineStage):
         "apply_mag_cut": False,  # used when comparing to descqa measurements
         "Mag_r_limit": -19,  # used to decide what objects to cut out
         "metadetect": True,  # Alternatively we will mock a  metacal catalog
+        "add_shape_noise:" True, 
     }
 
     def data_iterator(self, gc):
@@ -522,8 +523,11 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Use a fixed shape noise per component to generate
         # an overall
-        shape_noise = 0.26
-        print('!!!Setting shape noise to', shape_noise)
+        if self.config["add_shape_noise"]:
+            shape_noise = 0.26
+        else:
+            shape_noise = 0.
+            
         eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(
             0, shape_noise, nobj
         )
@@ -756,7 +760,11 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Use a fixed shape noise per component to generate
         # an overall
-        shape_noise = 0.26
+        if self.config["add_shape_noise"]:
+            shape_noise = 0.26
+        else:
+            shape_noise = 0.
+            
         eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(
             0, shape_noise, nobj
         )
@@ -1004,6 +1012,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
         "flip_g2": False,  # this matches the metacal definition, and the treecorr/namaster one
         "apply_mag_cut": False,  # used when comparing to descqa measurements
         "metadetect": True,  # Alternatively we will mock a  metacal catalog
+        "add_shape_noise": False, # the input cats already have shape noise included
     }
 
     def data_iterator(self, cat):

@@ -144,6 +144,7 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             nband = ell_bins.get_n_bands()
             ell_effs = ell_bins.get_effective_ells()
+            # this ell_effs variable is not used anywhere else, should we just remove it?
             print(f"Chosen {nband} ell bin bands with effective ell values and ranges:")
             for i in range(nband):
                 leff = ell_effs[i]
@@ -549,10 +550,6 @@ class TXTwoPointFourier(PipelineStage):
         )
         sys.stdout.flush()
 
-        # The binning information - effective (mid) ell values and
-        # the window information
-        ls = ell_bins.get_effective_ells()
-
         # We need the theory spectrum for this pair
         # TODO: when we have templates to deproject, use this.
         theory = cl_theory[(i, j, k)] # this is not needed anymore. Should I remove it? 
@@ -595,6 +592,7 @@ class TXTwoPointFourier(PipelineStage):
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
+            #if k == POS_POS:
             c = nmt.compute_full_master(
                 field_i,
                 field_j,
@@ -645,6 +643,10 @@ class TXTwoPointFourier(PipelineStage):
             y = f * x
             return np.exp(-(y**2) / 2)
 
+        # The binning information - effective (mid) ell values and
+        # the window information
+        ls = ell_bins.get_effective_ells()
+        
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
         #print("window_pixel(ls, pixel_scheme.nside) ** 2", window_pixel(ls, pixel_scheme.nside) ** 2)
         print("c_beam, k, i, j", c_beam, k, i, j)
@@ -738,10 +740,12 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             with self.open_input("source_maps", wrapper=True) as f:
                 var_map = f.read_map(f"var_e_{i}")
+            print('i, j', i, j)
             var_map[var_map == hp.UNSEEN] = 0.0
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map) * pxarea
+            #pdb.set_trace()
             print('np.mean(var_map) * pxarea',i,j,k, n_ls)
             n_ell_coupled = np.zeros((4, 3 * nside))
             # Note that N_ell = 0 for ell = 1, 2 for shear
