@@ -17,7 +17,6 @@ from .utils.theory import theory_3x2pt
 import sys
 import warnings
 import pathlib
-import pdb
 
 # Using the same convention as in twopoint.py
 SHEAR_SHEAR = 0
