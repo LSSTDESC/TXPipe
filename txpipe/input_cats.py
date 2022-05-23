@@ -44,7 +44,7 @@ class TXCosmoDC2Mock(PipelineStage):
         "apply_mag_cut": False,  # used when comparing to descqa measurements
         "Mag_r_limit": -19,  # used to decide what objects to cut out
         "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise:" True, 
+        "add_shape_noise": True, 
     }
 
     def data_iterator(self, gc):
