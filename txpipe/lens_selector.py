@@ -1,5 +1,11 @@
 from .base_stage import PipelineStage
-from .data_types import YamlFile, TomographyCatalog, HDFFile, TextFile
+from .data_types import (
+    YamlFile,
+    TomographyCatalog,
+    HDFFile,
+    TextFile,
+    FiducialCosmology,
+)
 from .utils import LensNumberDensityStats
 from .utils import Splitter
 from .binning import build_tomographic_classifier, apply_classifier
@@ -411,11 +417,8 @@ class TXLensCatalogSplitter(PipelineStage):
     config_options = {
         "initial_size": 100_000,
         "chunk_rows": 100_000,
-        "extra_cols": [""]
+        "extra_cols": [""],
     }
-
-    lens_cat_tag = "photometry_catalog"
-    lens_cat_sec = "photometry"
 
     def run(self):
 
@@ -445,20 +448,7 @@ class TXLensCatalogSplitter(PipelineStage):
         else:
             print(f"Note: Process {self.rank} will not do anything.")
 
-        it = self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "lens_tomography_catalog",
-            "tomography",
-            ["lens_bin", "lens_weight"],
-            # second file
-            self.lens_cat_tag,
-            self.lens_cat_sec,
-            ["ra", "dec"] + extra_cols,
-            parallel=False,
-        )
-
-        for s, e, data in it:
+        for s, e, data in self.data_iterator():
             if self.rank == 0:
                 print(f"Process 0 binning data in range {s:,} - {e:,}")
 
@@ -474,6 +464,21 @@ class TXLensCatalogSplitter(PipelineStage):
         splitter.finish(my_bins)
         cat_output.close()
 
+    def data_iterator(self):
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        return self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            "photometry_catalog",
+            "photometry",
+            ["ra", "dec"] + extra_cols,
+            parallel=False,
+        )
+
 
 class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
     """
@@ -487,10 +492,142 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
     inputs = [
         ("lens_tomography_catalog", TomographyCatalog),
         ("lens_catalog", HDFFile),
+        ("fiducial_cosmology", FiducialCosmology),
     ]
-    lens_cat_tag = "lens_catalog"
 
-    lens_cat_sec = "lens"
+    def data_iterator(self):
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        return self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            "lens_catalog",
+            "lens",
+            ["ra", "dec"] + extra_cols,
+            parallel=False,
+        )
+
+
+class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
+    """
+    Split up a lens catalog into bins and add a radial coordinate
+
+    The radial coordinate is generated from the redshift and a fiducial cosmology.
+    The redshift column can be selected; by default it is the mean z.
+    """
+
+    name = "TXLensCatalogSplitter3D"
+    inputs = [
+        ("lens_tomography_catalog", TomographyCatalog),
+        ("photometry_catalog", HDFFile),
+        ("fiducial_cosmology", FiducialCosmology),
+        ("lens_photoz_pdfs", HDFFile),
+    ]
+
+    config_options = TXLensCatalogSplitter.config_options.copy()
+    config_options["redshift_column"] = "z_mean"
+
+    def run(self):
+        # Add comoving distance to extra cols if needed.
+        self.config["extra_cols"].append("comoving_distance")
+        super().run()
+
+    def data_iterator(self):
+        import pyccl
+
+        z_col = self.config["redshift_column"]
+        extra_cols = [
+            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
+        ]
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            "photometry_catalog",
+            "photometry",
+            ["ra", "dec"] + extra_cols,
+            "lens_photoz_pdfs",
+            "point_estimates",
+            [z_col],
+            parallel=False,
+        )
+
+        # This iterates through chunks of the input catalogs, but for each
+        # chunk it also intercepts and adds the radial distance. So this function
+        # returns an iterator, just like combined_iterators does.
+        for s, e, data in it:
+            z = data[z_col]
+            a = 1.0 / (1 + z)
+            d = pyccl.comoving_radial_distance(cosmo, a)
+            data["comoving_distance"] = d
+            yield s, e, data
+
+
+class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
+    """
+    Split an external lens catalog into bins, and add a radial coordinate.
+
+    Like TXLensCatalogSplitter3D this adds uses the redshift (z_mean, by default)
+    and a fiducial cosmology.
+    """
+
+    name = "TXExternalLensCatalogSplitter3D"
+    inputs = [
+        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_catalog", HDFFile),
+        ("fiducial_cosmology", FiducialCosmology),
+    ]
+
+    def run(self):
+        self.config["extra_cols"].append("comoving_distance")
+        super().run()
+
+    def data_iterator(self):
+        import pyccl
+
+        # We load all cols except for comoving distance, which we calculate
+        extra_cols = [
+            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
+        ]
+
+        # We need to read the redshift in to compute the distance
+        if "redshift" not in extra_cols:
+            extra_cols.append("redshift")
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            "lens_catalog",
+            "lens",
+            ["ra", "dec"] + extra_cols,
+            parallel=False,
+        )
+
+        # See the explanation of this in the TXLensCatalogSplitter3D
+        # class above
+        for s, e, data in it:
+            z = data.pop("redshift")
+            a = 1.0 / (1 + z)
+            d = pyccl.comoving_radial_distance(cosmo, a)
+            data["comoving_distance"] = d
+            yield s, e, data
 
 
 if __name__ == "__main__":

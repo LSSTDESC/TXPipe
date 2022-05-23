@@ -20,7 +20,6 @@ stages:
     # - name: PZRailEstimateLens # Compute p(z) values for the lens sample
     - name: TXPhotozSourceStack  # Stack p(z) into n(z)
     - name: TXPhotozLensStack    # Stack p(z) into n(z)
-    # - name: TXMainMaps
     - name: TXSourceMaps           # make source g1 and g2 maps
     - name: TXLensMaps           # make source lens and n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
@@ -57,6 +56,9 @@ stages:
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
+    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
+    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
+    - name: TXTwoPointFourier    # Compute power spectra C_ell
 
     # Disabled since not yet synchronised with new Treecorr MPI
     - name: TXRandomCat_source
@@ -65,7 +67,6 @@ stages:
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-    # - name: TXTwoPointFourier          # Compute power spectra C_ell
     # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
 
 

@@ -235,7 +235,7 @@ class PatchMaker:
         # Get the columns to be used here. Do all the ones
         # that are needed in this case
         cols = {}
-        for col in ["ra", "dec", "g1", "g2", "w"]:
+        for col in ["ra", "dec", "g1", "g2", "w", "r"]:
             # Check if the name of the column is set
             name = cat.config[f"{col}_col"]
             if name != "0":

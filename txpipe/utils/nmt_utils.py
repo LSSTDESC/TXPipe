@@ -87,7 +87,7 @@ class MyNmtBin(nmt.NmtBin):
 class WorkspaceCache:
     def __init__(self, dirname):
         self.path = pathlib.Path(dirname)
-        self.path.mkdir(exist_ok=True)
+        self.path.mkdir(parents=True, exist_ok=True)
         self._loaded = {}
 
     def get(self, key):

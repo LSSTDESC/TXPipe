@@ -108,6 +108,8 @@ TXTwoPoint:
     verbose: 0
     shear_catalog_type: metacal
     subtract_mean_shear: True
+    # Using the arc metric here to test it works
+    metric: Arc
 
 TXGammaTBrightStars:
     shear_catalog_type: metacal
