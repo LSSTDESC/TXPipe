@@ -90,7 +90,7 @@ TXSourceDiagnosticPlots:
 TXFourierGaussianCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
     cache_dir: ./cache_nmt/nside2048/
-    gaussian_sims_factor: [4.5, 4., 3.5, 3., 3.]
+    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
     
 TXFourierTJPCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
@@ -105,8 +105,8 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
+    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
     galaxy_bias: [1., 1., 1., 1., 1.]
-    #gaussian_sims_factor: [4.5, 4., 3.5, 3., 3.]
 
 TXTwoPointFourier:
     chunk_rows: 100000
@@ -118,8 +118,8 @@ TXTwoPointFourier:
     n_ell: 30
     ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
     nside: 2048
-    analytic_noise: True
-    gaussian_sims_factor: [4.5, 4., 3.5, 3., 3.]
+    analytic_noise: True 
+    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
 
 TXTwoPoint:
     bin_slop: 0.01
