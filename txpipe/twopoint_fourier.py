@@ -550,10 +550,6 @@ class TXTwoPointFourier(PipelineStage):
         )
         sys.stdout.flush()
 
-        # We need the theory spectrum for this pair
-        # TODO: when we have templates to deproject, use this.
-        theory = cl_theory[(i, j, k)] # this is not needed anymore. Should I remove it? 
-        ell_guess = cl_theory["ell"]
         cl_guess = None
 
         if k == SHEAR_SHEAR:
@@ -875,36 +871,22 @@ class TXTwoPointFourier(PipelineStage):
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
 
-                if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer1:
-                    
+                if self.config["analytic_noise"] is False:
+                    # If computed through simulations, it might be better to
+                    # take the mean since, for now, only a float can be passed
+                    i = 0 if "lens" in tracer1 else 2
+                    tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
+                else:
+                    # Save the last element because the first one is zero for
+                    # shear
+                    tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
+
+                if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer1:  
                     print (tracer1)
                     print("ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor.")
                     print("Original noise:", d.noise_coupled)
-
-                    if self.config["analytic_noise"] is False:
-                        # If computed through simulations, it might be better to
-                        # take the mean since, for now, only a float can be passed
-                        i = 0 if "lens" in tracer1 else 2
-                        tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled*self.config["gaussian_sims_factor"][int(tracer1[-1])]**2)
-                    else:
-                        # Save the last element because the first one is zero for
-                        # shear
-                        tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]*self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
-                    print("Noise after scaling:", tr.metadata["n_ell_coupled"])
+                    tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
                         
-                else:
-                    if self.config["analytic_noise"] is False:
-                        # If computed through simulations, it might be better to
-                        # take the mean since, for now, only a float can be passed
-                        i = 0 if "lens" in tracer1 else 2
-                        tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
-                    else:
-                        # Save the last element because the first one is zero for
-                        # shear
-                        tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
-
-
-
                         
         # Save provenance information
         provenance = self.gather_provenance()
