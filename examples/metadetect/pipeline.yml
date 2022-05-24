@@ -61,7 +61,6 @@ stages:
     - name: TXTwoPointFourier    # Compute power spectra C_ell
 
     # Disabled since not yet synchronised with new Treecorr MPI
-    - name: TXRandomCat_source
     - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
