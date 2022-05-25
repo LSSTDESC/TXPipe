@@ -715,6 +715,8 @@ class TXFourierTJPCovariance(PipelineStage):
                 print("Loaded mask")
 
         # Set any unseen pixels to zero weight.
+        # TODO: unify this code with the code in twopoint_fourier.py
+        
         with self.open_input("density_maps", wrapper=True) as f:
             nbin_lens = f.file["maps"].attrs["nbin_lens"]
             d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
@@ -754,7 +756,6 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Load NmtBin used for the Cells
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
-        print('workspaces:', workspaces)
 
         # MPI
         if self.comm:
@@ -820,7 +821,7 @@ class TXFourierTJPCovariance(PipelineStage):
         ell_eff, _ = cl_sacc.get_ell_cl(dtype, *trs)
         n_ell = ell_eff.size
         for tr1, tr2 in cl_sacc.get_tracer_combinations():
-            # This assumes that the name of the tracers will be 'lens'or
+            # This assumes that the name of the tracers will include 'lens'or
             # 'source'
             s1 = 0 if 'lens' in tr1 else 2
             s2 = 0 if 'lens' in tr2 else 2
@@ -828,6 +829,7 @@ class TXFourierTJPCovariance(PipelineStage):
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
+            # checking if the combination m1,m2 or m2,m1 is already done. 
             if (key in w[sk]) or (key[::-1] in w[sk]):
                 continue
             # Build workspace hash (twopoint_fourier.py:387-395)
