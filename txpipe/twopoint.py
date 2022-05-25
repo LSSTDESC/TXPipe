@@ -108,9 +108,11 @@ class TXTwoPoint(PipelineStage):
             result = self.call_treecorr(i, j, k)
             results.append(result)
 
+        if self.comm:
+            self.comm.Barrier()
+
         # Save the results
-        if self.rank == 0:
-            self.write_output(source_list, lens_list, meta, results)
+        self.write_output(source_list, lens_list, meta, results)
 
     def select_calculations(self, source_list, lens_list):
         calcs = []
@@ -221,9 +223,9 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
-    def write_output(self, source_list, lens_list, meta, results):
-        import sacc
+    def add_data_points(self, S, results):
         import treecorr
+        import sacc
 
         XI = "combined"
         XIP = sacc.standard_types.galaxy_shear_xi_plus
@@ -232,38 +234,8 @@ class TXTwoPoint(PipelineStage):
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
 
-        S = sacc.Sacc()
-        if self.config["do_shear_pos"] == True:
-            S2 = sacc.Sacc()
-
-        # We include the n(z) data in the output.
-        # So here we load it in and add it to the data
-        f = self.open_input("shear_photoz_stack")
-
-        # Load the tracer data N(z) from an input file and
-        # copy it to the output, for convenience
-        for i in source_list:
-            z = f["n_of_z/source/z"][:]
-            Nz = f[f"n_of_z/source/bin_{i}"][:]
-            S.add_tracer("NZ", f"source_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"source_{i}", z, Nz)
-
-        f = self.open_input("lens_photoz_stack")
-        # For both source and lens
-        for i in lens_list:
-            z = f["n_of_z/lens/z"][:]
-            Nz = f[f"n_of_z/lens/bin_{i}"][:]
-            S.add_tracer("NZ", f"lens_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"lens_{i}", z, Nz)
-        # Closing n(z) file
-        f.close()
-
-        # Now build up the collection of data points, adding them all to
-        # the sacc data one by one.
         comb = []
-        for d in results:
+        for index, d in enumerate(results):
             # First the tracers and generic tags
             tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
             tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
@@ -325,48 +297,122 @@ class TXTwoPoint(PipelineStage):
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
-        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        if treecorr.__version__.startswith("4.2."):
+            if self.rank == 0:
+                print("Using old TreeCorr - covariance may be slow. "
+                      "Consider using 4.3 from github main branch.")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        else:
+            if self.rank == 0:
+                print("Using new TreeCorr 4.3 or above")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
         S.add_covariance(cov)
+
+    def add_gamma_x_data_points(self, S, results):
+        import treecorr
+        import sacc
+
+        XI = "combined"
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
+
+        covs = []
+        for index, d in enumerate(results):
+            tracer1 = (
+                f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
+            )
+            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
+
+            if d.corr_type == GAMMAT:
+                theta = np.exp(d.object.meanlogr)
+                npair = d.object.npairs
+                weight = d.object.weight
+                xi_x = d.object.xi_im
+                covX = d.object.estimate_cov("shot")
+                covs.append(covX)
+                err = np.sqrt(np.diag(covX))
+                n = len(xi_x)
+                for i in range(n):
+                    S.add_data_point(
+                        GAMMAX,
+                        (tracer1, tracer2),
+                        xi_x[i],
+                        theta=theta[i],
+                        error=err[i],
+                        weight=weight[i],
+                    )
+
+        S.add_covariance(covs)
+
+
+    def write_output(self, source_list, lens_list, meta, results):
+        import sacc
+        import treecorr
+
+        XI = "combined"
+        XIP = sacc.standard_types.galaxy_shear_xi_plus
+        XIM = sacc.standard_types.galaxy_shear_xi_minus
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
+        WTHETA = sacc.standard_types.galaxy_density_xi
+
+        S = sacc.Sacc()
+        if self.config["do_shear_pos"] == True:
+            S2 = sacc.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
+        f = self.open_input("shear_photoz_stack")
+
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
+        for i in source_list:
+            z = f["n_of_z/source/z"][:]
+            Nz = f[f"n_of_z/source/bin_{i}"][:]
+            S.add_tracer("NZ", f"source_{i}", z, Nz)
+            if self.config["do_shear_pos"] == True:
+                S2.add_tracer("NZ", f"source_{i}", z, Nz)
+
+        f.close()
+
+        f = self.open_input("lens_photoz_stack")
+        # For both source and lens
+        for i in lens_list:
+            z = f["n_of_z/lens/z"][:]
+            Nz = f[f"n_of_z/lens/bin_{i}"][:]
+            S.add_tracer("NZ", f"lens_{i}", z, Nz)
+            if self.config["do_shear_pos"] == True:
+                S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+        # Closing n(z) file
+        f.close()
+        # Now build up the collection of data points, adding them all to
+        # the sacc data one by one.
+        self.add_data_points(S, results)
+
+        # The other processes are only needed for the covariance estimation.
+        # They do a bunch of other stuff here that isn't actually needed, but
+        # it should all be very fast. After this point they are not needed
+        # at all so return
+        if self.rank != 0:
+            return
+
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
+
         self.write_metadata(S, meta)
+
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("twopoint_data_real_raw"), overwrite=True)
 
+
         # Adding the gammaX calculation:
-
         if self.config["do_shear_pos"] == True:
-            comb = []
-            for d in results:
-                tracer1 = (
-                    f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
-                )
-                tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
-
-                if d.corr_type == GAMMAT:
-                    theta = np.exp(d.object.meanlogr)
-                    npair = d.object.npairs
-                    weight = d.object.weight
-                    xi_x = d.object.xi_im
-                    covX = d.object.estimate_cov("shot")
-                    comb.append(covX)
-                    err = np.sqrt(np.diag(covX))
-                    n = len(xi_x)
-                    for i in range(n):
-                        S2.add_data_point(
-                            GAMMAX,
-                            (tracer1, tracer2),
-                            xi_x[i],
-                            theta=theta[i],
-                            error=err[i],
-                            weight=weight[i],
-                        )
-            S2.add_covariance(comb)
-            S2.to_canonical_order
+            self.add_gamma_x_data_points(S2, results)
+            S2.to_canonical_order()
             self.write_metadata(S2, meta)
             S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
 
@@ -397,7 +443,18 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
+        import pickle
+        #TODO: fix up the caching code
+        if self.name == "TXTwoPoint":
+            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
+            if os.path.exists(pickle_filename):
+                print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
+                with open(pickle_filename, "rb") as f:
+                    result = pickle.load(f)
+                return result
+ 
         if k == SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -420,6 +477,16 @@ class TXTwoPoint(PipelineStage):
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
+
+        if self.comm:
+            self.comm.Barrier()
+
+        if self.name == "TXTwoPoint":
+            if self.rank == 0:
+                print(f"Pickling result to {pickle_filename}")
+                with open(pickle_filename, "wb") as f:
+                    pickle.dump(result, f)
+ 
         return result
 
     def prepare_patches(self, calcs, meta):
@@ -695,6 +762,7 @@ class TXTwoPoint(PipelineStage):
             rancat_j = self.get_random_catalog(j)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
+
 
         if self.rank == 0:
             print(

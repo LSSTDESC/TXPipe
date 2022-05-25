@@ -433,6 +433,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
         return result
 
     def write_output(self, data, meta, results):
+        # This subclass only needs the root process for this task
+        if self.rank != 0:
+            return
+
         import sacc
         import treecorr
 

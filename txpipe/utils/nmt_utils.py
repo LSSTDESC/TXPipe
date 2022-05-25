@@ -3,7 +3,6 @@ import numpy as np
 import healpy
 import pathlib
 
-
 class MyNmtBinFlat(nmt.NmtBinFlat):
     def __init__(self, l0, lf):
         super().__init__(l0, lf)
