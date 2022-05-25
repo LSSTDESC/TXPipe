@@ -104,11 +104,9 @@ class TXTwoPoint(PipelineStage):
         for i, j, k in calcs:
             result = self.call_treecorr(i, j, k)
             results.append(result)
-            self.memory_report(f"DONE_TREECORR_{i}_{j}_{k}")
 
         if self.comm:
             self.comm.Barrier()
-            self.memory_report("DONE_ALL_TREECORR")
 
         # Save the results
         self.write_output(source_list, lens_list, meta, results)
@@ -235,7 +233,6 @@ class TXTwoPoint(PipelineStage):
 
         comb = []
         for index, d in enumerate(results):
-            self.memory_report(f"DATA POINT {index}")
             # First the tracers and generic tags
             tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
             tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
@@ -294,7 +291,6 @@ class TXTwoPoint(PipelineStage):
         # available - see the treecorr docs
         print(comb[0])
         print(dir(comb[0]))
-        self.memory_report(f"BEFORE ESTIMATE_MULTI_COV")
         if treecorr.__version__.startswith("4.2."):
             if self.rank == 0:
                 print("Using old TreeCorr - covariance may be slow. "
@@ -304,7 +300,6 @@ class TXTwoPoint(PipelineStage):
             if self.rank == 0:
                 print("Using new TreeCorr 4.3 or above")
             cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
-        self.memory_report(f"AFTER ESTIMATE_MULTI_COV")
         S.add_covariance(cov)
 
     def add_gamma_x_data_points(self, S, results):
@@ -317,7 +312,6 @@ class TXTwoPoint(PipelineStage):
 
         covs = []
         for index, d in enumerate(results):
-            self.memory_report(f"ADDING GAMMA X POINT {index}")
             tracer1 = (
                 f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
             )
@@ -342,9 +336,7 @@ class TXTwoPoint(PipelineStage):
                         weight=weight[i],
                     )
 
-        self.memory_report(f"BEFORE GAMMA_X ADD_COVARIANCE")
         S.add_covariance(covs)
-        self.memory_report(f"AFTER GAMMA_X ADD_COVARIANCE")
 
 
     def write_output(self, source_list, lens_list, meta, results):
@@ -387,7 +379,6 @@ class TXTwoPoint(PipelineStage):
                 S2.add_tracer("NZ", f"lens_{i}", z, Nz)
         # Closing n(z) file
         f.close()
-        self.memory_report("BEFORE ADD_DATA_POINTS")
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
         self.add_data_points(S, results)
@@ -399,33 +390,25 @@ class TXTwoPoint(PipelineStage):
         if self.rank != 0:
             return
 
-        self.memory_report(f"AFTER ADD_DATA_POINTS")
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
-        self.memory_report(f"AFTER REORDER")
 
         self.write_metadata(S, meta)
 
-        self.memory_report(f"AFTER METADATA")
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("twopoint_data_real_raw"), overwrite=True)
 
-        self.memory_report(f"AFTER SAVE")
 
         # Adding the gammaX calculation:
         if self.config["do_shear_pos"] == True:
             self.add_gamma_x_data_points(S2, results)
-            self.memory_report(f"AFTER ADD_GAMMA_X_DATA_POINTS")
             S2.to_canonical_order()
-            self.memory_report(f"AFTER REORDER 2")
             self.write_metadata(S2, meta)
-            self.memory_report(f"AFTER METADATA2 2")
             S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
-            self.memory_report(f"AFTER SAVE 2")
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
@@ -750,7 +733,6 @@ class TXTwoPoint(PipelineStage):
         rancat_i = self.get_random_catalog(i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-        self.memory_report(f"POS_POS {i} {j} GOT CAT i")
 
         if i == j:
             cat_j = None
@@ -763,7 +745,6 @@ class TXTwoPoint(PipelineStage):
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
-        self.memory_report(f"POS_POS {i} {j} GOT CAT j")
 
         if self.rank == 0:
             print(
@@ -774,11 +755,9 @@ class TXTwoPoint(PipelineStage):
 
         nn = treecorr.NNCorrelation(self.config)
         nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
-        self.memory_report(f"POS_POS {i} {j} PROCESSED 1")
 
         nr = treecorr.NNCorrelation(self.config)
         nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
-        self.memory_report(f"POS_POS {i} {j} PROCESSED 2")
 
         # The next calculation is faster if we explicitly tell TreeCorr
         # that its two catalogs here are the same one.
@@ -787,19 +766,16 @@ class TXTwoPoint(PipelineStage):
 
         rr = treecorr.NNCorrelation(self.config)
         rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
-        self.memory_report(f"POS_POS {i} {j} PROCESSED 3")
 
         if i == j:
             rn = None
         else:
             rn = treecorr.NNCorrelation(self.config)
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
-            self.memory_report(f"POS_POS {i} {j} PROCESSED 4")
 
         if self.rank == 0:
             t2 = perf_counter()
             nn.calculateXi(rr, dr=nr, rd=rn)
-            self.memory_report(f"POS_POS {i} {j} CALCULATED XI")
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return nn
