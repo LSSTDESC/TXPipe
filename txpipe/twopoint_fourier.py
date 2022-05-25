@@ -143,7 +143,6 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             nband = ell_bins.get_n_bands()
             ell_effs = ell_bins.get_effective_ells()
-            # this ell_effs variable is not used anywhere else, should we just remove it?
             print(f"Chosen {nband} ell bin bands with effective ell values and ranges:")
             for i in range(nband):
                 leff = ell_effs[i]
@@ -587,7 +586,6 @@ class TXTwoPointFourier(PipelineStage):
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
-            #if k == POS_POS:
             c = nmt.compute_full_master(
                 field_i,
                 field_j,
@@ -643,7 +641,6 @@ class TXTwoPointFourier(PipelineStage):
         ls = ell_bins.get_effective_ells()
         
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
-        #print("window_pixel(ls, pixel_scheme.nside) ** 2", window_pixel(ls, pixel_scheme.nside) ** 2)
         print("c_beam, k, i, j", c_beam, k, i, j)
         
         # this has shape n_cls, n_bpws, n_cls, lmax+1

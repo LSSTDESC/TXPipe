@@ -71,14 +71,14 @@ class MyNmtBin(nmt.NmtBin):
         return (c_ell[ell] * weight).sum() / weight.sum()
 
     @classmethod
-    def from_binning_info(self, ell_min, ell_max, n_ell, ell_spacing):
+    def from_binning_info(cls, ell_min, ell_max, n_ell, ell_spacing):
         # Creating the ell binning from the edges using this Namaster constructor.
         if ell_spacing == "log":
             edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
         else:
             edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
 
-        ell_bins = self.from_edges(edges[:-1], edges[1:], is_Dell=False)
+        ell_bins = cls.from_edges(edges[:-1], edges[1:], is_Dell=False)
 
         return ell_bins
 

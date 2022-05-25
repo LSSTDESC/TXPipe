@@ -289,8 +289,6 @@ class TXTwoPoint(PipelineStage):
 
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
-        print(comb[0])
-        print(dir(comb[0]))
         if treecorr.__version__.startswith("4.2."):
             if self.rank == 0:
                 print("Using old TreeCorr - covariance may be slow. "
@@ -438,6 +436,7 @@ class TXTwoPoint(PipelineStage):
         """
         import sacc
         import pickle
+        #TODO: fix up the caching code
         if self.name == "TXTwoPoint":
             pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
             #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
