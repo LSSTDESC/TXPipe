@@ -115,10 +115,9 @@ inputs:
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension if we are not using random_catalog_source for now
-    random_catalog_source: Null
     # So it is set to Null, so the yaml intepreter returns a None value to python. OBS 
     # the binned_random_catalog_source should also be set to Null in this case.
-    binned_random_catalog_source: Null
+    binned_random_catalog_source: None
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
