@@ -46,3 +46,4 @@ from .calibrate import TXShearCalibration
 from .extensions.twopoint_scia import TXSelfCalibrationIA
 from .extensions.clmm import TXTwoPointRLens
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
+from .extensions.random_cats_source import TXRandomCatSource

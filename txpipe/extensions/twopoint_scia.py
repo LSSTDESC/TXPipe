@@ -76,7 +76,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'var_method': 'jackknife',
         'low_mem': True,
         'metric': 'Rperp',
-        'use_randoms': False,
+        'use_randoms': True,
         'patch_dir': './cache/patches',
         }
 
