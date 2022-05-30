@@ -3,7 +3,7 @@
 stages:
     - name: TXSourceSelectorLensfit
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
+    - name: TXLensCatalogSplitter3D
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZRailTrainLens

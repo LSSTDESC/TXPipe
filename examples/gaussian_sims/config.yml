@@ -9,7 +9,7 @@ TXExposureInfo:
     dc2_name: '1.2p'
 
 TXGaussianSimsMock:
-    cat_name: '/global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/shearcat_shearalm_allbins_ra_dec_g1_g2_and_fakecols_areacut.npy'
+    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area/shearcat_allbins_ra_dec_e1_e2_and_fakecols_areacut.npy'
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2 
     flip_g2: False # opposite of cosmodc2
@@ -89,7 +89,13 @@ TXSourceDiagnosticPlots:
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1., 1., 1., 1., 1.]
-    cache_dir: ./cache_nmt
+    cache_dir: ./cache_nmt/nside2048/
+    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
+    
+TXFourierTJPCovariance:
+    galaxy_bias: [1., 1., 1., 1., 1.]
+    cache_dir: ./cache_nmt/nside2048/
+    IA: 0.
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -99,6 +105,7 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
+    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
     galaxy_bias: [1., 1., 1., 1., 1.]
 
 TXTwoPointFourier:
@@ -106,15 +113,16 @@ TXTwoPointFourier:
     flip_g1: False
     flip_g2: False
     apodization_size: 0.0
-    cache_dir: ./cache_nmt
+    cache_dir: ./cache_nmt/nside2048/
     true_shear: False
     n_ell: 30
-    ell_max: 6143 # nside * 3 - 1, since Namaster computes that anyway. 
+    ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
     nside: 2048
-    analytic_noise: True
+    analytic_noise: True 
+    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
 
 TXTwoPoint:
-    bin_slop: 0.05
+    bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True

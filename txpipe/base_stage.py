@@ -54,6 +54,7 @@ class PipelineStage(PipelineStageBase):
         print(
             f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB"
         )
+        sys.stdout.flush()
 
     def combined_iterators(self, rows, *inputs, parallel=True):
         if not len(inputs) % 3 == 0:

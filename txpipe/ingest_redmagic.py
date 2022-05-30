@@ -56,7 +56,7 @@ class TXIngestRedmagic(PipelineStage):
         g.create_dataset("ra", (n,), dtype=np.float64)
         g.create_dataset("dec", (n,), dtype=np.float64)
         g.create_dataset("chisq", (n,), dtype=np.float64)
-        g.create_dataset("zredmagic", (n,), dtype=np.float64)
+        g.create_dataset("redshift", (n,), dtype=np.float64)
         for b in "grizy":
             g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
             g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
@@ -109,7 +109,7 @@ class TXIngestRedmagic(PipelineStage):
             g["ra"][s:e] = data["ra"]
             g["dec"][s:e] = data["dec"]
             g["chisq"][s:e] = data["chisq"]
-            g["zredmagic"][s:e] = data["zredmagic"]
+            g["redshift"][s:e] = data["zredmagic"]
 
             # including mags
             for i, b in enumerate(bands):
