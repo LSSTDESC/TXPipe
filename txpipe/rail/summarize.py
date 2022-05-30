@@ -77,8 +77,6 @@ class PZRailSummarizeLens(PipelineStage):
 
     # pull these out automatically
     config_options = {
-        "leafsize": 20,
-
     }
 
     def run(self):
@@ -106,6 +104,8 @@ class PZRailSummarizeLens(PipelineStage):
 
         bands = model["szusecols"]
 
+        substage_class = NZDir
+
 
         # This is the bit that will not work with realistically sized
         # data sets. Need the RAIL parallel interface when ready.
@@ -119,35 +119,41 @@ class PZRailSummarizeLens(PipelineStage):
             nbin = g.attrs['nbin_lens']
             bins = g['lens_bin'][:]
 
+
+        # Generate the configuration for RAIL. Anything set in the
+        # config.yml file will also be put in here by the bit below,
+        # so we don't need to try all possible RAIL options.
+        sub_config = {
+            "model": model,  # not sure if I can put the model in here. Try.
+            "usecols": bands,
+            "hdf5_groupname": "",
+            "phot_weightcol":"",
+        }
+
+        for k, v in self.config.items():
+            if k in substage_class.config_options:
+                sub_config[k] = v
+
+
         # Just do things with the first bin to begin with
         qp_per_bin = []
         for i in range(nbin):
 
+            # Extract the chunk of the data assigned to this tomographic
+            # bin.
             index = (bins==i)
             nobj = index.sum()
-            print(f"Computing n(z) for bin {i}: {nobj} objects")
             data = {b: full_data[b][index] for b in bands}
+            print(f"Computing n(z) for bin {i}: {nobj} objects")
 
-            # any reason not to make this manually?
-            # This seems like it would needlessly store lots of data
-            data_handle = NZDir.data_store.add_data(f"lens_bin_{i}", data, TableHandle)
+            # Store this data set. Once this is parallelised will presumably have to delete
+            # it afterwards to avoid running out of memory.
+            data_handle = substage_class.data_store.add_data(f"lens_bin_{i}", data, TableHandle)
 
-            sub_config = {
-                # TODO: Move to config
-                "leafsize": 20,
-                "zmin": 0.0,
-                "zmax": 3.0,
-                "nzbins": 50,
-                "model": model,  # not sure if I can put the model in here. Try.
-                "usecols": bands,
-                "hdf5_groupname": "",
-                "phot_weightcol":"",
-            }
-
-            sub_stage = NZDir.make_stage(name=f"NZDir_{i}", **sub_config)
+            substage = substage_class.make_stage(name=f"NZDir_{i}", **sub_config)
             # TODO: FIgure out how to stop this making FITS files
             # for each stage as it goes along
-            bin_qp = sub_stage.estimate(data_handle)
+            bin_qp = substage.estimate(data_handle)
             qp_per_bin.append(bin_qp.data)
 
         # Combine the n(z) per bin together into one stack

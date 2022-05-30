@@ -39,6 +39,14 @@ Inform_NZDir:
         model: nz_dir_model
 
 
+PZRailSummarizeLens:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+
+
+
 TXTruthLensSelector:
     # Mag cuts
     input_pz: False
