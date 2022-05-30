@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ParquetFile, HDFFile
+from ..data_types import ParquetFile, HDFFile, PickleFile, QPFile
 
 
 class TXParqetToHDF(PipelineStage):
@@ -61,3 +61,96 @@ class TXParqetToHDF(PipelineStage):
 
         # There seems to be no close method on parquet files
         output.close()
+
+
+class PZRailSummarizeLens(PipelineStage):
+    name = "PZRailSummarizeLens"
+    inputs = [
+        ("lens_tomography_catalog", HDFFile),
+        ("photometry_catalog", HDFFile),
+        ("nz_dir_model", PickleFile),
+
+    ]
+    outputs = [
+        ("lens_photoz_stack", HDFFile),
+    ]
+
+    # pull these out automatically
+    config_options = {
+        "leafsize": 20,
+
+    }
+
+    def run(self):
+        import rail.estimation
+        import pickle
+        from rail.estimation.algos.NZDir import NZDir
+        from rail.core import DataStore, TableHandle
+
+        model_filename = self.get_input("nz_dir_model")
+
+
+        # The usual way of opening pickle files puts a load
+        # of provenance at the start of them. External pickle files
+        # like the ones from RAIL don't have this, so the file content
+        # comes out wrong.
+        # Once we've moved the provenance stuff from TXPipe to ceci
+        # then prov tracking should be harmonized, then we can replace
+        # these two lines:
+        with open(model_filename, "rb") as f:
+            model = pickle.load(f)
+        # with these:
+        # with self.open_input("nz_dir_model", wrapper=True) as f:
+        #     model = f.read()
+
+
+        bands = model["szusecols"]
+
+
+        # This is the bit that will not work with realistically sized
+        # data sets. Need the RAIL parallel interface when ready.
+        with self.open_input("photometry_catalog") as f:
+            g = f['photometry']
+            full_data = {b: g[f"/photometry/mag_{b}"][:] for b in bands}
+
+
+        with self.open_input("lens_tomography_catalog") as f:
+            g = f['tomography']
+            nbin = g.attrs['nbin_lens']
+            bins = g['lens_bin'][:]
+
+        # Just do things with the first bin to begin with
+        qp_per_bin = []
+        for i in range(nbin):
+
+            index = (bins==i)
+            nobj = index.sum()
+            print(f"Computing n(z) for bin {i}: {nobj} objects")
+            data = {b: full_data[b][index] for b in bands}
+
+            # any reason not to make this manually?
+            # This seems like it would needlessly store lots of data
+            data_handle = NZDir.data_store.add_data(f"lens_bin_{i}", data, TableHandle)
+
+            sub_config = {
+                # TODO: Move to config
+                "leafsize": 20,
+                "zmin": 0.0,
+                "zmax": 3.0,
+                "nzbins": 50,
+                "model": model,  # not sure if I can put the model in here. Try.
+                "usecols": bands,
+                "hdf5_groupname": "",
+                "phot_weightcol":"",
+            }
+
+            sub_stage = NZDir.make_stage(name=f"NZDir_{i}", **sub_config)
+            bin_qp = sub_stage.estimate(data_handle)
+            qp_per_bin.append(bin_qp.data)
+
+
+        for q in qp_per_bin[1:]:
+            qp_per_bin[0].append(q)
+
+        # TODO: Metadata
+        qp_per_bin[0].write_to(self.get_output("lens_photoz_stack"))

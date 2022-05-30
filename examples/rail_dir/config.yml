@@ -35,7 +35,7 @@ Inform_NZDir:
     usecols: [u, g, r, i, z, "y"]
     hdf5_groupname: photometry
     aliases:
-        input: specz_catalog_hdf
+        input: spectroscopic_catalog
         model: nz_dir_model
 
 

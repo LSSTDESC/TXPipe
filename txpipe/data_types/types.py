@@ -438,3 +438,6 @@ class FiducialCosmology(YamlFile):
         inits.update(kwargs)
 
         return ccl.Cosmology(**inits)
+
+class QPFile(DataFile):
+    suffix = "hdf5"

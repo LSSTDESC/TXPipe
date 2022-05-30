@@ -4,9 +4,6 @@ stages:
     - name: FlowEngine
     - name: InvRedshiftIncompleteness
     - name: TXParqetToHDF
-    # - name: TXTruthLensSelector  # select objects for lens bins
-    - name: Inform_NZDir  # Make a 
-    - name: NZDir
 
 
 # where to find any modules that are not in this repo,
