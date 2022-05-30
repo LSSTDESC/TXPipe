@@ -72,7 +72,7 @@ class PZRailSummarizeLens(PipelineStage):
 
     ]
     outputs = [
-        ("lens_photoz_stack", HDFFile),
+        ("lens_photoz_stack", QPFile),
     ]
 
     # pull these out automatically
@@ -145,10 +145,12 @@ class PZRailSummarizeLens(PipelineStage):
             }
 
             sub_stage = NZDir.make_stage(name=f"NZDir_{i}", **sub_config)
+            # TODO: FIgure out how to stop this making FITS files
+            # for each stage as it goes along
             bin_qp = sub_stage.estimate(data_handle)
             qp_per_bin.append(bin_qp.data)
 
-
+        # Combine the n(z) per bin together into one stack
         for q in qp_per_bin[1:]:
             qp_per_bin[0].append(q)
 
