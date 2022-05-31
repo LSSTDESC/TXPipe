@@ -4,6 +4,9 @@ stages:
     - name: FlowEngine
     - name: InvRedshiftIncompleteness
     - name: TXParqetToHDF
+    - name: TXTruthLensSelector  # select objects for lens bins
+    - name: Inform_NZDir
+    - name: PZRailSummarizeLens
 
 
 # where to find any modules that are not in this repo,

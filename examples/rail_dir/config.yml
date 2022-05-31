@@ -29,7 +29,7 @@ TXParqetToHDF:
     hdf_group: photometry
     aliases:
         input: specz_catalog_pq
-        output: specz_catalog_hdf
+        output: spectroscopic_catalog
 
 Inform_NZDir:
     usecols: [u, g, r, i, z, "y"]
