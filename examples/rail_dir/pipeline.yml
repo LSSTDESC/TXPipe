@@ -7,6 +7,7 @@ stages:
     - name: TXTruthLensSelector  # select objects for lens bins
     - name: Inform_NZDir
     - name: PZRailSummarizeLens
+      classname: PZRailSummarize
 
 
 # where to find any modules that are not in this repo,

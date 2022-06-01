@@ -36,7 +36,7 @@ Inform_NZDir:
     hdf5_groupname: photometry
     aliases:
         input: spectroscopic_catalog
-        model: nz_dir_model
+        model: lens_direct_calibration_model
 
 
 PZRailSummarizeLens:
@@ -44,7 +44,18 @@ PZRailSummarizeLens:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: lens_direct_calibration_model
 
+
+PZRailSummarizeSource:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    aliases:
 
 
 TXTruthLensSelector:

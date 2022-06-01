@@ -68,7 +68,7 @@ class PZRailSummarizeLens(PipelineStage):
     inputs = [
         ("lens_tomography_catalog", HDFFile),
         ("photometry_catalog", HDFFile),
-        ("nz_dir_model", PickleFile),
+        ("lens_dir_model", PickleFile),
 
     ]
     outputs = [
