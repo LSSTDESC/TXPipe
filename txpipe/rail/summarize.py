@@ -1,6 +1,6 @@
 from ..base_stage import PipelineStage
-from ..data_types import ParquetFile, HDFFile, PickleFile, QPFile
-
+from ..data_types import ParquetFile, HDFFile, PickleFile, NOfZFile
+from ..photoz_stack import Stack
 
 class TXParqetToHDF(PipelineStage):
     """Generic stage to convert a Parquet File to HDF
@@ -63,20 +63,24 @@ class TXParqetToHDF(PipelineStage):
         output.close()
 
 
-class PZRailSummarizeLens(PipelineStage):
-    name = "PZRailSummarizeLens"
+
+class PZRailSummarize(PipelineStage):
+    name = "PZRailSummarize"
     inputs = [
-        ("lens_tomography_catalog", HDFFile),
+        ("tomography_catalog", HDFFile),
         ("photometry_catalog", HDFFile),
-        ("lens_dir_model", PickleFile),
+        ("model", PickleFile),
 
     ]
     outputs = [
-        ("lens_photoz_stack", QPFile),
+        # TODO: Change to using QP files throughout
+        ("photoz_stack", NOfZFile),
     ]
 
     # pull these out automatically
     config_options = {
+        "catalog_group": "photometry",
+        "tomography_name": str,
     }
 
     def run(self):
@@ -85,10 +89,9 @@ class PZRailSummarizeLens(PipelineStage):
         from rail.estimation.algos.NZDir import NZDir
         from rail.core import DataStore, TableHandle
 
-        model_filename = self.get_input("nz_dir_model")
+        model_filename = self.get_input(self.get_aliased_tag("model"))
 
-
-        # The usual way of opening pickle files puts a load
+        # The usual way of opening pickle files puts a bunch
         # of provenance at the start of them. External pickle files
         # like the ones from RAIL don't have this, so the file content
         # comes out wrong.
@@ -103,21 +106,23 @@ class PZRailSummarizeLens(PipelineStage):
 
 
         bands = model["szusecols"]
+        cat_group = self.config["catalog_group"]
 
+        # TODO: Make this flexible
         substage_class = NZDir
 
 
         # This is the bit that will not work with realistically sized
         # data sets. Need the RAIL parallel interface when ready.
         with self.open_input("photometry_catalog") as f:
-            g = f['photometry']
-            full_data = {b: g[f"/photometry/mag_{b}"][:] for b in bands}
+            g = f[cat_group]
+            full_data = {b: g[f"mag_{b}"][:] for b in bands}
 
-
-        with self.open_input("lens_tomography_catalog") as f:
+        tomo_name = self.config["tomography_name"]
+        with self.open_input("tomography_catalog") as f:
             g = f['tomography']
-            nbin = g.attrs['nbin_lens']
-            bins = g['lens_bin'][:]
+            nbin = g.attrs[f'nbin_{tomo_name}']
+            bins = g[f'{tomo_name}_bin'][:]
 
 
         # Generate the configuration for RAIL. Anything set in the
@@ -128,6 +133,7 @@ class PZRailSummarizeLens(PipelineStage):
             "usecols": bands,
             "hdf5_groupname": "",
             "phot_weightcol":"",
+            "output_mode": "none",  # actually anything except "default" will work here
         }
 
         for k, v in self.config.items():
@@ -148,17 +154,31 @@ class PZRailSummarizeLens(PipelineStage):
 
             # Store this data set. Once this is parallelised will presumably have to delete
             # it afterwards to avoid running out of memory.
-            data_handle = substage_class.data_store.add_data(f"lens_bin_{i}", data, TableHandle)
+            data_handle = substage_class.data_store.add_data(f"tomo_bin_{i}", data, TableHandle)
 
             substage = substage_class.make_stage(name=f"NZDir_{i}", **sub_config)
-            # TODO: FIgure out how to stop this making FITS files
-            # for each stage as it goes along
             bin_qp = substage.estimate(data_handle)
             qp_per_bin.append(bin_qp.data)
 
-        # Combine the n(z) per bin together into one stack
-        for q in qp_per_bin[1:]:
-            qp_per_bin[0].append(q)
+        # TODO: Convert to just saving QP files. Might need to fix metadata saving.
+        # Also, this currently assumes that the histogram form of the QP ensemble
+        # is used, which may not always be true.
 
-        # TODO: Metadata
-        qp_per_bin[0].write_to(self.get_output("lens_photoz_stack"))
+        # All the tomo bins should have the same z values
+        # so copy out the first one's values here
+        t = qp_per_bin[0].build_tables()
+
+        # The stack class just wants the lower edges, and
+        # the bins value has shape (1, nbin) here.
+        z = t['meta']['bins'][0, :-1]
+        stack = Stack(tomo_name, z, nbin)
+
+        # Go through each bin setting n(z) on our object directly.
+        for i,q in enumerate(qp_per_bin):
+            t = q.build_tables()
+            stack.set_bin(i, t['data']['pdfs'][0])
+            
+        # Save final stack
+        with self.open_output("photoz_stack") as f:
+            stack.save(f)
+

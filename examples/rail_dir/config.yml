@@ -31,7 +31,16 @@ TXParqetToHDF:
         input: specz_catalog_pq
         output: spectroscopic_catalog
 
-Inform_NZDir:
+Inform_NZDirSource:
+    name: Inform_NZDirSource
+    usecols: [r, i, z]
+    hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: source_direct_calibration_model
+
+Inform_NZDirLens:
+    name: Inform_NZDirLens
     usecols: [u, g, r, i, z, "y"]
     hdf5_groupname: photometry
     aliases:
@@ -44,10 +53,15 @@ PZRailSummarizeLens:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    name: PZRailSummarizeLens
+    catalog_group: "photometry"
+    tomography_name: "lens"
     aliases:
         tomography_catalog: lens_tomography_catalog
         photometry_catalog: photometry_catalog
         model: lens_direct_calibration_model
+        photoz_stack: lens_photoz_stack
+    model: None
 
 
 PZRailSummarizeSource:
@@ -55,7 +69,15 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    catalog_group: "/shear/00"
+    tomography_name: "source"
+    name: PZRailSummarizeSource
     aliases:
+        tomography_catalog: shear_tomography_catalog
+        photometry_catalog: shear_catalog
+        model: source_direct_calibration_model
+        photoz_stack: shear_photoz_stack
+
 
 
 TXTruthLensSelector:
@@ -71,15 +93,15 @@ NZDir:
         input: photometry_catalog
         output: nz_result
 
-# TXSourceSelectorMetadetect:
-#     input_pz: False
-#     true_z: True
-#     bands: riz #used for selection
-#     T_cut: 0.5
-#     s2n_cut: 10.0
-#     max_rows: 1000
-#     delta_gamma: 0.02
-#     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-#     shear_prefix: ""
-#     true_z: False
+TXSourceSelectorMetadetect:
+    input_pz: False
+    true_z: True
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ""
+    true_z: False
 

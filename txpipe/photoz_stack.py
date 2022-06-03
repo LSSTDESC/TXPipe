@@ -25,6 +25,7 @@ class Stack:
         self.nz = z.size
         self.stack = np.zeros((nbin, z.size))
         self.counts = np.zeros(nbin)
+        self._set_manually = False
 
     def add_pdfs(self, bins, pdfs):
         """
@@ -41,6 +42,21 @@ class Stack:
             w = np.where(bins == b)
             self.stack[b] += pdfs[w].sum(axis=0)
             self.counts[b] += w[0].size
+
+    def set_bin(self, b, n_of_z):
+        """
+        Bypass the accumulation of PDFs and just set the n(z)
+        for a bin.  Cannot be used with MPI.
+        Parameters
+        ----------
+        b: int
+            The tomographic bin to set
+        n_of_z: array[float]
+            The n(z) total for this bin
+        """
+        self.stack[b] = n_of_z
+        self.counts[b] = 1
+        self._set_manually = True
 
     def add_delta_function(self, bins, z):
         """
@@ -82,6 +98,8 @@ class Stack:
         """
         # stack the results from different comms
         if comm is not None:
+            if self._set_manually:
+                raise RuntimeError("Tried to set n(z) manually with MPI")
             in_place_reduce(self.stack, comm)
             in_place_reduce(self.counts, comm)
 

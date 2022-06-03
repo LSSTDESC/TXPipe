@@ -5,10 +5,21 @@ stages:
     - name: InvRedshiftIncompleteness
     - name: TXParqetToHDF
     - name: TXTruthLensSelector  # select objects for lens bins
-    - name: Inform_NZDir
-    - name: PZRailSummarizeLens
-      classname: PZRailSummarize
-
+    - name: Inform_NZDirSource
+      classname: Inform_NZDir
+    - name: Inform_NZDirLens
+      classname: Inform_NZDir
+    - name: TXSourceSelectorMetadetect
+    - classname: PZRailSummarize
+      name: PZRailSummarizeLens
+    - classname: PZRailSummarize
+      name: PZRailSummarizeSource
+      # We want to move over to QP complete to store
+      # our n(z) objects, which will require going through
+      # and replacing the NOfZFile class where it's used with a QPFile
+      # (we might want two subclasses, one for tomo-bins and one for
+      # per-object PDFs). For now we convert to one of our stack files though.
+    - name: TXPhotozPlots
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
@@ -44,16 +55,7 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    exposures: data/example/inputs/exposures.hdf5
-    star_catalog: data/example/inputs/star_catalog.hdf5
-    # This file comes with the code
-    fiducial_cosmology: data/fiducial_cosmology.yml
-    # For the self-calibration extension we are not using Random_cat_source for now
-    # So it is set to Null, so the yaml intepreter returns a None value to python. 
-    random_cats_source: Null
     flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off
