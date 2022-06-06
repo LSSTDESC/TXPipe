@@ -12,7 +12,7 @@ global:
 
 
 FlowEngine:
-    n_samples: 10000
+    n_samples: 1000000
     seed: 5763248
     aliases:
         # This input was generated using get_example_flow in pzflow,
@@ -24,6 +24,17 @@ InvRedshiftIncompleteness:
     aliases:
         input: ideal_specz_catalog
         output: specz_catalog_pq
+
+GridSelection:
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+    redshift_cut: 5.1
+    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios.hdf5
+    settings_file: submodules/RAIL/examples/creation/data/HSC_grid_settings.pkl
+    random_seed: 66
+
+
 
 TXParqetToHDF:
     hdf_group: photometry

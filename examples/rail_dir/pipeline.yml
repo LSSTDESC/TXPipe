@@ -2,7 +2,7 @@
 # Stages to run
 stages:
     - name: FlowEngine
-    - name: InvRedshiftIncompleteness
+    - name: GridSelection
     - name: TXParqetToHDF
     - name: TXTruthLensSelector  # select objects for lens bins
     - name: Inform_NZDirSource
