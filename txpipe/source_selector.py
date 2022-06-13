@@ -539,11 +539,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         R[:, 1, 1] = (data["mcal_g2_2p"] - data["mcal_g2_2m"]) / delta_gamma
         return R
 
-    def apply_simple_redshift_cut(self, data):
+    def apply_simple_redshift_cut(self, shear_data):
         # If we have the truth pz then we just need to do the binning once,
         # as in the parent class
         if self.config["true_z"]:
-            return super().apply_simple_redshift_cut(data)
+            return super().apply_simple_redshift_cut(shear_data)
 
         # Otherwise we have to do it once for each variant, because
         # we are using a point estimate and should have different
