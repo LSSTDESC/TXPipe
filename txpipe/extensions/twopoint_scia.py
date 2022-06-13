@@ -44,10 +44,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
     name = "TXSelfCalibrationIA"
     inputs = [
         ('binned_shear_catalog', ShearCatalog),
-        ('binned_lens_catalog', HDFFile),
         ('binned_random_catalog_source', HDFFile),
         ('shear_photoz_stack', HDFFile),
-        ('lens_photoz_stack', HDFFile),
         ('patch_centers', TextFile),
         ("fiducial_cosmology", FiducialCosmology),
         ('tracer_metadata', HDFFile),
@@ -74,7 +72,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         'do_pos_pos': False,
         'do_shear_shear': False, 
         'var_method': 'jackknife',
-        'low_mem': True,
+        'low_mem': False,
         'metric': 'Rperp',
         'use_randoms': True,
         'patch_dir': './cache/patches',
@@ -149,7 +147,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             ext = f"/randoms/bin_{i}",
             ra_col = "ra",
             dec_col = "dec",
-            r_col = "r",
+            r_col = "comoving_distance",
             ra_units='degree',
             dec_units='degree',
             patch_centers=self.get_input('patch_centers'),
