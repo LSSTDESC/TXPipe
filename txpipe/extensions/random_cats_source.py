@@ -40,8 +40,8 @@ class TXRandomCatSource(PipelineStage):
         import scipy.stats
         import healpy
         import pyccl
-        from . import randoms
-        from .utils.hdf_tools import BatchWriter
+        from .. import randoms
+        from ..utils.hdf_tools import BatchWriter
 
         # Load the input depth map
         with self.open_input("aux_source_maps", wrapper=True) as maps_file:
