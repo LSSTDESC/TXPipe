@@ -23,7 +23,7 @@ class TXCosmoDC2Mock(PipelineStage):
     """
 
     name = "TXCosmoDC2Mock"
-
+    parallel = False
     inputs = [("response_model", HDFFile)]
 
     outputs = [
@@ -958,7 +958,7 @@ class TXBuzzardMock(TXCosmoDC2Mock):
     """
 
     name = "TXBuzzardMock"
-
+    parallel = False
     inputs = [("response_model", HDFFile)]
 
     outputs = [
@@ -992,7 +992,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
     """
 
     name = "TXGaussianSimsMock"
-
+    parallel = False
     inputs = [("response_model", HDFFile)]
 
     outputs = [

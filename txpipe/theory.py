@@ -10,6 +10,7 @@ class TXTwoPointTheoryReal(PipelineStage):
     """
 
     name = "TXTwoPointTheoryReal"
+    parallel = False
     inputs = [
         ("twopoint_data_real", SACCFile),
         ("fiducial_cosmology", FiducialCosmology),  # For example lines
@@ -192,6 +193,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     """
 
     name = "TXTwoPointTheoryFourier"
+    parallel = False
     inputs = [
         ("twopoint_data_fourier", SACCFile),
         ("fiducial_cosmology", FiducialCosmology),  # For example lines

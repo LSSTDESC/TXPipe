@@ -530,6 +530,7 @@ class TXDensityMaps(PipelineStage):
     """
 
     name = "TXDensityMaps"
+    parallel = False
     inputs = [
         ("lens_maps", MapsFile),
         ("mask", MapsFile),

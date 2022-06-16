@@ -10,6 +10,7 @@ class TXConvergenceMaps(PipelineStage):
     This uses the wlmassmap library, which is included as a submodule in TXPipe.
     """
     name = "TXConvergenceMaps"
+    parallel = False
     inputs = [
         ("source_maps", MapsFile),
     ]
@@ -89,6 +90,7 @@ class TXConvergenceMapPlots(PipelineStage):
     """
 
     name = "TXConvergenceMapPlots"
+    parallel = False
 
     inputs = [
         ("convergence_maps", MapsFile),

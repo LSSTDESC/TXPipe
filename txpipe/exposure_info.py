@@ -11,7 +11,7 @@ class TXExposureInfo(PipelineStage):
     """
 
     name = "TXExposureInfo"
-
+    parallel = False
     inputs = []
     outputs = [
         ("exposures", HDFFile),

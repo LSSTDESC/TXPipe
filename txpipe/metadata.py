@@ -16,6 +16,7 @@ class TXTracerMetadata(PipelineStage):
     """
 
     name = "TXTracerMetadata"
+    parallel = False
 
     inputs = [
         ("shear_catalog", ShearCatalog),
