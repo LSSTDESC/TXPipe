@@ -10,6 +10,7 @@ class TXSimpleMask(PipelineStage):
 
     """
     name = "TXSimpleMask"
+    parallel = False
     # make a mask from the auxiliary maps
     inputs = [("aux_lens_maps", MapsFile)]
     outputs = [("mask", MapsFile)]

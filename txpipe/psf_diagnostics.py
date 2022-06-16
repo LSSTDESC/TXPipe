@@ -183,7 +183,7 @@ class TXRoweStatistics(PipelineStage):
     """
 
     name = "TXRoweStatistics"
-
+    parallel = False
     inputs = [("star_catalog", HDFFile)]
     outputs = [
         ("rowe134", PNGFile),
@@ -340,7 +340,7 @@ class TXRoweStatistics(PipelineStage):
         f.close()
 
 
-class TXStarShearTests(PipelineStage):
+class TXGalaxyStarShear(PipelineStage):
     """
     Compute and plot star x galaxy and star x star correlations.
 
@@ -349,6 +349,7 @@ class TXStarShearTests(PipelineStage):
     """
 
     name = "TXGalaxyStarShear"
+    parallel = False
 
     inputs = [
         ("shear_catalog", ShearCatalog),
@@ -615,7 +616,7 @@ class TXStarShearTests(PipelineStage):
         f.close()
 
 
-class TXStarDensityTests(PipelineStage):
+class TXGalaxyStarDensity(PipelineStage):
     """
     Compute and plot star x galaxy and star x star density correlations
 
@@ -624,6 +625,7 @@ class TXStarDensityTests(PipelineStage):
     """
 
     name = "TXGalaxyStarDensity"
+    parallel = False
 
     inputs = [
         ("shear_catalog", ShearCatalog),
@@ -824,6 +826,7 @@ class TXBrighterFatterPlot(PipelineStage):
     """
 
     name = "TXBrighterFatterPlot"
+    parallel = False
 
     inputs = [("star_catalog", HDFFile)]
 

@@ -12,7 +12,7 @@ class PZPDFMLZ(PipelineStage):
     """
 
     name = "PZPDFMLZ"
-
+    parallel = False
     inputs = [
         ("photometry_catalog", HDFFile),
         ("photoz_trained_model", DataFile),

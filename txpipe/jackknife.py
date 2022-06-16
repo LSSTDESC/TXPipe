@@ -11,6 +11,7 @@ class TXJackknifeCenters(PipelineStage):
     """
 
     name = "TXJackknifeCenters"
+    parallel = False
 
     inputs = [
         ("random_cats", RandomsCatalog),

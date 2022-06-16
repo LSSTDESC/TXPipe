@@ -325,7 +325,7 @@ class TXPhotozPlots(PipelineStage):
     """
     Make n(z) plots of source and lens galaxies
     """
-
+    parallel = False
     name = "TXPhotozPlots"
     inputs = [("shear_photoz_stack", NOfZFile), ("lens_photoz_stack", NOfZFile)]
     outputs = [

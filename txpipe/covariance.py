@@ -30,6 +30,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     measured.
     """
     name = "TXFourierGaussianCovariance"
+    parallel = False
     do_xi = False
 
     inputs = [
@@ -581,6 +582,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     TJPCov and a fiducial cosmology.
     """
     name = "TXRealGaussianCovariance"
+    parallel = False
     do_xi = True
 
     inputs = [
