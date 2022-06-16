@@ -5,6 +5,7 @@ from .data_types import (
     HDFFile,
     TextFile,
     FiducialCosmology,
+    FitsFile,
 )
 from .utils import LensNumberDensityStats
 from .utils import Splitter
@@ -302,21 +303,28 @@ class TXMeanLensSelector(TXBaseLensSelector):
     name = "TXMeanLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
-        ("lens_photoz_pdfs", HDFFile),
+        ("lens_photoz_pdfs", FitsFile),
     ]
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
-        z_cols = ["z_mean"]
+        z_cols = ["yvals"]
+        with self.open_input("lens_photoz_pdfs") as f:
+            z_grid = f['META']['xvals'][0]
+
         iter_phot = self.iterate_hdf(
             "photometry_catalog", "photometry", phot_cols, chunk_rows
         )
-        iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "point_estimates", z_cols, chunk_rows
+        iter_pz = self.iterate_fits(
+            "lens_photoz_pdfs", "DATA", z_cols, chunk_rows
         )
+
+        # The current BPZ output does not store the mean z so we compute
+        # it here. If there's a QP iteration method later then use that here.
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = z_data["z_mean"]
+            pdf = z_data["yvals"]
+            data["z"] = (z_grid * pdf).sum(axis=1) / pdf.sum(axis=1)
             yield s, e, data
 
 
@@ -330,21 +338,21 @@ class TXModeLensSelector(TXBaseLensSelector):
     name = "TXModeLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
-        ("lens_photoz_pdfs", HDFFile),
+        ("lens_photoz_pdfs", FitsFile),
     ]
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
-        z_cols = ["z_mode"]
+        z_cols = ["zmode"]
         iter_phot = self.iterate_hdf(
             "photometry_catalog", "photometry", phot_cols, chunk_rows
         )
-        iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "point_estimates", z_cols, chunk_rows
+        iter_pz = self.iterate_fits(
+            "lens_photoz_pdfs", "ANCIL", z_cols, chunk_rows
         )
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = z_data["z_mode"]
+            data["z"] = z_data["zmode"]
             yield s, e, data
 
 
