@@ -80,15 +80,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
             print("smooth:", smooth)
-            # Convert to CCL form
-            try:
-                tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
-            except pyccl.errors.CCLError:
-                print(
-                    "To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d"
-                    % i
-                )
-                tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z[::2], nz[::2]))
+            tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
 
         # And the clustering tracers
         for i in range(nbin_lens):
