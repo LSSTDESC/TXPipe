@@ -4,22 +4,18 @@ stages:
     - name: FlowEngine
     - name: GridSelection
     - name: TXParqetToHDF
-    - name: TXTruthLensSelector  # select objects for lens bins
-    - name: Inform_NZDirSource
-      classname: Inform_NZDir
+    - name: PZPrepareEstimatorLens
+      classname: Inform_BPZ_lite
+    - name: PZEstimatorLens
+      classname: BPZ_lite
+      nprocess: 2
+      threads_per_process: 1
+    - name: TXMeanLensSelector
     - name: Inform_NZDirLens
       classname: Inform_NZDir
-    - name: TXSourceSelectorMetadetect
-    - classname: PZRailSummarize
-      name: PZRailSummarizeLens
-    - classname: PZRailSummarize
-      name: PZRailSummarizeSource
-      # We want to move over to QP complete to store
-      # our n(z) objects, which will require going through
-      # and replacing the NOfZFile class where it's used with a QPFile
-      # (we might want two subclasses, one for tomo-bins and one for
-      # per-object PDFs). For now we convert to one of our stack files though.
-    - name: TXPhotozPlots
+    - name: PZRailSummarizeLens
+      classname: PZRailSummarize
+      
 
 # where to find any modules that are not in this repo,
 # and any other code we need.

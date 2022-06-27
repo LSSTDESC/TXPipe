@@ -62,6 +62,30 @@ PZPrepareEstimatorLens:
     hdf5_groupname: photometry
 
 
+PZPrepareEstimatorSource:
+    name: PZPrepareEstimatorSource
+    classname: Inform_BPZ_lite
+    aliases:
+        input: spectroscopic_catalog
+        model: source_photoz_model
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_ugrizy.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+
 PZEstimatorLens:
     name: PZEstimatorLens
     classname: BPZ_lite

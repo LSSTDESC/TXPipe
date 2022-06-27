@@ -7,59 +7,67 @@ stages:
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
-      classname: BPZ_lite          
+      classname: BPZ_lite
+      nprocess: 2
+      threads_per_process: 1  
+    - name: PZPrepareEstimatorSource   # Prepare the p(z) estimator for the sources. Not used in main pipeline
+      classname: Inform_BPZ_lite   
+    - name: PZEstimatorSource        # Measure lens galaxy PDFs
+      classname: BPZ_lite
+      nprocess: 2
+      threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
-    # - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-    #   classname: Inform_NZDir
-    # - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
-    #   classname: PZRailSummarize  
-    # - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
-    #   classname: PZRailSummarize
-    # - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    # - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
-    #   classname: Inform_NZDir
-    # - name: TXShearCalibration     # Calibrate and split the source sample tomographically
-    # - name: TXLensCatalogSplitter  # Split the lens sample tomographically
-    # - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
-    # - name: TXSourceMaps           # make source g1 and g2 maps
-    # - name: TXLensMaps             # make source lens and n_gal maps
-    # - name: TXAuxiliarySourceMaps  # make PSF and flag maps
-    # - name: TXAuxiliaryLensMaps    # make depth and bright object maps
-    # - name: TXSimpleMask         # combine maps to make a simple mask
-    # - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
-    # - name: TXMapPlots           # make pictures of all the maps
-    # - name: TXTracerMetadata     # collate metadata
-    # - name: TXRandomCat          # generate lens bin random catalogs
-    # - name: TXJackknifeCenters   # Split the area into jackknife regions
-    # - name: TXTwoPoint           # Compute real-space 2-point correlations
-    #   threads_per_process: 2
-    # - name: TXBlinding           # Blind the data following Muir et al
-    #   threads_per_process: 2
-    # - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
-    # - name: TXTwoPointPlots      # Make plots of 2pt correlations
-    # - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
-    # - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
-    # - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
-    #   threads_per_process: 2
-    # - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
-    #   threads_per_process: 2
-    # - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
-    #   threads_per_process: 2
-    # - name: TXRoweStatistics     # Compute and plot Rowe statistics
-    #   threads_per_process: 2
-    # - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
-    # - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
-    # - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
-    # - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-    # - name: TXPhotozPlots        # Plot the bin n(z)
-    # - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
-    # - name: TXConvergenceMapPlots # Plot the convergence map
-    # - name: TXMapCorrelations    # plot the correlations between systematics and data
-    # - name: TXApertureMass        # Compute aperture-mass statistics
-    #   threads_per_process: 2
-    # - name: TXSourceNoiseMaps    # Compute shear noise using rotations
-    # - name: TXLensNoiseMaps      # Compute lens noise using half-splits
-    # - name: TXTwoPointFourier    # Compute power spectra C_ell
+    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_NZDir
+    - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize  
+    - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize
+    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
+    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+      classname: Inform_NZDir
+    - name: TXShearCalibration     # Calibrate and split the source sample tomographically
+    - name: TXLensCatalogSplitter  # Split the lens sample tomographically
+    - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
+    - name: TXSourceMaps           # make source g1 and g2 maps
+    - name: TXLensMaps             # make source lens and n_gal maps
+    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
+    - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    - name: TXMapPlots           # make pictures of all the maps
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXRandomCat          # generate lens bin random catalogs
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
+      threads_per_process: 2
+    - name: TXBlinding           # Blind the data following Muir et al
+      threads_per_process: 2
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
+      threads_per_process: 2
+    - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
+      threads_per_process: 2
+    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
+      threads_per_process: 2
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+      threads_per_process: 2
+    - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+    - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    - name: TXPhotozPlots        # Plot the bin n(z)
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXMapCorrelations    # plot the correlations between systematics and data
+    - name: TXApertureMass        # Compute aperture-mass statistics
+      threads_per_process: 2
+    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
+    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
+    - name: TXTwoPointFourier    # Compute power spectra C_ell
 
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies

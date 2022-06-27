@@ -303,7 +303,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
     name = "TXMeanLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
-        ("lens_photoz_pdfs", FitsFile),
+        ("lens_photoz_pdfs", HDFFile),
     ]
 
     def data_iterator(self):
@@ -311,13 +311,13 @@ class TXMeanLensSelector(TXBaseLensSelector):
         phot_cols = ["mag_i", "mag_r", "mag_g"]
         z_cols = ["yvals"]
         with self.open_input("lens_photoz_pdfs") as f:
-            z_grid = f['META']['xvals'][0]
+            z_grid = f['meta']['xvals'][0]
 
         iter_phot = self.iterate_hdf(
             "photometry_catalog", "photometry", phot_cols, chunk_rows
         )
-        iter_pz = self.iterate_fits(
-            "lens_photoz_pdfs", "DATA", z_cols, chunk_rows
+        iter_pz = self.iterate_hdf(
+            "lens_photoz_pdfs", "data", z_cols, chunk_rows
         )
 
         # The current BPZ output does not store the mean z so we compute
