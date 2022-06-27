@@ -822,5 +822,113 @@ class TXTwoPoint(PipelineStage):
 
 
 
+class TXTwoPointPixel(TXTwoPoint):
+    """
+    This subclass of the standard TXTwoPoint uses maps to compute
+    pixelized versions of the real space correlation functions.
+    This is useful when the number density of the galaxy samples
+    is too high to use random points to sample the mask.
+    """
+
+    name = "TXTwoPointPixel"
+    inputs = [
+        ("density_maps", HDFFile),
+        ("binned_shear_catalog", ShearCatalog),
+        ("binned_lens_catalog", HDFFile),
+        ("binned_random_catalog", HDFFile),
+        ("shear_photoz_stack", HDFFile),
+        ("lens_photoz_stack", HDFFile),
+        ("patch_centers", TextFile),
+        ("tracer_metadata", HDFFile),
+    ]
+    outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        # TODO: Allow more fine-grained selection of 2pt subsets to compute
+        "calcs": [0, 1, 2],
+        "min_sep": 0.5,
+        "max_sep": 300.0,
+        "nbins": 9,
+        "bin_slop": 0.0,
+        "sep_units": "arcmin",
+        "flip_g1": False,
+        "flip_g2": True,
+        "cores_per_task": 20,
+        "verbose": 1,
+        "source_bins": [-1],
+        "lens_bins": [-1],
+        "reduce_randoms_size": 1.0,
+        "do_shear_shear": True,
+        "do_shear_pos": True,
+        "do_pos_pos": True,
+        "var_method": "jackknife",
+        "low_mem": False,
+        "patch_dir": "./cache/patches",
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
+        "metric": "Euclidean",
+    }
+    
+
+    def get_density_catalog(self, i):
+        import treecorr
+
+        # Get the data
+        pix = np.array(f['maps/delta_'+str(i)+'/pixel']) 
+        delta = np.array(f['maps/delta_'+str(i)+'/value'])
+        
+        theta, phi = hp.pix2ang(4096, pix)
+        dec_pix = 90.-theta/np.pi*180
+        ra_pix = phi/np.pi*180
+
+        # And finally the density maps
+        with self.open_input("density_maps", wrapper=True) as f:
+            d_map = f.read_map(f"delta_{i}")
+            print(f"Loaded {i} overdensity maps")
+
+        
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            self.get_input("density_maps"),
+            ext=f"/maps/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            w_col="weight",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
+        )
+        return cat
+
+        
+    
+    def calculate_pos_pos(self, i, j):
+        import treecorr
+
+        cat_i = self.get_density_catalog(i)
+
+
+        if i == j:
+            cat_j = cat_i
+        else:
+            cat_j = self.get_density_catalog(j)
+
+        if self.rank == 0:
+            print(
+                f"Calculating position-position bin pair ({i}, {j})"
+            )
+
+        t1 = perf_counter()
+
+        kk = treecorr.KKCorrelation(self.config)
+        kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        return kk
+
+
+    
+
+
 if __name__ == "__main__":
     PipelineStage.main()
