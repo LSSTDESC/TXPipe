@@ -65,8 +65,8 @@ class TXTwoPointFourier(PipelineStage):
         ("source_maps", MapsFile),
         ("density_maps", MapsFile),
         ("mask", MapsFile),
-        #("source_noise_maps", LensingNoiseMaps),
-        #("lens_noise_maps", ClusteringNoiseMaps),
+        ("source_noise_maps", LensingNoiseMaps),
+        ("lens_noise_maps", ClusteringNoiseMaps),
     ]
     outputs = [("twopoint_data_fourier", SACCFile)]
 

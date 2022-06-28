@@ -10,7 +10,7 @@ TXExposureInfo:
 
 TXGaussianSimsMock:
     #cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area/shearcat_allbins_ra_dec_e1_e2_and_fakecols_areacut.npy'
-    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area_nside4096_mask_from_yuuki/shearcat_allbins_ra_dec_e1_e2_and_fakecols_areacut.npy'
+    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/shearcat_allbins_ra_dec_e1_e2_and_fakecols_12300d.npy'
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2 
     flip_g2: False # opposite of cosmodc2
@@ -80,7 +80,7 @@ TXSourceSelectorMetadetect:
 
 TXRandomCat:
     chunk_rows: 10000000 
-    density: 20 # gals per sq arcmin
+    density: 3 # gals per sq arcmin
 
 TXJackknifeCenters:
     npatch: 200
@@ -126,8 +126,9 @@ TXTwoPoint:
     bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
-    do_shear_shear: True
-    do_shear_pos: True
+    do_shear_shear: False
+    do_shear_pos: False
+    auto_only: True
     flip_g1: True  
     flip_g2: False
     min_sep: 2.5
@@ -137,7 +138,25 @@ TXTwoPoint:
     var_method: jackknife
     low_mem: False
     chunk_rows: 1000000
-    
+
+TXTwoPointPixel:
+    bin_slop: 0.01
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: False
+    do_shear_pos: False
+    auto_only: True
+    flip_g1: True  
+    flip_g2: False
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    var_method: jackknife
+    low_mem: False
+    chunk_rows: 1000000
+
+
 TXClusteringNoiseMaps:
     n_realization: 20
 

@@ -4,6 +4,7 @@ from .data_types import (
     ShearCatalog,
     SACCFile,
     TextFile,
+    MapsFile,
 )
 from .utils.patches import PatchMaker
 import numpy as np
@@ -62,6 +63,7 @@ class TXTwoPoint(PipelineStage):
         "do_shear_shear": True,
         "do_shear_pos": True,
         "do_pos_pos": True,
+        "auto_only": False,
         "var_method": "jackknife",
         "use_randoms": True,
         "low_mem": False,
@@ -139,10 +141,14 @@ class TXTwoPoint(PipelineStage):
                     "You need to have a random catalog to calculate position-position correlations"
                 )
             k = POS_POS
-            for i in lens_list:
-                for j in range(i + 1):
-                    if j in lens_list:
-                        calcs.append((i, j, k))
+            if self.config["auto_only"]:
+                for i in lens_list:
+                    calcs.append((i, i, k))
+            else:
+                for i in lens_list:
+                    for j in range(i + 1):
+                        if j in lens_list:
+                            calcs.append((i, j, k))
 
         if self.rank == 0:
             print(f"Running {len(calcs)} calculations: {calcs}")
@@ -445,7 +451,7 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import pickle
         #TODO: fix up the caching code
-        if self.name == "TXTwoPoint":
+        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
             pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
             #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
@@ -832,7 +838,8 @@ class TXTwoPointPixel(TXTwoPoint):
 
     name = "TXTwoPointPixel"
     inputs = [
-        ("density_maps", HDFFile),
+        ("density_maps", MapsFile),
+        ("source_maps", MapsFile),
         ("binned_shear_catalog", ShearCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
@@ -867,41 +874,91 @@ class TXTwoPointPixel(TXTwoPoint):
         "chunk_rows": 100_000,
         "share_patch_files": False,
         "metric": "Euclidean",
+        "use_randoms": True,
+        "auto_only": False,
+
     }
     
 
     def get_density_catalog(self, i):
         import treecorr
+        import pdb
 
-        # Get the data
-        pix = np.array(f['maps/delta_'+str(i)+'/pixel']) 
-        delta = np.array(f['maps/delta_'+str(i)+'/value'])
-        
-        theta, phi = hp.pix2ang(4096, pix)
-        dec_pix = 90.-theta/np.pi*180
-        ra_pix = phi/np.pi*180
-
-        # And finally the density maps
         with self.open_input("density_maps", wrapper=True) as f:
-            d_map = f.read_map(f"delta_{i}")
+            pdb.set_trace()
+            scheme, map_d = f.read_map(f"delta_{i}")
             print(f"Loaded {i} overdensity maps")
 
+        ra_pix, dec_pix = scheme.pix2ang(pix)
         
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
-            self.get_input("density_maps"),
-            ext=f"/maps/bin_{i}",
-            ra_col="ra",
-            dec_col="dec",
-            w_col="weight",
+            ra=ra_pix,
+            dec=dec_pix,
+            #w=,
+            k=map_d,
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
         )
         return cat
 
-        
+
+    def get_shear_catalog(self, i):
+        import treecorr
+
+        with self.open_input("source_maps", wrapper=True) as f:
+            info_g1 = f.read_map_info(f"g1_{i}")
+            pix, = f.read_map(f"g1_{i}")
+            print(f"Loaded {i} overdensity maps")
+
+            info_g2 = f.read_map_info(f"g2_{i}")
+            map_g2, pix, nside = f.read_map(f"g2_{i}")
+            print(f"Loaded {i} overdensity maps")
+            
+        scheme = choose_pixelization(**info_g1)
+        ra_pix, dec_pix = scheme.pix2ang(pix)
+
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            ra=ra_pix,
+            dec=dec_pix,
+            #w=,
+            g1=map_g1,
+            g2=map_g2,
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            flip_g1=self.config["flip_g1"],
+            flip_g2=self.config["flip_g2"],
+            
+        )
+        return cat
+
+    
+    def calculate_shear_pos(self, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_catalog(i)
+
+        cat_j = self.get_density_catalog(j)
+
+        if self.rank == 0:
+            print(
+                f"Calculating shear-position bin pair ({i},{j})."
+            )
+
+        if n_i == 0 or n_j == 0:
+            if self.rank == 0:
+                print("Empty catalog: returning None")
+            return None
+
+        kg = treecorr.KGCorrelation(self.config)
+        t1 = perf_counter()
+        kg.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+
+        return kg
+
     
     def calculate_pos_pos(self, i, j):
         import treecorr

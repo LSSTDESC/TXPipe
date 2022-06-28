@@ -17,9 +17,9 @@ stages:
     - name: TXGaussianSimsMock
       nprocess: 1
       threads_per_process: 20
-    #- name: TXRandomCat
-    #  nodes: 4
-    #  nprocess: 64
+    - name: TXRandomCat
+      nodes: 6
+      nprocess: 64
     - name: TXUniformDepthMap
     - name: TXSourceSelectorMetadetect
       nprocess: 64
@@ -31,13 +31,13 @@ stages:
       nprocess: 10
       nodes: 2
     - name: TXPhotozPlots
-    #- name: TXJackknifeCenters
+    - name: TXJackknifeCenters
     #- name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXSourceMaps
-      nprocess: 6
-      threads_per_process: 1
-      nodes: 3
+      nprocess: 4
+      threads_per_process: 10
+      nodes: 4
     - name: TXExternalLensMaps
     #- name: TXAuxiliarySourceMaps
     #  nprocess: 4
@@ -55,7 +55,7 @@ stages:
     - name: TXTwoPointFourier
       nprocess: 4
       nodes: 4
-      threads_per_process: 22
+      threads_per_process: 20
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
     #- name: TXFourierTJPCovariance
@@ -66,11 +66,11 @@ stages:
       threads_per_process: 32
     #- name: TXConvergenceMapPlots # Plot the convergence map
     #- name: TXTwoPointPlotsFourier 
-    #- name: TXNullBlinding
-    #- name: TXTwoPoint
-    #  threads_per_process: 64
-    #  nprocess: 5
-    #  nodes: 5
+    - name: TXNullBlinding
+    - name: TXTwoPointPixel
+      threads_per_process: 32
+      nprocess: 6
+      nodes: 6
     #- name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     #- name: TXTwoPointPlots
@@ -78,7 +78,7 @@ stages:
     #  threads_per_process: 64
 
 
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/051422/12300area/2022/June24/
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/062722/12300area/2022/June27/
 config: examples/gaussian_sims/config.yml
 
 # On NERSC, set this before running:
@@ -86,17 +86,19 @@ config: examples/gaussian_sims/config.yml
 
 inputs:
     # See README for paths to download these files
-    lens_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area_nside4096_mask_from_yuuki/TXPipe_inputs/lens_catalog.hdf5
-    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area_nside4096_mask_from_yuuki/TXPipe_inputs/lens_tomography_catalog.hdf5
-    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area_nside4096_mask_from_yuuki/TXPipe_inputs/lens_photoz_stack.hdf5 
-    shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area_nside4096_mask_from_yuuki/TXPipe_inputs/shear_photoz_stack.hdf5 
+    lens_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/lens_catalog_12300d.hdf5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/lens_tomography_catalog_12300d.hdf5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/lens_photoz_stack_12300d.hdf5 
+    shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/shear_photoz_stack_12300d.hdf5 
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
     response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
-    mask:  /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area_nside4096_mask_from_yuuki/mask4096_12300d.hdf5
+    mask:  /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/mask4096_12300d.hdf5
 
+    lens_noise_maps:  None
+    source_noise_maps:  None
 
 resume: True
-log_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/051422/June24/
-pipeline_log: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/051422/June24/log.txt
+log_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/062722/12300area/2022/
+pipeline_log: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/062722/12300area/2022/June27/log.txt
 
