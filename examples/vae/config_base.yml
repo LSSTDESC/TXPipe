@@ -119,9 +119,9 @@ PZPrepareEstimatorLens:
     bands: riz
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     hdf5_groupname: photometry
-    init_zo: 0.312
-    init_alpha: 1.745
-    init_km: 0.0685
+    init_zo: 0.3
+    init_alpha: 1.8
+    init_km: 0.1
 
 PZEstimatorLens:
     name: PZEstimatorLens

@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import HDFFile, PickleFile, NOfZFile
 from ..photoz_stack import Stack
-
+import numpy as np
 
 class PZRailSummarize(PipelineStage):
     name = "PZRailSummarize"
@@ -14,6 +14,7 @@ class PZRailSummarize(PipelineStage):
     outputs = [
         # TODO: Change to using QP files throughout
         ("photoz_stack", NOfZFile),
+        ("photoz_realizations", HDFFile),
     ]
 
     # pull these out automatically
@@ -27,6 +28,7 @@ class PZRailSummarize(PipelineStage):
         import pickle
         from rail.estimation.algos.NZDir import NZDir
         from rail.core import DataStore, TableHandle
+        import tables_io
 
         model_filename = self.get_input(self.get_aliased_tag("model"))
 
@@ -46,9 +48,6 @@ class PZRailSummarize(PipelineStage):
 
         bands = model["szusecols"]
         cat_group = self.config["catalog_group"]
-
-        # TODO: Make this flexible
-        substage_class = NZDir
 
 
         # This is the bit that will not work with realistically sized
@@ -75,6 +74,9 @@ class PZRailSummarize(PipelineStage):
             "output_mode": "none",  # actually anything except "default" will work here
         }
 
+        # TODO: Make this flexible
+        substage_class = NZDir
+
         for k, v in self.config.items():
             if k in substage_class.config_options:
                 sub_config[k] = v
@@ -82,6 +84,8 @@ class PZRailSummarize(PipelineStage):
 
         # Just do things with the first bin to begin with
         qp_per_bin = []
+        realizations_per_bin = {}
+
         for i in range(nbin):
 
             # Extract the chunk of the data assigned to this tomographic
@@ -96,8 +100,10 @@ class PZRailSummarize(PipelineStage):
             data_handle = substage_class.data_store.add_data(f"tomo_bin_{i}", data, TableHandle)
 
             substage = substage_class.make_stage(name=f"NZDir_{i}", **sub_config)
-            bin_qp = substage.estimate(data_handle)
+            realizations_per_bin[f'bin_{i}'] = substage.estimate(data_handle).data
+            bin_qp = substage.get_handle('single_NZ')
             qp_per_bin.append(bin_qp.data)
+
 
         # TODO: Convert to just saving QP files. Might need to fix metadata saving.
         # Also, this currently assumes that the histogram form of the QP ensemble
@@ -110,14 +116,39 @@ class PZRailSummarize(PipelineStage):
         # The stack class just wants the lower edges, and
         # the bins value has shape (1, nbin) here.
         z = t['meta']['bins'][0, :-1]
+        nz = len(z)
         stack = Stack(tomo_name, z, nbin)
 
         # Go through each bin setting n(z) on our object directly.
         for i,q in enumerate(qp_per_bin):
             t = q.build_tables()
+            print("thing size", t['data']['pdfs'].shape)
             stack.set_bin(i, t['data']['pdfs'][0])
             
         # Save final stack
         with self.open_output("photoz_stack") as f:
             stack.save(f)
+
+
+        # Save the realizations
+        with self.open_output("photoz_realizations") as f:
+            group = f.create_group("realizations")
+            npdf = realizations_per_bin["bin_0"].npdf
+
+            group.attrs["nbin"] = nbin
+            group.attrs["nz"] = nz
+            group.attrs["nreal"] = npdf
+
+
+            # Collect all the PDFs as a single 3D array
+            pdfs = np.empty((npdf, nbin, nz))
+            for i in range(nbin):
+                ensemble = realizations_per_bin[f"bin_{i}"]
+                for j in range(npdf):
+                    pdfs[j, i] = ensemble[j].objdata()["pdfs"]
+                
+            group.create_dataset("pdfs", data=pdfs)
+            group.create_dataset("z", data=z)
+
+                
 
