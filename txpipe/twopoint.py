@@ -880,7 +880,7 @@ class TXTwoPointPixel(TXTwoPoint):
     }
     
 
-    def get_density_catalog(self, i):
+    def get_density_map(self, i):
         import treecorr
         import pdb
 
@@ -904,7 +904,7 @@ class TXTwoPointPixel(TXTwoPoint):
         return cat
 
 
-    def get_shear_catalog(self, i):
+    def get_shear_map(self, i):
         import treecorr
 
         with self.open_input("source_maps", wrapper=True) as f:
@@ -939,9 +939,9 @@ class TXTwoPointPixel(TXTwoPoint):
     def calculate_shear_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(i)
+        cat_i = self.get_shear_map(i)
 
-        cat_j = self.get_density_catalog(j)
+        cat_j = self.get_density_map(j)
 
         if self.rank == 0:
             print(
@@ -963,13 +963,13 @@ class TXTwoPointPixel(TXTwoPoint):
     def calculate_pos_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_density_catalog(i)
+        cat_i = self.get_density_map(i)
 
 
         if i == j:
             cat_j = cat_i
         else:
-            cat_j = self.get_density_catalog(j)
+            cat_j = self.get_density_map(j)
 
         if self.rank == 0:
             print(
