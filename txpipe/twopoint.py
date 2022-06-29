@@ -949,11 +949,6 @@ class TXTwoPointPixel(TXTwoPoint):
                 f"Calculating shear-position bin pair ({i},{j})."
             )
 
-        if n_i == 0 or n_j == 0:
-            if self.rank == 0:
-                print("Empty catalog: returning None")
-            return None
-
         kg = treecorr.KGCorrelation(self.config)
         t1 = perf_counter()
         kg.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
