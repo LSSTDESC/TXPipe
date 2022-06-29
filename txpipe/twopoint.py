@@ -14,6 +14,7 @@ import os
 import pathlib
 from time import perf_counter
 import gc
+from .utils import choose_pixelization
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -882,21 +883,21 @@ class TXTwoPointPixel(TXTwoPoint):
 
     def get_density_map(self, i):
         import treecorr
-        import pdb
-
+        
         with self.open_input("density_maps", wrapper=True) as f:
-            pdb.set_trace()
-            scheme, map_d = f.read_map(f"delta_{i}")
+            info = f.read_map_info(f"delta_{i}")
+            map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
             print(f"Loaded {i} overdensity maps")
 
+        scheme = choose_pixelization(**info) 
         ra_pix, dec_pix = scheme.pix2ang(pix)
-        
+
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             ra=ra_pix,
             dec=dec_pix,
             #w=,
-            k=map_d,
+            k=map_d[pix],
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
@@ -909,23 +910,23 @@ class TXTwoPointPixel(TXTwoPoint):
 
         with self.open_input("source_maps", wrapper=True) as f:
             info_g1 = f.read_map_info(f"g1_{i}")
-            pix, = f.read_map(f"g1_{i}")
-            print(f"Loaded {i} overdensity maps")
+            map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
+            print(f"Loaded shear 1 {i} maps")
 
             info_g2 = f.read_map_info(f"g2_{i}")
-            map_g2, pix, nside = f.read_map(f"g2_{i}")
-            print(f"Loaded {i} overdensity maps")
+            map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
+            print(f"Loaded shear 2 {i} maps")
             
         scheme = choose_pixelization(**info_g1)
-        ra_pix, dec_pix = scheme.pix2ang(pix)
+        ra_pix, dec_pix = scheme.pix2ang(pix_g1)
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             ra=ra_pix,
             dec=dec_pix,
             #w=,
-            g1=map_g1,
-            g2=map_g2,
+            g1=map_g1[pix_g1],
+            g2=map_g2[pix_g2],
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
