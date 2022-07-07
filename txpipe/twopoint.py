@@ -907,7 +907,8 @@ class TXTwoPointPixel(TXTwoPoint):
 
     def get_shear_map(self, i):
         import treecorr
-
+        import pdb
+        
         with self.open_input("source_maps", wrapper=True) as f:
             info_g1 = f.read_map_info(f"g1_{i}")
             map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
@@ -916,17 +917,18 @@ class TXTwoPointPixel(TXTwoPoint):
             info_g2 = f.read_map_info(f"g2_{i}")
             map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
             print(f"Loaded shear 2 {i} maps")
-            
+
         scheme = choose_pixelization(**info_g1)
         ra_pix, dec_pix = scheme.pix2ang(pix_g1)
 
-        # Load and calibrate the appropriate bin data
+        mask_unseen = (map_g1[pix_g1]>-1e30)*(map_g2[pix_g2]>-1e30)
+
         cat = treecorr.Catalog(
-            ra=ra_pix,
-            dec=dec_pix,
+            ra=ra_pix[mask_unseen],
+            dec=dec_pix[mask_unseen],
             #w=,
-            g1=map_g1[pix_g1],
-            g2=map_g2[pix_g2],
+            g1=map_g1[pix_g1][mask_unseen],
+            g2=map_g2[pix_g2][mask_unseen],
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
