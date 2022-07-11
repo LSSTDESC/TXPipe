@@ -18,6 +18,10 @@ class TXTwoPointTheoryReal(PipelineStage):
         ("twopoint_theory_real", SACCFile),
     ]
 
+    config_options = {
+        "galaxy_bias": None,
+        }
+
     def run(self):
         import sacc
 
@@ -88,10 +92,16 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
+            if self.config['galaxy_bias'] is None:
+                galaxy_bias = np.ones_like(Ti.z)
+            else:
+                galaxy_bias = np.array([self.config['galaxy_bias'][i]]*len(Ti.z))
+                
             # Convert to CCL form
             tracers[name] = pyccl.NumberCountsTracer(
-                cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z))
+                cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, galaxy_bias)
             )
+            
 
         return tracers
 
@@ -192,6 +202,10 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         ("twopoint_theory_fourier", SACCFile),
     ]
 
+    config_options = {
+        "galaxy_bias": None,
+        }
+    
     def run(self):
         import sacc
 

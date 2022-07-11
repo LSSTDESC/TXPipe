@@ -10,7 +10,7 @@ TXExposureInfo:
 
 TXGaussianSimsMock:
     #cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area/shearcat_allbins_ra_dec_e1_e2_and_fakecols_areacut.npy'
-    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/062722/shearcat_allbins_ra_dec_e1_e2_and_fakecols_12300d.npy'
+    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/063022/shearcat_allbins_ra_dec_e1_e2_and_fakecols_12300d_withgalbias.npy'
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2 
     flip_g2: False # opposite of cosmodc2
@@ -88,13 +88,19 @@ TXJackknifeCenters:
 TXSourceDiagnosticPlots:
     shear_prefix: mcal_
 
+TXTwoPointTheoryFourier:
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
+
+TXTwoPointTheoryReal:
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
+
 TXFourierGaussianCovariance:
-    galaxy_bias: [1., 1., 1., 1., 1.]
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
     cache_dir: ./cache_nmt/nside4096/
-    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
     
 TXFourierTJPCovariance:
-    galaxy_bias: [1., 1., 1., 1., 1.]
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
     cache_dir: ./cache_nmt/nside4096/
     IA: 0.
 
@@ -106,8 +112,8 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
-    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
-    galaxy_bias: [1., 1., 1., 1., 1.]
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
 
 TXTwoPointFourier:
     chunk_rows: 100000
@@ -116,18 +122,19 @@ TXTwoPointFourier:
     apodization_size: 0.0
     cache_dir: ./cache_nmt/nside4096/
     true_shear: False
-    n_ell: 30
-    ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
+    n_ell: 21
+    ell_min: 50
+    ell_max: 5000
     nside: 4096
     analytic_noise: True 
-    gaussian_sims_factor: [2., 1.5, 1.25, 1.25, 1.25]
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
 
 TXTwoPoint:
     bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
-    do_shear_shear: False
-    do_shear_pos: False
+    do_shear_shear: True
+    do_shear_pos: True
     auto_only: True
     flip_g1: True  
     flip_g2: False
@@ -143,9 +150,9 @@ TXTwoPointPixel:
     bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
-    do_shear_shear: False
-    do_shear_pos: False
-    auto_only: True
+    do_shear_shear: True
+    do_shear_pos: True
+    auto_only: False
     flip_g1: True  
     flip_g2: False
     min_sep: 2.5
@@ -166,4 +173,5 @@ TXLensingNoiseMaps:
 TXSourceNoiseMaps:
     chunk_rows: 100000
     lensing_realizations: 20
+
 
