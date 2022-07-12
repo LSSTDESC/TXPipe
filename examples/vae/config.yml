@@ -13,7 +13,7 @@ global:
 
 FlowEngine:
     n_samples: 1000000
-    seed: $FLOW_ENGINE_SEED
+    seed: 756548
     aliases:
         # This input was generated using get_example_flow in pzflow,
         # not something specific.
@@ -30,9 +30,10 @@ GridSelection:
         input: ideal_specz_catalog
         output: specz_catalog_pq
     redshift_cut: 5.1
-    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios.hdf5
+    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios_and_specz.hdf5
     settings_file: submodules/RAIL/examples/creation/data/HSC_grid_settings.pkl
-    random_seed: $GRID_SELECTION_SEED
+    random_seed: 98637
+    pessimistic_redshift_cut: 1.0
 
 
 
@@ -56,8 +57,9 @@ Inform_NZDirLens:
 PZRailSummarizeLens:
     leafsize: 20
     zmin: 0.0
-    zmax: 3.0
-    nzbins: 50
+    zmax: 1.28
+    nsamples: 100000
+    nzbins: 128
     name: PZRailSummarizeLens
     catalog_group: "photometry"
     tomography_name: "lens"
@@ -66,8 +68,15 @@ PZRailSummarizeLens:
         photometry_catalog: photometry_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
     model: None
+    seed: 29062022
 
+PZRealizationsPlot:
+    aliases:
+        photoz_realizations: lens_photoz_realizations
+        photoz_realizations_plot: lens_photoz_realizations_plot
+    zmax: 1.0
 
 PZRailSummarizeSource:
     leafsize: 20

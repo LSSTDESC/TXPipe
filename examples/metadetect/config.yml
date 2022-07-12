@@ -120,11 +120,6 @@ PZEstimatorLens:
 
 
 
-PZRailEstimateSource:
-    convert_unseen: True # needed for BPZ
-    prefix: 00/ # required for metadetect catalogs
-    mag_prefix: 00/ # required for metadetect catalogs
-
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
     nz: 301
@@ -313,7 +308,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    catalog_group: "/shear/00"
+    mag_prefix: "/shear/00/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
     aliases:
@@ -342,9 +337,11 @@ GridSelection:
         input: ideal_specz_catalog
         output: specz_catalog_pq
     redshift_cut: 5.1
-    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios.hdf5
+    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios_and_specz.hdf5
     settings_file: submodules/RAIL/examples/creation/data/HSC_grid_settings.pkl
     random_seed: 66
+    pessimistic_redshift_cut: 1.0
+
 
 
 

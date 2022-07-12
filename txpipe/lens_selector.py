@@ -309,22 +309,19 @@ class TXMeanLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
-        z_cols = ["yvals"]
-        with self.open_input("lens_photoz_pdfs") as f:
-            z_grid = f['meta']['xvals'][0]
+        z_cols = ["zmean"]
 
         iter_phot = self.iterate_hdf(
             "photometry_catalog", "photometry", phot_cols, chunk_rows
         )
         iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "data", z_cols, chunk_rows
+            "lens_photoz_pdfs", "ancil", z_cols, chunk_rows
         )
 
         # The current BPZ output does not store the mean z so we compute
         # it here. If there's a QP iteration method later then use that here.
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            pdf = z_data["yvals"]
-            data["z"] = (z_grid * pdf).sum(axis=1) / pdf.sum(axis=1)
+            data["z"] = data["zmean"]
             yield s, e, data
 
 
@@ -338,7 +335,7 @@ class TXModeLensSelector(TXBaseLensSelector):
     name = "TXModeLensSelector"
     inputs = [
         ("photometry_catalog", HDFFile),
-        ("lens_photoz_pdfs", FitsFile),
+        ("lens_photoz_pdfs", HDFFile),
     ]
 
     def data_iterator(self):
@@ -348,8 +345,8 @@ class TXModeLensSelector(TXBaseLensSelector):
         iter_phot = self.iterate_hdf(
             "photometry_catalog", "photometry", phot_cols, chunk_rows
         )
-        iter_pz = self.iterate_fits(
-            "lens_photoz_pdfs", "ANCIL", z_cols, chunk_rows
+        iter_pz = self.iterate_hdf(
+            "lens_photoz_pdfs", "ancil", z_cols, chunk_rows
         )
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
             data["z"] = z_data["zmode"]
@@ -536,7 +533,7 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
     ]
 
     config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "z_mean"
+    config_options["redshift_column"] = "zmean"
 
     def run(self):
         # Add comoving distance to extra cols if needed.
@@ -565,7 +562,7 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
             "photometry",
             ["ra", "dec"] + extra_cols,
             "lens_photoz_pdfs",
-            "point_estimates",
+            "ancil",
             [z_col],
             parallel=False,
         )

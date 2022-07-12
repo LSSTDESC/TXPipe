@@ -10,12 +10,6 @@ stages:
       classname: BPZ_lite
       nprocess: 2
       threads_per_process: 1  
-    - name: PZPrepareEstimatorSource   # Prepare the p(z) estimator for the sources. Not used in main pipeline
-      classname: Inform_BPZ_lite   
-    - name: PZEstimatorSource        # Measure lens galaxy PDFs
-      classname: BPZ_lite
-      nprocess: 2
-      threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
     - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
       classname: Inform_NZDir
@@ -80,7 +74,7 @@ stages:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe
+modules: txpipe rail
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
@@ -103,8 +97,6 @@ site:
     name: local
     max_threads: 2
 
-# python modules to import to search for stages
-modules: txpipe rail
 
 # configuration settings
 config: examples/metadetect/config.yml

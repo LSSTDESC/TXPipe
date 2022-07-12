@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile
 from .utils.mpi_utils import in_place_reduce
+from .utils import rename_iterated
 import numpy as np
 import warnings
 
@@ -140,7 +141,7 @@ class TXPhotozSourceStack(PipelineStage):
     name = "TXPhotozSourceStack"
 
     inputs = [
-        ("source_photoz_pdfs", PhotozPDFFile),
+        ("source_photoz_pdfs", HDFFile),
         ("shear_tomography_catalog", TomographyCatalog),
     ]
     outputs = [
@@ -186,15 +187,18 @@ class TXPhotozSourceStack(PipelineStage):
         # This collects together matching inputs from the different
         # input files and returns an iterator to them which yields
         # start, end, data
-        return self.combined_iterators(
+        rename = {"yvals": "pdf"}
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             "source_photoz_pdfs",  # tag of input file to iterate through
-            "pdf",  # data group within file to look at
-            ["pdf"],  # column(s) to read
+            "data",  # data group within file to look at
+            ["yvals"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
             ["source_bin"],  # column(s) to read
         )
+
+        return rename_iterated(it, rename)
 
     def stack_data(self, name, data, outputs):
         # add the data we have loaded into the stacks
@@ -242,7 +246,7 @@ class TXPhotozSourceStack(PipelineStage):
         # it knows about different file formats (pdf, fits, etc)
         with self.open_input("source_photoz_pdfs") as photoz_file:
             # This is the syntax for reading a complete HDF column
-            z = photoz_file["pdf/zgrid"][:]
+            z = photoz_file["meta/xvals"][0, :]
 
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("shear_tomography_catalog") as tomo_file:
@@ -299,15 +303,17 @@ class TXPhotozLensStack(TXPhotozSourceStack):
         # This collects together matching inputs from the different
         # input files and returns an iterator to them which yields
         # start, end, data
-        return self.combined_iterators(
+        rename = {"yvals": "pdf"}
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             "lens_photoz_pdfs",  # tag of input file to iterate through
-            "pdf",  # data group within file to look at
-            ["pdf"],  # column(s) to read
+            "data",  # data group within file to look at
+            ["yvals"],  # column(s) to read
             "lens_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
             ["lens_bin"],  # column(s) to read
         )
+        return rename_iterated(it, rename)
 
     def get_metadata(self):
         """
@@ -330,7 +336,7 @@ class TXPhotozLensStack(TXPhotozSourceStack):
         # it knows about different file formats (pdf, fits, etc)
         with self.open_input("lens_photoz_pdfs") as photoz_file:
             # This is the syntax for reading a complete HDF column
-            z = photoz_file["pdf/zgrid"][:]
+            z = photoz_file["meta/xvals"][0, :]
 
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("lens_tomography_catalog") as tomo_file:

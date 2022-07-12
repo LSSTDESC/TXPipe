@@ -1,4 +1,4 @@
-pre_script: examples/vae/pre.py
+# pre_script: examples/vae/pre.py
 # post_script: examples/vae/post.py
 
 # Stages to run
@@ -26,6 +26,8 @@ stages:
     # Run the n(z) calculation
     - name: PZRailSummarizeLens
       classname: PZRailSummarize
+    # Make a plot of the realizations
+    - name: PZRealizationsPlot
       
 
 # where to find any modules that are not in this repo,
@@ -37,7 +39,7 @@ python_paths:
     - submodules/RAIL
 
 # Where to put outputs
-output_dir: data/vae_${VAE_SEED}
+output_dir: data/vae
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -53,7 +55,7 @@ site:
 modules: txpipe rail
 
 # configuration settings
-config: examples/vae/config_${VAE_SEED}.yml
+config: examples/vae/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
@@ -69,6 +71,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/vae/logs_${VAE_SEED}
+log_dir: data/vae/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/vae/log.${VAE_SEED}.txt
+pipeline_log: data/vae/log.txt
