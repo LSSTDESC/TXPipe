@@ -70,7 +70,7 @@ class TXShearCalibration(PipelineStage):
             cat_cols += [f"00/{c}" for c in extra_cols]
             renames.update({f"00/{c}":c for c in extra_cols})
 
-        output_cols = ["ra", "dec", "g1", "g2", "weight"] + extra_cols
+        output_cols = cat_cols + extra_cols
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -125,9 +125,14 @@ class TXShearCalibration(PipelineStage):
                 d = {name: data[name][w] for name in output_cols}
 
                 # Calibrate the shear columns
-                d["g1"], d["g2"] = cal.apply(
-                    d["g1"], d["g2"], subtract_mean=subtract_mean_shear
-                )
+                if cat_type=='hsc':
+                    d["g1"], d["g2"] = cal.apply(
+                        d["g1"], d["g2"], d["c1"], d["c2"]
+                    )
+                else:
+                    d["g1"], d["g2"] = cal.apply(
+                        d["g1"], d["g2"], d["weight"], subtract_mean=subtract_mean_shear
+                    )
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)

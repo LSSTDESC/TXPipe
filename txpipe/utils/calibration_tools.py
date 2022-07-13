@@ -591,7 +591,7 @@ class HSCCalculator:
         K = data["m"]
         R = 1.0 - data["sigma_e"] ** 2
         n = w[sel].size
-        self.count += w.size
+        self.count += n
 
         w = w[sel]
 
