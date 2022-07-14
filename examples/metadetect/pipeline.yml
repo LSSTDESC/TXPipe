@@ -28,6 +28,8 @@ stages:
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
+    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
@@ -63,10 +65,7 @@ stages:
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
-    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
-    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXTwoPointFourier    # Compute power spectra C_ell
-
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
