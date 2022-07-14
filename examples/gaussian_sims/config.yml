@@ -10,7 +10,7 @@ TXExposureInfo:
 
 TXGaussianSimsMock:
     #cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area/shearcat_allbins_ra_dec_e1_e2_and_fakecols_areacut.npy'
-    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/063022/shearcat_allbins_ra_dec_e1_e2_and_fakecols_12300d_withgalbias.npy'
+    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/071222/shearcat_allbins_ra_dec_e1_e2_and_fakecols_12300d_withgalbias.npy'
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2 
     flip_g2: False # opposite of cosmodc2
