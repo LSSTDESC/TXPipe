@@ -7,8 +7,7 @@ from .data_types import (
     FiducialCosmology,
     FitsFile,
 )
-from .utils import LensNumberDensityStats
-from .utils import Splitter
+from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
@@ -310,19 +309,19 @@ class TXMeanLensSelector(TXBaseLensSelector):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
         z_cols = ["zmean"]
+        rename = {"zmean": "z"}
 
-        iter_phot = self.iterate_hdf(
-            "photometry_catalog", "photometry", phot_cols, chunk_rows
-        )
-        iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "ancil", z_cols, chunk_rows
+        it = self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_photoz_pdfs",
+            "ancil",
+            z_cols,
         )
 
-        # The current BPZ output does not store the mean z so we compute
-        # it here. If there's a QP iteration method later then use that here.
-        for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = z_data["zmean"]
-            yield s, e, data
+        return rename_iterated(it, rename)
 
 
 class TXModeLensSelector(TXBaseLensSelector):
@@ -342,15 +341,19 @@ class TXModeLensSelector(TXBaseLensSelector):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
         z_cols = ["zmode"]
-        iter_phot = self.iterate_hdf(
-            "photometry_catalog", "photometry", phot_cols, chunk_rows
+        rename = {"zmode": "z"}
+
+        it = self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_photoz_pdfs",
+            "ancil",
+            z_cols,
         )
-        iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "ancil", z_cols, chunk_rows
-        )
-        for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = z_data["zmode"]
-            yield s, e, data
+
+        return rename_iterated(it, rename)
 
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
