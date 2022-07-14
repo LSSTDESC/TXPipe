@@ -300,6 +300,7 @@ PZRailSummarizeLens:
         photometry_catalog: photometry_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
     model: None
 
 
@@ -316,6 +317,7 @@ PZRailSummarizeSource:
         photometry_catalog: shear_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
 
 
 FlowEngine:
@@ -367,3 +369,15 @@ Inform_NZDirLens:
     aliases:
         input: spectroscopic_catalog
         model: lens_direct_calibration_model
+
+PZRealizationsPlotSource:
+    name: PZRealizationsPlotSource
+    aliases:
+        photoz_realizations: source_photoz_realizations
+        photoz_realizations_plot: source_photoz_realizations_plot
+
+PZRealizationsPlotLens:
+    name: PZRealizationsPlotLens
+    aliases:
+        photoz_realizations: lens_photoz_realizations
+        photoz_realizations_plot: lens_photoz_realizations_plot

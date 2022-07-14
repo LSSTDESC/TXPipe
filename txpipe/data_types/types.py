@@ -2,7 +2,7 @@
 This file contains TXPipe-specific file types, subclassing the more
 generic types in base.py
 """
-from .base import HDFFile, DataFile, YamlFile, ParquetFile
+from .base import HDFFile, DataFile, YamlFile
 import yaml
 
 
@@ -440,4 +440,5 @@ class FiducialCosmology(YamlFile):
         return ccl.Cosmology(**inits)
 
 class QPFile(DataFile):
+    # TODO: Flesh this out
     suffix = "hdf5"
