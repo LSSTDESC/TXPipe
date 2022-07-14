@@ -321,7 +321,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
         # The current BPZ output does not store the mean z so we compute
         # it here. If there's a QP iteration method later then use that here.
         for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = data["zmean"]
+            data["z"] = z_data["zmean"]
             yield s, e, data
 
 
