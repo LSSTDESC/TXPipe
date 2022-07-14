@@ -118,6 +118,9 @@ class PipelineStage(PipelineStageBase):
         now for testing.
 
         """
+        # This is added to cope with the new "aliases" system
+        # in ceci - it lets us run the same code with different
+        # files.
         output_class = self.get_output_type(tag)
         new_tag = self.get_aliased_tag(tag)
         path = self.get_output(new_tag)
@@ -168,19 +171,3 @@ class PipelineStage(PipelineStageBase):
             return obj
         else:
             return obj.file
-
-    def open_input(self, tag, wrapper=False, **kwargs):
-        """
-        TEMPORARY!
-
-        WORKING AROUND https://github.com/LSSTDESC/ceci/issues/71
-        """
-        print("Remove the temporary open_input before merging this!")
-        new_tag = self.get_aliased_tag(tag)
-        path = self.get_input(new_tag)
-        input_class = self.get_input_type(tag)
-        obj = input_class(path, "r", **kwargs)
-
-        if wrapper:  #pragma: no cover
-            return obj
-        return obj.file
