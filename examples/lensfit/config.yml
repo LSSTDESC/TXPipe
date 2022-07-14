@@ -286,8 +286,3 @@ PZEstimatorLens:
         mag_z: 27.98
         mag_y: 27.05
 
-NaiveStack:
-    aliases:
-        input: source_photoz_pdfs
-        single_NZ: source_photoz_stack
-        output: shear_photoz_realizations
