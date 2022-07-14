@@ -96,9 +96,6 @@ launcher:
 site:
     name: local
     max_threads: 2
-    image: joezuntz/txpipe-dev
-    volume: ${PWD}:/opt/TXPipe
-
 
 # configuration settings
 config: examples/metadetect/config.yml
