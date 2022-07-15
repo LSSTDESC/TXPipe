@@ -92,7 +92,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
-            if self.config['galaxy_bias'] is [0.0]:
+            if self.config['galaxy_bias'] == [0.0]:
                 galaxy_bias = np.ones_like(Ti.z)
             else:
                 galaxy_bias = np.array([self.config['galaxy_bias'][i]]*len(Ti.z))
