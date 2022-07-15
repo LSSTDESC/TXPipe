@@ -19,6 +19,10 @@ class TXTwoPointTheoryReal(PipelineStage):
         ("twopoint_theory_real", SACCFile),
     ]
 
+    config_options = {
+        "galaxy_bias": [0.0],
+        }
+
     def run(self):
         import sacc
 
@@ -81,15 +85,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
             print("smooth:", smooth)
-            # Convert to CCL form
-            try:
-                tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
-            except pyccl.errors.CCLError:
-                print(
-                    "To avoid a CCL_ERROR_INTEG we reduce the number of points in the nz by half in source bin %d"
-                    % i
-                )
-                tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z[::2], nz[::2]))
+            tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
 
         # And the clustering tracers
         for i in range(nbin_lens):
@@ -97,10 +93,16 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
+            if self.config['galaxy_bias'] == [0.0]:
+                galaxy_bias = np.ones_like(Ti.z)
+            else:
+                galaxy_bias = np.array([self.config['galaxy_bias'][i]]*len(Ti.z))
+                
             # Convert to CCL form
             tracers[name] = pyccl.NumberCountsTracer(
-                cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z))
+                cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, galaxy_bias)
             )
+            
 
         return tracers
 
@@ -202,6 +204,10 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         ("twopoint_theory_fourier", SACCFile),
     ]
 
+    config_options = {
+        "galaxy_bias": [0.0],
+        }
+    
     def run(self):
         import sacc
 

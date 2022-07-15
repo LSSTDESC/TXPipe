@@ -639,10 +639,10 @@ class TXTwoPointFourier(PipelineStage):
         # The binning information - effective (mid) ell values and
         # the window information
         ls = ell_bins.get_effective_ells()
-        
+
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
         print("c_beam, k, i, j", c_beam, k, i, j)
-        
+
         # this has shape n_cls, n_bpws, n_cls, lmax+1
         bandpowers = workspace.get_bandpower_windows()
 

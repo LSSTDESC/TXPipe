@@ -28,7 +28,6 @@ from .binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
 
-
 class BinStats:
     """
     This is a small helper class to store and write the statistics of a
