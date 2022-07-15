@@ -5,9 +5,9 @@ from .data_types import (
     HDFFile,
     TextFile,
     FiducialCosmology,
+    FitsFile,
 )
-from .utils import LensNumberDensityStats
-from .utils import Splitter
+from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
@@ -308,16 +308,20 @@ class TXMeanLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
-        z_cols = ["z_mean"]
-        iter_phot = self.iterate_hdf(
-            "photometry_catalog", "photometry", phot_cols, chunk_rows
+        z_cols = ["zmean"]
+        rename = {"zmean": "z"}
+
+        it = self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_photoz_pdfs",
+            "ancil",
+            z_cols,
         )
-        iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "point_estimates", z_cols, chunk_rows
-        )
-        for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = z_data["z_mean"]
-            yield s, e, data
+
+        return rename_iterated(it, rename)
 
 
 class TXModeLensSelector(TXBaseLensSelector):
@@ -336,16 +340,20 @@ class TXModeLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g"]
-        z_cols = ["z_mode"]
-        iter_phot = self.iterate_hdf(
-            "photometry_catalog", "photometry", phot_cols, chunk_rows
+        z_cols = ["zmode"]
+        rename = {"zmode": "z"}
+
+        it = self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_photoz_pdfs",
+            "ancil",
+            z_cols,
         )
-        iter_pz = self.iterate_hdf(
-            "lens_photoz_pdfs", "point_estimates", z_cols, chunk_rows
-        )
-        for (s, e, data), (_, _, z_data) in zip(iter_phot, iter_pz):
-            data["z"] = z_data["z_mode"]
-            yield s, e, data
+
+        return rename_iterated(it, rename)
 
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
@@ -528,7 +536,7 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
     ]
 
     config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "z_mean"
+    config_options["redshift_column"] = "zmean"
 
     def run(self):
         # Add comoving distance to extra cols if needed.
@@ -557,7 +565,7 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
             "photometry",
             ["ra", "dec"] + extra_cols,
             "lens_photoz_pdfs",
-            "point_estimates",
+            "ancil",
             [z_col],
             parallel=False,
         )

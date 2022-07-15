@@ -118,8 +118,12 @@ class PipelineStage(PipelineStageBase):
         now for testing.
 
         """
-        path = self.get_output(tag)
+        # This is added to cope with the new "aliases" system
+        # in ceci - it lets us run the same code with different
+        # files.
         output_class = self.get_output_type(tag)
+        new_tag = self.get_aliased_tag(tag)
+        path = self.get_output(new_tag)
 
         # HDF files can be opened for parallel writing
         # under MPI.  This checks if:
