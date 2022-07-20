@@ -651,7 +651,8 @@ class TXFourierTJPCovariance(PipelineStage):
         ("summary_statistics_fourier", SACCFile),
     ]
 
-    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": ""}
+    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",
+                      'cov_type': ['gauss']}
 
     def run(self):
         import tjpcov.main
@@ -670,7 +671,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # set up some config options for TJPCov
         tjp_config = {}
         tjp_config["do_xi"] = False
-        tjp_config["cov_type"] = "gaus"
+        tjp_config["cov_type"] = self.config['cov_type']
         cl_sacc = self.read_sacc()
         tjp_config["cl_file"] = cl_sacc
 
@@ -728,9 +729,6 @@ class TXFourierTJPCovariance(PipelineStage):
         else:
             tjp_config["outdir"] = cl_sacc.metadata.get("cache_dir", ".")
 
-        # Load NmtBin used for the Cells
-        workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
-
         # MPI
         if self.comm:
             self.comm.Barrier()
@@ -743,14 +741,30 @@ class TXFourierTJPCovariance(PipelineStage):
         tjp_config["binning_info"] = self.recover_NmtBin(cl_sacc)
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov": tjp_config})
 
-        cache = {"workspaces": workspaces}
-        tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
-        covmat = calculator.get_all_cov_nmt(
-            cache=cache, tracer_noise_coupled=tracer_noise_coupled
-        )
+        cov = {}
+        if 'gauss' in tjp_config['cov_type']:
+            # Load NmtBin used for the Cells
+            workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
+
+            cache = {"workspaces": workspaces}
+            tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
+            cov['gauss'] = calculator.get_all_cov_nmt(
+                cache=cache, tracer_noise_coupled=tracer_noise_coupled)
+
+        if 'ssc' in tjp_config['cov_type']:
+            cov['ssc'] = calculator.get_all_cov_SSC()
 
         # Write the sacc file with the covariance
         if self.rank == 0:
+            # Write sacc files with each covariance term for easier comparison
+            # and debugging.
+            for k, c in cov.items():
+                cl_sacc2 = cl_sacc.copy()
+                cl_sacc2.add_covariance(c)
+                fname = self.get_output(f"summary_statistics_fourier_{k}")
+                cl_sacc.save_fits(fname, overwrite=True)
+
+            covmat = sum([c for c in cov.values()])
             cl_sacc.add_covariance(covmat)
             output_filename = self.get_output("summary_statistics_fourier")
             cl_sacc.save_fits(output_filename, overwrite=True)
