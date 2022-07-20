@@ -15,7 +15,7 @@ class TXMetacalGCRInput(PipelineStage):
     """
 
     name = "TXMetacalGCRInput"
-
+    parallel = False
     inputs = []
 
     outputs = [
@@ -192,6 +192,7 @@ class TXIngestStars(PipelineStage):
     in PSF estimation.
     """
     name = "TXIngestStars"
+    parallel = False
     inputs = []
 
     outputs = [

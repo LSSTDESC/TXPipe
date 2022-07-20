@@ -9,7 +9,8 @@ TXExposureInfo:
     dc2_name: '1.2p'
 
 TXGaussianSimsMock:
-    cat_name: '/global/projecta/projectdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/022422/12300area/shearcat_shearalm_allbins_ra_dec_g1_g2_and_fakecols_areacut.npy'
+    #cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/051422/12300area/shearcat_allbins_ra_dec_e1_e2_and_fakecols_areacut.npy'
+    cat_name: '/global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/071222/shearcat_allbins_ra_dec_e1_e2_and_fakecols_12300d_withgalbias.npy'
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2 
     flip_g2: False # opposite of cosmodc2
@@ -20,24 +21,24 @@ TXGaussianSimsMock:
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
-    nside: 2048
+    nside: 4096
     sparse: True
 
 TXSourceMaps:
-    nside: 2048
+    nside: 4096
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
     true_shear: False
 
 TXExternalLensMaps:
-    nside: 2048
+    nside: 4096
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
 
 TXExternalLensNoiseMaps:
-    nside: 2048
+    nside: 4096
     chunk_rows:  100000
     pixelization: healpix
 
@@ -82,14 +83,26 @@ TXRandomCat:
     density: 3 # gals per sq arcmin
 
 TXJackknifeCenters:
-    npatch: 500
+    npatch: 200
 
 TXSourceDiagnosticPlots:
     shear_prefix: mcal_
 
+TXTwoPointTheoryFourier:
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
+
+TXTwoPointTheoryReal:
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
+
 TXFourierGaussianCovariance:
-    galaxy_bias: [1., 1., 1., 1., 1.]
-    cache_dir: ./cache_nmt
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
+    cache_dir: ./cache_nmt/nside4096/
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
+    
+TXFourierTJPCovariance:
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
+    cache_dir: ./cache_nmt/nside4096/
+    IA: 0.
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -99,26 +112,30 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
-    galaxy_bias: [1., 1., 1., 1., 1.]
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
+    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
 
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g1: False
     flip_g2: False
     apodization_size: 0.0
-    cache_dir: ./cache_nmt
+    cache_dir: ./cache_nmt/nside4096/
     true_shear: False
-    n_ell: 30
-    ell_max: 6143 # nside * 3 - 1, since Namaster computes that anyway. 
-    nside: 2048
-    analytic_noise: True
+    n_ell: 21
+    ell_min: 50
+    ell_max: 5000
+    nside: 4096
+    analytic_noise: True 
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
 
 TXTwoPoint:
-    bin_slop: 0.05
+    bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
+    auto_only: True
     flip_g1: True  
     flip_g2: False
     min_sep: 2.5
@@ -128,14 +145,33 @@ TXTwoPoint:
     var_method: jackknife
     low_mem: False
     chunk_rows: 1000000
-    
+
+TXTwoPointPixel:
+    bin_slop: 0.01
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    auto_only: False
+    flip_g1: True  
+    flip_g2: False
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    var_method: jackknife
+    low_mem: False
+    chunk_rows: 1000000
+
+
 TXClusteringNoiseMaps:
-    n_realization: 30
+    n_realization: 20
 
 TXLensingNoiseMaps:
-    n_realization: 30
+    n_realization: 20
 
 TXSourceNoiseMaps:
     chunk_rows: 100000
-    lensing_realizations: 30
+    lensing_realizations: 20
+
 

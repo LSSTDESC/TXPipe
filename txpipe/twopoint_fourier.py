@@ -83,6 +83,7 @@ class TXTwoPointFourier(PipelineStage):
         "ell_spacing": "log",
         "true_shear": False,
         "analytic_noise": False,
+        "gaussian_sims_factor": [1.],
     }
 
     def run(self):
@@ -534,6 +535,8 @@ class TXTwoPointFourier(PipelineStage):
         import healpy
 
         CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEB = sacc.standard_types.galaxy_shear_cl_eb
+        CBE = sacc.standard_types.galaxy_shear_cl_be
         CBB = sacc.standard_types.galaxy_shear_cl_bb
         CdE = sacc.standard_types.galaxy_shearDensity_cl_e
         CdB = sacc.standard_types.galaxy_shearDensity_cl_b
@@ -545,14 +548,6 @@ class TXTwoPointFourier(PipelineStage):
         )
         sys.stdout.flush()
 
-        # The binning information - effective (mid) ell values and
-        # the window information
-        ls = ell_bins.get_effective_ells()
-
-        # We need the theory spectrum for this pair
-        # TODO: when we have templates to deproject, use this.
-        theory = cl_theory[(i, j, k)]
-        ell_guess = cl_theory["ell"]
         cl_guess = None
 
         if k == SHEAR_SHEAR:
@@ -562,6 +557,14 @@ class TXTwoPointFourier(PipelineStage):
                 (
                     0,
                     CEE,
+                ),
+                (
+                    1,
+                    CEB,
+                ),
+                (
+                    2,
+                    CBE,
                 ),
                 (
                     3,
@@ -593,18 +596,19 @@ class TXTwoPointFourier(PipelineStage):
             )
             # noise to subtract (already decoupled)
 
-            # Load mask and pass to function below. 
+            # Load mask and pass to function below.
             with self.open_input("mask", wrapper=True) as f:
                 mask = f.read_map("mask")
                 mask[mask == healpy.UNSEEN] = 0.0
                 if self.rank == 0:
                     print("Loaded mask")
-            
+
             n_ell, n_ell_coupled = self.compute_noise_analytic(
                 i, j, k, maps, f_sky, workspace, mask
             )
             if n_ell is not None:
                 c = c - n_ell
+                
             # Writing out the noise for later cross-checks
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
@@ -632,7 +636,12 @@ class TXTwoPointFourier(PipelineStage):
             y = f * x
             return np.exp(-(y**2) / 2)
 
+        # The binning information - effective (mid) ell values and
+        # the window information
+        ls = ell_bins.get_effective_ells()
+
         c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
+        print("c_beam, k, i, j", c_beam, k, i, j)
 
         # this has shape n_cls, n_bpws, n_cls, lmax+1
         bandpowers = workspace.get_bandpower_windows()
@@ -641,6 +650,7 @@ class TXTwoPointFourier(PipelineStage):
         for index, name in results_to_use:
             # this is shape (n_ell, lmax)
             win = bandpowers[index, :, index, :]
+            #["corr_type", "l", "value", "noise", "noise_coupled", "win", "i", "j"],
             self.results.append(
                 Measurement(
                     name,
@@ -722,10 +732,13 @@ class TXTwoPointFourier(PipelineStage):
         if k == SHEAR_SHEAR:
             with self.open_input("source_maps", wrapper=True) as f:
                 var_map = f.read_map(f"var_e_{i}")
+            print('i, j', i, j)
             var_map[var_map == hp.UNSEEN] = 0.0
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map) * pxarea
+            #pdb.set_trace()
+            print('np.mean(var_map) * pxarea',i,j,k, n_ls)
             n_ell_coupled = np.zeros((4, 3 * nside))
             # Note that N_ell = 0 for ell = 1, 2 for shear
             n_ell_coupled[0, 2:] = n_ls
@@ -741,10 +754,10 @@ class TXTwoPointFourier(PipelineStage):
                 np.mean(mask) / ndens
             )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
             # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
-
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
+        
 
         return n_ell, n_ell_coupled
 
@@ -806,6 +819,8 @@ class TXTwoPointFourier(PipelineStage):
         from sacc.windows import BandpowerWindow
 
         CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEB = sacc.standard_types.galaxy_shear_cl_eb
+        CBE = sacc.standard_types.galaxy_shear_cl_be
         CBB = sacc.standard_types.galaxy_shear_cl_bb
         CdE = sacc.standard_types.galaxy_shearDensity_cl_e
         CdB = sacc.standard_types.galaxy_shearDensity_cl_b
@@ -822,10 +837,10 @@ class TXTwoPointFourier(PipelineStage):
         for d in self.results:
             tracer1 = (
                 f"source_{d.i}"
-                if d.corr_type in [CEE, CBB, CdE, CdB]
+                if d.corr_type in [CEE, CEB, CBE, CBB, CdE, CdB]
                 else f"lens_{d.i}"
             )
-            tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CBB] else f"lens_{d.j}"
+            tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CEB, CBE, CBB] else f"lens_{d.j}"
 
             n = len(d.l)
             # The full set of ell values (unbinned), used to store the
@@ -844,13 +859,14 @@ class TXTwoPointFourier(PipelineStage):
                     i=d.i,
                     j=d.j,
                     n_ell=d.noise[i],
-                    bandpower_index=i,
+                    window_ind=i,
                 )
 
             # Add n_ell_coupled to tracer metadata. This will work as far as
             # the coupled noise is constant
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
+
                 if self.config["analytic_noise"] is False:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
@@ -861,6 +877,13 @@ class TXTwoPointFourier(PipelineStage):
                     # shear
                     tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
 
+                if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer1:  
+                    print (tracer1)
+                    print("ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor.")
+                    print("Original noise:", d.noise_coupled)
+                    tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
+                        
+                        
         # Save provenance information
         provenance = self.gather_provenance()
         provenance.update(SACCFile.generate_provenance())

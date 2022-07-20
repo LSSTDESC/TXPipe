@@ -28,7 +28,6 @@ from .binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
 
-
 class BinStats:
     """
     This is a small helper class to store and write the statistics of a
@@ -845,12 +844,20 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return R
 
     def compute_output_stats(self, calculator, mean, variance):
-        raise NotImplementedError("HSC calib is broken")
-        R, C, N = calculator.collect(self.comm, allgather=True)
-        calibrator = HSCCalibrator(R, mean)
-        mean_e = C.copy()
-        sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K[i])
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        R, K, N = calculator.collect(self.comm, allgather=True)
+        calibrator = HSCCalibrator(R, K)
+        sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
+        return BinStats(N, N, mean, sigma_e, calibrator)
+
+    def setup_response_calculators(self, nbin_source):
+        calculators = [
+            HSCCalculator(self.select)
+            for i in range(nbin_source)
+        ]
+        calculators.append(
+            HSCCalculator(self.select_2d)
+        )
+        return calculators
 
 
 if __name__ == "__main__":

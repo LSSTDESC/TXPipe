@@ -1,0 +1,28 @@
+# This one is a bit slow, so I ran it all once in advance and put the outputs in:
+# /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear
+# So I wouldn't recommend re-running it.
+
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths: []
+
+stages:
+    - name: TXCosmoDC2Mock
+
+output_dir: data/star-challenge/outputs
+config: examples/star-challenge/config.yml
+
+inputs:
+    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5
+
+resume: True
+log_dir: data/star-challenge/logs
+pipeline_log: data/star-challenge/ingest-log.txt

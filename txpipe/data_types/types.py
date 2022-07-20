@@ -71,6 +71,9 @@ class ShearCatalog(HDFFile):
         elif self.catalog_type == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
             rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
+        elif self.catalog_type == "hsc":
+            shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
+            rename = {}
         elif self.catalog_type == "metadetect":
             shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
             rename = {c: c[3:] for c in shear_cols}
@@ -438,3 +441,7 @@ class FiducialCosmology(YamlFile):
         inits.update(kwargs)
 
         return ccl.Cosmology(**inits)
+
+class QPFile(DataFile):
+    # TODO: Flesh this out
+    suffix = "hdf5"

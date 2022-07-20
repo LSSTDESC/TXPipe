@@ -1,14 +1,19 @@
 
 # Stages to run
 stages:
+    - name: FlowEngine             # Simulate a spectroscopic population
+    - name: GridSelection          # Simulate a spectroscopic sample
+    - name: TXParqetToHDF          # Convert the spec sample format
     - name: TXSourceSelectorLensfit
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
+    - name: TXLensCatalogSplitter3D
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
-    - name: PZRailTrainLens
+    - name: PZPrepareEstimatorLens
+      classname: Inform_BPZ_lite   
+    - name: PZEstimatorLens
+      classname: BPZ_lite
     - name: PZRailEstimateSourceFromLens
-    - name: PZRailEstimateLens
     - name: TXPhotozSourceStack
     - name: TXPhotozLensStack
     - name: TXMainMaps
@@ -62,7 +67,7 @@ site:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe
+modules: txpipe rail
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
@@ -88,6 +93,7 @@ inputs:
     star_catalog: data/example/inputs/lensfit_star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
+    flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

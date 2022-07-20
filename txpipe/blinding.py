@@ -16,6 +16,7 @@ class TXBlinding(PipelineStage):
     """
 
     name = "TXBlinding"
+    parallel = False
     inputs = [
         ("twopoint_data_real_raw", SACCFile),
     ]
@@ -235,6 +236,7 @@ class TXNullBlinding(PipelineStage):
     """
 
     name = "TXNullBlinding"
+    parallel = False
     inputs = [
         ("twopoint_data_real_raw", SACCFile),
     ]

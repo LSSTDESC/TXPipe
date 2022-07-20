@@ -500,3 +500,16 @@ class PickleFile(DataFile):
                 "Cannot read from pickle file opened in " f"write-only ({self.mode})"
             )
         return pickle.load(self.file)
+
+
+class ParquetFile(DataFile):
+    suffiz = "pq"
+
+    def open(self, path, mode):
+        import pyarrow.parquet
+        if mode != "r":
+            raise NotImplementedError("Not implemented writing to Parquet")
+        return pyarrow.parquet.ParquetFile(path)
+
+    def close(self):
+        pass
