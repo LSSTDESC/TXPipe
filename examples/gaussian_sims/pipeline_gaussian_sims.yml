@@ -58,10 +58,10 @@ stages:
       threads_per_process: 20
     - name: TXFourierGaussianCovariance
       threads_per_process: 64
-    - name: TXFourierTJPCovariance
-      nodes: 6
-      nprocess: 6
-      threads_per_process: 32
+    #- name: TXFourierTJPCovariance
+    #  nodes: 6
+    #  nprocess: 6
+    #  threads_per_process: 32
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     #- name: TXConvergenceMapPlots # Plot the convergence map
