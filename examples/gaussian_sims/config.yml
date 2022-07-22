@@ -145,6 +145,7 @@ TXTwoPoint:
     var_method: jackknife
     low_mem: False
     chunk_rows: 1000000
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
 
 TXTwoPointPixel:
     bin_slop: 0.01
@@ -162,6 +163,7 @@ TXTwoPointPixel:
     var_method: jackknife
     low_mem: False
     chunk_rows: 1000000
+    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
 
 
 TXClusteringNoiseMaps:
