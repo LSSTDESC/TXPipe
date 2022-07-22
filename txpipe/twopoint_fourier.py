@@ -852,13 +852,15 @@ class TXTwoPointFourier(PipelineStage):
             if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer2:
                 print("ATTENTION: We are multiplying the measurement and the noise saved in the sacc file by the gaussian sims factor.")
                 
-                d.value *= self.config["gaussian_sims_factor"][int(tracer2[-1])]
-                d.noise *= self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                value = d.value*self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                noise = d.noise*self.config["gaussian_sims_factor"][int(tracer2[-1])]
 
                 if "lens" in tracer1:
-                    d.value *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
-                    d.noise *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
-                    
+                    value *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
+                    noise *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
+            else:
+                value = d.value
+                noise = d.noise
             
             for i in range(n):
                 # We use optional tags i and j here to record the bin indices, as well
@@ -866,12 +868,12 @@ class TXTwoPointFourier(PipelineStage):
                 S.add_data_point(
                     d.corr_type,
                     (tracer1, tracer2),
-                    d.value[i],
+                    value[i],
                     ell=d.l[i],
                     window=win,
                     i=d.i,
                     j=d.j,
-                    n_ell=d.noise[i],
+                    n_ell=noise[i],
                     window_ind=i,
                 )
 
@@ -890,13 +892,13 @@ class TXTwoPointFourier(PipelineStage):
                     # shear
                     tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
                     
-                '''
+
                 if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer1:  
                     print (tracer1)
                     print("ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor.")
                     print("Original noise:", d.noise_coupled)
                     tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
-                '''     
+
                         
         # Save provenance information
         provenance = self.gather_provenance()
