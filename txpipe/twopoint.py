@@ -72,6 +72,7 @@ class TXTwoPoint(PipelineStage):
         "chunk_rows": 100_000,
         "share_patch_files": False,
         "metric": "Euclidean",
+        "gaussian_sims_factor": [1.], 
     }
 
     def run(self):
@@ -252,10 +253,6 @@ class TXTwoPoint(PipelineStage):
             if d.object is None:
                 continue
 
-            # We build up the comb list to get the covariance of it later
-            # in the same order as our data points
-            comb.append(d.object)
-
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
             weight = d.object.weight
@@ -289,6 +286,18 @@ class TXTwoPoint(PipelineStage):
                         weight=weight[i],
                     )
             else:
+                if self.config['gaussian_sims_factor'] != [1.]:
+                    # only for gammat and wtheta, for the gaussian simulations we need to scale the measurements up to correct for
+                    # the scaling of the density field when building the simulations.
+                    if 'lens' in tracer2:
+                        if 'lens' in tracer1:
+                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer1[-1])]*self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                        else:
+                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                            
+                    d.object.xi *=scaling_factor
+                    d.object.varxi *=(scaling_factor**2)
+                    
                 xi = d.object.xi
                 err = np.sqrt(d.object.varxi)
                 n = len(xi)
@@ -301,7 +310,13 @@ class TXTwoPoint(PipelineStage):
                         error=err[i],
                         weight=weight[i],
                     )
+                    
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
+            comb.append(d.object)
 
+
+                    
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
         if treecorr.__version__.startswith("4.2."):
@@ -877,6 +892,7 @@ class TXTwoPointPixel(TXTwoPoint):
         "metric": "Euclidean",
         "use_randoms": True,
         "auto_only": False,
+        "gaussian_sims_factor": [1.], 
 
     }
     
