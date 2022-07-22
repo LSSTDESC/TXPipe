@@ -847,6 +847,19 @@ class TXTwoPointFourier(PipelineStage):
             # bandpowers
             ell_full = np.arange(d.win.shape[1])
             win = BandpowerWindow(ell_full, d.win.T)
+
+
+            if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer2:
+                print("ATTENTION: We are multiplying the measurement and the noise saved in the sacc file by the gaussian sims factor.")
+                
+                d.value *= self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                d.noise *= self.config["gaussian_sims_factor"][int(tracer2[-1])]
+
+                if "lens" in tracer1:
+                    d.value *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
+                    d.noise *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
+                    
+            
             for i in range(n):
                 # We use optional tags i and j here to record the bin indices, as well
                 # as in the tracer names, in case it helps to select on them later.
@@ -876,13 +889,14 @@ class TXTwoPointFourier(PipelineStage):
                     # Save the last element because the first one is zero for
                     # shear
                     tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
-
+                    
+                '''
                 if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer1:  
                     print (tracer1)
                     print("ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor.")
                     print("Original noise:", d.noise_coupled)
                     tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
-                        
+                '''     
                         
         # Save provenance information
         provenance = self.gather_provenance()
