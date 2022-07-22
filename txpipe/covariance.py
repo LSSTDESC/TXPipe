@@ -656,6 +656,8 @@ class TXFourierTJPCovariance(PipelineStage):
 
     outputs = [
         ("summary_statistics_fourier", SACCFile),
+        ("summary_statistics_fourier_gauss", SACCFile),
+        ("summary_statistics_fourier_ssc", SACCFile),
     ]
 
     config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",
@@ -781,7 +783,7 @@ class TXFourierTJPCovariance(PipelineStage):
                 cl_sacc2 = cl_sacc.copy()
                 cl_sacc2.add_covariance(c)
                 fname = self.get_output(f"summary_statistics_fourier_{k}")
-                cl_sacc.save_fits(fname, overwrite=True)
+                cl_sacc2.save_fits(fname, overwrite=True)
 
             covmat = sum([c for c in cov.values()])
             cl_sacc.add_covariance(covmat)
