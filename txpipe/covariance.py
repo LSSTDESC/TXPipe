@@ -673,6 +673,12 @@ class TXFourierTJPCovariance(PipelineStage):
         assert meta["area_unit"] == "deg^2"
         assert meta["density_unit"] == "arcmin^{-2}"
 
+        # Check that only 'gauss' or 'ssc' are passed to 'cov_type'
+        for ct in self.config['cov_type']:
+            if ct not in ['gauss', 'ssc']:
+                raise ValueError("'cov_type can have only 'gauss' or 'ssc'. " +
+                                 f"'{ct}' passed.")
+
         # get the number of bins from metadata
         nbin_lens = meta["nbin_lens"]
         nbin_source = meta["nbin_source"]
