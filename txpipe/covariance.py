@@ -122,14 +122,14 @@ class TXFourierGaussianCovariance(PipelineStage):
         # instead of lambda = nbar(1+delta), where delta is the density contrast field.
         # Then, we need to scale up the shot noise term for the lenses
         # in the covariance for the same b factor.
-        # Here we decrease the number density for this factor, since shot noise term is 1/nbar. 
+        # Here we decrease the number density for this factor, since shot noise term is 1/nbar.
         print('N_lens:', N_lens)
         N_lens = N_lens/np.array(self.config["gaussian_sims_factor"])**2
-        
+
         if self.config["gaussian_sims_factor"] != [1.]:
             print("ATTENTION: We are dividing N_lens by the gaussian sims factor squared:", np.array(self.config["gaussian_sims_factor"])**2)
             print("Scaled N_lens is:", N_lens)
-            
+
         if self.config["use_true_shear"]:
             nbins = len(input_data["tracers/sigma_e"][:])
             sigma_e = np.array([0.0 for i in range(nbins)])
@@ -593,7 +593,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
         "pickled_wigner_transform": "",
         "use_true_shear": False,
         "galaxy_bias": [0.0],
-        "gaussian_sims_factor": [1.],        
+        "gaussian_sims_factor": [1.],
     }
 
     def run(self):
@@ -656,9 +656,12 @@ class TXFourierTJPCovariance(PipelineStage):
 
     outputs = [
         ("summary_statistics_fourier", SACCFile),
+        ("summary_statistics_fourier_gauss", SACCFile),
+        ("summary_statistics_fourier_ssc", SACCFile),
     ]
 
-    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",}
+    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",
+                      'cov_type': ['gauss']}
 
     def run(self):
         import tjpcov.main
@@ -670,6 +673,12 @@ class TXFourierTJPCovariance(PipelineStage):
         assert meta["area_unit"] == "deg^2"
         assert meta["density_unit"] == "arcmin^{-2}"
 
+        # Check that only 'gauss' or 'ssc' are passed to 'cov_type'
+        for ct in self.config['cov_type']:
+            if ct not in ['gauss', 'ssc']:
+                raise ValueError("'cov_type can have only 'gauss' or 'ssc'. " +
+                                 f"'{ct}' passed.")
+
         # get the number of bins from metadata
         nbin_lens = meta["nbin_lens"]
         nbin_source = meta["nbin_source"]
@@ -677,7 +686,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # set up some config options for TJPCov
         tjp_config = {}
         tjp_config["do_xi"] = False
-        tjp_config["cov_type"] = "gaus"
+        tjp_config["cov_type"] = self.config['cov_type']
         cl_sacc = self.read_sacc()
         tjp_config["cl_file"] = cl_sacc
 
@@ -709,7 +718,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
         # Set any unseen pixels to zero weight.
         # TODO: unify this code with the code in twopoint_fourier.py
-        
+
         with self.open_input("density_maps", wrapper=True) as f:
             nbin_lens = f.file["maps"].attrs["nbin_lens"]
             d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
@@ -747,9 +756,6 @@ class TXFourierTJPCovariance(PipelineStage):
         else:
             tjp_config["outdir"] = cl_sacc.metadata.get("cache_dir", ".")
 
-        # Load NmtBin used for the Cells
-        workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
-
         # MPI
         if self.comm:
             self.comm.Barrier()
@@ -762,14 +768,30 @@ class TXFourierTJPCovariance(PipelineStage):
         tjp_config["binning_info"] = self.recover_NmtBin(cl_sacc)
         calculator = tjpcov.main.CovarianceCalculator({"tjpcov": tjp_config})
 
-        cache = {"workspaces": workspaces}
-        tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
-        covmat = calculator.get_all_cov_nmt(
-            cache=cache, tracer_noise_coupled=tracer_noise_coupled
-        )
+        cov = {}
+        if 'gauss' in tjp_config['cov_type']:
+            # Load NmtBin used for the Cells
+            workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
+
+            cache = {"workspaces": workspaces}
+            tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
+            cov['gauss'] = calculator.get_all_cov_nmt(
+                cache=cache, tracer_noise_coupled=tracer_noise_coupled)
+
+        if 'ssc' in tjp_config['cov_type']:
+            cov['ssc'] = calculator.get_all_cov_SSC()
 
         # Write the sacc file with the covariance
         if self.rank == 0:
+            # Write sacc files with each covariance term for easier comparison
+            # and debugging.
+            for k, c in cov.items():
+                cl_sacc2 = cl_sacc.copy()
+                cl_sacc2.add_covariance(c)
+                fname = self.get_output(f"summary_statistics_fourier_{k}")
+                cl_sacc2.save_fits(fname, overwrite=True)
+
+            covmat = sum([c for c in cov.values()])
             cl_sacc.add_covariance(covmat)
             output_filename = self.get_output("summary_statistics_fourier")
             cl_sacc.save_fits(output_filename, overwrite=True)
@@ -822,7 +844,7 @@ class TXFourierTJPCovariance(PipelineStage):
             m1 = masks_names[tr1]
             m2 = masks_names[tr2]
             key = (m1, m2)
-            # checking if the combination m1,m2 or m2,m1 is already done. 
+            # checking if the combination m1,m2 or m2,m1 is already done.
             if (key in w[sk]) or (key[::-1] in w[sk]):
                 continue
             # Build workspace hash (twopoint_fourier.py:387-395)
