@@ -275,7 +275,7 @@ TXJackknifeCenters:
 TXTwoPointFourier:
     flip_g2: True
     ell_min: 30
-    ell_max: 192 # 3*nside needed for NaMaster
+    ell_max: 100
     bandwidth: 20
     cache_dir: ./cache/workspaces
 
