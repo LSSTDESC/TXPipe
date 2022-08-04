@@ -229,15 +229,14 @@ class TXSourceMaps(TXBaseMaps):
             else:
                 cal = cals[i]
             g1_out[i], g2_out[i] = cal.apply(g1[i], g2[i])
-            std1 = np.sqrt(g1[i])
-            std2 = np.sqrt(g2[i])
+            std1 = np.sqrt(var_g1[i])
+            std2 = np.sqrt(var_g2[i])
             std1, std2 = cal.apply(std1, std2, subtract_mean=False)
             var_g1_out[i] = std1**2
             var_g2_out[i] = std2**2
 
             # re-apply the masking, just to make sure
-        for y in g1_out, g2_out, var_g1_out, var_g2_out:
-            for x in y.values():
+            for x in [g1_out[i], g2_out[i], var_g1_out[i], var_g2_out[i]]:
                 x[mask] = healpy.UNSEEN
 
         return g1_out, g2_out, var_g1_out, var_g2_out
