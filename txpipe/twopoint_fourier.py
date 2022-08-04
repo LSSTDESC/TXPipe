@@ -74,7 +74,8 @@ class TXTwoPointFourier(PipelineStage):
         "mask_threshold": 0.0,
         "flip_g1": False,
         "flip_g2": False,
-        "cache_dir": "",
+        "cache_dir": "./cache/twopoint_fourier",
+        "low_mem": False,
         "deproject_syst_clustering": False,
         "systmaps_clustering_dir": "",
         "ell_min": 100,
@@ -137,7 +138,7 @@ class TXTwoPointFourier(PipelineStage):
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
 
         self.hash_metadata = None  # Filled in make_workspaces
-        workspaces = self.make_workspaces(maps, calcs, ell_bins)
+        workspace_cache = self.make_workspaces(maps, calcs, ell_bins)
 
         # If we are rank zero print out some info
         if self.rank == 0:
@@ -156,7 +157,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspaces, ell_bins, theory_cl, f_sky
+                pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_cl, f_sky
             )
 
         if self.rank == 0:
@@ -331,35 +332,17 @@ class TXTwoPointFourier(PipelineStage):
 
         return pixel_scheme, maps, f_sky
 
-    def load_workspace_cache(self):
-        from .utils.nmt_utils import WorkspaceCache
-
-        dirname = self.config["cache_dir"]
-
-        if not dirname:
-            if self.rank == 0:
-                print("Not using an on-disc cache.  Set cache_dir to use one")
-            return {}
-
-        cache = WorkspaceCache(dirname)
-        return cache
-
-    def save_workspace_cache(self, cache, spaces):
-        if (cache is None) or (cache == {}):
-            return
-
-        for space in spaces.values():
-            cache.put(space)
 
     def make_workspaces(self, maps, calcs, ell_bins):
         import pymaster as nmt
+        from .utils.nmt_utils import WorkspaceCache
 
         # Make the field object
         if self.rank == 0:
             print("Preparing workspaces")
 
         # load the cache
-        cache = self.load_workspace_cache()
+        cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
 
         nbin_source = len(maps["g"])
         nbin_lens = len(maps["d"])
@@ -401,9 +384,17 @@ class TXTwoPointFourier(PipelineStage):
 
         spaces = {}
 
-        def get_workspace(f1, f2):
-            w1, f1 = f1
-            w2, f2 = f2
+        for (i, j, k) in calcs:
+            if k == SHEAR_SHEAR:
+                w1, f1 = lensing_fields[i]
+                w2, f2 = lensing_fields[j]
+            elif k == SHEAR_POS:
+                w1, f1 = lensing_fields[i]
+                w2, f2 = density_field
+            else:
+                w1, f1 = density_field
+                w2, f2 = density_field
+
 
             # First we derive a hash which will change whenever either
             # the mask changes or the ell binning.
@@ -418,8 +409,9 @@ class TXTwoPointFourier(PipelineStage):
             # fields are different.
             if h2 != h1:
                 key ^= h2
+
             # Check on disc to see if we have one saved already.
-            space = cache.get(key)
+            space = cache.get(i, j, k, key=key)
             # If not, compute it.  We will save it later
             if space is None:
                 print(f"Rank {self.rank} computing coupling matrix " f"{i}, {j}, {k}")
@@ -434,22 +426,14 @@ class TXTwoPointFourier(PipelineStage):
             # object to avoid more book-keeping.  This is used inside
             # the workspace cache
             space.txpipe_key = key
-            return space
 
-        for (i, j, k) in calcs:
-            if k == SHEAR_SHEAR:
-                f1 = lensing_fields[i]
-                f2 = lensing_fields[j]
-            elif k == SHEAR_POS:
-                f1 = lensing_fields[i]
-                f2 = density_field
-            else:
-                f1 = density_field
-                f2 = density_field
-            spaces[(i, j, k)] = get_workspace(f1, f2)
 
-        self.save_workspace_cache(cache, spaces)
-        return spaces
+            # We now automatically cache everything, non-optionally,
+            # but to save memory we don't keep them all loaded
+            cache.put(i, j, k, space)
+
+        return cache
+
 
     def collect_results(self):
         if self.comm is None:
@@ -523,7 +507,7 @@ class TXTwoPointFourier(PipelineStage):
         return calcs
 
     def compute_power_spectra(
-        self, pixel_scheme, i, j, k, maps, workspaces, ell_bins, cl_theory, f_sky
+        self, pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, cl_theory, f_sky
     ):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
@@ -582,7 +566,7 @@ class TXTwoPointFourier(PipelineStage):
             field_j = maps["df"][j]
             results_to_use = [(0, CdE), (1, CdB)]
 
-        workspace = workspaces[(i, j, k)]
+        workspace = workspace_cache.get(i, j, k)
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
