@@ -1,8 +1,9 @@
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog
 
 
 class CLClusterShearCatalogs(PipelineStage):
+    name = "CLClusterShearCatalogs"
     inputs = [
         ("cluster_catalog", HDFFile),
         ("shear_catalog", HDFFile),
