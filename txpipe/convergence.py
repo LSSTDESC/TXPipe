@@ -4,7 +4,13 @@ from .data_types import MapsFile, PNGFile
 
 
 class TXConvergenceMaps(PipelineStage):
+    """
+    Make a convergence map from a source map using Kaiser-Squires
+
+    This uses the wlmassmap library, which is included as a submodule in TXPipe.
+    """
     name = "TXConvergenceMaps"
+    parallel = False
     inputs = [
         ("source_maps", MapsFile),
     ]
@@ -78,10 +84,13 @@ class TXConvergenceMaps(PipelineStage):
 
 class TXConvergenceMapPlots(PipelineStage):
     """
-    Make plots of all the convergence maps, Kappa_E and Kappa_B
+    Make plots convergence maps
+
+    Makes a PNG plot of both Kappa_E and Kappa_B
     """
 
     name = "TXConvergenceMapPlots"
+    parallel = False
 
     inputs = [
         ("convergence_maps", MapsFile),

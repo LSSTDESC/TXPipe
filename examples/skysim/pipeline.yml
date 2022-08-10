@@ -1,0 +1,93 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXRandomCat
+    - name: TXSourceSelectorMetacal
+      nodes: 8
+      nprocess: 256
+    - name: TXTruthLensSelector
+      nodes: 8
+      nprocess: 256
+    - name: TXShearCalibration
+      nodes: 1
+      nprocess: 8
+    - name: TXLensCatalogSplitter
+      nodes: 1
+      nprocess: 8
+    - name: TXSourceTrueNumberDensity
+      nodes: 8
+      nprocess: 64
+    - name: TXLensTrueNumberDensity
+      nodes: 8
+      nprocess: 64
+    - name: TXPhotozPlots
+    - name: TXJackknifeCenters
+    - name: TXDensityMaps
+    - name: TXMainMaps
+      nodes: 8
+      nprocess: 64
+    - name: TXAuxiliarySourceMaps
+      nodes: 2
+      nprocess: 16
+    - name: TXAuxiliaryLensMaps
+      nodes: 2
+      nprocess: 16
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    - name: TXTwoPointTheoryFourier
+    - name: TXSimpleMask
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXNullBlinding
+    - name: TXTwoPoint
+      threads_per_process: 32
+      nprocess: 8
+      nodes: 8
+    - name: TXTwoPointPlots
+    - name: TXRealGaussianCovariance
+      threads_per_process: 32
+    - name: TXTwoPointFourier
+      nprocess: 8
+      nodes: 8
+      threads_per_process: 32
+    - name: TXSourceNoiseMaps
+      nprocess: 32
+      nodes: 8
+      threads_per_process: 1
+    - name: TXLensNoiseMaps
+      nprocess: 32
+      nodes: 8
+      threads_per_process: 1
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 32
+    - name: TXTwoPointPlotsFourier
+
+output_dir: data/skysim5000_v1.1.1/outputs
+config: examples/skysim/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  data/skysim5000_v1.1.1/inputs/shear_catalog.hdf5
+    photometry_catalog: data/skysim5000_v1.1.1/inputs/photometry_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+
+resume: True
+log_dir: data/skysim5000_v1.1.1/logs
+pipeline_log: data/skysim5000_v1.1.1/log.txt
+

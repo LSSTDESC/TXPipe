@@ -1,11 +1,11 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog
-from .utils import read_shear_catalog_type, Calibrator, Splitter, SourceNumberDensityStats
+from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
 import numpy as np
 
 
 class TXShearCalibration(PipelineStage):
-    """Split the shear catalog into calibrated bins suitable for 2pt analysis.
+    """Split the shear catalog into calibrated bins
 
     This class runs after source selection has been done, because the final
     calibration factor can only be estimated once we have read the entire catalog
@@ -41,6 +41,7 @@ class TXShearCalibration(PipelineStage):
         "use_true_shear": False,
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
+        "extra_cols": [""],
     }
 
     def run(self):
@@ -48,30 +49,31 @@ class TXShearCalibration(PipelineStage):
         #  Extract the configuration parameters
         cat_type = read_shear_catalog_type(self)
         use_true = self.config["use_true_shear"]
+        extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
-        output_file, splitter, nbin = self.setup_output()
+        output_file, splitter, nbin = self.setup_output(extra_cols)
 
         #  Load the calibrators.  If using the true shear no calibration
         # is needed
         tomo_file = self.get_input("shear_tomography_catalog")
         cals, cal2d = Calibrator.load(tomo_file, null=use_true)
 
-        # These are always named the same
-        cat_cols = ["ra", "dec", "weight"]
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs
-        if use_true:
-            cat_cols += ["true_g1", "true_g2"]
-        elif cat_type == "metacal":
-            cat_cols += ["mcal_g1", "mcal_g2"]
-        else:
-            cat_cols += ["g1", "g2"]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            cat_cols, renames = f.get_primary_catalog_names()
 
-        output_cols = ["ra", "dec", "g1", "g2", "weight"]
+            cat_cols += [f"00/{c}" for c in extra_cols]
+            renames.update({f"00/{c}":c for c in extra_cols})
+    
+        if cat_type!='hsc':
+            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+        else:
+            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -101,7 +103,7 @@ class TXShearCalibration(PipelineStage):
         )
 
         #  Main loop
-        for s, e, data in it:
+        for s, e, data in rename_iterated(it, renames):
 
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
@@ -126,7 +128,14 @@ class TXShearCalibration(PipelineStage):
                 d = {name: data[name][w] for name in output_cols}
 
                 # Calibrate the shear columns
-                d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
+                if cat_type=='hsc':
+                    d["g1"], d["g2"] = cal.apply(
+                        d["g1"], d["g2"], d["c1"], d["c2"]
+                    )
+                else:
+                    d["g1"], d["g2"] = cal.apply(
+                        d["g1"], d["g2"], subtract_mean=subtract_mean_shear
+                    )
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)
@@ -134,7 +143,7 @@ class TXShearCalibration(PipelineStage):
         splitter.finish(my_bins)
         output_file.close()
 
-    def setup_output(self):
+    def setup_output(self, extra_cols):
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["tomography/source_counts"][:]
@@ -145,7 +154,7 @@ class TXShearCalibration(PipelineStage):
         f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
-        cols = ["ra", "dec", "weight", "g1", "g2"]
+        cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
@@ -161,7 +170,9 @@ class TXShearCalibration(PipelineStage):
         # to initialize the output groups.
         bins = {b: c for b, c in enumerate(counts)}
         bins["all"] = count2d
-        splitter = Splitter(g, "bin", cols, bins)
+        # These are the possible integer columns
+        dtypes = {"id": "i8", "flags": "i8"}
+        splitter = Splitter(g, "bin", cols, bins, dtypes=dtypes)
 
         return f, splitter, nbin
 

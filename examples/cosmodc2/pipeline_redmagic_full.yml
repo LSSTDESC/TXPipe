@@ -1,0 +1,105 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXCosmoDC2Mock
+      nprocess: 1
+      threads_per_process: 20
+    - name: TXRandomCat
+      nodes: 4
+      nprocess: 64
+    - name: TXIngestRedmagic
+    - name: TXSourceSelectorMetadetect
+      nprocess: 64
+      nodes: 2
+    - name: TXShearCalibration
+      nprocess: 7
+      nodes: 1
+    - name: TXExternalLensCatalogSplitter
+      nprocess: 5
+      nodes: 1
+    - name: TXSourceTrueNumberDensity
+    - name: TXPhotozPlots
+    - name: TXJackknifeCenters
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXSourceMaps
+      nprocess: 12
+      threads_per_process: 1
+      nodes: 3
+    - name: TXExternalLensMaps
+    - name: TXAuxiliarySourceMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
+    - name: TXAuxiliaryLensMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXNullBlinding
+    - name: TXTwoPoint
+      threads_per_process: 32
+      nprocess: 6
+      nodes: 6
+    - name: TXTwoPointTheoryReal
+    - name: TXTwoPointTheoryFourier
+    - name: TXTwoPointPlots
+    - name: TXRealGaussianCovariance
+      threads_per_process: 64
+    - name: TXSourceNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
+    - name: TXExternalLensNoiseMaps
+      nprocess: 8
+      nodes: 2
+      threads_per_process: 1
+    - name: TXTwoPointFourier
+      nprocess: 3
+      nodes: 3
+      threads_per_process: 64
+    #- name: TXFourierGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXFourierTJPCovariance
+      nodes: 4
+      nprocess: 4
+      threads_per_process: 32      
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+      threads_per_process: 32
+    - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXTwoPointPlotsFourier 
+
+output_dir: data/cosmodc2/outputs_redmagic/2022/june6/
+config: examples/cosmodc2/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    lens_photometry_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    photoz_trained_model:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+    redmagic_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
+    response_model: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
+
+
+resume: True
+log_dir: data/cosmodc2/logs_redmagic/june6/
+pipeline_log: data/cosmodc2/logs_redmagic/june6/log.txt
+

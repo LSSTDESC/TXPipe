@@ -1,14 +1,26 @@
 from .data_types import MapsFile, PNGFile
 from .base_stage import PipelineStage
+import sys
 
 
 class TXMapPlots(PipelineStage):
     """
-    Make plots of all the available maps.
+    Make plots of all the available maps
+
+    This makes plots of:
+    - depth
+    - lens density
+    - shear
+    - flag values
+    - PSF
+    - mask
+    - bright object counts
+
+    If one map fails for any reason it is just skipped.
     """
 
     name = "TXMapPlots"
-
+    parallel = False
     inputs = [
         ("source_maps", MapsFile),
         ("lens_maps", MapsFile),
@@ -28,7 +40,7 @@ class TXMapPlots(PipelineStage):
         ("bright_object_map", PNGFile),
     ]
     config_options = {
-        # can also set Moll
+        # can also set moll
         "projection": "cart",
     }
 
@@ -41,11 +53,20 @@ class TXMapPlots(PipelineStage):
 
         # Plot from each file separately, just
         # to organize this file a bit
-        self.aux_source_plots()
-        self.aux_lens_plots()
-        self.source_plots()
-        self.lens_plots()
-        self.mask_plots()
+        methods = [
+            self.aux_source_plots,
+            self.aux_lens_plots,
+            self.source_plots,
+            self.lens_plots,
+            self.mask_plots,
+        ]
+
+        # We don't want this to fail if some maps are missing.
+        for m in methods:
+            try:
+                m()
+            except:
+                sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
     def aux_source_plots(self):
         import matplotlib.pyplot as plt
@@ -62,7 +83,7 @@ class TXMapPlots(PipelineStage):
         fig = self.open_output("flag_map", wrapper=True, figsize=(5 * flag_max, 5))
         for i in range(flag_max):
             plt.subplot(1, flag_max, i + 1)
-            f = 2 ** i
+            f = 2**i
             m.plot(f"flags/flag_{f}", view=self.config["projection"])
         fig.close()
 
@@ -110,7 +131,7 @@ class TXMapPlots(PipelineStage):
 
             # g2
             plt.sca(axes[1, i])
-            m.plot(f"g2_{i}", view=self.config["projection"], min=-0.1, max=0.1 )
+            m.plot(f"g2_{i}", view=self.config["projection"], min=-0.1, max=0.1)
         fig.close()
 
     def lens_plots(self):

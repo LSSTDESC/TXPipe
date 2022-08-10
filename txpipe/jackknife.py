@@ -2,14 +2,16 @@ from .base_stage import PipelineStage
 from .data_types import RandomsCatalog, PNGFile, TextFile
 import numpy as np
 
-
 class TXJackknifeCenters(PipelineStage):
     """
-    This is the pipeline stage that is run to generate the patch centers for
-    the Jackknife method.
+    Generate jack-knife centers from random catalogs.
+
+    This uses TreeCorr but cuts down the amount of data by taking
+    only every n'th point.
     """
 
     name = "TXJackknifeCenters"
+    parallel = False
 
     inputs = [
         ("random_cats", RandomsCatalog),
@@ -35,8 +37,10 @@ class TXJackknifeCenters(PipelineStage):
 
         jk_plot = self.open_output("jk", wrapper=True, figsize=(6.0, 4.5))
         # Choose colormap
-        cm = plt.cm.get_cmap("Set3")
-        sc = plt.scatter(ra, dec, c=patch, cmap=cm, s=20, vmin=0)
+        #cm = plt.cm.get_cmap("tab20c")
+        rng = np.random.default_rng(12345)
+        cm = matplotlib.colors.ListedColormap(rng.random(size=(256,3)))
+        sc = plt.scatter(ra, dec, c=patch,cmap=cm,  s=1, vmin=0)
         plt.xlabel("RA")
         plt.ylabel("DEC")
         plt.tight_layout()

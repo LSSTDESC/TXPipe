@@ -2,13 +2,15 @@ from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 import numpy as np
 
-
 class TXTwoPointTheoryReal(PipelineStage):
     """
-    Compute theory in CCL in real space and save to a sacc file.
+    Compute theory predictions for real-space 3x2pt measurements.
+
+    Uses CCL in real space and saves to a sacc file.
     """
 
     name = "TXTwoPointTheoryReal"
+    parallel = False
     inputs = [
         ("twopoint_data_real", SACCFile),
         ("fiducial_cosmology", FiducialCosmology),  # For example lines
@@ -16,6 +18,10 @@ class TXTwoPointTheoryReal(PipelineStage):
     outputs = [
         ("twopoint_theory_real", SACCFile),
     ]
+
+    config_options = {
+        "galaxy_bias": [0.0],
+        }
 
     def run(self):
         import sacc
@@ -43,6 +49,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         import sacc
 
         xip = sacc.standard_types.galaxy_shear_xi_plus
+        gammat = sacc.standard_types.galaxy_shearDensity_xi_t
         wtheta = sacc.standard_types.galaxy_density_xi
 
         source_tracers = set()
@@ -51,9 +58,15 @@ class TXTwoPointTheoryReal(PipelineStage):
             source_tracers.add(b2)
 
         lens_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(wtheta):
-            lens_tracers.add(b1)
-            lens_tracers.add(b2)
+        if wtheta in s.get_data_types():
+            for b1, b2 in s.get_tracer_combinations(wtheta):
+                lens_tracers.add(b1)
+                lens_tracers.add(b2)
+        else:
+            for sbin, lbin in s.get_tracer_combinations(gammat):
+                if lbin not in lens_tracers:
+                    lens_tracers.add(lbin)
+
 
         return len(source_tracers), len(lens_tracers)
 
@@ -72,7 +85,6 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
             print("smooth:", smooth)
-            # Convert to CCL form
             tracers[name] = pyccl.WeakLensingTracer(cosmo, (Ti.z, nz))
 
         # And the clustering tracers
@@ -81,10 +93,16 @@ class TXTwoPointTheoryReal(PipelineStage):
             Ti = s.get_tracer(name)
             nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
+            if self.config['galaxy_bias'] == [0.0]:
+                galaxy_bias = np.ones_like(Ti.z)
+            else:
+                galaxy_bias = np.array([self.config['galaxy_bias'][i]]*len(Ti.z))
+                
             # Convert to CCL form
             tracers[name] = pyccl.NumberCountsTracer(
-                cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z))
+                cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, galaxy_bias)
             )
+            
 
         return tracers
 
@@ -96,85 +114,88 @@ class TXTwoPointTheoryReal(PipelineStage):
         ell = np.unique(np.logspace(np.log10(2), 5, 400).astype(int))
         tracers = self.get_ccl_tracers(s, cosmo)
 
-        for i in range(nbin_source):
-            for j in range(i + 1):
-                print(f"Computing theory lensing-lensing ({i},{j})")
+        if "galaxy_shear_xi_plus" in s.get_data_types():
+            for i in range(nbin_source):
+                for j in range(i + 1):
+                    print(f"Computing theory lensing-lensing ({i},{j})")
 
-                # compute theory
-                print(tracers[f"source_{i}"], tracers[f"source_{j}"])
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell
-                )
-                theta, *_ = s.get_theta_xi(
-                    "galaxy_shear_xi_plus", f"source_{i}", f"source_{j}"
-                )
-                xip = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L+")
-                xim = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L-")
+                    # compute theory
+                    print(tracers[f"source_{i}"], tracers[f"source_{j}"])
+                    cl = pyccl.angular_cl(
+                        cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell
+                    )
+                    theta, *_ = s.get_theta_xi(
+                        "galaxy_shear_xi_plus", f"source_{i}", f"source_{j}"
+                    )
+                    # CCL inputs theta in degrees. 
+                    xip = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L+")
+                    xim = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L-")
 
-                # replace data values in the sacc object for the theory ones
-                ind_xip = s.indices(
-                    "galaxy_shear_xi_plus", (f"source_{i}", f"source_{j}")
-                )
-                ind_xim = s.indices(
-                    "galaxy_shear_xi_minus", (f"source_{i}", f"source_{j}")
-                )
-                for p, q in enumerate(ind_xip):
-                    s.data[q].value = xip[p]
-                for p, q in enumerate(ind_xim):
-                    s.data[q].value = xim[p]
+                    # replace data values in the sacc object for the theory ones
+                    ind_xip = s.indices(
+                        "galaxy_shear_xi_plus", (f"source_{i}", f"source_{j}")
+                    )
+                    ind_xim = s.indices(
+                        "galaxy_shear_xi_minus", (f"source_{i}", f"source_{j}")
+                    )
+                    for p, q in enumerate(ind_xip):
+                        s.data[q].value = xip[p]
+                    for p, q in enumerate(ind_xim):
+                        s.data[q].value = xim[p]
 
-        for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
+        
+        if "galaxy_density_xi" in s.get_data_types():
+            for i in range(nbin_lens):
+                for j in range(i + 1):
+                    print(f"Computing theory density-density ({i},{j})")
 
-            # compute theory
-            cl = pyccl.angular_cl(
-                cosmo, tracers[f"lens_{i}"], tracers[f"lens_{i}"], ell
-            )
-            theta, *_ = s.get_theta_xi("galaxy_density_xi", f"lens_{i}", f"lens_{i}")
-            wtheta = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GG")
+                    # compute theory
+                    cl = pyccl.angular_cl(
+                        cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell
+                    )
+                    theta, *_ = s.get_theta_xi(
+                        "galaxy_density_xi", f"lens_{i}", f"lens_{j}"
+                    )
+                    wtheta = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GG")
 
-            for j in range(i+1):
-                print(f"Computing theory density-density ({i},{j})")
+                    # replace data values in the sacc object for the theory ones
+                    ind = s.indices("galaxy_density_xi", (f"lens_{i}", f"lens_{j}"))
+                    for p, q in enumerate(ind):
+                        s.data[q].value = wtheta[p]
 
-                # compute theory
-                cl = pyccl.angular_cl(cosmo, tracers[f'lens_{i}'], tracers[f'lens_{j}'], ell)
-                theta, *_  = s.get_theta_xi('galaxy_density_xi', f'lens_{i}' , f'lens_{j}')
-                wtheta = pyccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG')
+        print (s.get_data_types())
+        if "galaxy_shearDensity_xi_t" in s.get_data_types():
+            for i in range(nbin_source):
+                for j in range(nbin_lens):
+                    print(f"Computing theory lensing-density (S{i},L{j})")
 
-                # replace data values in the sacc object for the theory ones
-                ind = s.indices('galaxy_density_xi', (f'lens_{i}', f'lens_{j}'))
-                for p, q in enumerate(ind):
-                    s.data[q].value = wtheta[p]
+                    # compute theory
+                    cl = pyccl.angular_cl(
+                        cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell
+                    )
+                    theta, *_ = s.get_theta_xi(
+                        "galaxy_shearDensity_xi_t", f"source_{i}", f"lens_{j}"
+                    )
+                    gt = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GL")
 
-        for i in range(nbin_source):
+                    ind = s.indices(
+                        "galaxy_shearDensity_xi_t", (f"source_{i}", f"lens_{j}")
+                    )
+                    for p, q in enumerate(ind):
+                        s.data[q].value = gt[p]
 
-            for j in range(nbin_lens):
-                print(f"Computing theory lensing-density (S{i},L{j})")
-
-                # compute theory
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell
-                )
-                theta, *_ = s.get_theta_xi(
-                    "galaxy_shearDensity_xi_t", f"source_{i}", f"lens_{j}"
-                )
-                gt = pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GL")
-
-                ind = s.indices(
-                    "galaxy_shearDensity_xi_t", (f"source_{i}", f"lens_{j}")
-                )
-                for p, q in enumerate(ind):
-                    s.data[q].value = gt[p]
-
-        return s
+            return s
 
 
 class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     """
-    Compute theory from CCL in Fourier space and save to a sacc file.
+    Compute theory predictions for Fourier-space 3x2pt measurements.
+
+    Also uses CCL and saves to a sacc file
     """
 
     name = "TXTwoPointTheoryFourier"
+    parallel = False
     inputs = [
         ("twopoint_data_fourier", SACCFile),
         ("fiducial_cosmology", FiducialCosmology),  # For example lines
@@ -183,6 +204,10 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         ("twopoint_theory_fourier", SACCFile),
     ]
 
+    config_options = {
+        "galaxy_bias": [0.0],
+        }
+    
     def run(self):
         import sacc
 
@@ -243,52 +268,59 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         for i in range(nbin_source):
             for j in range(i + 1):
                 print(f"Computing theory lensing-lensing ({i},{j})")
-
-                # compute theory
                 print(tracers[f"source_{i}"], tracers[f"source_{j}"])
-                ell, *_ = s.get_ell_cl(
-                    "galaxy_shear_cl_ee", f"source_{i}", f"source_{j}"
+
+                ind = s.indices("galaxy_shear_cl_ee", (f"source_{i}", f"source_{j}"))
+                bpw = s.get_bandpower_windows(ind)
+                ell_unbinned = bpw.values
+                
+                cl_unbinned = pyccl.angular_cl(
+                    cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell_unbinned
                 )
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell
-                )
+                cl = np.dot(bpw.weight.T, cl_unbinned)
 
                 # replace data values in the sacc object for the theory ones
-                ind = s.indices("galaxy_shear_cl_ee", (f"source_{i}", f"source_{j}"))
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
 
         for i in range(nbin_lens):
-            print(f"Computing theory density-density ({i},{i})")
+            for j in range(i + 1):
+                print(f"Computing theory density-density ({i},{j})")
 
-            # compute theory
-            ell, *_ = s.get_ell_cl("galaxy_density_cl", f"lens_{i}", f"lens_{i}")
-            cl = pyccl.angular_cl(
-                cosmo, tracers[f"lens_{i}"], tracers[f"lens_{i}"], ell
-            )
+                # get indices for this block
+                ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
+                
+                bpw = s.get_bandpower_windows(ind)
+                ell_unbinned = bpw.values
+                
+                cl_unbinned = pyccl.angular_cl(
+                    cosmo, tracers[f"lens_{i}"], tracers[f"lens_{j}"], ell_unbinned
+                )
 
-            # replace data values in the sacc object for the theory ones
-            ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{i}"))
-            for p, q in enumerate(ind):
-                s.data[q].value = cl[p]
+                cl = np.dot(bpw.weight.T, cl_unbinned)
+
+                # replace data values in the sacc object for the theory ones
+                for p, q in enumerate(ind):
+                    s.data[q].value = cl[p]
 
         for i in range(nbin_source):
 
             for j in range(nbin_lens):
                 print(f"Computing theory lensing-density (S{i},L{j})")
 
-                # compute theory
-                ell, *_ = s.get_ell_cl(
-                    "galaxy_shearDensity_cl_e", f"source_{i}", f"lens_{j}"
-                )
-                cl = pyccl.angular_cl(
-                    cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell
-                )
-
-                # replace data values in the sacc object for the theory ones
                 ind = s.indices(
                     "galaxy_shearDensity_cl_e", (f"source_{i}", f"lens_{j}")
                 )
+
+                bpw = s.get_bandpower_windows(ind)
+                ell_unbinned = bpw.values
+                cl_unbinned = pyccl.angular_cl(
+                    cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell_unbinned
+                )
+
+                cl = np.dot(bpw.weight.T, cl_unbinned)
+                
+                # replace data values in the sacc object for the theory ones
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
 

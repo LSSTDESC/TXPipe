@@ -80,6 +80,8 @@ class TXStarCatalogSplitter(PipelineStage):
 
 class TXGammaTFieldCenters(TXTwoPoint):
     """
+    Make diagnostic 2pt measurements of tangential shear around field centers
+
     This subclass of the standard TXTwoPoint uses the centers
     of exposure fields as "lenses", as a systematics test.
     """
@@ -116,8 +118,10 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "use_randoms": True,
-        'patch_dir': './cache/patches',
-        'low_mem': False,
+        "patch_dir": "./cache/patches",
+        "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -149,6 +153,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return rancat
 
@@ -164,6 +169,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("exposures", i),
         )
         return cat
 
@@ -173,6 +179,9 @@ class TXGammaTFieldCenters(TXTwoPoint):
         return [("all", 0, SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
+        # This subclass only needs the root process for this task
+        if self.rank != 0:
+            return
         # we write output both to file for later and to
         # a plot
         self.write_output_sacc(meta, results)
@@ -251,6 +260,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
 class TXGammaTStars(TXTwoPoint):
     """
+    Make diagnostic 2pt measurements of tangential shear around stars
+
     This subclass of the standard TXTwoPoint uses the centers
     of stars as "lenses", as a systematics test.
     """
@@ -291,8 +302,10 @@ class TXGammaTStars(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "use_randoms": True,
-        'patch_dir': './cache/patches',
-        'low_mem': False,
+        "patch_dir": "./cache/patches",
+        "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -317,6 +330,7 @@ class TXGammaTStars(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_star_catalog", i),
         )
         return cat
 
@@ -334,6 +348,7 @@ class TXGammaTStars(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return rancat
 
@@ -343,6 +358,10 @@ class TXGammaTStars(TXTwoPoint):
         return [("all", "bright", SHEAR_POS), ("all", "dim", SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
+        # This subclass only needs the root process for this task
+        if self.rank != 0:
+            return
+
         # we write output both to file for later and to a plot
         self.write_output_sacc(meta, results[0], "gammat_bright_stars", "Bright")
         self.write_output_sacc(meta, results[1], "gammat_dim_stars", "Dim")
@@ -360,7 +379,7 @@ class TXGammaTStars(TXTwoPoint):
 
         # compute the mean and the chi^2/dof
         z = (dvalue) / derror
-        chi2 = np.sum(z ** 2)
+        chi2 = np.sum(z**2)
         chi2dof = chi2 / (len(dtheta) - 1)
 
         plt.errorbar(
@@ -433,6 +452,11 @@ class TXGammaTStars(TXTwoPoint):
 
 class TXGammaTRandoms(TXTwoPoint):
     """
+    Make diagnostic 2pt measurements of tangential shear around randoms
+
+    It's not clear to me that this is a useful null test; if it was we
+    wouldn't need to subtrac this term in the Landay-Szalay estimator.
+
     This subclass of the standard TXTwoPoint uses the centers
     of stars as "lenses", as a systematics test.
     """
@@ -467,8 +491,10 @@ class TXGammaTRandoms(TXTwoPoint):
         "use_true_shear": False,
         "subtract_mean_shear": False,
         "use_randoms": False,
-        'patch_dir': './cache/patches',
-        'low_mem': False,
+        "patch_dir": "./cache/patches",
+        "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
     }
 
     def run(self):
@@ -505,6 +531,7 @@ class TXGammaTRandoms(TXTwoPoint):
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("random_cats", i),
         )
         return cat
 
@@ -532,9 +559,8 @@ class TXGammaTRandoms(TXTwoPoint):
         # compute the mean and the chi^2/dof
         flat1 = 0
         z = (dvalue - flat1) / derror
-        chi2 = np.sum(z ** 2)
+        chi2 = np.sum(z**2)
         chi2dof = chi2 / (len(dtheta) - 1)
-        print("error,", derror)
 
         plt.errorbar(
             dtheta,
@@ -551,7 +577,6 @@ class TXGammaTRandoms(TXTwoPoint):
         plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
         plt.title("Randoms Tangential Shear")
 
-        print("type", type(fig))
         fig.close()
 
     def write_output_sacc(self, meta, results):
@@ -608,48 +633,55 @@ class TXGammaTRandoms(TXTwoPoint):
 
 # Aperture Mass class that inherits from TXTwoPoint
 class TXApertureMass(TXTwoPoint):
+    """
+    Measure the aperture mass statistics with TreeCorr
 
-    name='TXApertureMass'
+    There are real and imaginary components of the aperture mass
+    and its cross term.
+    """
+    name = "TXApertureMass"
     inputs = [
-        ('binned_shear_catalog', ShearCatalog),
-        ('shear_photoz_stack', HDFFile),
-        ('patch_centers', TextFile),
-        ('tracer_metadata', HDFFile),
+        ("binned_shear_catalog", ShearCatalog),
+        ("shear_photoz_stack", HDFFile),
+        ("patch_centers", TextFile),
+        ("tracer_metadata", HDFFile),
     ]
     outputs = [
-        ('aperture_mass_data', SACCFile),
+        ("aperture_mass_data", SACCFile),
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        'calcs': [0,1,2],
-        'min_sep': 0.5,
-        'max_sep': 300.,
-        'nbins': 15,
-        'bin_slop': 0.02,
-        'sep_units': 'arcmin',
-        'flip_g1': False,
-        'flip_g2': True,
-        'cores_per_task': 20,
-        'verbose': 1,
-        'source_bins': [-1],
-        'lens_bins': [-1],
-        'reduce_randoms_size': 1.0,
-        'var_method': 'jackknife',
-        'use_true_shear': False,
-        'subtract_mean_shear': False,
-        'use_randoms': False,
-        'low_mem': False,
-        'patch_dir': './cache/patches',
-        'low_mem': False,
-        }
+        "calcs": [0, 1, 2],
+        "min_sep": 0.5,
+        "max_sep": 300.0,
+        "nbins": 15,
+        "bin_slop": 0.02,
+        "sep_units": "arcmin",
+        "flip_g1": False,
+        "flip_g2": True,
+        "cores_per_task": 20,
+        "verbose": 1,
+        "source_bins": [-1],
+        "lens_bins": [-1],
+        "reduce_randoms_size": 1.0,
+        "var_method": "jackknife",
+        "use_true_shear": False,
+        "subtract_mean_shear": False,
+        "use_randoms": False,
+        "low_mem": False,
+        "patch_dir": "./cache/patches",
+        "low_mem": False,
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
+    }
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        with self.open_input('binned_shear_catalog') as f:
-            nbin_source = f['shear'].attrs['nbin_source']
+        with self.open_input("binned_shear_catalog") as f:
+            nbin_source = f["shear"].attrs["nbin_source"]
 
         source_list = range(nbin_source)
-        lens_list = [] # Not necessary in this subclass
+        lens_list = []  # Not necessary in this subclass
 
         return source_list, lens_list
 
@@ -660,11 +692,11 @@ class TXApertureMass(TXTwoPoint):
         calcs = []
         k = SHEAR_SHEAR
         for i in source_list:
-            for j in range(i+1):
+            for j in range(i + 1):
                 if j in source_list:
-                    calcs.append((i,j,k))
+                    calcs.append((i, j, k))
 
-        if self.rank==0:
+        if self.rank == 0:
             print(f"Running these calculations: {calcs}")
 
         return calcs
@@ -694,19 +726,23 @@ class TXApertureMass(TXTwoPoint):
         # So here we load it in and add it to the data
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        f = self.open_input('shear_photoz_stack')
+        f = self.open_input("shear_photoz_stack")
         for i in source_list:
-            z = f['n_of_z/source/z'][:]
-            Nz = f[f'n_of_z/source/bin_{i}'][:]
-            S.add_tracer('NZ', f'source_{i}', z, Nz)
+            z = f["n_of_z/source/z"][:]
+            Nz = f[f"n_of_z/source/bin_{i}"][:]
+            S.add_tracer("NZ", f"source_{i}", z, Nz)
         f.close()
 
         # Now build up the collection of data points, adding them all to the sacc
         for d in results:
 
             # First the tracers and generic tags
-            tracer1 = f'source_{d.i}'
-            tracer2 = f'source_{d.j}'
+            tracer1 = f"source_{d.i}"
+            tracer2 = f"source_{d.j}"
+
+            # Skip empty bins
+            if d.object is None:
+                continue
 
             theta = np.exp(d.object.meanlogr)
             weight = d.object.weight
@@ -715,8 +751,14 @@ class TXApertureMass(TXTwoPoint):
             for j, CORR in enumerate([MAPSQ, MAPSQ_IM, MXSQ, MXSQ_IM]):
                 map = d.object.mapsq[j]
                 for i in range(n):
-                    S.add_data_point(CORR, (tracer1, tracer2), map[i],
-                        theta=theta[i], error=err[i], weight=weight[i])
+                    S.add_data_point(
+                        CORR,
+                        (tracer1, tracer2),
+                        map[i],
+                        theta=theta[i],
+                        error=err[i],
+                        weight=weight[i],
+                    )
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
@@ -725,4 +767,4 @@ class TXApertureMass(TXTwoPoint):
         self.write_metadata(S, meta)
 
         # Finally, save the output to Sacc file
-        S.save_fits(self.get_output('aperture_mass_data'), overwrite=True)
+        S.save_fits(self.get_output("aperture_mass_data"), overwrite=True)

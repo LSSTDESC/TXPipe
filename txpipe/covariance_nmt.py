@@ -13,6 +13,12 @@ d2r = np.pi / 180
 
 
 class TXFourierNamasterCovariance(PipelineStage):
+    """
+    Compute a Gaussian Fourier-space covariance with NaMaster
+
+    This functionality duplicates that of TXFourierTJPCovariance, and we should
+    rationalize.
+    """
     name = "TXFourierNamasterCovariance"
     do_xi = False
 
@@ -199,7 +205,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
         # area in steradians and sky fraction
         area = area_deg2 * np.radians(1) ** 2
-        area_arcmin2 = area_deg2 * 60 ** 2
+        area_arcmin2 = area_deg2 * 60**2
         full_sky = 4 * np.pi
         f_sky = area / full_sky
 
@@ -353,7 +359,7 @@ class TXFourierNamasterCovariance(PipelineStage):
                 ccl_tracers[tracer] = ccl.WeakLensingTracer(
                     cosmo, dndz=(z, nz)
                 )  # CCL automatically normalizes dNdz
-                tracer_noise[tracer] = sigma_e ** 2 / n_eff
+                tracer_noise[tracer] = sigma_e**2 / n_eff
 
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
@@ -994,6 +1000,12 @@ class TXFourierNamasterCovariance(PipelineStage):
 
 
 class TXRealNamasterCovariance(TXFourierNamasterCovariance):
+    """
+    Compute a Gaussian real-space covariance with NaMaster
+
+    We don't yet have another stage for this, but should rationalize
+    when comparing to TJPCov.
+    """
     name = "TXRealNamasterCovariance"
     do_xi = True
 

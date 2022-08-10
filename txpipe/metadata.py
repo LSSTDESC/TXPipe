@@ -8,11 +8,15 @@ from .utils import choose_pixelization
 
 class TXTracerMetadata(PipelineStage):
     """
+    Collate metadata from various other files
+
     This stage doesn't actually calculate anything, it just
     collates together metadata about our sources, so that we
     don't need to pass around catalog sized objects as much.
     """
+
     name = "TXTracerMetadata"
+    parallel = False
 
     inputs = [
         ("shear_catalog", ShearCatalog),
@@ -32,7 +36,7 @@ class TXTracerMetadata(PipelineStage):
 
         shear_catalog_type = read_shear_catalog_type(self)
 
-        area_sq_arcmin = area * 60 ** 2
+        area_sq_arcmin = area * 60**2
         shear_tomo_file = self.open_input("shear_tomography_catalog")
         lens_tomo_file = self.open_input("lens_tomography_catalog")
 
@@ -56,18 +60,21 @@ class TXTracerMetadata(PipelineStage):
                 metadata[k] = v
 
         if shear_catalog_type == "metacal":
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_gamma_mean")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_S")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_total")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_gamma_mean_2d")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_S_2d")
-            copy(shear_tomo_file, "metacal_response", "tracers", "R_total_2d")
-        elif shear_catalog_type == 'lensfit':
+            copy(shear_tomo_file, "response", "tracers", "R_gamma_mean")
+            copy(shear_tomo_file, "response", "tracers", "R_S")
+            copy(shear_tomo_file, "response", "tracers", "R_total")
+            copy(shear_tomo_file, "response", "tracers", "R_gamma_mean_2d")
+            copy(shear_tomo_file, "response", "tracers", "R_S_2d")
+            copy(shear_tomo_file, "response", "tracers", "R_total_2d")
+        elif shear_catalog_type == "metadetect":
+            copy(shear_tomo_file, "response", "tracers", "R")
+            copy(shear_tomo_file, "response", "tracers", "R_2d")
+        elif shear_catalog_type == "lensfit":
             copy(shear_tomo_file, "response", "tracers", "K")
             copy(shear_tomo_file, "response", "tracers", "C")
             copy(shear_tomo_file, "response", "tracers", "K_2d")
             copy(shear_tomo_file, "response", "tracers", "C_2d")
-        elif shear_catalog_type == 'hsc':
+        elif shear_catalog_type == "hsc":
             copy(shear_tomo_file, "response", "tracers", "R")
             copy(shear_tomo_file, "response", "tracers", "K")
             copy(shear_tomo_file, "response", "tracers", "R_mean_2d")
@@ -110,15 +117,15 @@ class TXTracerMetadata(PipelineStage):
         meta_file["tracers"].attrs["area"] = area
         meta_file["tracers"].attrs["area_unit"] = "deg^2"
         meta_file["tracers"].attrs["density_unit"] = "arcmin^{-2}"
-        metadata['n_eff'] = n_eff.tolist()
-        metadata['n_eff_2d'] = n_eff_2d.tolist()
-        metadata['lens_density'] = lens_density.tolist()
-        metadata['source_density'] = source_density.tolist()
-        metadata['lens_density_2d'] = lens_density_2d.tolist()
-        metadata['source_density_2d'] = source_density_2d.tolist()
-        metadata['area'] = area
-        metadata['area_unit'] = "deg^2"
-        metadata['density_unit'] = "arcmin^{-2}"
+        metadata["n_eff"] = n_eff.tolist()
+        metadata["n_eff_2d"] = n_eff_2d.tolist()
+        metadata["lens_density"] = lens_density.tolist()
+        metadata["source_density"] = source_density.tolist()
+        metadata["lens_density_2d"] = lens_density_2d.tolist()
+        metadata["source_density_2d"] = source_density_2d.tolist()
+        metadata["area"] = area
+        metadata["area_unit"] = "deg^2"
+        metadata["density_unit"] = "arcmin^{-2}"
         copy_attrs(shear_tomo_file, "tomography", "tracers")
         copy_attrs(lens_tomo_file, "tomography", "tracers")
         meta_file.close()
@@ -135,7 +142,7 @@ class TXTracerMetadata(PipelineStage):
             m = f.read_map("mask")
             pixel_scheme = choose_pixelization(**f.read_map_info("mask"))
 
-        num_hit = (m > 0).sum()
+        num_hit = np.sum(m[m > 0])  # Assuming fracdet mask
         area_sq_deg = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = float(area_sq_deg) / 41252.96125
         print(f"Area = {area_sq_deg:.2f} deg^2")

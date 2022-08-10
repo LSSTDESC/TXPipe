@@ -2,15 +2,20 @@ import paramiko
 import warnings
 import time
 
+
 class NerscMonitor:
-    def __init__(self, dirnames, username=None, key_filename=None, client=None, interval=3):
+    def __init__(
+        self, dirnames, username=None, key_filename=None, client=None, interval=3
+    ):
         self.dirnames = dirnames
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if client is None:
                 client = paramiko.SSHClient()
                 client.load_system_host_keys()
-                client.connect('cori.nersc.gov', username=username, key_filename=key_filename)
+                client.connect(
+                    "cori.nersc.gov", username=username, key_filename=key_filename
+                )
             self.client = client
         self._stdouts = None
         self._stderrs = None
@@ -30,7 +35,7 @@ class NerscMonitor:
         for dirname in self.dirnames:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                _, out, err = self.client.exec_command('ls -1 '+dirname)
+                _, out, err = self.client.exec_command("ls -1 " + dirname)
             outs.append(out)
             errs.append(err)
         self._stdouts = outs
@@ -43,8 +48,14 @@ class NerscMonitor:
         for dirname, stdout, stderr in zip(self.dirnames, self._stdouts, self._stderrs):
             err = stderr.read()
             if err:
-                raise IOError(f"Error connecting or listing remote dir {dirname}:\n{err}")
-            files_1 = [f.strip() for f in stdout.read().decode('utf-8').split("\n") if f.strip()]
+                raise IOError(
+                    f"Error connecting or listing remote dir {dirname}:\n{err}"
+                )
+            files_1 = [
+                f.strip()
+                for f in stdout.read().decode("utf-8").split("\n")
+                if f.strip()
+            ]
             files.append(files_1)
 
         # reset markers
@@ -63,6 +74,3 @@ class NerscMonitor:
             return self._parse_results()
         else:
             return None
-
-
-
