@@ -1,0 +1,38 @@
+launcher:
+    name: mini
+    interval: 1.0
+
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe  rail
+
+python_paths:
+    - submodules/RAIL
+
+
+stages:
+    - name: BPZ_lite                    # Run BPZ to get photo-z PDFs
+    - name: TXSourceSelectorMetadetect  # Select a source sample
+    - name: CLIngestRedmapper           # Ingest redmapper catalog from GCR 
+    - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster
+
+
+output_dir: data/clmmm/outputs
+config: examples/clmm/config.yml
+
+inputs:
+    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/metadetect_shear_catalog.hdf5
+    # source_photoz_model: 
+    # Could also use this for DC2 but we know the shears are wrong:
+    # shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/shear_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+
+
+resume: True
+log_dir: data/clmm/logs
+pipeline_log: data/clmm/log.txt
+
