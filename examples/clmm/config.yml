@@ -1,3 +1,6 @@
+global:
+    chunk_rows: 1000000
+
 Inform_BPZ_lite:
     aliases:
         input: spectroscopic_catalog

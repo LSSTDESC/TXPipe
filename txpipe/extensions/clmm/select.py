@@ -1,3 +1,4 @@
+import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog
 
@@ -32,6 +33,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # chunk of the clusters
         my_clusters = self.choose_my_clusters(clusters)
         z_clusters = clusters["z"]
+        # turn the physical scale max_radius to an angular scale at the redshift of each cluster
         theta_clusters = self.compute_theta_max(z_clusters)
         
 
@@ -44,7 +46,7 @@ class CLClusterShearCatalogs(PipelineStage):
         weights_per_clusters = [list() for c in my_clusters]
 
         max_radius = np.radians(self.config["max_radius"])
-        for s, e, data in self.iterate_source_catalog(my_clusters):
+        for s, e, data in self.iterate_source_catalog(clusters, my_clusters):
             # Get the location of the galaxies in this chunk of data,
             # in the form that the tree requires
             X = np.radians([data["dec"], data["ra"]]).T
@@ -108,7 +110,24 @@ class CLClusterShearCatalogs(PipelineStage):
                         g[group] = subfile[group]
 
 
+    def compute_theta_max(self, z):
+        import pyccl
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+        a = 1.0 / (1 + z)
+        d_a = cosmo.angular_diameter_distance(a)
+        max_r = self.config["max_radius"]
 
+        # This is in radians, which is what is expected by sklearn
+        max_theta = max_r / d_a
+
+        if self.rank == 0:
+            max_theta_arcmin = np.degrees(max_theta) * 60
+            print("Min search angle = ", max_theta_arcmin.min())
+            print("Mean search angle = ", max_theta_arcmin.mean())
+            print("Max search angle = ", max_theta_arcmin.max())
+
+        return max_theta
 
 
 
@@ -119,8 +138,10 @@ class CLClusterShearCatalogs(PipelineStage):
         import clmm
         ...
 
-    def choose_my_clusters(self):
-        my_clusters = np.array_split(np.arange(ncluster), self.size)[self.rank]
+    def choose_my_clusters(self, clusters):
+        n = len(clusters['ra'])
+        my_ = np.array_split(np.arange(n), self.size)[self.rank]
+        m
         return my_clusters
 
 
@@ -130,9 +151,11 @@ class CLClusterShearCatalogs(PipelineStage):
             ra = g["ra"][:]
             dec = g["dec"][:]
             z = g["redshift"][:]
+            rich = g["richness"][:]
+            ids = g["cluster_id"][:]
 
-        return {"ra": ra, "dec": dec, "z": z}
+        return {"ra": ra, "dec": dec, "z": z, "richness": rich, "id": ids}
 
-    def iterate_source_catalog(self):
+    def iterate_source_catalog(self, my_clusters):
         # get response, shear, location, redshifts, weights
         return chunk
