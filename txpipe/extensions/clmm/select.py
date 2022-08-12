@@ -19,11 +19,14 @@ class CLClusterShearCatalogs(PipelineStage):
 
     config_options = {
         "max_radius": 10.0,  # Mpc
+        "delta_z": 0.1,
         "redshift_criterion": "mean",  # might also need PDF
     }
 
     def run(self):
         import sklearn.neighbors
+        import astropy
+
 
         # load cluster catalog
         clusters = self.load_cluster_catalog()
@@ -32,39 +35,52 @@ class CLClusterShearCatalogs(PipelineStage):
         # We parallelize by cluster. Each process is responsible for a different
         # chunk of the clusters
         my_clusters = self.choose_my_clusters(clusters)
-        z_clusters = clusters["z"]
         # turn the physical scale max_radius to an angular scale at the redshift of each cluster
-        theta_clusters = self.compute_theta_max(z_clusters)
-        
+        my_clusters["theta_max"] = self.compute_theta_max(my_clusters["z"])
+        max_theta_max = my_clusters["theta_max"].max()
+        my_ncluster = len(my_clusters)
 
         # make a Ball Tree that we can use to find out which objects
         # are nearby any clusters
         pos = np.radians([my_clusters["dec"], my_clusters["ra"]]).T
         tree = sklearn.neighbors.BallTree(pos, metric="haversine")
 
-        indices_per_clusters = [list() for c in my_clusters]
-        weights_per_clusters = [list() for c in my_clusters]
+        indices_per_cluster = [list() for i in range(my_ncluster)]
+        weights_per_cluster = [list() for i in range(my_ncluster)]
 
         max_radius = np.radians(self.config["max_radius"])
-        for s, e, data in self.iterate_source_catalog(clusters, my_clusters):
+        delta_z = self.config["delta_z"]
+        for s, e, data in self.iterate_source_catalog(my_clusters):
             # Get the location of the galaxies in this chunk of data,
             # in the form that the tree requires
             X = np.radians([data["dec"], data["ra"]]).T
 
-            # use tree to find points near each cluster
-            indices = tree.query_radius(X, theta_clusters)
+            # This is a bit fiddly.  First we will get all the objects that
+            # are near each cluster using the maximum search radius for any cluster.
+            # Then in a moment we will cut down to the ones that are
+            # within the radius for each specific cluster.
+            # This is a bit roundabout but sklearn doesn't let us search with
+            # a radius per cluster, only per galaxy.
+            indices, distances = tree.query_radius(X, max_theta_max, return_distance=True)
 
+            for i, cluster in enumerate(my_clusters):
+                # use tree to find all the source galaxies near enought this cluster
+                # by cutting down from the full list (which includes objects that are)
+                # a bit too far away, see above.
+                index = indices[i]
+                dist_good = distances[i] < cluster["max_theta"]
+                index = index[dist_good]
 
-            for i, (c, index) in enumerate(zip(my_clusters, indices)):
-                # c is a cluster index
-                # index is all the source galaxies in this source chunk near on the sky
-                index = self.redshift_cut(data, index, z_clusters[c])
+                # cut down the index to only include source galaxies
+                # behind the cluster, with some buffer
+                z_good = data["redshift"][index] > (cluster["redshift"] + delta_z)
+                index = index[z_good]
 
-                # this may call CLMM
-                weights = self.compute_weights(index, data, z_clusters[c]) # ???
+                # this will in future call CLMM
+                weights = self.compute_weights(data, index, cluster["redshift"])
 
-                sources_per_cluster[i].append(index + s)
-                weights_per_cluster[i].append(index + s)
+                indices_per_cluster[i].append(index + s)
+                weights_per_cluster[i].append(weights)
 
         # indices_per_cluster is a list of arrays, one array per cluster
         # each array is the index in the shear catalog of all the galaxies
@@ -72,7 +88,6 @@ class CLClusterShearCatalogs(PipelineStage):
 
         indices_per_cluster = [np.concatenate(index) for index in indices_per_cluster]
         weights_per_cluster = [np.concatenate(index) for index in weights_per_cluster]
-        counts_per_cluster = [index.size for index in index_per_cluster]
 
         filename = self.get_output("cluster_shear_catalogs") + f".{self.rank}"
         with h5py.File(filename, "w") as f:
@@ -80,15 +95,16 @@ class CLClusterShearCatalogs(PipelineStage):
             f.attrs["delta_z_cut"] = 0.1  # or get from configuration
 
             for i, c in enumerate(my_clusters):
-                g = f.create_group(f"cluster_{c}")
-                g.create_dataset("index", data=indices_per_cluster[i])
-                g.create_dataset("weight", data=weights_per_cluster[i])
-                g.attrs["count"] = count
-                g.attrs["z_cluster"] = z_clusters[c]
-                g.attrs["richness"] = clusters["richness"][c]
-                g.attrs["id"] = clusters["id"][c]
-                g.attrs["ra"] = clusters["ra"][c]
-                g.attrs["dec"] = clusters["dec"][c]
+                original_index = c["index"]
+                g = f.create_group(f"cluster_{index}")
+                g.create_dataset("source_sample_index", data=indices_per_cluster[i])
+                g.create_dataset("source_weight", data=weights_per_cluster[i])
+                g.attrs["source_count"] = weights_per_cluster[i].size
+                g.attrs["redshift"] = c["redshift"]
+                g.attrs["richness"] = c["richness"]
+                g.attrs["id"] = c["id"]
+                g.attrs["ra"] = c["ra"]
+                g.attrs["dec"] = c["dec"]
 
         if self.comm is not None:
             self.comm.Barrier()
@@ -105,9 +121,14 @@ class CLClusterShearCatalogs(PipelineStage):
                         collated_file.attrs[k] = v
 
                 filename = self.get_output("cluster_shear_catalogs") + f".{i}"
-                with h5py.File(filename, "w") as subfile:
+                with h5py.File(filename, "r") as subfile:
                     for group in subfile.keys():
                         g[group] = subfile[group]
+
+        # Now that we are done, remove the per-rank files
+        for i in range(self.size):
+            filename = self.get_output("cluster_shear_catalogs") + f".{i}"
+            os.remove(filename)
 
 
     def compute_theta_max(self, z):
@@ -130,19 +151,22 @@ class CLClusterShearCatalogs(PipelineStage):
         return max_theta
 
 
-
-
-
-
-    def compute_weights(self):
-        import clmm
-        ...
+    def compute_weights(self, data, index, z_cluster):
+        return np.ones_like(index)
+        # import clmm
+        # z_gals = data["redshift"][index]
+        # do some calculation with z_gals and z_cluster from clmm
 
     def choose_my_clusters(self, clusters):
+        from astropy.table import Table
         n = len(clusters['ra'])
-        my_ = np.array_split(np.arange(n), self.size)[self.rank]
-        m
-        return my_clusters
+        my_indices = np.array_split(np.arange(n), self.size)[self.rank]
+        my_clusters = {
+            name: col[my_indices]
+            for name, col in clusters.items()
+        }
+        my_clusters["index"] = my_indices
+        return Table(my_clusters)
 
 
     def load_cluster_catalog(self):
