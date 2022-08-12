@@ -64,6 +64,15 @@ class ShearCatalog(HDFFile):
         else:
             return self.file["shear/ra"].size
 
+    def get_primary_catalog_group(self):
+        if self.catalog_type == "metadetect":
+            group = "shear/00/"
+        else:
+            group = "shear/"
+
+        return group
+
+
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
             shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]

@@ -18,6 +18,7 @@ class CLClusterShearCatalogs(PipelineStage):
     ]
 
     config_options = {
+        "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
         "redshift_criterion": "mean",  # might also need PDF
@@ -181,5 +182,48 @@ class CLClusterShearCatalogs(PipelineStage):
         return {"ra": ra, "dec": dec, "z": z, "richness": rich, "id": ids}
 
     def iterate_source_catalog(self, my_clusters):
-        # get response, shear, location, redshifts, weights
-        return chunk
+        # for now my_clusters is unused, but we could use it later
+        # to make the search more efficient.
+        rows = self.config["chunk_rows"]
+
+        # where and what to read from the shear catalog
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            shear_group = f.get_primary_catalog_group()
+        shear_cols = ["ra", "dec"]
+
+        # where and what to read rom the PZ catalog. This is in a QP
+        # format where the mode and mean are stored in a file called
+        # "ancil". The columns are called zmode and zmean.
+        # TODO: Support "pdf" option here and read from /data/yvals
+        pz_group = "ancil"
+        pz_cols = ["z" + self.config["redshift_criterion"]]
+
+        # where and what to read from the tomography catalog.
+        # We just want the values from the source bin. We will use
+        # any selected object, so we just ask for bin >= 0.
+        # (bin = -1 means non-selected)
+        tomo_group = "tomography"
+        tomo_cols = ["source_bin"]
+
+        # We set parallel=False here because all the catalogs
+        # are readingt
+        for s, e, data in self.combined_iterators(
+            "shear_catalog",
+            shear_group,
+            shear_cols,
+            "source_photoz_pdfs",
+            pz_group,
+            pz_cols,
+            rows,
+            "shear_tomography_catalog",
+            tomo_group,
+            tomo_cols,
+            parallel=False
+            ):
+
+            # cut down to objects in the WL sample
+            wl_sample = data["source_bin"] >= 0
+            data = {name: col[wl_sample] for name, col in data.items()}
+            yield s, e, data
+
+
