@@ -205,8 +205,10 @@ class CLClusterShearCatalogs(PipelineStage):
         tomo_group = "tomography"
         tomo_cols = ["source_bin"]
 
-        # We set parallel=False here because all the catalogs
-        # are readingt
+        # We set parallel=False here because all the processes
+        # are reading all the catalog, beacuse the parallelization
+        # is done by cluster, not by object. Though we could look
+        # again at that.
         for s, e, data in self.combined_iterators(
             "shear_catalog",
             shear_group,
