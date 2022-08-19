@@ -267,6 +267,20 @@ class TXSourceMaps(TXBaseMaps):
             # added from HSC branch, to get analytic noise in twopoint_fourier
             out_e = np.zeros_like(esq[b])
             out_e[esq[b] > 0] = esq[b][esq[b] > 0]
+
+            # calibrate the esq value - this is hacky for now!
+            if (self.shear_catalog_type == "metadetect") or (self.shear_catalog_type == "metacal"):
+                print("DOING HACKY CAL OF VAR(e)")
+                cals, cal_2D = cals
+                if b == "2D":
+                    c = cal_2D
+                else:
+                    c = calc[b]
+                Rinv_approx = c.Rinv.diagonal().mean()
+                esq[b] *= Rinv_approx**2
+            else:
+                print("VAR(e) IS WRONG!")
+
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
         return maps
