@@ -268,6 +268,7 @@ class TXSourceMaps(TXBaseMaps):
             out_e = np.zeros_like(esq[b])
             out_e[esq[b] > 0] = esq[b][esq[b] > 0]
 
+
             # calibrate the esq value - this is hacky for now!
             shear_catalog_type = read_shear_catalog_type(self)
             if (shear_catalog_type == "metadetect") or (shear_catalog_type == "metacal"):
@@ -279,6 +280,10 @@ class TXSourceMaps(TXBaseMaps):
                     c = cal_1D[b]
                 Rinv_approx = c.Rinv.diagonal().mean()
                 esq[b] *= Rinv_approx**2
+
+                # replace saved quantity
+                out_e = np.zeros_like(esq[b])
+                out_e[esq[b] > 0] = esq[b][esq[b] > 0]
             else:
                 print("VAR(e) IS WRONG!")
 
