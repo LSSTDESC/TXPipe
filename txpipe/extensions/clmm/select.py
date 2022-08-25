@@ -75,62 +75,38 @@ class CLClusterShearCatalogs(PipelineStage):
             nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
             t1 = timeit.default_timer()
             print("Search took", t1 - t0)
-#            print("Search complete")
-#            breakpoint()
+
             # nearby_clusters is the list of the clusters near to each galaxy
             # We want to flip this to get the galaxies near to each cluster
             # Or we could just iterate what we have
-            indices = collections.defaultdict(list)
-            distances = collections.defaultdict(list)
-            for g, (inds, dists) in enumerate(zip(nearby_clusters, cluster_distances)):
-                for ind in inds:
-                    indices[ind].append(g)
-                for d in dists:
-                    distances[ind].append(g)
+            for g, (index, distance, zgal) in enumerate(zip(nearby_clusters, cluster_distances, data["redshift"])):
 
-            t2 = timeit.default_timer()
-            print("Invert took", t2 - t1)
-
-            for i, cluster in enumerate(my_clusters):
-                # use tree to find all the source galaxies near enought this cluster
-                # by cutting down from the full list (which includes objects that are)
-                # a bit too far away, see above.
-                if i not in indices:
-                    continue
-                index = np.array(indices[i])
-                distance = np.array(distances[i])
-                cluster_theta_max = cluster["theta_max"]
+                # max distance allowed to each cluster
+                cluster_theta_max = my_clusters["theta_max"][index]
                 dist_good = distance < cluster_theta_max
                 index = index[dist_good]
                 distance = distance[dist_good]
 
-                # cut down the index to only include source galaxies
-                # behind the cluster, with some buffer
-                z_good = data["redshift"][index] > (cluster["redshift"] + delta_z)
+                cluster_z = my_clusters["redshift"][index]
+                z_good = zgal > cluster_z + delta_z
+
                 index = index[z_good]
                 distance = distance[z_good]
 
-                if index.size == 0:
-                    continue
-
-                # this will in future call CLMM
                 weights = self.compute_weights(data, index, cluster["redshift"])
 
-                indices_per_cluster[i].append(index + s)
-                weights_per_cluster[i].append(weights)
+                for i, w in zip(index, weights):
+                    indices_per_cluster[i].append(g + s)
+                    weights_per_cluster[i].append(w)
 
-                this_theta_info = np.degrees(distance.min())*60, np.degrees(distance.mean())*60, np.degrees(distance.max())*60
-                print(f"Process {self.rank} found {index.size:,} source galaxies behind and near my cluster {i} ID = {cluster['id']} in chunk. Max theta was {cluster_theta_max} and found these:", this_theta_info)
+            t2 = timeit.default_timer()
+            print("Invert took", t2 - t1)
 
-        # indices_per_cluster is a list of arrays, one array per cluster
-        # each array is the index in the shear catalog of all the galaxies
-        # near that cluster
 
         breakpoint()
         
-        no_gals = np.array([])
-        indices_per_cluster = [np.concatenate(index) if index else no_gals for index in indices_per_cluster]
-        weights_per_cluster = [np.concatenate(index) if index else no_gals for index in weights_per_cluster]
+        indices_per_cluster = [np.array(index)  for index in indices_per_cluster]
+        weights_per_cluster = [np.array(index)  for index in weights_per_cluster]
 
         filename = self.get_output("cluster_shear_catalogs") + f".{self.rank}"
         with h5py.File(filename, "w") as f:
