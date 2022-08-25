@@ -69,20 +69,28 @@ class CLClusterShearCatalogs(PipelineStage):
             # within the radius for each specific cluster.
             # This is a bit roundabout but sklearn doesn't let us search with
             # a radius per cluster, only per galaxy.
-            indices, distances = tree.query_radius(X, max_theta_max, return_distance=True)
+            nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
 #            print("Search complete")
 #            breakpoint()
-            # indices is the list of the clusters near to each galaxy
+            # nearby_clusters is the list of the clusters near to each galaxy
             # We want to flip this to get the galaxies near to each cluster
+            # Or we could just iterate what we have
+            indices = collections.defaultdict([])
+            distances = collections.defaultdict([])
+            for g, (inds, dists) in enumerate(zip(nearby_clusters, cluster_distances)):
+                for ind in inds
+                    indices[ind].append(g)
+                for d in dists:
+                    distances[ind].append(d)
 
             for i, cluster in enumerate(my_clusters):
                 # use tree to find all the source galaxies near enought this cluster
                 # by cutting down from the full list (which includes objects that are)
                 # a bit too far away, see above.
-                index = indices[i]
-                distance = distances[i]
-                if index.size == 0:
+                if i not in indices:
                     continue
+                index = np.array(indices[i])
+                distance = np.array(distances[i])
                 cluster_theta_max = cluster["theta_max"]
                 dist_good = distance < cluster_theta_max
                 index = index[dist_good]
@@ -104,7 +112,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 weights_per_cluster[i].append(weights)
 
                 this_theta_info = np.degrees(distance.min())*60, np.degrees(distance.mean())*60, np.degrees(distance.max())*60
-                #print(f"Process {self.rank} found {index.size:,} source galaxies behind and near my cluster {i} ID = {cluster['id']} in chunk. Max theta was {cluster_theta_max} and found these:", this_theta_info)
+                print(f"Process {self.rank} found {index.size:,} source galaxies behind and near my cluster {i} ID = {cluster['id']} in chunk. Max theta was {cluster_theta_max} and found these:", this_theta_info)
 
         # indices_per_cluster is a list of arrays, one array per cluster
         # each array is the index in the shear catalog of all the galaxies
