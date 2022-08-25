@@ -38,23 +38,21 @@ class CLClusterShearCatalogs(PipelineStage):
 
         # We parallelize by cluster. Each process is responsible for a different
         # chunk of the clusters
-        my_clusters = self.choose_my_clusters(clusters)
+        # my_clusters = self.choose_my_clusters(clusters)
         # turn the physical scale max_radius to an angular scale at the redshift of each cluster
-        my_clusters["theta_max"] = self.compute_theta_max(my_clusters["redshift"])
-        max_theta_max = my_clusters["theta_max"].max()
-        my_ncluster = len(my_clusters)
-        print(f"Process {self.rank} dealing with {my_ncluster:,} clusters")
+        cluster_theta_max = self.compute_theta_max(clusters["redshift"])
+        max_theta_max = clusters["theta_max"].max()
 
         # make a Ball Tree that we can use to find out which objects
         # are nearby any clusters
-        pos = np.radians([my_clusters["dec"], my_clusters["ra"]]).T
+        pos = np.radians([clusters["dec"], clusters["ra"]]).T
         tree = sklearn.neighbors.BallTree(pos, metric="haversine")
 
-        indices_per_cluster = [list() for i in range(my_ncluster)]
-        weights_per_cluster = [list() for i in range(my_ncluster)]
+        indices_per_cluster = [list() for i in range(ncluster)]
+        weights_per_cluster = [list() for i in range(ncluster)]
 
         delta_z = self.config["delta_z"]
-        for s, e, data in self.iterate_source_catalog(my_clusters):
+        for s, e, data in self.iterate_source_catalog():
             if self.rank == 0:
                 print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
                 
@@ -74,19 +72,14 @@ class CLClusterShearCatalogs(PipelineStage):
             if self.rank == 0:
                 print("Search took", t1 - t0)
 
-            # nearby_clusters is the list of the clusters near to each galaxy
-            # We want to flip this to get the galaxies near to each cluster
-            # Or we could just iterate what we have
-            counts = []
+
             for g, (index, distance, zgal) in enumerate(zip(nearby_clusters, cluster_distances, data["redshift"])):
-                counts.append(index.size)
                 # max distance allowed to each cluster
-                cluster_theta_max = my_clusters["theta_max"][index]
-                dist_good = distance < cluster_theta_max
+                dist_good = distance < cluster_theta_max[index]
                 index = index[dist_good]
                 distance = distance[dist_good]
 
-                cluster_z = my_clusters["redshift"][index]
+                cluster_z = clusters["redshift"][index]
                 z_good = zgal > cluster_z + delta_z
 
                 index = index[z_good]
@@ -98,7 +91,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 for i, w in zip(index, weights):
                     indices_per_cluster[i].append(g + s)
                     weights_per_cluster[i].append(w)
-            print(np.mean(counts), np.max(counts))
+
 
             t2 = timeit.default_timer()
             if self.rank == 0:
@@ -116,7 +109,7 @@ class CLClusterShearCatalogs(PipelineStage):
             # store metadata
             f.attrs["delta_z_cut"] = 0.1  # or get from configuration
 
-            for i, c in enumerate(my_clusters):
+            for i, c in enumerate(clusters):
                 original_index = c["index"]
                 g = f.create_group(f"cluster_{original_index}")
                 g.create_dataset("source_sample_index", data=indices_per_cluster[i])
@@ -136,18 +129,25 @@ class CLClusterShearCatalogs(PipelineStage):
             return
 
         with self.open_output("cluster_shear_catalogs") as collated_file:
-            g = collated_file.create_group("catalogs")
-            for i in range(self.size):
-                filename = self.get_output("cluster_shear_catalogs") + f".{i}"
-                print(f"Process 0 reading file {filename} and collating to main file")
-                with h5py.File(filename, "r") as subfile:
-                    if i == 0:
-                        for k, v in subfile.attrs.items():
-                            collated_file.attrs[k] = v
+            g_out = collated_file.create_group("catalogs")
 
-                    for group in subfile.keys():
-                        subfile.copy(group, g)
-#                        g[group] = subfile[group]
+            # open all the sub-files
+            files = [
+                h5py.File(self.get_output("cluster_shear_catalogs") + f".{i}")
+                for i in range(self.size)
+            ]
+
+            for i in range(ncluster):
+                groups = [f[f"catalogs/cluster_{i}"] for f in files]
+                indices = np.concatenate([g["source_sample_index"] for g in groups])
+                weights = np.concatenate([g["source_weight"] for g in groups])
+                subg = g_out.create_group(f"catalogs/cluster_{i}")
+                for k, v in groups[0].attrs.items():
+                    subg.attrs[k] = v
+                subg.attrs["source_count"] = indices.size
+                subg.create_dataset("source_sample_index", data=indices)
+                subg.create_dataset("source_weight", data=weights)
+
 
         # Now that we are done, remove the per-rank files
         for i in range(self.size):
@@ -204,9 +204,7 @@ class CLClusterShearCatalogs(PipelineStage):
 
         return {"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids}
 
-    def iterate_source_catalog(self, my_clusters):
-        # for now my_clusters is unused, but we could use it later
-        # to make the search more efficient.
+    def iterate_source_catalog(self):
         rows = self.config["chunk_rows"]
 
         # where and what to read from the shear catalog
@@ -229,10 +227,6 @@ class CLClusterShearCatalogs(PipelineStage):
         tomo_group = "tomography"
         tomo_cols = ["source_bin"]
 
-        # We set parallel=False here because all the processes
-        # are reading all the catalog, beacuse the parallelization
-        # is done by cluster, not by object. Though we could look
-        # again at that.
         for s, e, data in self.combined_iterators(
                 rows,
                 "shear_catalog",
@@ -244,7 +238,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 "shear_tomography_catalog",
                 tomo_group,
                 tomo_cols,
-                parallel=False
+                parallel=True
         ):
 
             # cut down to objects in the WL sample
