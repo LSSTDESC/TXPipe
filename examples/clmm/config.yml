@@ -28,6 +28,7 @@ BPZ_lite:
         model: source_photoz_model
         input: shear_catalog
         output: source_photoz_pdfs
+    chunk_size: 100000
     zmin: 0.0
     zmax: 3.0
     dz: 0.01

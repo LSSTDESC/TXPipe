@@ -5,7 +5,7 @@ launcher:
 
 site:
     name: cori-interactive
-    image: joezuntz/txpipe-dev
+    image: joezuntz/txpipe
 
 modules: txpipe  rail
 
@@ -15,12 +15,16 @@ python_paths:
 
 stages:
     - name: BPZ_lite                    # Run BPZ to get photo-z PDFs
+      nodes: 1
+      nprocess: 32
+      processes_per_node: 32
+      threads_per_process: 1
     - name: TXSourceSelectorMetadetect  # Select a source sample
     - name: CLIngestRedmapper           # Ingest redmapper catalog from GCR 
     - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster
 
 
-output_dir: data/clmmm/outputs
+output_dir: data/clmm/outputs
 config: examples/clmm/config.yml
 
 inputs:
@@ -28,7 +32,7 @@ inputs:
     # Could also use this for DC2 but we know the shears are wrong:
     # shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/shear_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
-    source_photoz_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/clmm-testing/source_photoz_model.pkl
+    source_photoz_model: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/clmm-testing/source_photoz_model.pkl
     # Need to replace this! It's old.
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
 

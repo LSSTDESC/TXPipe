@@ -1,13 +1,14 @@
+import os
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
 
 
 class CLClusterShearCatalogs(PipelineStage):
     name = "CLClusterShearCatalogs"
     inputs = [
         ("cluster_catalog", HDFFile),
-        ("shear_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_tomography_catalog", TomographyCatalog),
         ("source_photoz_pdfs", PhotozPDFFile),
@@ -27,7 +28,7 @@ class CLClusterShearCatalogs(PipelineStage):
     def run(self):
         import sklearn.neighbors
         import astropy
-
+        import h5py
 
         # load cluster catalog
         clusters = self.load_cluster_catalog()
@@ -37,9 +38,10 @@ class CLClusterShearCatalogs(PipelineStage):
         # chunk of the clusters
         my_clusters = self.choose_my_clusters(clusters)
         # turn the physical scale max_radius to an angular scale at the redshift of each cluster
-        my_clusters["theta_max"] = self.compute_theta_max(my_clusters["z"])
+        my_clusters["theta_max"] = self.compute_theta_max(my_clusters["redshift"])
         max_theta_max = my_clusters["theta_max"].max()
         my_ncluster = len(my_clusters)
+        print(f"Process {self.rank} dealing with {my_ncluster:,} clusters")
 
         # make a Ball Tree that we can use to find out which objects
         # are nearby any clusters
@@ -49,9 +51,14 @@ class CLClusterShearCatalogs(PipelineStage):
         indices_per_cluster = [list() for i in range(my_ncluster)]
         weights_per_cluster = [list() for i in range(my_ncluster)]
 
-        max_radius = np.radians(self.config["max_radius"])
         delta_z = self.config["delta_z"]
         for s, e, data in self.iterate_source_catalog(my_clusters):
+            if self.rank == 0:
+                print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
+
+            if e > 1e7:
+                break
+                
             # Get the location of the galaxies in this chunk of data,
             # in the form that the tree requires
             X = np.radians([data["dec"], data["ra"]]).T
@@ -63,19 +70,32 @@ class CLClusterShearCatalogs(PipelineStage):
             # This is a bit roundabout but sklearn doesn't let us search with
             # a radius per cluster, only per galaxy.
             indices, distances = tree.query_radius(X, max_theta_max, return_distance=True)
+#            print("Search complete")
+#            breakpoint()
+            # indices is the list of the clusters near to each galaxy
+            # We want to flip this to get the galaxies near to each cluster
 
             for i, cluster in enumerate(my_clusters):
                 # use tree to find all the source galaxies near enought this cluster
                 # by cutting down from the full list (which includes objects that are)
                 # a bit too far away, see above.
                 index = indices[i]
-                dist_good = distances[i] < cluster["max_theta"]
+                distance = distances[i]
+                if index.size == 0:
+                    continue
+                cluster_theta_max = cluster["theta_max"]
+                dist_good = distance < cluster_theta_max
                 index = index[dist_good]
+                distance = distance[dist_good]
 
                 # cut down the index to only include source galaxies
                 # behind the cluster, with some buffer
                 z_good = data["redshift"][index] > (cluster["redshift"] + delta_z)
                 index = index[z_good]
+                distance = distance[z_good]
+
+                if index.size == 0:
+                    continue
 
                 # this will in future call CLMM
                 weights = self.compute_weights(data, index, cluster["redshift"])
@@ -83,21 +103,28 @@ class CLClusterShearCatalogs(PipelineStage):
                 indices_per_cluster[i].append(index + s)
                 weights_per_cluster[i].append(weights)
 
+                this_theta_info = np.degrees(distance.min())*60, np.degrees(distance.mean())*60, np.degrees(distance.max())*60
+                #print(f"Process {self.rank} found {index.size:,} source galaxies behind and near my cluster {i} ID = {cluster['id']} in chunk. Max theta was {cluster_theta_max} and found these:", this_theta_info)
+
         # indices_per_cluster is a list of arrays, one array per cluster
         # each array is the index in the shear catalog of all the galaxies
         # near that cluster
 
-        indices_per_cluster = [np.concatenate(index) for index in indices_per_cluster]
-        weights_per_cluster = [np.concatenate(index) for index in weights_per_cluster]
+        breakpoint()
+        
+        no_gals = np.array([])
+        indices_per_cluster = [np.concatenate(index) if index else no_gals for index in indices_per_cluster]
+        weights_per_cluster = [np.concatenate(index) if index else no_gals for index in weights_per_cluster]
 
         filename = self.get_output("cluster_shear_catalogs") + f".{self.rank}"
         with h5py.File(filename, "w") as f:
+            print(f"Process {self.rank} writing file {filename}")
             # store metadata
             f.attrs["delta_z_cut"] = 0.1  # or get from configuration
 
             for i, c in enumerate(my_clusters):
                 original_index = c["index"]
-                g = f.create_group(f"cluster_{index}")
+                g = f.create_group(f"cluster_{original_index}")
                 g.create_dataset("source_sample_index", data=indices_per_cluster[i])
                 g.create_dataset("source_weight", data=weights_per_cluster[i])
                 g.attrs["source_count"] = weights_per_cluster[i].size
@@ -117,19 +144,21 @@ class CLClusterShearCatalogs(PipelineStage):
         with self.open_output("cluster_shear_catalogs") as collated_file:
             g = collated_file.create_group("catalogs")
             for i in range(self.size):
-                if i == 0:
-                    for k, v in subfile.attrs.items():
-                        collated_file.attrs[k] = v
-
                 filename = self.get_output("cluster_shear_catalogs") + f".{i}"
+                print(f"Process 0 reading file {filename} and collating to main file")
                 with h5py.File(filename, "r") as subfile:
+                    if i == 0:
+                        for k, v in subfile.attrs.items():
+                            collated_file.attrs[k] = v
+
                     for group in subfile.keys():
-                        g[group] = subfile[group]
+                        subfile.copy(group, g)
+#                        g[group] = subfile[group]
 
         # Now that we are done, remove the per-rank files
         for i in range(self.size):
             filename = self.get_output("cluster_shear_catalogs") + f".{i}"
-            os.remove(filename)
+#            os.remove(filename)
 
 
     def compute_theta_max(self, z):
@@ -141,15 +170,15 @@ class CLClusterShearCatalogs(PipelineStage):
         max_r = self.config["max_radius"]
 
         # This is in radians, which is what is expected by sklearn
-        max_theta = max_r / d_a
+        theta_max = max_r / d_a
 
         if self.rank == 0:
-            max_theta_arcmin = np.degrees(max_theta) * 60
-            print("Min search angle = ", max_theta_arcmin.min())
-            print("Mean search angle = ", max_theta_arcmin.mean())
-            print("Max search angle = ", max_theta_arcmin.max())
+            theta_max_arcmin = np.degrees(theta_max) * 60
+            print("Min search angle = ", theta_max_arcmin.min(), "arcmin")
+            print("Mean search angle = ", theta_max_arcmin.mean(), "arcmin")
+            print("Max search angle = ", theta_max_arcmin.max(), "arcmin")
 
-        return max_theta
+        return theta_max
 
 
     def compute_weights(self, data, index, z_cluster):
@@ -175,11 +204,11 @@ class CLClusterShearCatalogs(PipelineStage):
             g = f["clusters/"]
             ra = g["ra"][:]
             dec = g["dec"][:]
-            z = g["redshift"][:]
+            redshift = g["redshift"][:]
             rich = g["richness"][:]
             ids = g["cluster_id"][:]
 
-        return {"ra": ra, "dec": dec, "z": z, "richness": rich, "id": ids}
+        return {"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids}
 
     def iterate_source_catalog(self, my_clusters):
         # for now my_clusters is unused, but we could use it later
@@ -196,7 +225,8 @@ class CLClusterShearCatalogs(PipelineStage):
         # "ancil". The columns are called zmode and zmean.
         # TODO: Support "pdf" option here and read from /data/yvals
         pz_group = "ancil"
-        pz_cols = ["z" + self.config["redshift_criterion"]]
+        pz_col = "z" + self.config["redshift_criterion"]
+        pz_cols = [pz_col]
 
         # where and what to read from the tomography catalog.
         # We just want the values from the source bin. We will use
@@ -210,22 +240,24 @@ class CLClusterShearCatalogs(PipelineStage):
         # is done by cluster, not by object. Though we could look
         # again at that.
         for s, e, data in self.combined_iterators(
-            "shear_catalog",
-            shear_group,
-            shear_cols,
-            "source_photoz_pdfs",
-            pz_group,
-            pz_cols,
-            rows,
-            "shear_tomography_catalog",
-            tomo_group,
-            tomo_cols,
-            parallel=False
-            ):
+                rows,
+                "shear_catalog",
+                shear_group,
+                shear_cols,
+                "source_photoz_pdfs",
+                pz_group,
+                pz_cols,
+                "shear_tomography_catalog",
+                tomo_group,
+                tomo_cols,
+                parallel=False
+        ):
 
             # cut down to objects in the WL sample
             wl_sample = data["source_bin"] >= 0
             data = {name: col[wl_sample] for name, col in data.items()}
+            # rename zmean or zmode to redshift so it is simpler above
+            data["redshift"] = data.pop(pz_col)
             yield s, e, data
 
 
