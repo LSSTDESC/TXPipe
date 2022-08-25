@@ -57,9 +57,6 @@ class CLClusterShearCatalogs(PipelineStage):
         for s, e, data in self.iterate_source_catalog(my_clusters):
             if self.rank == 0:
                 print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
-
-            if e > 1e7:
-                break
                 
             # Get the location of the galaxies in this chunk of data,
             # in the form that the tree requires
@@ -74,13 +71,15 @@ class CLClusterShearCatalogs(PipelineStage):
             t0 = timeit.default_timer()
             nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
             t1 = timeit.default_timer()
-            print("Search took", t1 - t0)
+            if self.rank == 0:
+                print("Search took", t1 - t0)
 
             # nearby_clusters is the list of the clusters near to each galaxy
             # We want to flip this to get the galaxies near to each cluster
             # Or we could just iterate what we have
+            counts = []
             for g, (index, distance, zgal) in enumerate(zip(nearby_clusters, cluster_distances, data["redshift"])):
-
+                counts.append(index.size)
                 # max distance allowed to each cluster
                 cluster_theta_max = my_clusters["theta_max"][index]
                 dist_good = distance < cluster_theta_max
@@ -93,17 +92,20 @@ class CLClusterShearCatalogs(PipelineStage):
                 index = index[z_good]
                 distance = distance[z_good]
 
-                weights = self.compute_weights(data, index, cluster["redshift"])
+                weights = np.ones_like(distance)
+                #self.compute_weights(data, index, my_clusters["redshift"][index])
 
                 for i, w in zip(index, weights):
                     indices_per_cluster[i].append(g + s)
                     weights_per_cluster[i].append(w)
+            print(np.mean(counts), np.max(counts))
 
             t2 = timeit.default_timer()
-            print("Invert took", t2 - t1)
+            if self.rank == 0:
+                print("Invert took", t2 - t1)
 
 
-        breakpoint()
+#        breakpoint()
         
         indices_per_cluster = [np.array(index)  for index in indices_per_cluster]
         weights_per_cluster = [np.array(index)  for index in weights_per_cluster]
