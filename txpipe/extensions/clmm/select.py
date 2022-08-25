@@ -1,4 +1,6 @@
 import os
+import collections
+import timeit
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
@@ -69,19 +71,25 @@ class CLClusterShearCatalogs(PipelineStage):
             # within the radius for each specific cluster.
             # This is a bit roundabout but sklearn doesn't let us search with
             # a radius per cluster, only per galaxy.
+            t0 = timeit.default_timer()
             nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
+            t1 = timeit.default_timer()
+            print("Search took", t1 - t0)
 #            print("Search complete")
 #            breakpoint()
             # nearby_clusters is the list of the clusters near to each galaxy
             # We want to flip this to get the galaxies near to each cluster
             # Or we could just iterate what we have
-            indices = collections.defaultdict([])
-            distances = collections.defaultdict([])
+            indices = collections.defaultdict(list)
+            distances = collections.defaultdict(list)
             for g, (inds, dists) in enumerate(zip(nearby_clusters, cluster_distances)):
-                for ind in inds
+                for ind in inds:
                     indices[ind].append(g)
                 for d in dists:
-                    distances[ind].append(d)
+                    distances[ind].append(g)
+
+            t2 = timeit.default_timer()
+            print("Invert took", t2 - t1)
 
             for i, cluster in enumerate(my_clusters):
                 # use tree to find all the source galaxies near enought this cluster
