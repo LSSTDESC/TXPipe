@@ -5,6 +5,55 @@ import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
 
+class ExtendingArrays:
+    def __init__(self, n, size_step, dtypes):
+        self.dtypes = dtypes
+        self.arrays = collections.defaultdict(list)
+        self.counts = collections.defaultdict(int)
+        self.size_step = size_step
+        self.narr = len(dtypes)
+
+    def nbytes(self):
+        n = 0
+        for l in self.arrays.values():
+            for group in l:
+                for arr in group:
+                    n += arr.nbytes
+        return n
+
+    def collect(self, index):
+        if index not in self.arrays:
+            return np.array([]), np.array([]), np.array([])
+        arrays = self.arrays[index]
+        last_count = self.counts[index]
+        n = len(self.arrays[index])
+        output = []
+        for i in range(self.narr):
+            arrs = [a[i] for a in arrays]
+            # chop the end off the last array
+            arrs[-1] = arrs[-1][:last_count]
+            output.append(np.concatenate(arrs))
+        return output
+                    
+                
+
+    def extend(self, index):
+        l = self.arrays[index]
+        l.append([np.zeros(self.size_step, dtype=dt) for dt in self.dtypes])
+
+    def append(self, index, values):
+        l = self.arrays[index]
+        if not l:
+            self.extend(index)
+        c = self.counts[index]
+        if c == self.size_step:
+            self.extend(index)
+            c = 0
+        arrs = l[-1]
+        for arr, value in zip(arrs, values):
+            arr[c] = value
+        self.counts[index] = c + 1
+
 
 class CLClusterShearCatalogs(PipelineStage):
     name = "CLClusterShearCatalogs"
@@ -43,17 +92,17 @@ class CLClusterShearCatalogs(PipelineStage):
         cluster_theta_max = self.compute_theta_max(clusters["redshift"])
         max_theta_max = cluster_theta_max.max()
         max_theta_max_arcmin = np.degrees(max_theta_max) * 60
-        print(f"Max theta_max = {max_theta_max} radians = {max_theta_max_arcmin} arcmin")
+        if self.rank == 0:
+            print(f"Max theta_max = {max_theta_max} radians = {max_theta_max_arcmin} arcmin")
 
         # make a Ball Tree that we can use to find out which objects
         # are nearby any clusters
         pos = np.radians([clusters["dec"], clusters["ra"]]).T
         tree = sklearn.neighbors.BallTree(pos, metric="haversine")
 
-        indices_per_cluster = [list() for i in range(ncluster)]
-        weights_per_cluster = [list() for i in range(ncluster)]
-        distances_per_cluster = [list() for i in range(ncluster)]
+        per_cluster_data = ExtendingArrays(ncluster, 10_000, [int, float, float])
 
+        
         delta_z = self.config["delta_z"]
         for s, e, data in self.iterate_source_catalog():
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
@@ -71,7 +120,7 @@ class CLClusterShearCatalogs(PipelineStage):
             t0 = timeit.default_timer()
             nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
             t1 = timeit.default_timer()
-            print("Search took", t1 - t0)
+            #print("Search took", t1 - t0)
 
 
             for (index, distance, zgal, gal_index) in zip(nearby_clusters, cluster_distances, data["redshift"], data["original_index"]):
@@ -89,84 +138,65 @@ class CLClusterShearCatalogs(PipelineStage):
 
                 weights = np.ones_like(distance)
                 #self.compute_weights(data, index, my_clusters["redshift"][index])
-                #breakpoint()
+
 
                 for i, w, d in zip(index, weights, distance):
-                    indices_per_cluster[i].append(gal_index)
-                    weights_per_cluster[i].append(w)
-                    distances_per_cluster[i].append(d)
+                    per_cluster_data.append(i, [gal_index, w, d])
 
             t2 = timeit.default_timer()
-            print("Invert took", t2 - t1)
+            import gc
+            gc.collect()
 
+        print(f"Process {self.rank} done reading")
 
-        #breakpoint()
-        
-        indices_per_cluster = [np.array(index)  for index in indices_per_cluster]
-        weights_per_cluster = [np.array(weight)  for weight in weights_per_cluster]
-        distances_per_cluster = [np.array(distance)  for distance in distances_per_cluster]
+        if self.rank == 0:
+            outfile = self.open_output("cluster_shear_catalogs")
+            g_out = outfile.create_group("catalogs")
 
-        filename = self.get_output("cluster_shear_catalogs") + f".{self.rank}"
-        with h5py.File(filename, "w") as f:
-            print(f"Process {self.rank} writing file {filename}")
-            # store metadata
-            f.attrs["delta_z_cut"] = 0.1  # or get from configuration
+        for i, c in enumerate(clusters):
+            if (self.rank == 0) and (i%1000 == 0):
+                print(f"Collecting data for cluster {i}")
+            indices, weights, distances = per_cluster_data.collect(i)
+            t5 = timeit.default_timer()
+            if self.comm is not None:
+                counts = np.array(self.comm.gather(indices.size))
+                # This collects together all the results from different processes for this cluster
+                if self.rank == 0:
+                    total = counts.sum()
+                    all_indices = np.empty(total, dtype=indices.dtype)
+                    all_weights = np.empty(total, dtype=weights.dtype)
+                    all_distances = np.empty(total, dtype=distances.dtype)
+                    self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
+                    self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
+                    self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
+                    indices = all_indices
+                    weights = all_weights
+                    distances = all_distances
+                else:
+                    self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
+                    self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
+                    self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
 
-            for i, c in enumerate(clusters):
-                if len(indices_per_cluster[i]) == 0:
+                if self.rank != 0:
                     continue
-                g = f.create_group(f"cluster_{i}")
-                g.create_dataset("source_sample_index", data=indices_per_cluster[i])
-                g.create_dataset("source_weight", data=weights_per_cluster[i])
-                g.create_dataset("source_distance", data=distances_per_cluster[i])
-                g.attrs["source_count"] = weights_per_cluster[i].size
-                g.attrs["redshift"] = c["redshift"]
-                g.attrs["richness"] = c["richness"]
-                g.attrs["theta_max_radians"] = cluster_theta_max[i]
-                g.attrs["theta_max_arcmin"] = np.degrees(cluster_theta_max[i]) * 60
-                g.attrs["id"] = c["id"]
-                g.attrs["ra"] = c["ra"]
-                g.attrs["dec"] = c["dec"]
+                t6 = timeit.default_timer()
+                #print("Time for gather = ", t6 - t5)
 
-        if self.comm is not None:
-            self.comm.Barrier()
-
-        #breakpoint()
-        # open a master file containing everything
-        if self.rank != 0:
-            return
-
-        with self.open_output("cluster_shear_catalogs") as collated_file:
-            g_out = collated_file.create_group("catalogs")
-
-            # open all the sub-files
-            files = [
-                h5py.File(self.get_output("cluster_shear_catalogs") + f".{i}")
-                for i in range(self.size)
-            ]
-            keys = [set(f.keys()) for f in files]
-            for i in range(ncluster):
-
-                groups = [f[f"cluster_{i}"] for f,k in zip(files,keys) if f"cluster_{i}" in k]
-                if not groups:
-                    continue
-                subg = g_out.create_group(f"cluster_{i}")
-                for k, v in groups[0].attrs.items():
-                    subg.attrs[k] = v
-                indices = np.concatenate([g["source_sample_index"][:] for g in groups])
-                weights = np.concatenate([g["source_weight"][:] for g in groups])
-                distances = np.concatenate([g["source_distance"][:] for g in groups])
-                subg.attrs["source_count"] = indices.size
-                subg.create_dataset("source_sample_index", data=indices)
-                subg.create_dataset("source_weight", data=weights)
-                subg.create_dataset("source_distance", data=distances)
-
-
-        # Now that we are done, remove the per-rank files
-        for i in range(self.size):
-            filename = self.get_output("cluster_shear_catalogs") + f".{i}"
-#            os.remove(filename)
-
+            t7 = timeit.default_timer()
+            subg = g_out.create_group(f"cluster_{i}")
+            subg.attrs["redshift"] = c["redshift"]
+            subg.attrs["richness"] = c["richness"]
+            subg.attrs["theta_max_radians"] = cluster_theta_max[i]
+            subg.attrs["theta_max_arcmin"] = np.degrees(cluster_theta_max[i]) * 60
+            subg.attrs["id"] = c["id"]
+            subg.attrs["ra"] = c["ra"]
+            subg.attrs["dec"] = c["dec"]
+            subg.attrs["source_count"] = indices.size
+            subg.create_dataset("source_sample_index", data=indices)
+            subg.create_dataset("source_weight", data=weights)
+            subg.create_dataset("source_distance", data=distances)
+            t8 = timeit.default_timer()
+            #print("Time for write = ", t8 - t7)
 
     def compute_theta_max(self, z):
         import pyccl
