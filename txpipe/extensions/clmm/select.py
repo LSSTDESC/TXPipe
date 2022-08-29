@@ -149,12 +149,15 @@ class CLClusterShearCatalogs(PipelineStage):
             import gc
             gc.collect()
 
+
         print(f"Process {self.rank} done reading")
 
         # The overall number of indices for every pair
         overall_count = self.comm.reduce(per_cluster_data.total_counts())
-
+        
         if self.rank == 0:
+            overall_count = int(overall_count)
+            print("overall count = ", overall_count)
             outfile = self.open_output("cluster_shear_catalogs")
             catalog_group = outfile.create_group("catalog")
             catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int32)
@@ -162,10 +165,10 @@ class CLClusterShearCatalogs(PipelineStage):
             catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
             index_group = outfile.create_group("index")
-            index_group.create_dataset("cluster_index", shape=(overall_count), dtype=np.int64)
-            index_group.create_dataset("source_index", shape=(overall_count), dtype=np.int64)
-            index_group.create_dataset("weight", shape=(overall_count), dtype=np.float64)
-            index_group.create_dataset("distance_radians", shape=(overall_count), dtype=np.float64)
+            index_group.create_dataset("cluster_index", shape=(overall_count,), dtype=np.int64)
+            index_group.create_dataset("source_index", shape=(overall_count,), dtype=np.int64)
+            index_group.create_dataset("weight", shape=(overall_count,), dtype=np.float64)
+            index_group.create_dataset("distance_arcmin", shape=(overall_count,), dtype=np.float64)
 
 
         start = 0
@@ -187,15 +190,18 @@ class CLClusterShearCatalogs(PipelineStage):
             catalog_group["cluster_sample_start"][i] = start
             catalog_group["cluster_sample_count"][i] = n
             catalog_group["cluster_id"][i] = c["id"]
-            catalog_group["cluster_theta_max_arcmin"][i] = max_theta_max_arcmin[i]
+            catalog_group["cluster_theta_max_arcmin"][i] = np.degrees(cluster_theta_max[i]) * 60
 
             index_group["cluster_index"][start:start + n] = i
             index_group["source_index"][start:start + n] = indices
             index_group["weight"][start:start + n] = weights
-            index_group["distance_radians"][start:start + n] = distances
+            index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
 
             t2 = timeit.default_timer()
             print("Time for write = ", t2 - t1)
+
+        if self.rank == 0:
+            outfile.close()
 
     def collect(self, indices, weights, distances):
         # total number of background objects for t
