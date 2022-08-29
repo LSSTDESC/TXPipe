@@ -9,9 +9,10 @@ class ExtendingArrays:
     def __init__(self, n, size_step, dtypes):
         self.dtypes = dtypes
         self.arrays = collections.defaultdict(list)
-        self.counts = collections.defaultdict(int)
+        self.pos = np.zeros(n, dtype=int)
         self.size_step = size_step
         self.narr = len(dtypes)
+        self.counts = np.zeros(n, dtype=int)
 
     def nbytes(self):
         n = 0
@@ -23,9 +24,9 @@ class ExtendingArrays:
 
     def collect(self, index):
         if index not in self.arrays:
-            return np.array([]), np.array([]), np.array([])
+            return [np.array([],dtype=dt) for dt in self.dtypes]
         arrays = self.arrays[index]
-        last_count = self.counts[index]
+        last_count = self.pos[index]
         n = len(self.arrays[index])
         output = []
         for i in range(self.narr):
@@ -35,7 +36,8 @@ class ExtendingArrays:
             output.append(np.concatenate(arrs))
         return output
                     
-                
+    def total_counts(self):
+        return self.counts.sum()
 
     def extend(self, index):
         l = self.arrays[index]
@@ -45,14 +47,15 @@ class ExtendingArrays:
         l = self.arrays[index]
         if not l:
             self.extend(index)
-        c = self.counts[index]
+        c = self.pos[index]
         if c == self.size_step:
             self.extend(index)
             c = 0
         arrs = l[-1]
         for arr, value in zip(arrs, values):
             arr[c] = value
-        self.counts[index] = c + 1
+        self.pos[index] = c + 1
+        self.counts[index] += 1
 
 
 class CLClusterShearCatalogs(PipelineStage):
@@ -139,7 +142,6 @@ class CLClusterShearCatalogs(PipelineStage):
                 weights = np.ones_like(distance)
                 #self.compute_weights(data, index, my_clusters["redshift"][index])
 
-
                 for i, w, d in zip(index, weights, distance):
                     per_cluster_data.append(i, [gal_index, w, d])
 
@@ -149,54 +151,77 @@ class CLClusterShearCatalogs(PipelineStage):
 
         print(f"Process {self.rank} done reading")
 
+        # The overall number of indices for every pair
+        overall_count = self.comm.reduce(per_cluster_data.total_counts())
+
         if self.rank == 0:
             outfile = self.open_output("cluster_shear_catalogs")
-            g_out = outfile.create_group("catalogs")
+            catalog_group = outfile.create_group("catalog")
+            catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int32)
+            catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int32)
+            catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
+            catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
+            index_group = outfile.create_group("index")
+            index_group.create_dataset("cluster_index", shape=(overall_count), dtype=np.int64)
+            index_group.create_dataset("source_index", shape=(overall_count), dtype=np.int64)
+            index_group.create_dataset("weight", shape=(overall_count), dtype=np.float64)
+            index_group.create_dataset("distance_radians", shape=(overall_count), dtype=np.float64)
 
+
+        start = 0
         for i, c in enumerate(clusters):
-            if (self.rank == 0) and (i%1000 == 0):
+            if (self.rank == 0) and (i%100 == 0):
                 print(f"Collecting data for cluster {i}")
+
             indices, weights, distances = per_cluster_data.collect(i)
-            t5 = timeit.default_timer()
+
             if self.comm is not None:
-                counts = np.array(self.comm.gather(indices.size))
-                # This collects together all the results from different processes for this cluster
-                if self.rank == 0:
-                    total = counts.sum()
-                    all_indices = np.empty(total, dtype=indices.dtype)
-                    all_weights = np.empty(total, dtype=weights.dtype)
-                    all_distances = np.empty(total, dtype=distances.dtype)
-                    self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
-                    self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
-                    self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
-                    indices = all_indices
-                    weights = all_weights
-                    distances = all_distances
-                else:
-                    self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
-                    self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
-                    self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
+                indices, weights, distances = self.collect(indices, weights, distances)
 
-                if self.rank != 0:
-                    continue
-                t6 = timeit.default_timer()
-                #print("Time for gather = ", t6 - t5)
+            if self.rank != 0:
+                continue
 
-            t7 = timeit.default_timer()
-            subg = g_out.create_group(f"cluster_{i}")
-            subg.attrs["redshift"] = c["redshift"]
-            subg.attrs["richness"] = c["richness"]
-            subg.attrs["theta_max_radians"] = cluster_theta_max[i]
-            subg.attrs["theta_max_arcmin"] = np.degrees(cluster_theta_max[i]) * 60
-            subg.attrs["id"] = c["id"]
-            subg.attrs["ra"] = c["ra"]
-            subg.attrs["dec"] = c["dec"]
-            subg.attrs["source_count"] = indices.size
-            subg.create_dataset("source_sample_index", data=indices)
-            subg.create_dataset("source_weight", data=weights)
-            subg.create_dataset("source_distance", data=distances)
-            t8 = timeit.default_timer()
-            #print("Time for write = ", t8 - t7)
+            t1 = timeit.default_timer()
+
+            n = indices.size
+            catalog_group["cluster_sample_start"][i] = start
+            catalog_group["cluster_sample_count"][i] = n
+            catalog_group["cluster_id"][i] = c["id"]
+            catalog_group["cluster_theta_max_arcmin"][i] = max_theta_max_arcmin[i]
+
+            index_group["cluster_index"][start:start + n] = i
+            index_group["source_index"][start:start + n] = indices
+            index_group["weight"][start:start + n] = weights
+            index_group["distance_radians"][start:start + n] = distances
+
+            t2 = timeit.default_timer()
+            print("Time for write = ", t2 - t1)
+
+    def collect(self, indices, weights, distances):
+        # total number of background objects for t
+        t1 = timeit.default_timer()
+        counts = np.array(self.comm.allgather(indices.size))
+        # This collects together all the results from different processes for this cluster
+        if self.rank == 0:
+            total = counts.sum()
+            all_indices = np.empty(total, dtype=indices.dtype)
+            all_weights = np.empty(total, dtype=weights.dtype)
+            all_distances = np.empty(total, dtype=distances.dtype)
+            self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
+            self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
+            self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
+            indices = all_indices
+            weights = all_weights
+            distances = all_distances
+        else:
+            self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
+        t2 = timeit.default_timer()
+        if self.rank == 0:
+            print("Time for gather = ", t2 - t1)
+        return indices, weights, distances
+
 
     def compute_theta_max(self, z):
         import pyccl
