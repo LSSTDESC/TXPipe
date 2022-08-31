@@ -1,6 +1,7 @@
 import os
 import collections
 import timeit
+import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
@@ -120,11 +121,7 @@ class CLClusterShearCatalogs(PipelineStage):
             # within the radius for each specific cluster.
             # This is a bit roundabout but sklearn doesn't let us search with
             # a radius per cluster, only per galaxy.
-            t0 = timeit.default_timer()
             nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
-            t1 = timeit.default_timer()
-            #print("Search took", t1 - t0)
-
 
             for (index, distance, zgal, gal_index) in zip(nearby_clusters, cluster_distances, data["redshift"], data["original_index"]):
                 # max distance allowed to each cluster
@@ -146,9 +143,7 @@ class CLClusterShearCatalogs(PipelineStage):
                     per_cluster_data.append(i, [gal_index, w, d])
 
             t2 = timeit.default_timer()
-            import gc
             gc.collect()
-
 
         print(f"Process {self.rank} done reading")
 
@@ -157,7 +152,7 @@ class CLClusterShearCatalogs(PipelineStage):
         
         if self.rank == 0:
             overall_count = int(overall_count)
-            print("overall count = ", overall_count)
+            print("Overall pair count = ", overall_count)
             outfile = self.open_output("cluster_shear_catalogs")
             catalog_group = outfile.create_group("catalog")
             catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int32)
@@ -184,8 +179,12 @@ class CLClusterShearCatalogs(PipelineStage):
             if self.rank != 0:
                 continue
 
-            t1 = timeit.default_timer()
-
+            # Sort so the indices are montonic increasing - useful later
+            srt = indices.argsort()
+            indices = indices[srt]
+            weights = weights[srt]
+            distances = distances[srt]
+            
             n = indices.size
             catalog_group["cluster_sample_start"][i] = start
             catalog_group["cluster_sample_count"][i] = n
@@ -197,15 +196,14 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group["weight"][start:start + n] = weights
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
 
-            t2 = timeit.default_timer()
-            print("Time for write = ", t2 - t1)
+            start += n
 
         if self.rank == 0:
             outfile.close()
 
     def collect(self, indices, weights, distances):
         # total number of background objects for t
-        t1 = timeit.default_timer()
+
         counts = np.array(self.comm.allgather(indices.size))
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:
@@ -223,9 +221,7 @@ class CLClusterShearCatalogs(PipelineStage):
             self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
             self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
-        t2 = timeit.default_timer()
-        if self.rank == 0:
-            print("Time for gather = ", t2 - t1)
+
         return indices, weights, distances
 
 
