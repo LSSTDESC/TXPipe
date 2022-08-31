@@ -67,15 +67,13 @@ site:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail
+modules: txpipe rail.stages
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 # configuration settings
 config: examples/lensfit/config.yml

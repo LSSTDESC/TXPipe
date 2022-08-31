@@ -68,7 +68,6 @@ modules: txpipe
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
-    - submodules/FlexZPipe
 
 # configuration settings
 config: examples/redmagic/config.yml
