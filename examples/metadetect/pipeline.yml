@@ -79,7 +79,7 @@ stages:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail
+modules: txpipe rail.stages
 # modules: txpipe rail tjpcov
 
 # where to find any modules that are not in this repo,
@@ -87,8 +87,6 @@ modules: txpipe rail
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 # Where to put outputs
 output_dir: data/example/outputs_metadetect
