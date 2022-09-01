@@ -83,8 +83,6 @@ config: examples/lensfit/config.yml
 
 inputs:
     # See README for paths to download these files
-    photoz_lens_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_lens_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/lensfit_photometry_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
