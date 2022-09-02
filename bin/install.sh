@@ -52,7 +52,7 @@ source ./conda/bin/activate
 mamba install -c conda-forge -y scipy matplotlib camb healpy psutil numpy scikit-learn fitsio pandas astropy pyccl mpi4py treecorr namaster  dask mpich 'h5py=*=mpi_mpich_*' cosmosis-standalone
 
 # On some systems installing with +git works and on some it's https. If https fails then fall back to git.
-PIP_PACKAGES_GIT="threadpoolctl ceci sacc parallel_statistics git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs  git+git://github.com/LSSTDESC/qp git+git://github.com/LSSTDESC/desc_bpz healsparse flexcode  xgboost==1.1.1  git+https://github.com/dask/dask-mpi  git+https://github.com/LSSTDESC/firecrown@v0.4 git+git://github.com/LSSTDESC/desc_bpz git+git://github.com/LSSTDESC/qp"
+PIP_PACKAGES_GIT="threadpoolctl ceci sacc parallel_statistics git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs  git+git://github.com/LSSTDESC/qp git+git://github.com/LSSTDESC/desc_bpz healsparse flexcode  xgboost==1.1.1  git+https://github.com/dask/dask-mpi  git+https://github.com/LSSTDESC/firecrown@v0.4 git+git://github.com/LSSTDESC/desc_bpz git+git://github.com/LSSTDESC/qp git+git://github.com/jlvdb/hyperbolic pzflow "
 PIP_PACKAGES_HTTPS="${PIP_PACKAGES_GIT//+git/+https}"
 
 pip install $PIP_PACKAGES_GIT || pip install $PIP_PACKAGES_HTTPS
