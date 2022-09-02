@@ -1,62 +1,9 @@
 import os
-import collections
-import timeit
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
-
-class ExtendingArrays:
-    def __init__(self, n, size_step, dtypes):
-        self.dtypes = dtypes
-        self.arrays = collections.defaultdict(list)
-        self.pos = np.zeros(n, dtype=int)
-        self.size_step = size_step
-        self.narr = len(dtypes)
-        self.counts = np.zeros(n, dtype=int)
-
-    def nbytes(self):
-        n = 0
-        for l in self.arrays.values():
-            for group in l:
-                for arr in group:
-                    n += arr.nbytes
-        return n
-
-    def collect(self, index):
-        if index not in self.arrays:
-            return [np.array([],dtype=dt) for dt in self.dtypes]
-        arrays = self.arrays[index]
-        last_count = self.pos[index]
-        n = len(self.arrays[index])
-        output = []
-        for i in range(self.narr):
-            arrs = [a[i] for a in arrays]
-            # chop the end off the last array
-            arrs[-1] = arrs[-1][:last_count]
-            output.append(np.concatenate(arrs))
-        return output
-                    
-    def total_counts(self):
-        return self.counts.sum()
-
-    def extend(self, index):
-        l = self.arrays[index]
-        l.append([np.zeros(self.size_step, dtype=dt) for dt in self.dtypes])
-
-    def append(self, index, values):
-        l = self.arrays[index]
-        if not l:
-            self.extend(index)
-        c = self.pos[index]
-        if c == self.size_step:
-            self.extend(index)
-            c = 0
-        arrs = l[-1]
-        for arr, value in zip(arrs, values):
-            arr[c] = value
-        self.pos[index] = c + 1
-        self.counts[index] += 1
+from .utils import ExtendingArrays
 
 
 class CLClusterShearCatalogs(PipelineStage):
@@ -89,11 +36,12 @@ class CLClusterShearCatalogs(PipelineStage):
         clusters = self.load_cluster_catalog()
         ncluster = len(clusters)
 
-        # We parallelize by cluster. Each process is responsible for a different
-        # chunk of the clusters
-        # my_clusters = self.choose_my_clusters(clusters)
         # turn the physical scale max_radius to an angular scale at the redshift of each cluster
         cluster_theta_max = self.compute_theta_max(clusters["redshift"])
+
+        # For the neighbour search, sklearn doesn't let us have
+        # a different distance per cluster. So we use the maximum
+        # distance over all the clusters and then filter down later.
         max_theta_max = cluster_theta_max.max()
         max_theta_max_arcmin = np.degrees(max_theta_max) * 60
         if self.rank == 0:
@@ -104,10 +52,14 @@ class CLClusterShearCatalogs(PipelineStage):
         pos = np.radians([clusters["dec"], clusters["ra"]]).T
         tree = sklearn.neighbors.BallTree(pos, metric="haversine")
 
+        # We use this object (see utils.py) to store the neighbours for
+        # each cluster in an extensible but memory-efficient way
         per_cluster_data = ExtendingArrays(ncluster, 10_000, [int, float, float])
 
-        
+        # Buffer in redshift behind each object        
         delta_z = self.config["delta_z"]
+
+        # Loop through the source catalog.
         for s, e, data in self.iterate_source_catalog():
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
                 
@@ -123,42 +75,47 @@ class CLClusterShearCatalogs(PipelineStage):
             # a radius per cluster, only per galaxy.
             nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
 
+            # Now we loop through each galaxy, and take all the clusters nearby it.
+            # We have to int
             for (index, distance, zgal, gal_index) in zip(nearby_clusters, cluster_distances, data["redshift"], data["original_index"]):
-                # max distance allowed to each cluster
+                # Cut down to clusters close enough to this galaxy
                 dist_good = distance < cluster_theta_max[index]
-                
                 index = index[dist_good]
                 distance = distance[dist_good]
 
-                cluster_z = clusters["redshift"][index]
-                z_good = zgal > cluster_z + delta_z
-
+                # Cut down to clusters that are in front of this galaxy
+                z_good = zgal > clusters["redshift"][index] + delta_z
                 index = index[z_good]
                 distance = distance[z_good]
 
+                # Placeholder: we should replace this with a call to CLMM
                 weights = np.ones_like(distance)
                 #self.compute_weights(data, index, my_clusters["redshift"][index])
 
+                # Now loop through all the nearby clusters and save the fact that this
+                # galaxy is behind them
                 for i, w, d in zip(index, weights, distance):
                     per_cluster_data.append(i, [gal_index, w, d])
 
-            t2 = timeit.default_timer()
             gc.collect()
 
         print(f"Process {self.rank} done reading")
 
-        # The overall number of indices for every pair
-        overall_count = self.comm.reduce(per_cluster_data.total_counts())
+        # The overall number of cluster-galaxy pairs
+        overall_count = int(self.comm.reduce(per_cluster_data.total_counts()))
         
+        # The root process saves all the data. First it setps up the output
+        # file here.
         if self.rank == 0:
-            overall_count = int(overall_count)
             print("Overall pair count = ", overall_count)
             outfile = self.open_output("cluster_shear_catalogs")
+            # Create space for the catalog
             catalog_group = outfile.create_group("catalog")
             catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int32)
             catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int32)
             catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
+            # and for the index into that catalog
             index_group = outfile.create_group("index")
             index_group.create_dataset("cluster_index", shape=(overall_count,), dtype=np.int64)
             index_group.create_dataset("source_index", shape=(overall_count,), dtype=np.int64)
@@ -166,25 +123,33 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group.create_dataset("distance_arcmin", shape=(overall_count,), dtype=np.float64)
 
 
+        # Now we loop through each cluster and collect all the galaxies
+        # behind it from all the different processes.
         start = 0
         for i, c in enumerate(clusters):
             if (self.rank == 0) and (i%100 == 0):
                 print(f"Collecting data for cluster {i}")
 
+            # Each process collects all the galaxies for this cluster
             indices, weights, distances = per_cluster_data.collect(i)
 
+            # If we are running in parallel then collect together the values from
+            # all the processes
             if self.comm is not None:
                 indices, weights, distances = self.collect(indices, weights, distances)
 
+            # Only the root process does the writing, so the others just
+            # go to the next set of clusters.
             if self.rank != 0:
                 continue
 
-            # Sort so the indices are montonic increasing - useful later
+            # Sort so the indices are montonic increasing
             srt = indices.argsort()
             indices = indices[srt]
             weights = weights[srt]
             distances = distances[srt]
             
+            # And finally write out all the data from the root process.
             n = indices.size
             catalog_group["cluster_sample_start"][i] = start
             catalog_group["cluster_sample_count"][i] = n
@@ -226,15 +191,24 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
     def compute_theta_max(self, z):
+        """
+        Convert the maximum radius into a maximum angle at the redshift
+        of each cluster.
+        """
         import pyccl
+
+        # Load a fiducial cosmology and the the angular diameter distance
+        # to each redshift in it
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
         a = 1.0 / (1 + z)
         d_a = cosmo.angular_diameter_distance(a)
-        max_r = self.config["max_radius"]
 
+
+        # Use this to convert the max radius in megaparsec to an angle.
+        # The d_a should also be in Mpc.
         # This is in radians, which is what is expected by sklearn
-        theta_max = max_r / d_a
+        theta_max = self.config["max_radius"] / d_a
 
         if self.rank == 0:
             theta_max_arcmin = np.degrees(theta_max) * 60
@@ -251,17 +225,6 @@ class CLClusterShearCatalogs(PipelineStage):
         # z_gals = data["redshift"][index]
         # do some calculation with z_gals and z_cluster from clmm
 
-    def choose_my_clusters(self, clusters):
-        from astropy.table import Table
-        n = len(clusters['ra'])
-        my_indices = np.array_split(np.arange(n), self.size)[self.rank]
-        my_clusters = {
-            name: col[my_indices]
-            for name, col in clusters.items()
-        }
-        my_clusters["index"] = my_indices
-        return Table(my_clusters)
-
 
     def load_cluster_catalog(self):
         from astropy.table import Table
@@ -276,12 +239,16 @@ class CLClusterShearCatalogs(PipelineStage):
         return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})
 
     def iterate_source_catalog(self):
+        """
+        Iterate through the shear catalog, loading the locations
+        of them and whether they are assigned to any tomographic bin.
+        """
         rows = self.config["chunk_rows"]
 
         # where and what to read from the shear catalog
+        shear_cols = ["ra", "dec"]
         with self.open_input("shear_catalog", wrapper=True) as f:
             shear_group = f.get_primary_catalog_group()
-        shear_cols = ["ra", "dec"]
 
         # where and what to read rom the PZ catalog. This is in a QP
         # format where the mode and mean are stored in a file called
@@ -298,6 +265,7 @@ class CLClusterShearCatalogs(PipelineStage):
         tomo_group = "tomography"
         tomo_cols = ["source_bin"]
 
+        # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
                 rows,
                 "shear_catalog",
@@ -311,13 +279,19 @@ class CLClusterShearCatalogs(PipelineStage):
                 tomo_cols,
                 parallel=True
         ):
-
+            # For each chunk of data we also want to store the original
+            # index.  This comes in useful later because we will cut
+            # down here to just objects in the WL sample.
             data["original_index"] = np.arange(s, e, dtype=int)
+
             # cut down to objects in the WL sample
             wl_sample = data["source_bin"] >= 0
             data = {name: col[wl_sample] for name, col in data.items()}
+
             # rename zmean or zmode to redshift so it is simpler above
             data["redshift"] = data.pop(pz_col)
+
+            # Give this chunk of data to the main run function
             yield s, e, data
 
 
