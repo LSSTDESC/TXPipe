@@ -113,7 +113,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         nbin_source, nbin_lens = self.read_nbin(s)
         ell = np.unique(np.logspace(np.log10(2), 5, 400).astype(int))
         tracers = self.get_ccl_tracers(s, cosmo)
-
+        print('cosmo', cosmo)
         if "galaxy_shear_xi_plus" in s.get_data_types():
             for i in range(nbin_source):
                 for j in range(i + 1):
@@ -143,7 +143,6 @@ class TXTwoPointTheoryReal(PipelineStage):
                     for p, q in enumerate(ind_xim):
                         s.data[q].value = xim[p]
 
-        
         if "galaxy_density_xi" in s.get_data_types():
             for i in range(nbin_lens):
                 for j in range(i + 1):
