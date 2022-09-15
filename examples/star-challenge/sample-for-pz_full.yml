@@ -58,8 +58,8 @@ stages:
     #  nodes: 2
     - name: TXTwoPointPixel
       threads_per_process: 32
-      nprocess: 6
-      nodes: 6
+      nprocess: 4
+      nodes: 4
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
@@ -77,18 +77,18 @@ stages:
       nprocess: 2
       nodes: 2
       threads_per_process: 32
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 64
-    #- name: TXFourierTJPCovariance
-    #  nodes: 4
-    #  nprocess: 4
-    #  threads_per_process: 32      
+    #- name: TXFourierGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXFourierTJPCovariance
+      nodes: 4
+      nprocess: 4
+      threads_per_process: 32      
     #- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     #  threads_per_process: 32
     #- name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/star-challenge/outputs/July18/
+output_dir: data/star-challenge/outputs/Sep14/
 config: examples/star-challenge/config_full.yml
 
 # On NERSC, set this before running:

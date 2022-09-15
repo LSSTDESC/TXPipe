@@ -44,24 +44,24 @@ stages:
     #  threads_per_process: 1
     #  nodes: 4
     - name: TXDensityMaps
-    #- name: TXSourceNoiseMaps
-    #  nprocess: 4
-    #  nodes: 6
-    #  threads_per_process: 1
-    #- name: TXExternalLensNoiseMaps
-    #  nprocess: 16
-    #  nodes: 4
-    #  threads_per_process: 1
+    - name: TXSourceNoiseMaps
+      nprocess: 4
+      nodes: 6
+      threads_per_process: 1
+    - name: TXExternalLensNoiseMaps
+      nprocess: 16
+      nodes: 4
+      threads_per_process: 1
     - name: TXTwoPointFourier
       nprocess: 4
       nodes: 4
-      threads_per_process: 20
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 64
-    #- name: TXFourierTJPCovariance
-    #  nodes: 6
-    #  nprocess: 6
-    #  threads_per_process: 32
+      threads_per_process: 30
+    #- name: TXFourierGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXFourierTJPCovariance
+      nodes: 6
+      nprocess: 6
+      threads_per_process: 32
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     #- name: TXConvergenceMapPlots # Plot the convergence map
@@ -78,7 +78,8 @@ stages:
       threads_per_process: 64
 
 
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July14/
+#output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July29/ # for fourier space
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July14/ # for real space
 config: examples/gaussian_sims/config.yml
 
 # On NERSC, set this before running:
@@ -95,8 +96,8 @@ inputs:
     response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
     mask:  /global/cfs/cdirs/lsst/groups/WL/users/jprat/gaussian_sims_srdnzs_fullsky/071222/mask4096_12300d.hdf5
 
-    lens_noise_maps:  None
-    source_noise_maps:  None
+    #lens_noise_maps:  None
+    #source_noise_maps:  None
 
 resume: True
 log_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/

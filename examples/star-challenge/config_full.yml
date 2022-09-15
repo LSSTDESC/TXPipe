@@ -65,24 +65,24 @@ TXLensTrueNumberDensity:
 TXMainMaps:
     chunk_rows:  100000
     pixelization: healpix
-    nside: 2048
+    nside: 4096
     sparse: True
 
 TXSourceMaps:
-    nside: 2048
+    nside: 4096
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
     true_shear: False
 
 TXLensMaps:
-    nside: 2048
+    nside: 4096
     sparse: True
     chunk_rows:  100000
     pixelization: healpix
 
 TXLensNoiseMaps:
-    nside: 2048
+    nside: 4096
     chunk_rows:  100000
     pixelization: healpix
 
@@ -111,19 +111,23 @@ TXSourceDiagnosticPlots:
     shear_prefix: mcal_
 
 TXTwoPointTheoryFourier:
-    galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
     #[1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
 
 TXTwoPointTheoryReal:
-    galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
 
 TXFourierGaussianCovariance:
-    galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
-    cache_dir: ./cache_nmt/cosmodc2/srd/nside2048/
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
+    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
 
 TXFourierTJPCovariance:
-    galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
-    cache_dir: ./cache_nmt/cosmodc2/srd/nside2048/
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
+    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
     IA: 0.
 
 TXRealGaussianCovariance:
@@ -134,20 +138,20 @@ TXRealGaussianCovariance:
     nprocess: 4
     threads_per_process: 2
     nodes: 4
-    galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
 
 TXTwoPointFourier:
     chunk_rows: 100000
     flip_g1: True
     flip_g2: True
     apodization_size: 0.0
-    cache_dir: ./cache_nmt/cosmodc2/srd/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
     true_shear: False
-    n_ell: 21
-    ell_min: 50
-    ell_max: 5000
-    #ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
-    nside: 2048
+    n_ell: 17
+    ell_min: 20
+    ell_max: 3722.33283781 # matches SRD scales 20-15000 in 20 bins
+    nside: 4096
     analytic_noise: True
     
 TXTwoPoint:
