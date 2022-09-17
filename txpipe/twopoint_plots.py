@@ -85,42 +85,42 @@ class TXTwoPointPlots(PipelineStage):
         for fig in outputs.values():
             fig.close()
 
-        outputs = {
-            "galaxy_density_xi": self.open_output(
-                "density_xi_ratio",
-                figsize=(3.5 * nbin_lens, 3 * nbin_lens),
-                wrapper=True,
-            ),
-            "galaxy_shearDensity_xi_t": self.open_output(
-                "shearDensity_xi_ratio",
-                figsize=(3.5 * nbin_lens, 3 * nbin_source),
-                wrapper=True,
-            ),
-            "galaxy_shear_xi_plus": self.open_output(
-                "shear_xi_plus_ratio",
-                figsize=(3.5 * nbin_source, 3 * nbin_source),
-                wrapper=True,
-            ),
-            "galaxy_shear_xi_minus": self.open_output(
-                "shear_xi_minus_ratio",
-                figsize=(3.5 * nbin_source, 3 * nbin_source),
-                wrapper=True,
-            ),
-        }
+       # outputs = {
+       #     "galaxy_density_xi": self.open_output(
+       #         "density_xi_ratio",
+       #         figsize=(3.5 * nbin_lens, 3 * nbin_lens),
+       #         wrapper=True,
+       #     ),
+       #     "galaxy_shearDensity_xi_t": self.open_output(
+       #         "shearDensity_xi_ratio",
+       #         figsize=(3.5 * nbin_lens, 3 * nbin_source),
+       #         wrapper=True,
+       #     ),
+       #     "galaxy_shear_xi_plus": self.open_output(
+       #         "shear_xi_plus_ratio",
+       #         figsize=(3.5 * nbin_source, 3 * nbin_source),
+       #         wrapper=True,
+       #     ),
+       #     "galaxy_shear_xi_minus": self.open_output(
+       #         "shear_xi_minus_ratio",
+       #         figsize=(3.5 * nbin_source, 3 * nbin_source),
+       #         wrapper=True,
+       #     ),
+       # }
 
-        figures = {key: val.file for key, val in outputs.items()}
+       # figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots(
-            [filename],
-            ["twopoint_data_real"],
-            figures=figures,
-            theory_sacc_files=[filename_theory],
-            theory_labels=["Fiducial"],
-            ratios=True,
-        )
+       # full_3x2pt_plots(
+       #     [filename],
+       #     ["twopoint_data_real"],
+       #     figures=figures,
+       #     theory_sacc_files=[filename_theory],
+       #     theory_labels=["Fiducial"],
+       #     ratios=True,
+       # )
 
-        for fig in outputs.values():
-            fig.close()
+       # for fig in outputs.values():
+       #     fig.close()
 
         filename = self.get_input("twopoint_gamma_x")
 
