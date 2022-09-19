@@ -51,3 +51,8 @@ jobs:
       run: |
         source ./conda/bin/activate
         ceci examples/metadetect/pipeline.yml
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs_metadetect/*
