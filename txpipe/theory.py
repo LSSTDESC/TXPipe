@@ -35,8 +35,6 @@ class TXTwoPointTheoryReal(PipelineStage):
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
             matter_power_spectrum="halofit", Neff=3.046
         )
-        print(cosmo)
-
         s_theory = self.replace_with_theory_real(s, cosmo)
 
         # Remove covariance
@@ -270,6 +268,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 print(tracers[f"source_{i}"], tracers[f"source_{j}"])
 
                 ind = s.indices("galaxy_shear_cl_ee", (f"source_{i}", f"source_{j}"))
+
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 
@@ -288,7 +287,6 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
                 # get indices for this block
                 ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
-                
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 
@@ -298,6 +296,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
                 cl = np.dot(bpw.weight.T, cl_unbinned)
 
+                                      
                 # replace data values in the sacc object for the theory ones
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
@@ -311,6 +310,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                     "galaxy_shearDensity_cl_e", (f"source_{i}", f"lens_{j}")
                 )
 
+
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 cl_unbinned = pyccl.angular_cl(
@@ -318,7 +318,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 )
 
                 cl = np.dot(bpw.weight.T, cl_unbinned)
-                
+
                 # replace data values in the sacc object for the theory ones
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
