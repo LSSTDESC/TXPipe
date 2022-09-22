@@ -126,7 +126,7 @@ TXTwoPointFourier:
     ell_min: 20
     ell_max: 3722.33283781 # matches SRD scales 20-15000 in 20 bins
     nside: 4096
-    analytic_noise: False
+    analytic_noise: True
     gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
     low_mem: True
 

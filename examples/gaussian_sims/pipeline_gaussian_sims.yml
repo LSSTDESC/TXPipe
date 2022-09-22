@@ -56,12 +56,12 @@ stages:
       nprocess: 4
       nodes: 4
       threads_per_process: 30
-    #- name: TXFourierGaussianCovariance
-    #  threads_per_process: 64
-    - name: TXFourierTJPCovariance
-      nodes: 6
-      nprocess: 6
-      threads_per_process: 32
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 64
+    #- name: TXFourierTJPCovariance
+    #  nodes: 6
+    #  nprocess: 6
+    #  threads_per_process: 32
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     #- name: TXConvergenceMapPlots # Plot the convergence map
@@ -78,8 +78,8 @@ stages:
       threads_per_process: 64
 
 
-#output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July29/ # for fourier space
-output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July14/ # for real space
+output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July29/ # for fourier space
+#output_dir: data/gaussian_sims/outputs_gaussian_sims/gaussian_sims_srdnzs_fullsky/071222/12300area/2022/July14/ # for real space
 config: examples/gaussian_sims/config.yml
 
 # On NERSC, set this before running:
