@@ -35,6 +35,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
             matter_power_spectrum="halofit", Neff=3.046
         )
+        print(cosmo)
         s_theory = self.replace_with_theory_real(s, cosmo)
 
         # Remove covariance
@@ -111,7 +112,6 @@ class TXTwoPointTheoryReal(PipelineStage):
         nbin_source, nbin_lens = self.read_nbin(s)
         ell = np.unique(np.logspace(np.log10(2), 5, 400).astype(int))
         tracers = self.get_ccl_tracers(s, cosmo)
-        print('cosmo', cosmo)
         if "galaxy_shear_xi_plus" in s.get_data_types():
             for i in range(nbin_source):
                 for j in range(i + 1):
