@@ -47,7 +47,7 @@ stages:
       nodes: 2      
 
 output_dir: data/cosmodc2-nz/outputs
-config: examples/cosmodc2/config.yml
+config: examples/cosmodc2/config-nz.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed

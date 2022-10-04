@@ -1,0 +1,160 @@
+global:
+    chunk_rows: 1000000
+
+FlowEngine:
+    n_samples: 1000000
+    seed: 5763248
+    aliases:
+        # This input was generated using get_example_flow in pzflow,
+        # not something specific.
+        output: ideal_specz_catalog
+
+GridSelection:
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+    redshift_cut: 5.1
+    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios_and_specz.hdf5
+    settings_file: submodules/RAIL/examples/creation/data/HSC_grid_settings.pkl
+    random_seed: 66
+    pessimistic_redshift_cut: 1.0
+
+
+TXParqetToHDF:
+    hdf_group: photometry
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+
+
+PZPrepareEstimatorLens:
+    name: PZPrepareEstimatorLens
+    classname: Inform_BPZ_lite
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_ugrizy.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+
+PZEstimatorLens:
+    name: PZEstimatorLens
+    classname: BPZ_lite
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    nzbins: 301
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    hdf5_groupname: photometry
+    nondetect_val: .inf
+    columns_file: ./data/bpz_ugrizy.columns
+    spectra_file: SED/CWWSB4.list
+    prior_band: mag_i
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_reddening: false
+    mag_limits:
+        mag_u: 27.79
+        mag_g: 29.04
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+        mag_y: 27.05    
+
+
+TXMeanLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
+
+Inform_NZDirLens:
+    name: Inform_NZDirLens
+    usecols: [u, g, r, i, z, "y"]
+    hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_direct_calibration_model
+
+
+PZRailSummarizeLens:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    name: PZRailSummarizeLens
+    catalog_group: "photometry"
+    tomography_name: "lens"
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: lens_direct_calibration_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+    model: None
+
+
+TXSourceSelectorMetadetect:
+    input_pz: False
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ""
+    true_z: False
+
+
+Inform_NZDirSource:
+    name: Inform_NZDirSource
+    usecols: [r, i, z]
+    hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: source_direct_calibration_model
+
+
+PZRailSummarizeSource:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    mag_prefix: "/shear/00/mag_"
+    tomography_name: "source"
+    name: PZRailSummarizeSource
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        photometry_catalog: shear_catalog
+        model: source_direct_calibration_model
+        photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
+
