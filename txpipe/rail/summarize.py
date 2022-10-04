@@ -27,7 +27,7 @@ class PZRailSummarize(PipelineStage):
         import rail.estimation
         import pickle
         from rail.estimation.algos.NZDir import NZDir
-        from rail.core import DataStore, TableHandle
+        from rail.core.data import TableHandle
         import tables_io
 
         model_filename = self.get_input(self.get_aliased_tag("model"))

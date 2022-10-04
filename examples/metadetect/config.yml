@@ -340,8 +340,8 @@ GridSelection:
         input: ideal_specz_catalog
         output: specz_catalog_pq
     redshift_cut: 5.1
-    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios_and_specz.hdf5
-    settings_file: submodules/RAIL/examples/creation/data/HSC_grid_settings.pkl
+    ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
+    settings_file: data/example/inputs/HSC_grid_settings.pkl
     random_seed: 66
     pessimistic_redshift_cut: 1.0
 
