@@ -4,16 +4,16 @@ launcher:
 
 site:
     name: cori-interactive
-    image: joezuntz/txpipe
+    image: joezuntz/txpipe-dev
 
-modules: txpipe
+modules: txpipe rail.stages
 
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
 
 stages:
-    - name: FlowEngine             # Simulate a spectroscopic population
+    - name: FlowCreator             # Simulate a spectroscopic population
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
@@ -59,7 +59,7 @@ inputs:
     photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
-
+    flow: data/example/inputs/example_flow.pkl
 
 resume: True
 log_dir: data/cosmodc2-nz/logs
