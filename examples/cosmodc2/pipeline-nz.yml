@@ -1,4 +1,4 @@
-launcher:
+auncher:
     name: mini
     interval: 3.0
 
@@ -6,7 +6,7 @@ site:
     name: cori-interactive
     image: joezuntz/txpipe-dev
 
-modules: txpipe rail.stages
+modules: txpipe rail.stages 
 
 python_paths:
     - submodules/WLMassMap/python/desc/
@@ -20,9 +20,9 @@ stages:
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
       classname: BPZ_lite
-      nprocess: 64
+      nprocess: 128
       threads_per_process: 1
-      nodes: 2
+      nodes: 4
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
       nprocess: 64
       threads_per_process: 1
@@ -31,7 +31,7 @@ stages:
       classname: Inform_NZDir
     - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize  
-      nprocess: 64
+      nprocess: 8
       threads_per_process: 1
       nodes: 2      
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
@@ -42,9 +42,13 @@ stages:
       classname: Inform_NZDir
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
-      nprocess: 64
+      nprocess: 8
       threads_per_process: 1
       nodes: 2      
+    - name: TXLensTrueNumberDensity
+      nprocess: 16
+      threads_per_process: 1
+      nodes: 2
 
 output_dir: data/cosmodc2-nz/outputs
 config: examples/cosmodc2/config-nz.yml
@@ -54,11 +58,11 @@ config: examples/cosmodc2/config-nz.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/shear_catalog.hdf5
-    photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
-    photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
+    shear_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/metadetect_shear_catalog.hdf5
+    photometry_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/photometry_catalog.hdf5
+    photoz_trained_model:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
-    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+    calibration_table:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/sample_cosmodc2_w10year_errors.dat
     flow: data/example/inputs/example_flow.pkl
 
 resume: True

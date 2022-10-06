@@ -64,7 +64,7 @@ PZEstimatorLens:
     dz: 0.01
     nzbins: 301
     band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
-    band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    band_err_names: [mag_u_err, mag_g_err, mag_r_err, mag_i_err, mag_z_err, mag_y_err]
     hdf5_groupname: photometry
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
@@ -83,7 +83,8 @@ PZEstimatorLens:
         mag_i: 28.62
         mag_z: 27.98
         mag_y: 27.05    
-
+    data_path: data/example/rail-bpz-inputs
+    chunk_size: 1000000
 
 TXMeanLensSelector:
     # Mag cuts
@@ -110,7 +111,7 @@ PZRailSummarizeLens:
     leafsize: 20
     zmin: 0.0
     zmax: 3.0
-    nzbins: 50
+    nzbins: 301
     name: PZRailSummarizeLens
     catalog_group: "photometry"
     tomography_name: "lens"
@@ -159,3 +160,9 @@ PZRailSummarizeSource:
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
 
+
+TXLensTrueNumberDensity:
+    aliases:
+        lens_photoz_stack: true_lens_photoz_stack
+    zmax: 3.0
+    nz: 301
