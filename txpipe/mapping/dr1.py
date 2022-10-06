@@ -1,5 +1,4 @@
 import numpy as np
-from parallel_statistics import ParallelMeanVariance
 
 
 class DepthMapperDR1:
@@ -44,6 +43,7 @@ class DepthMapperDR1:
             Estimated variance of depth of each pixel
 
         """
+        from parallel_statistics import ParallelMeanVariance
         self.pixel_scheme = pixel_scheme
         self.snr_threshold = snr_threshold
         self.snr_delta = snr_delta

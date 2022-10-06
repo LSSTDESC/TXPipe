@@ -1,5 +1,4 @@
 import numpy as np
-from parallel_statistics import ParallelMeanVariance, ParallelMean
 
 
 def read_shear_catalog_type(stage):
@@ -179,6 +178,7 @@ class MetacalCalculator:
         delta_gamma: float
             The difference in applied g between 1p and 1m metacal variants
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         self.count = 0
         self.delta_gamma = delta_gamma
@@ -327,6 +327,7 @@ class MetaDetectCalculator:
         delta_gamma: float
             The difference in applied g between 1p and 1m metacal variants
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         self.delta_gamma = delta_gamma
         self.mean_e = ParallelMean(size=10)
@@ -438,6 +439,7 @@ class LensfitCalculator:
         selector: function
             Function that selects objects
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
@@ -556,6 +558,7 @@ class HSCCalculator:
         selector: function
             Function that selects objects
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
@@ -653,6 +656,7 @@ class MeanShearInBins:
         cut_source_bin=False,
         shear_catalog_type="metacal",
     ):
+        from parallel_statistics import ParallelMean, ParallelMeanVariance
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma

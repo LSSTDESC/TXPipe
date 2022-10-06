@@ -8,7 +8,7 @@ from .data_types import (
     RandomsCatalog,
     YamlFile,
 )
-from parallel_statistics import ParallelHistogram, ParallelMeanVariance
+
 import numpy as np
 from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
@@ -120,6 +120,7 @@ class TXPSFDiagnostics(PipelineStage):
             f.write(results)
 
     def plot_histogram(self, function, output_name, xlabel, edges):
+        from parallel_statistics import ParallelHistogram, ParallelMeanVariance
         import matplotlib.pyplot as plt
 
         print(f"Plotting {output_name}")

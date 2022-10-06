@@ -51,13 +51,19 @@ class PZRailSummarize(PipelineStage):
 
         # This is the bit that will not work with realistically sized
         # data sets. Need the RAIL parallel interface when ready.
+        full_data = {}
         with self.open_input("photometry_catalog") as f:
-            full_data = {b: f[f"{prefix}{b}"][:] for b in bands}
+            for b in bands:
+                if self.rank == 0:
+                    print(f"Loading band {b}")
+                full_data[b] = f[f"{prefix}{b}"][:]
 
         tomo_name = self.config["tomography_name"]
         with self.open_input("tomography_catalog") as f:
             g = f['tomography']
             nbin = g.attrs[f'nbin_{tomo_name}']
+            if self.rank == 0:
+                print("Loading tomographic bin")
             bins = g[f'{tomo_name}_bin'][:]
 
 
@@ -91,8 +97,9 @@ class PZRailSummarize(PipelineStage):
             # bin.
             index = (bins==i)
             nobj = index.sum()
+            if self.rank == 0:
+                print(f"Computing n(z) for bin {i}: {nobj} objects")
             data = {b: full_data[b][index] for b in bands}
-            print(f"Computing n(z) for bin {i}: {nobj} objects")
 
             # Store this data set. Once this is parallelised will presumably have to delete
             # it afterwards to avoid running out of memory.

@@ -1,6 +1,4 @@
 from ..utils import choose_pixelization, HealpixScheme, GnomonicPixelScheme
-from parallel_statistics import ParallelMeanVariance, ParallelSum
-
 import numpy as np
 
 
@@ -14,6 +12,7 @@ class Mapper:
         do_lens=True,
         sparse=False,
     ):
+        from parallel_statistics import ParallelMeanVariance, ParallelSum
         self.pixel_scheme = pixel_scheme
         self.source_bins = source_bins + ["2D"]
         self.lens_bins = lens_bins + ["2D"]
