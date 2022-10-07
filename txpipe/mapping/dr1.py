@@ -122,6 +122,7 @@ class BrightObjectMapper:
             variance of magnitude of bright objects in each pixel
 
         """
+        from parallel_statistics import ParallelMeanVariance
         self.pixel_scheme = pixel_scheme
         self.mag_threshold = mag_threshold
         self.comm = comm
