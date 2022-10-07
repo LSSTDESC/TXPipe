@@ -23,7 +23,7 @@ stages:
       nprocess: 128
       threads_per_process: 1
       nodes: 4
-    - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
+    - name: TXRandomForestLensSelector
       nprocess: 64
       threads_per_process: 1
       nodes: 2      
