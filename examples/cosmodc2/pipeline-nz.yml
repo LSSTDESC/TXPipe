@@ -6,7 +6,7 @@ site:
     name: cori-interactive
     image: joezuntz/txpipe-dev
 
-modules: txpipe rail.stages 
+modules: txpipe rail.stages  rail.estimation.algos.somocluSOM
 
 python_paths:
     - submodules/WLMassMap/python/desc/
