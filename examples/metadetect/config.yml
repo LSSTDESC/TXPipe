@@ -288,21 +288,6 @@ TXMapCorrelations:
     nbin: 20
 
 
-PZRailSummarizeLens:
-    leafsize: 20
-    zmin: 0.0
-    zmax: 3.0
-    nzbins: 50
-    name: PZRailSummarizeLens
-    catalog_group: "photometry"
-    tomography_name: "lens"
-    aliases:
-        tomography_catalog: lens_tomography_catalog
-        photometry_catalog: photometry_catalog
-        model: lens_direct_calibration_model
-        photoz_stack: lens_photoz_stack
-        photoz_realizations: lens_photoz_realizations
-    model: None
 
 
 PZRailSummarizeSource:
@@ -364,13 +349,57 @@ Inform_NZDirSource:
         input: spectroscopic_catalog
         model: source_direct_calibration_model
 
-Inform_NZDirLens:
-    name: Inform_NZDirLens
+
+
+
+# SOM version
+InformSOMLens:
+    name: InformSOMLens
     usecols: [u, g, r, i, z, "y"]
+    mag_limits:
+        u: 27.79
+        g: 29.04
+        r: 29.06
+        i: 28.62
+        z: 27.98
+        y: 27.05
+    ref_column_name: i
     hdf5_groupname: photometry
     aliases:
         input: spectroscopic_catalog
-        model: lens_direct_calibration_model
+        model: lens_somoclu_model
+
+PZRailSummarizeLensSOM:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    usecols: [u, g, r, i, z, "y"]
+    name: PZRailSummarizeLensSOM
+    # catalog_group: "photometry"
+    tomography_name: "lens"
+    # hdf5_groupname: "photometry"
+    spec_groupname: ""
+    mag_limits:
+        u: 27.79
+        g: 29.04
+        r: 29.06
+        i: 28.62
+        z: 27.98
+        y: 27.05
+    substage: somocluSOMSummarizer
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: lens_somoclu_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+    model: None
+
+
+
+
+
 
 PZRealizationsPlotSource:
     name: PZRealizationsPlotSource

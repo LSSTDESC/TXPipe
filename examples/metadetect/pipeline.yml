@@ -9,10 +9,14 @@ stages:
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
       classname: BPZ_lite
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
-    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-      classname: Inform_NZDir
-    - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
-      classname: PZRailSummarize  
+    # - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+    #   classname: Inform_NZDir
+    # - name: PZRailSummarizeLensDIR    # Run the DIR method on the lens sample to find n(z)
+    #   classname: PZRailSummarizeSpec  
+    - name: InformSOMLens       # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_SOMoclu
+    - name: PZRailSummarizeLensSOM
+      classname: PZRailSummarizeSpec
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
@@ -77,7 +81,7 @@ stages:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail.stages
+modules: txpipe rail.stages rail.estimation.algos.somocluSOM
 # modules: txpipe rail tjpcov
 
 # where to find any modules that are not in this repo,

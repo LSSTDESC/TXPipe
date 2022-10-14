@@ -2,6 +2,7 @@ from ..base_stage import PipelineStage
 from ..data_types import HDFFile, PickleFile, NOfZFile, PNGFile
 from ..photoz_stack import Stack
 import numpy as np
+import pickle
 
 class PZRailSummarize(PipelineStage):
     name = "PZRailSummarize"
@@ -21,15 +22,11 @@ class PZRailSummarize(PipelineStage):
     config_options = {
         "mag_prefix": "photometry/mag_",
         "tomography_name": str,
+        "substage": "NZDir",
     }
 
-    def run(self):
-        import rail.estimation
-        import pickle
-        from rail.estimation.algos.NZDir import NZDir
-        from rail.core.data import TableHandle
-        import tables_io
 
+    def load_inputs(self):
         model_filename = self.get_input(self.get_aliased_tag("model"))
 
         # The usual way of opening pickle files puts a bunch
@@ -45,8 +42,10 @@ class PZRailSummarize(PipelineStage):
         # with self.open_input("nz_dir_model", wrapper=True) as f:
         #     model = f.read()
 
-
-        bands = model["szusecols"]
+        try:
+            bands = model["szusecols"]
+        except KeyError:
+            bands = model["usecols"]
         prefix = self.config["mag_prefix"]
 
         # This is the bit that will not work with realistically sized
@@ -66,71 +65,100 @@ class PZRailSummarize(PipelineStage):
                 print("Loading tomographic bin")
             bins = g[f'{tomo_name}_bin'][:]
 
+        return {
+            "model": model,
+            "full_data": full_data,
+            "bins": bins,
+            "bands": bands,
+            "nbin": nbin,
+        }
 
+    def configure_substage(self, inputs):
+        from rail.core.data import TableHandle
         # Generate the configuration for RAIL. Anything set in the
         # config.yml file will also be put in here by the bit below,
         # so we don't need to try all possible RAIL options.
         sub_config = {
-            "model": model,
-            "usecols": bands,
+            "model": inputs["model"],
+            "usecols": inputs["bands"],
             "hdf5_groupname": "",
             "phot_weightcol":"",
             "output_mode": "none",  # actually anything except "default" will work here
             "comm": self.comm,
         }
 
-        # TODO: Make this flexible
-        substage_class = NZDir
-
+        # Find and configure the sub-stage
+        substage_class = self.get_stage(self.config["substage"])
         for k, v in self.config.items():
             if k in substage_class.config_options:
                 sub_config[k] = v
 
+        data_handle = substage_class.data_store.add_data(f"tomo_bin_data", {}, TableHandle)
+        substage = substage_class.make_stage(name=f"summarize", **sub_config)
+        substage.set_data('input', data_handle)
+        return substage, data_handle
+
+    def summarize_bin(self, i, inputs, substage, data_handle):
+        # Extract the chunk of the data assigned to this tomographic
+        # bin.
+        bands = inputs["bands"]
+        if i == "2d":
+            index = inputs["bins"] >= 0
+        else:
+            index = inputs["bins"] == i
+        nobj = index.sum()
+        if self.rank == 0:
+            print(f"Computing n(z) for bin {i}: {nobj} objects")
+        data = {b: inputs["full_data"][b][index] for b in bands}
+        data_handle.set_data(data)
+        substage.run()
+
+        if self.rank == 0:
+            # do I have to copy these?
+            bin_realizations = substage.get_handle('output').data
+            bin_qp = substage.get_handle('single_NZ').data
+
+            # Reset outputs so we can run again next time.
+            del substage.data_store['output_summarize']
+            del substage.data_store['single_NZ_summarize']
+        else:
+            bin_realizations = None
+            bin_qp = None
+
+        return bin_qp, bin_realizations
+
+    def run(self):
+        import rail.estimation
+        import rail.stages
+        import rail.estimation.algos.somocluSOM
+        import rail.estimation.algos.NZDir
+        from rail.core.data import TableHandle
+        import tables_io
+
+        #model, full_data, bins, bands, nbin
+        inputs = self.load_inputs()
+        nbin = inputs["nbin"]
+
+        substage, data_handle = self.configure_substage(inputs)
 
         # Just do things with the first bin to begin with
         qp_per_bin = []
         realizations_per_bin = {}
 
         for i in range(nbin):
+            bin_qp, bin_realizations = self.summarize_bin(i, inputs, substage, data_handle)
+            realizations_per_bin[f'bin_{i}'] = bin_realizations
+            qp_per_bin.append(bin_qp)
 
-            # Extract the chunk of the data assigned to this tomographic
-            # bin.
-            index = (bins==i)
-            nobj = index.sum()
-            if self.rank == 0:
-                print(f"Computing n(z) for bin {i}: {nobj} objects")
-            data = {b: full_data[b][index] for b in bands}
+        qp_2d, realizations_2d = self.summarize_bin("2d", inputs, substage, data_handle)
 
-            # Store this data set. Once this is parallelised will presumably have to delete
-            # it afterwards to avoid running out of memory.
-            data_handle = substage_class.data_store.add_data(f"tomo_bin_{i}", data, TableHandle)
-            substage = substage_class.make_stage(name=f"NZDir_{i}", **sub_config)
-            substage.set_data('input', data_handle)
-            substage.run()
-
-            if self.rank == 0:
-                realizations_per_bin[f'bin_{i}'] = substage.get_handle('output').data
-                bin_qp = substage.get_handle('single_NZ').data
-                qp_per_bin.append(bin_qp)
-
-        # now we do the 2D case
-        index = bins >= 0
-        nobj = index.sum()
-        data = {b: full_data[b][index] for b in bands}
-        print(f"Computing n(z) for bin {i}: {nobj} objects")
-
-        # Store this data set. Once this is parallelised will presumably have to delete
-        # it afterwards to avoid running out of memory.
-        data_handle = substage_class.data_store.add_data(f"tomo_bin_2d", data, TableHandle)
-        substage = substage_class.make_stage(name=f"NZDir_2d", **sub_config)
-        substage.set_data('input', data_handle)
-        substage.run()
         if self.rank == 0:
-            realizations_2d = substage.get_handle('output').data
-            qp_2d = substage.get_handle('single_NZ').data
+            self.save_results(nbin, qp_per_bin, realizations_per_bin, qp_2d, realizations_2d)
 
-        if self.rank > 0:
-            return
+
+
+    def save_results(self, nbin, qp_per_bin, realizations_per_bin, qp_2d, realizations_2d):
+        tomo_name = self.config["tomography_name"]
 
         # TODO: Convert to just saving QP files. Might need to fix metadata saving.
         # Also, this currently assumes that the histogram form of the QP ensemble
@@ -150,7 +178,6 @@ class PZRailSummarize(PipelineStage):
         for i,q in enumerate(qp_per_bin):
             t = q.build_tables()
             stack.set_bin(i, t['data']['pdfs'][0])
-
 
 
         stack_2d = Stack(tomo_name + "2d", z, 1)
@@ -187,6 +214,42 @@ class PZRailSummarize(PipelineStage):
                 pdfs_2d[j] = realizations_2d[j].objdata()["pdfs"]
 
             group.create_dataset("pdfs_2d", data=pdfs_2d)
+
+
+
+class PZRailSummarizeSpec(PZRailSummarize):
+    name = "PZRailSummarizeSpec"
+    inputs = [
+        ("tomography_catalog", HDFFile),
+        ("photometry_catalog", HDFFile),
+        ("spectroscopic_catalog", HDFFile),
+        ("model", PickleFile),
+    ]
+
+    def configure_substage(self, inputs):
+        from rail.core.data import TableHandle
+        substage, data_handle = super().configure_substage(inputs)
+
+        substage.config["spec_groupname"] = ""
+
+        bands = inputs["bands"]
+        # Load spectroscopic data and add it to the substage
+        spec_data = {}
+        with self.open_input("spectroscopic_catalog") as f:
+            spec_data["redshift"] = f["photometry/redshift"][:]
+            for b in bands:
+                spec_data[b] = f[f"photometry/{b}"][:]
+
+        spec_handle = substage.data_store.add_data(f"spec_data", spec_data, TableHandle)
+        # spec_handle.set_data(spec_data)
+        substage.set_data('spec_input', spec_handle)
+        return substage, data_handle
+
+    def summarize_bin(self, i, inputs, substage, data_handle):
+        outputs = super().summarize_bin(i, inputs, substage, data_handle)
+        del substage.data_store['uncovered_cell_file_summarize']
+        del substage.data_store['cellid_output_summarize']
+        return outputs
 
                 
 class PZRealizationsPlot(PipelineStage):
@@ -230,3 +293,4 @@ class PZRealizationsPlot(PipelineStage):
             ax.set_ylim(0, None)
             ax.set_xlabel("z")
             ax.set_ylabel("n(z)")
+
