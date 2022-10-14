@@ -27,13 +27,20 @@ stages:
       nprocess: 64
       threads_per_process: 1
       nodes: 2      
-    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-      classname: Inform_NZDir
-    - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
-      classname: PZRailSummarize  
-      nprocess: 8
-      threads_per_process: 1
-      nodes: 2      
+    - name: InformSOMLens       # Prepare the SOM method inputs for the lens sample     
+      classname: Inform_SOMoclu
+    - name: PZRailSummarizeLensSOM    # Run the SOM method on the lens sample to find n(z)
+      classname: PZRailSummarizeSpec  
+      nprocess: 1
+      threads_per_process: 32
+      nodes: 1      
+    # - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+    #   classname: Inform_NZDir
+    # - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+    #   classname: PZRailSummarize  
+    #   nprocess: 8
+    #   threads_per_process: 1
+    #   nodes: 2      
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
       nprocess: 64
       threads_per_process: 1
