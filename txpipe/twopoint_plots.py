@@ -6,7 +6,6 @@ import numpy as np
 class TXTwoPointPlots(PipelineStage):
     """
     Make plots of the correlation functions and their ratios to theory
-
     The theory prediction is taken from CCL's calculation.
     """
 
@@ -23,10 +22,10 @@ class TXTwoPointPlots(PipelineStage):
         ("shear_xi_minus", PNGFile),
         ("shearDensity_xi", PNGFile),
         ("density_xi", PNGFile),
-        ("shear_xi_plus_ratio", PNGFile),
-        ("shear_xi_minus_ratio", PNGFile),
-        ("shearDensity_xi_ratio", PNGFile),
-        ("density_xi_ratio", PNGFile),
+     #   ("shear_xi_plus_ratio", PNGFile),
+     #  ("shear_xi_minus_ratio", PNGFile),
+     #  ("shearDensity_xi_ratio", PNGFile),
+     #   ("density_xi_ratio", PNGFile),
         ("shearDensity_xi_x", PNGFile),
     ]
 
@@ -84,31 +83,7 @@ class TXTwoPointPlots(PipelineStage):
 
         for fig in outputs.values():
             fig.close()
-
-        outputs = {
-            "galaxy_density_xi": self.open_output(
-                "density_xi_ratio",
-                figsize=(3.5 * nbin_lens, 3 * nbin_lens),
-                wrapper=True,
-            ),
-            "galaxy_shearDensity_xi_t": self.open_output(
-                "shearDensity_xi_ratio",
-                figsize=(3.5 * nbin_lens, 3 * nbin_source),
-                wrapper=True,
-            ),
-            "galaxy_shear_xi_plus": self.open_output(
-                "shear_xi_plus_ratio",
-                figsize=(3.5 * nbin_source, 3 * nbin_source),
-                wrapper=True,
-            ),
-            "galaxy_shear_xi_minus": self.open_output(
-                "shear_xi_minus_ratio",
-                figsize=(3.5 * nbin_source, 3 * nbin_source),
-                wrapper=True,
-            ),
-        }
-
-        figures = {key: val.file for key, val in outputs.items()}
+            
 
         full_3x2pt_plots(
             [filename],
@@ -647,6 +622,94 @@ class TXTwoPointPlotsFourier(PipelineStage):
         for fig in outputs.values():
             fig.close()
 
+
+if __name__ == "__main__":
+    PipelineStage.main()
+
+
+
+#make subclass with thoery plots   
+
+class TXTwoPointPlotsTheory(TXTwoPointPlots):
+
+    name = "TXTwoPointPlotsTheory`"
+    parallel= False 
+    inputs = [
+        ("twopoint_data_real", SACCFile),
+        ("fiducial_cosmology", FiducialCosmology),  # For example lines
+        ("twopoint_gamma_x", SACCFile),
+        ("twopoint_theory_real", SACCFile),
+    ]
+    outputs = [
+        ("shear_xi_plus", PNGFile),
+        ("shear_xi_minus", PNGFile),
+        ("shearDensity_xi", PNGFile),
+        ("density_xi", PNGFile),
+        ("shear_xi_plus_ratio", PNGFile),
+        ("shear_xi_minus_ratio", PNGFile),
+        ("shearDensity_xi_ratio", PNGFile),
+        ("density_xi_ratio", PNGFile),
+        ("shearDensity_xi_x", PNGFile),
+    ]
+
+    config_options = {
+        "wspace": 0.05,
+        "hspace": 0.05,
+    }
+
+
+    def run(self):
+        import sacc
+        import matplotlib
+        import pyccl
+        from .plotting import full_3x2pt_plots
+
+        matplotlib.use("agg")
+        matplotlib.rcParams["xtick.direction"] = "in"
+        matplotlib.rcParams["ytick.direction"] = "in"
+
+        filename = self.get_input("twopoint_data_real")
+        s = sacc.Sacc.load_fits(filename)
+        nbin_source, nbin_lens = self.read_nbin(s)
+
+        filename_theory = self.get_input("twopoint_theory_real")
+
+
+        figures = {key: val.file for key, val in outputs.items()}
+
+        full_3x2pt_plots(
+            [filename],
+            ["twopoint_data_real"],
+            figures=figures,
+            theory_sacc_files=[filename_theory],
+            theory_labels=["Fiducial"],
+        )
+
+        for fig in outputs.values():
+            fig.close()
+
+        outputs = {
+            "galaxy_density_xi": self.open_output(
+                "density_xi_ratio",
+                figsize=(3.5 * nbin_lens, 3 * nbin_lens),
+                wrapper=True,
+            ),
+            "galaxy_shearDensity_xi_t": self.open_output(
+                "shearDensity_xi_ratio",
+                figsize=(3.5 * nbin_lens, 3 * nbin_source),
+                wrapper=True,
+            ),
+            "galaxy_shear_xi_plus": self.open_output(
+               "shear_xi_plus_ratio",
+             figsize=(3.5 * nbin_source, 3 * nbin_source),
+               wrapper=True,
+            ),
+            "galaxy_shear_xi_minus": self.open_output(
+                "shear_xi_minus_ratio",
+                figsize=(3.5 * nbin_source, 3 * nbin_source),
+                wrapper=True,
+            ),
+        }
 
 if __name__ == "__main__":
     PipelineStage.main()
