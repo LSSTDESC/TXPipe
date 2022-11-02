@@ -8,7 +8,6 @@ matplotlib
 fitsio
 git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
-mlz_desc
 treecorr>=4.2.2
 sklearn
 astropy
