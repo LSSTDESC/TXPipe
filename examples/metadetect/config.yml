@@ -48,6 +48,7 @@ PZPrepareEstimatorLens:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
@@ -72,6 +73,7 @@ PZPrepareEstimatorSource:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
@@ -97,6 +99,7 @@ PZEstimatorLens:
     zmax: 3.0
     dz: 0.01
     nzbins: 301
+    data_path: ./data/example/rail-bpz-inputs
     band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
     band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     hdf5_groupname: photometry

@@ -41,6 +41,7 @@ PZRailTrainSource:
     zmax: 3.0
     dz: 0.01
     columns_file: ./data/bpz_riz.columns
+    data_path: ./data/example/rail-bpz-inputs
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
