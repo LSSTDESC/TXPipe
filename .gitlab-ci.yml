@@ -18,10 +18,9 @@ example:
   tags: [cori]
   script:
     # Script loads desc-python Conda environment and runs tests.
-    - source /global/cfs/cdirs/lsst/groups/WL/users/zuntz/setup-txpipe
     - curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
     - tar -zxvf example.tar.gz
-    - tx ceci examples/metadetect/pipeline.yml
+    - shifter --image=joezuntz/txpipe ceci --dry-run examples/metadetect/pipeline.yml
     # Trigger the status repository CI workflow to report results.
     - >
       curl -X POST --fail
