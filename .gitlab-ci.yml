@@ -3,7 +3,7 @@
 variables:
   # Cori queue submission options.
   SCHEDULER_PARAMETERS: "-C haswell -M escori -q xfer -N1 -t 01:00:00 -A m1727"
-
+  GIT_SUBMODULE_STRATEGY: recursive
 
 # How is this workflow triggered?
 workflow:
