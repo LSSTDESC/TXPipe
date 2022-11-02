@@ -13,3 +13,12 @@ For example::
 
     tx ceci examples/metacal/pipeline.yml
 
+This somtimes breaks if you have previously run ``conda init`` on the system, because the conda python is found even inside the container. You can avoid this by modifying your ``$HOME/.bashrc`` file to put these test lines around the conda setup commands::
+
+    if [ "${TX_DOCKER_VERSION}" == "" ]
+    then
+        # >>> conda initialize >>>
+        ...
+        ...
+        # <<< conda initialize <<<
+    fi

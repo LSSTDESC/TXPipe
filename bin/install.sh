@@ -22,9 +22,23 @@ else
     CHIPSET=x86_64
 fi
 
+if [ "$CHIPSET" = "aarch64" ]
+then
+    echo "Sorry - TXPipe does not yet install on non-x86 systems like M1 macs"
+    exit 1
+fi
+
+if [ "$CHIPSET" = "arm64" ]
+then
+    echo "Sorry - TXPipe does not yet install on non-x86 systems like M1 macs"
+    exit 1
+fi
+
+
+
 # URL to download
-URL="https://github.com/conda-forge/miniforge/releases/download/4.13.0-1/Mambaforge-4.13.0-1-${OS}-${CHIPSET}.sh"
-echo $URL
+URL="https://github.com/conda-forge/miniforge/releases/download/4.11.0-4/Mambaforge-4.11.0-4-${OS}-${CHIPSET}.sh"
+
 # Download and run the conda installer Miniforge conda installer
 echo "Downloading conda installer from $URL"
 wget -O Mambaforge3.sh $URL

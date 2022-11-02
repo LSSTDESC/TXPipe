@@ -36,7 +36,6 @@ class TXTwoPointTheoryReal(PipelineStage):
             matter_power_spectrum="halofit", Neff=3.046
         )
         print(cosmo)
-
         s_theory = self.replace_with_theory_real(s, cosmo)
 
         # Remove covariance
@@ -113,7 +112,6 @@ class TXTwoPointTheoryReal(PipelineStage):
         nbin_source, nbin_lens = self.read_nbin(s)
         ell = np.unique(np.logspace(np.log10(2), 5, 400).astype(int))
         tracers = self.get_ccl_tracers(s, cosmo)
-
         if "galaxy_shear_xi_plus" in s.get_data_types():
             for i in range(nbin_source):
                 for j in range(i + 1):
@@ -143,7 +141,6 @@ class TXTwoPointTheoryReal(PipelineStage):
                     for p, q in enumerate(ind_xim):
                         s.data[q].value = xim[p]
 
-        
         if "galaxy_density_xi" in s.get_data_types():
             for i in range(nbin_lens):
                 for j in range(i + 1):
@@ -271,6 +268,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 print(tracers[f"source_{i}"], tracers[f"source_{j}"])
 
                 ind = s.indices("galaxy_shear_cl_ee", (f"source_{i}", f"source_{j}"))
+
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 
@@ -289,7 +287,6 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
                 # get indices for this block
                 ind = s.indices("galaxy_density_cl", (f"lens_{i}", f"lens_{j}"))
-                
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 
@@ -299,6 +296,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
                 cl = np.dot(bpw.weight.T, cl_unbinned)
 
+                                      
                 # replace data values in the sacc object for the theory ones
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]
@@ -312,6 +310,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                     "galaxy_shearDensity_cl_e", (f"source_{i}", f"lens_{j}")
                 )
 
+
                 bpw = s.get_bandpower_windows(ind)
                 ell_unbinned = bpw.values
                 cl_unbinned = pyccl.angular_cl(
@@ -319,7 +318,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
                 )
 
                 cl = np.dot(bpw.weight.T, cl_unbinned)
-                
+
                 # replace data values in the sacc object for the theory ones
                 for p, q in enumerate(ind):
                     s.data[q].value = cl[p]

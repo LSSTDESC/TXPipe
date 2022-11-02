@@ -1,0 +1,58 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Test_Auto_Installer:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
+          - os: macos-latest
+            INSTALL_DEPS: brew update && brew install wget
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install wget
+      run: ${{ matrix.INSTALL_DEPS }}
+
+    - name: Run Auto-Install
+      run: ./bin/install.sh
+
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
+      with:
+        path: ./data/example/inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
+    - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
+
+    - name: Test after auto-install
+      run: |
+        source ./conda/bin/activate
+        ceci examples/metadetect/pipeline.yml
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs_metadetect/*

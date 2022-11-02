@@ -28,6 +28,7 @@ source ./conda/bin/activate
 ```
 which you should run each time you start a new terminal, from the TXPipe directory.
 
+For using TXPipe on NERSC, you can use the Shifter system, which creates a container with all the requirements pre-built. See the ReadtheDocs page (https://txpipe.readthedocs.io/en/latest) under 'Running TXPipe at NERSC.' 
 
 Running
 -------

@@ -16,3 +16,4 @@ dask
 mpich
 h5py=*=mpi_mpich_*
 cosmosis-standalone
+tables_io

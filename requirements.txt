@@ -26,3 +26,6 @@ xgboost==1.1.0
 dask[distributed]
 git+https://github.com/joezuntz/dask-mpi
 pz-rail-hub
+git+https://github.com/jlvdb/hyperbolic
+pzflow
+tables_io
