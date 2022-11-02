@@ -27,7 +27,7 @@ jobs:
     steps:
       # Trigger mirror repository CI workflow, passing variables as we go.
       - run: >-
-           echo curl -X POST --fail 
+           curl -X POST --fail 
            --form "variables[GITLAB_STATUS_REPO]=$GITLAB_STATUS_REPO"
            --form "variables[GITLAB_TARGET_REPO]=$GITLAB_TARGET_REPO"
            --form "variables[GITLAB_MIRROR_REPO]=$GITLAB_MIRROR_REPO"
