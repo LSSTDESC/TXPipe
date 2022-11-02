@@ -6,7 +6,7 @@ pyccl
 numpy
 matplotlib
 fitsio
-git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
+git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 mlz_desc
 treecorr>=4.2.2
@@ -24,5 +24,5 @@ healsparse
 flexcode
 xgboost==1.1.0
 dask[distributed]
-git+git://github.com/joezuntz/dask-mpi
+git+https://github.com/joezuntz/dask-mpi
 pz-rail-hub
