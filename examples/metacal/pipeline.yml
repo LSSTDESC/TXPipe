@@ -1,7 +1,7 @@
 
 # Stages to run
 stages:
-    - name: FlowEngine             # Simulate a spectroscopic population
+    - name: FlowCreator             # Simulate a spectroscopic population
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator

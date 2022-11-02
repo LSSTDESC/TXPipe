@@ -325,13 +325,14 @@ PZRailSummarizeSource:
         photoz_realizations: source_photoz_realizations
 
 
-FlowEngine:
+FlowCreator:
     n_samples: 1000000
     seed: 5763248
     aliases:
         # This input was generated using get_example_flow in pzflow,
         # not something specific.
         output: ideal_specz_catalog
+        model: flow
 
 InvRedshiftIncompleteness:
     pivot_redshift: 0.8
