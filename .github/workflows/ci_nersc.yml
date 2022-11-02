@@ -26,23 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Trigger mirror repository CI workflow, passing variables as we go.
-      - run: |
+      - run: >-
            echo curl -X POST --fail 
-           --form "variables[GITLAB_STATUS_REPO]=$GITLAB_STATUS_REPO"
-           --form "variables[GITLAB_TARGET_REPO]=$GITLAB_TARGET_REPO"
-           --form "variables[GITLAB_MIRROR_REPO]=$GITLAB_MIRROR_REPO"
-           --form "variables[GITHUB_SOURCE_REPO]=$GITHUB_SOURCE_REPO"
-           --form "variables[GITHUB_SOURCE_BRANCH]=$GITHUB_SOURCE_BRANCH"
-           --form "variables[GITLAB_TARGET_PROJECT_NUMBER]=$GITLAB_TARGET_PROJECT_NUMBER"
-           --form "variables[GITLAB_MIRROR_PROJECT_NUMBER]=$GITLAB_MIRROR_PROJECT_NUMBER"
-           --form "variables[GITLAB_STATUS_PROJECT_NUMBER]=$GITLAB_STATUS_PROJECT_NUMBER"
-           --form "variables[GITLAB_STATUS_CONTEXT]=$GITLAB_STATUS_CONTEXT"
-           --form "variables[GITHUB_SHA]=${{ github.sha }}"
-           --form token=REDACTED
-           --form ref=main
-           https://software.nersc.gov/api/v4/projects/$GITLAB_MIRROR_PROJECT_NUMBER/trigger/pipeline
-
-           curl -X POST --fail 
            --form "variables[GITLAB_STATUS_REPO]=$GITLAB_STATUS_REPO"
            --form "variables[GITLAB_TARGET_REPO]=$GITLAB_TARGET_REPO"
            --form "variables[GITLAB_MIRROR_REPO]=$GITLAB_MIRROR_REPO"
