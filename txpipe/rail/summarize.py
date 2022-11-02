@@ -3,6 +3,9 @@ from ..data_types import HDFFile, PickleFile, NOfZFile, PNGFile
 from ..photoz_stack import Stack
 import numpy as np
 import pickle
+import os, sys
+sys.path.append(os.getcwd())
+import somo2
 
 class PZRailSummarize(PipelineStage):
     name = "PZRailSummarize"
@@ -119,12 +122,13 @@ class PZRailSummarize(PipelineStage):
             bin_qp = substage.get_handle('single_NZ').data
 
             # Reset outputs so we can run again next time.
-            del substage.data_store['output_summarize']
-            del substage.data_store['single_NZ_summarize']
         else:
             bin_realizations = None
             bin_qp = None
 
+        del substage.data_store['output_summarize']
+        del substage.data_store['single_NZ_summarize']
+            
         return bin_qp, bin_realizations
 
     def run(self):
