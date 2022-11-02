@@ -27,6 +27,14 @@ TXParqetToHDF:
         input: specz_catalog_pq
         output: spectroscopic_catalog
 
+TXIdealParqetToHDF:
+    name: TXIdealParqetToHDF
+    classname: TXParqetToHDF
+    hdf_group: photometry
+    aliases:
+        input: ideal_specz_catalog
+        output: spectroscopic_catalog
+
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
