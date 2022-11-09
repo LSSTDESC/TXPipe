@@ -8,6 +8,7 @@ stages:
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
       classname: BPZ_lite
+      threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
     # - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
     #   classname: Inform_NZDir

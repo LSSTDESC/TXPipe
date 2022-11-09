@@ -38,24 +38,18 @@ fi
 
 # URL to download
 URL="https://github.com/conda-forge/miniforge/releases/download/4.11.0-4/Mambaforge-4.11.0-4-${OS}-${CHIPSET}.sh"
+
 # Download and run the conda installer Miniforge conda installer
 echo "Downloading conda installer from $URL"
-wget -O Miniforge3.sh $URL
-chmod +x Miniforge3.sh
-./Miniforge3.sh -b -p ./conda
+wget -O Mambaforge3.sh $URL
+chmod +x Mambaforge3.sh
+./Mambaforge3.sh -b -p ./conda
 source ./conda/bin/activate
 
-# Activate conda env
-
-
-# Install requirements
-mamba install -c conda-forge -y scipy matplotlib camb healpy psutil numpy scikit-learn fitsio pandas astropy pyccl mpi4py treecorr namaster  dask mpich 'h5py=*=mpi_mpich_*' cosmosis-standalone
-
-# On some systems installing with +git works and on some it's https. If https fails then fall back to git.
-PIP_PACKAGES_GIT="threadpoolctl ceci sacc parallel_statistics git+git://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs  git+git://github.com/LSSTDESC/qp git+git://github.com/LSSTDESC/desc_bpz healsparse flexcode  xgboost==1.1.1  git+https://github.com/dask/dask-mpi  git+https://github.com/LSSTDESC/firecrown@v0.4 git+git://github.com/LSSTDESC/desc_bpz git+git://github.com/LSSTDESC/qp git+git://github.com/jlvdb/hyperbolic pzflow "
-PIP_PACKAGES_HTTPS="${PIP_PACKAGES_GIT//+git/+https}"
-
-pip install $PIP_PACKAGES_GIT || pip install $PIP_PACKAGES_HTTPS
+# conda-installable stuff
+mamba install -c conda-forge -y --file conda.txt
+# everything else
+pip install -r requirements.txt || ( sed 's/git+https/git+git/' requirements.txt > requirements2.txt && pip install -r requirements2.txt )
 
 echo ""
 echo "Installation successful!"

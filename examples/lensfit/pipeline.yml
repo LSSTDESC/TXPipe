@@ -1,7 +1,7 @@
 
 # Stages to run
 stages:
-    - name: FlowEngine             # Simulate a spectroscopic population
+    - name: FlowCreator             # Simulate a spectroscopic population
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: TXSourceSelectorLensfit
@@ -13,7 +13,6 @@ stages:
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens
       classname: BPZ_lite
-    - name: PZRailEstimateSourceFromLens
     - name: TXPhotozSourceStack
     - name: TXPhotozLensStack
     - name: TXMainMaps
