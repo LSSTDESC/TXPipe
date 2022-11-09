@@ -6,7 +6,7 @@ stages:
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: TXSourceSelectorLensfit
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter3D
+    - name: TXLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZPrepareEstimatorLens
