@@ -21,7 +21,7 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: ./data/example/inputs
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
         # update this when we change package contents and want
         # to force an update
         key: example-data-v1
@@ -70,7 +70,7 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: ./data/example/inputs
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
         # update this when we change package contents and want
         # to force an update
         key: example-data-v1
@@ -111,7 +111,7 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: ./data/example/inputs
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
         # update this when we change package contents and want
         # to force an update
         key: example-data-v1
@@ -153,7 +153,7 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: ./data/example/inputs
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
         # update this when we change package contents and want
         # to force an update
         key: example-data-v1
@@ -195,7 +195,7 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: ./data/example/inputs
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
         # update this when we change package contents and want
         # to force an update
         key: example-data-v1

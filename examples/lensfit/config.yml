@@ -34,6 +34,7 @@ PZRailTrainLens:
     zmax: 3.0
     dz: 0.01
     columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
@@ -51,7 +52,9 @@ PZRailEstimateLens:
     bands: ugrizy
 
 
-TXPhotozStack: {}
+TXPhotozSourceStack:
+    aliases:
+        source_photoz_pdfs: lens_photoz_pdfs
 
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
@@ -83,6 +86,7 @@ PZPrepareEstimatorLens:
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
     spectra_file: SED/CWWSB4.list
+    data_path: ./data/example/rail-bpz-inputs
     prior_band: i
     # Not sure about this
     prior_file: hdfn_gen
@@ -228,21 +232,22 @@ TXSimpleMask:
     bright_object_max: 10.0
 
 
-FlowEngine:
+FlowCreator:
     n_samples: 1000000
     seed: 5763248
     aliases:
         # This input was generated using get_example_flow in pzflow,
         # not something specific.
         output: ideal_specz_catalog
+        model: flow
 
 GridSelection:
     aliases:
         input: ideal_specz_catalog
         output: specz_catalog_pq
     redshift_cut: 5.1
-    ratio_file: submodules/RAIL/examples/creation/data/hsc_ratios_and_specz.hdf5
-    settings_file: submodules/RAIL/examples/creation/data/HSC_grid_settings.pkl
+    ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
+    settings_file: data/example/inputs/HSC_grid_settings.pkl
     random_seed: 66
     pessimistic_redshift_cut: 1.0
 
@@ -270,6 +275,7 @@ PZEstimatorLens:
     hdf5_groupname: photometry
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
     spectra_file: SED/CWWSB4.list
     prior_band: mag_i
     prior_file: hdfn_gen

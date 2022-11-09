@@ -3,9 +3,6 @@ Photo-z
 
 These stages deal with photo-z PDF training and estimation
 
-* :py:class:`~txpipe.photoz.TXRandomPhotozPDF` - Generate random log-normal photo-zs
-
-* :py:class:`~txpipe.photoz_mlz.PZPDFMLZ` - Generate photo-z PDFs using MLZ
 
 * :py:class:`~txpipe.rail.train.PZRailTrainSource` - Train a photo-z model on the source sample using RAIL
 
@@ -23,14 +20,6 @@ These stages deal with photo-z PDF training and estimation
 
 * :py:class:`~txpipe.rail.estimate.PZRailEstimateLensFromSource` - Make a lens  redshifts file by copying source redshifts
 
-
-
-.. autoclass:: txpipe.photoz.TXRandomPhotozPDF
-   :members:
-
-
-.. autoclass:: txpipe.photoz_mlz.PZPDFMLZ
-   :members:
 
 
 .. autoclass:: txpipe.rail.train.PZRailTrainSource
