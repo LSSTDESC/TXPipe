@@ -514,6 +514,42 @@ class TXLensCatalogSplitter(PipelineStage):
             yield s, e, data
 
 
+class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
+    """
+    Split a lens catalog file into a new file with separate bins with true redshifts.
+
+    The redshifts are used to calculate the comoving distances.
+    """
+    name = "TXTruthLensCatalogSplitter"
+    inputs = [
+            ("lens_tomography_catalog", TomographyCatalog),
+            ("photometry_catalog", HDFFile),
+            ("fiducial_cosmology", FiducialCosmology),
+        ]
+    config_options = TXLensCatalogSplitter.config_options.copy()
+    config_options["redshift_column"] = "redshift_true"
+
+
+    def data_iterator(self):
+        z_col = self.config["redshift_column"]
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            "photometry_catalog",
+            "photometry",
+            ["ra", "dec", z_col] + extra_cols,
+            parallel=False,
+        )
+
+        return self.add_redshifts(it)
+
+
 class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
     """
     Split an external lens catalog into bins
