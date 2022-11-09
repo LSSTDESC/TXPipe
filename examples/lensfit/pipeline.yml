@@ -13,7 +13,6 @@ stages:
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens
       classname: BPZ_lite
-    - name: PZRailEstimateSourceFromLens
     - name: TXPhotozSourceStack
     - name: TXPhotozLensStack
     - name: TXMainMaps

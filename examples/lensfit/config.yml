@@ -52,7 +52,9 @@ PZRailEstimateLens:
     bands: ugrizy
 
 
-TXPhotozStack: {}
+TXPhotozSourceStack:
+    aliases:
+        source_photoz_pdfs: lens_photoz_pdfs
 
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
