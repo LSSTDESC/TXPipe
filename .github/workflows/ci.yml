@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: joezuntz/txpipe-dev
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
@@ -56,7 +56,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe-dev
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
@@ -97,7 +97,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe-dev
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
@@ -139,7 +139,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe-dev
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
@@ -181,7 +181,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe-dev
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
@@ -220,7 +220,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: joezuntz/txpipe-dev
+      image: joezuntz/txpipe
 
     steps:
     - name: Checkout repository
