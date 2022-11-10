@@ -416,6 +416,8 @@ class TXLensCatalogSplitter(PipelineStage):
     inputs = [
         ("lens_tomography_catalog", TomographyCatalog),
         ("photometry_catalog", HDFFile),
+        ("fiducial_cosmology", FiducialCosmology),
+        ("lens_photoz_pdfs", HDFFile),
     ]
 
     outputs = [
@@ -426,6 +428,7 @@ class TXLensCatalogSplitter(PipelineStage):
         "initial_size": 100_000,
         "chunk_rows": 100_000,
         "extra_cols": [""],
+        "redshift_column": "zmean",
     }
 
     def run(self):
@@ -436,7 +439,7 @@ class TXLensCatalogSplitter(PipelineStage):
             count2d = f["tomography/lens_counts_2d"][:]
 
         extra_cols = [c for c in self.config["extra_cols"] if c]
-        cols = ["ra", "dec", "weight"]
+        cols = ["ra", "dec", "weight", "comoving_distance"]
 
         # Object we use to make the separate lens bins catalog
         cat_output = self.open_output("binned_lens_catalog", parallel=True)
@@ -473,86 +476,8 @@ class TXLensCatalogSplitter(PipelineStage):
         cat_output.close()
 
     def data_iterator(self):
-        extra_cols = [c for c in self.config["extra_cols"] if c]
-        return self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "lens_tomography_catalog",
-            "tomography",
-            ["lens_bin", "lens_weight"],
-            # second file
-            "photometry_catalog",
-            "photometry",
-            ["ra", "dec"] + extra_cols,
-            parallel=False,
-        )
-
-
-class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
-    """
-    Split an external lens catalog into bins
-
-    Implemented as a subclass of TXLensCatalogSplitter, and
-    changes only file names.
-    """
-
-    name = "TXExternalLensCatalogSplitter"
-    inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
-        ("lens_catalog", HDFFile),
-        ("fiducial_cosmology", FiducialCosmology),
-    ]
-
-    def data_iterator(self):
-        extra_cols = [c for c in self.config["extra_cols"] if c]
-        return self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "lens_tomography_catalog",
-            "tomography",
-            ["lens_bin", "lens_weight"],
-            # second file
-            "lens_catalog",
-            "lens",
-            ["ra", "dec"] + extra_cols,
-            parallel=False,
-        )
-
-
-class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
-    """
-    Split up a lens catalog into bins and add a radial coordinate
-
-    The radial coordinate is generated from the redshift and a fiducial cosmology.
-    The redshift column can be selected; by default it is the mean z.
-    """
-
-    name = "TXLensCatalogSplitter3D"
-    inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
-        ("photometry_catalog", HDFFile),
-        ("fiducial_cosmology", FiducialCosmology),
-        ("lens_photoz_pdfs", HDFFile),
-    ]
-
-    config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "zmean"
-
-    def run(self):
-        # Add comoving distance to extra cols if needed.
-        self.config["extra_cols"].append("comoving_distance")
-        super().run()
-
-    def data_iterator(self):
-        import pyccl
-
         z_col = self.config["redshift_column"]
-        extra_cols = [
-            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
-        ]
-
-        with self.open_input("fiducial_cosmology", wrapper=True) as f:
-            cosmo = f.to_ccl()
+        extra_cols = [c for c in self.config["extra_cols"] if c]
 
         it = self.combined_iterators(
             self.config["chunk_rows"],
@@ -570,10 +495,18 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
             parallel=False,
         )
 
+        return self.add_redshifts(it)
+
+    def add_redshifts(self, iterator):
+        import pyccl
+        z_col = self.config["redshift_column"]
         # This iterates through chunks of the input catalogs, but for each
         # chunk it also intercepts and adds the radial distance. So this function
         # returns an iterator, just like combined_iterators does.
-        for s, e, data in it:
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+
+        for s, e, data in iterator:
             z = data[z_col]
             a = 1.0 / (1 + z)
             d = pyccl.comoving_radial_distance(cosmo, a)
@@ -581,39 +514,25 @@ class TXLensCatalogSplitter3D(TXLensCatalogSplitter):
             yield s, e, data
 
 
-class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
+class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
     """
-    Split an external lens catalog into bins, and add a radial coordinate.
+    Split a lens catalog file into a new file with separate bins with true redshifts.
 
-    Like TXLensCatalogSplitter3D this adds uses the redshift (z_mean, by default)
-    and a fiducial cosmology.
+    The redshifts are used to calculate the comoving distances.
     """
-
-    name = "TXExternalLensCatalogSplitter3D"
+    name = "TXTruthLensCatalogSplitter"
     inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
-        ("lens_catalog", HDFFile),
-        ("fiducial_cosmology", FiducialCosmology),
-    ]
+            ("lens_tomography_catalog", TomographyCatalog),
+            ("photometry_catalog", HDFFile),
+            ("fiducial_cosmology", FiducialCosmology),
+        ]
+    config_options = TXLensCatalogSplitter.config_options.copy()
+    config_options["redshift_column"] = "redshift_true"
 
-    def run(self):
-        self.config["extra_cols"].append("comoving_distance")
-        super().run()
 
     def data_iterator(self):
-        import pyccl
-
-        # We load all cols except for comoving distance, which we calculate
-        extra_cols = [
-            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
-        ]
-
-        # We need to read the redshift in to compute the distance
-        if "redshift" not in extra_cols:
-            extra_cols.append("redshift")
-
-        with self.open_input("fiducial_cosmology", wrapper=True) as f:
-            cosmo = f.to_ccl()
+        z_col = self.config["redshift_column"]
+        extra_cols = [c for c in self.config["extra_cols"] if c]
 
         it = self.combined_iterators(
             self.config["chunk_rows"],
@@ -622,20 +541,53 @@ class TXExternalLensCatalogSplitter3D(TXLensCatalogSplitter):
             "tomography",
             ["lens_bin", "lens_weight"],
             # second file
-            "lens_catalog",
-            "lens",
-            ["ra", "dec"] + extra_cols,
+            "photometry_catalog",
+            "photometry",
+            ["ra", "dec", z_col] + extra_cols,
             parallel=False,
         )
 
-        # See the explanation of this in the TXLensCatalogSplitter3D
-        # class above
-        for s, e, data in it:
-            z = data.pop("redshift")
-            a = 1.0 / (1 + z)
-            d = pyccl.comoving_radial_distance(cosmo, a)
-            data["comoving_distance"] = d
-            yield s, e, data
+        return self.add_redshifts(it)
+
+
+class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
+    """
+    Split an external lens catalog into bins
+
+    Implemented as a subclass of TXLensCatalogSplitter, and
+    changes only file names.
+    """
+    config_options = TXLensCatalogSplitter.config_options.copy()
+    config_options["redshift_column"] = "redshift"
+
+    name = "TXExternalLensCatalogSplitter"
+    inputs = [
+        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_catalog", HDFFile),
+        ("fiducial_cosmology", FiducialCosmology),
+    ]
+
+    def data_iterator(self):
+        z_col = self.config["redshift_column"]
+        extra_cols = [
+            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
+        ]
+        iterator = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            "lens_tomography_catalog",
+            "tomography",
+            ["lens_bin", "lens_weight"],
+            # second file
+            "lens_catalog",
+            "lens",
+            ["ra", "dec", z_col] + extra_cols,
+            parallel=False,
+        )
+
+        return self.add_redshifts(iterator)
+
+
 
 
 if __name__ == "__main__":
