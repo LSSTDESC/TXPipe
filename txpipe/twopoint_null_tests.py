@@ -62,7 +62,7 @@ class TXStarCatalogSplitter(PipelineStage):
 
         for s, e, data in it:
             print(f"Process 0 binning data in range {s:,} - {e:,}")
-            r = data["mag_r"]
+            r = data["r_mag"]
             mag_bins = np.repeat("      ", r.size)
             mag_bins = np.zeros(r.size, dtype=int)
             dim_cut = (r > 18.2) & (r < 22.0)
