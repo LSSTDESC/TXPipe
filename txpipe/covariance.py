@@ -659,11 +659,11 @@ class TXFourierTJPCovariance(PipelineStage):
     ]
 
     config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",
-                      'cov_type': ["CovarianceFourierGaussianNmt",
+                      'cov_type': ["FourierGaussianNmt",
                                    "FourierSSCHaloModel"]}
 
     def run(self):
-        from tjpcov import CovarianceCalculator
+        from tjpcov.covariance_calculator import CovarianceCalculator
         import healpy
         # Read the metadata from earlier in the pipeline
         with self.open_input("tracer_metadata_yml", wrapper=True) as f:
@@ -671,12 +671,6 @@ class TXFourierTJPCovariance(PipelineStage):
         # check the units are what we are expecting
         assert meta["area_unit"] == "deg^2"
         assert meta["density_unit"] == "arcmin^{-2}"
-
-        # Check that only 'gauss' or 'ssc' are passed to 'cov_type'
-        for ct in self.config['cov_type']:
-            if ct not in ['gauss', 'ssc']:
-                raise ValueError("'cov_type can have only 'gauss' or 'ssc'. " +
-                                 f"'{ct}' passed.")
 
         # get the number of bins from metadata
         nbin_lens = meta["nbin_lens"]
