@@ -9,8 +9,6 @@ from .data_types import (
 )
 from .utils import choose_pixelization, Splitter
 import numpy as np
-import healpix
-
 
 class TXRandomCat(PipelineStage):
     """
@@ -44,6 +42,7 @@ class TXRandomCat(PipelineStage):
         import pyccl
         from . import randoms
         from .utils.hdf_tools import BatchWriter
+        import healpix
 
         # Load the input depth map
         with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
