@@ -9,6 +9,7 @@ from .data_types import (
 )
 from .utils import choose_pixelization, Splitter
 import numpy as np
+import healpix
 
 
 class TXRandomCat(PipelineStage):
@@ -33,6 +34,7 @@ class TXRandomCat(PipelineStage):
         "Mstar": 23.0,  # Schecther distribution Mstar parameter
         "alpha": -1.25,  # Schecther distribution alpha parameter
         "chunk_rows": 100_000,
+        "method":"quadrilateral", #method should be "quadrilateral" or "spherical_projection"
     }
 
     def run(self):
@@ -74,6 +76,9 @@ class TXRandomCat(PipelineStage):
         Mstar = self.config["Mstar"]
         alpha15 = 1.5 + self.config["alpha"]
         density_at_median = self.config["density"]
+        method = self.config["method"]
+        allowed_methods = ["quadrilateral","spherical_projection"]
+        assert method in allowed_methods
 
         # Work out the normalization of a Schechter distribution
         # with the given median depth
@@ -88,7 +93,10 @@ class TXRandomCat(PipelineStage):
 
         # Pixel geometry - area in arcmin^2
         pix_area = scheme.pixel_area(degrees=True) * 60.0 * 60.0
-        vertices = scheme.vertices(pixel)
+        if method == "quadrilateral":
+            vertices = scheme.vertices(pixel)
+        else:
+            vertices = None
 
         ##################################################################################
 
@@ -168,7 +176,7 @@ class TXRandomCat(PipelineStage):
             # Generate the random points in each pixel
             ndone = 0
 
-            nvertex = len(vertices)
+            nvertex = npix #number of verticies is the same as number of pixels
             my_nvertex = int(np.ceil(nvertex / self.size))
             start_vertex = self.rank * my_nvertex
             end_vertex = min(start_vertex + my_nvertex, nvertex)
@@ -200,22 +208,63 @@ class TXRandomCat(PipelineStage):
                 max_size=self.config["chunk_rows"],
             )
 
-            for i in range(start_vertex, end_vertex):
-                vertices_i = vertices[i]
-                if ndone % 1000 == 0:
-                    print(
-                        f"Rank {self.rank} done {ndone:,} of its {pixels_per_proc:,} pixels for bin {j}"
-                    )  # Use the pixel vertices to generate the points
-                ### This likely wont work for curved sky maps since healpy pixels aren't
-                ### fully quadrilateral... not sure how big of a difference (if any) this
-                ### will make
-                N = numbers[j, i]
-                p1, p2, p3, p4 = vertices_i.T
-                P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
-                # Convert to RA/Dec
-                # This is not healpy-dependent so we just use it as a convenience function
-                ra, dec = healpy.vec2ang(P, lonlat=True)
+            if method == "quadrilateral":
+                for i in range(start_vertex, end_vertex):
+                    vertices_i = vertices[i]
+                    if ndone % 1000 == 0:
+                        print(
+                            f"Rank {self.rank} done {ndone:,} of its {pixels_per_proc:,} pixels for bin {j}"
+                        )  # Use the pixel vertices to generate the points
+                    ### This likely wont work for curved sky maps since healpy pixels aren't
+                    ### fully quadrilateral... not sure how big of a difference (if any) this
+                    ### will make
+                    N = numbers[j, i]
+                    p1, p2, p3, p4 = vertices_i.T
+                    P = randoms.random_points_in_quadrilateral(p1, p2, p3, p4, N)
+                    # Convert to RA/Dec
+                    # This is not healpy-dependent so we just use it as a convenience function
+                    ra, dec = healpy.vec2ang(P, lonlat=True)
 
+                    bin_index = np.repeat(j, N)
+
+                    ### Create random values [0,1] equal to the number of galaxies per pixel
+                    cdf_rand_val = np.random.uniform(0, 1.0, N)
+                    ### Interpolate those random values to a redshift value given by the cdf
+                    # z_photo_rand = np.interp(cdf_rand_val,z_cdf_norm,z_photo_arr)
+                    z_interp_func = scipy.interpolate.interp1d(z_cdf_norm, z_photo_arr)
+                    # Sometimes we don't quite go down to z - deal with that
+                    cdf_rand_val = cdf_rand_val.clip(z_cdf_norm.min(), z_cdf_norm.max())
+                    z_photo_rand = z_interp_func(cdf_rand_val)
+                    distance = pyccl.comoving_radial_distance(
+                        cosmo, 1.0 / (1 + z_photo_rand)
+                    )
+
+                    # Save output to the generic non-binned output
+                    index = bin_starts[j] + pix_starts[j, i]
+                    batch1.write(
+                        ra=ra,
+                        dec=dec,
+                        z=z_photo_rand,
+                        comoving_distance=distance,
+                        bin=bin_index,
+                    )
+
+                    # Save to the bit that is specific to this bin
+                    index = pix_starts[j, i]
+                    batch2.write(ra=ra, dec=dec, z=z_photo_rand, comoving_distance=distance)
+
+                    ndone += 1
+            elif method == "spherical_projection":
+                #use the same batch/chunks as the quadrilateral method
+                #though i dont think it is likely to be neccesary with this method
+
+                #pixel id for each random objects in this chunk
+                pix_catalog = np.repeat(pixel[start_vertex:end_vertex], numbers[j,:][start_vertex:end_vertex])
+                
+                #generate a random location within the pixel using healpix 
+                ra, dec = healpix.randang(nside, pix_catalog, lonlat=True)
+                
+                N = len(pix_catalog)
                 bin_index = np.repeat(j, N)
 
                 ### Create random values [0,1] equal to the number of galaxies per pixel
@@ -231,7 +280,7 @@ class TXRandomCat(PipelineStage):
                 )
 
                 # Save output to the generic non-binned output
-                index = bin_starts[j] + pix_starts[j, i]
+                index = bin_starts[j] + pix_starts[j, i] #this line was in the quadrilateral method but didn't appear to be doing anything...
                 batch1.write(
                     ra=ra,
                     dec=dec,
@@ -243,8 +292,9 @@ class TXRandomCat(PipelineStage):
                 # Save to the bit that is specific to this bin
                 index = pix_starts[j, i]
                 batch2.write(ra=ra, dec=dec, z=z_photo_rand, comoving_distance=distance)
+            else:
+                raise RuntimeError('method must be one of {0}'.format(allowed_methods))
 
-                ndone += 1
 
             batch1.finish()
             batch2.finish()
