@@ -1,13 +1,14 @@
 
 # Stages to run
 stages:
-    - name: FlowCreator             # Simulate a spectroscopic population
+    - name: FlowEngine             # Simulate a spectroscopic population
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
       classname: BPZ_lite
+      nprocess: 2
       threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
     - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
@@ -16,7 +17,7 @@ stages:
       classname: PZRailSummarize  
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
-    - name: TXSourceSelectorMetacal  # select and split objects into source bins
+    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
     - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
       classname: Inform_NZDir
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
@@ -40,6 +41,7 @@ stages:
       threads_per_process: 2
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXTwoPointPlotsTheory  # Makes plots of ratio to theory 
     - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
@@ -53,35 +55,44 @@ stages:
     - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
     - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
-    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    - name: TXBrighterFatterPlot # Make plots tracking the brightier-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
+    - name: PZRealizationsPlotSource   # Plot n(z) realizations
+      classname: PZRealizationsPlot
+    - name: PZRealizationsPlotLens   # Plot n(z) realizations
+      classname: PZRealizationsPlot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
     - name: TXTwoPointFourier    # Compute power spectra C_ell
-    # Disablig this since not yet synchronised with new Treecorr MPI
+    # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
-    # Disabling these as they take too long for a quick test.
+
+    # Disabling these as they takes too long for a quick test.
+    # The latter two need NaMaster
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-    # - name: TXTwoPointFourier          # Compute power spectra C_ell
-    # - name: TXFourierNamasterCovariance # Compute the C_ell covariance
-    # - name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+    # - name: TXFourierTJPCovariance # Compute the C_ell covariance
+    #   threads_per_process: 2
 
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail.stages
+modules: txpipe rail
+# modules: txpipe rail tjpcov
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
+    - submodules/FlexZPipe
+    - submodules/RAIL
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example/outputs_metadetect
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -94,13 +105,17 @@ site:
     max_threads: 2
 
 # configuration settings
-config: examples/metacal/config.yml
+config: examples/metadetect/config.yml
 
-# These are overall inputs to the whole pipeline, not generated within it
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/example/inputs/shear_catalog.hdf5
+    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
@@ -115,6 +130,7 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_metadetect
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
+
