@@ -226,9 +226,9 @@ class TXSourceSelectorBase(PipelineStage):
     def apply_simple_redshift_cut(self, shear_data):
         pz_data = {}
         if self.config["input_pz"]:
-            zz = data["mean_z"]
+            zz = shear_data["mean_z"]
         else:
-            zz = data["redshift_true"]
+            zz = shear_data["redshift_true"]
 
         pz_data_bin = np.zeros(len(zz), dtype=int) - 1
         for zi in range(len(self.config["source_zbin_edges"]) - 1):
