@@ -61,8 +61,6 @@ class Mapper:
         if do_lens:
             lens_weights = data["lens_weight"]
             lens_bins = data["lens_bin"]
-            n = np.size(lens_bins)
-        
         
         for i in range(n):
             p = pix_nums[i]
