@@ -15,5 +15,8 @@ namaster
 dask
 mpich
 h5py=*=mpi_mpich_*
-cosmosis-standalone
+firecrown
 tables-io
+dm-tree
+jax
+cosmosis
