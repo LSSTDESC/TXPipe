@@ -51,11 +51,51 @@ def ccl_read_yaml(filename, **kwargs):
     return ccl.Cosmology(**inits)
 
 
+def fill_empty_sacc(sacc_data, ell_values):
+    """
+    Make a sacc object containing
+    """
 
-def theory_3x2pt(cosmo, sacc_data, bias=None, smooth=False):
+    for t1 in list(sacc_data.tracers.keys()):
+        t1_is_source = t1.startswith("source")
+        t1_is_lens = t1.startswith("lens")
+        index1 = t1.split("_")[1]
+        if not (t1_is_source or t2_is_source):
+            print(f"Skipping mock data for tracer {t1}")
+            continue
+        for t2 in sacc_data.tracers.keys():
+            t2_is_source = t2.startswith("source")
+            t2_is_lens = t2.startswith("lens")
+            index2 = t2.split("_")[1]
+            if not (t1_is_source or t2_is_source):
+                continue
+
+            if t1_is_source and t2_is_source:
+                dt = "galaxy_shear_cl_ee"
+                if index2 > index1:
+                    continue
+            elif t1_is_source and t2_is_lens:
+                dt = "galaxy_shearDensity_cl_e"
+            else:
+                dt = "galaxy_density_cl"
+                if index2 > index1:
+                    continue
+
+            for ell in ell_values:
+                sacc_data.add_data_point(dt, (t1, t2), 0.0, ell=ell)
+
+
+
+
+
+def theory_3x2pt(cosmo, sacc_data, bias=None, smooth=False, ell_values=None, theta_values=None):
     """
     Use FireCrown to generate the theory predictions for the data
     in a sacc file.
+
+    If the supplied sacc data has only tracers and no data points then
+    the output will be given data points at the ell or theta
+    values supplued in the keyword options.
 
     Linear galaxy bias parameters can optionally be provided as an array.
     If left as None they are set to unity.
@@ -65,10 +105,13 @@ def theory_3x2pt(cosmo, sacc_data, bias=None, smooth=False):
     cosmo: pyccl.Cosmology
         The cosmology at which to get the theory predictions
     sacc_data: sacc.Sacc or str
-        Sacc object or a path to one
+        Sacc object or a path to one. If the file has only tracers and
+        no data then ell_values or theta_values must be supplied.
     galaxy_bias: float, array, or None
         If a float b_0, use the scheme b = b_0 / D(<z>) for each bin.
         If an array, use the given value for each bin
+    ell_values: array, optional
+        An array of ell's to use if no data points are in the sacc file
 
     Returns
     -------
@@ -85,11 +128,18 @@ def theory_3x2pt(cosmo, sacc_data, bias=None, smooth=False):
 
     if isinstance(sacc_data, (str, pathlib.Path)):
         sacc_data = sacc.Sacc.load_fits(sacc_data)
+    else:
+        sacc_data = sacc_data.copy()
 
     if smooth:
-        sacc_data = smooth_sacc_nz(sacc_data)
+        smooth_sacc_nz(sacc_data)
 
-    # breakpoint()
+    if len(sacc_data.data) == 0:
+        if ell_values is None:
+            raise ValueError("Supplied an empty sacc file but no ell_values to fill it")
+        fill_empty_sacc(sacc_data, ell_values)
+
+
 
     if isinstance(bias, float):
         bias = compute_fiducial_bias(bias, sacc_data, cosmo)
