@@ -27,3 +27,4 @@ git+git://github.com/LSSTDESC/qp
 dask[distributed]
 git+git://github.com/joezuntz/dask-mpi
 git+git://github.com/LSSTDESC/desc_bpz
+git+git://github.com/LSSTDESC/CLMM.git@1e3130188e4d0a4edc1cc8bd4d2cc11130a516ec

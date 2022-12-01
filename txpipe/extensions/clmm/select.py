@@ -14,6 +14,7 @@ class CLClusterShearCatalogs(PipelineStage):
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_tomography_catalog", TomographyCatalog),
         ("source_photoz_pdfs", PhotozPDFFile),
+        ("fiducial_cosmology", FiducialCosmology),
     ]
 
     outputs = [
@@ -31,6 +32,7 @@ class CLClusterShearCatalogs(PipelineStage):
         import sklearn.neighbors
         import astropy
         import h5py
+        import clmm
 
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
@@ -55,6 +57,10 @@ class CLClusterShearCatalogs(PipelineStage):
         # We use this object (see utils.py) to store the neighbours for
         # each cluster in an extensible but memory-efficient way
         per_cluster_data = ExtendingArrays(ncluster, 10_000, [int, float, float])
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            ccl_cosmo = f.to_ccl()
+            clmm_cosmo = clmm.Cosmology()._init_from_cosmo(ccl_cosmo)
 
         # Buffer in redshift behind each object        
         delta_z = self.config["delta_z"]
@@ -89,8 +95,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 distance = distance[z_good]
 
                 # Placeholder: we should replace this with a call to CLMM
-                weights = np.ones_like(distance)
-                #self.compute_weights(data, index, my_clusters["redshift"][index])
+                weights = self.compute_weights(clmm_cosmo, data, index, my_clusters["redshift"][index])
 
                 # Now loop through all the nearby clusters and save the fact that this
                 # galaxy is behind them
@@ -219,11 +224,30 @@ class CLClusterShearCatalogs(PipelineStage):
         return theta_max
 
 
-    def compute_weights(self, data, index, z_cluster):
-        return np.ones_like(index)
-        # import clmm
-        # z_gals = data["redshift"][index]
-        # do some calculation with z_gals and z_cluster from clmm
+    def compute_weights(self, clmm_cosmo, data, index, z_cluster):
+        import clmm
+
+        if self.config["redshift_criterion"] == "pdf":
+            pdf_z = data["pdf_z"]
+            pdf_pz = data["pdf_pz"]
+            dummy = np.zeros_like(data["ra"])
+            redshift_keywords = {"pzpdf":pdf_pz, "pzbins":pdf_z, "use_pdz":True}
+        else:
+            # point-estimated redshift
+            z_source = data["redshift"][index]
+            redshift_keywords = {"z_source":z_source, "use_pdz":False}
+
+        weight = clmm.dataops.compute_galaxy_weights(
+            z_cluster,
+            clmm_cosmo,
+            is_deltasigma=True,
+            shape_component1=dummy,
+            shape_component2=dummy,
+            **redshift_keywords
+        )
+
+        return weight
+
 
 
     def load_cluster_catalog(self):
@@ -254,9 +278,22 @@ class CLClusterShearCatalogs(PipelineStage):
         # format where the mode and mean are stored in a file called
         # "ancil". The columns are called zmode and zmean.
         # TODO: Support "pdf" option here and read from /data/yvals
-        pz_group = "ancil"
-        pz_col = "z" + self.config["redshift_criterion"]
-        pz_cols = [pz_col]
+        redshift_criterion = self.config["redshift_criterion"]
+
+        if redshift_criterion == "pdf":
+            # This is not actually a single column but an array
+            pz_group = "data"
+            pz_cols = ["yvals"]
+
+            # we will also need the z axis values in this case
+            with self.open_input("source_photoz_pdfs") as f:
+                # this data seems to be 1D in my QP file.
+                # but that's the kind of thing they might change.
+                pdf_z = np.squeeze(f["/meta/xvals"][0])
+        else:
+            pz_group = "ancil"
+            pz_col = "z" + self.config["redshift_criterion"]
+            pz_cols = [pz_col]
 
         # where and what to read from the tomography catalog.
         # We just want the values from the source bin. We will use
@@ -291,7 +328,11 @@ class CLClusterShearCatalogs(PipelineStage):
             # rename zmean or zmode to redshift so it is simpler above
             data["redshift"] = data.pop(pz_col)
 
+            # If we are in PDF mode then we need this extra info
+            if redshift_criterion == "pdf":
+                data["pdf_z"] = pdf_z
+                # also rename this for clarity
+                data["pdf_pz"] = data.pop("yvals")
+
             # Give this chunk of data to the main run function
             yield s, e, data
-
-
