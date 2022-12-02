@@ -677,6 +677,7 @@ class TXFourierTJPCovariance(PipelineStage):
         nbin_source = meta["nbin_source"]
 
         # set up some config options for TJPCov
+        # tjp_config corresponds to the "tjpcov" section of the input config
         tjp_config = {}
         tjp_config["cov_type"] = self.config['cov_type']
         cl_sacc = self.read_sacc()
@@ -762,11 +763,12 @@ class TXFourierTJPCovariance(PipelineStage):
         # For now, since they're only strings, pass the workspaces even if not
         # requested
         workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
-        tjp_config["workspaces"] =  workspaces
+        cache = {"workspaces":  workspaces}
 
         # Compute the covariance and save it in the cache folder. This will
         # save also the independent terms.
-        calculator = CovarianceCalculator({"tjpcov": tjp_config})
+        calculator = CovarianceCalculator({"tjpcov": tjp_config,
+                                           "cache": cache})
         calculator.create_sacc_cov("summary_statistics_fourier",
                                    save_terms=True)
 
