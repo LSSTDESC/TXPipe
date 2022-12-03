@@ -374,8 +374,9 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
             # Use these terms to project the covariance from C_ell to xi(theta)
-            th, cov["final"] = WT.projected_covariance2(
-                l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov["final"]
+            th, cov["final"] = WT.projected_covariance(
+                ell_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
+                cl_cov=cov["final"]
             )
 
         # Normalize
@@ -406,7 +407,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def make_wigner_transform(self, meta):
         import threadpoolctl
-        from tjpcov import wigner_transform
+        from tjpcov.wigner_transform import WignerTransform
 
         path = self.config["pickled_wigner_transform"]
         if path:
@@ -427,8 +428,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
         print("Generating Wigner Transform.")
         with threadpoolctl.threadpool_limits(1):
-            WT = wigner_transform(
-                l=meta["ell"],
+            WT = WignerTransform(
+                ell=meta["ell"],
                 theta=meta["theta"] * d2r,
                 s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
                 ncpu=num_processes,
