@@ -1,14 +1,13 @@
 
 # Stages to run
 stages:
-    - name: FlowEngine             # Simulate a spectroscopic population
+    - name: FlowCreator             # Simulate a spectroscopic population
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
       classname: BPZ_lite
-      nprocess: 2
       threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
     - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
@@ -79,7 +78,7 @@ stages:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail
+modules: txpipe rail.stages
 # modules: txpipe rail tjpcov
 
 # where to find any modules that are not in this repo,
@@ -87,8 +86,6 @@ modules: txpipe rail
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 # Where to put outputs
 output_dir: data/example/outputs_metadetect
@@ -113,8 +110,6 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5

@@ -1,0 +1,108 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: joezuntz/txpipe
+
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+    - submodules/RAIL
+
+stages:
+    - name: TXSourceSelectorMetadetect
+      nprocess: 32
+    - name: TXRandomForestLensSelector
+      nprocess: 32
+    - name: TXLensCatalogSplitter
+      nprocess: 6
+    - name: TXShearCalibration
+      nprocess: 6
+    - name: TXSourceTrueNumberDensity
+      nprocess: 32
+    - name: TXLensTrueNumberDensity
+      nprocess: 32
+    - name: TXPhotozPlots
+    - name: TXRandomCat
+      nodes: 2
+      nprocess: 64
+    - name: TXJackknifeCenters
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXSourceMaps
+      nprocess: 12
+      threads_per_process: 1
+      nodes: 2
+    - name: TXLensMaps
+    - name: TXAuxiliarySourceMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
+    - name: TXAuxiliaryLensMaps
+      nprocess: 8
+      threads_per_process: 1
+      nodes: 1
+    - name: TXSimpleMask
+    - name: TXDensityMaps
+    - name: TXNullBlinding
+    #- name: TXTwoPoint
+    #  threads_per_process: 32
+    #  nprocess: 2
+    #  nodes: 2
+    - name: TXTwoPointPixel
+      threads_per_process: 32
+      nprocess: 4
+      nodes: 4
+    - name: TXTwoPointTheoryReal
+    - name: TXTwoPointTheoryFourier
+    - name: TXTwoPointPlots
+    - name: TXRealGaussianCovariance
+      threads_per_process: 64
+    - name: TXSourceNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
+    - name: TXLensNoiseMaps
+      nprocess: 8
+      nodes: 2
+      threads_per_process: 1
+    - name: TXTwoPointFourier
+      nprocess: 2
+      nodes: 2
+      threads_per_process: 32
+    #- name: TXFourierGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXFourierTJPCovariance
+      nodes: 4
+      nprocess: 4
+      threads_per_process: 32      
+    #- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    #  threads_per_process: 32
+    #- name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXTwoPointPlotsFourier 
+
+output_dir: data/star-challenge/outputs/Sep14/
+config: examples/star-challenge/config_full.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/metadetect_shear_catalog.hdf5
+    photometry_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/photometry_catalog.hdf5
+    calibration_table:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/sample_cosmodc2_w10year_errors.dat
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+
+resume: True
+log_dir: data/star-challenge/logs
+pipeline_log: data/star-challenge/log.txt
+

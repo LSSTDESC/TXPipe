@@ -7,19 +7,30 @@ on:
     branches: [ master ]
 
 jobs:
+  # Run a download step first so that it is in
+  # the cache, because all the other jobs will be running
+  # at the same time and so might miss it. The other jobs
+  # still do try the download themselves in case something
+  # doesn't quite work
   Download_Data:
     runs-on: ubuntu-latest
     steps:
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
+      with:
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
     - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
       run: |
         wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
         tar -zxvf example.tar.gz
-
-    - name: Cache test data
-      uses: actions/upload-artifact@v2
-      with:
-        name: txpipe-example-data
-        path: data/example
 
 
   Unit_Tests:
@@ -53,11 +64,22 @@ jobs:
       with:
         submodules: true
 
-    - name: Get data
-      uses: actions/download-artifact@v2
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
       with:
-        name: txpipe-example-data
-        path: data/example
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
+    - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
 
     - name: Run metacal pipeline
       run: |
@@ -83,11 +105,22 @@ jobs:
       with:
         submodules: true
 
-    - name: Get data
-      uses: actions/download-artifact@v2
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
       with:
-        name: txpipe-example-data
-        path: data/example
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
+    - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
 
     - name: Run metadetect pipeline
       run: |
@@ -114,11 +147,22 @@ jobs:
       with:
         submodules: true
 
-    - name: Get data
-      uses: actions/download-artifact@v2
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
       with:
-        name: txpipe-example-data
-        path: data/example
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
+    - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
 
     - name: Run lensfit pipeline
       run: |
@@ -145,11 +189,22 @@ jobs:
       with:
         submodules: true
 
-    - name: Get data
-      uses: actions/download-artifact@v2
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
       with:
-        name: txpipe-example-data
-        path: data/example
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
+    - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
 
     - name: Run redmagic pipeline
       run: |
@@ -179,13 +234,3 @@ jobs:
         ceci --dry-run examples/cosmodc2/pipeline.yml
         ceci --dry-run examples/dr1b/pipeline.yml
         ceci --dry-run examples/skysim/pipeline.yml
-
-
-  Delete_Data:
-    runs-on: ubuntu-latest
-    needs: ["Redmagic_Pipeline", "Metacal_Pipeline", "Lensfit_Pipeline", "Metadetect_Pipeline"]
-    steps:
-      - name: Delete data
-        uses: geekyeggo/delete-artifact@v1
-        with:
-          name: txpipe-example-data

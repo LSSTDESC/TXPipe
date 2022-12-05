@@ -1,19 +1,18 @@
 
 # Stages to run
 stages:
-    - name: FlowEngine             # Simulate a spectroscopic population
+    - name: FlowCreator             # Simulate a spectroscopic population
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: TXSourceSelectorLensfit
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter3D
+    - name: TXLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZPrepareEstimatorLens
       classname: Inform_BPZ_lite   
     - name: PZEstimatorLens
       classname: BPZ_lite
-    - name: PZRailEstimateSourceFromLens
     - name: TXPhotozSourceStack
     - name: TXPhotozLensStack
     - name: TXMainMaps
@@ -67,15 +66,13 @@ site:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail
+modules: txpipe rail.stages
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
     - submodules/TJPCov
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 # configuration settings
 config: examples/lensfit/config.yml
@@ -85,8 +82,6 @@ config: examples/lensfit/config.yml
 
 inputs:
     # See README for paths to download these files
-    photoz_lens_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_lens_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/lensfit_photometry_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat

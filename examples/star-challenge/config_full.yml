@@ -1,0 +1,191 @@
+global:
+    chunk_rows: 1000000
+
+TXSourceSelectorMetadetect:
+    bands: riz
+    T_cut: 0.5
+    s2n_cut: 10.0
+    delta_gamma: 0.02
+    # found approximately to split data into equal number counts
+    # for selected objects
+    source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
+    random_seed: 6765675
+    shear_prefix: ''
+
+TXRandomForestLensSelector:
+    verbose: False
+    bands: ugrizy
+    lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    random_seed: 79521
+    mag_i_limit: 24.1
+
+
+TXLensCatalogSplitter:
+    # save these for the PZ team to play with
+    extra_cols:
+        - id
+        - mag_u
+        - mag_g
+        - mag_r
+        - mag_i
+        - mag_z
+        - mag_y
+        - mag_u_err
+        - mag_g_err
+        - mag_r_err
+        - mag_i_err
+        - mag_z_err
+        - mag_y_err
+        - redshift_true
+    initial_size: 1000000
+
+
+TXShearCalibration:
+    extra_cols:
+        - id
+        - mag_err_i
+        - mag_err_r
+        - mag_err_z
+        - mag_i
+        - mag_r
+        - mag_z
+        - redshift_true
+
+
+TXSourceTrueNumberDensity:
+    zmax: 3.0
+    nz: 301
+
+TXLensTrueNumberDensity:
+    zmax: 3.0
+    nz: 301
+
+
+
+TXMainMaps:
+    chunk_rows:  100000
+    pixelization: healpix
+    nside: 4096
+    sparse: True
+
+TXSourceMaps:
+    nside: 4096
+    sparse: True
+    chunk_rows:  100000
+    pixelization: healpix
+    true_shear: False
+
+TXLensMaps:
+    nside: 4096
+    sparse: True
+    chunk_rows:  100000
+    pixelization: healpix
+
+TXLensNoiseMaps:
+    nside: 4096
+    chunk_rows:  100000
+    pixelization: healpix
+
+TXAuxiliarySourceMaps:
+    chunk_rows:  100000
+    sparse:  True
+    psf_prefix:  psf_
+
+TXALensMaps:
+    chunk_rows:  100000
+    sparse:  True
+    bright_obj_threshold:  22.0
+
+TXSimpleMask:
+    depth_cut: 23.0
+    bright_object_max: 10.0        
+
+TXRandomCat:
+    chunk_rows: 100000
+    density: 10 # gals per sq arcmin
+
+TXJackknifeCenters:
+    npatch: 40
+
+TXSourceDiagnosticPlots:
+    shear_prefix: mcal_
+
+TXTwoPointTheoryFourier:
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    #[1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
+
+TXTwoPointTheoryReal:
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
+
+TXFourierGaussianCovariance:
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
+    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
+
+TXFourierTJPCovariance:
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
+    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
+    IA: 0.
+
+TXRealGaussianCovariance:
+    min_sep: 2.5
+    max_sep: 250.
+    nbins: 20
+    use_true_shear: False
+    nprocess: 4
+    threads_per_process: 2
+    nodes: 4
+    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye
+    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
+
+TXTwoPointFourier:
+    chunk_rows: 100000
+    flip_g1: True
+    flip_g2: True
+    apodization_size: 0.0
+    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
+    true_shear: False
+    n_ell: 17
+    ell_min: 20
+    ell_max: 3722.33283781 # matches SRD scales 20-15000 in 20 bins
+    nside: 4096
+    analytic_noise: False
+    
+TXTwoPoint:
+    bin_slop: 0.01
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    var_method: jackknife
+
+TXTwoPointPixel:
+    bin_slop: 0.01
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    auto_only: False
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    var_method: jackknife
+    low_mem: False
+    chunk_rows: 1000000
+
+TXClusteringNoiseMaps:
+    n_realization: 30
+
+TXLensingNoiseMaps:
+    n_realization: 30
+

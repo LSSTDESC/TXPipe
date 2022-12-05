@@ -15,13 +15,20 @@ Download TXPipe like this:
 git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
 ```
 
-and then install dependencies for it with conda like this on a laptop/desktop:
+and then install dependencies for it with conda like this on a laptop/desktop (M1 macs are not yet supported, sorry!):
 
 ```bash
 cd TXPipe
 ./bin/install.sh
 ```
 
+You can now set up your environment using:
+```bash
+source ./conda/bin/activate
+```
+which you should run each time you start a new terminal, from the TXPipe directory.
+
+For using TXPipe on NERSC, you can use the Shifter system, which creates a container with all the requirements pre-built. See the ReadtheDocs page (https://txpipe.readthedocs.io/en/latest) under 'Running TXPipe at NERSC.' 
 
 Running
 -------

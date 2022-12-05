@@ -30,8 +30,6 @@ Photo-z:
         - PZRailEstimateLens
         - PZRailEstimateSourceFromLens
         - PZRailEstimateLensFromSource
-        - PZPDFMLZ
-        - TXRandomPhotozPDF
 
 
 Selection:

@@ -32,7 +32,7 @@ stages:
     - name: TXShearCalibration
       nodes: 1
       nprocess: 8
-    - name: TXLensCatalogSplitter
+    - name: TXTruthLensCatalogSplitter
       nodes: 1
       nprocess: 8
     - name: TXTruthLensSelector
