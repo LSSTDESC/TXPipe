@@ -4,7 +4,7 @@ import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
 from .utils import ExtendingArrays
-
+from ...utils.calibrators import Calibrator
 
 class CLClusterShearCatalogs(PipelineStage):
     name = "CLClusterShearCatalogs"
@@ -14,7 +14,6 @@ class CLClusterShearCatalogs(PipelineStage):
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_tomography_catalog", TomographyCatalog),
         ("source_photoz_pdfs", PhotozPDFFile),
-        ("fiducial_cosmology", FiducialCosmology),
     ]
 
     outputs = [
@@ -26,6 +25,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
         "redshift_criterion": "mean",  # might also need PDF
+        "subtract_mean_shear": True,
     }
 
     def run(self):
@@ -227,22 +227,34 @@ class CLClusterShearCatalogs(PipelineStage):
     def compute_weights(self, clmm_cosmo, data, index, z_cluster):
         import clmm
 
+        # Depending on whether we are using the PDF or not, choose
+        # some keywords to give to compute_galaxy_weights
         if self.config["redshift_criterion"] == "pdf":
+            # We need the z and PDF(z) arrays in this case
             pdf_z = data["pdf_z"]
             pdf_pz = data["pdf_pz"]
-            dummy = np.zeros_like(data["ra"])
-            redshift_keywords = {"pzpdf":pdf_pz, "pzbins":pdf_z, "use_pdz":True}
+            redshift_keywords = {
+                "pzpdf":pdf_pz,
+                "pzbins":pdf_z,
+                "use_pdz":True
+            }
         else:
             # point-estimated redshift
             z_source = data["redshift"][index]
-            redshift_keywords = {"z_source":z_source, "use_pdz":False}
+            redshift_keywords = {
+                "z_source":z_source,
+                "use_pdz":False
+            }
 
         weight = clmm.dataops.compute_galaxy_weights(
             z_cluster,
             clmm_cosmo,
             is_deltasigma=True,
-            shape_component1=dummy,
-            shape_component2=dummy,
+            use_shape_noise=True,
+            use_shape_error=False,
+            validate_input=True,
+            shape_component1=data["g1"],
+            shape_component2=data["g2"],
             **redshift_keywords
         )
 
@@ -270,9 +282,22 @@ class CLClusterShearCatalogs(PipelineStage):
         rows = self.config["chunk_rows"]
 
         # where and what to read from the shear catalog
-        shear_cols = ["ra", "dec"]
         with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_group = f.get_primary_catalog_group()
+            shear_group = "shear"
+            shear_cols, rename = f.get_primary_catalog_names()
+
+        # load the shear calibration information
+        # for the moment, load the average overall shear calibrator,
+        # that applies to the collective 2D bin. This won't be high
+        # accuracy, but I'm not clear right now exactly what the right
+        # model is yet. Here this calibrator is just used for the
+        # weight information calculation, which needs g1 and g2 estimates.
+        # The same calibration should be used later for the actual shears.
+        if self.rank == 0:
+            print("Using single 2D shear calibration!")
+        _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
+        subtract_mean = self.config["subtract_mean_shear"]
+
 
         # where and what to read rom the PZ catalog. This is in a QP
         # format where the mode and mean are stored in a file called
@@ -294,6 +319,8 @@ class CLClusterShearCatalogs(PipelineStage):
             pz_group = "ancil"
             pz_col = "z" + self.config["redshift_criterion"]
             pz_cols = [pz_col]
+            rename[pz_col] = "redshift"
+
 
         # where and what to read from the tomography catalog.
         # We just want the values from the source bin. We will use
@@ -325,8 +352,19 @@ class CLClusterShearCatalogs(PipelineStage):
             wl_sample = data["source_bin"] >= 0
             data = {name: col[wl_sample] for name, col in data.items()}
 
-            # rename zmean or zmode to redshift so it is simpler above
-            data["redshift"] = data.pop(pz_col)
+            # Apply the shear calibration to this sample.
+            # Optionally subtract the mean (of the whole WL sample,
+            # not the local mean)
+            data["g1"], data["g2"] = shear_cal.apply(data["g1"],
+                                                     data["g2"],
+                                                     subtract_mean=subtract_mean
+            )
+
+            # give the shear columns a unified name, whether
+            # they are metacal, metadetect, etc., also rename
+            # zmean or zmode to "redshift"
+            for old, new in renames.items():
+                data[new] = data.pop(old)
 
             # If we are in PDF mode then we need this extra info
             if redshift_criterion == "pdf":
