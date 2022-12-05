@@ -3,9 +3,9 @@ import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
-from .utils import ExtendingArrays
 from ...utils.calibrators import Calibrator
-
+from collections import defaultdict
+import yaml
 class CLClusterShearCatalogs(PipelineStage):
     name = "CLClusterShearCatalogs"
     inputs = [
@@ -54,9 +54,8 @@ class CLClusterShearCatalogs(PipelineStage):
         pos = np.radians([clusters["dec"], clusters["ra"]]).T
         tree = sklearn.neighbors.BallTree(pos, metric="haversine")
 
-        # We use this object (see utils.py) to store the neighbours for
-        # each cluster in an extensible but memory-efficient way
-        per_cluster_data = ExtendingArrays(ncluster, 10_000, [int, float, float])
+        # Store the neighbours for each cluster
+        per_cluster_data = [list() for i in range(ncluster)]
 
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             ccl_cosmo = f.to_ccl()
@@ -69,50 +68,67 @@ class CLClusterShearCatalogs(PipelineStage):
         for s, e, data in self.iterate_source_catalog():
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
                 
-            # Get the location of the galaxies in this chunk of data,
-            # in the form that the tree requires
-            X = np.radians([data["dec"], data["ra"]]).T
+            nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
 
-            # This is a bit fiddly.  First we will get all the objects that
-            # are near each cluster using the maximum search radius for any cluster.
-            # Then in a moment we will cut down to the ones that are
-            # within the radius for each specific cluster.
-            # This is a bit roundabout but sklearn doesn't let us search with
-            # a radius per cluster, only per galaxy.
-            nearby_clusters, cluster_distances = tree.query_radius(X, max_theta_max, return_distance=True)
+            # Now we have all the galaxies near each cluster
+            # We need to cut down to a specific radius for this
+            # cluster
+            for cluster_index, gal_index in nearby_gals.items():
+                # gal_index is an index into this chunk of galaxy data
+                # pointing to all the galaxies near this cluster
+                gal_index = np.array(gal_index)
+                distance = np.array(nearby_gal_dists[cluster_index])
 
-            # Now we loop through each galaxy, and take all the clusters nearby it.
-            # We have to int
-            for (index, distance, zgal, gal_index) in zip(nearby_clusters, cluster_distances, data["redshift"], data["original_index"]):
-                # Cut down to clusters close enough to this galaxy
-                dist_good = distance < cluster_theta_max[index]
-                index = index[dist_good]
+                if gal_index.size == 0:
+                    continue
+
+                # Cut down to galaxies close enough to this cluster
+                dist_good = distance < cluster_theta_max[cluster_index]
+                gal_index = gal_index[dist_good]
                 distance = distance[dist_good]
 
-                # Cut down to clusters that are in front of this galaxy
-                z_good = zgal > clusters["redshift"][index] + delta_z
-                index = index[z_good]
-                distance = distance[z_good]
+                if gal_index.size == 0:
+                    continue
 
-                # Placeholder: we should replace this with a call to CLMM
-                weights = self.compute_weights(clmm_cosmo, data, index, my_clusters["redshift"][index])
+                cluster_z = clusters[cluster_index]["redshift"]
+                # # Cut down to clusters that are in front of this galaxy
+                # zgal = data["redshift"][gal_index]
+                # z_good = zgal > cluster_z + delta_z
+                # gal_index = gal_index[z_good]
+                # distance = distance[z_good]
 
-                # Now loop through all the nearby clusters and save the fact that this
-                # galaxy is behind them
-                for i, w, d in zip(index, weights, distance):
-                    per_cluster_data.append(i, [gal_index, w, d])
+                # if gal_index.size == 0:
+                #     continue
+
+                # Compute weights
+                weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
+
+                # we want to save the index into the overall shear catalog,
+                # not just into this chunk of data
+                global_index = data["original_index"][gal_index]
+                per_cluster_data[cluster_index].append((global_index, distance, weights))
 
             gc.collect()
 
         print(f"Process {self.rank} done reading")
 
         # The overall number of cluster-galaxy pairs
-        overall_count = int(self.comm.reduce(per_cluster_data.total_counts()))
+        # Each item in per_cluster_data is a list of arrays.
+        # Flattening that list of arrays into a single array
+        # gives the entire galaxy sample for that cluster
+        my_counts = np.array([sum(len(x[0]) for x in d) for d in per_cluster_data])
+        # This is now the number of cluster-galaxy pairs found by this
+        # process. We also want the sum from all the processes
+        my_total_count = my_counts.sum()
+        if self.comm is None:
+            total_count = my_total_count
+        else:
+            total_count = int(self.comm.reduce(my_total_count))
         
         # The root process saves all the data. First it setps up the output
         # file here.
         if self.rank == 0:
-            print("Overall pair count = ", overall_count)
+            print("Overall pair count = ", total_count)
             outfile = self.open_output("cluster_shear_catalogs")
             # Create space for the catalog
             catalog_group = outfile.create_group("catalog")
@@ -122,21 +138,30 @@ class CLClusterShearCatalogs(PipelineStage):
             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
             # and for the index into that catalog
             index_group = outfile.create_group("index")
-            index_group.create_dataset("cluster_index", shape=(overall_count,), dtype=np.int64)
-            index_group.create_dataset("source_index", shape=(overall_count,), dtype=np.int64)
-            index_group.create_dataset("weight", shape=(overall_count,), dtype=np.float64)
-            index_group.create_dataset("distance_arcmin", shape=(overall_count,), dtype=np.float64)
+            index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
+            index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
+            index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
+            index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
 
 
         # Now we loop through each cluster and collect all the galaxies
         # behind it from all the different processes.
         start = 0
         for i, c in enumerate(clusters):
+
             if (self.rank == 0) and (i%100 == 0):
                 print(f"Collecting data for cluster {i}")
 
-            # Each process collects all the galaxies for this cluster
-            indices, weights, distances = per_cluster_data.collect(i)
+            if len(per_cluster_data[i]) == 0:
+                indices = np.zeros(0, dtype=int)
+                weights = np.zeros(0)
+                distances = np.zeros(0)
+            else:
+                # Each process flattens the list of all the galaxies for this cluster
+                indices = np.concatenate([d[0] for d in per_cluster_data[i]])
+                distances = np.concatenate([d[1] for d in per_cluster_data[i]])
+                weights = np.concatenate([d[2] for d in per_cluster_data[i]])
+
 
             # If we are running in parallel then collect together the values from
             # all the processes
@@ -149,13 +174,15 @@ class CLClusterShearCatalogs(PipelineStage):
                 continue
 
             # Sort so the indices are montonic increasing
-            srt = indices.argsort()
-            indices = indices[srt]
-            weights = weights[srt]
-            distances = distances[srt]
+            if indices.size != 0:
+                srt = indices.argsort()
+                indices = indices[srt]
+                weights = weights[srt]
+                distances = distances[srt]
             
             # And finally write out all the data from the root process.
             n = indices.size
+            print(f"Found {n} total galaxies in catalog for cluster {c['id']}")
             catalog_group["cluster_sample_start"][i] = start
             catalog_group["cluster_sample_count"][i] = n
             catalog_group["cluster_id"][i] = c["id"]
@@ -171,13 +198,48 @@ class CLClusterShearCatalogs(PipelineStage):
         if self.rank == 0:
             outfile.close()
 
+    def find_galaxies_near_each_cluster(self, galaxy_data, cluster_data, tree, max_theta_max):
+        # Get the location of the galaxies in this chunk of data,
+        # in the form that the tree requires
+        X = np.radians([galaxy_data["dec"], galaxy_data["ra"]]).T
+
+
+        # First we will get all the objects that
+        # are near each cluster using the maximum search radius for any cluster.
+        # Then in a moment we will cut down to the ones that are
+        # within the radius for each specific cluster.
+        nearby_clusters, cluster_distances1 = tree.query_radius(X, max_theta_max, return_distance=True)
+        nearby_galaxies = defaultdict(list)
+        nearby_galaxy_distances = defaultdict(list)
+
+        # Now we invert our tree information. We currently have the list of
+        # all the clusters near each galaxy. Now we invert it to get the list
+        # of galaxies near this cluster. This strange pattern is because then
+        # we only have to make the tree object (which does fast searches for
+        # nearby objects once, for the cluster information.
+        for gal_i, (cluster_indices, cluster_distances) in enumerate(zip(nearby_clusters, cluster_distances1)):
+            for (cluster_i, cluster_distance) in zip(cluster_indices, cluster_distances):
+                nearby_galaxies[cluster_i].append(gal_i)
+                nearby_galaxy_distances[cluster_i].append(cluster_distance)
+
+        return nearby_galaxies, nearby_galaxy_distances
+
+
     def collect(self, indices, weights, distances):
         # total number of background objects for t
 
         counts = np.array(self.comm.allgather(indices.size))
+        total = counts.sum()
+
+        # Early exit if nothing here
+        if total == 0:
+            indices = np.zeros(0, dtype=int)
+            weights = np.zeros(0)
+            distances = np.zeros(0)
+            return indices, weights, distances
+
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:
-            total = counts.sum()
             all_indices = np.empty(total, dtype=indices.dtype)
             all_weights = np.empty(total, dtype=weights.dtype)
             all_distances = np.empty(total, dtype=distances.dtype)
@@ -232,7 +294,7 @@ class CLClusterShearCatalogs(PipelineStage):
         if self.config["redshift_criterion"] == "pdf":
             # We need the z and PDF(z) arrays in this case
             pdf_z = data["pdf_z"]
-            pdf_pz = data["pdf_pz"]
+            pdf_pz = data["pdf_pz"][index]
             redshift_keywords = {
                 "pzpdf":pdf_pz,
                 "pzbins":pdf_z,
@@ -253,8 +315,8 @@ class CLClusterShearCatalogs(PipelineStage):
             use_shape_noise=True,
             use_shape_error=False,
             validate_input=True,
-            shape_component1=data["g1"],
-            shape_component2=data["g2"],
+            shape_component1=data["g1"][index],
+            shape_component2=data["g2"][index],
             **redshift_keywords
         )
 
@@ -352,6 +414,12 @@ class CLClusterShearCatalogs(PipelineStage):
             wl_sample = data["source_bin"] >= 0
             data = {name: col[wl_sample] for name, col in data.items()}
 
+            # give the shear columns a unified name, whether
+            # they are metacal, metadetect, etc., also rename
+            # zmean or zmode to "redshift"
+            for old, new in rename.items():
+                data[new] = data.pop(old)
+
             # Apply the shear calibration to this sample.
             # Optionally subtract the mean (of the whole WL sample,
             # not the local mean)
@@ -359,12 +427,6 @@ class CLClusterShearCatalogs(PipelineStage):
                                                      data["g2"],
                                                      subtract_mean=subtract_mean
             )
-
-            # give the shear columns a unified name, whether
-            # they are metacal, metadetect, etc., also rename
-            # zmean or zmode to "redshift"
-            for old, new in renames.items():
-                data[new] = data.pop(old)
 
             # If we are in PDF mode then we need this extra info
             if redshift_criterion == "pdf":
@@ -374,3 +436,86 @@ class CLClusterShearCatalogs(PipelineStage):
 
             # Give this chunk of data to the main run function
             yield s, e, data
+
+
+
+class CombinedClusterCatalog:
+    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs):
+        _, self.calibrator = Calibrator.load(shear_tomography_catalog)
+        self.shear_cat = ShearCatalog(shear_catalog, "r")
+        self.cluster_catalog = HDFFile(cluster_catalog, "r").file
+        self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
+        self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
+
+    @classmethod
+    def from_pipeline_file(cls, pipeline_file, run_dir='.'):
+        # read the pipeline file
+        with open(pipeline_file) as f:
+            pipe_info = yaml.safe_load(f)
+
+        # make a list of files we need
+        files = {
+            "shear_catalog": None,
+            "cluster_catalog": None,
+            "cluster_shear_catalogs": None,
+            "shear_tomography_catalog": None,
+        }
+
+        inputs = pipe_info["inputs"]
+        output_dir = os.path.join(run_dir, pipe_info["output_dir"])
+        outputs = os.listdir(output_dir)
+        for f in list(files.keys()):
+            if f in inputs:
+                files[f] = os.path.join(run_dir, inputs[f])
+            elif f + ".hdf5" in outputs:
+                files[f] = os.path.join(output_dir, f + ".hdf5")
+            else:
+                raise ValueError(f"Could not locate {f}")
+
+        return cls(**files)
+
+
+    def get_cluster_info(self, cluster_index):
+        return {k: self.cluster_catalog[f'clusters/{k}'][cluster_index] for k in self.cluster_cat_cols}
+
+
+    def get_background_catalog_indexing(self, cluster_index):
+        cat_group = self.cluster_shear_catalogs['catalog']
+        index_group = self.cluster_shear_catalogs['index']
+
+        start = cat_group['cluster_sample_start'][cluster_index]
+        n = cat_group['cluster_sample_count'][cluster_index]
+        end = start + n
+
+        index = index_group['source_index'][start:end]
+        weight = index_group['weight'][start:end]
+        distance = index_group['distance_arcmin'][start:end]
+
+        return index, distance, weight
+
+    def get_background_shear_catalog(self, cluster_index):
+        import clmm
+        index, distance, weight = self.get_background_catalog_indexing(cluster_index)
+        cat_names, rename = self.shear_cat.get_primary_catalog_names()
+
+        cat = {}
+        for col_name in cat_names:
+            cat[col_name] = self.shear_cat.file[f'shear/{col_name}'][index]
+        
+        # rename so no matter what kind of shear catalog you
+        # have it's always the same names here
+        for old, new in rename.items():
+            cat[new] = cat.pop(old)
+
+        # Calibrate g1 and g2
+        g1 = cat.pop("g1")
+        g2 = cat.pop("g2")
+        cat["e1"], cat["e2"] = self.calibrator.apply(g1, g2, subtract_mean=True)
+
+        # Add some more columns and rename some others
+        cat["weight_clmm"] = weight
+        cat["distance_arcmin"] = distance
+        cat["weight_original"] = cat.pop("weight")
+
+        return clmm.GCData(data=cat)
+

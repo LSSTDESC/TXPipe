@@ -1,14 +1,17 @@
 global:
     chunk_rows: 1000000
 
-Inform_BPZ_lite:
+PZPrepareEstimatorSource:
+    name: PZPrepareEstimatorSource
+    classname: Inform_BPZ_lite
     aliases:
         input: spectroscopic_catalog
-        model: lens_photoz_model
+        model: source_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_riz.columns
+    data_path: ./data/example/rail-bpz-inputs
     spectra_file: SED/CWWSB4.list
     prior_band: i
     # Not sure about this
@@ -22,20 +25,21 @@ Inform_BPZ_lite:
     zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
-
-BPZ_lite:
+PZEstimatorSource:
+    name: PZEstimatorSource
+    classname: BPZ_lite
     aliases:
         model: source_photoz_model
         input: shear_catalog
         output: source_photoz_pdfs
-    chunk_size: 100000
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
     nzbins: 301
+    data_path: ./data/example/rail-bpz-inputs
     band_names: [mag_r, mag_i, mag_z]
     band_err_names: [mag_err_r, mag_err_i, mag_err_z]
-    hdf5_groupname: /shear/00
+    hdf5_groupname: shear/00
     nondetect_val: .inf
     columns_file: ./data/bpz_riz.columns
     spectra_file: SED/CWWSB4.list
@@ -50,6 +54,7 @@ BPZ_lite:
         mag_r: 29.06
         mag_i: 28.62
         mag_z: 27.98
+
 
 
 TXSourceSelectorMetadetect:
@@ -69,5 +74,5 @@ CLIngestRedmapper:
     cat_name: cosmoDC2_v1.1.4_redmapper_v0.8.1
 
 CLClusterShearCatalogs:
-    max_radius: 10.0  # Mpc
+    max_radius: 5.0  # Mpc
     redshift_criterion: mean

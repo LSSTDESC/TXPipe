@@ -1,26 +1,26 @@
+# How to run the pipeline: mini, parsl, or cwl
 launcher:
     name: mini
     interval: 1.0
 
-
+# Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: cori-interactive
-    image: joezuntz/txpipe
+    name: local
+    max_threads: 2
 
-modules: txpipe  rail
+modules: txpipe  rail.stages
 
 python_paths:
     - submodules/RAIL
 
 
 stages:
-    - name: BPZ_lite                    # Run BPZ to get photo-z PDFs
-      nodes: 1
-      nprocess: 32
-      processes_per_node: 32
-      threads_per_process: 1
+    - name: PZPrepareEstimatorSource   # Prepare the p(z) estimator
+      classname: Inform_BPZ_lite
+    - name: PZEstimatorSource        # Measure lens galaxy PDFs
+      classname: BPZ_lite
+      threads_per_process: 1  
     - name: TXSourceSelectorMetadetect  # Select a source sample
-    - name: CLIngestRedmapper           # Ingest redmapper catalog from GCR 
     - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster
 
 
@@ -28,14 +28,11 @@ output_dir: data/clmm/outputs
 config: examples/clmm/config.yml
 
 inputs:
-    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear/metadetect_shear_catalog.hdf5
-    # Could also use this for DC2 but we know the shears are wrong:
-    # shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/shear_catalog.hdf5
+    cluster_catalog: data/example/inputs/cluster_catalog.hdf5
+    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
-    source_photoz_model: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/clmm-testing/source_photoz_model.pkl
-    # Need to replace this! It's old.
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
 
 resume: True
 log_dir: data/clmm/logs
