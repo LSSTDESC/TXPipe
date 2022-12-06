@@ -269,7 +269,7 @@ TXRealGaussianCovariance:
     pickled_wigner_transform: data/example/inputs/wigner.pkl
 
 TXFourierTJPCovariance:
-    cov_type: ['gauss', 'ssc']
+    cov_type: ["FourierGaussianNmt", "FourierSSCHaloModel"]
 
 TXJackknifeCenters:
     npatch: 5
