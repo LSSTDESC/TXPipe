@@ -239,7 +239,6 @@ class TXRandomCat(PipelineStage):
                     )
 
                     # Save output to the generic non-binned output
-                    index = bin_starts[j] + pix_starts[j, i]
                     batch1.write(
                         ra=ra,
                         dec=dec,
@@ -249,7 +248,6 @@ class TXRandomCat(PipelineStage):
                     )
 
                     # Save to the bit that is specific to this bin
-                    index = pix_starts[j, i]
                     batch2.write(ra=ra, dec=dec, z=z_photo_rand, comoving_distance=distance)
 
                     ndone += 1
@@ -279,7 +277,6 @@ class TXRandomCat(PipelineStage):
                 )
 
                 # Save output to the generic non-binned output
-                index = bin_starts[j] + pix_starts[j, i] #this line was in the quadrilateral method but didn't appear to be doing anything...
                 batch1.write(
                     ra=ra,
                     dec=dec,
@@ -289,7 +286,6 @@ class TXRandomCat(PipelineStage):
                 )
 
                 # Save to the bit that is specific to this bin
-                index = pix_starts[j, i]
                 batch2.write(ra=ra, dec=dec, z=z_photo_rand, comoving_distance=distance)
             else:
                 raise RuntimeError('method must be one of {0}'.format(allowed_methods))
