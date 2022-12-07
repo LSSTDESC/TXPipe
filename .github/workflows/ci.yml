@@ -127,6 +127,11 @@ jobs:
         ceci examples/metadetect/pipeline.yml
         test -f data/example/outputs_metadetect/shear_xi_plus.png
 
+    - name: Run randoms pipeline
+      run: |
+        ceci examples/randoms/pipeline_randomsonly.yml
+        test -f data/example/outputs_randoms/random_cats.hdf5
+
     - name: Show logs
       if: ${{ always() }}
       run: |

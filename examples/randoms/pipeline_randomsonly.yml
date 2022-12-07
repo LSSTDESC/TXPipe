@@ -1,0 +1,61 @@
+# Runs only the randoms stage
+# Uses the output of the metadetect example as 
+# an input so you need to have run that first 
+
+# Stages to run
+stages:
+    - name: TXRandomCat          # generate lens bin random catalogs
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe rail.stages
+# modules: txpipe rail tjpcov
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+
+# Where to put outputs
+output_dir: data/example/outputs_randoms
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/randoms/config_randomsonly.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+#    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
+    aux_lens_maps: data/example/outputs_metadetect/aux_lens_maps.hdf5
+    lens_photoz_stack: data/example/outputs_metadetect/lens_photoz_stack.hdf5
+    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    exposures: data/example/inputs/exposures.hdf5
+#    star_catalog: data/example/inputs/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension we are not using Random_cat_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    random_cats_source: Null
+    flow: data/example/inputs/example_flow.pkl
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+# where to put output logs for individual stages
+log_dir: data/example/logs_randoms
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log.txt

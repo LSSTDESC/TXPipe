@@ -28,3 +28,4 @@ pz-rail-hub
 git+https://github.com/jlvdb/hyperbolic
 pzflow
 tables-io
+healpix
