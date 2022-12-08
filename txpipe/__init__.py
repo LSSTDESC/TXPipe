@@ -35,7 +35,7 @@ from .rail import PZRailSummarize, PZRealizationsPlot, TXParqetToHDF
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
-from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier
+from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
 from .calibrate import TXShearCalibration
 
 # Here are the stages that mostly will be used for other projects
