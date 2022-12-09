@@ -46,9 +46,9 @@ class Mapper:
         npix = self.pixel_scheme.npix
         do_lens = self.do_lens
         do_g = self.do_g
-
+        
         n = len(data["ra"])
-
+        
         # Get pixel indices
         pix_nums = self.pixel_scheme.ang2pix(data["ra"], data["dec"])
 
@@ -61,7 +61,7 @@ class Mapper:
         if do_lens:
             lens_weights = data["lens_weight"]
             lens_bins = data["lens_bin"]
-
+        
         for i in range(n):
             p = pix_nums[i]
 
