@@ -180,9 +180,8 @@ class TXTwoPointTheoryReal(PipelineStage):
                     )
                     for p, q in enumerate(ind):
                         s.data[q].value = gt[p]
-
-            return s
-
+                        
+        return s
 
 class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     """
