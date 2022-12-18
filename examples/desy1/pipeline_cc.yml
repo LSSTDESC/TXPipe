@@ -1,69 +1,28 @@
-launcher:
-    name: mini
-    interval: 1.0
-    
-site:
-    name: local #cori-interactive
-    #image: joezuntz/txpipe
-    max_threads: 2
-
-modules: txpipe
-
-# where to find any modules that are not in this repo,
-# and any other code we need.
-python_paths:
-    - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 # Stages to run
 stages:
 
     - name: TXSourceSelectorMetacal     # select and split objects into source bins
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
-      ##- name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXTruthLensCatalogSplitter
-    - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
-    #- name: TXMeanLensSelector  # select objects for lens bins
-    #- name: PZRailTrainSource   # Train a photo-z estimator for the source sample
-    #  threads_per_process: 2
-    #- name: PZRailEstimateSource # Compute p(z) values for the source sample
-    # Copy the p(z) values from the source to lens values
-    # # If we had separate source and lens samples (as we do in real life) we would
-    # # esimate the lens PZ separately.
-    # # We could use this to train a separate estimator:
-    # - name: PZRailTrainLens     # Train a photo-z estimator for the lens sample
-    #   threads_per_process: 2
-    # # and this to estimate the p(z) for the lenses separately:
-    # # (in this laptop test the samples are the same, as this is faster)
-    # - name: PZRailEstimateLens # Compute p(z) values for the lens sample
-    #- name: TXRandomPhotozPDF
-    #- name: PZRailEstimateLensFromSource 
-    #- name: TXPhotozSourceStack  # Stack p(z) into n(z)
-    #- name: TXPhotozLensStack    # Stack p(z) into n(z)
-    #- name: TXExternalLensCatalogSplitter
-    
-    - name: TXPhotozPlots
-      ##- name: TXRandomCat
-      
+    - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)    
+    - name: TXPhotozPlots 
     - name: TXSourceMaps
       #nprocess: 6
       #threads_per_process: 1
       #nodes: 1
     - name: TXLensMaps
-
-      ##- name: TXMainMaps           # make source g1, g2 and lens n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
-    ##- name: TXSimpleMask         # combine maps to make a simple mask
-    ##- name: TXSourceNoiseMaps    # noise maps for sources using random rotations
+    - name: TXSourceNoiseMaps    # noise maps for sources using random rotations
+    # the below is not working cause TXAuxiliaryLensMaps is broken
     ##- name: TXLensNoiseMaps      # noise maps for lenses using density splits
-    ##- name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
-    ##- name: TXMapPlots           # make pictures of all the maps
-    ##- name: TXTracerMetadata     # collate metadata
+    - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    - name: TXMapPlots           # make pictures of all the maps
+    - name: TXTracerMetadata     # collate metadata
+    # the below is not working cause TXAuxiliaryLensMaps is broken
     ##- name: TXRandomCat          # generate lens bin random catalogs
-    ##- name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
     ##- name: TXTwoPoint           # Compute real-space 2-point correlations
       ##threads_per_process: 2
       ##- name: TXBlinding           # Blind the data following Muir et al
@@ -101,42 +60,53 @@ stages:
       ##- name: TXFourierNamasterCovariance # Compute the C_ell covariance
       ##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
 
+#===========
 
+launcher:
+    name: mini
+    interval: 1.0
+    
+site:
+    name: local 
+    max_threads: 2
 
-# Where to put outputs
-output_dir: data/desy1/outputs
-
-# python modules to import to search for stages
 modules: txpipe
 
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+
+# where to put outputs
+output_dir: data/desy1/outputs
+
 # configuration settings
-config: examples/desy1/config.yml
+config: examples/desy1/config_cc.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    # See README for paths to download these files
     shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_catalog_desy1_masked.h5
     photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/photometry_catalog_desy1_RM.h5
-    #lens_catalog: data/desy1/inputs/lens_catalog.hdf5
     lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
     shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_photoz_stack.hdf5
     lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_photoz_stack.hdf5
-    #photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    #photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/DES_psf_catalog.hdf5
-    # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
     random_cats_source: Null
     mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
-
+    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.h5
+    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.h5
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
 resume: True
+
 # where to put output logs for individual stages
 log_dir: data/desy1/logs
+
 # where to put an overall parsl pipeline log
 pipeline_log: data/desy1/log.txt
