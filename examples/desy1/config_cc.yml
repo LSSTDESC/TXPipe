@@ -226,7 +226,7 @@ TXRealGaussianCovariance:
 
 
 TXJackknifeCenters:
-    npatch: 10
+    npatch: 100
     every_nth: 100
 
 
