@@ -10,6 +10,74 @@ global:
     nside: 128
     sparse: True  # Generate sparse maps - faster if using small areas
 
+
+# here's the list of stages we are using
+# TXSourceSelectorMetacal
+# TXShearCalibration
+# TXTruthLensCatalogSplitter
+# TXStarCatalogSplitter     
+# TXPhotozPlots 
+# TXSourceMaps
+# TXLensMaps
+# TXAuxiliarySourceMaps  
+# TXAuxiliaryLensMaps    
+# TXSourceNoiseMaps    
+# TXDensityMaps        
+# TXMapPlots           
+# TXTracerMetadata     
+# TXJackknifeCenters   
+# TXTwoPoint           
+# TXBlinding           
+# TXTwoPointTheoryReal 
+# TXTwoPointPlots      
+# TXSourceDiagnosticPlots    
+# TXLensDiagnosticPlots    
+      ##- name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
+      ##threads_per_process: 2
+      ##- name: TXGammaTStars  # Compute and plot gamma_t around bright stars
+      ##threads_per_process: 2
+      ##- name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
+      ##threads_per_process: 2
+      ##- name: TXRoweStatistics     # Compute and plot Rowe statistics
+      ##threads_per_process: 2
+      ##- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+      ##- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+      ##- name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+      ##- name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+      ##- name: TXPhotozPlots        # Plot the bin n(z)
+      ##- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+      ##- name: TXConvergenceMapPlots # Plot the convergence map
+      ##- name: TXMapCorrelations    # plot the correlations between systematics and data
+      ##- name: TXApertureMass        # Compute aperture-mass statistics
+      ##threads_per_process: 2
+    # Disabled since not yet synchronised with new Treecorr MPI
+    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+    #
+    # Disabling these as they takes too long for a quick test.
+    # The latter three need NaMaster
+    
+      ##- name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+      ##- name: TXTwoPointFourier          # Compute power spectra C_ell
+      ##- name: TXFourierNamasterCovariance # Compute the C_ell covariance
+      ##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+
+
+
+TXSourceSelectorMetacal:
+    input_pz: True
+    true_z: False
+    bands: riz #used for selection
+    T_cut: 0.0
+    s2n_cut: 0.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
+    shear_prefix: mcal_
+
+
+
+
+
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
@@ -85,16 +153,6 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorMetacal:
-    input_pz: True
-    true_z: False
-    bands: riz #used for selection
-    T_cut: 0.0
-    s2n_cut: 0.0
-    max_rows: 1000
-    delta_gamma: 0.02
-    source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
-    shear_prefix: mcal_
 
 TXTruthLensSelector:
     # Mag cuts
@@ -138,9 +196,9 @@ TXRandomCat:
 TXTwoPoint:
     bin_slop: 0.5
     delta_gamma: 0.02
-    do_pos_pos: False
+    do_pos_pos: True
     do_shear_shear: True
-    do_shear_pos: False
+    do_shear_pos: True
     flip_g2: False  
     min_sep: 2.5
     max_sep: 250
@@ -215,7 +273,7 @@ TXAuxiliaryLensMaps:
     flag_exponent_max: 8
     bright_obj_threshold: 10.0 # The magnitude threshold for a object to be counted as bright
     depth_band : i
-    snr_threshold: 5.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+    snr_threshold: 20.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
 
 TXRealGaussianCovariance:
