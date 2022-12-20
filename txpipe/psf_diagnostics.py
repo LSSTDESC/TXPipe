@@ -968,8 +968,8 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
 def load_star_type(data):
-    used = data["calib_psf_used"][:]
-    reserved = data["calib_psf_reserved"][:]
+    used = data["calib_psf_used"][:].astype('int')
+    reserved = data["calib_psf_reserved"][:].astype('int')
 
     star_type = np.zeros(used.size, dtype=int)
     star_type[used] = STAR_PSF_USED

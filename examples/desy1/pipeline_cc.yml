@@ -20,8 +20,6 @@ stages:
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
-    # the below is not working cause TXAuxiliaryLensMaps is broken, but also we want to use RM randoms
-    ##- name: TXRandomCat          # generate lens bin random catalogs
     - name: TXJackknifeCenters   # Split the area into jackknife regions
     - name: TXTwoPoint           # Compute real-space 2-point correlations
       threads_per_process: 2
@@ -35,15 +33,14 @@ stages:
       ##threads_per_process: 2
     - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
       threads_per_process: 2
-    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
-      threads_per_process: 2
+      ##- name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
+      ##threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
-      ##- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
-      ##- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+    - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+    - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
       ##- name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
       ##- name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-      ##- name: TXPhotozPlots        # Plot the bin n(z)
       ##- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       ##- name: TXConvergenceMapPlots # Plot the convergence map
       ##- name: TXMapCorrelations    # plot the correlations between systematics and data
