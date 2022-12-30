@@ -17,4 +17,3 @@ mpich
 h5py=*=mpi_mpich_*
 cosmosis-standalone
 tables-io
-tjpcov
