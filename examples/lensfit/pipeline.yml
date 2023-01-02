@@ -72,7 +72,6 @@ modules: txpipe rail.stages
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
 
 # configuration settings
 config: examples/lensfit/config.yml

@@ -65,7 +65,6 @@ modules: txpipe
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
     - submodules/FlexZPipe
 
 # configuration settings
