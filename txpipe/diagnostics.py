@@ -164,8 +164,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
+        print("read data loop")
         for (start, end, data) in it:
-            print(f"Read data {start} - {end}")
+            #print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -223,7 +224,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         mu1, mean11, mean12, std11, std12 = p1.collect(self.comm)
         mu2, mean21, mean22, std21, std22 = p2.collect(self.comm)
-
+        
+        print("mu1: ", mu1)
+        
         if self.rank != 0:
             return
 
@@ -254,7 +257,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         )
         std_err22 = mc_cov[0, 0] ** 0.5
         line22 = slope22 * (mu2) + intercept22
-
+        
+        print("line 11: ", line11)
+        print("line12: ", line12)
+        
         plt.subplot(2, 1, 1)
 
         plt.plot(
