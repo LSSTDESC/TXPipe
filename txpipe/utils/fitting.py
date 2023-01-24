@@ -1,4 +1,5 @@
 from scipy.odr import ODR, Model, RealData, unilinear
+from scipy.stats import linregress
 import numpy as np
 
 
@@ -71,13 +72,17 @@ def fit_straight_line(
     data = RealData(x, y, **kwargs)
     odr = ODR(data, unilinear, beta0=[m0, c0], maxit=200)
     results = odr.run()
-
-    if results.stopreason != ["Sum of squares convergence"]:
-        if nan_error:
-            return np.nan, np.nan, np.zeros((2, 2)) * np.nan
-        else:
-            raise RuntimeError("Failed to straight line" + str(results.stopreason))
-
     m, c = results.beta
     cov = results.cov_beta
+    if results.stopreason != ["Sum of squares convergence"]:
+        #work in progress: putting lin regression here in lieu of nonconverging ODR
+        result_lin = linregress(x, y)
+        m = result_lin.slope
+        c = result_lin.intercept
+        if nan_error:
+            return m,c, np.zeros((2, 2)) * np.nan
+        else:
+            raise RuntimeError("Failed to straight line" + str(results.stopreason))
+            
+    print(m,c,cov)
     return m, c, cov
