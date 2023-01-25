@@ -684,6 +684,9 @@ class TXFourierTJPCovariance(PipelineStage):
         cl_sacc = self.read_sacc()
         tjp_config["sacc_file"] = cl_sacc
 
+        # The Gaussian classes use this
+        fsky = meta["area"] / sq_deg_on_sky
+
         # Get the CCL cosmo object to pass to TJPCov
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             tjp_config["cosmo"] = f.to_ccl()
@@ -769,7 +772,10 @@ class TXFourierTJPCovariance(PipelineStage):
         # Compute the covariance and save it in the cache folder. This will
         # save also the independent terms.
         calculator = CovarianceCalculator({"tjpcov": tjp_config,
-                                           "cache": cache})
+                                           "cache": cache,
+                                           "GaussianFsky": {"fsky":fsky}
+
+                                           })
         calculator.create_sacc_cov("summary_statistics_fourier",
                                    save_terms=True)
 
