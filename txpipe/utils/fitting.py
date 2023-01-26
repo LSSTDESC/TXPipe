@@ -41,7 +41,9 @@ def fit_straight_line(
     if skip_nan:
         w = np.isfinite(x) & np.isfinite(y)
         x = x[w]
+        print("x: ",x)
         y = y[w]
+        print("y: ",y)
     else:
         w = slice(None)
 
@@ -57,7 +59,8 @@ def fit_straight_line(
         raise ValueError("x_sigma_or_cov must be None, scalar, 1D, or 2D")
 
     ny = np.ndim(y_err)
-
+    print("ny: ", ny)
+    
     if y_err is None:
         pass
     elif ny == 0:
@@ -68,7 +71,7 @@ def fit_straight_line(
         kwargs["cov_y"] = y_err[w][:, w]
     else:
         raise ValueError("x_sigma_or_cov must be None, scalar, 1D, or 2D")
-
+    print("kwargs: ", kwargs)
     data = RealData(x, y, **kwargs)
     odr = ODR(data, unilinear, beta0=[m0, c0], maxit=200)
     results = odr.run()
@@ -79,10 +82,12 @@ def fit_straight_line(
         result_lin = linregress(x, y)
         m = result_lin.slope
         c = result_lin.intercept
+        cov = np.zeros((2,2))*np.nan
+        cov[0,0]=(result_lin.stderr)**2
         if nan_error:
-            return m,c, np.zeros((2, 2)) * np.nan
+            return m,c, cov
         else:
             raise RuntimeError("Failed to straight line" + str(results.stopreason))
             
-    print(m,c,cov)
+   # print("m: ",m,"c: ",c,"cov: ",cov)
     return m, c, cov
