@@ -83,7 +83,8 @@ def fit_straight_line(
         m = result_lin.slope
         c = result_lin.intercept
         cov = np.zeros((2,2))*np.nan
-        cov[0,0]=(result_lin.stderr)**2
+        cov[0,0]=np.var(x)
+        cov[2,2]=np.var(y)
         if nan_error:
             return m,c, cov
         else:
