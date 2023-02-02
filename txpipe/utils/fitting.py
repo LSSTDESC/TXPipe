@@ -1,11 +1,11 @@
 from scipy.odr import ODR, Model, RealData, unilinear
 from scipy.stats import linregress
+from scipy.optimize import curve_fit
 import numpy as np
 
 
 def fit_straight_line(
-    x, y, x_err=None, y_err=None, m0=1.0, c0=0.0, nan_error=False, skip_nan=False
-):
+    x, y, x_err=None, y_err=None, m0=1.0, c0=0.0, nan_error=False, skip_nan=False):
     """
     Use scipy to fit a straight line, with errors or covariances allowed
     on both x and y.
@@ -78,17 +78,17 @@ def fit_straight_line(
     m, c = results.beta
     cov = results.cov_beta
     if results.stopreason != ["Sum of squares convergence"]:
-        #work in progress: putting lin regression here in lieu of nonconverging ODR
-        result_lin = linregress(x, y)
-        m = result_lin.slope
-        c = result_lin.intercept
-        cov = np.zeros((2,2))*np.nan
-        cov[0,0]=np.var(x)
-        cov[2,2]=np.var(y)
+        #alternative fitting solution:
+        popt, cov = curve_fit(line, x, y, sigma=y_err)
+        m= popt[0]
+        c=popt[1]
         if nan_error:
             return m,c, cov
         else:
             raise RuntimeError("Failed to straight line" + str(results.stopreason))
-            
-   # print("m: ",m,"c: ",c,"cov: ",cov)
+
     return m, c, cov
+
+def line(slp,vrbl,intcpt):
+    return slp * vrbl + intcpt
+    
