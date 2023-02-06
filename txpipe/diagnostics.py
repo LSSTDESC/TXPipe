@@ -22,8 +22,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
     Make diagnostic plots of the shear catalog
 
     This includes both tomographic and 2D measurements, and includes
-    the PSF as a function of various quantities as well as overall
-    histograms.
+    the PSF as a function of various quantities
     """
 
     name = "TXSourceDiagnosticPlots"
@@ -36,13 +35,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
     outputs = [
         ("g_psf_T", PNGFile),
         ("g_psf_g", PNGFile),
-        ("g1_hist", PNGFile),
-        ("g2_hist", PNGFile),
         ("g_snr", PNGFile),
         ("g_T", PNGFile),
-        ("source_snr_hist", PNGFile),
-        ("source_mag_hist", PNGFile),
-        ("response_hist", PNGFile),
+        #("source_snr_hist", PNGFile),
+        #("source_mag_hist", PNGFile),
+        #("response_hist", PNGFile),
     ]
 
     config_options = {
@@ -71,6 +68,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith("plot_")]
 
+        print(plotters)
+        
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
         for plotter in plotters:
@@ -190,10 +189,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from .utils.fitting import fit_straight_line
 
         delta_gamma = self.config["delta_gamma"]
-        size = 5
-        gr = np.logspace(-3, -2, size // 2)
-        psf_g_edges = np.concatenate([-gr[::-1], gr])
-        print("psf_g_edges", psf_g_edges)
+        size = 10
+        gr1 = np.linspace(-0.02,0.02,8)
+        gr2 = np.linspace(0.03, 0.06,2)
+ 
+        psf_g_edges = np.concatenate([gr1,gr2])#[-gr2[::-1],
+     
+        print("psf_g_edges: ", psf_g_edges)
         psf_prefix = self.config["psf_prefix"]
 
         p1 = MeanShearInBins(
@@ -225,41 +227,51 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mu1, mean11, mean12, std11, std12 = p1.collect(self.comm)
         mu2, mean21, mean22, std21, std22 = p2.collect(self.comm)
         
-        print("mu1: ", mu1)
         
         if self.rank != 0:
             return
 
         fig = self.open_output("g_psf_g", wrapper=True)
+        
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (mu1[1] - mu1[0])
-
+        print("test11")
         slope11, intercept11, mc_cov = fit_straight_line(
             mu1, mean11, y_err=std11, nan_error=True, skip_nan=True
         )
+        print("slope11: ",slope11)
+        print("intercept11: ",intercept11)
+        print("mc_cov: ", mc_cov)
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
-
+        print("test12")
         slope12, intercept12, mc_cov = fit_straight_line(
             mu1, mean12, y_err=std12, nan_error=True, skip_nan=True
         )
+        print("slope12: ",slope12)
+        print("intercept12: ",intercept12)
+        print("mc_cov: ", mc_cov)
         std_err12 = mc_cov[0, 0] ** 0.5
         line12 = slope12 * (mu1) + intercept12
-
+        print("test21")
         slope21, intercept21, mc_cov = fit_straight_line(
             mu2, mean21, y_err=std21, nan_error=True, skip_nan=True
         )
+        print("slope21: ",slope21)
+        print("intercept21: ",intercept21)
+        print("mc_cov: ", mc_cov)
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
-
+        print("test22")
         slope22, intercept22, mc_cov = fit_straight_line(
             mu2, mean22, y_err=std22, nan_error=True, skip_nan=True
         )
+        print("slope22: ",slope22)
+        print("intercept22: ",intercept22)
+        print("mc_cov: ", mc_cov)
         std_err22 = mc_cov[0, 0] ** 0.5
         line22 = slope22 * (mu2) + intercept22
         
-        print("line 11: ", line11)
-        print("line12: ", line12)
         
         plt.subplot(2, 1, 1)
 
@@ -293,12 +305,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="+", color="blue")
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
-        plt.legend()
+        plt.legend(loc="upper right")
         plt.tight_layout()
 
         # This also saves the figure
         fig.close()
-
+        
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
         print("Making PSF size plot")
@@ -308,7 +320,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
 
         delta_gamma = self.config["delta_gamma"]
-        size = 5
+        size = 10
         T_min = self.config["T_min"]
         T_max = self.config["T_max"]
         psf_T_edges = np.linspace(T_min, T_max, size + 1)
@@ -352,7 +364,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         )
         std_err2 = cov2[0, 0] ** 0.5
         line2 = slope2 * mu + intercept2
-
+        
         fig = self.open_output("g_psf_T", wrapper=True)
 
         plt.plot(
@@ -376,7 +388,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
-
+        
     def plot_snr_shear(self):
         # mean shear in bins of snr
         print("Making mean shear SNR plot")
@@ -384,10 +396,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         # Parameters of the binning in SNR
-        size = 5
+        size = 20
         delta_gamma = self.config["delta_gamma"]
         shear_prefix = self.config["shear_prefix"]
-        snr_edges = np.logspace(0.1, 2.5, size + 1)
+        snr_edges = np.logspace(0.1, 2.8, size + 1)
 
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
@@ -457,7 +469,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
         psf_prefix = self.config["psf_prefix"]
 
-        size = 5
+        size = 20
 
         T_edges = np.linspace(0.1, 2.1, size + 1)
         shear_prefix = self.config["shear_prefix"]
@@ -513,7 +525,164 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend()
         plt.tight_layout()
         fig.close()
+    
+    
+class TXSourceHistogramPlots(PipelineStage):
+    """
+    makes histogram plots of the source catalog
+    """
+    name="TXSourceHistogramPlots"
+    
+    inputs=[("shear_catalog", ShearCatalog),
+            ("shear_tomography_catalog", TomographyCatalog)
+    ]
+    
+    outputs=[("g1_hist", PNGFile),
+            ("g2_hist", PNGFile),
+            ("source_snr_hist", PNGFile),
+            ("source_mag_hist", PNGFile),
+            ("response_hist", PNGFile)
+    ]
+    
+    config_options = {
+        "chunk_rows": 100000,
+        "delta_gamma": 0.02,
+        "shear_prefix": "mcal_",
+        "psf_prefix": "mcal_psf_",
+        "T_min": 0.2,
+        "T_max": 0.28,
+        "bands": "riz",
+    }
+    
+    def run(self):
+        # PSF tests
+        import matplotlib
 
+        matplotlib.use("agg")
+
+        # this also sets self.config["shear_catalog_type"]
+        cat_type = read_shear_catalog_type(self)
+
+        # Collect together all the methods on this class called self.plot_*
+        # They are all expected to be python coroutines - generators that
+        # use the yield feature to pause and wait for more input.
+        # We instantiate them all here
+
+        plotters = [getattr(self, f)() for f in dir(self) if f.startswith("plot_")]
+
+        print(plotters)
+        
+        # Start off each of the plotters.  This will make them all run up to the
+        # first yield statement, then pause and wait for the first chunk of data
+        for plotter in plotters:
+            plotter.send(None)
+
+        # Create an iterator for reading through the input data.
+        # This method automatically splits up data among the processes,
+        # so the plotters should handle this.
+        chunk_rows = self.config["chunk_rows"]
+        psf_prefix = self.config["psf_prefix"]
+        shear_prefix = self.config["shear_prefix"]
+        bands = self.config["bands"]
+
+        if cat_type == "metacal":
+            shear_cols = [
+                f"{psf_prefix}g1",
+                f"{psf_prefix}g2",
+                f"{psf_prefix}T_mean",
+                "mcal_g1",
+                "mcal_g1_1p",
+                "mcal_g1_2p",
+                "mcal_g1_1m",
+                "mcal_g1_2m",
+                "mcal_g2",
+                "mcal_g2_1p",
+                "mcal_g2_2p",
+                "mcal_g2_1m",
+                "mcal_g2_2m",
+                "mcal_s2n",
+                "mcal_T",
+                "mcal_T_1p",
+                "mcal_T_2p",
+                "mcal_T_1m",
+                "mcal_T_2m",
+                "mcal_s2n_1p",
+                "mcal_s2n_2p",
+                "mcal_s2n_1m",
+                "mcal_s2n_2m",
+                "weight",
+            ] + [f"mcal_mag_{b}" for b in bands]
+        elif cat_type == "metadetect":
+            # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
+            shear_cols = metadetect_variants(
+                "g1",
+                "g2",
+                "T",
+                "mcal_psf_g1",
+                "mcal_psf_g2",
+                "mcal_psf_T_mean",
+                "s2n",
+                "weight",
+            )
+            shear_cols += band_variants(
+                bands, "mag", "mag_err", shear_catalog_type="metadetect"
+            )
+        else:
+            shear_cols = [
+                "psf_g1",
+                "psf_g2",
+                "g1",
+                "g2",
+                "psf_T_mean",
+                "s2n",
+                "T",
+                "weight",
+                "m",
+                "sigma_e",
+                "c1",
+                "c2",
+            ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
+
+        shear_tomo_cols = ["source_bin"]
+
+        if self.config["shear_catalog_type"] == "metacal":
+            more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
+        elif self.config["shear_catalog_type"] == "lensfit":
+            more_iters = []
+        else:
+            more_iters = ["shear_tomography_catalog", "response", ["R"]]
+
+        it = self.combined_iterators(
+            chunk_rows,
+            "shear_catalog",
+            "shear",
+            shear_cols,
+            "shear_tomography_catalog",
+            "tomography",
+            shear_tomo_cols,
+            *more_iters,
+        )
+
+        # Now loop through each chunk of input data, one at a time.
+        # Each time we get a new segment of data, which goes to all the plotters
+        print("read data loop")
+        for (start, end, data) in it:
+            #print(f"Read data {start} - {end}")
+            # This causes each data = yield statement in each plotter to
+            # be given this data chunk as the variable data.
+
+            for plotter in plotters:
+                plotter.send(data)
+
+        # Tell all the plotters to finish, collect together results from the different
+        # processors, and make their final plots.  Plotters need to respond
+        # to the None input and
+        for plotter in plotters:
+            try:
+                plotter.send(None)
+            except StopIteration:
+                pass
+    
     def plot_g_histogram(self):
         print("plotting histogram")
         import matplotlib.pyplot as plt
@@ -831,8 +1000,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                     plt.legend()
             plt.tight_layout()
             fig.close()
-
-
+    
+    
 class TXLensDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the lens catalog
