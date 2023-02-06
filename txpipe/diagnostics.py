@@ -539,9 +539,11 @@ class TXSourceHistogramPlots(PipelineStage):
     
     outputs=[("g1_hist", PNGFile),
             ("g2_hist", PNGFile),
+            ("psf_g1_hist", PNGFile),
+            ("psf_g2_hist", PNGFile),
+            ("response_hist", PNGFile),
             ("source_snr_hist", PNGFile),
             ("source_mag_hist", PNGFile),
-            ("response_hist", PNGFile)
     ]
     
     config_options = {
@@ -562,6 +564,7 @@ class TXSourceHistogramPlots(PipelineStage):
 
         # this also sets self.config["shear_catalog_type"]
         cat_type = read_shear_catalog_type(self)
+        print("cat_type: ", cat_type)
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -682,7 +685,7 @@ class TXSourceHistogramPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
-    
+    """
     def plot_g_histogram(self):
         print("plotting histogram")
         import matplotlib.pyplot as plt
@@ -1000,6 +1003,86 @@ class TXSourceHistogramPlots(PipelineStage):
                     plt.legend()
             plt.tight_layout()
             fig.close()
+            
+    """        
+    def plot_psf_g_histograms(self):
+        print("Making PSF g histogram plot")
+        import matplotlib.pyplot as plt
+        from scipy import stats
+
+        cat_type = self.config["shear_catalog_type"]
+        delta_gamma = self.config["delta_gamma"]
+        psf_prefix = self.config["psf_prefix"]
+        bins = 80
+        edges = np.linspace(-0.1, 0.1, bins + 1)
+        mids = 0.5 * (edges[1:] + edges[:-1])
+        width = edges[1:] - edges[:-1]
+
+        # Calibrate everything in the 2D bin
+        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
+        H1 = ParallelHistogram(edges)
+        H2 = ParallelHistogram(edges)
+        H1_weighted = ParallelHistogram(edges)
+        H2_weighted = ParallelHistogram(edges)
+
+        while True:
+            data = yield
+
+            if data is None:
+                break
+
+            qual_cut = data["source_bin"] != -1
+
+            if cat_type == "metacal":
+                g1 = data[f"{psf_prefix}g1"]
+                g2 = data[f"{psf_prefix}g2"]
+                w = data["weight"]
+            elif cat_type == "metadetect":
+                g1 = data["00/g1"]
+                g2 = data["00/g2"]
+                w = data["00/weight"]
+            else:
+                g1 = data["psf_g1"]
+                g2 = data["psf_g2"]
+                w = data["weight"]
+
+            g1, g2 = cal.apply(g1, g2)
+            H1.add_data(g1)
+            H2.add_data(g2)
+            H1_weighted.add_data(g1, w)
+            H2_weighted.add_data(g2, w)
+
+        count1 = H1.collect(self.comm)
+        count2 = H2.collect(self.comm)
+        weight1 = H1_weighted.collect(self.comm)
+        weight2 = H2_weighted.collect(self.comm)
+
+        if self.rank != 0:
+            return
+
+        for i, count, weight in [(1, count1, weight1), (2, count2, weight2)]:
+            with self.open_output(f"psf_g{i}_hist", wrapper=True) as fig:
+                plt.bar(
+                    mids,
+                    count,
+                    width=width,
+                    align="center",
+                    color="lightblue",
+                    label="Unweighted",
+                )
+                plt.bar(
+                    mids,
+                    weight,
+                    width=width,
+                    align="center",
+                    color="none",
+                    edgecolor="red",
+                    label="Weighted",
+                )
+                plt.xlabel(f"psf_g{i}")
+                plt.ylabel("Count")
+                plt.ylim(0, 1.1 * max(count1))
+                plt.legend()
     
     
 class TXLensDiagnosticPlots(PipelineStage):
