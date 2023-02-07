@@ -34,16 +34,18 @@ def fit_straight_line(
     c: float
         intercept
     """
-
+    #np.savetxt('x',x)
+    #np.savetxt('y',y)
+    
     kwargs = {}
     nx = np.ndim(x_err)
 
     if skip_nan:
         w = np.isfinite(x) & np.isfinite(y)
         x = x[w]
-        print("x: ",x)
+        #print("x: ",x)
         y = y[w]
-        print("y: ",y)
+        #print("y: ",y)
     else:
         w = slice(None)
 
@@ -59,7 +61,7 @@ def fit_straight_line(
         raise ValueError("x_sigma_or_cov must be None, scalar, 1D, or 2D")
 
     ny = np.ndim(y_err)
-    print("ny: ", ny)
+    #print("ny: ", ny)
     
     if y_err is None:
         pass
@@ -71,7 +73,7 @@ def fit_straight_line(
         kwargs["cov_y"] = y_err[w][:, w]
     else:
         raise ValueError("x_sigma_or_cov must be None, scalar, 1D, or 2D")
-    print("kwargs: ", kwargs)
+    #print("kwargs: ", kwargs)
     data = RealData(x, y, **kwargs)
     odr = ODR(data, unilinear, beta0=[m0, c0], maxit=200)
     results = odr.run()
@@ -79,6 +81,12 @@ def fit_straight_line(
     cov = results.cov_beta
     if results.stopreason != ["Sum of squares convergence"]:
         #alternative fitting solution:
+        print("xshape:",np.shape(x))
+        print(x)
+        print("yshape:",np.shape(y))
+        print(y)
+        print("yerrshape:",np.shape(y_err))
+        print(y_err)
         popt, cov = curve_fit(line, x, y, sigma=y_err)
         m= popt[0]
         c=popt[1]

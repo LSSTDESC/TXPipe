@@ -68,7 +68,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith("plot_")]
 
-        print(plotters)
+        #print(plotters)
         
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
@@ -189,11 +189,16 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from .utils.fitting import fit_straight_line
 
         delta_gamma = self.config["delta_gamma"]
-        size = 10
-        gr1 = np.linspace(-0.02,0.02,8)
-        gr2 = np.linspace(0.03, 0.06,2)
+        #size = 10
+        gr1 = [-9.9e-03, -4.3e-02, -1.2e-02,
+               -7.7e-03, -4.8e-03, -2.6e-03, -7.0e-04]
+        
+        gr2 = [9.3e-04, 2.4e-03, 3.8e-03, 5.1e-03, 6.4e-03,
+               7.6e-03, 8.9e-03, 1.0e-02, 1.1e-02, 1.6e-02,
+               1.4e-02, 1.5e-02, 1.7e-02, 1.8e-02, 2.0e-02,
+               2.3e-02, 2.6e-02, 3.1e-02, 2.4e-01]
  
-        psf_g_edges = np.concatenate([gr1,gr2])#[-gr2[::-1],
+        psf_g_edges = np.concatenate((gr1,gr2))
      
         print("psf_g_edges: ", psf_g_edges)
         psf_prefix = self.config["psf_prefix"]
@@ -1014,9 +1019,19 @@ class TXSourceHistogramPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
         psf_prefix = self.config["psf_prefix"]
         bins = 80
-        edges = np.linspace(-0.1, 0.1, bins + 1)
+        edges1 = np.linspace(-0.02, 0.05, 40)
+        edges2 = np.linspace(-0.1,-0.02,10)
+        edges3 = np.linspace(0.05,0.1,10)
+        edges = np.concatenate([edges2,edges1,edges3])
         mids = 0.5 * (edges[1:] + edges[:-1])
         width = edges[1:] - edges[:-1]
+        
+        def histedges_equalN(x, nbin):
+            npt = len(x)
+            return np.interp(np.linspace(0, npt, nbin + 1),np.arange(npt),np.sort(x))
+
+        x = np.random.randn(100)
+        n, bins, patches = plt.hist(x, histedges_equalN(x, 10))
 
         # Calibrate everything in the 2D bin
         _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
@@ -1062,23 +1077,27 @@ class TXSourceHistogramPlots(PipelineStage):
 
         for i, count, weight in [(1, count1, weight1), (2, count2, weight2)]:
             with self.open_output(f"psf_g{i}_hist", wrapper=True) as fig:
-                plt.bar(
+                p1 = plt.bar(
                     mids,
                     count,
                     width=width,
                     align="center",
                     color="lightblue",
                     label="Unweighted",
-                )
-                plt.bar(
-                    mids,
-                    weight,
-                    width=width,
-                    align="center",
-                    color="none",
-                    edgecolor="red",
-                    label="Weighted",
-                )
+                    )
+                p2 = plt.bar(
+                     mids,
+                     weight,
+                     width=width,
+                     align="center",
+                     color="none",
+                     edgecolor="red",
+                     label="Weighted",
+                    )
+                print("c1: ",count1)
+                print("c2: ",count2)
+                #print("p1: ",plt.bar_label(p1))
+                #print("p2: ",plt.bar_label(p2))
                 plt.xlabel(f"psf_g{i}")
                 plt.ylabel("Count")
                 plt.ylim(0, 1.1 * max(count1))
