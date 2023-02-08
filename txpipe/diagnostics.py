@@ -188,6 +188,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         delta_gamma = self.config["delta_gamma"]
 
+        # currently hard-coded, need to fix
         gr1 = [-9.9e-03, -4.3e-02, -1.2e-02,
                -7.7e-03, -4.8e-03, -2.6e-03, -7.0e-04]
         
@@ -291,8 +292,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
-        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", s=1, color="red")
-        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", s=1, color="blue")
+        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=3, color="red")
+        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", markersize=3, color="blue")
         
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
@@ -304,8 +305,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
         
-        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", s=1, color="red")
-        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", s=1, color="blue")
+        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=3, color="red")
+        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", markersize=3, color="blue")
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
@@ -367,24 +368,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         fig = self.open_output("g_psf_T", wrapper=True)
 
-        plt.plot(
-            mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1)
-        )
+        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
-        plt.legend(loc="best")
-
-        plt.plot(
-            mu - dx,
-            line2,
-            color="blue",
-            label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2),
-        )
-        plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=3, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=3, color="blue")
         plt.xlabel("PSF T")
         plt.ylabel("Mean g")
-        # plt.ylim(-0.0015,0.0015)
+
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
@@ -441,19 +432,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         line2 = slope2 * (np.log10(mu)) + intercept2
         fig = self.open_output("g_snr", wrapper=True)
 
-        plt.plot(
-            mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1)
-        )
+        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
-
-        plt.plot(
-            mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2)
-        )
-        plt.plot(mu, [0] * len(mu - dx), color="black")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=3, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=3, color="blue")
         plt.xscale("log")
-        # plt.ylim(-0.0015,0.0015)
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
@@ -507,18 +491,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         line2 = slope2 * (np.log10(mu)) + intercept2
         fig = self.open_output("g_T", wrapper=True)
 
-        plt.plot(
-            mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1)
-        )
-        plt.plot(mu, [0] * len(mu), color="black")
+        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
-
-        plt.plot(
-            mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2)
-        )
-        plt.plot(mu, [0] * len(mu), color="black")
+        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
-        # plt.ylim(-0.0015,0.0015)
+        plt.plot(mu, [0] * len(mu), color="black")
+        
         plt.xscale("log")
         plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
