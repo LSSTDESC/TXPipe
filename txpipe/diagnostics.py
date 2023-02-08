@@ -67,9 +67,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # We instantiate them all here
 
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith("plot_")]
-
-        #print(plotters)
-        
+       
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
         for plotter in plotters:
@@ -189,7 +187,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from .utils.fitting import fit_straight_line
 
         delta_gamma = self.config["delta_gamma"]
-        #size = 10
+
         gr1 = [-9.9e-03, -4.3e-02, -1.2e-02,
                -7.7e-03, -4.8e-03, -2.6e-03, -7.0e-04]
         
@@ -232,6 +230,19 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mu1, mean11, mean12, std11, std12 = p1.collect(self.comm)
         mu2, mean21, mean22, std21, std22 = p2.collect(self.comm)
         
+        #hack to remove the nan's for now      
+        mask_nan = np.isfinite(mu1)*np.isfinite(mu2)*np.isfinite(mean11)*np.isfinite(mean12)*np.isfinite(mean21)*np.isfinite(mean22)*np.isfinite(std11)*np.isfinite(std12)*np.isfinite(std21)*np.isfinite(std22)
+        
+        mu1 = mu1[mask_nan]
+        mu2 = mu2[mask_nan]
+        mean11 = mean11[mask_nan]
+        mean12 = mean12[mask_nan]
+        mean21 = mean21[mask_nan]
+        mean22 = mean22[mask_nan]
+        std11 = std11[mask_nan]
+        std12 = std12[mask_nan]
+        std21 = std21[mask_nan]
+        std22 = std22[mask_nan]
         
         if self.rank != 0:
             return
@@ -240,37 +251,33 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (mu1[1] - mu1[0])
+        
         print("test11")
-        slope11, intercept11, mc_cov = fit_straight_line(
-            mu1, mean11, y_err=std11, nan_error=True, skip_nan=True
-        )
+        slope11, intercept11, mc_cov = fit_straight_line(mu1, mean11, y_err=std11)
         print("slope11: ",slope11)
         print("intercept11: ",intercept11)
         print("mc_cov: ", mc_cov)
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
+        
         print("test12")
-        slope12, intercept12, mc_cov = fit_straight_line(
-            mu1, mean12, y_err=std12, nan_error=True, skip_nan=True
-        )
+        slope12, intercept12, mc_cov = fit_straight_line(mu1, mean12, y_err=std12)
         print("slope12: ",slope12)
         print("intercept12: ",intercept12)
         print("mc_cov: ", mc_cov)
         std_err12 = mc_cov[0, 0] ** 0.5
         line12 = slope12 * (mu1) + intercept12
+        
         print("test21")
-        slope21, intercept21, mc_cov = fit_straight_line(
-            mu2, mean21, y_err=std21, nan_error=True, skip_nan=True
-        )
+        slope21, intercept21, mc_cov = fit_straight_line(mu2, mean21, y_err=std21)
         print("slope21: ",slope21)
         print("intercept21: ",intercept21)
         print("mc_cov: ", mc_cov)
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
+        
         print("test22")
-        slope22, intercept22, mc_cov = fit_straight_line(
-            mu2, mean22, y_err=std22, nan_error=True, skip_nan=True
-        )
+        slope22, intercept22, mc_cov = fit_straight_line(mu2, mean22, y_err=std22)
         print("slope22: ",slope22)
         print("intercept22: ",intercept22)
         print("mc_cov: ", mc_cov)
@@ -280,37 +287,28 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         plt.subplot(2, 1, 1)
 
-        plt.plot(
-            mu1, line11, color="red", label=r"$m=%.4f \pm %.4f$" % (slope11, std_err11)
-        )
+        plt.plot(mu1, line11, color="red", label=r"$m=%.4f \pm %.4f$" % (slope11, std_err11))
+        plt.plot(mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
-        plt.plot(
-            mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12)
-        )
-        plt.plot(mu1, [0] * len(line12), color="black")
-        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="+", color="red")
-        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="+", color="blue")
+        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", s=1, color="red")
+        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", s=1, color="blue")
+        
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
 
         plt.subplot(2, 1, 2)
 
-        plt.plot(
-            mu2, line21, color="red", label=r"$m=%.4f \pm %.4f$" % (slope21, std_err21)
-        )
-        plt.plot(mu2, [0] * len(line21), color="black")
-
-        plt.plot(
-            mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22)
-        )
+        plt.plot(mu2, line21, color="red", label=r"$m=%.4f \pm %.4f$" % (slope21, std_err21))
+        plt.plot(mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
-        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="+", color="red")
-        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="+", color="blue")
+        
+        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", s=1, color="red")
+        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", s=1, color="blue")
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
-        plt.legend(loc="upper right")
+        plt.legend()
         plt.tight_layout()
 
         # This also saves the figure
@@ -359,14 +357,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         std2 = std2[w]
 
         dx = 0.05 * (psf_T_edges[1] - psf_T_edges[0])
-        slope1, intercept1, cov1 = fit_straight_line(
-            mu, mean1, std1, skip_nan=True, nan_error=True
-        )
+        
+        slope1, intercept1, cov1 = fit_straight_line(mu, mean1, std1)
         std_err1 = cov1[0, 0] ** 0.5
         line1 = slope1 * mu + intercept1
-        slope2, intercept2, cov2 = fit_straight_line(
-            mu, mean2, std2, skip_nan=True, nan_error=True
-        )
+        slope2, intercept2, cov2 = fit_straight_line(mu, mean2, std2)
         std_err2 = cov2[0, 0] ** 0.5
         line2 = slope2 * mu + intercept2
         

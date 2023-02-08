@@ -31,23 +31,23 @@ stages:
     - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
       #nprocess: 8 
       #nodes: 2
-    - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
+      ##- name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
     #- name: TXGammaTFieldCenters # Compute and plot gamma_t around center points # ERROR: EXPOSURE FILE
       ##threads_per_process: 2
     #- name: TXGammaTStars  # Compute and plot gamma_t around bright stars
       #threads_per_process: 2
     #- name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       #threads_per_process: 2
-    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+      ##- name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
-    - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
-    - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
-    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
-    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps #ERROR: WLMASSMAP
-    - name: TXConvergenceMapPlots # Plot the convergence map
-    - name: TXMapCorrelations    # plot the correlations between systematics and data # ERROR: NEEDS CONVERGENCE MAP
-    - name: TXApertureMass        # Compute aperture-mass statistics
+      ##- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+      ##- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+      ##- name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+      ##- name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+      ##- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps #ERROR: WLMASSMAP
+      ##- name: TXConvergenceMapPlots # Plot the convergence map
+      ##- name: TXMapCorrelations    # plot the correlations between systematics and data # ERROR: NEEDS CONVERGENCE MAP
+      ##- name: TXApertureMass        # Compute aperture-mass statistics
       ##threads_per_process: 2
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
