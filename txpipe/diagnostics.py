@@ -292,8 +292,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
-        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=10, color="red")
-        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", markersize=10, color="blue")
+        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", markersize=5, color="blue")
         
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
@@ -305,8 +305,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
         
-        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=10, color="red")
-        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", markersize=10, color="blue")
+        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", markersize=5, color="blue")
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
@@ -371,8 +371,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
         plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=10, color="red")
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=10, color="blue")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
         plt.xlabel("PSF T")
         plt.ylabel("Mean g")
 
@@ -435,8 +435,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
         plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=10, color="red")
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=10, color="blue")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
         plt.xscale("log")
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
