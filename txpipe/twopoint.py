@@ -642,39 +642,61 @@ class TXTwoPoint(PipelineStage):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        cat = treecorr.Catalog(
-            self.get_input("binned_shear_catalog"),
-            ext=f"/shear/bin_{i}",
-            g1_col="g1",
-            g2_col="g2",
-            ra_col="ra",
-            dec_col="dec",
-            w_col="weight",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
-            flip_g1=self.config["flip_g1"],
-            flip_g2=self.config["flip_g2"],
-        )
+        if self.rank == 0:
+            cat = treecorr.Catalog(
+                self.get_input("binned_shear_catalog"),
+                ext=f"/shear/bin_{i}",
+                g1_col="g1",
+                g2_col="g2",
+                ra_col="ra",
+                dec_col="dec",
+                w_col="weight",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+                flip_g1=self.config["flip_g1"],
+                flip_g2=self.config["flip_g2"],
+            )
+
+            #run get_patches on rank==0 only
+            if cat._patches is None:
+                cat.get_patches()
+        else:
+            cat = None 
+
+        if self.comm is not None:
+            cat = self.comm.bcast(cat, root=0)
 
         return cat
+
 
     def get_lens_catalog(self, i):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        cat = treecorr.Catalog(
-            self.get_input("binned_lens_catalog"),
-            ext=f"/lens/bin_{i}",
-            ra_col="ra",
-            dec_col="dec",
-            w_col="weight",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
-        )
+        if self.rank == 0:
+            cat = treecorr.Catalog(
+                self.get_input("binned_lens_catalog"),
+                ext=f"/lens/bin_{i}",
+                ra_col="ra",
+                dec_col="dec",
+                w_col="weight",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
+            )
+
+            #run get_patches on rank==0 only
+            if cat._patches is None:
+                cat.get_patches()
+        else:
+            cat = None
+
+        if self.comm is not None:
+            cat = self.comm.bcast(cat, root=0)      
+
         return cat
 
     def get_random_catalog(self, i):
@@ -683,16 +705,27 @@ class TXTwoPoint(PipelineStage):
         if not self.config["use_randoms"]:
             return None
 
-        rancat = treecorr.Catalog(
-            self.get_input("binned_random_catalog"),
-            ext=f"/randoms/bin_{i}",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
-        )
+        if self.rank == 0:
+            rancat = treecorr.Catalog(
+                self.get_input("binned_random_catalog"),
+                ext=f"/randoms/bin_{i}",
+                ra_col="ra",
+                dec_col="dec",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
+            )
+
+            #run get_patches on rank==0 only
+            if rancat._patches is None:
+                rancat.get_patches()
+        else:
+            rancat = None
+
+        if self.comm is not None:
+            rancat = self.comm.bcast(rancat, root=0)    
+
         return rancat
 
     def calculate_shear_shear(self, i, j):
@@ -759,9 +792,9 @@ class TXTwoPoint(PipelineStage):
         else:
             rg = None
 
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
         if self.rank == 0:
-            ng.calculateXi(rg=rg)
-            t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
@@ -818,9 +851,9 @@ class TXTwoPoint(PipelineStage):
             rn = treecorr.NNCorrelation(self.config)
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
+        t2 = perf_counter()
+        nn.calculateXi(rr, dr=nr, rd=rn)
         if self.rank == 0:
-            t2 = perf_counter()
-            nn.calculateXi(rr, dr=nr, rd=rn)
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return nn
