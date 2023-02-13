@@ -169,7 +169,7 @@ class TXRandomCat(PipelineStage):
 
             ### Make cdf and normalise
             z_cdf = np.cumsum(n_hist)
-            z_cdf_norm = z_cdf / np.float(max(z_cdf))
+            z_cdf_norm = z_cdf / float(max(z_cdf))
 
             subgroup = subgroups[j]
             # Generate the random points in each pixel
@@ -257,10 +257,10 @@ class TXRandomCat(PipelineStage):
 
                 #pixel id for each random objects in this chunk
                 pix_catalog = np.repeat(pixel[start_vertex:end_vertex], numbers[j,:][start_vertex:end_vertex])
-                
-                #generate a random location within the pixel using healpix 
+
+                #generate a random location within the pixel using healpix
                 ra, dec = healpix.randang(nside, pix_catalog, lonlat=True)
-                
+
                 N = len(pix_catalog)
                 bin_index = np.repeat(j, N)
 
