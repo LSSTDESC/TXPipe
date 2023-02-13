@@ -123,6 +123,8 @@ TXTwoPointPlots: {}
 TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
+    Tmin: 0.25
+    Tmax: 0.65
 
 TXLensDiagnosticPlots: {}
 TXGammaTFieldCenters: {}

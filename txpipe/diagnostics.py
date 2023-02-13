@@ -430,6 +430,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             np.log10(mu[good]), mean2[good]
         )
         line2 = slope2 * (np.log10(mu)) + intercept2
+        
         fig = self.open_output("g_snr", wrapper=True)
 
         plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
@@ -489,13 +490,15 @@ class TXSourceDiagnosticPlots(PipelineStage):
             np.log10(mu), mean2
         )
         line2 = slope2 * (np.log10(mu)) + intercept2
+        
+        
         fig = self.open_output("g_T", wrapper=True)
 
         plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
         plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
         plt.plot(mu, [0] * len(mu), color="black")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
         
         plt.xscale("log")
         plt.xlabel("galaxy size T")
