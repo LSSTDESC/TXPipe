@@ -54,8 +54,8 @@ TXSourceSelectorMetacal:
     input_pz: True
     true_z: False
     bands: riz #used for selection
-    T_cut: 0.0
-    s2n_cut: 0.0
+    T_cut: 0.5
+    s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
@@ -123,8 +123,8 @@ TXTwoPointPlots: {}
 TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
-    Tmin: 0.25
-    Tmax: 0.65
+    T_min: 0.25
+    T_max: 0.65
 
 TXLensDiagnosticPlots: {}
 TXGammaTFieldCenters: {}

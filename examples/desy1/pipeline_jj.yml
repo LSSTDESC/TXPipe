@@ -40,8 +40,8 @@ stages:
       #threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
-    - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
-    - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+    #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+    #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps #ERROR: WLMASSMAP
@@ -82,11 +82,12 @@ python_paths:
 output_dir: data/desy1/outputs
 
 # configuration settings
-config: examples/desy1/config_cc.yml
+config: examples/desy1/config_jj.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
     shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_catalog_desy1_masked.h5
+    #shear_catalog: /global/cscratch1/sd/jjeffers/TXPipe/data/desy1/inputs/small_DESY1_shear_catalog.h5
     photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/photometry_catalog_desy1_RM.h5
     lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
     shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_photoz_stack.hdf5
