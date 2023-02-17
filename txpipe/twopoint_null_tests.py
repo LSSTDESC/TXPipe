@@ -290,7 +290,7 @@ class TXGammaTStars(TXTwoPoint):
         "min_sep": 2.5,
         "max_sep": 100,
         "nbins": 20,
-        "bin_slop": 0.1,
+        "bin_slop": 1,
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
@@ -301,7 +301,7 @@ class TXGammaTStars(TXTwoPoint):
         "npatch": 5,
         "use_true_shear": False,
         "subtract_mean_shear": False,
-        "use_randoms": True,
+        "use_randoms": False,
         "patch_dir": "./cache/patches",
         "low_mem": False,
         "chunk_rows": 100_000,
@@ -410,8 +410,9 @@ class TXGammaTStars(TXTwoPoint):
         S = sacc.Sacc()
 
         f = self.open_input("shear_photoz_stack")
-        z = f["n_of_z/source2d/z"][:]
-        Nz = f[f"n_of_z/source2d/bin_0"][:]
+        z = f["n_of_z/source/z"][:]
+        Nz = f[f"n_of_z/source/bin_0"][:]
+
         f.close()
 
         # Add the data points that we have one by one, recording which
@@ -479,13 +480,13 @@ class TXGammaTRandoms(TXTwoPoint):
         "min_sep": 2.5,
         "max_sep": 100,
         "nbins": 20,
-        "bin_slop": 0.1,
+        "bin_slop": 1,
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
         "cores_per_task": 20,
         "verbose": 1,
-        "reduce_randoms_size": 1.0,
+        "reduce_randoms_size": 100.0,
         "var_method": "shot",
         "npatch": 5,
         "use_true_shear": False,
@@ -590,8 +591,10 @@ class TXGammaTRandoms(TXTwoPoint):
         S = sacc.Sacc()
 
         f = self.open_input("shear_photoz_stack")
-        z = f["n_of_z/source2d/z"][:]
-        Nz = f[f"n_of_z/source2d/bin_0"][:]
+
+        z = f["n_of_z/source/z"][:]
+        Nz = f["n_of_z/source/bin_0"][:] 
+
         f.close()
 
         # Add the data points that we have one by one, recording which
@@ -610,6 +613,7 @@ class TXGammaTRandoms(TXTwoPoint):
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
         n = len(dvalue)
+
         for i in range(n):
             S.add_data_point(
                 dt,
