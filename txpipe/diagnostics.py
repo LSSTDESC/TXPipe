@@ -188,7 +188,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         edges = sts.mstats.mquantiles(data,prob=nbquant)
         return edges
         
-    '''
     def plot_psf_shear(self):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
@@ -196,21 +195,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
         from .utils.fitting import fit_straight_line
 
-        delta_gamma = self.config["delta_gamma"]
-
-        # currently hard-coded, need to fix
-        gr1 = [-9.9e-03, -4.3e-02, -1.2e-02,
-               -7.7e-03, -4.8e-03, -2.6e-03, -7.0e-04]
-        
-        gr2 = [9.3e-04, 2.4e-03, 3.8e-03, 5.1e-03, 6.4e-03,
-               7.6e-03, 8.9e-03, 1.0e-02, 1.1e-02, 1.6e-02,
-               1.4e-02, 1.5e-02, 1.7e-02, 1.8e-02, 2.0e-02,
-               2.3e-02, 2.6e-02, 3.1e-02, 2.4e-01]
- 
-        psf_g_edges = np.concatenate((gr1,gr2))
-     
-        #print("psf_g_edges: ", psf_g_edges)
         psf_prefix = self.config["psf_prefix"]
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+
+        c = self.open_input("shear_catalog")
+        psf_g_edges = self.BinEdges(np.array(c[f"shear/{psf_prefix}g1"]),nbins)
 
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
@@ -313,16 +303,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This also saves the figure
         fig.close()
         
-    '''    
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
         import matplotlib.pyplot as plt
         from scipy import stats
 
         psf_prefix = self.config["psf_prefix"]
-
         delta_gamma = self.config["delta_gamma"]
-        
         nbins = self.config["nbins"]
         
         c = self.open_input("shear_catalog")
@@ -380,7 +367,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.tight_layout()
         fig.close()
         
-    '''
+    
     def plot_snr_shear(self):
         # mean shear in bins of snr
         print("Making mean shear SNR plot")
@@ -388,10 +375,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         # Parameters of the binning in SNR
-        size = 20
-        delta_gamma = self.config["delta_gamma"]
         shear_prefix = self.config["shear_prefix"]
-        snr_edges = np.logspace(0.1, 2.8, size + 1)
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+        
+        c = self.open_input("shear_catalog")
+        snr_edges = self.BinEdges(np.array(c[f"shear/{shear_prefix}s2n"]),nbins)
 
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
@@ -452,13 +441,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
 
-        delta_gamma = self.config["delta_gamma"]
-        psf_prefix = self.config["psf_prefix"]
-
-        size = 20
-
-        T_edges = np.linspace(0.1, 2.1, size + 1)
         shear_prefix = self.config["shear_prefix"]
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+        
+        c = self.open_input("shear_catalog")
+        T_edges = self.BinEdges(np.array(c[f"shear/{shear_prefix}T"]),nbins)
+        
         binnedShear = MeanShearInBins(
             f"{shear_prefix}T",
             T_edges,
@@ -508,7 +497,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.tight_layout()
         fig.close()
     
- '''   
+'''
 class TXSourceHistogramPlots(PipelineStage):
     """
     makes histogram plots of the source catalog
@@ -990,7 +979,7 @@ class TXSourceHistogramPlots(PipelineStage):
             plt.tight_layout()
             fig.close()
             
-    """        
+           
     def plot_psf_g_histograms(self):
         print("Making PSF g histogram plot")
         import matplotlib.pyplot as plt
@@ -1075,7 +1064,7 @@ class TXSourceHistogramPlots(PipelineStage):
                 plt.ylim(0, 1.1 * max(count1))
                 plt.legend()
     
-    
+'''   
 class TXLensDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the lens catalog

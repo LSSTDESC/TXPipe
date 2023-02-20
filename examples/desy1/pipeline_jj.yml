@@ -27,7 +27,7 @@ stages:
       threads_per_process: 2
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots      # Make plots of 2pt correlations
-    - name: TXSourceHistogramPlots
+    #- name: TXSourceHistogramPlots
     - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
       #nprocess: 8 
       #nodes: 2

@@ -125,6 +125,14 @@ TXSourceDiagnosticPlots:
     shear_prefix: mcal_
     T_min: 0.25
     T_max: 0.65
+    nbins: 20
+
+TXSourceHistogramPlots:
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
+    T_min: 0.25
+    T_max: 0.65
+    nbins: 20
 
 TXLensDiagnosticPlots: {}
 TXGammaTFieldCenters: {}
