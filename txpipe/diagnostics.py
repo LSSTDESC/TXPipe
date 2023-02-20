@@ -15,6 +15,7 @@ from .utils.calibration_tools import (
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
+import scipy.stats as sts
 
 
 class TXSourceDiagnosticPlots(PipelineStage):
@@ -30,6 +31,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
+        #("psf_T_edges", TextFile)
+        #("g_T_edges", TextFile)
     ]
 
     outputs = [
@@ -37,9 +40,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         ("g_psf_g", PNGFile),
         ("g_snr", PNGFile),
         ("g_T", PNGFile),
-        #("source_snr_hist", PNGFile),
-        #("source_mag_hist", PNGFile),
-        #("response_hist", PNGFile),
     ]
 
     config_options = {
@@ -60,7 +60,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # this also sets self.config["shear_catalog_type"]
         cat_type = read_shear_catalog_type(self)
-
+        print("cat_type:", cat_type)
+        
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
         # use the yield feature to pause and wait for more input.
@@ -86,6 +87,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 f"{psf_prefix}g1",
                 f"{psf_prefix}g2",
                 f"{psf_prefix}T_mean",
+                f"{psf_prefix}T_sqrt",
                 "mcal_g1",
                 "mcal_g1_1p",
                 "mcal_g1_2p",
@@ -98,6 +100,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "mcal_g2_2m",
                 "mcal_s2n",
                 "mcal_T",
+                "mcal_T_sqrt",
                 "mcal_T_1p",
                 "mcal_T_2p",
                 "mcal_T_1m",
@@ -158,7 +161,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             shear_tomo_cols,
             *more_iters,
         )
-
+        
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         print("read data loop")
@@ -178,7 +181,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
-
+            
+    def BinEdges(self, data,nbins):
+        # calculate bin edges for equal number of objects per bin
+        nbquant = np.linspace(0,1,nbins,endpoint=False)
+        edges = sts.mstats.mquantiles(data,prob=nbquant)
+        return edges
+        
+    '''
     def plot_psf_shear(self):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
@@ -199,7 +209,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
  
         psf_g_edges = np.concatenate((gr1,gr2))
      
-        print("psf_g_edges: ", psf_g_edges)
+        #print("psf_g_edges: ", psf_g_edges)
         psf_prefix = self.config["psf_prefix"]
 
         p1 = MeanShearInBins(
@@ -253,35 +263,23 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (mu1[1] - mu1[0])
         
-        print("test11")
+        
         slope11, intercept11, mc_cov = fit_straight_line(mu1, mean11, y_err=std11)
-        print("slope11: ",slope11)
-        print("intercept11: ",intercept11)
-        print("mc_cov: ", mc_cov)
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
         
-        print("test12")
+       
         slope12, intercept12, mc_cov = fit_straight_line(mu1, mean12, y_err=std12)
-        print("slope12: ",slope12)
-        print("intercept12: ",intercept12)
-        print("mc_cov: ", mc_cov)
         std_err12 = mc_cov[0, 0] ** 0.5
         line12 = slope12 * (mu1) + intercept12
         
-        print("test21")
+        
         slope21, intercept21, mc_cov = fit_straight_line(mu2, mean21, y_err=std21)
-        print("slope21: ",slope21)
-        print("intercept21: ",intercept21)
-        print("mc_cov: ", mc_cov)
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
         
-        print("test22")
+        
         slope22, intercept22, mc_cov = fit_straight_line(mu2, mean22, y_err=std22)
-        print("slope22: ",slope22)
-        print("intercept22: ",intercept22)
-        print("mc_cov: ", mc_cov)
         std_err22 = mc_cov[0, 0] ** 0.5
         line22 = slope22 * (mu2) + intercept22
         
@@ -315,28 +313,29 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This also saves the figure
         fig.close()
         
+    '''    
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
-        print("Making PSF size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
 
         psf_prefix = self.config["psf_prefix"]
 
         delta_gamma = self.config["delta_gamma"]
-        size = 10
-        T_min = self.config["T_min"]
-        T_max = self.config["T_max"]
-        psf_T_edges = np.linspace(T_min, T_max, size + 1)
+        
+        nbins = self.config["nbins"]
+        
+        c = self.open_input("shear_catalog")
+        psf_T_edges = self.BinEdges(np.array(c[f"shear/{psf_prefix}T_sqrt"]),nbins)
 
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_mean",
+            f"{psf_prefix}T_sqrt",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
-
+        
         while True:
             data = yield
 
@@ -344,13 +343,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 break
 
             binnedShear.add_data(data)
-
+            
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
-
+        
         if self.rank != 0:
             return
 
         w = (mu != 0) & np.isfinite(std1)
+  
         mu = mu[w]
         mean1 = mean1[w]
         mean2 = mean2[w]
@@ -373,13 +373,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
-        plt.xlabel("PSF T")
+        plt.xlabel("PSF $T^{1/2}$")
         plt.ylabel("Mean g")
 
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
         
+    '''
     def plot_snr_shear(self):
         # mean shear in bins of snr
         print("Making mean shear SNR plot")
@@ -507,7 +508,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.tight_layout()
         fig.close()
     
-    
+ '''   
 class TXSourceHistogramPlots(PipelineStage):
     """
     makes histogram plots of the source catalog
@@ -525,6 +526,9 @@ class TXSourceHistogramPlots(PipelineStage):
             ("response_hist", PNGFile),
             ("source_snr_hist", PNGFile),
             ("source_mag_hist", PNGFile),
+            #("psf_T_edges", TextFile),
+            #("g_T_edges", TextFile),
+             
     ]
     
     config_options = {
@@ -535,6 +539,7 @@ class TXSourceHistogramPlots(PipelineStage):
         "T_min": 0.2,
         "T_max": 0.28,
         "bands": "riz",
+        "nbins": 20
     }
     
     def run(self):
@@ -994,21 +999,12 @@ class TXSourceHistogramPlots(PipelineStage):
         cat_type = self.config["shear_catalog_type"]
         delta_gamma = self.config["delta_gamma"]
         psf_prefix = self.config["psf_prefix"]
-        bins = 80
-        edges1 = np.linspace(-0.02, 0.05, 40)
-        edges2 = np.linspace(-0.1,-0.02,10)
-        edges3 = np.linspace(0.05,0.1,10)
-        edges = np.concatenate([edges2,edges1,edges3])
+        nbins = self.config["nbins"]
+        #edges definition here
+        
         mids = 0.5 * (edges[1:] + edges[:-1])
         width = edges[1:] - edges[:-1]
         
-        def histedges_equalN(x, nbin):
-            npt = len(x)
-            return np.interp(np.linspace(0, npt, nbin + 1),np.arange(npt),np.sort(x))
-
-        x = np.random.randn(100)
-        n, bins, patches = plt.hist(x, histedges_equalN(x, 10))
-
         # Calibrate everything in the 2D bin
         _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
         H1 = ParallelHistogram(edges)
