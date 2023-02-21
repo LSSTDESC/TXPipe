@@ -15,8 +15,6 @@ from .utils.calibration_tools import (
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
-import scipy.stats as sts
-
 
 class TXSourceDiagnosticPlots(PipelineStage):
     """
@@ -31,8 +29,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
-        #("psf_T_edges", TextFile)
-        #("g_T_edges", TextFile)
     ]
 
     outputs = [
@@ -47,9 +43,16 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "delta_gamma": 0.02,
         "shear_prefix": "mcal_",
         "psf_prefix": "mcal_psf_",
-        "T_min": 0.2,
-        "T_max": 0.28,
+        "g_min":-0.03,
+        "g_max": 0.05,
+        "psfT_min": 0.2,
+        "psfT_max": 0.28,
+        "gT_min": 0.2,
+        "gT_max": 2.0,
+        "s2n_min": 10,
+        "s2n_max": 300,
         "bands": "riz",
+        
     }
 
     def run(self):
@@ -183,6 +186,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 pass
             
     def BinEdges(self, data,nbins):
+        import scipy.stats as sts
+        
         # calculate bin edges for equal number of objects per bin
         nbquant = np.linspace(0,1,nbins,endpoint=False)
         edges = sts.mstats.mquantiles(data,prob=nbquant)
@@ -193,15 +198,20 @@ class TXSourceDiagnosticPlots(PipelineStage):
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        from .utils.fitting import fit_straight_line
+        import pandas as pd
 
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
+        g_min = self.config["g_min"]
+        g_max = self.config["g_max"]
 
         c = self.open_input("shear_catalog")
-        psf_g_edges = self.BinEdges(np.array(c[f"shear/{psf_prefix}g1"]),nbins)
-
+        psfg = pd.Series(np.array(c[f"shear/{psf_prefix}g1"]))
+        psfg = psfg.loc[psfg.between(g_min,g_max)]
+        
+        psf_g_edges = self.BinEdges(psfg,nbins)
+        
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
             psf_g_edges,
@@ -302,19 +312,26 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # This also saves the figure
         fig.close()
-        
+    '''
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
         import matplotlib.pyplot as plt
         from scipy import stats
+        import pandas as pd
+
 
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
+        psfT_min = self.config["psfT_min"]
+        psfT_max = self.config["psfT_max"]
         
         c = self.open_input("shear_catalog")
-        psf_T_edges = self.BinEdges(np.array(c[f"shear/{psf_prefix}T_sqrt"]),nbins)
-
+        psfT = pd.Series(np.array(c[f"shear/{psf_prefix}T_sqrt"]))
+        psfT = psfT.loc[psfT.between(psfT_min,psfT_max)]
+        
+        psf_T_edges = self.BinEdges(psfT,nbins)
+        
         binnedShear = MeanShearInBins(
             f"{psf_prefix}T_sqrt",
             psf_T_edges,
@@ -366,21 +383,26 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
-        
+   '''     
     
     def plot_snr_shear(self):
         # mean shear in bins of snr
         print("Making mean shear SNR plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        import pandas as pd
 
         # Parameters of the binning in SNR
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
+        s2n_min = self.config["s2n_min"]
+        s2n_max = self.config["s2n_max"]
         
         c = self.open_input("shear_catalog")
-        snr_edges = self.BinEdges(np.array(c[f"shear/{shear_prefix}s2n"]),nbins)
+        s2n = pd.Series(np.array(c[f"shear/{shear_prefix}s2n"]))
+        s2n = s2n.loc[s2n.between(s2n_min,s2n_max)]
+        snr_edges = self.BinEdges(s2n,nbins)
 
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
@@ -440,13 +462,19 @@ class TXSourceDiagnosticPlots(PipelineStage):
         print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
+        import pandas as pd
 
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
+        gT_min = self.config["gT_min"]
+        gT_max = self.config["gT_max"]
         
         c = self.open_input("shear_catalog")
-        T_edges = self.BinEdges(np.array(c[f"shear/{shear_prefix}T"]),nbins)
+        gT = pd.Series(np.array(c[f"shear/{shear_prefix}T"]))
+        gT = gT.loc[gT.between(gT_min,gT_max)]
+        
+        T_edges = self.BinEdges(gT,nbins)
         
         binnedShear = MeanShearInBins(
             f"{shear_prefix}T",

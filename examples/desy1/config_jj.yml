@@ -130,8 +130,14 @@ TXSourceDiagnosticPlots:
 TXSourceHistogramPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
-    T_min: 0.25
-    T_max: 0.65
+    g_min: -0.03
+    g_max: 0.05
+    psfT_min: 0.25
+    psfT_max: 0.65
+    gT_min: 0.2
+    gT_max: 2.0
+    s2n_min: 10
+    s2n_max: 300
     nbins: 20
 
 TXLensDiagnosticPlots: {}
