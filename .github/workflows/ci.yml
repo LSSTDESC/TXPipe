@@ -132,6 +132,10 @@ jobs:
         ceci examples/randoms/pipeline_randomsonly.yml
         test -f data/example/outputs_randoms/random_cats.hdf5
 
+    - name: Run notebook
+      run: |
+        jupyter nbconvert --to notebook --execute "notebooks/Welcome to TXPipe.ipynb"
+
     - name: Show logs
       if: ${{ always() }}
       run: |
