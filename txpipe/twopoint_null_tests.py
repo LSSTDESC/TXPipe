@@ -139,38 +139,62 @@ class TXGammaTFieldCenters(TXTwoPoint):
         # field centers
         return ["all"], [0]
 
-    def get_random_catalog(self, i):
+    def get_random_catalog(self, i, get_patches=False):
         import treecorr
 
         if not self.config["use_randoms"]:
             return None
 
-        rancat = treecorr.Catalog(
-            self.get_input("random_cats"),
-            ext="randoms",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("random_cats", i),
-        )
+        if self.rank == 0:
+            rancat = treecorr.Catalog(
+                self.get_input("random_cats"),
+                ext="randoms",
+                ra_col="ra",
+                dec_col="dec",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("random_cats", i),
+            )
+
+            #run get_patches on rank==0 only
+            if rancat._patches is None and get_patches:
+                rancat.get_patches()
+
+        else:
+            rancat = None
+
+        if self.comm is not None:
+            rancat = self.comm.bcast(rancat, root=0)  
+
         return rancat
 
-    def get_lens_catalog(self, i):
+    def get_lens_catalog(self, i, get_patches=False):
         import treecorr
 
         assert i == 0
-        cat = treecorr.Catalog(
-            self.get_input("exposures"),
-            ext="exposures",
-            ra_col="ratel",
-            dec_col="dectel",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("exposures", i),
-        )
+        if self.rank == 0:
+            cat = treecorr.Catalog(
+                self.get_input("exposures"),
+                ext="exposures",
+                ra_col="ratel",
+                dec_col="dectel",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("exposures", i),
+            )
+
+            #run get_patches on rank==0 only
+            if cat._patches is None and get_patches:
+                cat.get_patches()
+
+        else:
+            cat = None 
+
+        if self.comm is not None:
+            cat = self.comm.bcast(cat, root=0)  
+
         return cat
 
     def select_calculations(self, source_list, lens_list):
@@ -318,38 +342,60 @@ class TXGammaTStars(TXTwoPoint):
         # We use two sets of stars, dim and bright
         return ["all"], ["bright", "dim"]
 
-    def get_lens_catalog(self, i):
+    def get_lens_catalog(self, i, get_patches=False):
         import treecorr
 
         assert i == "bright" or i == "dim"
-        cat = treecorr.Catalog(
-            self.get_input("binned_star_catalog"),
-            ext=f"stars/bin_{i}",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_star_catalog", i),
-        )
+        if self.rank == 0:
+            cat = treecorr.Catalog(
+                self.get_input("binned_star_catalog"),
+                ext=f"stars/bin_{i}",
+                ra_col="ra",
+                dec_col="dec",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("binned_star_catalog", i),
+            )
+
+            #run get_patches on rank==0 only
+            if cat._patches is None and get_patches:
+                cat.get_patches()
+        else:
+            cat = None 
+
+        if self.comm is not None:
+            cat = self.comm.bcast(cat, root=0)  
+
         return cat
 
-    def get_random_catalog(self, i):
+    def get_random_catalog(self, i, get_patches=False):
         import treecorr
 
         if not self.config["use_randoms"]:
             return None
 
-        rancat = treecorr.Catalog(
-            self.get_input("random_cats"),
-            ext="randoms",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("random_cats", i),
-        )
+        if self.rank == 0:
+            rancat = treecorr.Catalog(
+                self.get_input("random_cats"),
+                ext="randoms",
+                ra_col="ra",
+                dec_col="dec",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("random_cats", i),
+            )
+
+            #run get_patches on rank==0 only
+            if rancat._patches is None and get_patches:
+                rancat.get_patches()
+        else:
+            rancat = None 
+
+        if self.comm is not None:
+            rancat = self.comm.bcast(rancat, root=0)  
+
         return rancat
 
     def select_calculations(self, source_list, lens_list):
@@ -512,27 +558,37 @@ class TXGammaTRandoms(TXTwoPoint):
         # field centers
         return ["all"], [0]
 
-    def get_random_catalog(self, i):
+    def get_random_catalog(self, i, get_patches=False):
         # override the parent method
         # so that we don't load the randoms here,
         # because if we subtract randoms from randoms
         # we get nothing.
         return None
 
-    def get_lens_catalog(self, i):
+    def get_lens_catalog(self, i, get_patches=False):
         import treecorr
 
         assert i == 0
-        cat = treecorr.Catalog(
-            self.get_input("random_cats"),
-            ext=f"randoms",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("random_cats", i),
-        )
+        if self.rank == 0:
+            cat = treecorr.Catalog(
+                self.get_input("random_cats"),
+                ext=f"randoms",
+                ra_col="ra",
+                dec_col="dec",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("random_cats", i),
+            )
+
+            #run get_patches on rank==0 only
+            if cat._patches is None and get_patches:
+                cat.get_patches()
+        else:
+            cat = None 
+
+        if self.comm is not None:
+            cat = self.comm.bcast(cat, root=0) 
         return cat
 
     def select_calculations(self, source_list, lens_list):
