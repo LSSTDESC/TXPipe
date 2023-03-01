@@ -638,7 +638,7 @@ class TXTwoPoint(PipelineStage):
         pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
         return patch_dir
 
-    def get_shear_catalog(self, i):
+    def get_shear_catalog(self, i, get_patches=False):
         import treecorr
 
         # Load and calibrate the appropriate bin data
@@ -660,7 +660,7 @@ class TXTwoPoint(PipelineStage):
             )
 
             #run get_patches on rank==0 only
-            if cat._patches is None:
+            if cat._patches is None and get_patches:
                 cat.get_patches()
         else:
             cat = None 
@@ -671,7 +671,7 @@ class TXTwoPoint(PipelineStage):
         return cat
 
 
-    def get_lens_catalog(self, i):
+    def get_lens_catalog(self, i, get_patches=False):
         import treecorr
 
         # Load and calibrate the appropriate bin data
@@ -689,7 +689,7 @@ class TXTwoPoint(PipelineStage):
             )
 
             #run get_patches on rank==0 only
-            if cat._patches is None:
+            if cat._patches is None and get_patches:
                 cat.get_patches()
         else:
             cat = None
@@ -699,7 +699,7 @@ class TXTwoPoint(PipelineStage):
 
         return cat
 
-    def get_random_catalog(self, i):
+    def get_random_catalog(self, i, get_patches=False):
         import treecorr
 
         if not self.config["use_randoms"]:
@@ -718,7 +718,7 @@ class TXTwoPoint(PipelineStage):
             )
 
             #run get_patches on rank==0 only
-            if rancat._patches is None:
+            if rancat._patches is None and get_patches:
                 rancat.get_patches()
         else:
             rancat = None
@@ -731,14 +731,14 @@ class TXTwoPoint(PipelineStage):
     def calculate_shear_shear(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(i)
+        cat_i = self.get_shear_catalog(i,get_patches=True)
         n_i = cat_i.nobj
 
         if i == j:
             cat_j = None
             n_j = n_i
         else:
-            cat_j = self.get_shear_catalog(j)
+            cat_j = self.get_shear_catalog(j,get_patches=True)
             n_j = cat_j.nobj
 
 
@@ -764,11 +764,11 @@ class TXTwoPoint(PipelineStage):
     def calculate_shear_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(i)
+        cat_i = self.get_shear_catalog(i,get_patches=True)
         n_i = cat_i.nobj
 
-        cat_j = self.get_lens_catalog(j)
-        rancat_j = self.get_random_catalog(j)
+        cat_j = self.get_lens_catalog(j,get_patches=True)
+        rancat_j = self.get_random_catalog(j,get_patches=True)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -802,8 +802,8 @@ class TXTwoPoint(PipelineStage):
     def calculate_pos_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_lens_catalog(i)
-        rancat_i = self.get_random_catalog(i)
+        cat_i = self.get_lens_catalog(i,get_patches=True)
+        rancat_i = self.get_random_catalog(i,get_patches=True)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
@@ -813,8 +813,8 @@ class TXTwoPoint(PipelineStage):
             n_j = n_i
             n_rand_j = n_rand_i
         else:
-            cat_j = self.get_lens_catalog(j)
-            rancat_j = self.get_random_catalog(j)
+            cat_j = self.get_lens_catalog(j,get_patches=True)
+            rancat_j = self.get_random_catalog(j,get_patches=True)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
