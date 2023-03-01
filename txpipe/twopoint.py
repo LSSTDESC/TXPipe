@@ -553,6 +553,8 @@ class TXTwoPoint(PipelineStage):
         npatch_pos = 0
         npatch_ran = 0
 
+        self.empty_patch_exists = {}
+
         # Parallelization is now done at the patch level
         for (h, k) in cats:
             ktxt = "shear" if k == SHEAR_SHEAR else "position"
@@ -563,18 +565,21 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                npatch_shear = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                npatch_pos = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
 
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-                npatch_ran = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
         meta["npatch_shear"] = npatch_shear
@@ -638,107 +643,96 @@ class TXTwoPoint(PipelineStage):
         pathlib.Path(patch_dir).mkdir(exist_ok=True, parents=True)
         return patch_dir
 
-    def get_shear_catalog(self, i, get_patches=False):
+    def get_shear_catalog(self, i):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        if self.rank == 0:
-            cat = treecorr.Catalog(
-                self.get_input("binned_shear_catalog"),
-                ext=f"/shear/bin_{i}",
-                g1_col="g1",
-                g2_col="g2",
-                ra_col="ra",
-                dec_col="dec",
-                w_col="weight",
-                ra_units="degree",
-                dec_units="degree",
-                patch_centers=self.get_input("patch_centers"),
-                save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
-                flip_g1=self.config["flip_g1"],
-                flip_g2=self.config["flip_g2"],
-            )
-
-            #run get_patches on rank==0 only
-            if cat._patches is None and get_patches:
-                cat.get_patches()
-        else:
-            cat = None 
-
-        if self.comm is not None:
-            cat = self.comm.bcast(cat, root=0)
+        cat = treecorr.Catalog(
+            self.get_input("binned_shear_catalog"),
+            ext=f"/shear/bin_{i}",
+            g1_col="g1",
+            g2_col="g2",
+            ra_col="ra",
+            dec_col="dec",
+            w_col="weight",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+            flip_g1=self.config["flip_g1"],
+            flip_g2=self.config["flip_g2"],
+        )
 
         return cat
 
 
-    def get_lens_catalog(self, i, get_patches=False):
+    def get_lens_catalog(self, i):
         import treecorr
 
         # Load and calibrate the appropriate bin data
-        if self.rank == 0:
-            cat = treecorr.Catalog(
-                self.get_input("binned_lens_catalog"),
-                ext=f"/lens/bin_{i}",
-                ra_col="ra",
-                dec_col="dec",
-                w_col="weight",
-                ra_units="degree",
-                dec_units="degree",
-                patch_centers=self.get_input("patch_centers"),
-                save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
-            )
-
-            #run get_patches on rank==0 only
-            if cat._patches is None and get_patches:
-                cat.get_patches()
-        else:
-            cat = None
-
-        if self.comm is not None:
-            cat = self.comm.bcast(cat, root=0)      
+        cat = treecorr.Catalog(
+            self.get_input("binned_lens_catalog"),
+            ext=f"/lens/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            w_col="weight",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
+        )
 
         return cat
 
-    def get_random_catalog(self, i, get_patches=False):
+    def get_random_catalog(self, i):
         import treecorr
 
         if not self.config["use_randoms"]:
             return None
 
-        if self.rank == 0:
-            rancat = treecorr.Catalog(
-                self.get_input("binned_random_catalog"),
-                ext=f"/randoms/bin_{i}",
-                ra_col="ra",
-                dec_col="dec",
-                ra_units="degree",
-                dec_units="degree",
-                patch_centers=self.get_input("patch_centers"),
-                save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
-            )
-
-            #run get_patches on rank==0 only
-            if rancat._patches is None and get_patches:
-                rancat.get_patches()
-        else:
-            rancat = None
-
-        if self.comm is not None:
-            rancat = self.comm.bcast(rancat, root=0)    
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_catalog"),
+            ext=f"/randoms/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
+        )
 
         return rancat
+
+    def touch_patches(self, cat):
+        # If any patches were empty for this cat
+        # run get_patches on rank 0 and bcast
+        # this will re-make patches but prevents processes conflicting 
+        # in the gg.process
+        # If no patches are empty returns the cat, unaltered
+        if cat is None:
+            return cat
+
+        if self.empty_patch_exists[cat.save_patch_dir]:
+            if self.rank==0:
+                cat.get_patches()
+            if self.comm is not None:
+                cat = self.comm.bcast(cat, root=0)
+
+        return cat
 
     def calculate_shear_shear(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(i,get_patches=True)
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         if i == j:
             cat_j = None
             n_j = n_i
         else:
-            cat_j = self.get_shear_catalog(j,get_patches=True)
+            cat_j = self.get_shear_catalog(j)
+            cat_j = self.touch_patches(cat_j)
             n_j = cat_j.nobj
 
 
@@ -764,11 +758,14 @@ class TXTwoPoint(PipelineStage):
     def calculate_shear_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_shear_catalog(i,get_patches=True)
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
-        cat_j = self.get_lens_catalog(j,get_patches=True)
-        rancat_j = self.get_random_catalog(j,get_patches=True)
+        cat_j = self.get_lens_catalog(j)
+        cat_j = self.touch_patches(cat_j)
+        rancat_j = self.get_random_catalog(j)
+        rancat_j = self.touch_patches(rancat_j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -802,8 +799,10 @@ class TXTwoPoint(PipelineStage):
     def calculate_pos_pos(self, i, j):
         import treecorr
 
-        cat_i = self.get_lens_catalog(i,get_patches=True)
-        rancat_i = self.get_random_catalog(i,get_patches=True)
+        cat_i = self.get_lens_catalog(i)
+        cat_i = self.touch_patches(cat_i)
+        rancat_i = self.get_random_catalog(i)
+        rancat_i = self.touch_patches(rancat_i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
@@ -813,8 +812,10 @@ class TXTwoPoint(PipelineStage):
             n_j = n_i
             n_rand_j = n_rand_i
         else:
-            cat_j = self.get_lens_catalog(j,get_patches=True)
-            rancat_j = self.get_random_catalog(j,get_patches=True)
+            cat_j = self.get_lens_catalog(j)
+            cat_j = self.touch_patches(cat_j)
+            rancat_j = self.get_random_catalog(j)
+            rancat_j = self.touch_patches(rancat_j)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
