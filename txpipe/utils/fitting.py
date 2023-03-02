@@ -25,13 +25,6 @@ def fit_straight_line(x, y, y_err=None):
     c: float
         intercept
     """
-    
-    print("xshape:",np.shape(x))
-    print(x)
-    print("yshape:",np.shape(y))
-    print(y)
-    print("yerrshape:",np.shape(y_err))
-    print(y_err)
 
     popt, cov = curve_fit(line, x, y, sigma=y_err)
     m = popt[0]
