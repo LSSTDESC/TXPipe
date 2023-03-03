@@ -551,7 +551,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         pz_data = {}
         variants = ["", "_1p", "_2p", "_1m", "_2m"]
         for v in variants:
-            zz = shear_data[f"mean_z{v}"]
+            zz = data[f"mean_z{v}"]
 
             pz_data_v = np.zeros(len(zz), dtype=int) - 1
             for zi in range(len(self.config["source_zbin_edges"]) - 1):
@@ -651,7 +651,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         pz_data = {}
         variants = ["00/", "1p/", "2p/", "1m/", "2m/"]
         for v in variants:
-            zz = shear_data[f"{v}mean_z"]
+            zz = data[f"{v}mean_z"]
 
             pz_data_v = np.zeros(len(zz), dtype=int) - 1
             for zi in range(len(self.config["source_zbin_edges"]) - 1):

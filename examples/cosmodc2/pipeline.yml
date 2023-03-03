@@ -10,7 +10,6 @@ modules: txpipe
 
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
     - submodules/FlexZPipe
 
 stages:
@@ -23,7 +22,7 @@ stages:
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlots
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
+    - name: TXTruthLensCatalogSplitter
     - name: TXTwoPointFourier
       nprocess: 2
       nodes: 2

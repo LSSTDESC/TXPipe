@@ -6,7 +6,7 @@ stages:
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: TXSourceSelectorLensfit
     - name: TXShearCalibration
-    - name: TXLensCatalogSplitter3D
+    - name: TXLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZPrepareEstimatorLens
@@ -72,7 +72,6 @@ modules: txpipe rail.stages
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
 
 # configuration settings
 config: examples/lensfit/config.yml

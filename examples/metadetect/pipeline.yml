@@ -89,7 +89,6 @@ modules: txpipe rail.stages rail.estimation.algos.somocluSOM
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
 
 # Where to put outputs
 output_dir: data/example/outputs_metadetect

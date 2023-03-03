@@ -259,7 +259,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from tjpcov import bin_cov
+        from tjpcov.wigner_transform import bin_cov
 
         cl = {}
 
@@ -374,8 +374,9 @@ class TXFourierGaussianCovariance(PipelineStage):
                 s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
             # Use these terms to project the covariance from C_ell to xi(theta)
-            th, cov["final"] = WT.projected_covariance2(
-                l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov["final"]
+            th, cov["final"] = WT.projected_covariance(
+                ell_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2,
+                cl_cov=cov["final"]
             )
 
         # Normalize
@@ -406,7 +407,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def make_wigner_transform(self, meta):
         import threadpoolctl
-        from tjpcov import wigner_transform
+        from tjpcov.wigner_transform import WignerTransform
 
         path = self.config["pickled_wigner_transform"]
         if path:
@@ -427,8 +428,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
         print("Generating Wigner Transform.")
         with threadpoolctl.threadpool_limits(1):
-            WT = wigner_transform(
-                l=meta["ell"],
+            WT = WignerTransform(
+                ell=meta["ell"],
                 theta=meta["theta"] * d2r,
                 s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
                 ncpu=num_processes,
@@ -444,7 +445,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data):
-        from tjpcov import bin_cov
+        from tjpcov.wigner_transform import bin_cov
 
         ccl_tracers, tracer_Noise = self.get_tracer_info(
             cosmo, meta, two_point_data=two_point_data
@@ -656,15 +657,14 @@ class TXFourierTJPCovariance(PipelineStage):
 
     outputs = [
         ("summary_statistics_fourier", SACCFile),
-        ("summary_statistics_fourier_gauss", SACCFile),
-        ("summary_statistics_fourier_ssc", SACCFile),
     ]
 
     config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",
-                      'cov_type': ['gauss']}
+                      'cov_type': ["FourierGaussianNmt",
+                                   "FourierSSCHaloModel"]}
 
     def run(self):
-        import tjpcov.main
+        from tjpcov.covariance_calculator import CovarianceCalculator
         import healpy
         # Read the metadata from earlier in the pipeline
         with self.open_input("tracer_metadata_yml", wrapper=True) as f:
@@ -673,22 +673,19 @@ class TXFourierTJPCovariance(PipelineStage):
         assert meta["area_unit"] == "deg^2"
         assert meta["density_unit"] == "arcmin^{-2}"
 
-        # Check that only 'gauss' or 'ssc' are passed to 'cov_type'
-        for ct in self.config['cov_type']:
-            if ct not in ['gauss', 'ssc']:
-                raise ValueError("'cov_type can have only 'gauss' or 'ssc'. " +
-                                 f"'{ct}' passed.")
-
         # get the number of bins from metadata
         nbin_lens = meta["nbin_lens"]
         nbin_source = meta["nbin_source"]
 
         # set up some config options for TJPCov
+        # tjp_config corresponds to the "tjpcov" section of the input config
         tjp_config = {}
-        tjp_config["do_xi"] = False
         tjp_config["cov_type"] = self.config['cov_type']
         cl_sacc = self.read_sacc()
-        tjp_config["cl_file"] = cl_sacc
+        tjp_config["sacc_file"] = cl_sacc
+
+        # The Gaussian classes use this
+        fsky = meta["area"] / sq_deg_on_sky
 
         # Get the CCL cosmo object to pass to TJPCov
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
@@ -766,53 +763,29 @@ class TXFourierTJPCovariance(PipelineStage):
         # there is one of the workspaces missing). For generality, I will pass
         # it.
         tjp_config["binning_info"] = self.recover_NmtBin(cl_sacc)
-        calculator = tjpcov.main.CovarianceCalculator({"tjpcov": tjp_config})
 
-        cov = {}
-        if 'gauss' in tjp_config['cov_type']:
-            # Load NmtBin used for the Cells
-            workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
+        # For now, since they're only strings, pass the workspaces even if not
+        # requested
+        workspaces = self.get_workspaces_dict(cl_sacc, masks_names)
+        cache = {"workspaces":  workspaces}
 
-            cache = {"workspaces": workspaces}
-            tracer_noise_coupled = self.get_tracer_noise_from_sacc(cl_sacc)
-            cov['gauss'] = calculator.get_all_cov_nmt(
-                cache=cache, tracer_noise_coupled=tracer_noise_coupled)
+        # Compute the covariance and save it in the cache folder. This will
+        # save also the independent terms.
+        calculator = CovarianceCalculator({"tjpcov": tjp_config,
+                                           "cache": cache,
+                                           "GaussianFsky": {"fsky":fsky}
 
-        if 'ssc' in tjp_config['cov_type']:
-            cov['ssc'] = calculator.get_all_cov_SSC()
+                                           })
+        calculator.create_sacc_cov("summary_statistics_fourier",
+                                   save_terms=True)
 
-        # Write the sacc file with the covariance
+        # Write the sacc file with the covariance in the TXPipe output folder
         if self.rank == 0:
-            # Write sacc files with each covariance term for easier comparison
-            # and debugging.
-            for k, c in cov.items():
-                cl_sacc2 = cl_sacc.copy()
-                cl_sacc2.add_covariance(c)
-                fname = self.get_output(f"summary_statistics_fourier_{k}")
-                cl_sacc2.save_fits(fname, overwrite=True)
-
-            covmat = sum([c for c in cov.values()])
-            cl_sacc.add_covariance(covmat)
+            cov = calculator.get_covariance()
+            cl_sacc.add_covariance(cov)
             output_filename = self.get_output("summary_statistics_fourier")
             cl_sacc.save_fits(output_filename, overwrite=True)
             print("Saved power spectra with its Gaussian covariance")
-
-    def get_tracer_noise_from_sacc(self, cl_sacc):
-        # This could be done inside TJPCov:
-        # https://github.com/LSSTDESC/TJPCov/issues/31
-
-        tracer_noise = {}
-        for trn, tr in cl_sacc.tracers.items():
-            if "n_ell_coupled" in tr.metadata:
-                tracer_noise[trn] = tr.metadata["n_ell_coupled"]
-            else:
-                raise KeyError(
-                    "Missing n_ell_coupled metadata for tracer "
-                    + trn + f"Something is wrong with the input "
-                    + "sacc file"
-                )
-
-        return tracer_noise
 
     def get_workspaces_dict(self, cl_sacc, masks_names):
         # Based on txpipe/twopoint_fourier.py

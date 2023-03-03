@@ -3,6 +3,46 @@ import subprocess
 import shutil
 import numpy as np
 
+def load_complete_file(f):
+    """
+    Read all the information in an HDF5 file or group into
+    a nested dictionary.
+
+    Using this on large files will quickly run out of memory!
+
+    Only use it on small test data.
+
+    Parameters
+    ----------
+    f: h5py.File or h5py.Group
+        The file or group to be walked through
+
+    Returns
+    -------
+    output: dict
+        Nested dictionary with all file content.
+    """
+    output = {}
+    # This function is applied recursively
+    def visit(name, value):
+        paths = name.split("/")
+        out = output
+        for p in paths[:-1]:
+            out = out[p]
+        if isinstance(value, h5py.Group):
+            out[paths[-1]] = {}
+            d = dict(value.attrs)
+            if d:
+                out[paths[-1]]['attrs'] = d
+        else:
+            out[paths[-1]] = value[:]
+
+    f.visititems(visit)
+    return output
+
+
+
+
 
 def repack(filename):
     """
