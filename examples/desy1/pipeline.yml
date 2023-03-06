@@ -15,7 +15,7 @@ stages:
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSourceNoiseMaps    # noise maps for sources using random rotations
-    # the below is not working cause TXAuxiliaryLensMaps is broken
+    # stage below is not working because TXAuxiliaryLensMaps is broken
     #- name: TXLensNoiseMaps      # noise maps for lenses using density splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     - name: TXMapPlots           # make pictures of all the maps
@@ -40,6 +40,7 @@ stages:
       #threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
+    - name: TXFocalPlanePlot      # mean PSF ellipticity and mean residual on the focal plane 
     #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
     #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
@@ -82,12 +83,13 @@ python_paths:
 output_dir: data/desy1/outputs
 
 # configuration settings
-config: examples/desy1/config_jj.yml
+config: examples/desy1/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
     shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_catalog_desy1_masked.h5
-    #shear_catalog: /global/cscratch1/sd/jjeffers/TXPipe/data/desy1/inputs/small_DESY1_shear_catalog.h5
+    # subsampled catalog for debugging:
+    #shear_catalog: /global/cscratch1/sd/jjeffers/TXPipe/data/desy1/inputs/small_DESY1_shear_catalog.h5               
     photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/photometry_catalog_desy1_RM.h5
     lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
     shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_photoz_stack.hdf5
