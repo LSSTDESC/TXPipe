@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile, PNGFile, StarCatalog
+from .data_types import Directory, HDFFile, PNGFile
 import numpy as np
 
 class TXFocalPlanePlot(PipelineStage):
@@ -12,7 +12,7 @@ class TXFocalPlanePlot(PipelineStage):
     name = "TXFocalPlanePlot"
 
     inputs = [
-        ("star_catalog", StarCatalog),
+        ("star_catalog", HDFFile),
     ]
 
     outputs = [
@@ -27,7 +27,7 @@ class TXFocalPlanePlot(PipelineStage):
         
         fov_x, fov_y, e1, e2, de1, de2 = self.load_stars()
         
-        X = mplot.hist2d(fov_x, fov_y, bins=(100,100))
+        X = plt.hist2d(fov_x, fov_y, bins=(100,100))
         
         x_edge = X[1]
         y_edge = X[2]
@@ -42,17 +42,21 @@ class TXFocalPlanePlot(PipelineStage):
                     PSF_e1_err[i][j] = np.mean(de1[mask])
                     PSF_e2_err[i][j] = np.mean(de2[mask])
         
-        f = self.open_output("focalplane_g", wrapper=True, figsize=(20,20))
-            axs = plt.subplots(2,2)
-            axs[0,0].hist2d(fov_x, fov_y, bins=(100,100), weights=e1)
-            axs[0, 0].set_ylabel('mean PSF e1')
-            axs[0,1].hist2d(fov_x, fov_y, bins=(100,100), weights=de1)
-            axs[0, 0].set_ylabel('mean residual PSF e1')
-            axs[1,0].hist2d(fov_x, fov_y, bins=(100,100), weights=e2)
-            axs[0, 0].set_ylabel('mean PSF e2')
-            axs[1,1].hist2d(fov_x, fov_y, bins=(100,100), weights=de2)
-            axs[0, 0].set_ylabel('mean residual PSF e2')
-        f.close()
+        fig = self.open_output("focalplane_g", wrapper=True)
+        plt.subplot(2,2,1)
+        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=e1)
+        plt.ylabel('mean PSF e1')
+        plt.subplot(2,2,2)
+        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=de1)
+        plt.ylabel('residual')
+        plt.subplot(2,2,3)
+        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=e2)
+        plt.ylabel('mean PSF e2')
+        plt.subplot(2,2,4)
+        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=de2)
+        plt.ylabel('residual')
+        plt.tight_layout()
+        fig.close()
         
         
                     
