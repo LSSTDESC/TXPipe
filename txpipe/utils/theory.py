@@ -2,11 +2,14 @@ import pathlib
 import numpy as np
 import warnings
 import yaml
+import pathlib
 
 # same convention as elsewhere
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
+
+default_theory_model = str(pathlib.Path(__file__).parents[0] / "theory_model.py")
 
 
 def ccl_read_yaml(filename, **kwargs):
@@ -56,6 +59,14 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
     """
     Make a sacc object containing
     """
+    if (ell_values is None) and (theta_values is None):
+        raise ValueError("Supplied an empty sacc file but no ell or theta values to fill it")
+    elif (ell_values is not None) and (theta_values is not None):
+        raise ValueError(
+            "Supplied an empty sacc file and both theta and ell values to fill it. Just pick one"
+        )
+
+
     is_fourier = ell_values is not None
 
     for t1 in list(sacc_data.tracers.keys()):
@@ -104,7 +115,8 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
 
 
 def theory_3x2pt(
-    cosmo, sacc_data, bias=None, smooth=False, ell_values=None, theta_values=None
+    cosmo, sacc_data, bias=None, smooth=False, ell_values=None, theta_values=None,
+    theory_model=default_theory_model
 ):
     """
     Use FireCrown to generate the theory predictions for the data
@@ -138,45 +150,39 @@ def theory_3x2pt(
         A copy of the input sacc_data but with values
         replaced with theory predictions.
     """
-    import firecrown.likelihood.gauss_family.statistic.source.weak_lensing as wl
-    import firecrown.likelihood.gauss_family.statistic.source.number_counts as nc
-    from firecrown.likelihood.gauss_family.statistic.two_point import TwoPoint
+    from firecrown.likelihood.likelihood import load_likelihood
     import sacc
     import pathlib
 
+    # Make sure we have computed P(k, z). If this
+    # has already been calculated then this doesn't
+    # do so again.
+    cosmo.compute_nonlin_power()
+
+    # Read the sacc data file if needed
     if isinstance(sacc_data, (str, pathlib.Path)):
         sacc_data = sacc.Sacc.load_fits(sacc_data)
     else:
         sacc_data = sacc_data.copy()
 
-    # If someone explains to me how to have fixed linear bias systematic
-    # as parameters instead of passing it in like this then that would
-    # be better here.
-    if isinstance(bias, float):
-        bias = compute_fiducial_bias(bias, sacc_data, cosmo)
-    elif bias is None:
-        bias = np.ones(len(sacc_data.tracers))
-
-    # We can optionally smooth the n(z). This helped in Prat et al.
-    if smooth:
-        smooth_sacc_nz(sacc_data)
-
     # The user can pass in an empty sacc file, with no data points in,
     # if they also pass in either ell or theta values to fill it with.
     # They can pass in either but not both.
     if len(sacc_data.data) == 0:
-        if (ell_values is None) and (theta_values is None):
-            raise ValueError("Supplied an empty sacc file but no ell_values to fill it")
-        elif (ell_values is not None) and (theta_values is not None):
-            raise ValueError(
-                "Supplied an empty sacc file and both theta and ell values to fill it. Just pick one"
-            )
         fill_empty_sacc(sacc_data, ell_values=ell_values, theta_values=theta_values)
 
     # Use the FireCrown machinery to compute the likelihood and as
     # a by-product the theory
-    likelihood = build_likelihood(sacc_data, bias)
-    loglike = likelihood.compute_loglike(cosmo)
+    build_parameters = {
+        "sacc_data": sacc_data,
+        "bias": bias,
+        "smooth": smooth,
+    }
+
+    # These stages are a copy of what is done inside the FireCrown connectors
+    likelihood, tools = load_likelihood(theory_model, build_parameters)
+    tools.prepare(cosmo)
+    loglike = likelihood.compute_loglike(tools)
 
     sacc_theory = sacc_data.copy()
 
@@ -185,133 +191,9 @@ def theory_3x2pt(
         d.value = 0.0
 
     # Fill in the values of the computed theory
-    for i, v in zip(likelihood._tx_indices, likelihood.predicted_data_vector):
+    for i, v in zip(tools._tx_indices, likelihood.predicted_data_vector):
         sacc_theory.data[i].value = v
 
     return sacc_theory
 
 
-def compute_fiducial_bias(b0, sack, cosmo):
-    """
-    Return an array of bias values following b[i] = b_0 / D(<z_i>)
-
-    Parameters
-    ----------
-    b0: float
-
-    sack: Sacc
-
-    cosmo: pyccl.Cosmology
-    """
-    import pyccl as ccl
-
-    print("Computing bias values b(z)")
-    # now get bias as a function of redshift for each lens bin
-    bias = {}
-    for key, tracer in sack.tracers.items():
-        if "lens" in key:
-            i = int(key.split("_")[1])
-            z_eff = (tracer.z * tracer.nz).sum() / tracer.nz.sum()
-            a_eff = 1 / (1 + z_eff)
-            bias[i] = b0 / ccl.growth_factor(cosmo, a_eff)
-    bias = np.array([bias[i] for i in range(len(bias))])
-    print("Found bias:", bias)
-    return bias
-
-
-def smooth_sacc_nz(sack):
-    """
-    Smooth each n(z) in a sacc object, in-place.
-
-    Parameters
-    ----------
-    sacc: Sacc
-
-    Returns
-    -------
-    None
-    """
-
-    for key, tracer in sack.tracers.items():
-        tracer.nz = smooth_nz(tracer.nz)
-
-
-def smooth_nz(nz):
-    return np.convolve(nz, np.exp(-0.5 * np.arange(-4, 5) ** 2) / 2**2, mode="same")
-
-
-def build_likelihood(sacc_data, bias):
-    import sacc
-    import pyccl as ccl
-    import firecrown.likelihood.gauss_family.statistic.source.weak_lensing as wl
-    import firecrown.likelihood.gauss_family.statistic.source.number_counts as nc
-    from firecrown.likelihood.gauss_family.statistic.two_point import TwoPoint
-    from firecrown.likelihood.gauss_family.gaussian import ConstGaussian
-
-    if isinstance(sacc_data, (str, pathlib.Path)):
-        sacc_data = sacc.Sacc.load_fits(sacc_data)
-    else:
-        sacc_data = sacc_data.copy()
-
-    sacc_data.add_covariance(np.ones(len(sacc_data)))
-
-    # Creating sources, each one maps to a specific section of a SACC file. In
-    # this case src0, src1, src2 and src3 describe weak-lensing probes. The
-    # sources are saved in a dictionary since they will be used by one or more
-    # two-point function.
-
-    sources = {}
-    for tracer_name in sacc_data.tracers.keys():
-        if tracer_name.startswith("source"):
-            tr = wl.WeakLensing(sacc_tracer=tracer_name)
-        elif tracer_name.startswith("lens"):
-            tr = nc.NumberCounts(sacc_tracer=tracer_name)
-            i = int(tracer_name.split("_")[1])
-            tr.bias = bias[i]
-            tr.mag_bias = 0.0
-        else:
-            raise ValueError(f"Unknown tracer in sacc file, non-3x2pt: {tracer}")
-        sources[tracer_name] = tr
-
-    # Now that we have all sources we can instantiate all the two-point
-    # functions. The weak-lensing sources have two "data types", for each one we
-    # create a new two-point function.
-
-    stats = {}
-    computable_indices = []
-    for dt in sacc_data.get_data_types():
-        for t1, t2 in sacc_data.get_tracer_combinations(dt):
-            try:
-                stat = TwoPoint(
-                    source0=sources[t1],
-                    source1=sources[t2],
-                    sacc_data_type=dt,
-                )
-                stats[f"{stat}_{t1}_{t2}"] = stat
-                computable_indices.extend(sacc_data.indices(dt, (t1, t2)))
-            except ValueError as err:
-                # B modes and things like that can be in the files
-                # but are not supported
-                if "is not supported" in str(err):
-                    print(f"Setting bin {t1}, {t2} for {dt} to zero")
-                    continue
-                else:
-                    raise
-
-    # Here we instantiate the actual likelihood. The statistics argument carry
-    # the order of the data/theory vector.
-    lk = ConstGaussian(statistics=list(stats.values()))
-
-    # The read likelihood method is called passing the loaded SACC file, the
-    # two-point functions will receive the appropriate sections of the SACC
-    # file and the sources their respective dndz.
-    lk.read(sacc_data)
-
-    # computable_indices is a mask for all the bins that
-    # firecrown can calculate. Some of them, like the BB, EB modes, etc.
-    # are just zero in the theory, and FireCrown can't predict them right now.
-    # so we record this information because in TXPipe's theory prediction
-    # we want to set those to zero
-    lk._tx_indices = computable_indices
-
-    return lk

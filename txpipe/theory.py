@@ -40,7 +40,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         bias = self.config['galaxy_bias']
         if bias == [0.0]:
             bias = None
-        if len(bias) == 1 and bias[0] < 0:
+        elif len(bias) == 1 and bias[0] < 0:
             bias = -bias[0]
         s_theory = theory_3x2pt(cosmo, s, bias=bias)
 

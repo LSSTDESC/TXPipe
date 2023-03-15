@@ -15,7 +15,7 @@ namaster
 dask
 mpich
 h5py=*=mpi_mpich_*
-firecrown>=1.3.0
+firecrown>=1.4.0
 tables-io
 dm-tree
 jax
