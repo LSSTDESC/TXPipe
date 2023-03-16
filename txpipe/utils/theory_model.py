@@ -30,9 +30,9 @@ def build_likelihood(build_parameters):
     else:
         sacc_data = sacc_data.copy()
 
-    # Add a dummy covariance if needed
-    if not sacc_data.has_covariance():
-        sacc_data.add_covariance(np.ones(len(sacc_data)))
+    # Add a dummy covariance, always, because the shot noise one
+    # may be non-positive definite
+    sacc_data.add_covariance(np.ones(len(sacc_data)), overwrite=True)
 
 
     # We can optionally smooth the n(z). This helped in Prat et al.
