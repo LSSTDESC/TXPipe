@@ -30,8 +30,9 @@ def build_likelihood(build_parameters):
     else:
         sacc_data = sacc_data.copy()
 
-    # if not sacc_data.has_covariance():
-    sacc_data.add_covariance(np.ones(len(sacc_data)))
+    # Add a dummy covariance if needed
+    if not sacc_data.has_covariance():
+        sacc_data.add_covariance(np.ones(len(sacc_data)))
 
 
     # We can optionally smooth the n(z). This helped in Prat et al.
