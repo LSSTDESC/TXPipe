@@ -259,7 +259,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from tjpcov import bin_cov
+        from tjpcov.wigner_transform import bin_cov
 
         cl = {}
 
@@ -445,7 +445,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data):
-        from tjpcov import bin_cov
+        from tjpcov.wigner_transform import bin_cov
 
         ccl_tracers, tracer_Noise = self.get_tracer_info(
             cosmo, meta, two_point_data=two_point_data
@@ -684,6 +684,9 @@ class TXFourierTJPCovariance(PipelineStage):
         cl_sacc = self.read_sacc()
         tjp_config["sacc_file"] = cl_sacc
 
+        # The Gaussian classes use this
+        fsky = meta["area"] / sq_deg_on_sky
+
         # Get the CCL cosmo object to pass to TJPCov
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             tjp_config["cosmo"] = f.to_ccl()
@@ -769,7 +772,10 @@ class TXFourierTJPCovariance(PipelineStage):
         # Compute the covariance and save it in the cache folder. This will
         # save also the independent terms.
         calculator = CovarianceCalculator({"tjpcov": tjp_config,
-                                           "cache": cache})
+                                           "cache": cache,
+                                           "GaussianFsky": {"fsky":fsky}
+
+                                           })
         calculator.create_sacc_cov("summary_statistics_fourier",
                                    save_terms=True)
 

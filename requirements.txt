@@ -9,7 +9,7 @@ fitsio
 git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 scipy
 treecorr>=4.2.2
-sklearn
+scikit-learn
 astropy
 healpy
 camb
@@ -27,3 +27,4 @@ git+https://github.com/jlvdb/hyperbolic
 #pzflow
 tables-io
 healpix
+tjpcov
