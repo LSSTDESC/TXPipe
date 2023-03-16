@@ -43,19 +43,19 @@ class TXFocalPlanePlot(PipelineStage):
                     PSF_e2_err[i][j] = np.mean(de2[mask])
         
         fig = self.open_output("focalplane_g", wrapper=True)
-        plt.subplot(2,2,1)
-        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=e1)
-        plt.ylabel('mean PSF e1')
-        plt.subplot(2,2,2)
-        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=de1)
-        plt.ylabel('residual')
-        plt.subplot(2,2,3)
-        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=e2)
-        plt.ylabel('mean PSF e2')
-        plt.subplot(2,2,4)
-        plt.hist2d(fov_x, fov_y, bins=(100,100), weights=de2)
-        plt.ylabel('residual')
-        plt.tight_layout()
+        
+        weights = [e1,de1,e2,de2]
+        labels = ['e1','res','e2','res2']
+        plot, axes = plt.subplots(nrows=2, ncols=2)
+        for ax,w,l in zip(axes.flat,weights,labels):
+            H,xedge,yedge= np.histogram2d(fov_x, fov_y, bins=(100,100), weights=w)
+            im = ax.imshow(H,cmap='RdBu')
+            ax.set_ylabel(l)
+
+        plot.subplots_adjust(right=0.85)
+        cbar_ax = plot.add_axes([0.85, 0.15, 0.05, 0.7])
+        plot.colorbar(im,cax=cbar_ax,cmap='RdBu')
+        plt.show()    
         fig.close()
         
         
