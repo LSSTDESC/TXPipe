@@ -84,7 +84,7 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
                 continue
 
             if t1_is_source and t2_is_source:
-                if is_ell:
+                if is_fourier:
                     dts = ["galaxy_shear_cl_ee"]
                 else:
                     dts = ["galaxy_shear_xi_plus", "galaxy_shear_xi_minus"]
@@ -92,12 +92,12 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
                 if index2 > index1:
                     continue
             elif t1_is_source and t2_is_lens:
-                if is_ell:
+                if is_fourier:
                     dts = ["galaxy_shearDensity_cl_e"]
                 else:
                     dts = ["galaxy_shearDensity_xi_t"]
             else:
-                if is_ell:
+                if is_fourier:
                     dts = ["galaxy_density_cl"]
                 else:
                     dts = ["galaxy_density_xi"]
@@ -177,6 +177,7 @@ def theory_3x2pt(
         "sacc_data": sacc_data,
         "bias": bias,
         "smooth": smooth,
+        "cosmo": cosmo,
     }
 
     # These stages are a copy of what is done inside the FireCrown connectors

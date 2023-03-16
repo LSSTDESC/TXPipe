@@ -19,6 +19,7 @@ def build_likelihood(build_parameters):
     sacc_data = build_parameters['sacc_data']
     bias = build_parameters['bias']
     smooth = build_parameters['smooth']
+    cosmo = build_parameters['cosmo']
 
     # items in the build_parameters are supposed to be
     # just str, int, etc, not complicated parameters.
