@@ -97,20 +97,3 @@ def build_likelihood(build_parameters):
     return lk, tools
 
 
-
-def smooth_sacc_nz(sack):
-    """
-    Smooth each n(z) in a sacc object, in-place.
-
-    Parameters
-    ----------
-    sacc: Sacc
-
-    Returns
-    -------
-    None
-    """
-
-    for key, tracer in sack.tracers.items():
-        tracer.nz = smooth_nz(tracer.nz)
-

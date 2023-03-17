@@ -213,6 +213,24 @@ def theory_3x2pt(
 
 
 
+def smooth_sacc_nz(sack):
+    """
+    Smooth each n(z) in a sacc object, in-place.
+
+    Parameters
+    ----------
+    sacc: Sacc
+
+    Returns
+    -------
+    None
+    """
+
+    for key, tracer in sack.tracers.items():
+        tracer.nz = smooth_nz(tracer.nz)
+
+
+
 def smooth_nz(nz):
     """
     Smooth an n(z) by convolving with a Gassian of width 2 samples
