@@ -300,5 +300,89 @@ class TXRandomCat(PipelineStage):
         binned_output.close()
 
 
+class TXSubsampleRandoms(PipelineStage):
+    """
+    Randomly subsample the binned random catalog and save catalog
+
+    This can be used within the 2-point clustering stage for the RR term, to speed up the 
+    calculation without losing precision
+    """
+    name = "TXSubsampleRandoms"
+    inputs = [
+        ("binned_random_catalog", HDFFile),
+    ]
+    outputs = [
+        ("binned_random_catalog_sub", RandomsCatalog),
+    ]
+    config_options = {
+        "chunk_rows": 100_000,
+        "sample_rate": 0.5,  # fraction of random catalog that should be retained in the subsampled catalog
+    }
+
+    def run(self):
+        from . import randoms
+        from .utils.hdf_tools import BatchWriter
+
+        sample_rate = self.config["sample_rate"]
+
+        #get number of tomographic bins in binned random catalog
+        with self.open_input("binned_random_catalog") as f:
+            Ntomo = f['randoms'].attrs["nbin"]
+
+        # Only save the binned random catalog for this stage
+        binned_output = self.open_output("binned_random_catalog_sub", parallel=True)
+        binned_group = binned_output.create_group("randoms")
+        subgroups = []
+        binned_group.attrs["nbin"] = Ntomo
+
+        for j in range(Ntomo):
+
+            #load the columns from full catalog in this tomo bin
+            with self.open_input("binned_random_catalog") as f:
+                ra = f[f"randoms/bin_{j}/ra"][:]
+                dec = f[f"randoms/bin_{j}/dec"][:]
+                z = f[f"randoms/bin_{j}/z"][:]
+                comoving_distance = f[f"randoms/bin_{j}/comoving_distance"][:]
+
+            #create subsampling array
+            ntotal = len(ra)
+            nsub = int(sample_rate*ntotal)
+            select_sub = np.random.choice(np.arange(len(ra)),size=nsub,replace=False)
+
+            #create hdf group
+            subgroup = binned_group.create_group(f"bin_{j}")
+            subgroup.create_dataset("ra", (nsub,))
+            subgroup.create_dataset("dec", (nsub,))
+            subgroup.create_dataset("z", (nsub,))
+            subgroup.create_dataset("comoving_distance", (nsub,))
+            subgroups.append(subgroup)
+
+            # batch up chunks of output to be done in large
+            # sets, so that whatever the size of the randoms in this bin it will
+            # still work.
+            batch2 = BatchWriter(
+                subgroup,
+                {
+                    "ra": np.float64,
+                    "dec": np.float64,
+                    "z": np.float64,
+                    "comoving_distance": np.float64,
+                },
+                offset=0, #check this is right
+                max_size=self.config["chunk_rows"],
+            )
+
+            batch2.write(   ra=ra[select_sub], 
+                            dec=dec[select_sub], 
+                            z=z[select_sub], 
+                            comoving_distance=comoving_distance[select_sub]
+                            )
+
+            batch2.finish()
+
+        if self.comm is not None:
+            self.comm.Barrier()
+        binned_output.close()
+
 if __name__ == "__main__":
     PipelineStage.main()
