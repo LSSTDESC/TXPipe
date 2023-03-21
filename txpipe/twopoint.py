@@ -43,6 +43,7 @@ class TXTwoPoint(PipelineStage):
         ("lens_photoz_stack", HDFFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
+        ("binned_random_catalog_sub", HDFFile),
     ]
     outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
     # Add values to the config file that are not previously defined
@@ -73,6 +74,7 @@ class TXTwoPoint(PipelineStage):
         "share_patch_files": False,
         "metric": "Euclidean",
         "gaussian_sims_factor": [1.], 
+        "use_subsampled_randoms": False, #use subsampled randoms file for RR
     }
 
     def run(self):
@@ -582,6 +584,13 @@ class TXTwoPoint(PipelineStage):
                 self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
+
+
         meta["npatch_shear"] = npatch_shear
         meta["npatch_pos"] = npatch_pos
         meta["npatch_ran"] = npatch_ran
@@ -703,6 +712,25 @@ class TXTwoPoint(PipelineStage):
 
         return rancat
 
+    def get_subsampled_random_catalog(self, i):
+        import treecorr
+
+        if not self.config["use_randoms"]:
+            return None
+
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_catalog_sub"),
+            ext=f"/randoms/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_random_catalog_sub", i),
+        )
+
+        return rancat
+
     def touch_patches(self, cat):
         # If any patches were empty for this cat
         # run get_patches on rank 0 and bcast
@@ -819,6 +847,19 @@ class TXTwoPoint(PipelineStage):
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
+        if self.config['use_subsampled_randoms']:
+            rancat_sub_i = self.get_subsampled_random_catalog(i)
+            rancat_sub_i = self.touch_patches(rancat_sub_i)
+            n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
+
+            if i == j:
+                rancat_sub_j = rancat_sub_i
+                n_rand_sub_j = n_rand_sub_i
+            else:
+                rancat_sub_j = self.get_subsampled_random_catalog(j)
+                rancat_sub_j = self.touch_patches(rancat_sub_j)
+                n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
+
 
         if self.rank == 0:
             print(
@@ -842,9 +883,13 @@ class TXTwoPoint(PipelineStage):
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
+            n_rand_sub_j = None
 
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        if self.config["use_subsampled_randoms"]:
+            rr.process(rancat_sub_i, rancat_sub_j, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if i == j:
             rn = None
