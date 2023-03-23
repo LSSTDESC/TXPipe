@@ -16,14 +16,11 @@ from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .blinding import TXBlinding
-from .input_cats import TXCosmoDC2Mock
 from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance
-from .metacal_gcr_input import TXMetacalGCRInput
 from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
-from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
@@ -37,6 +34,7 @@ from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
 from .calibrate import TXShearCalibration
+from .ingest import *
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.

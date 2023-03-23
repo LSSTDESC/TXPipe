@@ -13,3 +13,5 @@ from .calibrators import (
 from .splitters import Splitter, DynamicSplitter
 from .calibration_tools import read_shear_catalog_type, band_variants, metacal_variants
 from .calibration_tools import MetacalCalculator, LensfitCalculator, MeanShearInBins
+from .conversion import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear
+from .timer import Timer

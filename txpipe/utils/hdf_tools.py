@@ -2,6 +2,7 @@ import h5py
 import subprocess
 import shutil
 import numpy as np
+import tempfile
 
 def load_complete_file(f):
     """
@@ -48,9 +49,10 @@ def repack(filename):
     """
     In-place HDF5 repack operation on file.
     """
-    tmp_name = f"{filename}.tmp_325467847"
-    subprocess.check_call(f"h5repack {filename} {tmp_name}", shell=True)
-    shutil.move(tmp_name, filename)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_name = os.path.join(tmpdir, filename)
+        subprocess.check_call(f"h5repack {filename} {tmp_name}", shell=True)
+        shutil.move(tmp_name, filename)
 
 
 def create_dataset_early_allocated(group, name, size, dtype):
@@ -162,3 +164,24 @@ class BatchWriter:
 
     def finish(self):
         self._write()
+
+
+
+def h5py_shorten(group, name, n):
+    """
+    Trim an HDF5 column down to length n.
+
+    Parameters
+    ----------
+    group: h5py.Group
+
+    name: str
+
+    n: int
+    """
+    # just some random suffix
+    tmp_name = name + "_tmp_5kb04scgllj6khsd3286ij"
+    group[tmp_name] = group[name][:n]
+    del group[name]
+    group[name] = group[tmp_name]
+    del group[tmp_name]
