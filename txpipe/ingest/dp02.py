@@ -1,9 +1,10 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile
-from ..utils import band_variants, metacal_variants
+from ..utils import band_variants, metacal_variants, nanojansky_err_to_mag_ab, nanojansky_to_mag_ab
 import numpy as np
 import glob
 import re
+import math
 
 
 class TXIngestDataPreview02(PipelineStage):
@@ -63,6 +64,7 @@ class TXIngestDataPreview02(PipelineStage):
             
         shape_cols = ["objectId", "coord_ra", "coord_dec", "refExtendedness", "tract", 
                       "i_hsmShapeRegauss_e1", "i_hsmShapeRegauss_e2", "i_hsmShapeRegauss_sigma", "i_hsmShapeRegauss_flag",
+                      "i_ixx", "i_ixy", "i_iyy",
                       "i_ixxPSF", "i_ixyPSF", "i_iyyPSF",
                      ]
 
@@ -89,8 +91,8 @@ class TXIngestDataPreview02(PipelineStage):
                     shear_data = self.process_shear_data(d)
 
                     if i == 0 and j == 0:
-                        photo_outfile = self.setup_output("test_photometry_dp02.hdf5", "photometry", photo_data, n)
-                        shear_outfile = self.setup_output("test_shear_dp02.hdf5", "shear", shear_data, n)
+                        photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
+                        shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
 
                     e1 = s1 + len(photo_data['ra'])
                     e2 = s2 + len(shear_data['ra'])
@@ -100,17 +102,24 @@ class TXIngestDataPreview02(PipelineStage):
                     s1 = e1
                     s2 = e2
 
-        # Cut down to just include stars.
-        for col in photo_data.keys():
-            h5py_shorten(photo_outfile["photometry"], col, star_end)
 
+        print("Final selected objects: {e1:,} in photometry and {e2:,} in shear")
+        # Cut down to just include stars.
+        print("Trimming photometry columns:")
+        for col in photo_data.keys():
+            print("    ", col)
+            h5py_shorten(photo_outfile["photometry"], col, e1)
+
+        print("Trimming shear columns:")
         for col in shear_data.keys():
-            h5py_shorten(shear_outfile["shear"], col, star_end)
+            print("    ", col)
+            h5py_shorten(shear_outfile["shear"], col, e2)
 
         photo_outfile.close()
         shear_outfile.close()
 
         # Run h5repack on the file
+        print("Repacking file")
         repack(self.get_output("photometry_catalog"))
         repack(self.get_output("shear_catalog"))
 

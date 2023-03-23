@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import numpy as np
 import tempfile
+import os
 
 def load_complete_file(f):
     """
