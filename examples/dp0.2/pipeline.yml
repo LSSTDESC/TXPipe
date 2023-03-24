@@ -7,6 +7,7 @@ stages:
     - name: TXLensCatalogSplitter
     - name: TXSourceSelectorHSC
     - name: TXPhotozSourceStack
+    - name: TXPhotozLensStack
     - name: TXMainMaps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
@@ -18,7 +19,7 @@ stages:
       threads_per_process: 2
  
 # Where to put outputs
-output_dir: data/hsc/outputs/
+output_dir: data/dp0.2/outputs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -32,7 +33,7 @@ site:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe
+modules: txpipe rail.stages
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
@@ -44,15 +45,10 @@ config: examples/dp0.2/config.yml
 
 inputs:
     # See README for paths to download these files
-    #photoz_lens_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    #photoz_lens_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
-    shear_photoz_stack: data/hsc/shear_photoz_stack.hdf5
-    lens_photoz_stack: data/hsc/lens_photoz_stack.hdf5
-    shear_catalog: data/hsc/hsc_shear_catalog_wide12h.hdf5
-    photometry_catalog: data/hsc/hsc_photometry_catalog_wide12h.hdf5
-    calibration_table: data/hsc/sample_cosmodc2_w10year_errors.dat
-    star_catalog: data/hsc/star_catalog.hdf5
-    # This file comes with the code
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+    shear_catalog: data/dp0.2/shear_catalog.hdf5
+    photometry_catalog: data/dp0.2/photometry_catalog.hdf5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     fiducial_cosmology: data/fiducial_cosmology.yml
 
 # if supported by the launcher, restart the pipeline where it left off

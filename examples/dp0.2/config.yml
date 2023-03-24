@@ -60,9 +60,9 @@ BPZ_lite:
         mag_y: 27.05    
 
 
-TXShearCalibration: {}
-
 TXMeanLensSelector:
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
     lens_zbin_edges: [0.3, 0.4, 0.5, 0.6]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -72,6 +72,9 @@ TXMeanLensSelector:
     i_hi_cut: 19.9
     r_i_cut: 2.0
 
+TXLensCatalogSplitter:
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs    
 
 TXSourceSelectorHSC:
     bands: ugrizy
@@ -79,11 +82,18 @@ TXSourceSelectorHSC:
     T_cut: 1.3
     s2n_cut: 10.0
     source_zbin_edges: [0.3, 0.5, 0.7, 0.9]
+    shear_prefix: ""
+
+TXShearCalibration: {}
 
 
-TXPhotozSourceStack: {}
+TXPhotozSourceStack:
+    aliases:
+        source_photoz_pdfs: photoz_pdfs
 
-TXPhotozLensStack: {}
+TXPhotozLensStack:
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
 
 TXMainMaps: {}
 
@@ -97,6 +107,8 @@ TXTracerMetadata: {}
 
 TXRandomCat:
     method: spherical_projection
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
 
 TXJackknifeCenters:
     npatch: 100
