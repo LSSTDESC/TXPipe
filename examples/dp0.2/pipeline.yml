@@ -1,0 +1,64 @@
+# Stages to run
+stages:
+    - name: Inform_BPZ_lite
+    - name: BPZ_lite
+    - name: TXShearCalibration
+    - name: TXMeanLensSelector
+    - name: TXLensCatalogSplitter
+    - name: TXSourceSelectorHSC
+    - name: TXPhotozSourceStack
+    - name: TXMainMaps
+    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
+    - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXRandomCat          # generate lens bin random catalogs
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
+      threads_per_process: 2
+ 
+# Where to put outputs
+output_dir: data/hsc/outputs/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: []
+
+# configuration settings
+config: examples/dp0.2/config.yml
+
+
+inputs:
+    # See README for paths to download these files
+    #photoz_lens_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
+    #photoz_lens_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
+    shear_photoz_stack: data/hsc/shear_photoz_stack.hdf5
+    lens_photoz_stack: data/hsc/lens_photoz_stack.hdf5
+    shear_catalog: data/hsc/hsc_shear_catalog_wide12h.hdf5
+    photometry_catalog: data/hsc/hsc_photometry_catalog_wide12h.hdf5
+    calibration_table: data/hsc/sample_cosmodc2_w10year_errors.dat
+    star_catalog: data/hsc/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+# where to put output logs for individual stages
+log_dir: data/example/logs_lensfit
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log.txt
