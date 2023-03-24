@@ -55,11 +55,6 @@ class TXIngestDataPreview02(PipelineStage):
         # Input columns for photometry
         photo_cols = ["objectId", "coord_ra", "coord_dec", "refExtendedness", "tract"]
 
-        # Photometry columns (non-metacal)
-        for band in "ugrizy":
-            photo_cols.append(f"{band}_cModelFlux")
-            photo_cols.append(f"{band}_cModelFluxErr")
-            photo_cols.append(f"{band}_cModel_flag")
             
             
         shape_cols = ["objectId", "coord_ra", "coord_dec", "refExtendedness", "tract", 
@@ -67,6 +62,13 @@ class TXIngestDataPreview02(PipelineStage):
                       "i_ixx", "i_ixy", "i_iyy",
                       "i_ixxPSF", "i_ixyPSF", "i_iyyPSF",
                      ]
+
+        # Magnitude columns, given to both photometry and shear catalogs
+        for band in "ugrizy":
+            for cols in [photo_cols, shape_cols]:
+                cols.append(f"{band}_cModelFlux")
+                cols.append(f"{band}_cModelFluxErr")
+                cols.append(f"{band}_cModel_flag")
 
         cols = list(set(shape_cols + photo_cols))
 
@@ -171,24 +173,25 @@ class TXIngestDataPreview02(PipelineStage):
         for band in "ugrizy":
             f = data[f"{band}_cModelFlux"][cut]
             f_err = data[f"{band}_cModelFluxErr"][cut]
-            # output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
-            # output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
-            
-            output["g1"] = data['i_hsmShapeRegauss_e1'][cut]
-            output["g2"] = data['i_hsmShapeRegauss_e2'][cut]
-            output["T"] = data['i_ixx'][cut] + data['i_iyy'][cut]
-            output["flags"] = data["i_hsmShapeRegauss_flag"][cut]
-            output['s2n'] = f / f_err
+            output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
+            output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
+        
+        output["g1"] = data['i_hsmShapeRegauss_e1'][cut]
+        output["g2"] = data['i_hsmShapeRegauss_e2'][cut]
+        output["T"] = data['i_ixx'][cut] + data['i_iyy'][cut]
+        output["flags"] = data["i_hsmShapeRegauss_flag"][cut]
+        output['s2n'] = f / f_err
 
-            # Fake numbers! These need to be derived from simulation.
-            # In this case 
-            output["m"] = np.repeat(-1.184445e-01, f.size)
-            output["c1"] = np.repeat(-2.316957e-04, f.size)
-            output["c2"] = np.repeat(-8.629799e-05, f.size)
+        # Fake numbers! These need to be derived from simulation.
+        # In this case 
+        output["m"] = np.repeat(-1.184445e-01, f.size)
+        output["c1"] = np.repeat(-2.316957e-04, f.size)
+        output["c2"] = np.repeat(-8.629799e-05, f.size)
 
-            output["sigma_e"] = np.repeat(1.342084e-01, f.size)
-            output["weight"] = np.ones_like(f)
-            output["psf_T_mean"] = data['i_ixxPSF'][cut] + data['i_iyyPSF'][cut]
+        output["sigma_e"] = np.repeat(1.342084e-01, f.size)
+        output["weight"] = np.ones_like(f)
+        output["psf_T_mean"] = data['i_ixxPSF'][cut] + data['i_iyyPSF'][cut]
+
             
             
         return output
