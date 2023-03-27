@@ -193,9 +193,10 @@ def theory_3x2pt(
     # Apply the systematics parameters
     likelihood.update(ParamsMap(systematic_params))
 
-    # Run the likelihood. As a by-product this fills in
-    # the predicted data vector
-    loglike = likelihood.compute_loglike(tools)
+    # Ask the likelihood for a theory vector. We don't want
+    # to print the actual likelihood because for many applications
+    # our covariance is meaningless here and just a placeholder.
+    theory_vector = likelihood.compute_theory_vector(tools)
 
     # We return a copy of the data with the values replaced
     # with theory ones
@@ -206,7 +207,7 @@ def theory_3x2pt(
         d.value = 0.0
 
     # Fill in the values of the computed theory
-    for i, v in zip(tools._tx_indices, likelihood.predicted_data_vector):
+    for i, v in zip(tools._tx_indices, theory_vector):
         sacc_theory.data[i].value = v
 
     return sacc_theory
