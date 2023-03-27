@@ -36,7 +36,17 @@ class TXTwoPointTheoryReal(PipelineStage):
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
             matter_power_spectrum="halofit", Neff=3.046
         )
+
         print(cosmo)
+
+        # We let the user specify bias values in one of three
+        # ways.
+        # 1) leaving the default [0.0] - this indicates unit bias
+        # 2) specifying a single negative value - this means to use a single
+        #    global bias parameter with each bin's bias given by b / D(z)
+        # 3) a bias parameter per bin
+        # I know version (2) is confusing, but we want the result to work
+        # even when there's only a single bin.
         bias = self.config['galaxy_bias']
         if bias == [0.0]:
             bias = None
