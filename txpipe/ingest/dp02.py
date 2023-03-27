@@ -1,6 +1,6 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile
-from ..utils import band_variants, metacal_variants, nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear
+from ..utils import band_variants, metacal_variants, nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 import numpy as np
 import glob
 import re
@@ -158,6 +158,14 @@ class TXIngestDataPreview02(PipelineStage):
             output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
             output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
             output[f'snr_{band}'] = f / f_err
+
+            # for undetected objects we use a mock mag of 30
+            # to choose mag errors
+            f_mock = mag_ab_to_nanojansky(30.0)
+            undetected = f <= 0
+            output[f'mag_{band}'][undetected] = np.inf
+            output[f'mag_err_{band}'][undetected] = nanojansky_err_to_mag_ab(f_mock, f_err)
+            output[f'snr_{band}'][undetected] = 0.0
         return output
 
     def process_shear_data(self, data):
