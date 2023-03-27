@@ -28,8 +28,8 @@ launcher:
 
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: local
-    max_threads: 2
+    name: nersc-interactive
+    image: ghcr.io/lsstdesc/txpipe-dev
 
 # modules and packages to import that have pipeline
 # stages defined in them
@@ -55,6 +55,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs_lensfit
+log_dir: data/dp0.2/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/dp0.2/log.txt
