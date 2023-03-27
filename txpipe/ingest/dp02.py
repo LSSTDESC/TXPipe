@@ -164,7 +164,7 @@ class TXIngestDataPreview02(PipelineStage):
             f_mock = mag_ab_to_nanojansky(30.0)
             undetected = f <= 0
             output[f'mag_{band}'][undetected] = np.inf
-            output[f'mag_err_{band}'][undetected] = nanojansky_err_to_mag_ab(f_mock, f_err)
+            output[f'mag_err_{band}'][undetected] = nanojansky_err_to_mag_ab(f_mock, f_err[undetected])
             output[f'snr_{band}'][undetected] = 0.0
         return output
 
