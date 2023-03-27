@@ -45,8 +45,6 @@ def build_likelihood(build_parameters):
         elif tracer_name.startswith("lens"):
             bias_systematic = nc.LinearBiasSystematic(sacc_tracer=tracer_name)
             tr = nc.NumberCounts(sacc_tracer=tracer_name, systematics=[bias_systematic])
-            i = int(tracer_name.split('_')[1])
-            tr.mag_bias = 0.0
         else:
             raise ValueError(f"Unknown tracer in sacc file, non-3x2pt: {tracer}")
         sources[tracer_name] = tr
