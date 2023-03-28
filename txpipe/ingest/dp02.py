@@ -92,6 +92,10 @@ class TXIngestDataPreview02(PipelineStage):
                     photo_data = self.process_photometry_data(d)
                     shear_data = self.process_shear_data(d)
 
+                    bad = np.isnan(photo_data['mag_r'])
+                    if np.any(bad):
+                        print(i, fn, j, s1, np.where(bad)[0])
+
                     if i == 0 and j == 0:
                         photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
                         shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
