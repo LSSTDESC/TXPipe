@@ -42,6 +42,7 @@ BPZ_lite:
     band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     hdf5_groupname: photometry
     nondetect_val: .inf
+    unobserved_val: .nan
     columns_file: ./data/bpz_ugrizy.columns
     spectra_file: SED/CWWSB4.list
     prior_band: mag_i
@@ -118,4 +119,17 @@ TXTwoPoint:
     min_sep: 2.5
     max_sep: 250.0
     nbins: 20
-    verbose: 2
+    verbose: 1
+
+
+TXTwoPointRRsub:
+    flip_g2: True
+    min_sep: 2.5
+    max_sep: 250.0
+    nbins: 20
+    verbose: 1
+
+
+TXSubsampleRandoms:
+    sample_rate: 0.2
+   
