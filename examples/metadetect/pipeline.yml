@@ -10,17 +10,15 @@ stages:
       classname: BPZ_lite
       threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
-    - name: TXSourceTrueNumberDensity
-    - name: TXLensTrueNumberDensity
-    # - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-    #   classname: Inform_NZDir
-    # - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
-    #   classname: PZRailSummarize  
-    # - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
-    #   classname: PZRailSummarize
+    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_NZDir
+    - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize  
+    - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    # - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
-    #   classname: Inform_NZDir
+    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+      classname: Inform_NZDir
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
@@ -57,10 +55,10 @@ stages:
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
-    # - name: PZRealizationsPlotSource   # Plot n(z) realizations
-    #   classname: PZRealizationsPlot
-    # - name: PZRealizationsPlotLens   # Plot n(z) realizations
-    #   classname: PZRealizationsPlot
+    - name: PZRealizationsPlotSource   # Plot n(z) realizations
+      classname: PZRealizationsPlot
+    - name: PZRealizationsPlotLens   # Plot n(z) realizations
+      classname: PZRealizationsPlot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
