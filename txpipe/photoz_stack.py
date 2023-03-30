@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile
+from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile, ShearCatalog
 from .utils.mpi_utils import in_place_reduce
 from .utils import rename_iterated
 import numpy as np
@@ -394,7 +394,7 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
 
     name = "TXSourceTrueNumberDensity"
     inputs = [
-        ("shear_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
     ]
     outputs = [
@@ -407,10 +407,12 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
     }
 
     def data_iterator(self):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
         return self.combined_iterators(
             self.config["chunk_rows"],
             "shear_catalog",  # tag of input file to iterate through
-            "shear",  # data group within file to look at
+            group,  # data group within file to look at
             ["redshift_true"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
@@ -425,8 +427,9 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
 
     def get_metadata(self):
         # Check we are running on a photo file with redshift_true
-        with self.open_input("shear_catalog") as photo_file:
-            has_z = "redshift_true" in photo_file["shear"].keys()
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
+            has_z = "redshift_true" in f.file[group].keys()
             if not has_z:
                 msg = (
                     "The shear_catalog file you supplied does not have a redshift_true column. "
