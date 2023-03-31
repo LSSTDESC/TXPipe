@@ -297,9 +297,6 @@ class TXRandomCat(PipelineStage):
             batch1.finish()
             batch2.finish()
 
-        #By default the subsample rate is 1.0 (so sub random file is the same objects as random file)
-        #can add option here to use the same file in this case to prevent doubling the data
-
         print('Sub-sampling randoms at rate {0}'.format(self.config["sample_rate"]))
         self.subsample_randoms(binned_output)
 
