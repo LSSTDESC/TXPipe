@@ -26,6 +26,7 @@ class TXRandomCat(PipelineStage):
     outputs = [
         ("random_cats", RandomsCatalog),
         ("binned_random_catalog", RandomsCatalog),
+        ("binned_random_catalog_sub", RandomsCatalog),
     ]
     config_options = {
         "density": 100.0,  # number per square arcmin at median depth depth.  Not sure if this is right.
@@ -33,6 +34,7 @@ class TXRandomCat(PipelineStage):
         "alpha": -1.25,  # Schecther distribution alpha parameter
         "chunk_rows": 100_000,
         "method":"quadrilateral", #method should be "quadrilateral" or "spherical_projection"
+        "sample_rate": 1.0,  # fraction of random catalog that should be retained in the subsampled catalog
     }
 
     def run(self):
@@ -294,18 +296,97 @@ class TXRandomCat(PipelineStage):
             batch1.finish()
             batch2.finish()
 
+        #By default the subsample rate is 1.0 (so sub random file is the same objects as random file)
+        #can add option here to use the same file in this case to prevent doubling the data
+
+        print('Sub-sampling randoms at rate {0}'.format(self.config["sample_rate"]))
+        self.subsample_randoms(binned_output)
+
         if self.comm is not None:
             self.comm.Barrier()
         output_file.close()
         binned_output.close()
 
 
+    def subsample_randoms(self,binned_output):
+        """Randomly subsample the binned random catalog and saves catalog
+
+        This can be used within the 2-point clustering stage for the RR term, to speed up the 
+        calculation without losing precision
+
+        Currently reloads the binned randoms and saves them
+        """
+        from .utils.hdf_tools import BatchWriter
+
+        sample_rate = self.config["sample_rate"]
+
+        #get number of tomographic bins in binned random catalog
+        Ntomo = binned_output['randoms'].attrs["nbin"]
+
+        # Only save the binned random catalog for this stage
+        binned_output_sub = self.open_output("binned_random_catalog_sub", parallel=True)
+        binned_group_sub = binned_output_sub.create_group("randoms")
+        subgroups = []
+        binned_group_sub.attrs["nbin"] = Ntomo
+
+        for j in range(Ntomo):
+
+            #load the columns from full catalog in this tomo bin
+            #We could add a feature to loop over chunks of data here, if random catalogs ever get really large
+            ra = binned_output[f"randoms/bin_{j}/ra"][:]
+            dec = binned_output[f"randoms/bin_{j}/dec"][:]
+            z = binned_output[f"randoms/bin_{j}/z"][:]
+            comoving_distance = binned_output[f"randoms/bin_{j}/comoving_distance"][:]
+
+            #create subsampling array
+            ntotal = len(ra)
+            nsub = int(sample_rate*ntotal)
+            select_sub = np.random.choice(np.arange(len(ra)),size=nsub,replace=False)
+
+            #create hdf group
+            subgroup = binned_group_sub.create_group(f"bin_{j}")
+            subgroup.create_dataset("ra", (nsub,))
+            subgroup.create_dataset("dec", (nsub,))
+            subgroup.create_dataset("z", (nsub,))
+            subgroup.create_dataset("comoving_distance", (nsub,))
+            subgroups.append(subgroup)
+
+            # batch up chunks of output to be done in large
+            # sets, so that whatever the size of the randoms in this bin it will
+            # still work.
+            batch2 = BatchWriter(
+                subgroup,
+                {
+                    "ra": np.float64,
+                    "dec": np.float64,
+                    "z": np.float64,
+                    "comoving_distance": np.float64,
+                },
+                offset=0, #check this is right
+                max_size=self.config["chunk_rows"],
+            )
+
+            batch2.write(   ra=ra[select_sub], 
+                            dec=dec[select_sub], 
+                            z=z[select_sub], 
+                            comoving_distance=comoving_distance[select_sub]
+                            )
+
+            batch2.finish()
+
+        if self.comm is not None:
+            self.comm.Barrier()
+        binned_output_sub.close()
+
+
 class TXSubsampleRandoms(PipelineStage):
     """
     Randomly subsample the binned random catalog and save catalog
-
     This can be used within the 2-point clustering stage for the RR term, to speed up the 
     calculation without losing precision
+
+    The subsampling is already run by default in TXRandomCat
+    Use this subclass if you are loading your randoms from elsewhere and need to subsample
     """
     name = "TXSubsampleRandoms"
     inputs = [
