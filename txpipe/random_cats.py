@@ -34,7 +34,8 @@ class TXRandomCat(PipelineStage):
         "alpha": -1.25,  # Schecther distribution alpha parameter
         "chunk_rows": 100_000,
         "method":"quadrilateral", #method should be "quadrilateral" or "spherical_projection"
-        "sample_rate": 1.0,  # fraction of random catalog that should be retained in the subsampled catalog
+        "sample_rate": 1.0,  # fraction of random catalog to be retained in the sub-sampled catalog
+                             # This should be larger than ~1.11*sqrt(Ndata/Nrandom) to maintain the same shot noise precision 
     }
 
     def run(self):
