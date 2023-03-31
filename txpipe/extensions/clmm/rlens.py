@@ -59,6 +59,7 @@ class TXTwoPointRLens(TXTwoPoint):
         "chunk_rows": 100_000,
         "share_patch_files": False,
         "metric": "Rlens",
+        "use_subsampled_randoms": False,
     }
 
     def get_lens_catalog(self, i):
