@@ -35,7 +35,7 @@ class TXLSSweights(TXMapCorrelations):
 	config_options = {
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
 		"nbin": 20,
-		"outlier_fraction": 0.05,
+		"outlier_fraction": 0.01,
 	}
 
 	def run(self):
@@ -44,8 +44,8 @@ class TXLSSweights(TXMapCorrelations):
 		with self.open_input("binned_lens_catalog", wrapper=False) as f:
 			Ntomo = f['lens'].attrs["nbin"] - 1 #looks like there is a bug in the binned lens catalog Ntomo so the -1 is temp
 
-		#load the SP maps and apply the mask
-		sys_maps, sys_names = self.load_and_mask_sp_maps()
+		#load the SP maps, apply the mask, normalize the maps (as needed by the method)
+		sys_maps, sys_names, sys_meta = self.prepare_sys_maps()
 
 		for ibin in range(Ntomo):
 
@@ -56,11 +56,13 @@ class TXLSSweights(TXMapCorrelations):
 			covmat = self.calc_covariance(density_corrs) #will need to change the argument to this
 
 			#compute the weights
-			coeff, cov = self.compute_weights(density_corrs, sys_maps)
+			Fmap, coeff, coeff_cov = self.compute_weights(density_corrs, sys_maps)
 
+			#make summary stats and plots
 			for imap in range(len(sys_maps)):
 				density_corrs.plot1d_singlemap(f'./test/sys{imap}.png', imap )
 
+			#save weights and weight map
 
 
 	def read_healsparse(self, map_path, nside):
@@ -74,49 +76,19 @@ class TXLSSweights(TXMapCorrelations):
 		m = healsparse.HealSparseMap.read(map_path)
 		return m.degrade(nside)
 
-	def calc_1d_density(self, tomobin, sys_maps):
-		import scipy.stats
-		import healpy as hp
-		import numpy as np 
-		from . import lsstools
+	def prepare_sys_maps(self):
+		"""
+		By default prepare sysmaps will just load and mask the maps
 
-		s = time.time()
-
-		nsysbins = self.config["nbin"]
-		f = 0.5 * self.config["outlier_fraction"]
-		percentiles = np.linspace(f, 1 - f, nsysbins + 1)
-
-		with self.open_input("mask", wrapper=True) as map_file:
-			nside = map_file.read_map_info("mask")["nside"]
-
-		#load the ra and dec of this lens bins
-		with self.open_input("binned_lens_catalog", wrapper=False) as f:
-			ra = f[f"lens/bin_{tomobin}/ra"][:]
-			dec = f[f"lens/bin_{tomobin}/dec"][:]
-			input_weight = f[f"lens/bin_{tomobin}/weight"][:]
-			assert (input_weight==1.).all() # For now lets assume the input weights have to be 1 
-											# (we could drop this condition 
-											# If we ever want to input a weighted catalog)
-
-		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
-
-		density_corrs = lsstools.DensityCorrelation() #keeps track of the 1d plots
-
-		for imap, sys_map in enumerate(sys_maps):
-			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
-			sys_obj = sys_map[obj_pix] #SP value for each object in catalog
-
-			edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
-
-			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj)
-
-		f = time.time()
-		print("calc_1d_density took {0}s".format(f-s))
-
-		return density_corrs
+		Classes for the differnet methods can modify this behaviour 
+		(e.g. adding a normalization of the maps)
+		"""
+		sys_maps, sys_names = self.load_and_mask_sysmaps()
+		sys_meta = {'masked':True}
+		return sys_maps, sys_names, sys_meta
 
 
-	def load_and_mask_sp_maps(self):
+	def load_and_mask_sysmaps(self):
 		"""
 		load the SP maps and mask them
 		"""
@@ -160,6 +132,47 @@ class TXLSSweights(TXMapCorrelations):
 
 		return sys_maps, sys_names
 
+	def calc_1d_density(self, tomobin, sys_maps):
+		import scipy.stats
+		import healpy as hp
+		import numpy as np 
+		from . import lsstools
+
+		s = time.time()
+
+		nsysbins = self.config["nbin"]
+		f = 0.5 * self.config["outlier_fraction"]
+		percentiles = np.linspace(f, 1 - f, nsysbins + 1)
+
+		with self.open_input("mask", wrapper=True) as map_file:
+			nside = map_file.read_map_info("mask")["nside"]
+
+		#load the ra and dec of this lens bins
+		with self.open_input("binned_lens_catalog", wrapper=False) as f:
+			ra = f[f"lens/bin_{tomobin}/ra"][:]
+			dec = f[f"lens/bin_{tomobin}/dec"][:]
+			input_weight = f[f"lens/bin_{tomobin}/weight"][:]
+			assert (input_weight==1.).all() # For now lets assume the input weights have to be 1 
+											# (we could drop this condition 
+											# If we ever want to input a weighted catalog)
+
+		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
+
+		density_corrs = lsstools.DensityCorrelation() #keeps track of the 1d plots
+
+		for imap, sys_map in enumerate(sys_maps):
+			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
+			sys_obj = sys_map[obj_pix] #SP value for each object in catalog
+
+			edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
+
+			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj)
+
+		f = time.time()
+		print("calc_1d_density took {0}s".format(f-s))
+
+		return density_corrs
+
 
 class TXLSSweightsSimReg(TXLSSweights):
 	"""
@@ -184,6 +197,38 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"outlier_fraction": 0.05,
 	}
 
+	def prepare_sys_maps(self):
+		"""
+		For this method we need sys maps to be normalized to mean 0
+		"""
+		sys_maps, sys_names = self.load_and_mask_sysmaps()
+
+		#normalize sysmaps (and keep track of the normalization factors)
+		mean, std = self.normalize_sysmaps(sys_maps)
+		sys_meta = {'masked':True,'mean':mean,'std':std}
+		
+		return sys_maps, sys_names, sys_meta
+
+	@staticmethod
+	def normalize_sysmaps(sys_maps):
+		"""
+		normalize a list of healsparse maps
+		"""
+		import numpy as np 
+
+		vpix = sys_maps[0].valid_pixels
+		means = []
+		stds = []
+		for sys_map in sys_maps:
+			sys_vals = sys_map[vpix]
+			mean = np.mean(sys_vals)
+			std = np.std(sys_vals)
+			sys_map.update_values_pix(vpix, (sys_vals-mean)/std)
+			means.append(mean)
+			stds.append(std)
+
+		return np.array(means), np.array(stds) #return means and stds to help reconstruct the original maps later
+
 	def calc_covariance(self, density_correlation):
 		"""
 		Shot noise-only covariance
@@ -195,10 +240,13 @@ class TXLSSweightsSimReg(TXLSSweights):
 	def compute_weights(self, density_correlation, sys_maps ):
 		import scipy.optimize
 
+		#add option here to select only the significant trends
+
 		def linear_model_(x,beta,*alpha):
-			return linear_model(x,beta,*alpha,
+			F, Fdc = linear_model(x,beta,*alpha,
 				density_correlation=density_correlation, 
 				sys_maps=sys_maps)
+			return Fdc.ndens
 
 		#initial parameters
 		p0 = [1.0]+[0.1]*len(sys_maps)
@@ -212,12 +260,16 @@ class TXLSSweightsSimReg(TXLSSweights):
 		    absolute_sigma=True,
 		    )
 
-		density_correlation.ndens_model = linear_model_(density_correlation.smin,*coeff)
+		density_correlation.add_model(linear_model_(density_correlation.smin,*coeff))
 
-		return coeff, coeff_cov
+		Fmap, _ = linear_model(density_correlation.smin,*coeff,
+				density_correlation=density_correlation, 
+				sys_maps=sys_maps)
+
+		return Fmap, coeff, coeff_cov
 		
 
-def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None):
+def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, returnF=False):
 	"""
 	linear contamination model:
 	F(s) = alpha1*s1 + alpha2*s2 + ... + beta
@@ -247,7 +299,7 @@ def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None):
 			edges = density_correlation.get_edges(imap)
 			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True)
 
-	return F_density_corrs.ndens
+	return F, F_density_corrs
 
 
 
