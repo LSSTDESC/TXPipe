@@ -127,6 +127,11 @@ class DensityCorrelation:
 		edges[-1] = smax[-1]
 		return edges 
 
+	def add_model(self, model):
+		self.ndens_model = model
+
+		#add chi2 calculation here too?
+
 	@staticmethod
 	def calc_chi2(y, err, yfit , v = False):
 		if err.shape == (len(y),len(y)):
