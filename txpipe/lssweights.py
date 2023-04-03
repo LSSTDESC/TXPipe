@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .map_correlations import TXMapCorrelations
+from .utils import choose_pixelization
 from .data_types import (
     HDFFile,
     ShearCatalog,
@@ -23,13 +24,14 @@ class TXLSSweights(TXMapCorrelations):
 	parallel = True
 	inputs = [
 		("binned_lens_catalog", HDFFile),
-		("binned_random_catalog", HDFFile),
+		#("binned_random_catalog", HDFFile),
 		("mask", MapsFile),
 	]
 
 	outputs = [
 		("lss_weight_output", FileCollection), #output files and summary statistics will go here
-		("lss_weights", HDFFile), #the systematic weights to be applied to the lens galaxies
+		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
+		("binned_lens_catalog_weighted", HDFFile), #the lens catalog with weights added
 	]
 
 	config_options = {
@@ -39,15 +41,18 @@ class TXLSSweights(TXMapCorrelations):
 	}
 
 	def run(self):
+		pixel_scheme = choose_pixelization(**self.config)
+		self.pixel_metadata = pixel_scheme.metadata
 
 		#get number of tomographic lens bins
 		with self.open_input("binned_lens_catalog", wrapper=False) as f:
-			Ntomo = f['lens'].attrs["nbin"] - 1 #looks like there is a bug in the binned lens catalog Ntomo so the -1 is temp
+			self.Ntomo = f['lens'].attrs["nbin_lens"] 
 
 		#load the SP maps, apply the mask, normalize the maps (as needed by the method)
 		sys_maps, sys_names, sys_meta = self.prepare_sys_maps()
 
-		for ibin in range(Ntomo):
+		Fmap_list = []
+		for ibin in range(self.Ntomo):
 
 			#compute density vs SP map data vector
 			density_corrs = self.calc_1d_density(ibin, sys_maps)
@@ -57,12 +62,14 @@ class TXLSSweights(TXMapCorrelations):
 
 			#compute the weights
 			Fmap, coeff, coeff_cov = self.compute_weights(density_corrs, sys_maps)
+			Fmap_list.append(Fmap)
 
 			#make summary stats and plots
 			for imap in range(len(sys_maps)):
 				density_corrs.plot1d_singlemap(f'./test/sys{imap}.png', imap )
 
-			#save weights and weight map
+		#save object weights and weight maps
+		self.save_weights(Fmap_list)
 
 
 	def read_healsparse(self, map_path, nside):
@@ -173,6 +180,42 @@ class TXLSSweights(TXMapCorrelations):
 
 		return density_corrs
 
+	def save_weights(self, Fmap_list):
+		"""
+		save the weights maps and the lens sample object weights
+		"""
+		import healpy as hp
+
+		#### save the weights maps
+		map_output_file = self.open_output("lss_weight_maps", wrapper=True)
+		map_output_file.file.create_group("maps")
+		map_output_file.file["maps"].attrs.update(self.config)
+
+		for ibin, Fmap in enumerate(Fmap_list):
+			pix = Fmap.valid_pixels
+			map_data = 1./Fmap[pix]
+			map_output_file.write_map(f"weight_map_bin_{ibin}", pix, map_data, self.pixel_metadata)
+
+
+		#### save the binned lens samples
+		#There is probably a better way to do this using teh batch system
+
+		binned_output = self.open_output("binned_lens_catalog_weighted", parallel=True)
+		with self.open_input("binned_lens_catalog") as binned_input:
+			binned_output.copy(binned_input["lens"],"lens")
+
+		for ibin in range(self.Ntomo):
+			#get weight per lens object
+			subgroup = binned_output[f"lens/bin_{ibin}/"]
+			ra = subgroup["ra"][:]
+			dec = subgroup["dec"][:]
+			pix = hp.ang2pix(self.pixel_metadata['nside'],ra,dec,lonlat=True,nest=True) #can switch to using txpipe tools for this?
+			obj_weight = 1./Fmap[pix]
+
+			subgroup["weight"][...] *= obj_weight
+
+		binned_output.close()
+
 
 class TXLSSweightsSimReg(TXLSSweights):
 	"""
@@ -182,13 +225,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 	parallel = True
 	inputs = [
 		("binned_lens_catalog", HDFFile),
-		("binned_random_catalog", HDFFile),
+		#("binned_random_catalog", HDFFile),
 		("mask", MapsFile),
 	]
 
 	outputs = [
 		("lss_weight_output", FileCollection), #output files and summary statistics will go here
-		("lss_weights", HDFFile), #the systematic weights to be applied to the lens galaxies
+		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
+		("binned_lens_catalog_weighted", HDFFile), #the lens catalog with weights added
 	]
 
 	config_options = {
