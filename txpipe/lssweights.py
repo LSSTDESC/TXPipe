@@ -24,12 +24,11 @@ class TXLSSweights(TXMapCorrelations):
 	parallel = True
 	inputs = [
 		("binned_lens_catalog", HDFFile),
-		#("binned_random_catalog", HDFFile),
 		("mask", MapsFile),
 	]
 
 	outputs = [
-		("lss_weight_output", FileCollection), #output files and summary statistics will go here
+		("lss_weight_summary", FileCollection), #output files and summary statistics will go here
 		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
 		("binned_lens_catalog_weighted", HDFFile), #the lens catalog with weights added
 	]
@@ -65,8 +64,7 @@ class TXLSSweights(TXMapCorrelations):
 			Fmap_list.append(Fmap)
 
 			#make summary stats and plots
-			for imap in range(len(sys_maps)):
-				density_corrs.plot1d_singlemap(f'./test/sys{imap}.png', imap )
+			self.summarize(density_corrs)
 
 		#save object weights and weight maps
 		self.save_weights(Fmap_list)
@@ -216,6 +214,18 @@ class TXLSSweights(TXMapCorrelations):
 
 		binned_output.close()
 
+	def summarize(self, density_correlation):
+		"""
+		make 1d density plots and other summary statistics and save
+		"""
+		import numpy as np
+		output_dir = self.open_output("lss_weight_summary", wrapper=True)
+
+		for imap in np.unique(density_correlation.map_index):
+			density_correlation.plot1d_singlemap(output_dir, imap )
+
+		#add other summary stats here (chi2 tables, best fit coefficients, etc)
+
 
 class TXLSSweightsSimReg(TXLSSweights):
 	"""
@@ -225,12 +235,11 @@ class TXLSSweightsSimReg(TXLSSweights):
 	parallel = True
 	inputs = [
 		("binned_lens_catalog", HDFFile),
-		#("binned_random_catalog", HDFFile),
 		("mask", MapsFile),
 	]
 
 	outputs = [
-		("lss_weight_output", FileCollection), #output files and summary statistics will go here
+		("lss_weight_summary", FileCollection), #output files and summary statistics will go here
 		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
 		("binned_lens_catalog_weighted", HDFFile), #the lens catalog with weights added
 	]

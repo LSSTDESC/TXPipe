@@ -29,7 +29,6 @@ class DensityCorrelation:
 
 		self.mapnames = None #list of map names to be indexed with map_index
 
-
 	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False): #add fracdet option here
 		"""
 		add a 1d density correlation
@@ -88,8 +87,13 @@ class DensityCorrelation:
 		select_map = (self.map_index == map_index)
 		return np.array([line[select_map] for line in self.covmat[select_map] ]) 
 
-	def plot1d_singlemap(self, filepath, map_index):
+	def plot1d_singlemap(self, filedir, map_index):
 		import matplotlib.pyplot as plt
+
+		if isinstance(filedir,str):
+			filepath = filedir +'/'+ f'sys1D_SP{map_index}.png'
+		else:
+			filepath = filedir.path_for_file(f"sys1D_SP{map_index}.png")
 
 		select_map = (self.map_index == map_index)
 		smean = self.smean[select_map]
@@ -117,6 +121,7 @@ class DensityCorrelation:
 		ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$")
 		ax.legend()
 		fig.savefig(filepath)
+		fig.clear()
 
 	def get_edges(self, map_index):
 		select_map = (self.map_index == map_index)
