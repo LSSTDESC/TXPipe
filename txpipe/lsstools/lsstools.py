@@ -126,6 +126,7 @@ class DensityCorrelation:
 		fig.clear()
 
 	def get_edges(self, map_index):
+		"""get the sys map bin edges for a given map"""
 		select_map = (self.map_index == map_index)
 		smin = self.smin[select_map]
 		smax = self.smax[select_map]
@@ -137,7 +138,8 @@ class DensityCorrelation:
 	def add_model(self, model):
 		self.ndens_model = model
 
-		#add chi2 calculation here too?
+		#should we add a chi2 calculation here too?
+		#and maybe an option for multiple models?
 
 	@staticmethod
 	def calc_chi2(y, err, yfit , v = False):

@@ -17,8 +17,11 @@ class TXLSSweights(TXMapCorrelations):
 
 	Not to be run directly
 
-	This class can be used as a base class for any systematic correction method 
-	using regression against survey property maps 
+	This is an abstract base class, which other subclasses
+    inherit from to use the same basic structure, which is:
+    	- load and process sytematic (survey property) maps
+    	- compute 1d density correlations+covariance
+    	- compute weights with a regression method
 	"""
 	name = "TXLSSweights"
 	parallel = True
@@ -85,7 +88,7 @@ class TXLSSweights(TXMapCorrelations):
 		"""
 		By default prepare sysmaps will just load and mask the maps
 
-		Classes for the differnet methods can modify this behaviour 
+		subclasses for differnet methods can modify this behaviour 
 		(e.g. adding a normalization of the maps)
 		"""
 		sys_maps, sys_names = self.load_and_mask_sysmaps()
@@ -116,8 +119,6 @@ class TXLSSweights(TXMapCorrelations):
 				nest=False, sentinel=0)
 			nside = map_file.read_map_info("mask")["nside"]
 
-		#maskpix = np.where(mask!=hp.UNSEEN)[0]
-
 		sys_maps = []
 		sys_names = []
 		for i, map_path in enumerate(sys_files):
@@ -139,6 +140,24 @@ class TXLSSweights(TXMapCorrelations):
 		return sys_maps, sys_names
 
 	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
+		"""
+		compute the 1d density correlations for a single tomographic lens bin
+
+		Params
+		------
+		tomobin: Integer
+			index for the tomographic lens bin 
+		sys_maps: list of Healsparse objects
+			list of systematic maps
+		sys_names: list of strings, optional
+			list of systematic map labels (for labeling plots)
+
+	    Returns
+    	-------
+    	density_corrs: lsstools.DensityCorrelation 
+    		DensityCorrelation instance containing the number 
+    		counts/density vs sysmap for all sysmaps
+		"""
 		import scipy.stats
 		import healpy as hp
 		import numpy as np 
@@ -158,14 +177,15 @@ class TXLSSweights(TXMapCorrelations):
 			ra = f[f"lens/bin_{tomobin}/ra"][:]
 			dec = f[f"lens/bin_{tomobin}/dec"][:]
 			input_weight = f[f"lens/bin_{tomobin}/weight"][:]
+
 			assert (input_weight==1.).all() # For now lets assume the input weights have to be 1 
 											# (we could drop this condition 
 											# If we ever want to input a weighted catalog)
 
+		#pixel ID for each lens galaxy
 		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
 
 		density_corrs = lsstools.DensityCorrelation() #keeps track of the 1d plots
-
 		for imap, sys_map in enumerate(sys_maps):
 			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
 			sys_obj = sys_map[obj_pix] #SP value for each object in catalog
@@ -176,7 +196,6 @@ class TXLSSweights(TXMapCorrelations):
 
 			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, sys_name=sys_name)
 
-
 		f = time.time()
 		print("calc_1d_density took {0}s".format(f-s))
 
@@ -184,7 +203,14 @@ class TXLSSweights(TXMapCorrelations):
 
 	def save_weights(self, Fmap_list):
 		"""
-		save the weights maps and the lens sample object weights
+		save the weights maps and galaxy weights
+
+		Params
+		------
+		Fmap_list: list of Healsparse maps
+			list of the F(s) maps. one for each tomo bin
+			F(s) = 1/weight
+
 		"""
 		import healpy as hp
 
@@ -200,8 +226,7 @@ class TXLSSweights(TXMapCorrelations):
 
 
 		#### save the binned lens samples
-		#There is probably a better way to do this using teh batch system
-
+		#There is probably a better way to do this using the batch writer 
 		binned_output = self.open_output("binned_lens_catalog_weighted", parallel=True)
 		with self.open_input("binned_lens_catalog") as binned_input:
 			binned_output.copy(binned_input["lens"],"lens")
@@ -221,6 +246,10 @@ class TXLSSweights(TXMapCorrelations):
 	def summarize(self, density_correlation):
 		"""
 		make 1d density plots and other summary statistics and save
+		
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation 
 		"""
 		import numpy as np
 		output_dir = self.open_output("lss_weight_summary", wrapper=True)
@@ -234,6 +263,12 @@ class TXLSSweights(TXMapCorrelations):
 class TXLSSweightsSimReg(TXLSSweights):
 	"""
 	Class compute LSS systematic weights using simultanious linear regression
+
+	Model: 		Linear 
+	Covarinace: Shot noise (for now), no correlation between 1d correlations
+	Fit: 		Simultaniously fits all sysmaps. By calculating a total  weight map 
+				and calculating Ndens vs sysmap directly
+
 	"""
 	name = "TXLSSweightsSimReg"
 	parallel = True
@@ -295,10 +330,35 @@ class TXLSSweightsSimReg(TXLSSweights):
 		return density_correlation.covmat
 
 	def compute_weights(self, density_correlation, sys_maps ):
+		"""
+		least square fit to a simple linear model
+	
+		The function being optimized is a sum of the F(s) maps for each sys map
+		
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation
+		sys_maps: list of Healsparse maps
+
+		Returns
+		------
+		Fmap: Healsparse map
+			Map of the fitted function F(s) 
+			where F(s) = 1/weight
+		coeff: 1D array
+			best fit parameters
+			coeff=[beta, alpha1, alpha2, etc]
+		coeff_cov: 2D array
+			covariance matrix of coeff from fit
+
+		"""
 		import scipy.optimize
 
-		#add option here to select only the significant trends
+		#we should add an option here to select only the significant trends
 
+		#The linear fit model to be fit 
+		#x is a dummy parameter that isn't actually used in the fit
+		#There is probably a better way to do this...
 		def linear_model_(x,beta,*alpha):
 			F, Fdc = linear_model(x,beta,*alpha,
 				density_correlation=density_correlation, 
@@ -310,15 +370,17 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		coeff, coeff_cov = scipy.optimize.curve_fit(
 		    linear_model_,
-		    density_correlation.smin, #x is a dummy parameter for this function, this is ugly
+		    density_correlation.smin, #x is a dummy parameter for this function
 		    density_correlation.ndens,
 		    p0=p0,
 		    sigma=density_correlation.covmat,
 		    absolute_sigma=True,
 		    )
 
+		#add the best fit model to this DensityCorrelation instance
 		density_correlation.add_model(linear_model_(density_correlation.smin,*coeff))
 
+		#best fit map
 		Fmap, _ = linear_model(density_correlation.smin,*coeff,
 				density_correlation=density_correlation, 
 				sys_maps=sys_maps)
