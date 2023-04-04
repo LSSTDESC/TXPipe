@@ -54,7 +54,7 @@ class TXLSSweights(TXMapCorrelations):
 		for ibin in range(self.Ntomo):
 
 			#compute density vs SP map data vector
-			density_corrs = self.calc_1d_density(ibin, sys_maps)
+			density_corrs = self.calc_1d_density(ibin, sys_maps, sys_names=sys_names)
 
 			#compute covariance of data vector
 			covmat = self.calc_covariance(density_corrs) #will need to change the argument to this
@@ -127,6 +127,7 @@ class TXLSSweights(TXMapCorrelations):
 
 			# get actual data for this map
 			sys_map = self.read_healsparse(map_path, nside)
+
 			sys_map.apply_mask(mask, mask_bits=1)
 
 			#apply mask
@@ -137,7 +138,7 @@ class TXLSSweights(TXMapCorrelations):
 
 		return sys_maps, sys_names
 
-	def calc_1d_density(self, tomobin, sys_maps):
+	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
 		import scipy.stats
 		import healpy as hp
 		import numpy as np 
@@ -171,7 +172,10 @@ class TXLSSweights(TXMapCorrelations):
 
 			edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
 
-			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj)
+			sys_name = None if sys_names is None else sys_names[imap]
+
+			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, sys_name=sys_name)
+
 
 		f = time.time()
 		print("calc_1d_density took {0}s".format(f-s))

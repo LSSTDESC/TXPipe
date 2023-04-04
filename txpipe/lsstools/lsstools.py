@@ -27,9 +27,9 @@ class DensityCorrelation:
 
 		self.ndens_model = None
 
-		self.mapnames = None #list of map names to be indexed with map_index
+		self.mapnames = {} #dict of map names to be indexed with map_index
 
-	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False): #add fracdet option here
+	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, sys_name=None ): #add fracdet option here
 		"""
 		add a 1d density correlation
 
@@ -47,6 +47,8 @@ class DensityCorrelation:
 			if True  will assume data is the map pixel values
 			if False will assume data is the sys value evaluate at each object location
 		"""
+		if sys_name is not None:
+			self.mapnames[map_index] = sys_name
 
 		#number counts
 		if map_input:
@@ -113,10 +115,10 @@ class DensityCorrelation:
 			ndens_model = self.ndens_model[select_map]
 			ax.plot(smean, ndens_model,'-')
 
-		if self.mapnames is None:
-			xlabel=f'SP {map_index}'
-		else:
+		if map_index in self.mapnames.keys():
 			xlabel=self.mapnames[map_index]
+		else:
+			xlabel=f'SP {map_index}'
 		ax.set_xlabel(xlabel)
 		ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$")
 		ax.legend()
