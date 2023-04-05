@@ -85,6 +85,7 @@ class TXTwoPointFourier(PipelineStage):
         "true_shear": False,
         "analytic_noise": False,
         "gaussian_sims_factor": [1.],
+        "b0": 1.0,
     }
 
     def run(self):
@@ -112,13 +113,17 @@ class TXTwoPointFourier(PipelineStage):
         # Load the n(z) values, which are both saved in the output
         # file alongside the spectra, and then used to calcualate the
         # fiducial theory C_ell, which is used in the deprojection calculation
-        tracers = self.load_tracers(nbin_source, nbin_lens)
-        theory_cl = theory_3x2pt(
-            self.get_input("fiducial_cosmology"),
-            tracers,
-            nbin_source,
-            nbin_lens,
-            fourier=True,
+        tracer_sacc = self.load_tracers(nbin_source, nbin_lens)
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+
+        theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
+        theory_sacc = theory_3x2pt(cosmo,
+                                   tracer_sacc,
+                                   bias=self.config["b0"],
+                                   smooth=True,
+                                   ell_values=theory_ell
         )
 
         # Get the complete list of calculations to be done,
@@ -157,7 +162,7 @@ class TXTwoPointFourier(PipelineStage):
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
             self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_cl, f_sky
+                pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky
             )
 
         if self.rank == 0:
@@ -167,7 +172,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Write the collect results out to HDF5.
         if self.rank == 0:
-            self.save_power_spectra(tracers, nbin_source, nbin_lens)
+            self.save_power_spectra(tracer_sacc, nbin_source, nbin_lens)
             print("Saved power spectra")
 
     def load_maps(self):
@@ -532,6 +537,7 @@ class TXTwoPointFourier(PipelineStage):
         )
         sys.stdout.flush()
 
+        # TODO Get cl_guess from cl_theory
         cl_guess = None
 
         if k == SHEAR_SHEAR:
@@ -632,9 +638,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
-            # this is shape (n_ell, lmax)
             win = bandpowers[index, :, index, :]
-            #["corr_type", "l", "value", "noise", "noise_coupled", "win", "i", "j"],
             self.results.append(
                 Measurement(
                     name,
@@ -781,24 +785,26 @@ class TXTwoPointFourier(PipelineStage):
         f_lens = self.open_input("lens_photoz_stack")
 
         tracers = {}
+        sacc_data = sacc.Sacc()
 
         for i in range(nbin_source):
             name = f"source_{i}"
             z = f_shear["n_of_z/source/z"][:]
             Nz = f_shear[f"n_of_z/source/bin_{i}"][:]
-            T = sacc.BaseTracer.make("NZ", name, z, Nz)
-            tracers[name] = T
+            sacc_data.add_tracer("NZ", name, z, Nz)
 
         for i in range(nbin_lens):
             name = f"lens_{i}"
             z = f_lens["n_of_z/lens/z"][:]
             Nz = f_lens[f"n_of_z/lens/bin_{i}"][:]
-            T = sacc.BaseTracer.make("NZ", name, z, Nz)
-            tracers[name] = T
+            sacc_data.add_tracer("NZ", name, z, Nz)
 
-        return tracers
+        f_shear.close()
+        f_lens.close()
 
-    def save_power_spectra(self, tracers, nbin_source, nbin_lens):
+        return sacc_data
+
+    def save_power_spectra(self, tracer_sacc, nbin_source, nbin_lens):
         import sacc
         from sacc.windows import BandpowerWindow
 
@@ -810,10 +816,7 @@ class TXTwoPointFourier(PipelineStage):
         CdB = sacc.standard_types.galaxy_shearDensity_cl_b
         Cdd = sacc.standard_types.galaxy_density_cl
 
-        S = sacc.Sacc()
-
-        for tracer in tracers.values():
-            S.add_tracer_object(tracer)
+        S = tracer_sacc.copy()
 
         # We have saved the results in a big list.  Each entry contains a single
         # bin pair and spectrum type, but many data points at different angles.

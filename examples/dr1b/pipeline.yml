@@ -33,7 +33,7 @@ launcher:
 site:
 ### batch
 #     name: cori-batch
-#     image: joezuntz/txpipe
+#     image: ghcr.io/lsstdesc/txpipe
 #     # These are the defaults:
 #     mpi_command: srun -un
 #     cpu_type: haswell
@@ -44,7 +44,7 @@ site:
 #     setup: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/setup-cori
 ### interactive
     name: cori-interactive
-    image: joezuntz/txpipe
+    image: ghcr.io/lsstdesc/txpipe
     # Number of jobs to run at once.  Default as shown.
     max_threads: ${SLURM_JOB_NUM_NODES}
 

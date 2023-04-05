@@ -4,7 +4,7 @@ launcher:
 
 site:
     name: cori-interactive
-    image: joezuntz/txpipe
+    image: ghcr.io/lsstdesc/txpipe
 
 modules: txpipe
 

@@ -39,6 +39,7 @@ class TXTwoPoint(PipelineStage):
         ("binned_shear_catalog", ShearCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog_sub", HDFFile),
         ("shear_photoz_stack", HDFFile),
         ("lens_photoz_stack", HDFFile),
         ("patch_centers", TextFile),
@@ -73,6 +74,7 @@ class TXTwoPoint(PipelineStage):
         "share_patch_files": False,
         "metric": "Euclidean",
         "gaussian_sims_factor": [1.], 
+        "use_subsampled_randoms": True, #use subsampled randoms file for RR
     }
 
     def run(self):
@@ -582,6 +584,12 @@ class TXTwoPoint(PipelineStage):
                 self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
+
         meta["npatch_shear"] = npatch_shear
         meta["npatch_pos"] = npatch_pos
         meta["npatch_ran"] = npatch_ran
@@ -703,6 +711,25 @@ class TXTwoPoint(PipelineStage):
 
         return rancat
 
+    def get_subsampled_random_catalog(self, i):
+        import treecorr
+
+        if not self.config["use_randoms"]:
+            return None
+
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_catalog_sub"),
+            ext=f"/randoms/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_random_catalog_sub", i),
+        )
+
+        return rancat
+
     def touch_patches(self, cat):
         # If any patches were empty for this cat
         # run get_patches on rank 0 and bcast
@@ -819,6 +846,19 @@ class TXTwoPoint(PipelineStage):
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
+        if self.config['use_subsampled_randoms']:
+            rancat_sub_i = self.get_subsampled_random_catalog(i)
+            rancat_sub_i = self.touch_patches(rancat_sub_i)
+            n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
+
+            if i == j:
+                rancat_sub_j = rancat_sub_i
+                n_rand_sub_j = n_rand_sub_i
+            else:
+                rancat_sub_j = self.get_subsampled_random_catalog(j)
+                rancat_sub_j = self.touch_patches(rancat_sub_j)
+                n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
+
 
         if self.rank == 0:
             print(
@@ -842,9 +882,13 @@ class TXTwoPoint(PipelineStage):
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
+            n_rand_sub_j = None
 
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        if self.config["use_subsampled_randoms"]:
+            rr.process(rancat_sub_i, rancat_sub_j, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if i == j:
             rn = None
@@ -1030,239 +1074,6 @@ class TXTwoPointPixel(TXTwoPoint):
         kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         return kk
-
-class TXTwoPointRRsub(TXTwoPoint):
-    """
-    Sub class of the standard TXTwoPoint stage that allows use of a subsampled randoms catalog for the RR term
-    Speeds up the clustering for large random catalogs
-    """
-    name = "TXTwoPointRRsub"
-    inputs = [
-        ("binned_shear_catalog", ShearCatalog),
-        ("binned_lens_catalog", HDFFile),
-        ("binned_random_catalog", HDFFile),
-        ("shear_photoz_stack", HDFFile),
-        ("lens_photoz_stack", HDFFile),
-        ("patch_centers", TextFile),
-        ("tracer_metadata", HDFFile),
-        ("binned_random_catalog_sub", HDFFile),
-    ]
-    outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
-    # Add values to the config file that are not previously defined
-    config_options = {
-        # TODO: Allow more fine-grained selection of 2pt subsets to compute
-        "calcs": [0, 1, 2],
-        "min_sep": 0.5,
-        "max_sep": 300.0,
-        "nbins": 9,
-        "bin_slop": 0.0,
-        "sep_units": "arcmin",
-        "flip_g1": False,
-        "flip_g2": True,
-        "cores_per_task": 20,
-        "verbose": 1,
-        "source_bins": [-1],
-        "lens_bins": [-1],
-        "reduce_randoms_size": 1.0,
-        "do_shear_shear": True,
-        "do_shear_pos": True,
-        "do_pos_pos": True,
-        "auto_only": False,
-        "var_method": "jackknife",
-        "use_randoms": True,
-        "low_mem": False,
-        "patch_dir": "./cache/patches",
-        "chunk_rows": 100_000,
-        "share_patch_files": False,
-        "metric": "Euclidean",
-        "gaussian_sims_factor": [1.], 
-        "use_subsampled_randoms": False, #use subsampled randoms file for RR
-    }
-
-    def prepare_patches(self, calcs, meta):
-        """
-        For each catalog to be generated, have one process load the catalog
-        and write its patch files out to disc.  These are then re-used later
-        by all the different processes.
-
-        Parameters
-        ----------
-
-        calcs: list
-            A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
-            or bin labels and bin_type is one of the constants SHEAR_SHEAR,
-            SHEAR_POS, or POS_POS.
-
-        meta: dict
-            A dict to which the number of patches (or zero, if no patches) will
-            be added for each catalog type, with keys "npatch_shear", "npatch_pos",
-            and "npatch_ran".
-        """
-        # Make the full list of catalogs to run
-        cats = set()
-
-        # Use shear-shear and pos-pos only here as they represent
-        # catalogs not pairs.
-        for i, j, k in calcs:
-            if k == SHEAR_SHEAR:
-                cats.add((i, SHEAR_SHEAR))
-                cats.add((j, SHEAR_SHEAR))
-            elif k == SHEAR_POS:
-                cats.add((i, SHEAR_SHEAR))
-                cats.add((j, POS_POS))
-            elif k == POS_POS:
-                cats.add((i, POS_POS))
-                cats.add((j, POS_POS))
-        cats = list(cats)
-        cats.sort(key=str)
-
-        chunk_rows = self.config["chunk_rows"]
-        npatch_shear = 0
-        npatch_pos = 0
-        npatch_ran = 0
-
-        self.empty_patch_exists = {}
-
-        # Parallelization is now done at the patch level
-        for (h, k) in cats:
-            ktxt = "shear" if k == SHEAR_SHEAR else "position"
-            print(f"Rank {self.rank} making patches for {ktxt} catalog bin {h}")
-
-            # For shear we just have the one catalog. For position we may
-            # have randoms also. We explicitly delete catalogs after loading
-            # them to ensure we don't have two in memory at once.
-            if k == SHEAR_SHEAR:
-                cat = self.get_shear_catalog(h)
-                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
-                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
-                del cat
-            else:
-                cat = self.get_lens_catalog(h)
-                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
-                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
-                del cat
-
-                ran_cat = self.get_random_catalog(h)
-                # support use_randoms = False
-                if ran_cat is None:
-                    continue
-                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
-                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
-                del ran_cat
-
-                if self.config["use_subsampled_randoms"]:
-                    ran_cat = self.get_subsampled_random_catalog(h)
-                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
-                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
-                    del ran_cat
-
-        meta["npatch_shear"] = npatch_shear
-        meta["npatch_pos"] = npatch_pos
-        meta["npatch_ran"] = npatch_ran
-        # stop other processes progressing to the rest of the code and
-        # trying to load things we have not written yet
-        if self.comm is not None:
-            self.comm.Barrier()
-
-    def calculate_pos_pos(self, i, j):
-        import treecorr
-
-        cat_i = self.get_lens_catalog(i)
-        cat_i = self.touch_patches(cat_i)
-        rancat_i = self.get_random_catalog(i)
-        rancat_i = self.touch_patches(rancat_i)
-        n_i = cat_i.nobj
-        n_rand_i = rancat_i.nobj if rancat_i is not None else 0
-
-        if i == j:
-            cat_j = None
-            rancat_j = rancat_i
-            n_j = n_i
-            n_rand_j = n_rand_i
-        else:
-            cat_j = self.get_lens_catalog(j)
-            cat_j = self.touch_patches(cat_j)
-            rancat_j = self.get_random_catalog(j)
-            rancat_j = self.touch_patches(rancat_j)
-            n_j = cat_j.nobj
-            n_rand_j = rancat_j.nobj
-
-        if self.config['use_subsampled_randoms']:
-            rancat_sub_i = self.get_subsampled_random_catalog(i)
-            rancat_sub_i = self.touch_patches(rancat_sub_i)
-            n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
-
-            if i == j:
-                rancat_sub_j = rancat_sub_i
-                n_rand_sub_j = n_rand_sub_i
-            else:
-                rancat_sub_j = self.get_subsampled_random_catalog(j)
-                rancat_sub_j = self.touch_patches(rancat_sub_j)
-                n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
-
-
-        if self.rank == 0:
-            print(
-                f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms"
-            )
-
-        if n_i == 0 or n_j == 0:
-            if self.rank == 0:
-                print("Empty catalog: returning None")
-            return None
-
-        t1 = perf_counter()
-
-        nn = treecorr.NNCorrelation(self.config)
-        nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
-
-        nr = treecorr.NNCorrelation(self.config)
-        nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
-
-        # The next calculation is faster if we explicitly tell TreeCorr
-        # that its two catalogs here are the same one.
-        if i == j:
-            rancat_j = None
-            n_rand_sub_j = None
-
-        rr = treecorr.NNCorrelation(self.config)
-        if self.config["use_subsampled_randoms"]:
-            rr.process(rancat_sub_i, rancat_sub_j, comm=self.comm, low_mem=self.config["low_mem"])
-        else:
-            rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
-
-        if i == j:
-            rn = None
-        else:
-            rn = treecorr.NNCorrelation(self.config)
-            rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
-
-        t2 = perf_counter()
-        nn.calculateXi(rr, dr=nr, rd=rn)
-        if self.rank == 0:
-            print(f"Processing took {t2 - t1:.1f} seconds")
-
-        return nn
-
-    def get_subsampled_random_catalog(self, i):
-        import treecorr
-
-        if not self.config["use_randoms"]:
-            return None
-
-        rancat = treecorr.Catalog(
-            self.get_input("binned_random_catalog_sub"),
-            ext=f"/randoms/bin_{i}",
-            ra_col="ra",
-            dec_col="dec",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_random_catalog_sub", i),
-        )
-
-        return rancat
-
 
 
 if __name__ == "__main__":
