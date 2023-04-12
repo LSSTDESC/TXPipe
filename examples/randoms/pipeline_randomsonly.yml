@@ -38,6 +38,7 @@ config: examples/randoms/config_randomsonly.yml
 inputs:
     # See README for paths to download these files
 #    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
+    mask: data/example/outputs_metadetect/mask.hdf5
     aux_lens_maps: data/example/outputs_metadetect/aux_lens_maps.hdf5
     lens_photoz_stack: data/example/outputs_metadetect/lens_photoz_stack.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
@@ -57,4 +58,4 @@ resume: True
 # where to put output logs for individual stages
 log_dir: data/example/logs_randoms
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/example/log_randoms.txt
