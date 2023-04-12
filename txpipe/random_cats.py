@@ -66,9 +66,8 @@ class TXRandomCat(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
 
-
         # Cut down to pixels that have any objects in
-        pixel = np.where(depth > 0)[0]
+        pixel = np.where(mask > 0)[0]
         depth = depth[pixel]
         frac = mask[pixel]
         npix = depth.size
