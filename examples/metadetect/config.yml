@@ -282,7 +282,8 @@ TXTwoPointFourier:
     bandwidth: 20
     cache_dir: ./cache/workspaces
 
-TXSimpleMask:
+TXSimpleMaskFrac:
+    supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
     depth_cut : 23.5
     bright_object_max: 10.0
 
