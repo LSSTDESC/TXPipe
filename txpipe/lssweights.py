@@ -141,7 +141,7 @@ class TXLSSweights(TXMapCorrelations):
 
 	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
 		"""
-		compute the 1d density correlations for a single tomographic lens bin
+		compute the binned 1d density correlations for a single tomographic lens bin
 
 		Params
 		------
@@ -171,6 +171,8 @@ class TXLSSweights(TXMapCorrelations):
 
 		with self.open_input("mask", wrapper=True) as map_file:
 			nside = map_file.read_map_info("mask")["nside"]
+			nest = map_file.read_map_info("mask")["nest"]
+			mask = map_file.read_map("mask")
 
 		#load the ra and dec of this lens bins
 		with self.open_input("binned_lens_catalog", wrapper=False) as f:
@@ -189,12 +191,17 @@ class TXLSSweights(TXMapCorrelations):
 		for imap, sys_map in enumerate(sys_maps):
 			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
 			sys_obj = sys_map[obj_pix] #SP value for each object in catalog
+			
+			if nest: #ideally we dont want if statements like this....
+				frac = mask[sys_map.valid_pixels]
+			else:
+				frac = mask[hp.nest2ring(nside, sys_map.valid_pixels)]
 
 			edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
 
 			sys_name = None if sys_names is None else sys_names[imap]
 
-			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, sys_name=sys_name)
+			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, frac=frac, sys_name=sys_name)
 
 		f = time.time()
 		print("calc_1d_density took {0}s".format(f-s))

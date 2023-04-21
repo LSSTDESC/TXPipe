@@ -29,7 +29,7 @@ class DensityCorrelation:
 
 		self.mapnames = {} #dict of map names to be indexed with map_index
 
-	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, sys_name=None ): #add fracdet option here
+	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, sys_name=None ): #add fracdet option here
 		"""
 		add a 1d density correlation
 
@@ -46,9 +46,16 @@ class DensityCorrelation:
 		map_input: bool
 			if True  will assume data is the map pixel values
 			if False will assume data is the sys value evaluate at each object location
+		frac: 1D array or None
+			fractional pixel coverage or each pixel in sys_vals
+		sys_name: str
+			a label for this map
 		"""
 		if sys_name is not None:
 			self.mapnames[map_index] = sys_name
+
+		if frac is None:
+			frac = np.ones(len(sys_vals))
 
 		#number counts
 		if map_input:
@@ -56,11 +63,11 @@ class DensityCorrelation:
 		else:
 			nobj_sys,_ = np.histogram(data,bins=edges)
 
-		#pixel counts
-		npix_sys,_ = np.histogram(sys_vals,bins=edges) #weight this by fracdet when implemented
+		#pixel counts (weighted by frac coverage)
+		npix_sys,_ = np.histogram(sys_vals,bins=edges,weights=frac)
 
-		#sumof sys value in sys bin (to make mean)
-		sumsys_sys,_ = np.histogram(sys_vals,bins=edges,weights=sys_vals) #make weighted mean when fracdet implemented
+		#sumof sys value * frac in sys bin (to make mean)
+		sumsys_sys,_ = np.histogram(sys_vals,bins=edges,weights=sys_vals*frac)
 
 		#do we want to include any excluded outliers in this normalization?
 		norm = np.ones(len(edges)-1)*1./(np.sum(nobj_sys)/np.sum(npix_sys))
