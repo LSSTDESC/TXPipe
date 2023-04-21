@@ -50,6 +50,9 @@ class TXLSSweights(TXMapCorrelations):
 		with self.open_input("binned_lens_catalog", wrapper=False) as f:
 			self.Ntomo = f['lens'].attrs["nbin_lens"] 
 
+		#output directory for the plots and summary stats
+		output_dir = self.open_output("lss_weight_summary", wrapper=True)
+
 		#load the SP maps, apply the mask, normalize the maps (as needed by the method)
 		sys_maps, sys_names, sys_meta = self.prepare_sys_maps()
 
@@ -67,7 +70,7 @@ class TXLSSweights(TXMapCorrelations):
 			Fmap_list.append(Fmap)
 
 			#make summary stats and plots
-			self.summarize(density_corrs)
+			self.summarize(density_corrs, output_dir)
 
 		#save object weights and weight maps
 		self.save_weights(Fmap_list)
@@ -187,7 +190,7 @@ class TXLSSweights(TXMapCorrelations):
 		#pixel ID for each lens galaxy
 		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
 
-		density_corrs = lsstools.DensityCorrelation() #keeps track of the 1d plots
+		density_corrs = lsstools.DensityCorrelation(tomobin=tomobin) #keeps track of the 1d plots
 		for imap, sys_map in enumerate(sys_maps):
 			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
 			sys_obj = sys_map[obj_pix] #SP value for each object in catalog
@@ -250,7 +253,7 @@ class TXLSSweights(TXMapCorrelations):
 
 		binned_output.close()
 
-	def summarize(self, density_correlation):
+	def summarize(self, density_correlation, output_dir):
 		"""
 		make 1d density plots and other summary statistics and save
 		
@@ -259,10 +262,12 @@ class TXLSSweights(TXMapCorrelations):
 		density_correlation: lsstools.DensityCorrelation 
 		"""
 		import numpy as np
-		output_dir = self.open_output("lss_weight_summary", wrapper=True)
+		ibin = density_correlation.tomobin
 
 		for imap in np.unique(density_correlation.map_index):
-			density_correlation.plot1d_singlemap(output_dir, imap )
+			filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
+			density_correlation.plot1d_singlemap(filepath, imap )
+
 
 		#add other summary stats here (chi2 tables, best fit coefficients, etc)
 
@@ -294,6 +299,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
 		"nbin": 20,
 		"outlier_fraction": 0.05,
+		"pvalue_threshold":0.05, #max p-value for maps to be corrected
 	}
 
 	def prepare_sys_maps(self):
@@ -336,6 +342,28 @@ class TXLSSweightsSimReg(TXLSSweights):
 		density_correlation.add_shot_noise_covariance()
 		return density_correlation.covmat
 
+	def select_significant_maps(self, density_correlation):
+		"""
+		returns the map indices that have small null p-values (large chi2)
+		"""
+		import scipy.stats
+		import numpy as np 
+
+		chi2_null = density_correlation.chi2['null']
+		nbins_per_map = self.config["nbin"]
+		map_index_array = np.array(list(chi2_null.keys()))
+		chi2_array = np.array(list(chi2_null.values()))
+
+		#pvalues of the null signal for each map
+		p = 1.-scipy.stats.chi2(nbins_per_map).cdf(chi2_array)
+
+		sig_maps = map_index_array[p < self.config["pvalue_threshold"]]
+
+		print(chi2_array)
+		print(p)
+
+		return sig_maps
+
 	def compute_weights(self, density_correlation, sys_maps ):
 		"""
 		least square fit to a simple linear model
@@ -360,8 +388,15 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		"""
 		import scipy.optimize
+		import numpy as np
+
+		#first add the null signal as the first model
+		null_model = np.ones(len(density_correlation.ndens))
+		density_correlation.add_model(null_model, 'null')
 
 		#we should add an option here to select only the significant trends
+		#currently doing nothing
+		sig_maps = self.select_significant_maps(density_correlation)
 
 		#The linear fit model to be fit 
 		#x is a dummy parameter that isn't actually used in the fit
@@ -385,7 +420,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		    )
 
 		#add the best fit model to this DensityCorrelation instance
-		density_correlation.add_model(linear_model_(density_correlation.smin,*coeff))
+		density_correlation.add_model(linear_model_(density_correlation.smin,*coeff), 'linear')
 
 		#best fit map
 		Fmap, _ = linear_model(density_correlation.smin,*coeff,

@@ -6,12 +6,13 @@ import numpy as np
 
 class DensityCorrelation:
 
-	def __init__(self): #add fracdet option here
+	def __init__(self,tomobin=None): #add fracdet option here
 		"""
 		Class to compute and keep track of keeps track of 
 		1d density correlations for a given galaxy sample/tomographic bin
 		"""
 
+		self.tomobin = tomobin
 		self.map_index = np.array([])
 		self.smin =  np.array([])
 		self.smax =  np.array([])
@@ -25,7 +26,8 @@ class DensityCorrelation:
 		self.ndens_err = None
 		self.covmat = None
 
-		self.ndens_model = None
+		self.ndens_models = {}
+		self.chi2 = {}
 
 		self.mapnames = {} #dict of map names to be indexed with map_index
 
@@ -96,13 +98,8 @@ class DensityCorrelation:
 		select_map = (self.map_index == map_index)
 		return np.array([line[select_map] for line in self.covmat[select_map] ]) 
 
-	def plot1d_singlemap(self, filedir, map_index):
+	def plot1d_singlemap(self, filepath, map_index):
 		import matplotlib.pyplot as plt
-
-		if isinstance(filedir,str):
-			filepath = filedir +'/'+ f'sys1D_SP{map_index}.png'
-		else:
-			filepath = filedir.path_for_file(f"sys1D_SP{map_index}.png")
 
 		select_map = (self.map_index == map_index)
 		smean = self.smean[select_map]
@@ -114,13 +111,14 @@ class DensityCorrelation:
 			ax.plot(smean, ndens,'.')
 		else:
 			ndens_err = self.ndens_err[select_map]
-			covmat = self.get_covmat_singlemap(map_index)
-			chi2 = self.calc_chi2(ndens, covmat, np.ones(len(ndens)))
-			ax.errorbar(smean, ndens, ndens_err, fmt='.', label=r'$\chi^2_{\rm null}=$'+'{0}/{1}'.format(np.round(chi2,1), len(ndens)))
+			ax.errorbar(smean, ndens, ndens_err, fmt='.')
 
-		if self.ndens_model is not None:
-			ndens_model = self.ndens_model[select_map]
-			ax.plot(smean, ndens_model,'-')
+		for model_name in self.ndens_models:
+			ndens_model = self.ndens_models[model_name][select_map]
+			chi2 = self.chi2[model_name][map_index]
+			ndata = len(ndens)
+			legend_label = model_name+": "+r'$\chi^2=$'+'{0}/{1}'.format(np.round(chi2,1), ndata)
+			ax.plot(smean, ndens_model,'-',label=legend_label)
 
 		if map_index in self.mapnames.keys():
 			xlabel=self.mapnames[map_index]
@@ -142,11 +140,19 @@ class DensityCorrelation:
 		edges[-1] = smax[-1]
 		return edges 
 
-	def add_model(self, model):
-		self.ndens_model = model
+	def add_model(self, model, model_name):
+		self.ndens_models[model_name] = model
 
-		#should we add a chi2 calculation here too?
-		#and maybe an option for multiple models?
+		#if we have error bars, loop over survey property maps and compute the chi2 for each
+		if self.ndens_err is not None:
+			self.chi2[model_name] = {}
+			for map_index in self.mapnames:
+				select_map = (self.map_index == map_index)
+				ndens = self.ndens[select_map]
+				covmat = self.get_covmat_singlemap(map_index)
+				chi2_map = self.calc_chi2(ndens, covmat, model[select_map])
+				self.chi2[model_name][map_index] = chi2_map
+
 
 	@staticmethod
 	def calc_chi2(y, err, yfit , v = False):
