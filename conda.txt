@@ -22,8 +22,6 @@ pyccl
 sacc
 scikit-learn
 scipy
-tables-io
 tables-io-full
 threadpoolctl
-treecorr
 treecorr>=4.2.2
