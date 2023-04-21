@@ -24,13 +24,13 @@ fi
 
 if [ "$CHIPSET" = "aarch64" ]
 then
-    echo "Sorry - TXPipe does not yet install on non-x86 systems like M1 macs"
+    echo "Sorry - TXPipe does not yet auto-install on non-x86 systems like M1 macs. You can use the conda install though."
     exit 1
 fi
 
 if [ "$CHIPSET" = "arm64" ]
 then
-    echo "Sorry - TXPipe does not yet install on non-x86 systems like M1 macs"
+    echo "Sorry - TXPipe does not yet auto-install on non-x86 systems like M1 macs. You can use the conda install though."
     exit 1
 fi
 
