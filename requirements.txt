@@ -1,7 +1,6 @@
 # These can be installed by conda. They are included in conda.txt
 astropy
 camb
-ceci>=1.7
 cosmosis
 dask
 dm-tree
@@ -30,6 +29,7 @@ treecorr
 treecorr>=4.2.2
 
 # These are non-conda dependencies that must be done with pip
+ceci>=1.13
 git+https://github.com/jlvdb/hyperbolic
 git+https://github.com/joezuntz/dask-mpi
 git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs

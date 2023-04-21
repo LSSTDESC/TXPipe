@@ -1,7 +1,6 @@
 # Additional non-conda dependencies are listed in requirements.txt
 astropy
 camb
-ceci>=1.7
 cosmosis
 dask
 dm-tree
