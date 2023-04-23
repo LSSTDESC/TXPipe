@@ -123,8 +123,10 @@ TXTwoPointPlots: {}
 TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
-    T_min: 0.25
-    T_max: 0.65
+    psfT_min: 0.04
+    psfT_max: 0.36
+    gT_min: 0.04
+    gT_max: 4.0
     nbins: 20
 
 TXLensDiagnosticPlots: {}

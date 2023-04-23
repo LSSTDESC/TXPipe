@@ -51,10 +51,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "nbins": 20,
         "g_min":-0.03,
         "g_max": 0.05,
-        "psfT_min": 0.2,
-        "psfT_max": 0.6,
-        "gT_min": 0.2,
-        "gT_max": 2.0,
+        "psfT_min": 0.04,
+        "psfT_max": 0.36,
+        "gT_min": 0.04,
+        "gT_max": 4.0,
         "s2n_min": 10,
         "s2n_max": 300,
         "bands": "riz",
@@ -96,7 +96,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 f"{psf_prefix}g1",
                 f"{psf_prefix}g2",
                 f"{psf_prefix}T_mean",
-                f"{psf_prefix}T_sqrt",
                 "mcal_g1",
                 "mcal_g1_1p",
                 "mcal_g1_2p",
@@ -109,7 +108,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "mcal_g2_2m",
                 "mcal_s2n",
                 "mcal_T",
-                "mcal_T_sqrt",
                 "mcal_T_1p",
                 "mcal_T_2p",
                 "mcal_T_1m",
@@ -325,13 +323,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psfT_max = self.config["psfT_max"]
         
         c = self.open_input("shear_catalog")
-        psfT = pd.Series(np.array(c[f"shear/{psf_prefix}T_sqrt"]))
+        psfT = pd.Series(np.array(c[f"shear/{psf_prefix}T_mean"]))
         psfT = psfT.loc[psfT.between(psfT_min,psfT_max)]
         
         psf_T_edges = self.BinEdges(psfT,nbins)
         
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_sqrt",
+            f"{psf_prefix}T_mean",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,
