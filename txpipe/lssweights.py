@@ -66,7 +66,7 @@ class TXLSSweights(TXMapCorrelations):
 			covmat = self.calc_covariance(density_corrs) #will need to change the argument to this
 
 			#compute the weights
-			Fmap, coeff, coeff_cov = self.compute_weights(density_corrs, sys_maps)
+			Fmap, coeff_output = self.compute_weights(density_corrs, sys_maps)
 			Fmap_list.append(Fmap)
 
 			#make summary stats and plots
@@ -140,7 +140,7 @@ class TXLSSweights(TXMapCorrelations):
 		f = time.time()
 		print("load_and_mask_sp_maps took {0}s".format(f-s))
 
-		return sys_maps, sys_names
+		return np.array(sys_maps), np.array(sys_names)
 
 	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
 		"""
@@ -342,9 +342,10 @@ class TXLSSweightsSimReg(TXLSSweights):
 		density_correlation.add_shot_noise_covariance()
 		return density_correlation.covmat
 
-	def select_significant_maps(self, density_correlation):
+	def select_maps(self, density_correlation):
 		"""
-		returns the map indices that have small null p-values (large chi2)
+		Returns the map indices that have small null p-values (large chi2)
+		Threshold p-value set in config
 		"""
 		import scipy.stats
 		import numpy as np 
@@ -358,9 +359,6 @@ class TXLSSweightsSimReg(TXLSSweights):
 		p = 1.-scipy.stats.chi2(nbins_per_map).cdf(chi2_array)
 
 		sig_maps = map_index_array[p < self.config["pvalue_threshold"]]
-
-		print(chi2_array)
-		print(p)
 
 		return sig_maps
 
@@ -380,11 +378,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 		Fmap: Healsparse map
 			Map of the fitted function F(s) 
 			where F(s) = 1/weight
-		coeff: 1D array
-			best fit parameters
-			coeff=[beta, alpha1, alpha2, etc]
-		coeff_cov: 2D array
-			covariance matrix of coeff from fit
+		coeff_output: (sig_map_index, coeff, coeff_cov)
+			sig_map_index: 1D array
+				index of each map considered significant
+			coeff: 1D array
+				best fit parameters
+				coeff=[beta, alpha1, alpha2, etc]
+			coeff_cov: 2D array
+				covariance matrix of coeff from fit
 
 		"""
 		import scipy.optimize
@@ -394,9 +395,9 @@ class TXLSSweightsSimReg(TXLSSweights):
 		null_model = np.ones(len(density_correlation.ndens))
 		density_correlation.add_model(null_model, 'null')
 
-		#we should add an option here to select only the significant trends
-		#currently doing nothing
-		sig_maps = self.select_significant_maps(density_correlation)
+		#select only the significant trends
+		sig_map_index = self.select_maps(density_correlation)
+		sys_maps = sys_maps[sig_map_index]
 
 		#The linear fit model to be fit 
 		#x is a dummy parameter that isn't actually used in the fit
@@ -427,7 +428,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 				density_correlation=density_correlation, 
 				sys_maps=sys_maps)
 
-		return Fmap, coeff, coeff_cov
+		coeff_output = sig_map_index, coeff, coeff_cov
+		return Fmap, coeff_output
 		
 
 def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, returnF=False):
