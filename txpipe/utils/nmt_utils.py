@@ -3,7 +3,6 @@ import numpy as np
 import healpy
 import pathlib
 
-
 class MyNmtBinFlat(nmt.NmtBinFlat):
     def __init__(self, l0, lf):
         super().__init__(l0, lf)
@@ -85,14 +84,23 @@ class MyNmtBin(nmt.NmtBin):
 
 
 class WorkspaceCache:
-    def __init__(self, dirname):
+    def __init__(self, dirname, low_mem=False):
         self.path = pathlib.Path(dirname)
         self.path.mkdir(parents=True, exist_ok=True)
-        self._loaded = {}
+        self.keys = {}
+        self.low_mem = low_mem
+        self.workspaces = {}
 
-    def get(self, key):
-        if key in self._loaded:
-            return self._loaded[key]
+    def get(self, i, j, k, key=None):
+        workspace = self.workspaces.get((i, j, k))
+        if workspace is not None:
+            return workspace
+
+        if key is None:
+            try:
+                key = self.keys[i, j, k]
+            except KeyError:
+                raise KeyError("Tried to get workspace neither already cached nor with key given")
 
         p = self.get_path(key)
 
@@ -103,19 +111,25 @@ class WorkspaceCache:
         # it from file
         workspace = nmt.NmtWorkspace()
         workspace.read_from(str(p))
+        workspace.txpipe_key = key
 
-        self._loaded[key] = workspace
+        if not self.low_mem:
+            self.workspaces[i, j, k] = workspace
 
         return workspace
 
     def get_path(self, key):
         return self.path / f"workspace_{key}.dat"
 
-    def put(self, workspace):
+    def put(self, i, j, k, workspace):
         key = workspace.txpipe_key
+        self.keys[i, j, k]  = key
         p = self.get_path(key)
-        if p.exists():
-            return False
 
-        print(f"Saving workspace to {p}")
+        if not self.low_mem:
+            self.workspaces[i, j, k] = workspace
+
+        if p.exists():
+            return
+
         workspace.write_to(str(p))

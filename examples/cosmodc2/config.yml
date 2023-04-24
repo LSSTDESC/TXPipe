@@ -124,42 +124,49 @@ TXSourceDiagnosticPlots:
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+
+TXFourierTJPCovariance:
+    galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
+    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    IA: 0.
 
 TXRealGaussianCovariance:
     min_sep: 2.5
-    max_sep: 100.
-    nbins: 15
+    max_sep: 250.
+    nbins: 20
     use_true_shear: False
     nprocess: 4
     threads_per_process: 2
     nodes: 4
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
 
+TXTwoPointFourier:
+    chunk_rows: 100000
+    flip_g1: True
+    flip_g2: True
+    apodization_size: 0.0
+    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    true_shear: False
+    n_ell: 30
+    ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
+    nside: 2048
+    analytic_noise: True
+    
 TXTwoPoint:
-    bin_slop: 0.0
+    bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
     do_shear_shear: True
     do_shear_pos: True
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
-    max_sep: 100
-    nbins: 15
+    max_sep: 250
+    nbins: 20
     verbose: 0
     var_method: jackknife
 
-TXTwoPointFourier:
-    chunk_rows: 100000
-    flip_g1: True
-    flip_g2: True
-    apodization_size: 0.0
-    cache_dir: ./cache
-    true_shear: False
-    n_ell: 20
-    ell_max: 3000
-    nside: 2048
-    analytic_noise: True
-    
+   
 TXClusteringNoiseMaps:
     n_realization: 30
 

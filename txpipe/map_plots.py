@@ -20,7 +20,7 @@ class TXMapPlots(PipelineStage):
     """
 
     name = "TXMapPlots"
-
+    parallel = False
     inputs = [
         ("source_maps", MapsFile),
         ("lens_maps", MapsFile),

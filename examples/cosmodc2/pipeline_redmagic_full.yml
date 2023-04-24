@@ -4,13 +4,12 @@ launcher:
 
 site:
     name: cori-interactive
-    image: joezuntz/txpipe
+    image: ghcr.io/lsstdesc/txpipe
 
 modules: txpipe
 
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
     - submodules/FlexZPipe
 
 stages:
@@ -18,6 +17,8 @@ stages:
       nprocess: 1
       threads_per_process: 20
     - name: TXRandomCat
+      nodes: 4
+      nprocess: 64
     - name: TXIngestRedmagic
     - name: TXSourceSelectorMetadetect
       nprocess: 64
@@ -51,8 +52,8 @@ stages:
     - name: TXNullBlinding
     - name: TXTwoPoint
       threads_per_process: 32
-      nprocess: 4
-      nodes: 4
+      nprocess: 6
+      nodes: 6
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
@@ -67,17 +68,21 @@ stages:
       nodes: 2
       threads_per_process: 1
     - name: TXTwoPointFourier
-      nprocess: 2
-      nodes: 2
+      nprocess: 3
+      nodes: 3
       threads_per_process: 64
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 64
+    #- name: TXFourierGaussianCovariance
+    #  threads_per_process: 64
+    - name: TXFourierTJPCovariance
+      nodes: 4
+      nprocess: 4
+      threads_per_process: 32      
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
       threads_per_process: 32
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXTwoPointPlotsFourier 
 
-output_dir: data/cosmodc2/outputs_redmagic/2022/feb11/7sbins/
+output_dir: data/cosmodc2/outputs_redmagic/2022/june6/
 config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:
@@ -85,15 +90,15 @@ config: examples/cosmodc2/config.yml
 
 inputs:
     # See README for paths to download these files
-    lens_photometry_catalog:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
-    photoz_trained_model:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
+    lens_photometry_catalog:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    photoz_trained_model:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
-    calibration_table:  /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
-    redmagic_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
-    response_model: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
+    calibration_table:  /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
+    redmagic_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/redmagic/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
+    response_model: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/DESY1-R-model.hdf5 
 
 
 resume: True
-log_dir: data/cosmodc2/logs_redmagic
-pipeline_log: data/cosmodc2/log.txt
+log_dir: data/cosmodc2/logs_redmagic/june6/
+pipeline_log: data/cosmodc2/logs_redmagic/june6/log.txt
 

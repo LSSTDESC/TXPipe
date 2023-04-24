@@ -308,6 +308,7 @@ class TXUniformDepthMap(PipelineStage):
     make aux_lens_maps do, so may not always be useful.
     """
     name = "TXUniformDepthMap"
+    parallel = False
     # make a mask from the auxiliary maps
     inputs = [("mask", MapsFile)]
     outputs = [("aux_lens_maps", MapsFile)]

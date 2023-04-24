@@ -17,6 +17,7 @@ class TXMapCorrelations(PipelineStage):
     is a directory.
     """
     name = "TXMapCorrelations"
+    parallel = False
     inputs = [
         ("lens_maps", MapsFile),
         ("convergence_maps", MapsFile),

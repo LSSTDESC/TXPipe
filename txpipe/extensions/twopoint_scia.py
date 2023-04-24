@@ -58,27 +58,29 @@ class TXSelfCalibrationIA(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        'calcs':[0,1,2],
-        'min_sep':2.5,
-        'max_sep':250.,
-        'nbins':20,
-        'bin_slop':0.0,
-        'flip_g1': False,
-        'flip_g2':True,
-        'cores_per_task':20,
-        'verbose':1,
-        'source_bins':[-1],
-        'lens_bins':[-1],
-        'reduce_randoms_size':1.0,
-        'do_shear_pos': True,
-        'do_pos_pos': False,
-        'do_shear_shear': False, 
-        'var_method': 'jackknife',
-        'low_mem': True,
-        'metric': 'Rperp',
-        'use_randoms': False,
-        'patch_dir': './cache/patches',
-        }
+        "calcs": [0, 1, 2],
+        "min_sep": 2.5,
+        "max_sep": 250.0,
+        "nbins": 20,
+        "bin_slop": 0.1,
+        "flip_g2": True,
+        "cores_per_task": 20,
+        "verbose": 1,
+        "source_bins": [-1],
+        "lens_bins": [-1],
+        "reduce_randoms_size": 1.0,
+        "do_shear_pos": True,
+        "do_pos_pos": False,
+        "do_shear_shear": False,
+        "var_method": "jackknife",
+        "3Dcoords": True,
+        "metric": "Rperp",
+        "use_true_shear": False,
+        "subtract_mean_shear": False,
+        "redshift_shearcatalog": False,
+        "chunk_rows": 100_000,
+        "use_subsampled_randoms": False,
+    }
 
     def run(self):
 
@@ -336,7 +338,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         sys.stdout.flush()
         return result
 
-    def write_output(self, source_list, lens_list, meta, results):
+    def write_output(self, data, meta, results):
+        # This subclass only needs the root process for this task
+        if self.rank != 0:
+            return
+
         import sacc
         import treecorr
 

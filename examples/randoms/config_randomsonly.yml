@@ -1,0 +1,7 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+
+TXRandomCat:
+    density: 10 # gals per sq arcmin
+    #method: quadrilateral
+    method: spherical_projection

@@ -229,15 +229,14 @@ class TXSourceMaps(TXBaseMaps):
             else:
                 cal = cals[i]
             g1_out[i], g2_out[i] = cal.apply(g1[i], g2[i])
-            std1 = np.sqrt(g1[i])
-            std2 = np.sqrt(g2[i])
+            std1 = np.sqrt(var_g1[i])
+            std2 = np.sqrt(var_g2[i])
             std1, std2 = cal.apply(std1, std2, subtract_mean=False)
             var_g1_out[i] = std1**2
             var_g2_out[i] = std2**2
 
             # re-apply the masking, just to make sure
-        for y in g1_out, g2_out, var_g1_out, var_g2_out:
-            for x in y.values():
+            for x in [g1_out[i], g2_out[i], var_g1_out[i], var_g2_out[i]]:
                 x[mask] = healpy.UNSEEN
 
         return g1_out, g2_out, var_g1_out, var_g2_out
@@ -268,6 +267,26 @@ class TXSourceMaps(TXBaseMaps):
             # added from HSC branch, to get analytic noise in twopoint_fourier
             out_e = np.zeros_like(esq[b])
             out_e[esq[b] > 0] = esq[b][esq[b] > 0]
+
+
+            # calibrate the esq value - this is hacky for now!
+            shear_catalog_type = read_shear_catalog_type(self)
+            if (shear_catalog_type == "metadetect") or (shear_catalog_type == "metacal"):
+                print("DOING HACKY CAL OF VAR(e)")
+                cal_1D, cal_2D = cal
+                if b == "2D":
+                    c = cal_2D
+                else:
+                    c = cal_1D[b]
+                Rinv_approx = c.Rinv.diagonal().mean()
+                esq[b] *= Rinv_approx**2
+
+                # replace saved quantity
+                out_e = np.zeros_like(esq[b])
+                out_e[esq[b] > 0] = esq[b][esq[b] > 0]
+            else:
+                print("VAR(e) IS WRONG!")
+
             maps["source_maps", f"var_e_{b}"] = (pix, out_e)
 
         return maps
@@ -530,6 +549,7 @@ class TXDensityMaps(PipelineStage):
     """
 
     name = "TXDensityMaps"
+    parallel = False
     inputs = [
         ("lens_maps", MapsFile),
         ("mask", MapsFile),

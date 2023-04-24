@@ -122,6 +122,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -179,6 +180,9 @@ class TXGammaTFieldCenters(TXTwoPoint):
         return [("all", 0, SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
+        # This subclass only needs the root process for this task
+        if self.rank != 0:
+            return
         # we write output both to file for later and to
         # a plot
         self.write_output_sacc(meta, results)
@@ -303,6 +307,7 @@ class TXGammaTStars(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -355,6 +360,10 @@ class TXGammaTStars(TXTwoPoint):
         return [("all", "bright", SHEAR_POS), ("all", "dim", SHEAR_POS)]
 
     def write_output(self, source_list, lens_list, meta, results):
+        # This subclass only needs the root process for this task
+        if self.rank != 0:
+            return
+
         # we write output both to file for later and to a plot
         self.write_output_sacc(meta, results[0], "gammat_bright_stars", "Bright")
         self.write_output_sacc(meta, results[1], "gammat_dim_stars", "Dim")
@@ -488,6 +497,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):

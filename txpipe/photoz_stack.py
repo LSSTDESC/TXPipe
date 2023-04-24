@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile
+from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile, ShearCatalog
 from .utils.mpi_utils import in_place_reduce
+from .utils import rename_iterated
 import numpy as np
 import warnings
 
@@ -25,6 +26,7 @@ class Stack:
         self.nz = z.size
         self.stack = np.zeros((nbin, z.size))
         self.counts = np.zeros(nbin)
+        self._set_manually = False
 
     def add_pdfs(self, bins, pdfs):
         """
@@ -41,6 +43,21 @@ class Stack:
             w = np.where(bins == b)
             self.stack[b] += pdfs[w].sum(axis=0)
             self.counts[b] += w[0].size
+
+    def set_bin(self, b, n_of_z):
+        """
+        Bypass the accumulation of PDFs and just set the n(z)
+        for a bin.  Cannot be used with MPI.
+        Parameters
+        ----------
+        b: int
+            The tomographic bin to set
+        n_of_z: array[float]
+            The n(z) total for this bin
+        """
+        self.stack[b] = n_of_z
+        self.counts[b] = 1
+        self._set_manually = True
 
     def add_delta_function(self, bins, z):
         """
@@ -82,6 +99,8 @@ class Stack:
         """
         # stack the results from different comms
         if comm is not None:
+            if self._set_manually:
+                raise RuntimeError("Tried to set n(z) manually with MPI")
             in_place_reduce(self.stack, comm)
             in_place_reduce(self.counts, comm)
 
@@ -122,7 +141,7 @@ class TXPhotozSourceStack(PipelineStage):
     name = "TXPhotozSourceStack"
 
     inputs = [
-        ("source_photoz_pdfs", PhotozPDFFile),
+        ("source_photoz_pdfs", HDFFile),
         ("shear_tomography_catalog", TomographyCatalog),
     ]
     outputs = [
@@ -168,15 +187,18 @@ class TXPhotozSourceStack(PipelineStage):
         # This collects together matching inputs from the different
         # input files and returns an iterator to them which yields
         # start, end, data
-        return self.combined_iterators(
+        rename = {"yvals": "pdf"}
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             "source_photoz_pdfs",  # tag of input file to iterate through
-            "pdf",  # data group within file to look at
-            ["pdf"],  # column(s) to read
+            "data",  # data group within file to look at
+            ["yvals"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
             ["source_bin"],  # column(s) to read
         )
+
+        return rename_iterated(it, rename)
 
     def stack_data(self, name, data, outputs):
         # add the data we have loaded into the stacks
@@ -224,7 +246,7 @@ class TXPhotozSourceStack(PipelineStage):
         # it knows about different file formats (pdf, fits, etc)
         with self.open_input("source_photoz_pdfs") as photoz_file:
             # This is the syntax for reading a complete HDF column
-            z = photoz_file["pdf/zgrid"][:]
+            z = photoz_file["meta/xvals"][0, :]
 
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("shear_tomography_catalog") as tomo_file:
@@ -281,15 +303,17 @@ class TXPhotozLensStack(TXPhotozSourceStack):
         # This collects together matching inputs from the different
         # input files and returns an iterator to them which yields
         # start, end, data
-        return self.combined_iterators(
+        rename = {"yvals": "pdf"}
+        it = self.combined_iterators(
             self.config["chunk_rows"],
             "lens_photoz_pdfs",  # tag of input file to iterate through
-            "pdf",  # data group within file to look at
-            ["pdf"],  # column(s) to read
+            "data",  # data group within file to look at
+            ["yvals"],  # column(s) to read
             "lens_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
             ["lens_bin"],  # column(s) to read
         )
+        return rename_iterated(it, rename)
 
     def get_metadata(self):
         """
@@ -312,7 +336,7 @@ class TXPhotozLensStack(TXPhotozSourceStack):
         # it knows about different file formats (pdf, fits, etc)
         with self.open_input("lens_photoz_pdfs") as photoz_file:
             # This is the syntax for reading a complete HDF column
-            z = photoz_file["pdf/zgrid"][:]
+            z = photoz_file["meta/xvals"][0, :]
 
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("lens_tomography_catalog") as tomo_file:
@@ -325,7 +349,7 @@ class TXPhotozPlots(PipelineStage):
     """
     Make n(z) plots of source and lens galaxies
     """
-
+    parallel = False
     name = "TXPhotozPlots"
     inputs = [("shear_photoz_stack", NOfZFile), ("lens_photoz_stack", NOfZFile)]
     outputs = [
@@ -370,7 +394,7 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
 
     name = "TXSourceTrueNumberDensity"
     inputs = [
-        ("shear_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
     ]
     outputs = [
@@ -383,10 +407,12 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
     }
 
     def data_iterator(self):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
         return self.combined_iterators(
             self.config["chunk_rows"],
             "shear_catalog",  # tag of input file to iterate through
-            "shear",  # data group within file to look at
+            group,  # data group within file to look at
             ["redshift_true"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
@@ -401,8 +427,9 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
 
     def get_metadata(self):
         # Check we are running on a photo file with redshift_true
-        with self.open_input("shear_catalog") as photo_file:
-            has_z = "redshift_true" in photo_file["shear"].keys()
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
+            has_z = "redshift_true" in f.file[group].keys()
             if not has_z:
                 msg = (
                     "The shear_catalog file you supplied does not have a redshift_true column. "

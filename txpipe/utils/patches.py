@@ -199,6 +199,15 @@ class PatchMaker:
         return info == cat.config
 
     @staticmethod
+    def patches_missing(cat):
+        # Check if the number of patch files matches that in cat.npatch
+
+        saved_patch_files = [f for f in os.listdir(cat.config['save_patch_dir']) if '.hdf5' in f]
+        nsaved = len(saved_patch_files)
+
+        return cat.npatch != nsaved
+
+    @staticmethod
     def write_sentinel_file(cat):
         # Write the catalog config to a file to indicate that
         # the patches are fully written
@@ -246,7 +255,7 @@ class PatchMaker:
                 print(
                     f"Catalog {cat.file_name} does not have a patch directory set, so not making patches."
                 )
-            return 0
+            return 0, False
 
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
 
@@ -254,9 +263,10 @@ class PatchMaker:
 
         # Check for existing patches.
         if cls.patches_already_made(cat):
+            contains_empty = cls.patches_missing(cat)
             if comm is None or comm.rank == 0:
                 print(f"Patches already done for {cat.save_patch_dir}")
-            return npatch
+            return npatch, contains_empty
 
         # find the catalog full length, which we use as a maximum possible size
         with h5py.File(cat.file_name, "r") as f:
@@ -307,6 +317,8 @@ class PatchMaker:
 
         nonempty = patchmaker.finish()
 
+        contains_empty = True if len(nonempty) != npatch else False
+
         # Collect the list of all non-empty patch files
         # that were made
         if comm is not None:
@@ -346,4 +358,4 @@ class PatchMaker:
         if comm is not None:
             comm.Barrier()
 
-        return npatch
+        return npatch, contains_empty

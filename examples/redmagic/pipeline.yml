@@ -3,7 +3,7 @@
 stages:
     - name: TXSourceSelectorMetacal
     - name: TXShearCalibration
-    - name: TXExternalLensCatalogSplitter3D
+    - name: TXExternalLensCatalogSplitter
     - name: TXStarCatalogSplitter
     - name: TXSourceTrueNumberDensity
     - name: TXIngestRedmagic
@@ -67,8 +67,6 @@ modules: txpipe
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
-    - submodules/FlexZPipe
 
 # configuration settings
 config: examples/redmagic/config.yml

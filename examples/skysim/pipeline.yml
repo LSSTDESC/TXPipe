@@ -4,13 +4,12 @@ launcher:
 
 site:
     name: cori-interactive
-    image: joezuntz/txpipe
+    image: ghcr.io/lsstdesc/txpipe
 
 modules: txpipe
 
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
     - submodules/FlexZPipe
 
 stages:
@@ -24,7 +23,7 @@ stages:
     - name: TXShearCalibration
       nodes: 1
       nprocess: 8
-    - name: TXLensCatalogSplitter
+    - name: TXTruthLensCatalogSplitter
       nodes: 1
       nprocess: 8
     - name: TXSourceTrueNumberDensity

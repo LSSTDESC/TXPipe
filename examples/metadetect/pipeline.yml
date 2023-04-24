@@ -1,30 +1,34 @@
 
 # Stages to run
 stages:
-    - name: TXSourceSelectorMetadetect     # select and split objects into source bins
-    - name: TXShearCalibration   # Calibrate and split the source sample tomographically
+    - name: FlowCreator             # Simulate a spectroscopic population
+    - name: GridSelection          # Simulate a spectroscopic sample
+    - name: TXParqetToHDF          # Convert the spec sample format
+    - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
+      classname: Inform_BPZ_lite   
+    - name: PZEstimatorLens        # Measure lens galaxy PDFs
+      classname: BPZ_lite
+      threads_per_process: 1  
+    - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
+    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_NZDir
+    - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize  
+    - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize
+    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
+    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+      classname: Inform_NZDir
+    - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
-    - name: TXMeanLensSelector  # select objects for lens bins
-    - name: PZRailTrainSource   # Train a photo-z estimator for the source sample
-      threads_per_process: 2
-    - name: PZRailEstimateSource # Compute p(z) values for the source sample
-    - name: PZRailEstimateLensFromSource   # Copy the p(z) values from the source to lens values
-    # # If we had separate source and lens samples (as we do in real life) we would
-    # # esimate the lens PZ separately.
-    # # We could use this to train a separate estimator:
-    # - name: PZRailTrainLens     # Train a photo-z estimator for the lens sample
-    #   threads_per_process: 2
-    # # and this to estimate the p(z) for the lenses separately:
-    # # (in this laptop test the samples are the same, as this is faster)
-    # - name: PZRailEstimateLens # Compute p(z) values for the lens sample
-    - name: TXPhotozSourceStack  # Stack p(z) into n(z)
-    - name: TXPhotozLensStack    # Stack p(z) into n(z)
     - name: TXSourceMaps           # make source g1 and g2 maps
-    - name: TXLensMaps           # make source lens and n_gal maps
+    - name: TXLensMaps             # make source lens and n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
+    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
@@ -51,15 +55,16 @@ stages:
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
+    - name: PZRealizationsPlotSource   # Plot n(z) realizations
+      classname: PZRealizationsPlot
+    - name: PZRealizationsPlotLens   # Plot n(z) realizations
+      classname: PZRealizationsPlot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
-    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
-    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXTwoPointFourier    # Compute power spectra C_ell
-
     # Disabled since not yet synchronised with new Treecorr MPI
     - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
@@ -67,19 +72,19 @@ stages:
     # The latter two need NaMaster
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
     # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+    # - name: TXFourierTJPCovariance # Compute the C_ell covariance
+    #   threads_per_process: 2
 
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe
+modules: txpipe rail.stages
+# modules: txpipe rail tjpcov
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 # Where to put outputs
 output_dir: data/example/outputs_metadetect
@@ -94,9 +99,6 @@ site:
     name: local
     max_threads: 2
 
-# python modules to import to search for stages
-modules: txpipe
-
 # configuration settings
 config: examples/metadetect/config.yml
 
@@ -107,8 +109,6 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    photoz_source_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
-    photoz_source_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
@@ -118,6 +118,7 @@ inputs:
     # So it is set to Null, so the yaml intepreter returns a None value to python. OBS 
     # the binned_random_catalog_source should also be set to Null in this case.
     binned_random_catalog_source: None
+    flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

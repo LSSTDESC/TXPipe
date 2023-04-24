@@ -4,6 +4,7 @@ from .data_types import (
     ShearCatalog,
     SACCFile,
     TextFile,
+    MapsFile,
 )
 from .utils.patches import PatchMaker
 import numpy as np
@@ -13,6 +14,7 @@ import os
 import pathlib
 from time import perf_counter
 import gc
+from .utils import choose_pixelization
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -37,6 +39,7 @@ class TXTwoPoint(PipelineStage):
         ("binned_shear_catalog", ShearCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog_sub", HDFFile),
         ("shear_photoz_stack", HDFFile),
         ("lens_photoz_stack", HDFFile),
         ("patch_centers", TextFile),
@@ -62,6 +65,7 @@ class TXTwoPoint(PipelineStage):
         "do_shear_shear": True,
         "do_shear_pos": True,
         "do_pos_pos": True,
+        "auto_only": False,
         "var_method": "jackknife",
         "use_randoms": True,
         "low_mem": False,
@@ -69,6 +73,8 @@ class TXTwoPoint(PipelineStage):
         "chunk_rows": 100_000,
         "share_patch_files": False,
         "metric": "Euclidean",
+        "gaussian_sims_factor": [1.], 
+        "use_subsampled_randoms": True, #use subsampled randoms file for RR
     }
 
     def run(self):
@@ -108,9 +114,11 @@ class TXTwoPoint(PipelineStage):
             result = self.call_treecorr(i, j, k)
             results.append(result)
 
+        if self.comm:
+            self.comm.Barrier()
+
         # Save the results
-        if self.rank == 0:
-            self.write_output(source_list, lens_list, meta, results)
+        self.write_output(source_list, lens_list, meta, results)
 
     def select_calculations(self, source_list, lens_list):
         calcs = []
@@ -137,10 +145,14 @@ class TXTwoPoint(PipelineStage):
                     "You need to have a random catalog to calculate position-position correlations"
                 )
             k = POS_POS
-            for i in lens_list:
-                for j in range(i + 1):
-                    if j in lens_list:
-                        calcs.append((i, j, k))
+            if self.config["auto_only"]:
+                for i in lens_list:
+                    calcs.append((i, i, k))
+            else:
+                for i in lens_list:
+                    for j in range(i + 1):
+                        if j in lens_list:
+                            calcs.append((i, j, k))
 
         if self.rank == 0:
             print(f"Running {len(calcs)} calculations: {calcs}")
@@ -221,9 +233,9 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
-    def write_output(self, source_list, lens_list, meta, results):
-        import sacc
+    def add_data_points(self, S, results):
         import treecorr
+        import sacc
 
         XI = "combined"
         XIP = sacc.standard_types.galaxy_shear_xi_plus
@@ -232,38 +244,8 @@ class TXTwoPoint(PipelineStage):
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
 
-        S = sacc.Sacc()
-        if self.config["do_shear_pos"] == True:
-            S2 = sacc.Sacc()
-
-        # We include the n(z) data in the output.
-        # So here we load it in and add it to the data
-        f = self.open_input("shear_photoz_stack")
-
-        # Load the tracer data N(z) from an input file and
-        # copy it to the output, for convenience
-        for i in source_list:
-            z = f["n_of_z/source/z"][:]
-            Nz = f[f"n_of_z/source/bin_{i}"][:]
-            S.add_tracer("NZ", f"source_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"source_{i}", z, Nz)
-
-        f = self.open_input("lens_photoz_stack")
-        # For both source and lens
-        for i in lens_list:
-            z = f["n_of_z/lens/z"][:]
-            Nz = f[f"n_of_z/lens/bin_{i}"][:]
-            S.add_tracer("NZ", f"lens_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"lens_{i}", z, Nz)
-        # Closing n(z) file
-        f.close()
-
-        # Now build up the collection of data points, adding them all to
-        # the sacc data one by one.
         comb = []
-        for d in results:
+        for index, d in enumerate(results):
             # First the tracers and generic tags
             tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
             tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
@@ -272,10 +254,6 @@ class TXTwoPoint(PipelineStage):
             # here, or anything useful, really, so we just skip this bin.
             if d.object is None:
                 continue
-
-            # We build up the comb list to get the covariance of it later
-            # in the same order as our data points
-            comb.append(d.object)
 
             theta = np.exp(d.object.meanlogr)
             npair = d.object.npairs
@@ -310,6 +288,18 @@ class TXTwoPoint(PipelineStage):
                         weight=weight[i],
                     )
             else:
+                if self.config['gaussian_sims_factor'] != [1.]:
+                    # only for gammat and wtheta, for the gaussian simulations we need to scale the measurements up to correct for
+                    # the scaling of the density field when building the simulations.
+                    if 'lens' in tracer2:
+                        if 'lens' in tracer1:
+                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer1[-1])]*self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                        else:
+                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                            
+                    d.object.xi *=scaling_factor
+                    d.object.varxi *=(scaling_factor**2)
+                    
                 xi = d.object.xi
                 err = np.sqrt(d.object.varxi)
                 n = len(xi)
@@ -322,51 +312,131 @@ class TXTwoPoint(PipelineStage):
                         error=err[i],
                         weight=weight[i],
                     )
+                    
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
+            comb.append(d.object)
 
+
+                    
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
-        cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        if treecorr.__version__.startswith("4.2."):
+            if self.rank == 0:
+                print("Using old TreeCorr - covariance may be slow. "
+                      "Consider using 4.3 from github main branch.")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        else:
+            if self.rank == 0:
+                print("Using new TreeCorr 4.3 or above")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
         S.add_covariance(cov)
+
+    def add_gamma_x_data_points(self, S, results):
+        import treecorr
+        import sacc
+
+        XI = "combined"
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
+
+        covs = []
+        for index, d in enumerate(results):
+            tracer1 = (
+                f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
+            )
+            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
+
+            if d.corr_type == GAMMAT:
+                theta = np.exp(d.object.meanlogr)
+                npair = d.object.npairs
+                weight = d.object.weight
+                xi_x = d.object.xi_im
+                covX = d.object.estimate_cov("shot")
+                covs.append(covX)
+                err = np.sqrt(np.diag(covX))
+                n = len(xi_x)
+                for i in range(n):
+                    S.add_data_point(
+                        GAMMAX,
+                        (tracer1, tracer2),
+                        xi_x[i],
+                        theta=theta[i],
+                        error=err[i],
+                        weight=weight[i],
+                    )
+
+        S.add_covariance(covs)
+
+
+    def write_output(self, source_list, lens_list, meta, results):
+        import sacc
+        import treecorr
+
+        XI = "combined"
+        XIP = sacc.standard_types.galaxy_shear_xi_plus
+        XIM = sacc.standard_types.galaxy_shear_xi_minus
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
+        WTHETA = sacc.standard_types.galaxy_density_xi
+
+        S = sacc.Sacc()
+        if self.config["do_shear_pos"] == True:
+            S2 = sacc.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
+        f = self.open_input("shear_photoz_stack")
+
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
+        for i in source_list:
+            z = f["n_of_z/source/z"][:]
+            Nz = f[f"n_of_z/source/bin_{i}"][:]
+            S.add_tracer("NZ", f"source_{i}", z, Nz)
+            if self.config["do_shear_pos"] == True:
+                S2.add_tracer("NZ", f"source_{i}", z, Nz)
+
+        f.close()
+
+        f = self.open_input("lens_photoz_stack")
+        # For both source and lens
+        for i in lens_list:
+            z = f["n_of_z/lens/z"][:]
+            Nz = f[f"n_of_z/lens/bin_{i}"][:]
+            S.add_tracer("NZ", f"lens_{i}", z, Nz)
+            if self.config["do_shear_pos"] == True:
+                S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+        # Closing n(z) file
+        f.close()
+        # Now build up the collection of data points, adding them all to
+        # the sacc data one by one.
+        self.add_data_points(S, results)
+
+        # The other processes are only needed for the covariance estimation.
+        # They do a bunch of other stuff here that isn't actually needed, but
+        # it should all be very fast. After this point they are not needed
+        # at all so return
+        if self.rank != 0:
+            return
+
 
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
+
         self.write_metadata(S, meta)
+
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("twopoint_data_real_raw"), overwrite=True)
 
+
         # Adding the gammaX calculation:
-
         if self.config["do_shear_pos"] == True:
-            comb = []
-            for d in results:
-                tracer1 = (
-                    f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
-                )
-                tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
-
-                if d.corr_type == GAMMAT:
-                    theta = np.exp(d.object.meanlogr)
-                    npair = d.object.npairs
-                    weight = d.object.weight
-                    xi_x = d.object.xi_im
-                    covX = d.object.estimate_cov("shot")
-                    comb.append(covX)
-                    err = np.sqrt(np.diag(covX))
-                    n = len(xi_x)
-                    for i in range(n):
-                        S2.add_data_point(
-                            GAMMAX,
-                            (tracer1, tracer2),
-                            xi_x[i],
-                            theta=theta[i],
-                            error=err[i],
-                            weight=weight[i],
-                        )
-            S2.add_covariance(comb)
-            S2.to_canonical_order
+            self.add_gamma_x_data_points(S2, results)
+            S2.to_canonical_order()
             self.write_metadata(S2, meta)
             S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
 
@@ -397,7 +467,18 @@ class TXTwoPoint(PipelineStage):
         This is a wrapper for interaction with treecorr.
         """
         import sacc
+        import pickle
+        #TODO: fix up the caching code
+        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
+            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
+            if os.path.exists(pickle_filename):
+                print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
+                with open(pickle_filename, "rb") as f:
+                    result = pickle.load(f)
+                return result
+ 
         if k == SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -420,6 +501,16 @@ class TXTwoPoint(PipelineStage):
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
+
+        if self.comm:
+            self.comm.Barrier()
+
+        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
+            if self.rank == 0:
+                print(f"Pickling result to {pickle_filename}")
+                with open(pickle_filename, "wb") as f:
+                    pickle.dump(result, f)
+ 
         return result
 
     def prepare_patches(self, calcs, meta):
@@ -464,6 +555,8 @@ class TXTwoPoint(PipelineStage):
         npatch_pos = 0
         npatch_ran = 0
 
+        self.empty_patch_exists = {}
+
         # Parallelization is now done at the patch level
         for (h, k) in cats:
             ktxt = "shear" if k == SHEAR_SHEAR else "position"
@@ -474,19 +567,28 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                npatch_shear = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                npatch_pos = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
 
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-                npatch_ran = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
+
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
 
         meta["npatch_shear"] = npatch_shear
         meta["npatch_pos"] = npatch_pos
@@ -571,6 +673,7 @@ class TXTwoPoint(PipelineStage):
 
         return cat
 
+
     def get_lens_catalog(self, i):
         import treecorr
 
@@ -586,6 +689,7 @@ class TXTwoPoint(PipelineStage):
             patch_centers=self.get_input("patch_centers"),
             save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
         )
+
         return cat
 
     def get_random_catalog(self, i):
@@ -604,12 +708,50 @@ class TXTwoPoint(PipelineStage):
             patch_centers=self.get_input("patch_centers"),
             save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
         )
+
         return rancat
+
+    def get_subsampled_random_catalog(self, i):
+        import treecorr
+
+        if not self.config["use_randoms"]:
+            return None
+
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_catalog_sub"),
+            ext=f"/randoms/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_random_catalog_sub", i),
+        )
+
+        return rancat
+
+    def touch_patches(self, cat):
+        # If any patches were empty for this cat
+        # run get_patches on rank 0 and bcast
+        # this will re-make patches but prevents processes conflicting 
+        # in the gg.process
+        # If no patches are empty returns the cat, unaltered
+        if cat is None:
+            return cat
+
+        if self.empty_patch_exists[cat.save_patch_dir]:
+            if self.rank==0:
+                cat.get_patches()
+            if self.comm is not None:
+                cat = self.comm.bcast(cat, root=0)
+
+        return cat
 
     def calculate_shear_shear(self, i, j):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         if i == j:
@@ -617,6 +759,7 @@ class TXTwoPoint(PipelineStage):
             n_j = n_i
         else:
             cat_j = self.get_shear_catalog(j)
+            cat_j = self.touch_patches(cat_j)
             n_j = cat_j.nobj
 
 
@@ -643,10 +786,13 @@ class TXTwoPoint(PipelineStage):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         cat_j = self.get_lens_catalog(j)
+        cat_j = self.touch_patches(cat_j)
         rancat_j = self.get_random_catalog(j)
+        rancat_j = self.touch_patches(rancat_j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -670,9 +816,9 @@ class TXTwoPoint(PipelineStage):
         else:
             rg = None
 
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
         if self.rank == 0:
-            ng.calculateXi(rg=rg)
-            t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
@@ -681,7 +827,9 @@ class TXTwoPoint(PipelineStage):
         import treecorr
 
         cat_i = self.get_lens_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         rancat_i = self.get_random_catalog(i)
+        rancat_i = self.touch_patches(rancat_i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
@@ -692,9 +840,25 @@ class TXTwoPoint(PipelineStage):
             n_rand_j = n_rand_i
         else:
             cat_j = self.get_lens_catalog(j)
+            cat_j = self.touch_patches(cat_j)
             rancat_j = self.get_random_catalog(j)
+            rancat_j = self.touch_patches(rancat_j)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
+
+        if self.config['use_subsampled_randoms']:
+            rancat_sub_i = self.get_subsampled_random_catalog(i)
+            rancat_sub_i = self.touch_patches(rancat_sub_i)
+            n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
+
+            if i == j:
+                rancat_sub_j = rancat_sub_i
+                n_rand_sub_j = n_rand_sub_i
+            else:
+                rancat_sub_j = self.get_subsampled_random_catalog(j)
+                rancat_sub_j = self.touch_patches(rancat_sub_j)
+                n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
+
 
         if self.rank == 0:
             print(
@@ -718,9 +882,13 @@ class TXTwoPoint(PipelineStage):
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
+            n_rand_sub_j = None
 
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        if self.config["use_subsampled_randoms"]:
+            rr.process(rancat_sub_i, rancat_sub_j, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if i == j:
             rn = None
@@ -728,9 +896,9 @@ class TXTwoPoint(PipelineStage):
             rn = treecorr.NNCorrelation(self.config)
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
+        t2 = perf_counter()
+        nn.calculateXi(rr, dr=nr, rd=rn)
         if self.rank == 0:
-            t2 = perf_counter()
-            nn.calculateXi(rr, dr=nr, rd=rn)
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return nn
@@ -752,6 +920,160 @@ class TXTwoPoint(PipelineStage):
 
         return meta
 
+
+
+class TXTwoPointPixel(TXTwoPoint):
+    """
+    This subclass of the standard TXTwoPoint uses maps to compute
+    pixelized versions of the real space correlation functions.
+    This is useful when the number density of the galaxy samples
+    is too high to use random points to sample the mask.
+    """
+
+    name = "TXTwoPointPixel"
+    inputs = [
+        ("density_maps", MapsFile),
+        ("source_maps", MapsFile),
+        ("binned_shear_catalog", ShearCatalog),
+        ("binned_lens_catalog", HDFFile),
+        ("binned_random_catalog", HDFFile),
+        ("shear_photoz_stack", HDFFile),
+        ("lens_photoz_stack", HDFFile),
+        ("patch_centers", TextFile),
+        ("tracer_metadata", HDFFile),
+    ]
+    outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        # TODO: Allow more fine-grained selection of 2pt subsets to compute
+        "calcs": [0, 1, 2],
+        "min_sep": 0.5,
+        "max_sep": 300.0,
+        "nbins": 9,
+        "bin_slop": 0.0,
+        "sep_units": "arcmin",
+        "flip_g1": False,
+        "flip_g2": True,
+        "cores_per_task": 20,
+        "verbose": 1,
+        "source_bins": [-1],
+        "lens_bins": [-1],
+        "reduce_randoms_size": 1.0,
+        "do_shear_shear": True,
+        "do_shear_pos": True,
+        "do_pos_pos": True,
+        "var_method": "jackknife",
+        "low_mem": False,
+        "patch_dir": "./cache/patches",
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
+        "metric": "Euclidean",
+        "use_randoms": True,
+        "auto_only": False,
+        "gaussian_sims_factor": [1.], 
+
+    }
+    
+
+    def get_density_map(self, i):
+        import treecorr
+        
+        with self.open_input("density_maps", wrapper=True) as f:
+            info = f.read_map_info(f"delta_{i}")
+            map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
+            print(f"Loaded {i} overdensity maps")
+
+        scheme = choose_pixelization(**info) 
+        ra_pix, dec_pix = scheme.pix2ang(pix)
+
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            ra=ra_pix,
+            dec=dec_pix,
+            #w=,
+            k=map_d[pix],
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+        )
+        return cat
+
+
+    def get_shear_map(self, i):
+        import treecorr
+        import pdb
+        
+        with self.open_input("source_maps", wrapper=True) as f:
+            info_g1 = f.read_map_info(f"g1_{i}")
+            map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
+            print(f"Loaded shear 1 {i} maps")
+
+            info_g2 = f.read_map_info(f"g2_{i}")
+            map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
+            print(f"Loaded shear 2 {i} maps")
+
+        scheme = choose_pixelization(**info_g1)
+        ra_pix, dec_pix = scheme.pix2ang(pix_g1)
+
+        mask_unseen = (map_g1[pix_g1]>-1e30)*(map_g2[pix_g2]>-1e30)
+
+        cat = treecorr.Catalog(
+            ra=ra_pix[mask_unseen],
+            dec=dec_pix[mask_unseen],
+            #w=,
+            g1=map_g1[pix_g1][mask_unseen],
+            g2=map_g2[pix_g2][mask_unseen],
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            flip_g1=self.config["flip_g1"],
+            flip_g2=self.config["flip_g2"],
+            
+        )
+        return cat
+
+    
+    def calculate_shear_pos(self, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_map(i)
+
+        cat_j = self.get_density_map(j)
+
+        if self.rank == 0:
+            print(
+                f"Calculating shear-position bin pair ({i},{j})."
+            )
+
+        kg = treecorr.KGCorrelation(self.config)
+        t1 = perf_counter()
+        kg.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+
+        return kg
+
+    
+    def calculate_pos_pos(self, i, j):
+        import treecorr
+
+        cat_i = self.get_density_map(i)
+
+
+        if i == j:
+            cat_j = cat_i
+        else:
+            cat_j = self.get_density_map(j)
+
+        if self.rank == 0:
+            print(
+                f"Calculating position-position bin pair ({i}, {j})"
+            )
+
+        t1 = perf_counter()
+
+        kk = treecorr.KKCorrelation(self.config)
+        kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        return kk
 
 
 if __name__ == "__main__":
