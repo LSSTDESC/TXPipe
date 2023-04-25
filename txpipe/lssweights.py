@@ -26,14 +26,14 @@ class TXLSSweights(TXMapCorrelations):
 	name = "TXLSSweights"
 	parallel = True
 	inputs = [
-		("binned_lens_catalog", HDFFile),
+		("binned_lens_catalog_unweighted", HDFFile),
 		("mask", MapsFile),
 	]
 
 	outputs = [
 		("lss_weight_summary", FileCollection), #output files and summary statistics will go here
 		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
-		("binned_lens_catalog_weighted", HDFFile), #the lens catalog with weights added
+		("binned_lens_catalog", HDFFile), #the lens catalog with weights added
 	]
 
 	config_options = {
@@ -47,7 +47,7 @@ class TXLSSweights(TXMapCorrelations):
 		self.pixel_metadata = pixel_scheme.metadata
 
 		#get number of tomographic lens bins
-		with self.open_input("binned_lens_catalog", wrapper=False) as f:
+		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
 			self.Ntomo = f['lens'].attrs["nbin_lens"] 
 
 		#output directory for the plots and summary stats
@@ -178,7 +178,7 @@ class TXLSSweights(TXMapCorrelations):
 			mask = map_file.read_map("mask")
 
 		#load the ra and dec of this lens bins
-		with self.open_input("binned_lens_catalog", wrapper=False) as f:
+		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
 			ra = f[f"lens/bin_{tomobin}/ra"][:]
 			dec = f[f"lens/bin_{tomobin}/dec"][:]
 			input_weight = f[f"lens/bin_{tomobin}/weight"][:]
@@ -237,8 +237,8 @@ class TXLSSweights(TXMapCorrelations):
 
 		#### save the binned lens samples
 		#There is probably a better way to do this using the batch writer 
-		binned_output = self.open_output("binned_lens_catalog_weighted", parallel=True)
-		with self.open_input("binned_lens_catalog") as binned_input:
+		binned_output = self.open_output("binned_lens_catalog", parallel=True)
+		with self.open_input("binned_lens_catalog_unweighted") as binned_input:
 			binned_output.copy(binned_input["lens"],"lens")
 
 		for ibin in range(self.Ntomo):
@@ -285,21 +285,21 @@ class TXLSSweightsSimReg(TXLSSweights):
 	name = "TXLSSweightsSimReg"
 	parallel = True
 	inputs = [
-		("binned_lens_catalog", HDFFile),
+		("binned_lens_catalog_unweighted", HDFFile),
 		("mask", MapsFile),
 	]
 
 	outputs = [
 		("lss_weight_summary", FileCollection), #output files and summary statistics will go here
 		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
-		("binned_lens_catalog_weighted", HDFFile), #the lens catalog with weights added
+		("binned_lens_catalog", HDFFile), #the lens catalog with weights added
 	]
 
 	config_options = {
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
 		"nbin": 20,
 		"outlier_fraction": 0.05,
-		"pvalue_threshold":0.05, #max p-value for maps to be corrected
+		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
 	}
 
 	def prepare_sys_maps(self):

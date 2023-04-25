@@ -421,7 +421,7 @@ class TXLensCatalogSplitter(PipelineStage):
     ]
 
     outputs = [
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog_unweighted", HDFFile),
     ]
 
     config_options = {
@@ -442,7 +442,7 @@ class TXLensCatalogSplitter(PipelineStage):
         cols = ["ra", "dec", "weight", "comoving_distance"]
 
         # Object we use to make the separate lens bins catalog
-        cat_output = self.open_output("binned_lens_catalog", parallel=True)
+        cat_output = self.open_output("binned_lens_catalog_unweighted", parallel=True)
         cat_group = cat_output.create_group("lens")
         cat_group.attrs["nbin"] = len(counts)
         cat_group.attrs["nbin_lens"] = len(counts)
