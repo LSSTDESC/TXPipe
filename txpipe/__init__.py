@@ -27,7 +27,7 @@ from .ingest_redmagic import TXIngestRedmagic
 from .maps import TXMainMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
-from .masks import TXSimpleMask
+from .masks import TXSimpleMask, TXSimpleMaskFrac
 from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations

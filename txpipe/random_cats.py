@@ -20,6 +20,7 @@ class TXRandomCat(PipelineStage):
     name = "TXRandomCat"
     inputs = [
         ("aux_lens_maps", MapsFile),
+        ("mask", MapsFile),
         ("lens_photoz_stack", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
     ]
@@ -54,6 +55,11 @@ class TXRandomCat(PipelineStage):
             nside = info["nside"]
             scheme = choose_pixelization(**info)
 
+        # Load the input mask 
+        # TODO: add option to use higher resolution healsparse map to draw randoms from
+        with self.open_input("mask", wrapper=True) as maps_file:
+            mask = maps_file.read_map("mask")
+
         pz_stack = self.open_input("lens_photoz_stack")
 
         # We also generate comoving distances under a fiducial cosmology
@@ -61,10 +67,10 @@ class TXRandomCat(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
 
-
         # Cut down to pixels that have any objects in
-        pixel = np.where(depth > 0)[0]
+        pixel = np.where(mask > 0)[0]
         depth = depth[pixel]
+        frac = mask[pixel]
         npix = depth.size
 
         if len(pixel) == 1:
@@ -93,8 +99,10 @@ class TXRandomCat(PipelineStage):
         x = 10.0 ** (0.4 * (Mstar - depth))
         density = phi_star * scipy.special.gammaincc(alpha15, x)
 
-        # Pixel geometry - area in arcmin^2
-        pix_area = scheme.pixel_area(degrees=True) * 60.0 * 60.0
+        # Pixel geometry - area of a single pixel in arcmin^2
+        full_pix_area = scheme.pixel_area(degrees=True) * 60.0 * 60.0
+        pix_area = frac*full_pix_area
+
         if method == "quadrilateral":
             vertices = scheme.vertices(pixel)
         else:
