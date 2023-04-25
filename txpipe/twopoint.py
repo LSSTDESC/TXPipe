@@ -39,6 +39,7 @@ class TXTwoPoint(PipelineStage):
         ("binned_shear_catalog", ShearCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog_sub", HDFFile),
         ("shear_photoz_stack", HDFFile),
         ("lens_photoz_stack", HDFFile),
         ("patch_centers", TextFile),
@@ -73,6 +74,7 @@ class TXTwoPoint(PipelineStage):
         "share_patch_files": False,
         "metric": "Euclidean",
         "gaussian_sims_factor": [1.], 
+        "use_subsampled_randoms": True, #use subsampled randoms file for RR
     }
 
     def run(self):
@@ -553,6 +555,8 @@ class TXTwoPoint(PipelineStage):
         npatch_pos = 0
         npatch_ran = 0
 
+        self.empty_patch_exists = {}
+
         # Parallelization is now done at the patch level
         for (h, k) in cats:
             ktxt = "shear" if k == SHEAR_SHEAR else "position"
@@ -563,19 +567,28 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                npatch_shear = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                npatch_pos = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
 
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-                npatch_ran = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
+
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
 
         meta["npatch_shear"] = npatch_shear
         meta["npatch_pos"] = npatch_pos
@@ -660,6 +673,7 @@ class TXTwoPoint(PipelineStage):
 
         return cat
 
+
     def get_lens_catalog(self, i):
         import treecorr
 
@@ -675,6 +689,7 @@ class TXTwoPoint(PipelineStage):
             patch_centers=self.get_input("patch_centers"),
             save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
         )
+
         return cat
 
     def get_random_catalog(self, i):
@@ -693,12 +708,50 @@ class TXTwoPoint(PipelineStage):
             patch_centers=self.get_input("patch_centers"),
             save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
         )
+
         return rancat
+
+    def get_subsampled_random_catalog(self, i):
+        import treecorr
+
+        if not self.config["use_randoms"]:
+            return None
+
+        rancat = treecorr.Catalog(
+            self.get_input("binned_random_catalog_sub"),
+            ext=f"/randoms/bin_{i}",
+            ra_col="ra",
+            dec_col="dec",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_random_catalog_sub", i),
+        )
+
+        return rancat
+
+    def touch_patches(self, cat):
+        # If any patches were empty for this cat
+        # run get_patches on rank 0 and bcast
+        # this will re-make patches but prevents processes conflicting 
+        # in the gg.process
+        # If no patches are empty returns the cat, unaltered
+        if cat is None:
+            return cat
+
+        if self.empty_patch_exists[cat.save_patch_dir]:
+            if self.rank==0:
+                cat.get_patches()
+            if self.comm is not None:
+                cat = self.comm.bcast(cat, root=0)
+
+        return cat
 
     def calculate_shear_shear(self, i, j):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         if i == j:
@@ -706,6 +759,7 @@ class TXTwoPoint(PipelineStage):
             n_j = n_i
         else:
             cat_j = self.get_shear_catalog(j)
+            cat_j = self.touch_patches(cat_j)
             n_j = cat_j.nobj
 
 
@@ -732,10 +786,13 @@ class TXTwoPoint(PipelineStage):
         import treecorr
 
         cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         cat_j = self.get_lens_catalog(j)
+        cat_j = self.touch_patches(cat_j)
         rancat_j = self.get_random_catalog(j)
+        rancat_j = self.touch_patches(rancat_j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
@@ -759,9 +816,9 @@ class TXTwoPoint(PipelineStage):
         else:
             rg = None
 
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
         if self.rank == 0:
-            ng.calculateXi(rg=rg)
-            t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
@@ -770,7 +827,9 @@ class TXTwoPoint(PipelineStage):
         import treecorr
 
         cat_i = self.get_lens_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         rancat_i = self.get_random_catalog(i)
+        rancat_i = self.touch_patches(rancat_i)
         n_i = cat_i.nobj
         n_rand_i = rancat_i.nobj if rancat_i is not None else 0
 
@@ -781,9 +840,24 @@ class TXTwoPoint(PipelineStage):
             n_rand_j = n_rand_i
         else:
             cat_j = self.get_lens_catalog(j)
+            cat_j = self.touch_patches(cat_j)
             rancat_j = self.get_random_catalog(j)
+            rancat_j = self.touch_patches(rancat_j)
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
+
+        if self.config['use_subsampled_randoms']:
+            rancat_sub_i = self.get_subsampled_random_catalog(i)
+            rancat_sub_i = self.touch_patches(rancat_sub_i)
+            n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
+
+            if i == j:
+                rancat_sub_j = rancat_sub_i
+                n_rand_sub_j = n_rand_sub_i
+            else:
+                rancat_sub_j = self.get_subsampled_random_catalog(j)
+                rancat_sub_j = self.touch_patches(rancat_sub_j)
+                n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
 
 
         if self.rank == 0:
@@ -808,9 +882,13 @@ class TXTwoPoint(PipelineStage):
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
+            n_rand_sub_j = None
 
         rr = treecorr.NNCorrelation(self.config)
-        rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+        if self.config["use_subsampled_randoms"]:
+            rr.process(rancat_sub_i, rancat_sub_j, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         if i == j:
             rn = None
@@ -818,9 +896,9 @@ class TXTwoPoint(PipelineStage):
             rn = treecorr.NNCorrelation(self.config)
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
+        t2 = perf_counter()
+        nn.calculateXi(rr, dr=nr, rd=rn)
         if self.rank == 0:
-            t2 = perf_counter()
-            nn.calculateXi(rr, dr=nr, rd=rn)
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return nn
@@ -996,9 +1074,6 @@ class TXTwoPointPixel(TXTwoPoint):
         kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         return kk
-
-
-    
 
 
 if __name__ == "__main__":

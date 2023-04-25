@@ -122,6 +122,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -306,6 +307,7 @@ class TXGammaTStars(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -496,6 +498,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
