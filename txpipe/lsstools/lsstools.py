@@ -85,14 +85,39 @@ class DensityCorrelation:
 		self.ndens =  np.append(self.ndens, norm*nobj_sys/npix_sys )
 
 
-	def add_shot_noise_covariance(self,):
-		assert self.ndens_err is None
-		assert self.covmat is None
+	def add_diagonal_shot_noise_covariance(self,assert_empty=True):
+		"""
+		Adds a shot noise only covariance
+		Only adds to the diagonal (no shot noise in the covariance between maps)
+		"""
+		if assert_empty:
+			assert self.ndens_err is None
+			assert self.covmat is None
+			self.covmat = np.zeros((len(self.N),len(self.N)))
 
 		N_err = np.sqrt(self.N)
 		self.ndens_err = self.norm*N_err/self.npix
-		self.covmat = np.identity(len(self.N))
-		np.fill_diagonal(self.covmat, self.ndens_err**2.)
+		covmat_new = np.identity(len(self.N))
+		np.fill_diagonal(covmat_new, self.ndens_err**2.)
+
+		self.covmat = self.covmat + covmat_new
+
+
+	def add_external_covariance(self, covmat,assert_empty=True):
+		"""
+		Adds an external covariance matrix
+		"""
+		if assert_empty:
+			assert self.ndens_err is None
+			assert self.covmat is None
+			self.covmat = np.zeros((len(self.N),len(self.N)))
+
+		self.covmat = self.covmat+covmat
+		self.ndens_err = np.sqrt(covmat.diagonal())
+
+	def clear_covariance(self):
+		self.ndens_err = None
+		self.covmat = None
 
 	def get_covmat_singlemap(self, map_index):
 		select_map = (self.map_index == map_index)
