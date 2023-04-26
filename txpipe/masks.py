@@ -91,7 +91,7 @@ class TXSimpleMaskFrac(TXSimpleMask):
     config_options = {
         "depth_cut": 23.5,
         "bright_object_max": 10.0,
-        "supreme_map_file": None,
+        "supreme_map_file": str,
     }
 
     def run(self):
