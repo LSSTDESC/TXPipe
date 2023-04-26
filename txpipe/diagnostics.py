@@ -261,7 +261,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         fig = self.open_output("g_psf_g", wrapper=True)
         
         # Include a small shift to be able to see the g1 / g2 points on the plot
-        dx = 0.1 * (mu1[1] - mu1[0])
+        dx = 0.1 * (psf_g_edges[1]-psf_g_edges[0])
         
         slope11, intercept11, mc_cov = fit_straight_line(mu1, mean11, y_err=std11)
         std_err11 = mc_cov[0, 0] ** 0.5
