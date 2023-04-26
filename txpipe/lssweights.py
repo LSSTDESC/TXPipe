@@ -63,7 +63,7 @@ class TXLSSweights(TXMapCorrelations):
 			density_corrs = self.calc_1d_density(ibin, sys_maps, sys_names=sys_names)
 
 			#compute covariance of data vector
-			covmat = self.calc_covariance(density_corrs) #will need to change the argument to this
+			covmat = self.calc_covariance(density_corrs, sys_maps) #will need to change the argument to this
 
 			#compute the weights
 			Fmap, coeff_output = self.compute_weights(density_corrs, sys_maps)
@@ -334,13 +334,88 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		return np.array(means), np.array(stds) #return means and stds to help reconstruct the original maps later
 
-	def calc_covariance(self, density_correlation):
+	def calc_covariance(self, density_correlation, sys_maps):
 		"""
-		Shot noise-only covariance
-		Does not include sample variance terms
+		Construct the covariance matrix of the ndens vs SP dvec 
 		"""
-		density_correlation.add_shot_noise_covariance()
+
+		#add diagonal shot noise
+		density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
+
+		#add diagonal shot noise
+		cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, sys_maps)
+		density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
+
+		#TO DO: add clustering Sample Variance here
+
 		return density_correlation.covmat
+
+	def calc_covariance_shot_noise_offdiag(self, density_correlation, sys_maps):
+		"""
+		Shot noise-only covariance (off-diagonal blocks only)
+		Does not include sample variance terms
+		Off-diagonal terms are between different SP maps
+		see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
+		"""
+		import healpy as hp 
+		import numpy as np 
+
+		#get nside form the mask
+		with self.open_input("mask", wrapper=True) as map_file:
+			nside = map_file.read_map_info("mask")["nside"]
+
+		# load the ra and dec of this lens bins
+		# TODO: load lens sample in chunks if needed for memory
+		tomobin = density_correlation.tomobin
+		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+			ra = f[f"lens/bin_{tomobin}/ra"][:]
+			dec = f[f"lens/bin_{tomobin}/dec"][:]
+
+		#pixel ID for each lens galaxy
+		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
+
+		#covariance matrix on number *counts*
+		nbinstotal = len(density_correlation.map_index)
+		covmat_N = np.zeros((nbinstotal,nbinstotal))
+		
+		map_list = np.unique(density_correlation.map_index).astype('int')
+
+		#loop over each pair of maps to get 2d histograms
+		# and fill in the Nobj covarianace matrix blocks
+		map_list = np.unique(density_correlation.map_index).astype('int')
+		n2d = {}
+		for imap in map_list:
+			sys_map_i = sys_maps[imap]
+			sys_obj_i = sys_map_i[obj_pix]
+			edgesi = density_correlation.get_edges(imap)
+			maski = np.where(density_correlation.map_index.astype('int') == imap)[0]
+			starti = maski[0]
+			finishi = maski[-1]+1
+			for jmap in map_list:
+				if jmap <= imap:
+					continue
+				sys_map_j = sys_maps[jmap]
+				sys_obj_j = sys_map_j[obj_pix]
+				edgesj = density_correlation.get_edges(jmap)
+				maskj = np.where(density_correlation.map_index.astype('int') == jmap)[0]
+				startj = maskj[0]
+				finishj = maskj[-1]+1
+
+				n2d_pair,_,_ = np.histogram2d(sys_obj_i,sys_obj_j,bins=(edgesi,edgesj))
+				n2d[imap,jmap] = n2d_pair
+
+				#CHECK I GOT THESE THE RIGHT WAY AROUND!!!!
+				covmat_N[starti:finishi,startj:finishj] = n2d_pair
+				covmat_N[startj:finishj,starti:finishi] = n2d_pair.T
+
+		#convert N covarinace into n covariance
+		#cov(n1,n2) = cov(N1,N2)*norm**2/(Npix1*Npix2)
+		npix1npix2 = np.matrix(density_correlation.npix).T*np.matrix(density_correlation.npix)
+		norm2 = np.matrix(density_correlation.norm).T*np.matrix(density_correlation.norm)
+		covmat_ndens = covmat_N * np.array(norm2) / np.array(npix1npix2)
+
+		return covmat_ndens
+
 
 	def select_maps(self, density_correlation):
 		"""
