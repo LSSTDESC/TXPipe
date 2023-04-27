@@ -27,7 +27,7 @@ class TXBaseLensSelector(PipelineStage):
     name = "TXBaseLensSelector"
 
     outputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
     ]
 
     config_options = {
@@ -144,7 +144,7 @@ class TXBaseLensSelector(PipelineStage):
         n = self.open_input("photometry_catalog")["photometry/ra"].size
         nbin_lens = len(self.config["lens_zbin_edges"]) - 1
 
-        outfile = self.open_output("lens_tomography_catalog", parallel=True)
+        outfile = self.open_output("lens_tomography_catalog_unweighted", parallel=True)
         group = outfile.create_group("tomography")
         group.create_dataset("lens_bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
@@ -414,7 +414,7 @@ class TXLensCatalogSplitter(PipelineStage):
     name = "TXLensCatalogSplitter"
 
     inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
         ("photometry_catalog", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
         ("lens_photoz_pdfs", HDFFile),
@@ -433,7 +433,7 @@ class TXLensCatalogSplitter(PipelineStage):
 
     def run(self):
 
-        with self.open_input("lens_tomography_catalog") as f:
+        with self.open_input("lens_tomography_catalog_unweighted") as f:
             nbin = f["tomography"].attrs["nbin_lens"]
             counts = f["tomography/lens_counts"][:]
             count2d = f["tomography/lens_counts_2d"][:]
@@ -482,7 +482,7 @@ class TXLensCatalogSplitter(PipelineStage):
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            "lens_tomography_catalog_unweighted",
             "tomography",
             ["lens_bin", "lens_weight"],
             # second file
@@ -522,7 +522,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
     """
     name = "TXTruthLensCatalogSplitter"
     inputs = [
-            ("lens_tomography_catalog", TomographyCatalog),
+            ("lens_tomography_catalog_unweighted", TomographyCatalog),
             ("photometry_catalog", HDFFile),
             ("fiducial_cosmology", FiducialCosmology),
         ]
@@ -537,7 +537,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            "lens_tomography_catalog_unweighted",
             "tomography",
             ["lens_bin", "lens_weight"],
             # second file
@@ -562,7 +562,7 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
 
     name = "TXExternalLensCatalogSplitter"
     inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
         ("lens_catalog", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
     ]
@@ -575,7 +575,7 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
         iterator = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            "lens_tomography_catalog_unweighted",
             "tomography",
             ["lens_bin", "lens_weight"],
             # second file

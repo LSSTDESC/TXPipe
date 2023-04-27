@@ -24,9 +24,10 @@ class TXLSSweights(TXMapCorrelations):
     	- compute weights with a regression method
 	"""
 	name = "TXLSSweights"
-	parallel = True
+	parallel = False
 	inputs = [
-		("binned_lens_catalog_unweighted", HDFFile),
+		("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
+		("lens_tomography_catalog_unweighted", HDFFile), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
 		("mask", MapsFile),
 	]
 
@@ -34,6 +35,7 @@ class TXLSSweights(TXMapCorrelations):
 		("lss_weight_summary", FileCollection), #output files and summary statistics will go here
 		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
 		("binned_lens_catalog", HDFFile), #the lens catalog with weights added
+		("lens_tomography_catalog", HDFFile), #the tomography file with weights added
 	]
 
 	config_options = {
@@ -251,7 +253,24 @@ class TXLSSweights(TXMapCorrelations):
 
 			subgroup["weight"][...] *= obj_weight
 
+
+		#### save the tomography file
+		tomo_output = self.open_output("lens_tomography_catalog", parallel=True)
+		with self.open_input("lens_tomography_catalog_unweighted") as tomo_input:
+			tomo_output.copy(tomo_input["tomography"],"tomography")
+
+		lens_weight = tomo_output['tomography/lens_weight'][...]
+		for ibin in range(self.Ntomo):
+			binned_subgroup = binned_output[f"lens/bin_{ibin}/"]
+			mask = (tomo_output['tomography/lens_bin'][...] == ibin)
+			lens_weight[mask] *= binned_subgroup["weight"][...]
+		tomo_output['tomography/lens_weight'][...] = lens_weight
+
+		#### close the outputs
+		tomo_output.close()
 		binned_output.close()
+
+
 
 	def summarize(self, density_correlation, output_dir):
 		"""
@@ -283,23 +302,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 	"""
 	name = "TXLSSweightsSimReg"
-	parallel = True
-	inputs = [
-		("binned_lens_catalog_unweighted", HDFFile),
-		("mask", MapsFile),
-	]
-
-	outputs = [
-		("lss_weight_summary", FileCollection), #output files and summary statistics will go here
-		("lss_weight_maps", MapsFile), #the systematic weight maps to be applied to the lens galaxies
-		("binned_lens_catalog", HDFFile), #the lens catalog with weights added
-	]
+	parallel = False
 
 	config_options = {
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
 		"nbin": 20,
 		"outlier_fraction": 0.05,
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
+		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations  
 	}
 
 	def prepare_sys_maps(self):
@@ -342,11 +352,12 @@ class TXLSSweightsSimReg(TXLSSweights):
 		#add diagonal shot noise
 		density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
 
-		#add diagonal shot noise
-		cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, sys_maps)
-		density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
+		if self.config["simple_cov"] == False:
+			#add diagonal shot noise
+			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, sys_maps)
+			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
-		#TO DO: add clustering Sample Variance here
+			#TO DO: add clustering Sample Variance here
 
 		return density_correlation.covmat
 
