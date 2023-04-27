@@ -200,7 +200,6 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     name = "TXAuxiliaryLensMaps"
     inputs = [
         ("photometry_catalog", HDFFile),  # for mags etc
-        ("lens_maps", MapsFile),  # we copy the pixel scheme from here
     ]
     outputs = [
         ("aux_lens_maps", MapsFile),
