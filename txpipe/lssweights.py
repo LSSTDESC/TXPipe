@@ -68,11 +68,11 @@ class TXLSSweights(TXMapCorrelations):
 			covmat = self.calc_covariance(density_corrs, sys_maps) #will need to change the argument to this
 
 			#compute the weights
-			Fmap, coeff_output = self.compute_weights(density_corrs, sys_maps)
+			Fmap, fit_output = self.compute_weights(density_corrs, sys_maps)
 			Fmap_list.append(Fmap)
 
 			#make summary stats and plots
-			self.summarize(density_corrs, output_dir)
+			self.summarize(output_dir, density_corrs, fit_output)
 
 		#save object weights and weight maps
 		self.save_weights(Fmap_list)
@@ -272,7 +272,7 @@ class TXLSSweights(TXMapCorrelations):
 
 
 
-	def summarize(self, density_correlation, output_dir):
+	def summarize(self, output_dir, density_correlation, fit_output):
 		"""
 		make 1d density plots and other summary statistics and save
 		
@@ -283,12 +283,34 @@ class TXLSSweights(TXMapCorrelations):
 		import numpy as np
 		ibin = density_correlation.tomobin
 
+		#make 1d density plots
 		for imap in np.unique(density_correlation.map_index):
 			filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
 			density_correlation.plot1d_singlemap(filepath, imap )
 
 
-		#add other summary stats here (chi2 tables, best fit coefficients, etc)
+		#save fitted map names and IDs
+		fitted_maps_id_file = output_dir.path_for_file(f"fitted_map_id_lens{ibin}.txt")
+		np.savetxt(fitted_maps_id_file, fit_output['sig_map_index'])
+		fitted_maps_names = [density_correlation.mapnames[i] for i in fit_output['sig_map_index']]
+		fitted_maps_names_file = output_dir.path_for_file(f"fitted_map_names_lens{ibin}.txt")
+		names_file = open(fitted_maps_names_file,'w')
+		names_file.write('\n'.join(fitted_maps_names))
+		names_file.close()
+
+		#save fitted coefficients 
+		coeff_file = output_dir.path_for_file(f"coeff_lens{ibin}.txt")
+		np.savetxt(coeff_file, fit_output['coeff'])		
+
+		#save coeff covariances
+		coeff_cov_file = output_dir.path_for_file(f"coeff_cov_lens{ibin}.txt")
+		np.savetxt(coeff_cov_file, fit_output['coeff_cov'])	
+
+		#save chi2 for all models
+		for model in density_correlation.chi2.keys():
+			chi2_file = output_dir.path_for_file(f"chi2_lens{ibin}_{model}.txt")
+			np.savetxt(chi2_file, np.array(list(density_correlation.chi2[model].items())))
+
 
 
 class TXLSSweightsSimReg(TXLSSweights):
@@ -514,8 +536,13 @@ class TXLSSweightsSimReg(TXLSSweights):
 				density_correlation=density_correlation, 
 				sys_maps=sys_maps)
 
-		coeff_output = sig_map_index, coeff, coeff_cov
-		return Fmap, coeff_output
+		#assemble the fitting outputs (chi2, values, coefficents, )
+		fit_output = {}
+		fit_output['sig_map_index'] = sig_map_index
+		fit_output['coeff'] = coeff
+		fit_output['coeff_cov'] = coeff_cov
+
+		return Fmap, fit_output
 		
 
 def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, returnF=False):
