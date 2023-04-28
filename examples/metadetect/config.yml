@@ -222,7 +222,9 @@ TXSourceDiagnosticPlots:
     psf_prefix: 00/mcal_psf_
     shear_prefix: 00/
 
-TXLensDiagnosticPlots: {}
+TXLensDiagnosticPlots: 
+    aliases:
+        lens_tomography_catalog: lens_tomography_catalog_unweighted
 
 TXDiagnosticMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
@@ -241,7 +243,17 @@ TXSourceMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
+    aliases:
+        lens_tomography_catalog: lens_tomography_catalog_unweighted
     sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLensNoiseMaps:
+    aliases:
+        lens_tomography_catalog: lens_tomography_catalog_unweighted
+
+TXTracerMetadata:
+    aliases:
+        lens_tomography_catalog: lens_tomography_catalog_unweighted
 
 # For redmagic mapping
 TXExternalLensMaps:
@@ -304,7 +316,7 @@ PZRailSummarizeLens:
     catalog_group: "photometry"
     tomography_name: "lens"
     aliases:
-        tomography_catalog: lens_tomography_catalog
+        tomography_catalog: lens_tomography_catalog_unweighted
         photometry_catalog: photometry_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
