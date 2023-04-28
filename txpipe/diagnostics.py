@@ -53,8 +53,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "g_max": 0.05,
         "psfT_min": 0.04,
         "psfT_max": 0.36,
-        "gT_min": 0.04,
-        "gT_max": 4.0,
+        "T_min": 0.04,
+        "T_max": 4.0,
         "s2n_min": 10,
         "s2n_max": 300,
         "bands": "riz",
@@ -204,7 +204,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         import pandas as pd
-
+        
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
@@ -213,9 +213,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         c = self.open_input("shear_catalog")
         psfg = pd.Series(np.array(c[f"shear/{psf_prefix}g1"]))
+        #print("psfg1: ",psfg)
         psfg = psfg.loc[psfg.between(g_min,g_max)]
-        
+        #print("psfg2: ",psfg)
+
         psf_g_edges = self.BinEdges(psfg,nbins)
+        
+        #print(f"{psf_prefix}g1")
         
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
@@ -245,9 +249,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mu1, mean11, mean12, std11, std12 = p1.collect(self.comm)
         mu2, mean21, mean22, std21, std22 = p2.collect(self.comm)
       
+        
         if self.rank != 0:
             return
-        w = (mu1 != 0) & np.isfinite(std11)
+        w = np.isfinite(std11)
         mu1 = mu1[w]
         mean11 = mean11[w]
         mean12 = mean12[w]
@@ -257,7 +262,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         std12 = std12[w]
         std21 = std21[w]
         std22 = std22[w]
-
+        
+        
         fig = self.open_output("g_psf_g", wrapper=True)
         
         # Include a small shift to be able to see the g1 / g2 points on the plot
@@ -346,9 +352,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
         
-        print("mu: ", mu)
-        print("means: ",mean1,"\n",mean2)
-        print("std: ", std1,"\n",std2)
         if self.rank != 0:
             return
 
@@ -469,14 +472,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
-        gT_min = self.config["gT_min"]
-        gT_max = self.config["gT_max"]
+        T_min = self.config["T_min"]
+        T_max = self.config["T_max"]
         
         c = self.open_input("shear_catalog")
-        gT = pd.Series(np.array(c[f"shear/{shear_prefix}T"]))
-        gT = gT.loc[gT.between(gT_min,gT_max)]
-        
-        T_edges = self.BinEdges(gT,nbins)
+        T = pd.Series(np.array(c[f"shear/{shear_prefix}T"]))
+        T = T.loc[T.between(T_min,T_max)]
+        print("T: ", T)
+        T_edges = self.BinEdges(T,nbins)
         
         binnedShear = MeanShearInBins(
             f"{shear_prefix}T",
@@ -497,6 +500,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
             binnedShear.add_data(data)
 
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
+        print("mu: ",mu)
+        print("mean1: ",mean1)
+        print("std1: ",std1)
 
         if self.rank != 0:
             return
@@ -526,6 +532,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend()
         plt.tight_layout()
         fig.close()
+        
     def plot_g_histogram(self):
         print("plotting histogram")
         import matplotlib.pyplot as plt
