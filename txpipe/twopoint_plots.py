@@ -43,8 +43,6 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        filename_theory = self.get_input("twopoint_theory_real")
-
         outputs = {
             "galaxy_density_xi": self.open_output(
                 "density_xi", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True
