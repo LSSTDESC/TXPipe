@@ -128,7 +128,7 @@ def full_3x2pt_plots(
 
     for t in types:
         if any(obs[t] for obs in obs_data):
-            print("Making Plot")
+            print(f"Making Plot {t}")
             f = figures.get(t)
             output_figures[t] = make_plot(
                 t, obs_data, obs_theory, fig=f, xlogscale=xlogscale, ratios=ratios
