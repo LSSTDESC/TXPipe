@@ -16,7 +16,6 @@ class TXTwoPointPlots(PipelineStage):
         ("twopoint_data_real", SACCFile),
         ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_gamma_x", SACCFile),
-        ("twopoint_theory_real", SACCFile),
     ]
     outputs = [
         ("shear_xi_plus", PNGFile),
@@ -74,24 +73,11 @@ class TXTwoPointPlots(PipelineStage):
             [filename],
             ["twopoint_data_real"],
             figures=figures,
-            theory_sacc_files=[filename_theory],
-            theory_labels=["Fiducial"],
         )
 
         for fig in outputs.values():
             fig.close()
 
-        full_3x2pt_plots(
-            [filename],
-            ["twopoint_data_real"],
-            figures=figures,
-            theory_sacc_files=[filename_theory],
-            theory_labels=["Fiducial"],
-            ratios=True,
-        )
-
-        for fig in outputs.values():
-            fig.close()
 
         filename = self.get_input("twopoint_gamma_x")
 
