@@ -38,9 +38,8 @@ stages:
     - name: TXRandomCat          # generate lens bin random catalogs
       nprocess: 32
       threads_per_process: 1
-    - name: TXSubsampleRandoms
     - name: TXJackknifeCenters   # Split the area into jackknife regions
-    - name: TXTwoPointRRsub           # Compute real-space 2-point correlations
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
       nprocess: 16
       threads_per_process: 64
       nodes: 8

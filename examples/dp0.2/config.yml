@@ -122,14 +122,6 @@ TXTwoPoint:
     verbose: 1
 
 
-TXTwoPointRRsub:
-    flip_g2: True
-    min_sep: 2.5
-    max_sep: 250.0
-    nbins: 20
-    verbose: 1
-
-
 TXSubsampleRandoms:
     sample_rate: 0.2
    
