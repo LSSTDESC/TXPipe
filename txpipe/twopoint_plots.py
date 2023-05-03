@@ -1,6 +1,6 @@
 
 from .base_stage import PipelineStage
-from .data_types import FiducialCosmology, SACCFile, PNGFile
+from .data_types import SACCFile, PNGFile
 import numpy as np
 
 
@@ -14,7 +14,6 @@ class TXTwoPointPlots(PipelineStage):
     parallel = False
     inputs = [
         ("twopoint_data_real", SACCFile),
-        ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_gamma_x", SACCFile),
     ]
     outputs = [
@@ -125,7 +124,6 @@ class TXTwoPointPlotsFourier(PipelineStage):
     parallel = False
     inputs = [
         ("summary_statistics_fourier", SACCFile),
-        ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_theory_fourier", SACCFile),
     ]
     outputs = [
@@ -241,7 +239,6 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
     parallel = False
     inputs = [
         ("twopoint_data_real", SACCFile),
-        ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_gamma_x", SACCFile),
         ("twopoint_theory_real", SACCFile),
     ]
