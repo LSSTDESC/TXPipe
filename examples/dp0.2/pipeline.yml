@@ -43,7 +43,12 @@ stages:
       nprocess: 16
       threads_per_process: 64
       nodes: 8
- 
+    - name: TXTwoPointPlots
+    - name: TXTwoPointTheoryReal
+    - name: TXNullBlinding
+    - name: TXMapPlots 
+    - name: TXDensityMaps
+
 # Where to put outputs
 output_dir: data/dp0.2/outputs
 

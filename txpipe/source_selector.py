@@ -779,7 +779,9 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
     """
 
     name = "TXSourceSelectorHSC"
-
+    config_options = TXSourceSelectorBase.config_options.copy()
+    config_options["max_shear_cut"] = 0.0
+    
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
@@ -859,6 +861,23 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         )
         return calculators
 
+    def select_2d(self, data, calling_from_select=False):
+        """
+        Add an additional cut to the parent class, if specified, on the max shear.
+        HSM DP0.2 catalogs seem to contain occasional very large shears that skew peaks.
+        This removes those. This is only really for testing.
+        """
+        sel = super().select_2d(data, calling_from_select=calling_from_select)
+        shear_cut = self.config["max_shear_cut"]
+        if shear_cut:
+            g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)
+            cut = g < shear_cut
+            p = 100 * (1 - (cut.sum() / cut.size))
+            print(f" shear cut removes {p:.2f}% of objects")
+            sel &= cut
+            p = sel.sum() / sel.size * 100
+            print(f" after shear cut retain {p:.2f}% of objects")
+        return sel
 
 if __name__ == "__main__":
     PipelineStage.main()

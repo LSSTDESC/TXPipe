@@ -1,7 +1,7 @@
 global:
-    chunk_rows: 100000
+    chunk_rows: 1000000
     pixelization: healpix
-    nside: 64
+    nside: 256
     sparse: True
     delta_gamma: 1e9 # mock value since this should not be used at all
 
