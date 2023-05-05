@@ -213,14 +213,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         c = self.open_input("shear_catalog")
         psfg = pd.Series(np.array(c[f"shear/{psf_prefix}g1"]))
-        #print("psfg1: ",psfg)
         psfg = psfg.loc[psfg.between(g_min,g_max)]
-        #print("psfg2: ",psfg)
 
         psf_g_edges = self.BinEdges(psfg,nbins)
-        
-        #print(f"{psf_prefix}g1")
-        
+                
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
             psf_g_edges,
@@ -405,7 +401,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         s2n = pd.Series(np.array(c[f"shear/{shear_prefix}s2n"]))
         s2n = s2n.loc[s2n.between(s2n_min,s2n_max)]
         snr_edges = self.BinEdges(s2n,nbins)
-
+        
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
         binnedShear = MeanShearInBins(
@@ -415,7 +411,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
-
         while True:
             # This happens when we have loaded a new data chunk
             data = yield
@@ -430,7 +425,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         if self.rank != 0:
             return
-        
+       
         slope1, intercept1, mc_cov = fit_straight_line(np.log10(mu), mean1, y_err=std1)
         std_err1 = mc_cov[0, 0] ** 0.5
         line1 = slope1 * (np.log10(mu)) + intercept1
@@ -461,7 +456,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend()
         plt.tight_layout()
         fig.close()
-
+    
     def plot_size_shear(self):
         # mean shear in bins of galaxy size
         print("Making mean shear galaxy size plot")
@@ -478,7 +473,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         c = self.open_input("shear_catalog")
         T = pd.Series(np.array(c[f"shear/{shear_prefix}T"]))
         T = T.loc[T.between(T_min,T_max)]
-        print("T: ", T)
         T_edges = self.BinEdges(T,nbins)
         
         binnedShear = MeanShearInBins(
@@ -500,9 +494,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             binnedShear.add_data(data)
 
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
-        print("mu: ",mu)
-        print("mean1: ",mean1)
-        print("std1: ",std1)
 
         if self.rank != 0:
             return
