@@ -98,7 +98,7 @@ config: examples/metacal/config.yml
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/example/inputs/shear_catalog.hdf5
+    shear_catalog: data/example/inputs/shear_catalog-edited.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
