@@ -76,9 +76,21 @@ class TXShearCalibration(PipelineStage):
 
             cat_cols += [f"00/{c}" for c in extra_cols]
             renames.update({f"00/{c}":c for c in extra_cols})
-    
+            if Dcoords:
+                if redshift_shearcatalog:
+                    cat_cols += [z_name]
+                else:
+                    raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
+
+            
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+        elif Dcoords and cat_type!='hsc':
+            output_cols = ["ra", "dec","weight", "g1", "g2", "r"] + extra_cols
+            print("Using 3D coords, hopefully a mean readshift is defined")
+        elif Dcoords:
+            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2", "r"] + extra_cols
+            print("Using 3D coords, hopefully a mean readshift is defined")
         else:
             output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
 
