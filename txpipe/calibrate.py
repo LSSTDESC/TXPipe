@@ -85,14 +85,12 @@ class TXShearCalibration(PipelineStage):
             
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
-        elif Dcoords and cat_type!='hsc':
-            output_cols = ["ra", "dec","weight", "g1", "g2", "r"] + extra_cols
-            print("Using 3D coords, hopefully a mean readshift is defined")
-        elif Dcoords:
-            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2", "r"] + extra_cols
-            print("Using 3D coords, hopefully a mean readshift is defined")
         else:
             output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
+
+        if Dcoords:
+            output_cols.append("r")
+            print("Using 3D coords, hopefully a mean readshift is defined")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
