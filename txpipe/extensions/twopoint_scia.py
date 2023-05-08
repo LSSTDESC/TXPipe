@@ -15,6 +15,7 @@ import sys
 import pathlib
 from time import perf_counter
 import gc
+from .utils.patches import PatchMaker
 
 
 # This creates a little mini-type, like a struct,
@@ -510,7 +511,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             self.write_metadata(S2,meta)
             S2.save_fits(self.get_output('gammaX_scia'), overwrite=True)
 
-    def prepare_patches(self, calcs):
+    def prepare_patches(self, calcs, meta):
         """
         For each catalog to be generated, have one process load the catalog
         and write its patch files out to disc.  These are then re-used later
@@ -542,6 +543,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         cats = list(cats)
         cats.sort(key=str)
 
+        chunk_rows = self.config["chunk_rows"]
+        npatch_shear = 0
+        npatch_pos = 0
+        npatch_ran = 0
+
         # This does a round-robin assignment to processes
         for (h, k) in self.split_tasks_by_rank(cats):
 
@@ -552,21 +558,32 @@ class TXSelfCalibrationIA(TXTwoPoint):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                cat.get_patches(low_mem=False)
+                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
             else:
                 cat = self.get_shear_catalog(h)
-                cat.get_patches(low_mem=False)
+                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
-                ran_cat = self.get_random_catalog(h)
 
+                ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-
-                ran_cat.get_patches(low_mem=False)
+                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
+
+        meta["npatch_shear"] = npatch_shear
+        meta["npatch_pos"] = npatch_pos
+        meta["npatch_ran"] = npatch_ran
         # stop other processes progressing to the rest of the code and
         # trying to load things we have not written yet
         if self.comm is not None:
