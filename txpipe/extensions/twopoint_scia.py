@@ -81,6 +81,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         "redshift_shearcatalog": False,
         "chunk_rows": 100_000,
         "use_subsampled_randoms": False,
+        "patch_dir": "./cache/patches",
     }
 
     def run(self):
