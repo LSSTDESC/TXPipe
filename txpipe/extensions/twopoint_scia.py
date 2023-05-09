@@ -57,13 +57,16 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ("twopoint_data_SCIA", SACCFile),
         ("gammaX_scia", SACCFile),
     ]
-    # Add values to the config file that are not previously defined
+    # Consider rewritting this so it takes copy from base file, and 
+    # then adds to it.
     config_options = {
         "calcs": [0, 1, 2],
         "min_sep": 2.5,
         "max_sep": 250.0,
-        "nbins": 20,
-        "bin_slop": 0.1,
+        "nbins": 9,
+        "bin_slop": 0.0,
+        "sep_units": "arcmin",
+        "flip_g1": False,
         "flip_g2": True,
         "cores_per_task": 20,
         "verbose": 1,
@@ -82,6 +85,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
         "chunk_rows": 100_000,
         "use_subsampled_randoms": False,
         "patch_dir": "./cache/patches",
+        "share_patch_files": False,
+        "use_subsampled_randoms": True,
+        "gaussian_sims_factor": [1.], 
     }
 
     def run(self):
