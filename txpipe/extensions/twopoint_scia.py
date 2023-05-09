@@ -15,7 +15,7 @@ import sys
 import pathlib
 from time import perf_counter
 import gc
-from .utils.patches import PatchMaker
+from ..utils.patches import PatchMaker
 
 
 # This creates a little mini-type, like a struct,
