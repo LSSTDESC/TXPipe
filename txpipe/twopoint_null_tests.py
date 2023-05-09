@@ -224,7 +224,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
-        S.add_tracer("misc", "fieldcenter")
+        S.add_tracer("Misc", "fieldcenter")
         S.add_tracer("NZ", "source2d", z, Nz)
 
         d = results[0]
@@ -420,7 +420,7 @@ class TXGammaTStars(TXTwoPoint):
         # Add the data points that we have one by one, recording which
         # tracer they each require
         name = "{}_stars".format(text.lower())
-        S.add_tracer("misc", name)
+        S.add_tracer("Misc", name)
         S.add_tracer("NZ", "source2d", z, Nz)
 
         dvalue = d.object.xi
@@ -602,7 +602,7 @@ class TXGammaTRandoms(TXTwoPoint):
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
-        S.add_tracer("misc", "randoms")
+        S.add_tracer("Misc", "randoms")
         S.add_tracer("NZ", "source2d", z, Nz)
 
         d = results[0]
