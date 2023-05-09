@@ -87,6 +87,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         "share_patch_files": False,
         "use_subsampled_randoms": True,
         "gaussian_sims_factor": [1.], 
+        "low_mem": False,
     }
 
     def run(self):
