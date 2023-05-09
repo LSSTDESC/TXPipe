@@ -555,6 +555,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         npatch_pos = 0
         npatch_ran = 0
 
+        self.empty_patch_exists = {}
+
         # This does a round-robin assignment to processes
         for (h, k) in self.split_tasks_by_rank(cats):
 
