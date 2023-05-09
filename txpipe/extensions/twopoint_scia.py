@@ -347,7 +347,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         sys.stdout.flush()
         return result
 
-    def write_output(self, data, meta, results):
+    def write_output(self, source_list, lens_list, meta, results):
         # This subclass only needs the root process for this task
         if self.rank != 0:
             return
