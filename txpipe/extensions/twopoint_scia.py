@@ -199,7 +199,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ng = treecorr.NGCorrelation(
             self.config, max_rpar=0.0
         )  # The max_rpar = 0.0, is in fact the same as our selection function.
-        ng.process(cat_j, cat_i)
+        t1 = perf_counter()
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
 
         if rancat_j:
             rg = treecorr.NGCorrelation(config, max_rpar = 0.0)
@@ -207,9 +208,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
         else:
             rg = None
 
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
         if self.rank == 0:
-            ng.calculateXi(rg=rg)
-            t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
@@ -248,7 +249,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         #Notice we are now calling config instead of self.config!
         ng = treecorr.NGCorrelation(config)
         t1 = perf_counter()
-        ng.process(cat_j, cat_i)
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
         
 
         if rancat_j:
@@ -257,9 +258,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
         else:
             rg = None
 
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
         if self.rank == 0:
-            ng.calculateXi(rg=rg)
-            t2 = perf_counter()
             print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
