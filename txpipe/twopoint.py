@@ -865,7 +865,7 @@ class TXTwoPoint(PipelineStage):
                 f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms"
             )
             if self.config["use_subsampled_randoms"]:
-                print(f"and for the rr term, {rancat_sub_i} x {rancat_sub_j} pairs")
+                print(f"and for the rr term, {n_rand_sub_i} x {n_rand_sub_j} pairs")
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
