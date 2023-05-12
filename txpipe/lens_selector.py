@@ -45,6 +45,10 @@ class TXBaseLensSelector(PipelineStage):
         "i_hi_cut": 19.9,
         "r_i_cut": 2.0,
         "random_seed": 42,
+        "selection_type": "boss",
+        "maglim_band": "i",
+        "maglim_limit": 24.1,
+
     }
 
     def run(self):
@@ -197,6 +201,15 @@ class TXBaseLensSelector(PipelineStage):
             group["lens_counts_2d"][:] = lens_counts_2d
 
     def select_lens(self, phot_data):
+        t = self.config["selection_type"]
+        if t == "boss":
+            return self.select_lens_boss(phot_data)
+        elif t == "maglim":
+            return self.select_lens_maglim(phot_data)
+        else:
+            raise ValueError(f"Unknown lens selection type {t} - expected boss or maglim")
+
+    def select_lens_boss(self, phot_data):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
@@ -243,6 +256,12 @@ class TXBaseLensSelector(PipelineStage):
         lens_gals[lens_mask] = 1
 
         return lens_gals
+    
+    def select_lens_maglim(self, phot_data):
+        band = self.config["maglim_band"]
+        limit = self.config["maglim_limit"]
+        mag_i = phot_data[f"mag_{band}"]
+        return (mag_i < limit).astype(np.int8)
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
 
@@ -362,14 +381,13 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         ("photometry_catalog", HDFFile),
         ("calibration_table", TextFile),
     ]
-    config_options = {
+    config_options = TXBaseLensSelector.config_options.copy().update({
         "verbose": False,
         "bands": "ugrizy",
         "chunk_rows": 10000,
         "lens_zbin_edges": [float],
         "random_seed": 42,
-        "mag_i_limit": 24.1,
-    }
+    })
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
@@ -398,10 +416,6 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         )
         return pz_data
 
-    def select_lens(self, phot_data):
-        mag_i = phot_data["mag_i"]
-        limit = self.config["mag_i_limit"]
-        return (mag_i < limit).astype(np.int8)
 
 
 class TXLensCatalogSplitter(PipelineStage):
