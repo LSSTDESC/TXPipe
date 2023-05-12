@@ -48,6 +48,8 @@ stages:
     - name: TXNullBlinding
     - name: TXMapPlots 
     - name: TXDensityMaps
+    - name: TXRealGaussianCovariance
+      threads_per_process: 32
 
 # Where to put outputs
 output_dir: data/dp0.2/outputs

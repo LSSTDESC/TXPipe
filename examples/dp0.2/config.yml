@@ -84,6 +84,7 @@ TXSourceSelectorHSC:
     s2n_cut: 10.0
     source_zbin_edges: [0.3, 0.5, 0.7, 0.9]
     shear_prefix: ""
+    max_shear_cut: 10.0
 
 TXShearCalibration: {}
 
@@ -124,4 +125,10 @@ TXTwoPoint:
 
 TXSubsampleRandoms:
     sample_rate: 0.2
-   
+
+
+#TXRealGaussianCovariance:
+
+TXTwoPointPlots:
+    aliases:
+        twopoint_data_real: summary_statistics_real
