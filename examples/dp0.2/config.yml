@@ -65,13 +65,8 @@ TXMeanLensSelector:
     aliases:
         lens_photoz_pdfs: photoz_pdfs
     lens_zbin_edges: [0.3, 0.4, 0.5, 0.6]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 19.6
-    i_lo_cut: 17.5
-    i_hi_cut: 19.9
-    r_i_cut: 2.0
+    selection_type: maglim
+    maglim_limit: 24.0
 
 TXLensCatalogSplitter:
     aliases:
