@@ -21,10 +21,11 @@ stages:
     - name: TXMapPlots           # make pictures of all the maps
     - name: TXTracerMetadata     # collate metadata
     - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXRandomCat
     - name: TXTwoPoint           # Compute real-space 2-point correlations
-      threads_per_process: 2
+      threads_per_process: 128
     - name: TXBlinding           # Blind the data following Muir et al
-      threads_per_process: 2
+        #threads_per_process: 2
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots      # Make plots of 2pt correlations
     #- name: TXSourceHistogramPlots
@@ -39,10 +40,10 @@ stages:
     #- name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       #threads_per_process: 2
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
-      threads_per_process: 2
+      threads_per_process: 128
     - name: TXFocalPlanePlot      # mean PSF ellipticity and mean residual on the focal plane 
-    #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
-    #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+      #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+      #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps #ERROR: WLMASSMAP
@@ -69,7 +70,7 @@ launcher:
     
 site:
     name: local 
-    max_threads: 2
+    max_threads: 128
 
 modules: txpipe
 
@@ -102,8 +103,8 @@ inputs:
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
     random_cats_source: Null
     mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
-    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.hdf5
-    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
+    #random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.hdf5
+    #binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
 resume: True
