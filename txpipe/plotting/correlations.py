@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import yaml
+import pdb
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -237,7 +238,10 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
         else:
             J = range(nx)
         for j in range(nx):
-            a = axes[i, j]
+            if nx==1 and ny==1:
+                a = axes
+            else:
+                a = axes[i, j]
             if j not in J:
                 f.delaxes(a)
                 continue
