@@ -50,6 +50,7 @@ stages:
     - name: TXDensityMaps
     - name: TXRealGaussianCovariance
       threads_per_process: 32
+    - name: TXPhotozPlots
 
 # Where to put outputs
 output_dir: data/dp0.2/outputs
