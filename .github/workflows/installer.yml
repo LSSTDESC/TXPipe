@@ -44,7 +44,7 @@ jobs:
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-jj2.tar.gz"
         tar -zxvf example.tar.gz
 
     - name: Test after auto-install
