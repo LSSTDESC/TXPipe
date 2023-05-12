@@ -105,6 +105,8 @@ TXTwoPoint:
     nbins: 20
     verbose: 0
     subtract_mean_shear: True
+    source_bins: [0]
+    lens_bins: [0]
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
@@ -121,8 +123,8 @@ TXTwoPointTheoryReal: {}
 TXTwoPointPlots: {}    
     
 TXSourceDiagnosticPlots:
-    psf_prefix: shear/mcal_psf_
-    shear_prefix: shear/mcal_
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
     psfT_min: 0.04
     psfT_max: 0.36
     T_min: 0.04
