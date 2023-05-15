@@ -229,7 +229,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
     f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))
     ax = {}
 
-    axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=True)
+    axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=False)
     for i in range(ny):
         if auto_only:
             J = [i]
@@ -238,10 +238,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
         else:
             J = range(nx)
         for j in range(nx):
-            if nx==1 and ny==1:
-                a = axes
-            else:
-                a = axes[i, j]
+            a = axes[i, j]
             if j not in J:
                 f.delaxes(a)
                 continue

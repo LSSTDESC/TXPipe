@@ -15,7 +15,6 @@ from .utils.calibration_tools import (
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
-import pdb
 
 class TXSourceDiagnosticPlots(PipelineStage):
     """
@@ -207,18 +206,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import pandas as pd
         
         psf_prefix = self.config["psf_prefix"]
-        #print(psf_prefix)
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
         g_min = self.config["g_min"]
         g_max = self.config["g_max"]
 
         c = self.open_input("shear_catalog")
-        #print(f"{psf_prefix}g1")
-        #pdb.set_trace()
-        #print(f'shear/mcal_psf_g1','AAAAAAAAAAAAAAAAAAAAAAAAAa')
-        #print(c[f"shear/mcal_psf_g1"])
-        #pdb.set_trace()
         psfg = pd.Series(np.array(c[f"shear/{psf_prefix}g1"]))
         psfg = psfg.loc[psfg.between(g_min,g_max)]
 
@@ -323,7 +316,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         import pandas as pd
-
 
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
@@ -506,7 +498,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             return
 
         dx = 0.05 * (T_edges[1] - T_edges[0])
-        idx = np.where(~np.isnan(std1))[0]
+        idx = np.where(np.isfinite(mu))[0]
         slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], y_err=std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
         line1 = slope1 * (np.log10(mu)) + intercept1
