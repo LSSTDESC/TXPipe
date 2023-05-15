@@ -171,9 +171,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
-        print("read data loop")
         for (start, end, data) in it:
-            #print(f"Read data {start} - {end}")
+            print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -212,7 +211,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         g_max = self.config["g_max"]
 
         c = self.open_input("shear_catalog")
-        psfg = pd.Series(np.array(c[f"shear/{psf_prefix}g1"]))
+        col = c[f"shear/{psf_prefix}g1"][:]
+        psfg = pd.Series(col)
         psfg = psfg.loc[psfg.between(g_min,g_max)]
 
         psf_g_edges = self.BinEdges(psfg,nbins)
@@ -324,7 +324,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psfT_max = self.config["psfT_max"]
         
         c = self.open_input("shear_catalog")
-        psfT = pd.Series(np.array(c[f"shear/{psf_prefix}T_mean"]))
+        col = c[f"shear/{psf_prefix}T_mean"][:]
+        psfT = pd.Series(col)
         psfT = psfT.loc[psfT.between(psfT_min,psfT_max)]
         
         psf_T_edges = self.BinEdges(psfT,nbins)
@@ -397,7 +398,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         s2n_max = self.config["s2n_max"]
         
         c = self.open_input("shear_catalog")
-        s2n = pd.Series(np.array(c[f"shear/{shear_prefix}s2n"]))
+        col = c[f"shear/{shear_prefix}s2n"][:]
+        s2n = pd.Series(col)
         s2n = s2n.loc[s2n.between(s2n_min,s2n_max)]
         snr_edges = self.BinEdges(s2n,nbins)
         
@@ -470,7 +472,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         T_max = self.config["T_max"]
         
         c = self.open_input("shear_catalog")
-        T = pd.Series(np.array(c[f"shear/{shear_prefix}T"]))
+        col = c[f"shear/{shear_prefix}T"][:]
+        T = pd.Series(col)
         T = T.loc[T.between(T_min,T_max)]
         T_edges = self.BinEdges(T,nbins)
         
