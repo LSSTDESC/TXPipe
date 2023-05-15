@@ -22,30 +22,20 @@ class TXFocalPlanePlot(PipelineStage):
     config_options = {}
 
     def run(self):
+        import matplotlib
         import matplotlib.pyplot as plt
         
+        matplotlib.use("agg")
+
         
         fov_x, fov_y, e1, e2, de1, de2 = self.load_stars()
         
-        X = plt.hist2d(fov_x, fov_y, bins=(100,100))
-        
-        x_edge = X[1]
-        y_edge = X[2]
-        
-        PSF_e1_err = np.zeros((100,100))
-        PSF_e2_err = np.zeros((100,100))
-
-        for i in range(100):
-            for j in range(100):
-                mask = (fov_x>=x_edge[i])*(fov_x<x_edge[i+1])*(fov_y>=y_edge[j])*(fov_y<y_edge[j+1])
-                if len(e1[mask])>0:
-                    PSF_e1_err[i][j] = np.mean(de1[mask])
-                    PSF_e2_err[i][j] = np.mean(de2[mask])
-        
+  
         fig = self.open_output("focalplane_g", wrapper=True)
         
         weights = [e1,de1,e2,de2]
         labels = ['e1','res','e2','res2']
+        
         plot, axes = plt.subplots(nrows=2, ncols=2)
         for ax,w,l in zip(axes.flat,weights,labels):
             H,xedge,yedge= np.histogram2d(fov_x, fov_y, bins=(100,100), weights=w)
@@ -53,13 +43,11 @@ class TXFocalPlanePlot(PipelineStage):
             ax.set_ylabel(l)
 
         plot.subplots_adjust(right=0.85)
-        cbar_ax = plot.add_axes([0.85, 0.15, 0.05, 0.7])
+        cbar_ax = plot.add_axes([0.9, 0.15, 0.05, 0.7])
         plot.colorbar(im,cax=cbar_ax,cmap='RdBu')
-        plt.show()    
-        fig.close()
-        
-        
-                    
+        plt.tight_layout()
+    
+        fig.close()    
         
         
     def load_stars(self):
