@@ -253,7 +253,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (psf_g_edges[1]-psf_g_edges[0])
-        idx = np.where(np.isfinite(mu))[0]
+        idx = np.where(np.isfinite(mu1))[0]
         
         slope11, intercept11, mc_cov = fit_straight_line(mu1[idx], mean11[idx], std11[idx])
         std_err11 = mc_cov[0, 0] ** 0.5
