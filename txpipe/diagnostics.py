@@ -69,7 +69,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # this also sets self.config["shear_catalog_type"]
         cat_type = read_shear_catalog_type(self)
-        print("cat_type:", cat_type)
         
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
