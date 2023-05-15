@@ -226,8 +226,8 @@ TXSourceDiagnosticPlots:
     psfT_max: 0.28
     T_min: 0.01
     T_max: 2.1
-    s2n_min: 40
-    s2n_max: 500
+    s2n_min: 1.25
+    s2n_max: 300
 
 TXLensDiagnosticPlots: {}
 
