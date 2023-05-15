@@ -247,32 +247,23 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         if self.rank != 0:
             return
-        w = np.isfinite(std11)
-        mu1 = mu1[w]
-        mean11 = mean11[w]
-        mean12 = mean12[w]
-        mean21 = mean21[w]
-        mean22 = mean22[w]
-        std11 = std11[w]
-        std12 = std12[w]
-        std21 = std21[w]
-        std22 = std22[w]
-        
+       
         
         fig = self.open_output("g_psf_g", wrapper=True)
         
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (psf_g_edges[1]-psf_g_edges[0])
+        idx = np.where(np.isinfinite(mu))[0]
         
-        slope11, intercept11, mc_cov = fit_straight_line(mu1, mean11, y_err=std11)
+        slope11, intercept11, mc_cov = fit_straight_line(mu1[idx], mean11[idx], std11[idx])
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
         
-        slope12, intercept12, mc_cov = fit_straight_line(mu1, mean12, y_err=std12)
+        slope12, intercept12, mc_cov = fit_straight_line(mu1[idx], mean12[idx], std12[idx])
         std_err12 = mc_cov[0, 0] ** 0.5
         line12 = slope12 * (mu1) + intercept12
         
-        slope21, intercept21, mc_cov = fit_straight_line(mu2, mean21, y_err=std21)
+        slope21, intercept21, mc_cov = fit_straight_line(mu2[idx], mean21[idx], std21[idx])
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
         
@@ -350,20 +341,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         if self.rank != 0:
             return
 
-        w = (mu != 0) & np.isfinite(std1)
-  
-        mu = mu[w]
-        mean1 = mean1[w]
-        mean2 = mean2[w]
-        std1 = std1[w]
-        std2 = std2[w]
-
         dx = 0.05 * (psf_T_edges[1] - psf_T_edges[0])
-        
-        slope1, intercept1, cov1 = fit_straight_line(mu, mean1, std1)
+        idx = np.where(np.isfinite(mu))[0]
+        slope1, intercept1, cov1 = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = cov1[0, 0] ** 0.5
         line1 = slope1 * mu + intercept1
-        slope2, intercept2, cov2 = fit_straight_line(mu, mean2, std2)
+        slope2, intercept2, cov2 = fit_straight_line(mu[idx], mean2[idx], std2[idx])
         std_err2 = cov2[0, 0] ** 0.5
         line2 = slope2 * mu + intercept2
         
@@ -425,23 +408,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         if self.rank != 0:
             return
-       
-        slope1, intercept1, mc_cov = fit_straight_line(np.log10(mu), mean1, y_err=std1)
-        std_err1 = mc_cov[0, 0] ** 0.5
-        line1 = slope1 * (np.log10(mu)) + intercept1
-        
-        slope2, intercept2, mc_cov = fit_straight_line(np.log10(mu), mean2, y_err=std2)
-        std_err2 = mc_cov[0, 0] ** 0.5
-        line2 = slope2 * (np.log10(mu)) + intercept2
-        
         
         # Get the error on the mean
         dx = 0.05 * (snr_edges[1] - snr_edges[0])
+        idx = np.where(np.isfinite(mu))[0]
+        slope1, intercept1, mc_cov = fit_straight_line(np.log10(mu[idx]), mean1[idx], std1[idx])
+        std_err1 = mc_cov[0, 0] ** 0.5
+        line1 = slope1 * (np.log10(mu)) + intercept1
         
+        slope2, intercept2, mc_cov = fit_straight_line(np.log10(mu[idx]), mean2[idx], std2[idx])
+        std_err2 = mc_cov[0, 0] ** 0.5
+        line2 = slope2 * (np.log10(mu)) + intercept2
         
-        #good = (mu > 0) & (np.isfinite(mean1))
-        #slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(
-        #    np.log10(mu[good]), mean1[good]
         
         fig = self.open_output("g_snr", wrapper=True)
 
