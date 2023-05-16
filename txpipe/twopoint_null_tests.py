@@ -412,8 +412,8 @@ class TXGammaTStars(TXTwoPoint):
         S = sacc.Sacc()
 
         f = self.open_input("shear_photoz_stack")
-        z = f["n_of_z/source/z"][:]
-        Nz = f[f"n_of_z/source/bin_0"][:]
+        z = f["n_of_z/source2d/z"][:]
+        Nz = f[f"n_of_z/source2d/bin_0"][:]
 
         f.close()
 
@@ -595,8 +595,8 @@ class TXGammaTRandoms(TXTwoPoint):
 
         f = self.open_input("shear_photoz_stack")
 
-        z = f["n_of_z/source/z"][:]
-        Nz = f["n_of_z/source/bin_0"][:] 
+        z = f["n_of_z/source2d/z"][:]
+        Nz = f["n_of_z/source2d/bin_0"][:] 
 
         f.close()
 
