@@ -302,7 +302,7 @@ class TXGammaTStars(TXTwoPoint):
         "npatch": 5,
         "use_true_shear": False,
         "subtract_mean_shear": False,
-        "use_randoms": False,
+        "use_randoms": True,
         "patch_dir": "./cache/patches",
         "low_mem": False,
         "chunk_rows": 100_000,
