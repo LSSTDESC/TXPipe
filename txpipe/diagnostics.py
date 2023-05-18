@@ -313,7 +313,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         c = self.open_input("shear_catalog")
         col = c[f"shear/{psf_prefix}T_mean"][:]
-        psfT = col[(col > g_min) & (col < g_max)]
+        psfT = col[(col > psfT_min) & (col < psfT_max)]
         psf_T_edges = self.BinEdges(psfT,nbins)
         del psfT
         
@@ -378,7 +378,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         c = self.open_input("shear_catalog")
         col = c[f"shear/{shear_prefix}s2n"][:]
-        s2n = col[(col > g_min) & (col < g_max)]
+        s2n = col[(col > s2n_min) & (col < s2n_max)]
         snr_edges = self.BinEdges(s2n,nbins)
         del s2n
         
@@ -447,7 +447,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         c = self.open_input("shear_catalog")
         col = c[f"shear/{shear_prefix}T"][:]
-        T = col[(col > g_min) & (col < g_max)]
+        T = col[(col > T_min) & (col < T_max)]
         T_edges = self.BinEdges(T,nbins)
         del T
         
