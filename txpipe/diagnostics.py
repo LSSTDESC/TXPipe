@@ -201,7 +201,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        import pandas as pd
         
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
@@ -303,7 +302,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         print("making shear psf size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        import pandas as pd
 
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
@@ -367,7 +365,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         print("Making mean shear SNR plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        import pandas as pd
 
         # Parameters of the binning in SNR
         shear_prefix = self.config["shear_prefix"]
@@ -437,7 +434,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        import pandas as pd
 
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
