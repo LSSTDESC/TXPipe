@@ -43,7 +43,7 @@ stages:
       nprocess: 16
       threads_per_process: 64
       nodes: 8
-    - name: TXTwoPointPlots
+    - name: TXTwoPointPlotsTheory
     - name: TXTwoPointTheoryReal
     - name: TXNullBlinding
     - name: TXMapPlots 

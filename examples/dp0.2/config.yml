@@ -124,6 +124,10 @@ TXSubsampleRandoms:
 
 #TXRealGaussianCovariance:
 
-TXTwoPointPlots:
+TXTwoPointPlotsTheory:
+    aliases:
+        twopoint_data_real: summary_statistics_real
+
+TXTwoPointPlotsTheory:
     aliases:
         twopoint_data_real: summary_statistics_real
