@@ -532,6 +532,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
             A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
             or bin labels and bin_type is one of the constants SHEAR_SHEAR,
             SHEAR_POS, or POS_POS.
+        
+        meta: dict
+            A dict to which the number of patches (or zero, if no patches) will
+            be added for each catalog type, with keys "npatch_shear", "npatch_pos",
+            and "npatch_ran".
         """
         # Make the full list of catalogs to run
         cats = set()
@@ -547,6 +552,9 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 cats.add((j, POS_POS))
             elif k == POS_POS:
                 cats.add((i, POS_POS))
+                cats.add((j, POS_POS))
+            elif k == SHEAR_POS_SELECT:
+                cats.add((i, SHEAR_SHEAR))
                 cats.add((j, POS_POS))
         cats = list(cats)
         cats.sort(key=str)
@@ -572,10 +580,10 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
             else:
-                cat = self.get_shear_catalog(h)
-                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
-                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
-                del cat
+                #cat = self.get_shear_catalog(h)
+                #npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                #self.empty_patch_exists[cat.save_patch_dir] = contains_empty
+                #del cat
 
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
@@ -592,7 +600,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                     del ran_cat
 
         meta["npatch_shear"] = npatch_shear
-        meta["npatch_pos"] = npatch_pos
+        meta["npatch_pos"] = npatch_shear
         meta["npatch_ran"] = npatch_ran
         # stop other processes progressing to the rest of the code and
         # trying to load things we have not written yet
