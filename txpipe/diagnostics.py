@@ -208,11 +208,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         g_min = self.config["g_min"]
         g_max = self.config["g_max"]
 
-        c = self.open_input("shear_catalog")
-        col = c[f"shear/{psf_prefix}g1"][:]
-        psfg = col[(col > g_min) & (col < g_max)]
-        psf_g_edges = self.BinEdges(psfg,nbins)
-        del psfg        
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{psf_prefix}g1"][:]
+            psfg = col[(col > g_min) & (col < g_max)]
+            psf_g_edges = self.BinEdges(psfg,nbins)
+            del psfg
+            
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
             psf_g_edges,
@@ -309,11 +310,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psfT_min = self.config["psfT_min"]
         psfT_max = self.config["psfT_max"]
         
-        c = self.open_input("shear_catalog")
-        col = c[f"shear/{psf_prefix}T_mean"][:]
-        psfT = col[(col > psfT_min) & (col < psfT_max)]
-        psf_T_edges = self.BinEdges(psfT,nbins)
-        del psfT
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{psf_prefix}T_mean"][:]
+            psfT = col[(col > psfT_min) & (col < psfT_max)]
+            psf_T_edges = self.BinEdges(psfT,nbins)
+            del psfT
         
         binnedShear = MeanShearInBins(
             f"{psf_prefix}T_mean",
@@ -373,11 +374,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         s2n_min = self.config["s2n_min"]
         s2n_max = self.config["s2n_max"]
         
-        c = self.open_input("shear_catalog")
-        col = c[f"shear/{shear_prefix}s2n"][:]
-        s2n = col[(col > s2n_min) & (col < s2n_max)]
-        snr_edges = self.BinEdges(s2n,nbins)
-        del s2n
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{shear_prefix}s2n"][:]
+            s2n = col[(col > s2n_min) & (col < s2n_max)]
+            snr_edges = self.BinEdges(s2n,nbins)
+            del s2n
         
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
@@ -441,11 +442,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         T_min = self.config["T_min"]
         T_max = self.config["T_max"]
         
-        c = self.open_input("shear_catalog")
-        col = c[f"shear/{shear_prefix}T"][:]
-        T = col[(col > T_min) & (col < T_max)]
-        T_edges = self.BinEdges(T,nbins)
-        del T
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{shear_prefix}T"][:]
+            T = col[(col > T_min) & (col < T_max)]
+            T_edges = self.BinEdges(T,nbins)
+            del T
         
         binnedShear = MeanShearInBins(
             f"{shear_prefix}T",
