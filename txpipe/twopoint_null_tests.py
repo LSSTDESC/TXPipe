@@ -488,7 +488,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "flip_g2": True,
         "cores_per_task": 20,
         "verbose": 1,
-        "reduce_randoms_size": 100.0,
+        "reduce_randoms_size": 1.0,
         "var_method": "shot",
         "npatch": 5,
         "use_true_shear": False,
