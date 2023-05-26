@@ -221,6 +221,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import pyccl as ccl 
 
         cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         cat_j = self.get_shear_catalog(j)
