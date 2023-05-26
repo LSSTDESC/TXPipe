@@ -176,9 +176,11 @@ class TXSelfCalibrationIA(TXTwoPoint):
         import pyccl as ccl
 
         cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
         cat_j = self.get_shear_catalog(j)
+        cat_j = self.touch_patches(cat_j)
         rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
@@ -225,6 +227,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         n_i = cat_i.nobj
 
         cat_j = self.get_shear_catalog(j)
+        cat_j = self.touch_patches(cat_j)
         rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
@@ -577,7 +580,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                print(f"Rank {self.rank} with a catalog len {len(cat)} chunk_rows {chunk_rows}")
+                print(f"Rank {self.rank} with a catalog len {len(cat.ra_col)} chunk_rows {chunk_rows}")
                 npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
