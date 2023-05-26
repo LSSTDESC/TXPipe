@@ -604,6 +604,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
                     npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
                     self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                     del ran_cat
+                print(f"Rank {self.rank} is done with lens part")
 
         meta["npatch_shear"] = npatch_shear
         meta["npatch_pos"] = npatch_shear
