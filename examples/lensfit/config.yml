@@ -165,8 +165,15 @@ TXBlinding:
 TXSourceDiagnosticPlots:
     psf_prefix: psf_
     shear_prefix: ''
-    T_min: 0.5
-    T_max: 1.0
+    nbins: 20
+    g_min: -0.5
+    g_max: 0.5
+    psfT_min: 0.2
+    psfT_max: 0.28
+    T_min: 0.9
+    T_max: 2.5
+    s2n_min: 1.25
+    s2n_max: 300
     bands: ri
 
 TXLensDiagnosticPlots:
