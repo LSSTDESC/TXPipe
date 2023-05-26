@@ -580,7 +580,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                print(f"Rank {self.rank} with a catalog len {len(cat.ra_col)} chunk_rows {chunk_rows}")
+                print(f"Rank {self.rank} with a catalog len {len(cat.ra)} chunk_rows {chunk_rows}")
                 npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
