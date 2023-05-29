@@ -37,6 +37,7 @@ from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
 from .calibrate import TXShearCalibration
+from .spatial_diagnostics import TXFocalPlanePlot
 from .lssweights import TXLSSweights
 
 # Here are the stages that mostly will be used for other projects
