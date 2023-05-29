@@ -85,8 +85,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         "use_subsampled_randoms": False,
         "patch_dir": "./cache/patches",
         "share_patch_files": False,
-        "use_subsampled_randoms": True,
-        "gaussian_sims_factor": [1.], 
+        "gaussian_sims_factor": [1.],
         "low_mem": False,
         "use_randoms": False,
     }
