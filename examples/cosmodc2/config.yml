@@ -154,8 +154,6 @@ TXTwoPointFourier:
     analytic_noise: True
     
 TXTwoPoint:
-    aliases:
-        binned_lens_catalog: binned_lens_catalog_unweighted
     bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True

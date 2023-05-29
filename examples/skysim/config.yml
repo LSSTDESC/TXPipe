@@ -94,8 +94,6 @@ TXRealGaussianCovariance:
     nbins: 20
 
 TXTwoPoint:
-    aliases:
-        binned_lens_catalog: binned_lens_catalog_unweighted
     bin_slop: 0.0
     delta_gamma: 0.02
     do_pos_pos: True
