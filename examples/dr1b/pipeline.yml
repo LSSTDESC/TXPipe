@@ -18,6 +18,7 @@ stages:
     - name: TXSourceNoiseMaps
     - name: TXLensNoiseMaps
     - name: TXSimpleMask
+    - name: TXLSSweightsUnit
     - name: TXMapPlots
     - name: TXTracerMetadata
 

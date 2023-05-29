@@ -27,6 +27,7 @@ stages:
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXLSSweightsUnit     # add systematic weights to the lens sample (weight=1 for this example)
     - name: TXSourceNoiseMaps    # Compute shear noise using rotations
     - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
