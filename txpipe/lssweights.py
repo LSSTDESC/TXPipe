@@ -549,6 +549,7 @@ def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, retu
 	"""
 	linear contamination model:
 	F(s) = alpha1*s1 + alpha2*s2 + ... + beta
+	Normalised to <F(s)> = 1
 
 	returns
 		predicted ndens vs smean
@@ -567,6 +568,10 @@ def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, retu
 	for ialpha, alpha in enumerate(alphas):
 		F.update_values_pix(validpixels, F[validpixels]+alpha*sys_maps[ialpha][validpixels])
 
+	#normalize the map
+	meanF = np.mean(F[validpixels]) #TODO make this a weighted mean?
+	F.update_values_pix(validpixels, F[validpixels]/meanF)
+
 	F_density_corrs = lsstools.DensityCorrelation()
 	for imap, sys_map in enumerate(sys_maps):
 			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
@@ -580,10 +585,69 @@ def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, retu
 
 
 
+class TXLSSweightsUnit(TXLSSweights):
+	"""
+	Class assigns weight=1 to all lens objects
+
+	"""
+	name = "TXLSSweightsUnit"
+	parallel = False
+
+	config_options = { 
+	}
+
+	def prepare_sys_maps(self):
+		"""
+		For unit weights we dont need to load anything
+		"""
+		sys_maps = sys_names = sys_meta = None
+		return sys_maps, sys_names, sys_meta
+
+	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
+		"""
+		For unit weights we dont need 1d density trends
+		"""
+		return None
 
 
+	def calc_covariance(self, density_correlation, sys_maps):
+		"""
+		For unit weights we dont need 1d density trends
+		"""
+		return None
+
+	def summarize(self, output_dir, density_correlation, fit_output):
+		"""
+		For unit weights we have nothing to summarize
+		"""
+		pass
 
 
+	def compute_weights(self, density_correlation, sys_maps ):
+		"""
+		Creates a healsparse map of unit weights
+		Uses the mask directly
+		"""
+		import numpy as np 
+		import healpy as hp 
+		import healsparse as hsp
 
+		with self.open_input("mask", wrapper=True) as map_file:
+			mask = map_file.read_map("mask")
+			nside = map_file.read_map_info("mask")["nside"]
+			nest = map_file.read_map_info("mask")["nest"]
+
+		nside_coverage = 32
+		nside_sparse = nside
+
+		validpixels = np.where(mask != hp.UNSEEN)[0]
+		if nest == False:
+			validpixels = hp.ring2nest(nside, validpixels)
+
+		Fmap = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=np.float64)
+		Fmap.update_values_pix(validpixels, 1.0)
+
+		fit_output = None
+		return Fmap, fit_output
 
 
