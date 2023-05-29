@@ -45,6 +45,18 @@ class TXLSSweights(TXMapCorrelations):
 	}
 
 	def run(self):
+		"""
+		Follows the basic stucture of a regression based weights pipeline:
+
+		(1) Prepare survey properties (SP maps) load, degrade, normalize, etc 
+		(2) Compute 1d density trends Ngal vs SP
+		(3) Compute the covariance matrix of the density trends
+		(4) Compute the weights using a given model
+		(5) Summarize (save plots, regression params, etc)
+		(6) Save the weighted catalog and weight maps
+
+		Each step can be overwritten in sub-classes
+		"""
 		pixel_scheme = choose_pixelization(**self.config)
 		self.pixel_metadata = pixel_scheme.metadata
 
@@ -215,7 +227,7 @@ class TXLSSweights(TXMapCorrelations):
 
 	def save_weights(self, Fmap_list):
 		"""
-		save the weights maps and galaxy weights
+		Save the weights maps and galaxy weights
 
 		Params
 		------
@@ -274,7 +286,7 @@ class TXLSSweights(TXMapCorrelations):
 
 	def summarize(self, output_dir, density_correlation, fit_output):
 		"""
-		make 1d density plots and other summary statistics and save
+		make 1d density plots and other summary statistics and save them
 		
 		Params
 		------
@@ -349,7 +361,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 	@staticmethod
 	def normalize_sysmaps(sys_maps):
 		"""
-		normalize a list of healsparse maps
+		Normalize a list of healsparse maps to mean=0, std=1
 		"""
 		import numpy as np 
 
@@ -368,7 +380,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 	def calc_covariance(self, density_correlation, sys_maps):
 		"""
-		Construct the covariance matrix of the ndens vs SP dvec 
+		Construct the covariance matrix of the ndens vs SP data-vector 
 		"""
 
 		#add diagonal shot noise
@@ -393,11 +405,11 @@ class TXLSSweightsSimReg(TXLSSweights):
 		import healpy as hp 
 		import numpy as np 
 
-		#get nside form the mask
+		#get nside from the mask
 		with self.open_input("mask", wrapper=True) as map_file:
 			nside = map_file.read_map_info("mask")["nside"]
 
-		# load the ra and dec of this lens bins
+		# load the galaxy ra and dec of this lens bins
 		# TODO: load lens sample in chunks if needed for memory
 		tomobin = density_correlation.tomobin
 		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
@@ -407,7 +419,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		#pixel ID for each lens galaxy
 		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
 
-		#covariance matrix on number *counts*
+		#Covariance matrix on number *counts*
 		nbinstotal = len(density_correlation.map_index)
 		covmat_N = np.zeros((nbinstotal,nbinstotal))
 		
@@ -441,7 +453,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 				covmat_N[starti:finishi,startj:finishj] = n2d_pair
 				covmat_N[startj:finishj,starti:finishi] = n2d_pair.T
 
-		#convert N covarinace into n covariance
+		#convert N (number count) covariance into n (normalized number density) covariance
 		#cov(n1,n2) = cov(N1,N2)*norm**2/(Npix1*Npix2)
 		npix1npix2 = np.matrix(density_correlation.npix).T*np.matrix(density_correlation.npix)
 		norm2 = np.matrix(density_correlation.norm).T*np.matrix(density_correlation.norm)
@@ -472,9 +484,9 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 	def compute_weights(self, density_correlation, sys_maps ):
 		"""
-		least square fit to a simple linear model
+		Least square fit to a simple linear model
 	
-		The function being optimized is a sum of the F(s) maps for each sys map
+		The function being optimized is a sum of the F(s) maps for each sys map plus a constant
 		
 		Params
 		------
