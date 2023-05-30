@@ -261,7 +261,8 @@ class TXLSSweights(TXMapCorrelations):
 			ra = subgroup["ra"][:]
 			dec = subgroup["dec"][:]
 			pix = hp.ang2pix(self.pixel_metadata['nside'],ra,dec,lonlat=True,nest=True) #can switch to using txpipe tools for this?
-			obj_weight = 1./Fmap[pix]
+			obj_weight = 1./Fmap_list[ibin][pix]
+			obj_weight[obj_weight==1./hp.UNSEEN] = 0.0
 
 			subgroup["weight"][...] *= obj_weight
 
@@ -567,6 +568,7 @@ def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, retu
 		predicted ndens vs smean
 	"""
 	import healsparse as hsp
+	import healpy as hp
 	import numpy as np 
 	from . import lsstools
 
@@ -574,7 +576,7 @@ def linear_model(x, beta, *alphas, density_correlation=None, sys_maps=None, retu
 
 	#make empty F(s) map
 	validpixels = sys_maps[0].valid_pixels
-	F = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64)
+	F = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
 	F.update_values_pix(validpixels, beta)
 
 	for ialpha, alpha in enumerate(alphas):
@@ -656,7 +658,7 @@ class TXLSSweightsUnit(TXLSSweights):
 		if nest == False:
 			validpixels = hp.ring2nest(nside, validpixels)
 
-		Fmap = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=np.float64)
+		Fmap = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
 		Fmap.update_values_pix(validpixels, 1.0)
 
 		fit_output = None
