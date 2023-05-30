@@ -943,6 +943,7 @@ class TXTwoPointPixel(TXTwoPoint):
         ("lens_photoz_stack", HDFFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
+        ("mask", MapsFile),
     ]
     outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
     # Add values to the config file that are not previously defined
@@ -973,7 +974,7 @@ class TXTwoPointPixel(TXTwoPoint):
         "use_randoms": True,
         "auto_only": False,
         "gaussian_sims_factor": [1.], 
-
+        "use_subsampled_randoms":False, #not used for pixel estimator
     }
     
 
@@ -985,6 +986,10 @@ class TXTwoPointPixel(TXTwoPoint):
             map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
             print(f"Loaded {i} overdensity maps")
 
+        # Read the mask to get fracdet weights
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_map("mask")
+
         scheme = choose_pixelization(**info) 
         ra_pix, dec_pix = scheme.pix2ang(pix)
 
@@ -992,7 +997,7 @@ class TXTwoPointPixel(TXTwoPoint):
         cat = treecorr.Catalog(
             ra=ra_pix,
             dec=dec_pix,
-            #w=,
+            w=mask[pix], #weight pixels by their fracdet
             k=map_d[pix],
             ra_units="degree",
             dec_units="degree",

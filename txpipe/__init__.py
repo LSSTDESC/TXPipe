@@ -24,7 +24,7 @@ from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
 from .maps import TXMainMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
-from .masks import TXSimpleMask
+from .masks import TXSimpleMask, TXSimpleMaskFrac
 from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
@@ -35,6 +35,7 @@ from .twopoint_null_tests import TXGammaTFieldCenters
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
 from .calibrate import TXShearCalibration
 from .ingest import *
+from .spatial_diagnostics import TXFocalPlanePlot
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
