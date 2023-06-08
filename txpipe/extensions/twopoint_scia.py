@@ -581,7 +581,8 @@ class TXSelfCalibrationIA(TXTwoPoint):
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
                 print(f"Rank {self.rank} with a catalog len {len(cat.ra)} chunk_rows {chunk_rows}")
-                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+
+                npatch_shear, contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
                 print(f"Rank {self.rank} with a catalog {h} is done with patches")
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
@@ -594,14 +595,16 @@ class TXSelfCalibrationIA(TXTwoPoint):
                 ran_cat = self.get_random_catalog(h)
                 # support use_randoms = False
                 if ran_cat is None:
+                    print(f"Rank {self.rank} is done with lens part")
                     continue
-                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+
+                npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
                 self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
                 if self.config["use_subsampled_randoms"]:
                     ran_cat = self.get_subsampled_random_catalog(h)
-                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
                     self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                     del ran_cat
                 print(f"Rank {self.rank} is done with lens part")

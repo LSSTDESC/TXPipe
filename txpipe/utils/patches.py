@@ -294,6 +294,9 @@ class PatchMaker:
             my_patches=my_patches,
         )
 
+        if is_root:
+            print(f"all prep work done for {comm.rank}")
+
         # Read the data in the input catalog in chunks
         with h5py.File(cat.file_name, "r") as f:
             # Get the group within the file
