@@ -35,7 +35,7 @@ PZRailTrainLens:
     dz: 0.01
     columns_file: ./data/bpz_ugrizy.columns
     data_path: ./data/example/rail-bpz-inputs
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     prior_band: i
     # Not sure about this
     prior_file: hdfn_gen
@@ -85,7 +85,7 @@ PZPrepareEstimatorLens:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     data_path: ./data/example/rail-bpz-inputs
     prior_band: i
     # Not sure about this
@@ -283,7 +283,7 @@ PZEstimatorLens:
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
     data_path: ./data/example/rail-bpz-inputs
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     prior_band: mag_i
     prior_file: hdfn_gen
     p_min: 0.005
