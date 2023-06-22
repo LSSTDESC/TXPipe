@@ -88,6 +88,7 @@ PZPrepareEstimatorLens:
     spectra_file: CWWSB4.list
     data_path: ./data/example/rail-bpz-inputs
     prior_band: i
+    ref_band: i
     # Not sure about this
     prior_file: hdfn_gen
     p_min: 0.005
@@ -278,13 +279,16 @@ PZEstimatorLens:
     dz: 0.01
     nzbins: 301
     band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
     band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     hdf5_groupname: photometry
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
     data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: mag_i
+    ref_band: mag_i
     prior_file: hdfn_gen
     p_min: 0.005
     gauss_kernel: 0.0
