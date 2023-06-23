@@ -1,0 +1,65 @@
+
+# Stages to run
+stages:
+    - name: FlowCreator            # Simulate a spectroscopic population
+    - name: GridSelection          # Simulate a spectroscopic sample
+    - name: TXParqetToHDF          # Convert the spec sample format
+    - name: PZPrepareEstimatorLens # Prepare the p(z) estimator
+      classname: Inform_BPZ_lite   
+    - name: PZEstimatorLens        # Measure lens galaxy PDFs
+      classname: BPZ_lite
+      threads_per_process: 1  
+    - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
+    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_NZDir
+    - name: TXLensCatalogSplitter  # Split the lens sample tomographically
+    - name: TXLensMaps             # make source lens and n_gal maps
+    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
+    - name: TXSimpleMaskFrac       # combine maps to make a simple mask
+    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
+    - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+
+    - name: TXLSSweightsSimReg   #compute LSS weights using linear regression 
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe rail.stages
+# modules: txpipe rail tjpcov
+
+# Where to put outputs
+output_dir: data/example/outputs_weights_lss
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/weights_lss/config.yml
+
+inputs:
+    # See README for paths to download these files
+    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    exposures: data/example/inputs/exposures.hdf5
+    star_catalog: data/example/inputs/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension we are not using Random_cat_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    random_cats_source: Null
+    flow: data/example/inputs/example_flow.pkl
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: False
+# where to put output logs for individual stages
+log_dir: txpipe_utils/examples/plot1d_example/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: txpipe_utils/examples/plot1d_example/output/log.txt
