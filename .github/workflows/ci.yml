@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/lsstdesc/txpipe-dev
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -56,7 +56,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe-dev
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -97,7 +97,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe-dev
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -148,7 +148,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe-dev
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -190,7 +190,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe-dev
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -229,7 +229,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/lsstdesc/txpipe-dev
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
