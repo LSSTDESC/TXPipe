@@ -32,5 +32,5 @@ git+https://github.com/jlvdb/hyperbolic
 git+https://github.com/joezuntz/dask-mpi
 git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 parallel_statistics
-pz-rail-hub
+pz-rail[dev]==0.99.1
 tjpcov
