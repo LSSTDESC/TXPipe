@@ -1,0 +1,226 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 128
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+# Here's the list of stages we are using:
+#
+# TXSourceSelectorMetacal
+# TXShearCalibration
+# TXTruthLensCatalogSplitter
+# TXStarCatalogSplitter     
+# TXPhotozPlots 
+# TXSourceMaps
+# TXLensMaps
+# TXAuxiliarySourceMaps  
+# TXAuxiliaryLensMaps    
+# TXSourceNoiseMaps    
+# TXDensityMaps        
+# TXMapPlots           
+# TXTracerMetadata     
+# TXJackknifeCenters   
+# TXTwoPoint           
+# TXBlinding           
+# TXTwoPointTheoryReal 
+# TXTwoPointPlots      
+# TXSourceDiagnosticPlots    
+# TXLensDiagnosticPlots    
+# TXGammaTFieldCenters # Compute and plot gamma_t around center points
+# TXGammaTStars  # Compute and plot gamma_t around bright stars
+# TXGammaTRandoms      # Compute and plot gamma_t around randoms
+# TXRoweStatistics     # Compute and plot Rowe statistics
+# TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+# TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+# TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+# TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+# TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+# TXConvergenceMapPlots # Plot the convergence map
+# TXMapCorrelations    # plot the correlations between systematics and data
+# TXApertureMass        # Compute aperture-mass statistics
+    
+##- name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+##- name: TXTwoPointFourier          # Compute power spectra C_ell
+##- name: TXFourierNamasterCovariance # Compute the C_ell covariance
+##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+
+TXSourceSelectorMetacal:
+    input_pz: True
+    true_z: False
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
+    shear_prefix: mcal_
+
+TXSourceSelectorLensfit:
+    bands: ri #used for selection
+    T_cut: 0.0
+    s2n_cut: 0.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9, 1.2]
+    nsrc: 5
+    nlens: 0
+    shear_catalog_type: 'lensfit'
+    input_pz: True
+    shear_prefix: ''
+    # may also need one for r_cpar_cut
+    input_m_is_weighted: True
+
+TXShearCalibration: {}
+TXTruthLensCatalogSplitter: {}
+TXStarCatalogSplitter: {} 
+TXPhotozPlots: {}
+
+TXSourceMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLensMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXAuxiliarySourceMaps:
+    flag_exponent_max: 8
+    psf_prefix: mcal_psf_
+    nside: 128
+
+TXAuxiliaryLensMaps:
+    flag_exponent_max: 8
+    bright_obj_threshold: 10.0 # The magnitude threshold for a object to be counted as bright
+    depth_band : i
+    snr_threshold: 20.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+    snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+
+TXSourceNoiseMaps: {}
+TXDensityMaps: {}
+TXMapPlots: {}
+TXTracerMetadata: {}
+
+TXJackknifeCenters:
+    npatch: 100
+    every_nth: 100
+
+TXTwoPoint:
+    calcs: [0]
+    bin_slop: 0.5
+    delta_gamma: 0.02
+    do_pos_pos: False
+    do_shear_shear: False
+    do_shear_pos: False
+    flip_g2: False  
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 20
+    verbose: 0
+    subtract_mean_shear: True
+    source_bins: [0]
+    lens_bins: [0]
+
+TXBlinding:
+    seed: 1972  ## seed uniquely specifies the shift in parameters
+    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
+    Omega_c: [0.2545, 0.01]
+    w0: [-1.0, 0.1]
+    h: [0.682, 0.02]
+    sigma8: [0.801, 0.01]
+    n_s: [0.971, 0.03]
+    b0: 0.95  ## we use bias of the form b0/g
+    delete_unblinded: True
+    
+TXTwoPointTheoryReal: {}
+TXTwoPointPlots: {}    
+    
+TXSourceDiagnosticPlots:
+    psf_prefix: 'psf_'
+    shear_prefix: ''
+    psfT_min: 0.04
+    psfT_max: 0.36
+    T_min: 0.04
+    T_max: 4.0
+    nbins: 20
+    bands: ri
+
+TXLensDiagnosticPlots: {}
+
+TXGammaTFieldCenters: {}
+
+TXGammaTStars: {}
+
+TXGammaTRandoms: {}
+
+TXRoweStatistics: {}
+
+TXFocalPlanePlot: {}
+
+TXGalaxyStarDensity: {}
+
+
+
+
+
+
+TXExposureInfo:
+    dc2_name: '1.2p'
+
+
+
+# Mock version of stacking:
+TXSourceTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+
+# Mock version of stacking:
+TXTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
+
+
+
+
+TXGammaTBrightStars: {}
+
+TXGammaTDimStars: {}
+
+
+
+
+TXDiagnosticMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+    snr_threshold: 10.0
+    snr_delta: 1.0
+    # pixelization: gnomonic
+    pixel_size: 0.2
+    ra_cent: 62.
+    dec_cent: -35.
+    npix_x: 60
+    npix_y: 60
+    depth_cut: 23.0
+    psf_prefix: mcal_psf_
+
+
+TXRealGaussianCovariance:
+    min_sep: 2.5
+    max_sep: 60.
+    nbins: 10
+    pickled_wigner_transform: data/example/inputs/wigner.pkl
+
+
+
+TXTwoPointFourier:
+    flip_g2: True
+    bandwidth: 100
+
+
+
+TXMapCorrelations:
+    supreme_path_root: data/example/inputs/supreme
+    outlier_fraction: 0.05
+    nbin: 20
