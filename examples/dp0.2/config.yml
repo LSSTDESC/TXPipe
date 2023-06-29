@@ -121,8 +121,8 @@ TXTwoPoint:
 
 TXTwoPointPlotsTheory:
     aliases:
-        twopoint_data_real: summary_statistics_real
-
-TXTwoPointPlotsTheory:
-    aliases:
+        # we want to use the summary statistics for the plotting
+        # since the shot noise error bars here are much less reliable
+        # than the MCPCov-estimated ones, because of the poor shear
+        # calibration
         twopoint_data_real: summary_statistics_real
