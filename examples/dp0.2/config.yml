@@ -117,10 +117,6 @@ TXTwoPoint:
     verbose: 1
 
 
-TXSubsampleRandoms:
-    sample_rate: 0.2
-
-
 #TXRealGaussianCovariance:
 
 TXTwoPointPlotsTheory:
