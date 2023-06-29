@@ -1,6 +1,6 @@
-from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile
-from .utils.calibration_tools import band_variants, metacal_variants
+from ..base_stage import PipelineStage
+from ..data_types import ShearCatalog, HDFFile
+from ..utils import band_variants, metacal_variants, moments_to_shear
 import numpy as np
 import glob
 import re
@@ -208,7 +208,7 @@ class TXIngestStars(PipelineStage):
         import GCRCatalogs
         import GCR
         import h5py
-        from .utils.hdf_tools import repack
+        from ..utils.hdf_tools import repack, h5py_shorten
 
         cat_name = self.config["cat_name"]
         cat = GCRCatalogs.load_catalog(cat_name)
@@ -372,11 +372,12 @@ class TXIngestStars(PipelineStage):
         return star_data
 
 
-def moments_to_shear(Ixx, Iyy, Ixy):
-    b = Ixx + Iyy + 2 * np.sqrt(Ixx * Iyy - Ixy**2)
-    e1 = (Ixx - Iyy) / b
-    e2 = 2 * Ixy / b
-    return e1, e2
+
+
+
+        
+
+
 
 
 # response to an old Stack Overflow question of mine:
@@ -389,10 +390,3 @@ def intersecting_indices(x, y):
     i_idx_y = u_idx_y[np.in1d(u_y, i_xy, assume_unique=True)]
     return i_idx_x, i_idx_y
 
-
-def h5py_shorten(group, name, n):
-    tmp_name = name + "_tmp_5kb04scgllj"
-    group[tmp_name] = group[name][:n]
-    del group[name]
-    group[name] = group[tmp_name]
-    del group[tmp_name]

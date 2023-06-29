@@ -85,7 +85,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_fourier")
-        two_point_data.add_covariance(cov)
+        two_point_data.add_covariance(cov, overwrite=True)
         two_point_data.save_fits(filename, overwrite=True)
 
     def read_cosmology(self):
@@ -630,7 +630,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_real")
-        two_point_data.add_covariance(cov)
+        two_point_data.add_covariance(cov, overwrite=True)
         two_point_data.save_fits(filename, overwrite=True)
 
 
@@ -782,7 +782,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # Write the sacc file with the covariance in the TXPipe output folder
         if self.rank == 0:
             cov = calculator.get_covariance()
-            cl_sacc.add_covariance(cov)
+            cl_sacc.add_covariance(cov, overwrite=True)
             output_filename = self.get_output("summary_statistics_fourier")
             cl_sacc.save_fits(output_filename, overwrite=True)
             print("Saved power spectra with its Gaussian covariance")
