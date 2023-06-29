@@ -128,7 +128,6 @@ class TXSourceSelectorBase(PipelineStage):
         "verbose": False,
         "T_cut": float,
         "s2n_cut": float,
-        "delta_gamma": float,
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
         "random_seed": 42,
@@ -460,6 +459,13 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     name = "TXSourceSelectorMetacal"
 
+    # add one option to the base class configuration
+    config_options = {
+        **TXSourceSelectorBase.config_options,
+        "delta_gamma": float
+    }
+
+
     # The main differences between the classes are to do with how the data is read
     # and what output response values are generated.
     def data_iterator(self):
@@ -601,6 +607,13 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     name = "TXSourceSelectorMetadetect"
 
+    # add one option to the base class configuration
+    config_options = {
+        **TXSourceSelectorBase.config_options,
+        "delta_gamma": float
+    }
+
+
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
         chunk_rows = self.config["chunk_rows"]
@@ -708,6 +721,13 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
 
     name = "TXSourceSelectorLensfit"
+
+    # add one option to the base class configuration
+    config_options = {
+        **TXSourceSelectorBase.config_options,
+        "input_m_is_weighted": bool
+    }
+
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]

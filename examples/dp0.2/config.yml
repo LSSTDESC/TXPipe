@@ -3,7 +3,6 @@ global:
     pixelization: healpix
     nside: 256
     sparse: True
-    delta_gamma: 1e9 # mock value since this should not be used at all
 
 Inform_BPZ_lite:
     aliases:
