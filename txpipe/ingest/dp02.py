@@ -76,8 +76,8 @@ class TXIngestDataPreview02(PipelineStage):
 
         # This is the default batch size for pyarrow
         batch_size = 65536
-        s1 = 0
-        s2 = 0
+        start1 = 0
+        start2 = 0
         for i, fn in enumerate(cat_files):
             with ParquetFile(fn) as f:
                 n_chunk = math.ceil(f.metadata.num_rows / batch_size)
@@ -96,26 +96,26 @@ class TXIngestDataPreview02(PipelineStage):
                         photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
                         shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
 
-                    e1 = s1 + len(photo_data['ra'])
-                    e2 = s2 + len(shear_data['ra'])
-                    self.write_output(photo_outfile, "photometry", photo_data, s1, e1)
-                    self.write_output(shear_outfile, "shear", shear_data, s2, e2)
-                    print(f"Processing chunk {j+1}/{n_chunk} of file {i+1}/{nfile} into rows {s1:,} - {e1:,}")
-                    s1 = e1
-                    s2 = e2
+                    end1 = start1 + len(photo_data['ra'])
+                    end2 = start2 + len(shear_data['ra'])
+                    self.write_output(photo_outfile, "photometry", photo_data, start1, end1)
+                    self.write_output(shear_outfile, "shear", shear_data, start2, end2)
+                    print(f"Processing chunk {j+1}/{n_chunk} of file {i+1}/{nfile} into rows {start1:,} - {end1:,}")
+                    start1 = end1
+                    start2 = end2
 
 
-        print("Final selected objects: {e1:,} in photometry and {e2:,} in shear")
+        print("Final selected objects: {end1:,} in photometry and {end2:,} in shear")
         # Cut down to just include stars.
         print("Trimming photometry columns:")
         for col in photo_data.keys():
             print("    ", col)
-            h5py_shorten(photo_outfile["photometry"], col, e1)
+            h5py_shorten(photo_outfile["photometry"], col, end1)
 
         print("Trimming shear columns:")
         for col in shear_data.keys():
             print("    ", col)
-            h5py_shorten(shear_outfile["shear"], col, e2)
+            h5py_shorten(shear_outfile["shear"], col, end2)
 
         photo_outfile.close()
         shear_outfile.close()
