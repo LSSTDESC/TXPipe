@@ -15,7 +15,7 @@ from .utils.calibration_tools import (
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
-
+import pdb
 class TXSourceDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the shear catalog
@@ -133,6 +133,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 bands, "mag", "mag_err", shear_catalog_type="metadetect"
             )
         else:
+        
             shear_cols = [
                 "psf_g1",
                 "psf_g2",
@@ -252,7 +253,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (psf_g_edges[1]-psf_g_edges[0])
         idx = np.where(np.isfinite(mu1))[0]
-        
+        #pdb.set_trace()
         slope11, intercept11, mc_cov = fit_straight_line(mu1[idx], mean11[idx], std11[idx])
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
@@ -475,12 +476,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         idx = np.where(np.isfinite(mu))[0]
         slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], y_err=std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
-        line1 = slope1 * (np.log10(mu)) + intercept1
+        line1 = slope1 * mu + intercept1
         
         slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], y_err=std2[idx])
         std_err2 = mc_cov[0, 0] ** 0.5
-        line2 = slope2 * (np.log10(mu)) + intercept2
-        
+        line2 = slope2 * mu + intercept2
         
         fig = self.open_output("g_T", wrapper=True)
 
@@ -535,9 +535,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
             else:
                 g1 = data["g1"]
                 g2 = data["g2"]
+                c1 = data['c1']
+                c2 = data['c2']
                 w = data["weight"]
-
-            g1, g2 = cal.apply(g1, g2)
+            #pdb.set_trace()
+            g1, g2 = cal.apply(g1, g2,c1,c2)
             H1.add_data(g1)
             H2.add_data(g2)
             H1_weighted.add_data(g1, w)
