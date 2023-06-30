@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import HDFFile, FitsFile
+from ..base_stage import PipelineStage
+from ..data_types import HDFFile, FitsFile
 import numpy as np
 
 

@@ -14,20 +14,24 @@ import yaml
 import collections
 import os
 
-# start from a config file and a stage to delete
-config = yaml.safe_load(open(sys.argv[1]))
+config_file = sys.argv[1]
 stage_to_delete = sys.argv[2]
 
 # get the stages we need
-stage_names = [s['name'] for s in config['stages']]
-pipeline = ceci.Pipeline(config['stages'], None)
-stages = [ceci.PipelineStage.get_stage(stage_name) for stage_name in stage_names]
+pipe_config = ceci.Pipeline.build_config(config_file, ["resume=False"], dry_run=True)
+
+with ceci.main.prepare_for_pipeline(pipe_config):
+    pipeline = ceci.Pipeline.create(pipe_config)
+
+stage_names = [s['name'] for s in pipe_config['stages']]
+stages = pipeline.stages
 
 # build the mapping tag => stages depending on that tag
 dependencies = collections.defaultdict(list)
 for stage in stages:
-    for tag in stage.input_tags():
+    for tag in stage.find_inputs(pipeline.pipeline_files):
         dependencies[tag].append(stage)
+
 
 # initialize with deletng one stage and the tags it makes
 tags_to_delete = ceci.PipelineStage.get_stage(stage_to_delete).output_tags()
@@ -51,5 +55,5 @@ for i in range(len(stage_names)):
 
 # now at the end we delete all tags output by stage to delete
 for s in stages_to_delete:
-    for f in pipeline.find_outputs(s, config).values():
+    for f in s.find_outputs(pipe_config['output_dir']).values():
         print(f"rm -f {f}")

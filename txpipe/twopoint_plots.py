@@ -1,6 +1,6 @@
 
 from .base_stage import PipelineStage
-from .data_types import FiducialCosmology, SACCFile, PNGFile
+from .data_types import SACCFile, PNGFile
 import numpy as np
 
 
@@ -14,9 +14,7 @@ class TXTwoPointPlots(PipelineStage):
     parallel = False
     inputs = [
         ("twopoint_data_real", SACCFile),
-        ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_gamma_x", SACCFile),
-        ("twopoint_theory_real", SACCFile),
     ]
     outputs = [
         ("shear_xi_plus", PNGFile),
@@ -45,8 +43,6 @@ class TXTwoPointPlots(PipelineStage):
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
 
-        filename_theory = self.get_input("twopoint_theory_real")
-
         outputs = {
             "galaxy_density_xi": self.open_output(
                 "density_xi", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True
@@ -74,24 +70,11 @@ class TXTwoPointPlots(PipelineStage):
             [filename],
             ["twopoint_data_real"],
             figures=figures,
-            theory_sacc_files=[filename_theory],
-            theory_labels=["Fiducial"],
         )
 
         for fig in outputs.values():
             fig.close()
 
-        full_3x2pt_plots(
-            [filename],
-            ["twopoint_data_real"],
-            figures=figures,
-            theory_sacc_files=[filename_theory],
-            theory_labels=["Fiducial"],
-            ratios=True,
-        )
-
-        for fig in outputs.values():
-            fig.close()
 
         filename = self.get_input("twopoint_gamma_x")
 
@@ -139,7 +122,6 @@ class TXTwoPointPlotsFourier(PipelineStage):
     parallel = False
     inputs = [
         ("summary_statistics_fourier", SACCFile),
-        ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_theory_fourier", SACCFile),
     ]
     outputs = [
@@ -255,7 +237,6 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
     parallel = False
     inputs = [
         ("twopoint_data_real", SACCFile),
-        ("fiducial_cosmology", FiducialCosmology),  # For example lines
         ("twopoint_gamma_x", SACCFile),
         ("twopoint_theory_real", SACCFile),
     ]

@@ -1,12 +1,12 @@
-from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile
-from .utils.calibration_tools import (
+from ..base_stage import PipelineStage
+from ..data_types import ShearCatalog, HDFFile
+from ..utils import (
     band_variants,
     metacal_variants,
     metadetect_variants,
+    Timer
 )
 import numpy as np
-from .utils.timer import Timer
 
 
 class TXCosmoDC2Mock(PipelineStage):
