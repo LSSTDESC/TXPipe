@@ -45,6 +45,10 @@ class TXBaseLensSelector(PipelineStage):
         "i_hi_cut": 19.9,
         "r_i_cut": 2.0,
         "random_seed": 42,
+        "selection_type": "boss",
+        "maglim_band": "i",
+        "maglim_limit": 24.1,
+
     }
 
     def run(self):
@@ -122,13 +126,19 @@ class TXBaseLensSelector(PipelineStage):
         nbin = len(self.config["lens_zbin_edges"]) - 1
 
         z = phot_data[f"z"]
+        ntot = len(z)
 
-        zbin = np.repeat(-1, len(z))
+        zbin = np.repeat(-1, ntot)
+        nsel = 0
+        nfinite = np.isfinite(z).sum()
+        zmean = np.nanmean(z)
         for zi in range(nbin):
             mask_zbin = (z >= self.config["lens_zbin_edges"][zi]) & (
                 z < self.config["lens_zbin_edges"][zi + 1]
             )
+            nsel += mask_zbin.sum()
             zbin[mask_zbin] = zi
+        print(f"Rank {self.rank} found {nsel} / {ntot} galaxies within the selection redshift range, in any bin. {nfinite} galaxies had finite z. Mean z of these was {zmean}")
 
         pz_data[f"zbin"] = zbin
 
@@ -197,6 +207,19 @@ class TXBaseLensSelector(PipelineStage):
             group["lens_counts_2d"][:] = lens_counts_2d
 
     def select_lens(self, phot_data):
+        t = self.config["selection_type"]
+        if t == "boss":
+            s = self.select_lens_boss(phot_data)
+        elif t == "maglim":
+            s= self.select_lens_maglim(phot_data)
+        else:
+            raise ValueError(f"Unknown lens selection type {t} - expected boss or maglim")
+        ntot = s.size
+        nsel = s.sum()
+        print(f"Rank {self.rank} selected {nsel} objects out of {ntot} as potential lenses with method {t}")
+        return s
+
+    def select_lens_boss(self, phot_data):
         """Photometry cuts based on the BOSS Galaxy Target Selection:
         http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
         """
@@ -243,6 +266,13 @@ class TXBaseLensSelector(PipelineStage):
         lens_gals[lens_mask] = 1
 
         return lens_gals
+    
+    def select_lens_maglim(self, phot_data):
+        band = self.config["maglim_band"]
+        limit = self.config["maglim_limit"]
+        mag_i = phot_data[f"mag_{band}"]
+        s = (mag_i < limit).astype(np.int8)
+        return s
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
 
@@ -362,14 +392,13 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         ("photometry_catalog", HDFFile),
         ("calibration_table", TextFile),
     ]
-    config_options = {
+    config_options = TXBaseLensSelector.config_options.copy().update({
         "verbose": False,
         "bands": "ugrizy",
         "chunk_rows": 10000,
         "lens_zbin_edges": [float],
         "random_seed": 42,
-        "mag_i_limit": 24.1,
-    }
+    })
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
@@ -398,10 +427,6 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         )
         return pz_data
 
-    def select_lens(self, phot_data):
-        mag_i = phot_data["mag_i"]
-        limit = self.config["mag_i_limit"]
-        return (mag_i < limit).astype(np.int8)
 
 
 class TXLensCatalogSplitter(PipelineStage):
