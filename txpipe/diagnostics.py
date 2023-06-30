@@ -15,7 +15,7 @@ from .utils.calibration_tools import (
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
-import pdb
+
 class TXSourceDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the shear catalog
@@ -253,7 +253,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (psf_g_edges[1]-psf_g_edges[0])
         idx = np.where(np.isfinite(mu1))[0]
-        #pdb.set_trace()
+        
         slope11, intercept11, mc_cov = fit_straight_line(mu1[idx], mean11[idx], std11[idx])
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
@@ -532,14 +532,22 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g1 = data["00/g1"]
                 g2 = data["00/g2"]
                 w = data["00/weight"]
+            elif cat_type == "lensfit":
+                g1 = data["g1"]
+                g2 = data["g2"]
+                w = data["weight"]
             else:
                 g1 = data["g1"]
                 g2 = data["g2"]
                 c1 = data['c1']
                 c2 = data['c2']
                 w = data["weight"]
-            #pdb.set_trace()
-            g1, g2 = cal.apply(g1, g2,c1,c2)
+
+            if cat_type=='metacal' or cat_type=='metadetect' or cat_type=='lensfit':
+                g1, g2 = cal.apply(g1,g2)
+            else:
+                g1, g2 = cal.apply(g1,g2,c1,c2)
+
             H1.add_data(g1)
             H2.add_data(g2)
             H1_weighted.add_data(g1, w)
