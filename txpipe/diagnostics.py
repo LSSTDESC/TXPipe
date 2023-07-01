@@ -354,7 +354,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
-        plt.xlabel("PSF $T^{1/2}$")
+        plt.xlabel("PSF $T$")
         plt.ylabel("Mean g")
 
         plt.legend(loc="best")
@@ -491,7 +491,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o",markersize=5, color="blue")
         
         plt.xscale("log")
-        plt.xlabel("galaxy size T$^{1/2}$")
+        plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
         plt.legend()
         plt.tight_layout()
