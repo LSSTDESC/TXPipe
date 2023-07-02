@@ -145,6 +145,8 @@ TXSourceDiagnosticPlots:
     psfT_max: 0.36
     T_min: 0.04
     T_max: 4.0
+    s2n_min: 10
+    s2n_max: 50
     nbins: 20
     bands: ri
 
