@@ -408,13 +408,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Get the error on the mean
         dx = 0.05 * (snr_edges[1] - snr_edges[0])
         idx = np.where(np.isfinite(mu))[0]
-        slope1, intercept1, mc_cov = fit_straight_line(np.log10(mu[idx]), mean1[idx], std1[idx])
+        slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
-        line1 = slope1 * (np.log10(mu)) + intercept1
+        line1 = slope1 * mu[idx] + intercept1
         
-        slope2, intercept2, mc_cov = fit_straight_line(np.log10(mu[idx]), mean2[idx], std2[idx])
+        slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], std2[idx])
         std_err2 = mc_cov[0, 0] ** 0.5
-        line2 = slope2 * (np.log10(mu)) + intercept2
+        line2 = slope2 * mu[idx] + intercept2
         
         
         fig = self.open_output("g_snr", wrapper=True)
@@ -424,7 +424,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
-        plt.xscale("log")
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
@@ -490,7 +489,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o",markersize=5, color="blue")
         
-        plt.xscale("log")
         plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
         plt.legend()
