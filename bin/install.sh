@@ -22,17 +22,17 @@ else
     CHIPSET=x86_64
 fi
 
-if [ "$CHIPSET" = "aarch64" ]
-then
-    echo "Sorry - TXPipe does not yet auto-install on non-x86 systems like M1 macs. You can use the conda install though."
-    exit 1
-fi
+# if [ "$CHIPSET" = "aarch64" ]
+# then
+#     echo "Sorry - TXPipe does not yet auto-install on non-x86 systems like M1 macs. You can use the conda install though."
+#     exit 1
+# fi
 
-if [ "$CHIPSET" = "arm64" ]
-then
-    echo "Sorry - TXPipe does not yet auto-install on non-x86 systems like M1 macs. You can use the conda install though."
-    exit 1
-fi
+# if [ "$CHIPSET" = "arm64" ]
+# then
+#     echo "Sorry - TXPipe does not yet auto-install on non-x86 systems like M1 macs. You can use the conda install though."
+#     exit 1
+# fi
 
 export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
 
@@ -47,9 +47,16 @@ chmod +x Mambaforge3.sh
 source ./conda/bin/activate
 
 # conda-installable stuff
-mamba install -c conda-forge -y --file conda.txt
-# everything else
-pip install -r requirements.txt || ( sed 's/git+https/git+git/' requirements.txt > requirements2.txt && pip install -r requirements2.txt )
+mamba install  -y --file environment.yml
+
+
+if [[ "$CHIPSET" = "arm64" || "$CHIPSET" = "aarch64" ]]
+then
+    echo "Pymaster cannot be correctly conda- or pip-installed on Apple Silicon yet, so we are skipping it."
+    echo "The twopoint fourier and some covariance stage(s) will not work"
+else
+    mamba install -c conda-forge namaster
+fi
 
 echo ""
 echo "Installation successful!"
