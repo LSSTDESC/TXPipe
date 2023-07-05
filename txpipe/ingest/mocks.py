@@ -44,7 +44,8 @@ class TXCosmoDC2Mock(PipelineStage):
         "apply_mag_cut": False,  # used when comparing to descqa measurements
         "Mag_r_limit": -19,  # used to decide what objects to cut out
         "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise": True, 
+        "add_shape_noise": True,
+        "healpixels": [-1],
     }
 
     def data_iterator(self, gc):
@@ -88,7 +89,15 @@ class TXCosmoDC2Mock(PipelineStage):
 
         print(f"Loading from catalog {cat_name}")
 
-        gc = GCRCatalogs.load_catalog(cat_name)
+        kw = {}
+        if self.config['healpixels'] != [-1]:
+            kw = {
+                "config_overwrite":{
+                    "healpix_pixels": self.config["healpixels"]
+                }
+            }
+
+        gc = GCRCatalogs.load_catalog(cat_name, **kw)
 
         # GCR sometimes tries to read the entire catalog
         # to measure its length rather than looking at metadata
