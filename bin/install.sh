@@ -47,16 +47,17 @@ chmod +x Mambaforge3.sh
 source ./conda/bin/activate
 
 # conda-installable stuff
-mamba env update -vv --file environment.yml
+# Try installing with conda instead of mamba since conda fails
+conda env update  --file environment.yml
 
-pip install ceci==1.13 \
-    "git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c"  \
-    "git+https://github.com/joezuntz/dask-mpi@31e35759cfb03780a12ad6ffe2b82279b0fab442"  \
-    "healpix==2023.1.13"  \
-    "parallel-statistics==0.13"  \
-    "pz-rail[dev]==0.99.1"  \
-    "sacc==0.8"  \
-    "tjpcov==0.3.0"
+# pip install ceci==1.13 \
+#     "git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c"  \
+#     "git+https://github.com/joezuntz/dask-mpi@31e35759cfb03780a12ad6ffe2b82279b0fab442"  \
+#     "healpix==2023.1.13"  \
+#     "parallel-statistics==0.13"  \
+#     "pz-rail[dev]==0.99.1"  \
+#     "sacc==0.8"  \
+#     "tjpcov==0.3.0"
 
 
 if [[ "$CHIPSET" = "arm64" || "$CHIPSET" = "aarch64" ]]
