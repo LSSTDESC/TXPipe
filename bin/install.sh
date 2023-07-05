@@ -37,8 +37,7 @@ fi
 export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
 
 # URL to download
-URL="https://github.com/conda-forge/miniforge/releases/download/4.11.0-4/Mambaforge-4.11.0-4-${OS}-${CHIPSET}.sh"
-
+URL="https://github.com/conda-forge/miniforge/releases/download/23.1.0-3/Mambaforge-23.1.0-3-${OS}-${CHIPSET}.sh"
 # Download and run the conda installer Miniforge conda installer
 echo "Downloading conda installer from $URL"
 wget -O Mambaforge3.sh $URL
@@ -48,7 +47,7 @@ source ./conda/bin/activate
 
 # conda-installable stuff
 # Try installing with conda instead of mamba since conda fails
-conda env update  --file environment.yml
+mamba env update  --file environment.yml
 
 # pip install ceci==1.13 \
 #     "git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c"  \
