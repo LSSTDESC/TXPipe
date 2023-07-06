@@ -1,0 +1,40 @@
+launcher:
+    name: mini
+    interval: 1.0
+
+# These site options tell the launcher to use shifter
+site:
+    name: cc-parallel
+    image: txpipe_latest.sif
+    volume: ${PWD}:/opt/TXPipe,/pbs/throng/lsst/
+
+modules: txpipe
+
+
+stages:
+#    - name: CMIngestHalosCosmoDC2
+    - name: CMSelectHalos
+    - name: CMSelectBackground
+    - name: CMRandoms
+      nprocess: 16
+      nodes: 1
+    - name: TXJackknifeCenters
+    - name: CMCorrelations
+      nprocess: 2
+      threads_per_process: 16
+    - name: CMCorrelationsPlot
+
+
+output_dir: data/cluster_mag/dc2/outputs
+config: examples/cluster_mag/dc2_config.yml
+
+inputs:
+    photometry_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/dc2/photometry_catalog.hdf5
+    cluster_mag_halo_catalog: /pbs/throng/lsst/users/jzuntz/cluster_mag/dc2/cluster_mag_halo_catalog.hdf5
+
+
+
+resume: True
+log_dir: data/cluster_mag/dc2/logs
+pipeline_log: data/cluster_mag/dc2/log.txt
+
