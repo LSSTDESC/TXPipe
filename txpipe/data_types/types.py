@@ -66,11 +66,9 @@ class ShearCatalog(HDFFile):
 
     def get_primary_catalog_group(self):
         if self.catalog_type == "metadetect":
-            group = "shear/00/"
+            return "shear/00"
         else:
-            group = "shear/"
-
-        return group
+            return "shear"
 
 
     def get_primary_catalog_names(self, true_shear=False):

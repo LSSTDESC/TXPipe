@@ -128,7 +128,6 @@ class TXSourceSelectorBase(PipelineStage):
         "verbose": False,
         "T_cut": float,
         "s2n_cut": float,
-        "delta_gamma": float,
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
         "random_seed": 42,
@@ -460,6 +459,13 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     name = "TXSourceSelectorMetacal"
 
+    # add one option to the base class configuration
+    config_options = {
+        **TXSourceSelectorBase.config_options,
+        "delta_gamma": float
+    }
+
+
     # The main differences between the classes are to do with how the data is read
     # and what output response values are generated.
     def data_iterator(self):
@@ -551,7 +557,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         pz_data = {}
         variants = ["", "_1p", "_2p", "_1m", "_2m"]
         for v in variants:
-            zz = shear_data[f"mean_z{v}"]
+            zz = data[f"mean_z{v}"]
 
             pz_data_v = np.zeros(len(zz), dtype=int) - 1
             for zi in range(len(self.config["source_zbin_edges"]) - 1):
@@ -600,6 +606,13 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     """
 
     name = "TXSourceSelectorMetadetect"
+
+    # add one option to the base class configuration
+    config_options = {
+        **TXSourceSelectorBase.config_options,
+        "delta_gamma": float
+    }
+
 
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
@@ -657,7 +670,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         pz_data = {}
         variants = ["00/", "1p/", "2p/", "1m/", "2m/"]
         for v in variants:
-            zz = shear_data[f"{v}mean_z"]
+            zz = data[f"{v}mean_z"]
 
             pz_data_v = np.zeros(len(zz), dtype=int) - 1
             for zi in range(len(self.config["source_zbin_edges"]) - 1):
@@ -714,6 +727,13 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
 
     name = "TXSourceSelectorLensfit"
+
+    # add one option to the base class configuration
+    config_options = {
+        **TXSourceSelectorBase.config_options,
+        "input_m_is_weighted": bool
+    }
+
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
@@ -785,7 +805,9 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
     """
 
     name = "TXSourceSelectorHSC"
-
+    config_options = TXSourceSelectorBase.config_options.copy()
+    config_options["max_shear_cut"] = 0.0
+    
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
@@ -865,6 +887,23 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         )
         return calculators
 
+    def select_2d(self, data, calling_from_select=False):
+        """
+        Add an additional cut to the parent class, if specified, on the max shear.
+        HSM DP0.2 catalogs seem to contain occasional very large shears that skew peaks.
+        This removes those. This is only really for testing.
+        """
+        sel = super().select_2d(data, calling_from_select=calling_from_select)
+        shear_cut = self.config["max_shear_cut"]
+        if shear_cut:
+            g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)
+            cut = g < shear_cut
+            p = 100 * (1 - (cut.sum() / cut.size))
+            print(f" shear cut removes {p:.2f}% of objects")
+            sel &= cut
+            p = sel.sum() / sel.size * 100
+            print(f" after shear cut retain {p:.2f}% of objects")
+        return sel
 
 if __name__ == "__main__":
     PipelineStage.main()

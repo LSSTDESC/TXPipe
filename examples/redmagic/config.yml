@@ -42,7 +42,7 @@ PZRailTrainSource:
     dz: 0.01
     columns_file: ./data/bpz_riz.columns
     data_path: ./data/example/rail-bpz-inputs
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     prior_band: i
     # Not sure about this
     prior_file: hdfn_gen
@@ -168,6 +168,15 @@ TXBlinding:
 TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
     shear_prefix: mcal_
+    nbins: 20
+    g_min: -0.01
+    g_max: 0.01
+    psfT_min: 0.2
+    psfT_max: 0.28
+    T_min: 0.01
+    T_max: 2.1
+    s2n_min: 1.25
+    s2n_max: 300
 
 TXLensDiagnosticPlots: {}
 

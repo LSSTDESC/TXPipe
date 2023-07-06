@@ -4,7 +4,7 @@ launcher:
 
 site:
     name: cori-interactive
-    image: joezuntz/txpipe
+    image: ghcr.io/lsstdesc/txpipe
 
 modules: txpipe
 
@@ -12,7 +12,6 @@ modules: txpipe
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/TJPCov
     - submodules/FlexZPipe
     - submodules/RAIL
 

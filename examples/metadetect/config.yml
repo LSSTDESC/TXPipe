@@ -49,8 +49,9 @@ PZPrepareEstimatorLens:
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
     data_path: ./data/example/rail-bpz-inputs
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     prior_band: i
+    ref_band: i
     # Not sure about this
     prior_file: hdfn_gen
     p_min: 0.005
@@ -74,8 +75,10 @@ PZPrepareEstimatorSource:
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
     data_path: ./data/example/rail-bpz-inputs
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     prior_band: i
+    # This is the new name for prior_band I think
+    ref_band: i
     # Not sure about this
     prior_file: hdfn_gen
     p_min: 0.005
@@ -101,12 +104,15 @@ PZEstimatorLens:
     nzbins: 301
     data_path: ./data/example/rail-bpz-inputs
     band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
     band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     hdf5_groupname: photometry
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
-    spectra_file: SED/CWWSB4.list
+    spectra_file: CWWSB4.list
     prior_band: mag_i
+    ref_band: mag_i
     prior_file: hdfn_gen
     p_min: 0.005
     gauss_kernel: 0.0
@@ -219,6 +225,15 @@ TXBlinding:
 TXSourceDiagnosticPlots:
     psf_prefix: 00/mcal_psf_
     shear_prefix: 00/
+    nbins: 20
+    g_min: -0.01
+    g_max: 0.01
+    psfT_min: 0.2
+    psfT_max: 0.28
+    T_min: 0.01
+    T_max: 2.1
+    s2n_min: 1.25
+    s2n_max: 300
 
 TXLensDiagnosticPlots: {}
 
@@ -269,7 +284,7 @@ TXRealGaussianCovariance:
     pickled_wigner_transform: data/example/inputs/wigner.pkl
 
 TXFourierTJPCovariance:
-    cov_type: ['gauss', 'ssc']
+    cov_type: ["FourierGaussianFsky"]
 
 TXJackknifeCenters:
     npatch: 5
@@ -282,7 +297,8 @@ TXTwoPointFourier:
     bandwidth: 20
     cache_dir: ./cache/workspaces
 
-TXSimpleMask:
+TXSimpleMaskFrac:
+    supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
     depth_cut : 23.5
     bright_object_max: 10.0
 

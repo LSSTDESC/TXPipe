@@ -1,0 +1,45 @@
+TXSelector:
+    input_pz: True
+    bands: riz #used for selection
+    T_cut: 0.0
+    s2n_cut: 0.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    zbin_edges: [0.2, 0.43, 0.63, 0.9, 1.3]
+    chunk_rows: 100000
+    # lens selection
+    select_lens: False
+
+TXRandomCat:
+    chunk_rows: 100000
+    density: 10 # gals per sq arcmin
+
+TXTwoPoint:
+    binslop: 0.1
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True
+    # use true when using metacal shears
+    verbose: 0
+
+TXDiagnosticMaps:
+    chunk_rows: 100000  # Number of rows to process at once
+    sparse: True  # Generate sparse maps - faster if using small areas
+    snr_threshold: 10.0
+    snr_delta: 1.0
+    pixelization: healpix
+    nside: 1024
+    # pixelization: gnomonic
+    # # 
+    pixel_size: 0.2
+    ra_cent: 62.
+    dec_cent: -35.
+    npix_x: 60
+    npix_y: 60
+
+
+TXTwoPointFourier:
+    chunk_rows: 100000
+    flip_g2: False

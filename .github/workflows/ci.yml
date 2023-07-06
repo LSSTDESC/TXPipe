@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: joezuntz/txpipe
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -56,7 +56,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -97,7 +97,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -127,6 +127,15 @@ jobs:
         ceci examples/metadetect/pipeline.yml
         test -f data/example/outputs_metadetect/shear_xi_plus.png
 
+    - name: Run randoms pipeline
+      run: |
+        ceci examples/randoms/pipeline_randomsonly.yml
+        test -f data/example/outputs_randoms/random_cats.hdf5
+
+    - name: Run notebook
+      run: |
+        jupyter nbconvert --to notebook --execute "notebooks/Welcome to TXPipe.ipynb"
+
     - name: Show logs
       if: ${{ always() }}
       run: |
@@ -139,7 +148,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -181,7 +190,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: joezuntz/txpipe
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository
@@ -220,7 +229,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: joezuntz/txpipe
+      image: ghcr.io/lsstdesc/txpipe:v0.7
 
     steps:
     - name: Checkout repository

@@ -406,7 +406,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from tjpcov import bin_cov
+        from tjpcov.wigner_transform import bin_cov
         import pymaster as nmt
         import scipy
 
@@ -892,7 +892,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data, diclist):
-        from tjpcov import bin_cov
+        from tjpcov.wigner_transform import bin_cov
 
         ccl_tracers, tracer_Noise = self.get_tracer_info(
             cosmo, meta, two_point_data=two_point_data

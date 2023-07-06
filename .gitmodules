@@ -5,6 +5,3 @@
 [submodule "WLMassMap"]
 	path = submodules/WLMassMap
 	url = https://github.com/LSSTDESC/WLMassMap
-[submodule "submodules/TJPCov"]
-	path = submodules/TJPCov
-	url = https://github.com/LSSTDESC/TJPCov

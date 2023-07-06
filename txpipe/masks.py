@@ -20,6 +20,14 @@ class TXSimpleMask(PipelineStage):
     }
 
     def run(self):
+
+        pix, mask, metadata = self.compute_binary_mask()
+
+        with self.open_output("mask", wrapper=True) as f:
+            f.file.create_group("maps")
+            f.write_map("mask", pix, mask, metadata)
+
+    def compute_binary_mask(self):
         import healpy
 
         with self.open_input("aux_lens_maps", wrapper=True) as f:
@@ -61,7 +69,59 @@ class TXSimpleMask(PipelineStage):
         pix = np.where(mask)[0]
         mask = mask[pix].astype(float)
 
-        with self.open_output("mask", wrapper=True) as f:
+        return pix, mask, metadata
 
+
+
+
+class TXSimpleMaskFrac(TXSimpleMask):
+    """
+    Make a simple mask using a depth cut and bright object cut
+    Include the fractional coverage of each pixel using a high-res survey property map (e.g. N-exposures for given band(s) )
+    
+    #NOTE: This assumes all cuts to the mask are being done within TXpipe at the config Nside
+    #if we want to apply cuts on the survey property map nside (higher resolution), we will need to add this feature
+    """
+    name = "TXSimpleMaskFrac"
+    parallel = False
+    # make a mask from the auxiliary maps
+    inputs = [("aux_lens_maps", MapsFile),
+    ]
+    outputs = [("mask", MapsFile)]
+    config_options = {
+        "depth_cut": 23.5,
+        "bright_object_max": 10.0,
+        "supreme_map_file": str,
+    }
+
+    def run(self):
+
+        pix, mask, metadata = self.compute_binary_mask()
+
+        fracdet = self.compute_fracdet(metadata)
+
+        #assign fracdec for all selected pixels
+        assert (mask==1.).all()
+        if metadata['nest']:
+            mask = fracdet[pix]
+        else:
+            import healpy as hp 
+            mask = fracdet[hp.ring2nest(metadata['nside'], pix)]
+
+        with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
             f.write_map("mask", pix, mask, metadata)
+
+    def compute_fracdet(self, metadata):
+        import healsparse 
+
+        #load survey property map
+        supreme_map_file = self.config["supreme_map_file"]
+        spmap = healsparse.HealSparseMap.read(supreme_map_file)
+
+        #fracdet it
+        nside = metadata["nside"]
+        fracdet = spmap.fracdet_map(nside)
+
+        return fracdet
+

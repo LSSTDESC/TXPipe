@@ -214,9 +214,7 @@ class TXRoweStatistics(PipelineStage):
             s = star_type == t
             rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de_psf, de_psf)
             rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, e_psf, de_psf)
-            rowe_stats[3, t] = self.compute_rowe(
-                3, s, ra, dec, e_psf * T_f, e_psf * T_f
-            )
+            rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_psf * T_f, e_psf * T_f)
             rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de_psf, e_psf * T_f)
             rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_psf, e_psf * T_f)
 
@@ -968,8 +966,8 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
 def load_star_type(data):
-    used = data["calib_psf_used"][:]
-    reserved = data["calib_psf_reserved"][:]
+    used = data["calib_psf_used"][:].astype('int')
+    reserved = data["calib_psf_reserved"][:].astype('int')
 
     star_type = np.zeros(used.size, dtype=int)
     star_type[used] = STAR_PSF_USED

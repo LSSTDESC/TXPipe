@@ -22,23 +22,10 @@ else
     CHIPSET=x86_64
 fi
 
-if [ "$CHIPSET" = "aarch64" ]
-then
-    echo "Sorry - TXPipe does not yet install on non-x86 systems like M1 macs"
-    exit 1
-fi
-
-if [ "$CHIPSET" = "arm64" ]
-then
-    echo "Sorry - TXPipe does not yet install on non-x86 systems like M1 macs"
-    exit 1
-fi
-
-
+export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
 
 # URL to download
-URL="https://github.com/conda-forge/miniforge/releases/download/4.11.0-4/Mambaforge-4.11.0-4-${OS}-${CHIPSET}.sh"
-
+URL="https://github.com/conda-forge/miniforge/releases/download/23.1.0-3/Mambaforge-23.1.0-3-${OS}-${CHIPSET}.sh"
 # Download and run the conda installer Miniforge conda installer
 echo "Downloading conda installer from $URL"
 wget -O Mambaforge3.sh $URL
@@ -47,9 +34,16 @@ chmod +x Mambaforge3.sh
 source ./conda/bin/activate
 
 # conda-installable stuff
-mamba install -c conda-forge -y --file conda.txt
-# everything else
-pip install -r requirements.txt || ( sed 's/git+https/git+git/' requirements.txt > requirements2.txt && pip install -r requirements2.txt )
+mamba env update  --file environment.yml
+
+
+if [[ "$CHIPSET" = "arm64" || "$CHIPSET" = "aarch64" ]]
+then
+    echo "Pymaster cannot be correctly conda- or pip-installed on Apple Silicon yet, so we are skipping it."
+    echo "The twopoint fourier and some covariance stage(s) will not work"
+else
+    mamba install -c conda-forge namaster
+fi
 
 echo ""
 echo "Installation successful!"

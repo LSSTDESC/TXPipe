@@ -122,6 +122,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -223,7 +224,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
-        S.add_tracer("misc", "fieldcenter")
+        S.add_tracer("Misc", "fieldcenter")
         S.add_tracer("NZ", "source2d", z, Nz)
 
         d = results[0]
@@ -290,7 +291,7 @@ class TXGammaTStars(TXTwoPoint):
         "min_sep": 2.5,
         "max_sep": 100,
         "nbins": 20,
-        "bin_slop": 0.1,
+        "bin_slop": 1,
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
@@ -306,6 +307,7 @@ class TXGammaTStars(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -412,12 +414,13 @@ class TXGammaTStars(TXTwoPoint):
         f = self.open_input("shear_photoz_stack")
         z = f["n_of_z/source2d/z"][:]
         Nz = f[f"n_of_z/source2d/bin_0"][:]
+
         f.close()
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
         name = "{}_stars".format(text.lower())
-        S.add_tracer("misc", name)
+        S.add_tracer("Misc", name)
         S.add_tracer("NZ", "source2d", z, Nz)
 
         dvalue = d.object.xi
@@ -479,7 +482,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "min_sep": 2.5,
         "max_sep": 100,
         "nbins": 20,
-        "bin_slop": 0.1,
+        "bin_slop": 1,
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
@@ -495,6 +498,7 @@ class TXGammaTRandoms(TXTwoPoint):
         "low_mem": False,
         "chunk_rows": 100_000,
         "share_patch_files": False,
+        "use_subsampled_randoms": False,
     }
 
     def run(self):
@@ -590,13 +594,15 @@ class TXGammaTRandoms(TXTwoPoint):
         S = sacc.Sacc()
 
         f = self.open_input("shear_photoz_stack")
+
         z = f["n_of_z/source2d/z"][:]
-        Nz = f[f"n_of_z/source2d/bin_0"][:]
+        Nz = f["n_of_z/source2d/bin_0"][:] 
+
         f.close()
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
-        S.add_tracer("misc", "randoms")
+        S.add_tracer("Misc", "randoms")
         S.add_tracer("NZ", "source2d", z, Nz)
 
         d = results[0]
@@ -610,6 +616,7 @@ class TXGammaTRandoms(TXTwoPoint):
         # Each of our Measurement objects contains various theta values,
         # and we loop through and add them all
         n = len(dvalue)
+
         for i in range(n):
             S.add_data_point(
                 dt,

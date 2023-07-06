@@ -110,7 +110,7 @@ class Mapper:
         # mask is one where *any* of the maps are valid.
         # this lets us maintain a single pixelization for
         # everything.
-        mask = np.zeros(self.pixel_scheme.npix, dtype=np.bool)
+        mask = np.zeros(self.pixel_scheme.npix, dtype=bool)
 
         is_master = (comm is None) or (comm.Get_rank() == 0)
 
