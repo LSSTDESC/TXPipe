@@ -42,5 +42,3 @@ from .spatial_diagnostics import TXFocalPlanePlot
 from .extensions.twopoint_scia import TXSelfCalibrationIA
 from .extensions.clmm import TXTwoPointRLens
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
-#from .extensions.cluster_mag import *
-from .extensions.CLCosmo_interface import *
