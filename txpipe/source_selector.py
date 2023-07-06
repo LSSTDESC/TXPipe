@@ -629,19 +629,13 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
             bands, "mag", "mag_err", shear_catalog_type="metadetect"
         )
 
-        renames = {}
-
         # We need truth shears and/or PZ point-estimates for each shear too
         if self.config["input_pz"]:
             shear_cols += metadetect_variants("mean_z")
         elif self.config["true_z"]:
-            # shear_cols += metadetect_variants("redshift_true")
-            # for now the true z is only used if we don't actually
-            # do a metadetection process, so we have to use the 00
-            # value of the redshift.
-            shear_cols += ["00/redshift_true"]
-            renames["00/redshift_true"] = "redshift_true"
+            shear_cols += ["redshift_true"]
 
+        renames = {}
         for prefix in ["00", "1p", "1m", "2p", "2m"]:
             renames[f"{prefix}/mcal_psf_T_mean"] = f"{prefix}/psf_T_mean"
 
