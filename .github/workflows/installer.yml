@@ -17,7 +17,7 @@ jobs:
           - os: ubuntu-latest
             INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
           - os: macos-latest
-            INSTALL_DEPS: brew update && brew install wget
+            INSTALL_DEPS: brew update-reset && brew install wget
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2

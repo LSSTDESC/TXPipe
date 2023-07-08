@@ -1,0 +1,40 @@
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+modules: txpipe  rail.stages
+
+python_paths:
+    - submodules/RAIL
+
+
+stages:
+    - name: PZPrepareEstimatorSource   # Prepare the p(z) estimator
+      classname: Inform_BPZ_lite
+    - name: PZEstimatorSource        # Measure lens galaxy PDFs
+      classname: BPZ_lite
+      threads_per_process: 1  
+    - name: TXSourceSelectorMetadetect  # Select a source sample
+    - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster
+
+
+output_dir: data/clmm/outputs
+config: examples/clmm/config.yml
+
+inputs:
+    cluster_catalog: data/example/inputs/cluster_catalog.hdf5
+    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+
+resume: True
+log_dir: data/clmm/logs
+pipeline_log: data/clmm/log.txt
+
