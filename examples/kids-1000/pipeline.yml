@@ -2,11 +2,11 @@
 # Stages to run
 stages:
 
-    #- name: TXSourceSelectorLensfit # select and split objects into source bins
-    #- name: TXShearCalibration   # Calibrate and split the source sample tomographically
+    - name: TXSourceSelectorLensfit # select and split objects into source bins
+    - name: TXShearCalibration   # Calibrate and split the source sample tomographically
+    
     #- name: TXPhotozPlots
     #- name: TXPhotozSourceStack 
-    #- name: TXTruthLensCatalogSplitter
     #- name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)    
     #- name: TXSourceMaps
       #nprocess: 6
@@ -29,7 +29,7 @@ stages:
         #threads_per_process: 2
     #- name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     #- name: TXTwoPointPlots      # Make plots of 2pt correlations
-    #- name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
       #nprocess: 8 
       #nodes: 2
     #- name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
@@ -90,9 +90,8 @@ config: examples/kids-1000/config.yml
 inputs:
     shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/KiDS-1000/shear_catalog_kids1000.h5 
     photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/KiDS-1000/photometry_catalog_kids1000.h5
-    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
-    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_photoz_stack.hdf5
-    mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/KiDS-1000/lens_tomography_kids1000.h5
+    binned_lens_catalog:  data/kids/inputs/binned_shear_catalog.hdf5
     star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/kids/KiDS-1000_psf_catalog.h5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     fiducial_cosmology: data/fiducial_cosmology.yml
