@@ -188,6 +188,7 @@ class TXRoweStatistics(PipelineStage):
     outputs = [
         ("rowe134", PNGFile),
         ("rowe25", PNGFile),
+        ("rowe0", PNGFile),
         ("rowe_stats", HDFFile),
     ]
 
@@ -272,6 +273,32 @@ class TXRoweStatistics(PipelineStage):
         # First plot - stats 1,3,4
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
+        
+        f = self.open_output("rowe0",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
+            
+            for j,i in enumerate([0]):
+                theta,xi,err = rowe_stats[i,s]
+                tr = mtrans.offset_copy(
+                    ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
+                )
+                plt.errorbar(
+                    theta,
+                    abs(xi),
+                    err,
+                    fmt=".",
+                    label=rf"$\rho_{i}$",
+                    capsize=3,
+                    transform=tr,
+                )
+            plt.xscale("log")
+            plt.yscale("log")
+            plt.xlabel(r"$\theta$")
+            plt.ylabel(r"$\xi_+(\theta)$")
+            plt.legend()
+            plt.title(STAR_TYPE_NAMES[s])
+        f.close()
 
         f = self.open_output("rowe134", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
@@ -291,8 +318,8 @@ class TXRoweStatistics(PipelineStage):
                     capsize=3,
                     transform=tr,
                 )
-            plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
-            plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
+            #plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
+            #plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
             plt.xscale("log")
             plt.yscale("log")
             plt.xlabel(r"$\theta$")
@@ -301,10 +328,10 @@ class TXRoweStatistics(PipelineStage):
             plt.title(STAR_TYPE_NAMES[s])
         f.close()
 
-        f = self.open_output("rowe025", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
+        f = self.open_output("rowe25", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-            for j, i in enumerate([0, 2, 5]): 
+            for j, i in enumerate([2, 5]): 
                 theta, xi, err = rowe_stats[i, s]
                 tr = mtrans.offset_copy(
                     ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
@@ -319,8 +346,8 @@ class TXRoweStatistics(PipelineStage):
                     transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
-                plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
-                plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
+                #plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
+                #plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
                 plt.xscale("log")
                 plt.yscale("log")
                 plt.xlabel(r"$\theta$")
@@ -331,7 +358,7 @@ class TXRoweStatistics(PipelineStage):
     def save_stats(self, rowe_stats):
         f = self.open_output("rowe_stats")
         g = f.create_group("rowe_statistics")
-        for i in 1, 2, 3, 4, 5:
+        for i in 0, 1, 2, 3, 4, 5:
             for s in STAR_TYPES:
                 theta, xi, err = rowe_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
