@@ -130,10 +130,11 @@ class TXLSSweights(TXMapCorrelations):
 
 		with self.open_input("mask", wrapper=True) as map_file:
 			mask = map_file.read_map("mask")
+			mask_nest = map_file.read_map_info("mask")["nest"]
 			mask = hsp.HealSparseMap(
 				nside_coverage=32, 
 				healpix_map=(mask==hp.UNSEEN).astype('int'), 
-				nest=False, sentinel=0)
+				nest=mask_nest, sentinel=0)
 			nside = map_file.read_map_info("mask")["nside"]
 
 		sys_maps = []
