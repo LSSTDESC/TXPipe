@@ -154,6 +154,7 @@ class DensityCorrelation:
 		ax.legend()
 		fig.savefig(filepath)
 		fig.clear()
+		plt.close()
 
 	def get_edges(self, map_index):
 		"""get the sys map bin edges for a given map"""
