@@ -1,0 +1,76 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: ghcr.io/lsstdesc/txpipe
+
+modules: txpipe
+
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/FlexZPipe
+
+stages:
+    - name: TXRandomCat
+      nprocess: 32
+    - name: TXSourceSelectorMetadetect
+      nprocess: 32
+    - name: TXTruthLensSelector
+      nprocess: 32
+    - name: TXLensTrueNumberDensity
+    - name: TXSourceTrueNumberDensity
+    - name: TXPhotozPlots
+    - name: TXShearCalibration
+      nprocess: 32
+    - name: TXTruthLensCatalogSplitter
+    - name: TXTwoPointFourier
+      threads_per_process: 64
+    - name: TXJackknifeCenters
+    - name: TXMainMaps
+      nprocess: 8
+    - name: TXAuxiliarySourceMaps
+      nprocess: 8
+    - name: TXAuxiliaryLensMaps
+      nprocess: 8
+    - name: TXDensityMaps
+    - name: TXSourceNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
+    - name: TXLensNoiseMaps
+      nprocess: 4
+      nodes: 1
+      threads_per_process: 1
+    - name: TXSimpleMask
+    - name: TXMapPlots
+    - name: TXTracerMetadata
+    - name: TXNullBlinding
+    - name: TXTwoPoint
+      threads_per_process: 64
+    - name: TXTwoPointPlots
+    - name: TXFourierGaussianCovariance
+      threads_per_process: 32
+    - name: TXTwoPointTheoryReal
+    - name: TXRealGaussianCovariance
+      threads_per_process: 32
+    - name: TXConvergenceMaps
+      threads_per_process: 32
+    - name: TXConvergenceMapPlots
+
+output_dir: data/cosmodc2/outputs-20deg2
+config: examples/cosmodc2/config-20deg2.yml
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog:  ./data/cosmodc2/20deg2/shear_catalog.hdf5
+    photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
+
+
+resume: True
+log_dir: data/cosmodc2/logs
+pipeline_log: data/cosmodc2/log.txt
+
