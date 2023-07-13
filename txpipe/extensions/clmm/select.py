@@ -444,10 +444,10 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
 class CombinedClusterCatalog:
-    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_catalog):
+    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_pdfs):
         _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
-        self.pz_cat = PhotozPDFFile(photoz_catalog, "r").file
+        self.pz_cat = PhotozPDFFile(photoz_pdfs,"r").file
         self.cluster_catalog = HDFFile(cluster_catalog, "r").file
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
@@ -465,7 +465,7 @@ class CombinedClusterCatalog:
 
         outputs = {}
         for stage in pipeline.stages:
-            outputs.update(stage.find_outputs(self.run_config["output_dir"]))
+            outputs.update(stage.find_outputs(pipe_config["output_dir"]))
 
 
         # make a list of files we need
@@ -474,7 +474,7 @@ class CombinedClusterCatalog:
             "cluster_catalog",
             "cluster_shear_catalogs",
             "shear_tomography_catalog",
-            "photoz_catalog",
+            "photoz_pdfs",
         ]
 
         paths = pipeline.overall_inputs.copy()
@@ -488,7 +488,7 @@ class CombinedClusterCatalog:
             path = paths[tag]
             if not os.path.exists(path):
                 raise ValueError(f"File {path} does not exist - pipeline may not have run")
-            files[f] = path
+            files[tag] = path
 
         return cls(**files)
 
