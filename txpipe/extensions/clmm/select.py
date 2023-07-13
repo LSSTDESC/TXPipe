@@ -125,7 +125,7 @@ class CLClusterShearCatalogs(PipelineStage):
         if self.comm is None:
             total_count = my_total_count
         else:
-            total_count = int(self.comm.reduce(my_total_count))
+            total_count = int(self.comm.allreduce(my_total_count))
         
         # The root process saves all the data. First it setps up the output
         # file here.
