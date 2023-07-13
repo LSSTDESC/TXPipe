@@ -384,8 +384,6 @@ class MetaDetectCalculator:
         if comm is not None:
             if allgather:
                 counts = comm.allreduce(self.counts)
-            elif comm.rank > 0:
-                counts = [None]
             else:
                 counts = comm.reduce(self.counts)
         else:
