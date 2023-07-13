@@ -33,6 +33,7 @@ class CLClusterShearCatalogs(PipelineStage):
         import astropy
         import h5py
         import clmm
+        import clmm.cosmology.ccl
 
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
@@ -59,7 +60,8 @@ class CLClusterShearCatalogs(PipelineStage):
 
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             ccl_cosmo = f.to_ccl()
-            clmm_cosmo = clmm.Cosmology()._init_from_cosmo(ccl_cosmo)
+            clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
+            clmm_cosmo.set_be_cosmo(ccl_cosmo)
 
         # Buffer in redshift behind each object        
         delta_z = self.config["delta_z"]
@@ -92,13 +94,13 @@ class CLClusterShearCatalogs(PipelineStage):
 
                 cluster_z = clusters[cluster_index]["redshift"]
                 # # Cut down to clusters that are in front of this galaxy
-                # zgal = data["redshift"][gal_index]
-                # z_good = zgal > cluster_z + delta_z
-                # gal_index = gal_index[z_good]
-                # distance = distance[z_good]
+                zgal = data["redshift"][gal_index]
+                z_good = zgal > cluster_z + delta_z
+                gal_index = gal_index[z_good]
+                distance = distance[z_good]
 
-                # if gal_index.size == 0:
-                #     continue
+                if gal_index.size == 0:
+                    continue
 
                 # Compute weights
                 weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
@@ -440,13 +442,16 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
 class CombinedClusterCatalog:
-    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs):
+    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_catalog):
         _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
+        self.pz_cat = PhotozPDFFile(photoz_catalog, "r").file
         self.cluster_catalog = HDFFile(cluster_catalog, "r").file
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
-
+        self.ncluster = self.cluster_shear_catalogs['catalog/cluster_id'].size
+        self.pz_criterion = "z" + self.cluster_shear_catalogs['provenance'].attrs['config/redshift_criterion']
+        self.pz_col = self.pz_cat[f'ancil/{self.pz_criterion}']
     @classmethod
     def from_pipeline_file(cls, pipeline_file, run_dir='.'):
         # read the pipeline file
@@ -516,6 +521,9 @@ class CombinedClusterCatalog:
         cat["weight_clmm"] = weight
         cat["distance_arcmin"] = distance
         cat["weight_original"] = cat.pop("weight")
+
+        cat[self.pz_criterion] = self.pz_col[index]
+
 
         return clmm.GCData(data=cat)
 
