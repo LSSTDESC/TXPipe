@@ -578,7 +578,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         We collate these into a BinStats object for clarity.
         """
-        R, S, N = calculator.collect(self.comm)
+        R, S, N = calculator.collect(self.comm, allgather=True)
         calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu.copy()
 
