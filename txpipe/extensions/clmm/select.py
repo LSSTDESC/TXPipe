@@ -6,6 +6,8 @@ from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmolog
 from ...utils.calibrators import Calibrator
 from collections import defaultdict
 import yaml
+import ceci
+
 class CLClusterShearCatalogs(PipelineStage):
     name = "CLClusterShearCatalogs"
     inputs = [
@@ -442,10 +444,10 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
 class CombinedClusterCatalog:
-    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_catalog):
+    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_pdfs):
         _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
-        self.pz_cat = PhotozPDFFile(photoz_catalog, "r").file
+        self.pz_cat = PhotozPDFFile(photoz_pdfs,"r").file
         self.cluster_catalog = HDFFile(cluster_catalog, "r").file
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
@@ -454,28 +456,39 @@ class CombinedClusterCatalog:
         self.pz_col = self.pz_cat[f'ancil/{self.pz_criterion}']
     @classmethod
     def from_pipeline_file(cls, pipeline_file, run_dir='.'):
-        # read the pipeline file
-        with open(pipeline_file) as f:
-            pipe_info = yaml.safe_load(f)
+        pipe_config = ceci.Pipeline.build_config(
+            pipeline_file,
+            dry_run=True
+        )
+
+        pipeline = ceci.Pipeline.create(pipe_config)
+
+        outputs = {}
+        for stage in pipeline.stages:
+            outputs.update(stage.find_outputs(pipe_config["output_dir"]))
+
 
         # make a list of files we need
-        files = {
-            "shear_catalog": None,
-            "cluster_catalog": None,
-            "cluster_shear_catalogs": None,
-            "shear_tomography_catalog": None,
-        }
+        tags = [
+            "shear_catalog",
+            "cluster_catalog",
+            "cluster_shear_catalogs",
+            "shear_tomography_catalog",
+            "photoz_pdfs",
+        ]
 
-        inputs = pipe_info["inputs"]
-        output_dir = os.path.join(run_dir, pipe_info["output_dir"])
-        outputs = os.listdir(output_dir)
-        for f in list(files.keys()):
-            if f in inputs:
-                files[f] = os.path.join(run_dir, inputs[f])
-            elif f + ".hdf5" in outputs:
-                files[f] = os.path.join(output_dir, f + ".hdf5")
-            else:
-                raise ValueError(f"Could not locate {f}")
+        paths = pipeline.overall_inputs.copy()
+        for stage in pipeline.stages:
+            paths.update(stage.find_outputs(pipe_config["output_dir"]))
+
+        files = {}
+        for tag in tags:
+            if tag not in paths:
+                raise ValueError(f"This pipeline did not generate or ingest {tag} needed for cluster WL")
+            path = paths[tag]
+            if not os.path.exists(path):
+                raise ValueError(f"File {path} does not exist - pipeline may not have run")
+            files[tag] = path
 
         return cls(**files)
 
