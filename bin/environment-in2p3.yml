@@ -1,0 +1,32 @@
+channels:
+  - conda-forge
+dependencies:
+  - astropy=5.2.*
+  - camb=1.4.*
+  - cosmosis=2.4.1
+  - dask=2023.4.1
+  - dm-tree=0.1.7
+  - firecrown=1.4.0
+  - fitsio=1.1.8
+  - h5py=3.8.*=mpi_openmpi_*
+  - healpy=1.16.*
+  - healsparse=1.6.*
+  - jax=0.4.8
+  - jupyter=1.0.*
+  - matplotlib=3.7.*
+  - mpi4py=3.1.*
+  - namaster=1.5.*
+  - openmpi=4.1.*=external_*
+  - numpy=1.24.*
+  - pandas=1.5.*
+  - psutil=5.9.*
+  - pyccl=2.6.*
+  - python=3.10.*
+  - scikit-learn=1.2.*
+  - scipy=1.10.*
+  - tables-io-full=0.8.*
+  - threadpoolctl=3.1.*
+  - treecorr=4.3.*
+  - pygraphviz=1.11.*
+  - pip
+  - ipykernel
