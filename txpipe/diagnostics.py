@@ -89,6 +89,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         shear_prefix = self.config["shear_prefix"]
         bands = self.config["bands"]
+        if self.rank == 0:
+            print("Catalog type = ", cat_type)
 
         if cat_type == "metacal":
             shear_cols = [
@@ -152,10 +154,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
-        elif self.config["shear_catalog_type"] == "lensfit":
-            more_iters = []
         else:
-            more_iters = ["shear_tomography_catalog", "response", ["R"]]
+            more_iters = []
 
         it = self.combined_iterators(
             chunk_rows,
