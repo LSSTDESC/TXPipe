@@ -44,7 +44,8 @@ class TXCosmoDC2Mock(PipelineStage):
         "apply_mag_cut": False,  # used when comparing to descqa measurements
         "Mag_r_limit": -19,  # used to decide what objects to cut out
         "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise": True, 
+        "add_shape_noise": True,
+        "healpixels": [-1],
     }
 
     def data_iterator(self, gc):
@@ -88,7 +89,15 @@ class TXCosmoDC2Mock(PipelineStage):
 
         print(f"Loading from catalog {cat_name}")
 
-        gc = GCRCatalogs.load_catalog(cat_name)
+        kw = {}
+        if self.config['healpixels'] != [-1]:
+            kw = {
+                "config_overwrite":{
+                    "healpix_pixels": self.config["healpixels"]
+                }
+            }
+
+        gc = GCRCatalogs.load_catalog(cat_name, **kw)
 
         # GCR sometimes tries to read the entire catalog
         # to measure its length rather than looking at metadata
@@ -281,7 +290,8 @@ class TXCosmoDC2Mock(PipelineStage):
             "weight",
         ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
 
-        cols += ["true_g1", "true_g2", "redshift_true"]
+        # Store the truth values only for the primary catalog
+        cols += ["00/true_g1", "00/true_g2", "00/redshift_true"]
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
@@ -566,9 +576,9 @@ class TXCosmoDC2Mock(PipelineStage):
             "2m/dec": photo["dec"],
             # Keep the truth values for use in some testing paths
             # We are not pretending to do meta
-            "true_g1": g1,
-            "true_g2": g2,
-            "redshift_true": photo["redshift_true"],
+            "00/true_g1": g1,
+            "00/true_g2": g2,
+            "00/redshift_true": photo["redshift_true"],
             # g1
             "00/g1": e1 * R,
             "1p/g1": (e1 + delta_gamma) * R,
