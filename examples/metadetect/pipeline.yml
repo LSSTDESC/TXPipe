@@ -118,6 +118,18 @@ inputs:
     star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
+    # This form can be used with the data registry
+    # fiducial_cosmology: 
+    #   name: fiducial_cosmology
+    ## Possible future forms:
+    ## Use an alias:
+    # shear_catalog:
+    #   alias: metadetect_alpha
+    ## Find the file with the output tag "shear_catalog" from a previous 
+    ## pipeline run called "cosmodc2_1deg2"
+    # shear_catalog:
+    #   execution: cosmodc2_1deg2
+
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
     random_cats_source: Null
@@ -130,3 +142,14 @@ resume: True
 log_dir: data/example/logs_metadetect
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
+
+registry:
+  config_file: ~/.config_reg_access
+  ## possible future behaviour:
+  ## Select a root directory:
+  # root: /path/to/root
+  ## Auto-download any files smaller than this limit:
+  # autodownload: 1GB
+  ## Path to use this remotely:
+  # server: spin.nersc.gov/path
+
