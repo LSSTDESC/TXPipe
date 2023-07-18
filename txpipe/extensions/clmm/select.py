@@ -444,10 +444,10 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
 class CombinedClusterCatalog:
-    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_pdfs):
+    def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, source_photoz_pdfs):
         _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
-        self.pz_cat = PhotozPDFFile(photoz_pdfs,"r").file
+        self.pz_cat = PhotozPDFFile(source_photoz_pdfs,"r").file
         self.cluster_catalog = HDFFile(cluster_catalog, "r").file
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
@@ -461,36 +461,33 @@ class CombinedClusterCatalog:
             dry_run=True
         )
 
-        pipeline = ceci.Pipeline.create(pipe_config)
-
-        outputs = {}
-        for stage in pipeline.stages:
-            outputs.update(stage.find_outputs(pipe_config["output_dir"]))
+        with ceci.prepare_for_pipeline(pipe_config):
+            pipeline = ceci.Pipeline.create(pipe_config)
 
 
         # make a list of files we need
-        tags = [
+
+        stage = pipeline["CLClusterShearCatalogs"]
+
+        ccc_tags = [
             "shear_catalog",
             "cluster_catalog",
-            "cluster_shear_catalogs",
             "shear_tomography_catalog",
-            "photoz_pdfs",
+            "source_photoz_pdfs",
+            "cluster_shear_catalogs",
         ]
-
-        paths = pipeline.overall_inputs.copy()
-        for stage in pipeline.stages:
-            paths.update(stage.find_outputs(pipe_config["output_dir"]))
-
-        files = {}
-        for tag in tags:
-            if tag not in paths:
-                raise ValueError(f"This pipeline did not generate or ingest {tag} needed for cluster WL")
-            path = paths[tag]
+        
+        paths = {}
+        for tag in ccc_tags:
+            path = pipeline.overall_inputs.get(tag)
+            if path is None:
+                path = pipeline.pipeline_files[tag]
             if not os.path.exists(path):
                 raise ValueError(f"File {path} does not exist - pipeline may not have run")
-            files[tag] = path
+            paths[tag] = path
 
-        return cls(**files)
+    
+        return cls(**paths)
 
 
     def get_cluster_info(self, cluster_index):
