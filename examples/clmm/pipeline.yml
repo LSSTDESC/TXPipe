@@ -8,7 +8,8 @@ site:
     name: local
     max_threads: 2
 
-modules: txpipe  rail.stages
+modules: txpipe  rail.stages     rail.estimation.algos.bpz_lite
+
 
 python_paths:
     - submodules/RAIL

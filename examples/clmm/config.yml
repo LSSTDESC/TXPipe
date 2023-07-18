@@ -12,8 +12,8 @@ PZPrepareEstimatorSource:
     nzbins: 301
     columns_file: ./data/bpz_riz.columns
     data_path: ./data/example/rail-bpz-inputs
-    spectra_file: SED/CWWSB4.list
-    prior_band: i
+    spectra_file: CWWSB4.list
+    ref_band: i
     # Not sure about this
     prior_file: hdfn_gen
     p_min: 0.005
@@ -37,13 +37,13 @@ PZEstimatorSource:
     dz: 0.01
     nzbins: 301
     data_path: ./data/example/rail-bpz-inputs
-    band_names: [mag_r, mag_i, mag_z]
-    band_err_names: [mag_err_r, mag_err_i, mag_err_z]
+    bands: [mag_r, mag_i, mag_z]
+    err_bands: [mag_err_r, mag_err_i, mag_err_z]
     hdf5_groupname: shear/00
     nondetect_val: .inf
     columns_file: ./data/bpz_riz.columns
-    spectra_file: SED/CWWSB4.list
-    prior_band: mag_i
+    spectra_file: CWWSB4.list
+    ref_band: mag_i
     prior_file: hdfn_gen
     p_min: 0.005
     gauss_kernel: 0.0

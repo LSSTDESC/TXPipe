@@ -85,6 +85,7 @@ jobs:
       run: |
         ceci examples/metacal/pipeline.yml
         test -f data/example/outputs/shear_xi_plus.png
+        jupyter nbconvert --to notebook --execute "notebooks/Reading TXPipe Outputs.ipynb"
 
     - name: Show logs
       if: ${{ always() }}
@@ -224,6 +225,50 @@ jobs:
       if: ${{ always() }}
       run: |
         tail -n +1 data/example/logs_redmagic/*
+
+  CLMM_pipeline:
+    runs-on: ubuntu-latest
+
+    needs: Download_Data
+
+    container:
+      image: ghcr.io/lsstdesc/txpipe:v0.7
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Cache example data
+      id: cache-example
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-example-data
+      with:
+        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v1
+
+    - name: Download test data
+      if: steps.cache-example.outputs.cache-hit != 'true'
+      run: |
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        tar -zxvf example.tar.gz
+
+    - name: Run clmm pipeline
+      run: |
+        ceci examples/clmm/pipeline.yml
+        test -f data/clmm/outputs/cluster_shear_catalogs.hdf5
+        jupyter nbconvert --to notebook --execute "notebooks/exploring-cluster-shear-cat.ipynb"
+
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/clmm/logs/*
+
 
   Other_Pipeline_Dry_Runs:
     runs-on: ubuntu-latest
