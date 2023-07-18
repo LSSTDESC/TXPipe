@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import RandomsCatalog, PNGFile, TextFile
+from .data_types import RandomsCatalog, ShearCatalog, PNGFile, TextFile
 import numpy as np
 
 class TXJackknifeCenters(PipelineStage):
@@ -45,15 +45,10 @@ class TXJackknifeCenters(PipelineStage):
         plt.ylabel("DEC")
         plt.tight_layout()
         jk_plot.close()
-
-    def run(self):
+    
+    def generate_catalog(self):
         import treecorr
-        import matplotlib
-
-        matplotlib.use("agg")
-
         input_filename = self.get_input("random_cats")
-        output_filename = self.get_output("patch_centers")
 
         # Build config info
         npatch = self.config["npatch"]
@@ -70,10 +65,53 @@ class TXJackknifeCenters(PipelineStage):
 
         # Create the catalog
         cat = treecorr.Catalog(input_filename, config)
+        return cat
+
+    def run(self):
+        import treecorr
+        import matplotlib
+
+        matplotlib.use("agg")
+
+        cat = self.generate_catalog()
 
         #  Generate and write the output patch centres
+        output_filename = self.get_output("patch_centers")
+        npatch = self.config["npatch"]
         print(f"generating {npatch} centers")
         cat.write_patch_centers(output_filename)
 
         # Should have loaded at this point
         self.plot(np.degrees(cat.ra), np.degrees(cat.dec), cat.patch)
+
+
+class TXJackknifeCentersSource(TXJackknifeCenters):
+    name = "TXJackknifeCentersSource"
+    parallel = False
+
+    inputs = [
+        ("shear_catalog", ShearCatalog),
+    ]
+    def generate_catalog(self):
+        import treecorr
+        input_filename = self.get_input("shear_catalog")
+
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
+
+        # Build config info
+        npatch = self.config["npatch"]
+        every_nth = self.config["every_nth"]
+        config = {
+            "ext": group,
+            "ra_col": "ra",
+            "dec_col": "dec",
+            "ra_units": "degree",
+            "dec_units": "degree",
+            "every_nth": every_nth,
+            "npatch": npatch,
+        }
+
+        # Create the catalog
+        cat = treecorr.Catalog(input_filename, config)
+        return cat
