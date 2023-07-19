@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH -A m1727
+#SBATCH -C cpu
+#SBATCH --qos=debug
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=32
+
+source $CFS/lsst/groups/WL/users/zuntz/setup-txpipe
+
+tx ceci examples/cosmodc2/pipeline-20deg2-clmm-nersc.yml
