@@ -104,13 +104,11 @@ class CLClusterShearCatalogs(PipelineStage):
                 if gal_index.size == 0:
                     continue
 
-                # Compute weights
-                weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
 
                 # we want to save the index into the overall shear catalog,
                 # not just into this chunk of data
                 global_index = data["original_index"][gal_index]
-                per_cluster_data[cluster_index].append((global_index, distance, weights))
+                per_cluster_data[cluster_index].append((global_index, distance))
 
             gc.collect()
 
@@ -144,7 +142,6 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group = outfile.create_group("index")
             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
-            index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
 
 
@@ -158,19 +155,17 @@ class CLClusterShearCatalogs(PipelineStage):
 
             if len(per_cluster_data[i]) == 0:
                 indices = np.zeros(0, dtype=int)
-                weights = np.zeros(0)
                 distances = np.zeros(0)
             else:
                 # Each process flattens the list of all the galaxies for this cluster
                 indices = np.concatenate([d[0] for d in per_cluster_data[i]])
                 distances = np.concatenate([d[1] for d in per_cluster_data[i]])
-                weights = np.concatenate([d[2] for d in per_cluster_data[i]])
 
 
             # If we are running in parallel then collect together the values from
             # all the processes
             if self.comm is not None:
-                indices, weights, distances = self.collect(indices, weights, distances)
+                indices, distances = self.collect(indices, distances)
 
             # Only the root process does the writing, so the others just
             # go to the next set of clusters.
@@ -181,7 +176,6 @@ class CLClusterShearCatalogs(PipelineStage):
             if indices.size != 0:
                 srt = indices.argsort()
                 indices = indices[srt]
-                weights = weights[srt]
                 distances = distances[srt]
             
             # And finally write out all the data from the root process.
@@ -194,7 +188,6 @@ class CLClusterShearCatalogs(PipelineStage):
 
             index_group["cluster_index"][start:start + n] = i
             index_group["source_index"][start:start + n] = indices
-            index_group["weight"][start:start + n] = weights
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
 
             start += n
@@ -229,7 +222,7 @@ class CLClusterShearCatalogs(PipelineStage):
         return nearby_galaxies, nearby_galaxy_distances
 
 
-    def collect(self, indices, weights, distances):
+    def collect(self, indices, distances):
         # total number of background objects for t
 
         counts = np.array(self.comm.allgather(indices.size))
@@ -238,27 +231,22 @@ class CLClusterShearCatalogs(PipelineStage):
         # Early exit if nothing here
         if total == 0:
             indices = np.zeros(0, dtype=int)
-            weights = np.zeros(0)
             distances = np.zeros(0)
-            return indices, weights, distances
+            return indices, distances
 
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:
             all_indices = np.empty(total, dtype=indices.dtype)
-            all_weights = np.empty(total, dtype=weights.dtype)
             all_distances = np.empty(total, dtype=distances.dtype)
             self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
             indices = all_indices
-            weights = all_weights
             distances = all_distances
         else:
             self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
 
-        return indices, weights, distances
+        return indices, distances
 
 
     def compute_theta_max(self, z):
@@ -290,44 +278,6 @@ class CLClusterShearCatalogs(PipelineStage):
         return theta_max
 
 
-    def compute_weights(self, clmm_cosmo, data, index, z_cluster):
-        import clmm
-
-        # Depending on whether we are using the PDF or not, choose
-        # some keywords to give to compute_galaxy_weights
-        if self.config["redshift_criterion"] == "pdf":
-            # We need the z and PDF(z) arrays in this case
-            pdf_z = data["pdf_z"]
-            pdf_pz = data["pdf_pz"][index]
-            redshift_keywords = {
-                "pzpdf":pdf_pz,
-                "pzbins":pdf_z,
-                "use_pdz":True
-            }
-        else:
-            # point-estimated redshift
-            z_source = data["redshift"][index]
-            redshift_keywords = {
-                "z_source":z_source,
-                "use_pdz":False
-            }
-
-        weight = clmm.dataops.compute_galaxy_weights(
-            z_cluster,
-            clmm_cosmo,
-            is_deltasigma=True,
-            use_shape_noise=True,
-            use_shape_error=False,
-            validate_input=True,
-            shape_component1=data["g1"][index],
-            shape_component2=data["g2"][index],
-            **redshift_keywords
-        )
-
-        return weight
-
-
-
     def load_cluster_catalog(self):
         from astropy.table import Table
         with self.open_input("cluster_catalog") as f:
@@ -354,10 +304,7 @@ class CLClusterShearCatalogs(PipelineStage):
 
         # load the shear calibration information
         # for the moment, load the average overall shear calibrator,
-        # that applies to the collective 2D bin. This won't be high
-        # accuracy, but I'm not clear right now exactly what the right
-        # model is yet. Here this calibrator is just used for the
-        # weight information calculation, which needs g1 and g2 estimates.
+        # that applies to the collective 2D bin. 
         # The same calibration should be used later for the actual shears.
         if self.rank == 0:
             print("Using single 2D shear calibration!")
@@ -506,14 +453,13 @@ class CombinedClusterCatalog:
         end = start + n
 
         index = index_group['source_index'][start:end]
-        weight = index_group['weight'][start:end]
         distance = index_group['distance_arcmin'][start:end]
 
-        return index, distance, weight
+        return index, distance
 
     def get_background_shear_catalog(self, cluster_index):
         import clmm
-        index, distance, weight = self.get_background_catalog_indexing(cluster_index)
+        index, distance = self.get_background_catalog_indexing(cluster_index)
         cat_names, rename = self.shear_cat.get_primary_catalog_names()
 
         cat = {}
@@ -531,12 +477,8 @@ class CombinedClusterCatalog:
         cat["e1"], cat["e2"] = self.calibrator.apply(g1, g2, subtract_mean=True)
 
         # Add some more columns and rename some others
-        cat["weight_clmm"] = weight
         cat["distance_arcmin"] = distance
-        cat["weight_original"] = cat.pop("weight")
-
         cat[self.pz_criterion] = self.pz_col[index]
-
 
         return clmm.GCData(data=cat)
 
