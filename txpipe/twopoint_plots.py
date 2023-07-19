@@ -2,6 +2,7 @@
 from .base_stage import PipelineStage
 from .data_types import SACCFile, PNGFile
 import numpy as np
+import os
 
 
 class TXTwoPointPlots(PipelineStage):
@@ -76,7 +77,6 @@ class TXTwoPointPlots(PipelineStage):
             fig.close()
 
 
-        filename = self.get_input("twopoint_gamma_x")
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output(
@@ -88,7 +88,9 @@ class TXTwoPointPlots(PipelineStage):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ["twopoint_gamma_x"], figures=figures)
+        filename = self.get_input("twopoint_gamma_x")
+        if os.path.exists(filename):
+            full_3x2pt_plots([filename], ["twopoint_gamma_x"], figures=figures)
 
         for fig in outputs.values():
             fig.close()
@@ -109,7 +111,12 @@ class TXTwoPointPlots(PipelineStage):
             lens_tracers.add(b1)
             lens_tracers.add(b2)
 
-        return len(source_tracers), len(lens_tracers)
+        # matplotlib crashes if you try to plot with zero bins
+        # as you get a 0 x 0 figure. So we set a minimum of 1.
+        nbin_source = max(len(source_tracers), 1)
+        nbin_lens = max(len(lens_tracers), 1)
+
+        return nbin_source, nbin_lens
 
 
 
@@ -270,6 +277,7 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
         filename = self.get_input("twopoint_data_real")
         s = sacc.Sacc.load_fits(filename)
         nbin_source, nbin_lens = self.read_nbin(s)
+        print(nbin_source, nbin_lens)
 
         filename_theory = self.get_input("twopoint_theory_real")
 
@@ -344,7 +352,6 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
         for fig in outputs.values():
             fig.close()
 
-        filename = self.get_input("twopoint_gamma_x")
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output(
@@ -356,49 +363,12 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
 
         figures = {key: val.file for key, val in outputs.items()}
 
-        full_3x2pt_plots([filename], ["twopoint_gamma_x"], figures=figures)
+        filename = self.get_input("twopoint_gamma_x")
+        if os.path.exists(filename):
+            full_3x2pt_plots([filename], ["twopoint_gamma_x"], figures=figures)
 
         for fig in outputs.values():
             fig.close()
-
-    def read_nbin(self, s):
-        import sacc
-
-        xip = sacc.standard_types.galaxy_shear_xi_plus
-        wtheta = sacc.standard_types.galaxy_density_xi
-
-        source_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(xip):
-            source_tracers.add(b1)
-            source_tracers.add(b2)
-
-        lens_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(wtheta):
-            lens_tracers.add(b1)
-            lens_tracers.add(b2)
-
-        return len(source_tracers), len(lens_tracers)
-
-    def read_bins(self, s):
-        import sacc
-
-        xip = sacc.standard_types.galaxy_shear_xi_plus
-        wtheta = sacc.standard_types.galaxy_density_xi
-
-        source_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(xip):
-            source_tracers.add(b1)
-            source_tracers.add(b2)
-
-        lens_tracers = set()
-        for b1, b2 in s.get_tracer_combinations(wtheta):
-            lens_tracers.add(b1)
-            lens_tracers.add(b2)
-
-        sources = list(sorted(source_tracers))
-        lenses = list(sorted(lens_tracers))
-
-        return sources, lenses
 
 
 if __name__ == "__main__":

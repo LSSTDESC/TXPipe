@@ -365,18 +365,19 @@ class TXPhotozPlots(PipelineStage):
         matplotlib.use("agg")
         import matplotlib.pyplot as plt
 
-        f = self.open_input("lens_photoz_stack", wrapper=True)
-
         out1 = self.open_output("nz_lens", wrapper=True)
-        f.plot("lens")
+        if self.get_input("lens_photoz_stack") != "none":
+            with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                f.plot("lens")
         plt.legend(frameon=False)
         plt.title("Lens n(z)")
         plt.xlim(xmin=0)
         out1.close()
 
-        f = self.open_input("shear_photoz_stack", wrapper=True)
         out2 = self.open_output("nz_source", wrapper=True)
-        f.plot("source")
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            if self.get_input("shear_photoz_stack") != "none":
+                f.plot("source")
         plt.legend(frameon=False)
         plt.title("Source n(z)")
         plt.xlim(xmin=0)
