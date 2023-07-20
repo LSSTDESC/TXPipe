@@ -317,13 +317,13 @@ class TXLSSweights(TXMapCorrelations):
 		names_file.close()
 
 		#save fitted coefficients 
-		if fit_output['coeff'] is not None:
-			coeff_file = output_dir.path_for_file(f"coeff_lens{ibin}.txt")
-			np.savetxt(coeff_file, fit_output['coeff'])		
+		coeff_file = output_dir.path_for_file(f"coeff_lens{ibin}.txt")
+		np.savetxt(coeff_file, fit_output['coeff'])		
 
 		#save coeff covariances
-		coeff_cov_file = output_dir.path_for_file(f"coeff_cov_lens{ibin}.txt")
-		np.savetxt(coeff_cov_file, fit_output['coeff_cov'])	
+		if fit_output['coeff_cov'] is not None:
+			coeff_cov_file = output_dir.path_for_file(f"coeff_cov_lens{ibin}.txt")
+			np.savetxt(coeff_cov_file, fit_output['coeff_cov'])	
 
 		#save chi2 for all models
 		for model in density_correlation.chi2.keys():
@@ -518,6 +518,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 		import scipy.optimize
 		import numpy as np
 
+		s = time.time()
+
 		#first add the null signal as the first model
 		null_model = np.ones(len(density_correlation.ndens))
 		density_correlation.add_model(null_model, 'null')
@@ -546,12 +548,11 @@ class TXLSSweightsSimReg(TXLSSweights):
 		coeff_cov = None
 
 		#add the best fit model to this DensityCorrelation instance
-		density_correlation.add_model(linear_model_(density_correlation.smin,*coeff), 'linear')
-
-		#best fit map
-		Fmap, _ = linear_model(density_correlation.smin,*coeff,
-				density_correlation=density_correlation, 
-				sys_maps=sys_maps)
+		Fmap_bf, Fdc_bf = linear_model(coeff[0],*coeff[1:],
+			density_correlation=density_correlation, 
+				sys_maps=sys_maps,
+				sysmap_table=sysmap_table,)
+		density_correlation.add_model(Fdc_bf.ndens, 'linear')
 
 		#assemble the fitting outputs (chi2, values, coefficents, )
 		fit_output = {}
@@ -559,7 +560,10 @@ class TXLSSweightsSimReg(TXLSSweights):
 		fit_output['coeff'] = coeff
 		fit_output['coeff_cov'] = coeff_cov
 
-		return Fmap, fit_output
+		f = time.time()
+		print("compute_weights took {0}s".format(f-s))
+
+		return Fmap_bf, fit_output
 
 def hsplist2array(hsp_list):
 	"""
