@@ -45,5 +45,5 @@ inputs:
 
 resume: True
 log_dir: data/cosmodc2/logs
-pipeline_log: data/cosmodc2/log.txt
+pipeline_log: data/cosmodc2/log_20deg2.txt
 
