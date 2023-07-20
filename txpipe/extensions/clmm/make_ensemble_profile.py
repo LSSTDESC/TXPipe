@@ -14,8 +14,8 @@ class CLClusterEnsembleProfiles(PipelineStage):
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        ("shear_tomography_catalog", TomographyCatalog),
         ("source_photoz_pdfs", PhotozPDFFile),
+        ("cluster_shear_catalogs", HDFFile),
     ]
 
     outputs = [

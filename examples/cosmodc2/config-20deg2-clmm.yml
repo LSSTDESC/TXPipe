@@ -33,7 +33,6 @@ Inform_BPZ_lite:
     zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
- 
 
 BPZ_lite:
     aliases:

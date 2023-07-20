@@ -22,7 +22,8 @@ stages:
       nprocess: 30
     - name: CLClusterShearCatalogs
       nprocess: 30
-
+    - name: CLClusterEnsembleProfiles
+      nprocess: 30
 
 
 output_dir: data/cosmodc2/outputs-20deg2
@@ -36,7 +37,7 @@ inputs:
     calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
-
+ 
 resume: True
 log_dir: data/cosmodc2/logs
 pipeline_log: data/cosmodc2/log.txt
