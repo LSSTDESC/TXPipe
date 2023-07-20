@@ -104,13 +104,13 @@ class CLClusterShearCatalogs(PipelineStage):
                 if gal_index.size == 0:
                     continue
 
-                # Compute weights
-                weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
-
+                # Compute source quantities
+                #weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
+                weights, tangential_comp, cross_comp = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z)
                 # we want to save the index into the overall shear catalog,
                 # not just into this chunk of data
                 global_index = data["original_index"][gal_index]
-                per_cluster_data[cluster_index].append((global_index, distance, weights))
+                per_cluster_data[cluster_index].append((global_index, distance, weights, tangential_comp, cross_comp))
 
             gc.collect()
 
@@ -145,6 +145,8 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
+            index_group.create_dataset("tangential_comp", shape=(total_count,), dtype=np.float64)
+            index_group.create_dataset("cross_comp", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
 
 
@@ -159,18 +161,22 @@ class CLClusterShearCatalogs(PipelineStage):
             if len(per_cluster_data[i]) == 0:
                 indices = np.zeros(0, dtype=int)
                 weights = np.zeros(0)
+                tangential_comps = np.zeros(0)
+                cross_comp = np.zeros(0)
                 distances = np.zeros(0)
             else:
                 # Each process flattens the list of all the galaxies for this cluster
                 indices = np.concatenate([d[0] for d in per_cluster_data[i]])
                 distances = np.concatenate([d[1] for d in per_cluster_data[i]])
                 weights = np.concatenate([d[2] for d in per_cluster_data[i]])
+                tangential_comps = np.concatenate([d[3] for d in per_cluster_data[i]])
+                cross_comps = np.concatenate([d[4] for d in per_cluster_data[i]])
 
 
             # If we are running in parallel then collect together the values from
             # all the processes
             if self.comm is not None:
-                indices, weights, distances = self.collect(indices, weights, distances)
+                indices, weights, tangential_comps, cross_comps, distances = self.collect(indices, weights, tangential_comps, cross_comps, distances)
 
             # Only the root process does the writing, so the others just
             # go to the next set of clusters.
@@ -182,6 +188,8 @@ class CLClusterShearCatalogs(PipelineStage):
                 srt = indices.argsort()
                 indices = indices[srt]
                 weights = weights[srt]
+                tangential_comps = tangential_comps[srt]
+                cross_comps = cross_comps[srt]
                 distances = distances[srt]
             
             # And finally write out all the data from the root process.
@@ -195,6 +203,8 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group["cluster_index"][start:start + n] = i
             index_group["source_index"][start:start + n] = indices
             index_group["weight"][start:start + n] = weights
+            index_group["tangential_comp"][start:start + n] = tangential_comps
+            index_group["cross_comp"][start:start + n] = cross_comps
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
 
             start += n
@@ -229,7 +239,7 @@ class CLClusterShearCatalogs(PipelineStage):
         return nearby_galaxies, nearby_galaxy_distances
 
 
-    def collect(self, indices, weights, distances):
+    def collect(self, indices, weights, tangential_comps, cross_comps, distances):
         # total number of background objects for t
 
         counts = np.array(self.comm.allgather(indices.size))
@@ -239,6 +249,8 @@ class CLClusterShearCatalogs(PipelineStage):
         if total == 0:
             indices = np.zeros(0, dtype=int)
             weights = np.zeros(0)
+            tangential_comps = np.zeros(0)
+            cross_comps = np.zeros(0)
             distances = np.zeros(0)
             return indices, weights, distances
 
@@ -246,19 +258,27 @@ class CLClusterShearCatalogs(PipelineStage):
         if self.rank == 0:
             all_indices = np.empty(total, dtype=indices.dtype)
             all_weights = np.empty(total, dtype=weights.dtype)
+            all_tangential_comps = np.empty(total, dtype=tangential_comps.dtype)
+            all_cross_comps = np.empty(total, dtype=cross_comps.dtype)
             all_distances = np.empty(total, dtype=distances.dtype)
             self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
+            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(all_cross_comps, counts))
+            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(all_tangential_comps, counts))
             self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
             indices = all_indices
             weights = all_weights
+            tangential_comps = all_tangential_comps
+            cross_comps = all_cross_comps
             distances = all_distances
         else:
             self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(None, counts))
             self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
 
-        return indices, weights, distances
+        return indices, weights, tangential_comps, cross_comps, distances
 
 
     def compute_theta_max(self, z):
@@ -290,7 +310,7 @@ class CLClusterShearCatalogs(PipelineStage):
         return theta_max
 
 
-    def compute_weights(self, clmm_cosmo, data, index, z_cluster):
+    def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster):
         import clmm
 
         # Depending on whether we are using the PDF or not, choose
@@ -324,7 +344,25 @@ class CLClusterShearCatalogs(PipelineStage):
             **redshift_keywords
         )
 
-        return weight
+        _, tangential_comp, cross_comp = clmm.compute_tangential_and_cross_components(
+            ra_lens,
+            dec_lens,
+            ra_source,
+            dec_source,
+            data["g1"][index],
+            data["g2"][index],
+            geometry="curve",
+            is_deltasigma=True,
+            cosmo=clmm_cosmo,
+            z_lens=z_cluster,
+            z_source=z_source,
+            sigma_c=False,
+            use_pdz=False,
+            pzbins=None,
+            pzpdf=None,
+            validate_input=True,
+        )       
+        return weight, tangential_comp, cross_comp
 
 
 
@@ -507,13 +545,15 @@ class CombinedClusterCatalog:
 
         index = index_group['source_index'][start:end]
         weight = index_group['weight'][start:end]
+        tangential_comp = index_group['tangential_comp'][start:end]
+        cross_comp = index_group['cross_comp'][start:end]
         distance = index_group['distance_arcmin'][start:end]
 
-        return index, distance, weight
+        return index, distance, weight, tangential_comp, cross_comp
 
     def get_background_shear_catalog(self, cluster_index):
         import clmm
-        index, distance, weight = self.get_background_catalog_indexing(cluster_index)
+        index, distance, weight, tangential_comp, cross_comp = self.get_background_catalog_indexing(cluster_index)
         cat_names, rename = self.shear_cat.get_primary_catalog_names()
 
         cat = {}
@@ -532,6 +572,8 @@ class CombinedClusterCatalog:
 
         # Add some more columns and rename some others
         cat["weight_clmm"] = weight
+        cat["tangential_comp_clmm"] = tangential_comp
+        cat["cross_comp_clmm"] = cross_comp
         cat["distance_arcmin"] = distance
         cat["weight_original"] = cat.pop("weight")
 
