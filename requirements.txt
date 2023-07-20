@@ -29,6 +29,7 @@ treecorr>=4.2.2
 # These are non-conda dependencies that must be done with pip
 ceci>=1.13
 git+https://github.com/jlvdb/hyperbolic
+git+https://github.com/LSSTDESC/CLMM.git@1.8.0
 git+https://github.com/joezuntz/dask-mpi
 git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 parallel_statistics
