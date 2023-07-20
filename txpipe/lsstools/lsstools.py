@@ -172,7 +172,7 @@ class DensityCorrelation:
 		self.covmat = self.covmat + covmat_new
 
 
-	def add_external_covariance(self, covmat,assert_empty=True):
+	def add_external_covariance(self, covmat, assert_empty=True):
 		"""
 		Adds an external covariance matrix
 		"""
@@ -270,6 +270,54 @@ class DensityCorrelation:
 			raise IOError('error in err or cov_mat input shape')
 
 
+def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None):
+	"""
+	linear contamination model:
+	F(s) = alpha1*s1 + alpha2*s2 + ... + beta
+	Normalised to <F(s)> = 1
+
+	returns
+		predicted ndens vs smean
+	"""
+	import healsparse as hsp
+	import healpy as hp
+	import numpy as np 
+	from . import lsstools
+
+	assert len(alphas) == len(sys_maps)
+
+	if sysmap_table is None:
+		sysmap_table = hsplist2array(sys_map)
+
+	#make empty F(s) map
+	validpixels = sys_maps[0].valid_pixels
+	F = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+	Fvals = np.sum(np.array([alphas]).T*sysmap_table,axis=0) + beta
+	F.update_values_pix(validpixels, Fvals)
+
+	#normalize the map
+	meanF = np.mean(F[validpixels]) #TODO make this a weighted mean?
+	F.update_values_pix(validpixels, F[validpixels]/meanF)
+
+	data_vals = F[validpixels]
+	F_density_corrs = lsstools.DensityCorrelation()
+	F_density_corrs.set_precompute(density_correlation)
+	for imap, sys_vals in enumerate(sysmap_table):
+			edges = density_correlation.get_edges(imap)
+			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True )
+
+	return F, F_density_corrs
 
 
+def calc_chi2(y, cov, yfit):
+	import numpy as np 
+
+	inv_cov = np.linalg.inv( np.matrix(cov) )
+
+	chi2 = 0
+	for i in range(len(y)):
+		for j in range(len(y)):
+			chi2 = chi2 + (y[i]-yfit[i])*inv_cov[i,j]*(y[j]-yfit[j])
+
+	return chi2
 
