@@ -8,7 +8,7 @@ class DensityCorrelation:
 
 	def __init__(self,tomobin=None): #add fracdet option here
 		"""
-		Class to compute and keep track of keeps track of 
+		Class to compute and keep track of
 		1d density correlations for a given galaxy sample/tomographic bin
 		"""
 
@@ -31,7 +31,12 @@ class DensityCorrelation:
 
 		self.mapnames = {} #dict of map names to be indexed with map_index
 
-	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, sys_name=None ): #add fracdet option here
+		self.precomputed_array = {}
+		self.precomputed_npix = {}
+		self.precomputed_sumsys = {}
+
+
+	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, sys_name=None, use_precompute=False):
 		"""
 		add a 1d density correlation
 
@@ -52,25 +57,45 @@ class DensityCorrelation:
 			fractional pixel coverage or each pixel in sys_vals
 		sys_name: str
 			a label for this map
+		use_precompute: bool
+			If True will use pre-computed boolean arrays and pixel number counts for this SP map
+			If False will compute the density in bins using numpy histogram
 		"""
 		if sys_name is not None:
 			self.mapnames[map_index] = sys_name
 
-		if frac is None:
-			frac = np.ones(len(sys_vals))
+		if use_precompute:
+			#use the precomputed boolean arrays to get 1d trends
 
-		#number counts
-		if map_input:
-			nobj_sys,_ = np.histogram(sys_vals,bins=edges,weights=data)
+			assert len(self.precomputed_array[map_index][0]) == len(sys_vals)
+			assert len(self.precomputed_array[map_index]) == len(edges)-1
+			assert map_input
+			nobj_sys = np.zeros(len(self.precomputed_array[map_index]))
+			for i, select_sp in enumerate(self.precomputed_array[map_index]):
+				nobj_sys[i] = np.sum(data[select_sp])
+
+			npix_sys = self.precomputed_npix[map_index]
+			sumsys_sys = self.precomputed_sumsys[map_index]
+
 		else:
-			nobj_sys,_ = np.histogram(data,bins=edges)
+			#use the numpy histogram functions to get 1d trends
 
-		#pixel counts (weighted by frac coverage)
-		npix_sys,_ = np.histogram(sys_vals,bins=edges,weights=frac)
+			if frac is None:
+				frac = np.ones(len(sys_vals))
 
-		#sumof sys value * frac in sys bin (to make mean)
-		sumsys_sys,_ = np.histogram(sys_vals,bins=edges,weights=sys_vals*frac)
+			#number counts
+			if map_input:
+				nobj_sys,_ = np.histogram(sys_vals,bins=edges,weights=data)
+			else:
+				nobj_sys,_ = np.histogram(data,bins=edges)
 
+			#pixel counts (weighted by frac coverage)
+			npix_sys,_ = np.histogram(sys_vals,bins=edges,weights=frac)
+
+			#sumof sys value * frac in sys bin (to make mean)
+			sumsys_sys,_ = np.histogram(sys_vals,bins=edges,weights=sys_vals*frac)
+
+		
 		#do we want to include any excluded outliers in this normalization?
 		norm = np.ones(len(edges)-1)*1./(np.sum(nobj_sys)/np.sum(npix_sys))
 
@@ -83,6 +108,50 @@ class DensityCorrelation:
 		self.ndens_perpixel =  np.append(self.ndens_perpixel, nobj_sys/npix_sys )
 		self.norm = np.append(self.norm, norm)
 		self.ndens =  np.append(self.ndens, norm*nobj_sys/npix_sys )
+
+	def precompute(self, map_index, edges, sys_vals, frac=None):
+		"""
+		Precompute the boolean arays for SP map bins
+		These can be used later for faster computation of 1d trends
+
+		Params
+		------
+		map_index: Integer
+			For labelling
+		edges: 1D array
+			edges of the systematic map binning
+		sys_vals: 1D array
+			systematic map for each fo the valid pixels
+			The order of these pixels should be preserved in any later calculations
+		"""
+		if frac is None:
+			frac = np.ones(len(sys_vals))
+
+		sp_select = []
+		for i_sp_bin in range(len(edges)-1):
+			if i_sp_bin == len(edges)-2: #last bin
+				sp_select_bin = (sys_vals >= edges[i_sp_bin])*(sys_vals <= edges[i_sp_bin+1]) #this is to match the behaviour of np.histogram
+			else:
+				sp_select_bin = (sys_vals >= edges[i_sp_bin])*(sys_vals < edges[i_sp_bin+1])
+			sp_select.append(sp_select_bin)
+		self.precomputed_array[map_index] = np.array(sp_select)
+
+		#pixel counts (weighted by frac coverage)
+		npix_sys,_ = np.histogram(sys_vals,bins=edges,weights=frac)
+
+		#sumof sys value * frac in sys bin (to make mean)
+		sumsys_sys,_ = np.histogram(sys_vals,bins=edges,weights=sys_vals*frac)
+		
+		self.precomputed_npix[map_index] = npix_sys
+		self.precomputed_sumsys[map_index] = sumsys_sys
+
+	def set_precompute(self, density_correlation):
+		"""
+		copy over the precompute quantities from a different DensityCorrelation object
+		"""
+		self.precomputed_array = density_correlation.precomputed_array
+		self.precomputed_npix = density_correlation.precomputed_npix
+		self.precomputed_sumsys = density_correlation.precomputed_sumsys
 
 
 	def add_diagonal_shot_noise_covariance(self,assert_empty=True):
