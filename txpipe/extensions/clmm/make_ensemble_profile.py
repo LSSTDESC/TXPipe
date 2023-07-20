@@ -14,13 +14,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     inputs = [
         ("cluster_catalog", HDFFile),
         #("shear_catalog", ShearCatalog),
-        #("fiducial_cosmology", FiducialCosmology),
+        ("fiducial_cosmology", FiducialCosmology),
         #("source_photoz_pdfs", PhotozPDFFile),
         ("cluster_shear_catalogs", HDFFile),
     ]
 
     outputs = [
-        ("cluster_ensemble", HDFFile),
+        ("cluster_profiles", PickleFile),
     ]
 
     config_options = {
@@ -76,11 +76,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         with self.open_input("cluster_shear_catalogs") as f:
             g = f["index/"]
             cluster_index = g['cluster_index'][:],
-            cross_comp = g['cross_comp'][:]
-            distance_arcmin = g['distance_arcmin'][:]
-            source_index = g['source_index']
             tangential_comp = g['tangential_comp'][:]
+            cross_comp = g['cross_comp'][:]
+            source_index = g['source_index']
             weight = g['weight'][:]
+            distance_arcmin = g['distance_arcmin'][:]
+
 
             
         return Table({"cluster_index": cluster_index, "tangential_comp_clmm": tangential_comp,
