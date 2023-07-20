@@ -2,24 +2,25 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
+from .sources_select_compute import CLClusterShearCatalogs
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
 from ...utils.calibrators import Calibrator
 from collections import defaultdict
 import yaml
 import ceci
 
-class CLClusterEnsembleProfiles(PipelineStage):
+class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
         ("cluster_catalog", HDFFile),
-        ("shear_catalog", ShearCatalog),
-        ("fiducial_cosmology", FiducialCosmology),
-        ("source_photoz_pdfs", PhotozPDFFile),
+        #("shear_catalog", ShearCatalog),
+        #("fiducial_cosmology", FiducialCosmology),
+        #("source_photoz_pdfs", PhotozPDFFile),
         ("cluster_shear_catalogs", HDFFile),
     ]
 
     outputs = [
-        ("cluster_ensemble", PickleFile),
+        ("cluster_ensemble", HDFFile),
     ]
 
     config_options = {
@@ -37,7 +38,56 @@ class CLClusterEnsembleProfiles(PipelineStage):
         import clmm
         import clmm.cosmology.ccl
 
+        # load cluster catalog as an astropy table
+        clusters = self.load_cluster_catalog()
+        ncluster = len(clusters)
+        
+        # load cluster shear catalog using similar astropy table set up as cluster catalog
+        cluster_shears_cat = self.load_cluster_shear_catalog()
 
+        
+        # Store the profiles for each cluster
+        per_cluster_data = [list() for i in range(ncluster)]
+
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            ccl_cosmo = f.to_ccl()
+            clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
+            clmm_cosmo.set_be_cosmo(ccl_cosmo)
+
+
+        # Loop through clusters and calculate the profiles
+        for cluster_index in enumerate(ncluster) :
+
+            # Select subset of background shear information for this particular cluster
+            mask = (cluster_shears_cat["cluster_index"] == cluster_index)
+            bg_cat = cluster_shears_cat[mask]
+            
+            z_cluster = clusters[cluster_index]["redshift"]
+            profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo)
+
+
+            per_cluster_data[i].append(profiles)
+
+            
+    def load_cluster_shear_catalog(self) :
+        from astropy.table import Table
+
+        with self.open_input("cluster_shear_catalogs") as f:
+            g = f["index/"]
+            cluster_index = g['cluster_index'][:],
+            cross_comp = g['cross_comp'][:]
+            distance_arcmin = g['distance_arcmin'][:]
+            source_index = g['source_index']
+            tangential_comp = g['tangential_comp'][:]
+            weight = g['weight'][:]
+
+            
+        return Table({"cluster_index": cluster_index, "tangential_comp_clmm": tangential_comp,
+                      "cross_comp_clmm": cross_comp, "source_index": source_index,
+                      "weight_clmm": weight, "distance_arcmin": distance_arcmin})
+
+        
     def collect(self, indices, weights, distances):
         # total number of background objects for t
 
@@ -70,39 +120,25 @@ class CLClusterEnsembleProfiles(PipelineStage):
         return indices, weights, distances
 
 
-    def compute_weights(self, clmm_cosmo, data, index, z_cluster):
+    def make_clmm_profiles(self, bg_cat, z_cluster, clmm_cosmo):
         import clmm
 
-        # Depending on whether we are using the PDF or not, choose
-        # some keywords to give to compute_galaxy_weights
-        if self.config["redshift_criterion"] == "pdf":
-            # We need the z and PDF(z) arrays in this case
-            pdf_z = data["pdf_z"]
-            pdf_pz = data["pdf_pz"][index]
-            redshift_keywords = {
-                "pzpdf":pdf_pz,
-                "pzbins":pdf_z,
-                "use_pdz":True
-            }
-        else:
-            # point-estimated redshift
-            z_source = data["redshift"][index]
-            redshift_keywords = {
-                "z_source":z_source,
-                "use_pdz":False
-            }
+        tangential_comp = bg_cat["tangential_comp_clmm"]
+        cross_comp = bg_cat["cross_comp_clmm"]
+        source_redshifts = bg_cat["zmean"]
+        weights = bg_cat["weight_clmm"]
+        angsep = bg_cat["distance_arcmin"]
 
-        weight = clmm.dataops.compute_galaxy_weights(
-            z_cluster,
-            clmm_cosmo,
-            is_deltasigma=True,
-            use_shape_noise=True,
-            use_shape_error=False,
-            validate_input=True,
-            shape_component1=data["g1"][index],
-            shape_component2=data["g2"][index],
-            **redshift_keywords
-        )
+        profiles = clmm.dataops.make_radial_profile(
+            [tangential_comp, cross_comp, source_redshifts],
+            weights=weights,
+            angsep=angsep,
+            angsep_units="radians",
+            bin_units="Mpc",
+            bins=10,
+            cosmo=clmm_cosmo,
+            zlens=z_cluster)
 
-        return weight
+
+        return profiles
 

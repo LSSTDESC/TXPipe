@@ -488,6 +488,7 @@ class CLClusterShearCatalogs(PipelineStage):
 
 class CombinedClusterCatalog:
     def __init__(self, shear_catalog, shear_tomography_catalog, cluster_catalog, cluster_shear_catalogs, photoz_pdfs):
+
         _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
         self.pz_cat = PhotozPDFFile(photoz_pdfs,"r").file
