@@ -59,7 +59,11 @@ class TXLSSweights(TXMapCorrelations):
 		"""
 		pixel_scheme = choose_pixelization(**self.config)
 		self.pixel_metadata = pixel_scheme.metadata
-		# TO DO: assert this matches the mask metadata (in case we load an external mask)
+		
+		#check the metadata nside matches the mask (might not be true of you use an external mask)
+		with self.open_input("mask", wrapper=True) as map_file:
+			mask_nside = map_file.read_map_info("mask")["nside"]
+		assert self.pixel_metadata['nside'] == mask_nside
 
 		#get number of tomographic lens bins
 		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
@@ -112,6 +116,50 @@ class TXLSSweights(TXMapCorrelations):
 		sys_maps, sys_names = self.load_and_mask_sysmaps()
 		sys_meta = {'masked':True}
 		return sys_maps, sys_names, sys_meta
+
+	def get_deltag(self, tomobin):
+		"""
+		convert the ra, dec of the lens sample to pixel number counts
+		"""
+		import collections
+		import healpy as hp
+		import numpy as np  
+		import healsparse as hsp
+
+		with self.open_input("mask", wrapper=True) as map_file:
+			nside = map_file.read_map_info("mask")["nside"]
+			nest = map_file.read_map_info("mask")["nest"]
+			mask = map_file.read_map("mask")
+
+		#load the ra and dec of this lens bins
+		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+			ra = f[f"lens/bin_{tomobin}/ra"][:]
+			dec = f[f"lens/bin_{tomobin}/dec"][:]
+
+		#pixel ID for each lens galaxy
+		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
+
+		count = collections.Counter(obj_pix)
+		pixel = np.array(list(count.keys()))
+		Ncounts = np.array(list(count.values())).astype(np.float64)
+
+		if nest:
+			maskpix = np.where(mask!=hp.UNSEEN)[0]
+		else:
+			maskpix = hp.ring2nest(nside, np.where(mask!=hp.UNSEEN)[0])
+
+		#fractional coverage
+		frac = hsp.HealSparseMap.make_empty(32, nside, dtype=np.float64)
+		frac.update_values_pix(maskpix, mask[np.where(mask!=hp.UNSEEN)[0]])
+
+		deltag = hsp.HealSparseMap.make_empty(32, nside, dtype=np.float64)
+		deltag.update_values_pix(maskpix, 0.0)
+		deltag.update_values_pix( pixel, Ncounts )
+		n = deltag[maskpix]/frac[maskpix]
+		nmean = np.average(n, weights=frac[maskpix])
+		deltag.update_values_pix( maskpix, n/nmean-1.0 ) #overdenity map 
+
+		return deltag, frac
 
 
 	def load_and_mask_sysmaps(self):
@@ -334,7 +382,8 @@ class TXLSSweights(TXMapCorrelations):
 
 class TXLSSweightsSimReg(TXLSSweights):
 	"""
-	Class compute LSS systematic weights using simultanious linear regression
+	Class compute LSS systematic weights using simultanious linear regression on the binned
+	1D correlations
 
 	Model: 		Linear 
 	Covarinace: Shot noise (for now), no correlation between 1d correlations
@@ -390,6 +439,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 		Construct the covariance matrix of the ndens vs SP data-vector 
 		"""
 
+		s = time.time()
+
 		#add diagonal shot noise
 		density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
 
@@ -399,6 +450,9 @@ class TXLSSweightsSimReg(TXLSSweights):
 			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#TO DO: add clustering Sample Variance here
+
+		f = time.time()
+		print("calc_covariance took {0}s".format(f-s))
 
 		return density_correlation.covmat
 
@@ -517,6 +571,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"""
 		import scipy.optimize
 		import numpy as np
+		from . import lsstools
 
 		s = time.time()
 
@@ -536,11 +591,11 @@ class TXLSSweightsSimReg(TXLSSweights):
 		def neg_log_like(params):
 			beta = params[0]
 			alphas = params[1:]
-			F, Fdc = linear_model(beta,*alphas,
+			F, Fdc = lsstools.lsstools.linear_model(beta,*alphas,
 				density_correlation=density_correlation, 
 				sys_maps=sys_maps,
 				sysmap_table=sysmap_table,)
-			chi2 = calc_chi2(density_correlation.ndens,density_correlation.covmat,Fdc.ndens)
+			chi2 = lsstools.lsstools.calc_chi2(density_correlation.ndens,density_correlation.covmat,Fdc.ndens)
 			return chi2/2.
 
 		minimize_output = scipy.optimize.minimize(neg_log_like, p0, method="Nelder-Mead" )
@@ -548,7 +603,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		coeff_cov = None
 
 		#add the best fit model to this DensityCorrelation instance
-		Fmap_bf, Fdc_bf = linear_model(coeff[0],*coeff[1:],
+		Fmap_bf, Fdc_bf = lsstools.lsstools.linear_model(coeff[0],*coeff[1:],
 			density_correlation=density_correlation, 
 				sys_maps=sys_maps,
 				sysmap_table=sysmap_table,)
@@ -565,6 +620,103 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		return Fmap_bf, fit_output
 
+
+
+class TXLSSweightsLinPix(TXLSSweightsSimReg):
+	"""
+	Class compute LSS systematic weights using simultanious linear regression at the 
+	pixel level using scikitlearn simple linear regression
+
+	Model:				Linear 
+	1D Covarinace:		Shot noise (for now), no correlation between 1d correlations
+	Pixel Covarinace:	Shot noise, no correlation between pixels
+	Fit:				Simultaniously fits all sysmaps using sklearn
+
+	"""
+	name = "TXLSSweightsLinPix"
+	parallel = False
+
+	def compute_weights(self, density_correlation, sys_maps ):
+		"""
+		Least square fit to a simple linear model at pixel level 
+	
+		using p-value of binned 1d trends for regularisation
+		
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation
+		sys_maps: list of Healsparse maps
+
+		Returns
+		------
+		Fmap: Healsparse map
+			Map of the fitted function F(s) 
+			where F(s) = 1/weight
+		coeff_output: (sig_map_index, coeff, coeff_cov)
+			sig_map_index: 1D array
+				index of each map considered significant
+			coeff: 1D array
+				best fit parameters
+				coeff=[beta, alpha1, alpha2, etc]
+			coeff_cov: 2D array
+				covariance matrix of coeff from fit
+
+		"""
+		import scipy.optimize
+		import numpy as np
+		import healpy as hp 
+		import healsparse as hsp
+		from . import lsstools
+		from sklearn import linear_model as sk_linear_model
+
+		s = time.time()
+
+		#first add the null signal as the first model
+		null_model = np.ones(len(density_correlation.ndens))
+		density_correlation.add_model(null_model, 'null')
+
+		#select only the significant trends
+		sig_map_index = self.select_maps(density_correlation)
+		sys_maps = sys_maps[sig_map_index]
+		sysmap_table = hsplist2array(sys_maps)
+
+		#make the delta_g map and fracdet weights
+		deltag, frac = self.get_deltag(density_correlation.tomobin)
+		dg1 = deltag[sys_maps[0].valid_pixels]+1.0 #deltag+1 for valid pixels
+		weight = frac[sys_maps[0].valid_pixels] #weight for samples (prop to 1/sigma^2)
+
+		#do linear regression
+		reg = sk_linear_model.LinearRegression()
+		reg.fit(sysmap_table.T, dg1, sample_weight=weight )
+
+		#get output of regression
+		Fvals = reg.predict(sysmap_table.T)
+		Fmap_bf = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+		Fmap_bf.update_values_pix(sys_maps[0].valid_pixels, Fvals.astype(np.float64) )
+		coeff = np.append(reg.intercept_,reg.coef_)
+		coeff_cov = None
+
+		#make the 1d trends for the regression output
+		Fdc_bf = lsstools.DensityCorrelation()
+		Fdc_bf.set_precompute(density_correlation)
+		for imap, sys_vals in enumerate(sysmap_table):
+			edges = density_correlation.get_edges(imap)
+			Fdc_bf.add_correlation(imap, edges, sys_vals, Fmap_bf[Fmap_bf.valid_pixels], map_input=True, use_precompute=True )
+		density_correlation.add_model(Fdc_bf.ndens, 'linear')
+
+		#assemble the fitting outputs (chi2, values, coefficents, )
+		fit_output = {}
+		fit_output['sig_map_index'] = sig_map_index
+		fit_output['coeff'] = coeff
+		fit_output['coeff_cov'] = coeff_cov
+
+		f = time.time()
+		print("compute_weights took {0}s".format(f-s))
+
+		return Fmap_bf, fit_output
+
+
+
 def hsplist2array(hsp_list):
 	"""
 	Convert a list of healsparse maps to a 2d array of the valid pixels
@@ -577,56 +729,6 @@ def hsplist2array(hsp_list):
 		out_array.append(hsp_list[i][validpixels])
 	return np.array(out_array)
 
-
-def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None):
-	"""
-	linear contamination model:
-	F(s) = alpha1*s1 + alpha2*s2 + ... + beta
-	Normalised to <F(s)> = 1
-
-	returns
-		predicted ndens vs smean
-	"""
-	import healsparse as hsp
-	import healpy as hp
-	import numpy as np 
-	from . import lsstools
-
-	assert len(alphas) == len(sys_maps)
-
-	if sysmap_table is None:
-		sysmap_table = hsplist2array(sys_map)
-
-	#make empty F(s) map
-	validpixels = sys_maps[0].valid_pixels
-	F = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-	Fvals = np.sum(np.array([alphas]).T*sysmap_table,axis=0) + beta
-	F.update_values_pix(validpixels, Fvals)
-
-	#normalize the map
-	meanF = np.mean(F[validpixels]) #TODO make this a weighted mean?
-	F.update_values_pix(validpixels, F[validpixels]/meanF)
-
-	data_vals = F[validpixels]
-	F_density_corrs = lsstools.DensityCorrelation()
-	F_density_corrs.set_precompute(density_correlation)
-	for imap, sys_vals in enumerate(sysmap_table):
-			edges = density_correlation.get_edges(imap)
-			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True )
-
-	return F, F_density_corrs
-
-def calc_chi2(y, cov, yfit):
-	import numpy as np 
-
-	inv_cov = np.linalg.inv( np.matrix(cov) )
-
-	chi2 = 0
-	for i in range(len(y)):
-		for j in range(len(y)):
-			chi2 = chi2 + (y[i]-yfit[i])*inv_cov[i,j]*(y[j]-yfit[j])
-
-	return chi2
 
 
 class TXLSSweightsUnit(TXLSSweights):
