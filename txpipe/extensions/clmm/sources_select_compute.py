@@ -360,12 +360,13 @@ class CLClusterShearCatalogs(PipelineStage):
             cosmo=clmm_cosmo,
             z_lens=z_cluster,
             z_source=z_source,
-            sigma_c=False,
+            sigma_c=None,
             use_pdz=False,
             pzbins=None,
             pzpdf=None,
             validate_input=True,
         )       
+        
         return weight, tangential_comp, cross_comp
 
 
