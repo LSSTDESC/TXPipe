@@ -95,6 +95,9 @@ class CLClusterShearCatalogs(PipelineStage):
                     continue
 
                 cluster_z = clusters[cluster_index]["redshift"]
+                cluster_ra = clusters[cluster_index]["ra"]
+                cluster_dec = clusters[cluster_index]["dec"]
+
                 # # Cut down to clusters that are in front of this galaxy
                 zgal = data["redshift"][gal_index]
                 z_good = zgal > cluster_z + delta_z
@@ -106,7 +109,7 @@ class CLClusterShearCatalogs(PipelineStage):
 
                 # Compute source quantities
                 #weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
-                weights, tangential_comp, cross_comp = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z)
+                weights, tangential_comp, cross_comp = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z, cluster_ra, cluster_dec)
                 # we want to save the index into the overall shear catalog,
                 # not just into this chunk of data
                 global_index = data["original_index"][gal_index]
@@ -310,9 +313,10 @@ class CLClusterShearCatalogs(PipelineStage):
         return theta_max
 
 
-    def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster):
+    def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster, ra_cluster, dec_cluster):
         import clmm
 
+        
         # Depending on whether we are using the PDF or not, choose
         # some keywords to give to compute_galaxy_weights
         if self.config["redshift_criterion"] == "pdf":
@@ -345,10 +349,10 @@ class CLClusterShearCatalogs(PipelineStage):
         )
 
         _, tangential_comp, cross_comp = clmm.compute_tangential_and_cross_components(
-            ra_lens,
-            dec_lens,
-            ra_source,
-            dec_source,
+            ra_cluster,
+            dec_cluster,
+            data['ra'][index],
+            data['dec'][index],
             data["g1"][index],
             data["g2"][index],
             geometry="curve",
