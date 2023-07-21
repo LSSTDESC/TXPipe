@@ -39,6 +39,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import clmm
         import clmm.cosmology.ccl
 
+        num_profile_bins = 10
+        
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
         ncluster = len(clusters)
@@ -64,15 +66,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             bg_cat = cluster_shears_cat[mask]
                             
             z_cluster = clusters[cluster_index]["redshift"]
-            profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo)
+            profile, profile_colnames = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo, num_profile_bins)
 
             # We want to append the columns as numpy arrays
-            per_cluster_data[cluster_index].append(*[profile[k] for k in profile_colnames])
+            per_cluster_data[cluster_index].append(tuple([profile[k] for k in profile_colnames]))
 
-        profile_colnames = profile.colnames
-        profile_len = len(profile[k])
+        profile_len = num_profile_bins
     
-        print( profile_colnames, profile_len, k, type(profile[k]) )
+        print( profile_colnames, profile_len, profile_colnames[0], type(profile[profile_colnames[0]]) )
         
         # The root process saves all the data. First it setps up the output
         # file here.
@@ -88,7 +89,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # and for the profile columns into that catalog
             profile_group = outfile.create_group("profile")
             for colname in profile_colnames :
-                index_group.create_dataset(colname, shape=(ncluster,profile_len), dtype=np.float64)
+                profile_group.create_dataset(colname, shape=(ncluster,profile_len), dtype=np.float64)
 
 
         # Now we loop through each cluster and collect all the profile values we calculated
@@ -200,7 +201,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         return indices, weights, distances
 
 
-    def make_clmm_profile(self, bg_cat, z_cluster, clmm_cosmo):
+    def make_clmm_profile(self, bg_cat, z_cluster, clmm_cosmo, num_bins):
         import clmm
 
         tangential_comp = bg_cat["tangential_comp_clmm"]
@@ -214,11 +215,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             angsep=angsep,
             angsep_units="arcmin",
             bin_units="Mpc",
-            bins=10,
+            bins=num_bins,
             cosmo=clmm_cosmo,
             z_lens=z_cluster)
 
 
-        return {k: profile[k] for k in profile.colnames}
+        return {k: profile[k] for k in profile.colnames}, profile.colnames
 
 
