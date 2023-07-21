@@ -13,10 +13,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
         ("cluster_catalog", HDFFile),
-        ("shear_catalog", ShearCatalog),
+#        ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        ("shear_tomography_catalog", TomographyCatalog),
-        ("source_photoz_pdfs", PhotozPDFFile),
+#        ("shear_tomography_catalog", TomographyCatalog),
+#        ("source_photoz_pdfs", PhotozPDFFile),
         ("cluster_shear_catalogs", HDFFile),
     ]
 
@@ -66,30 +66,89 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             z_cluster = clusters[cluster_index]["redshift"]
             profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo)
 
+            # We want to append the columns as numpy arrays
+            per_cluster_data[cluster_index].append(*[profile[k] for k in profile_colnames])
 
-            per_cluster_data[cluster_index].append(profile)
-            
+        profile_colnames = profile.colnames
+        profile_len = len(profile[k])
     
+        print( profile_colnames, profile_len, k, type(profile[k]) )
+        
         # The root process saves all the data. First it setps up the output
         # file here.
         if self.rank == 0:
             outfile = self.open_output("cluster_profiles")
-            # Create space for the catalog
+            # Create space for the catalog                                                                                                                               
             catalog_group = outfile.create_group("catalog")
-            catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=clmm.GCData)
-#             catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int32)
-#            catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
-#             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
-#             # and for the index into that catalog
-#             index_group = outfile.create_group("index")
-#             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
-#             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
-#             index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
-#             index_group.create_dataset("tangential_comp", shape=(total_count,), dtype=np.float64)
-#             index_group.create_dataset("cross_comp", shape=(total_count,), dtype=np.float64)
-#             index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
+            catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int32)
+            catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int32)
+            catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
 
             
+            # and for the profile columns into that catalog
+            profile_group = outfile.create_group("profile")
+            for colname in profile_colnames :
+                index_group.create_dataset(colname, shape=(ncluster,profile_len), dtype=np.float64)
+
+
+        # Now we loop through each cluster and collect all the profile values we calculated
+        # from all the different processes.
+        start = 0
+        
+        for i, c in enumerate(clusters):
+
+            if (self.rank == 0) and (i%100 == 0):
+                print(f"Collecting data for cluster {i}")
+
+            if len(per_cluster_data[i]) == 0 :
+                for k in profile_colnames :
+                    profiles_to_collect = {}
+
+                    profiles_to_collect[k] = np.zeros(profile_len)
+                   
+            # Each process flattens the profiles for this cluster (????????)
+            else :
+                for k in profile_colnames :
+                    profiles_to_collect = {}
+                    profiles_to_collect[k] = np.concatenate(d[k] for d in per_cluster_data[i])
+
+
+
+            # If we are running in parallel then collect together
+            # the values from all the processes                                                                                                                                          
+            if self.comm is not None:
+                collected_data = self.collect(*[ profiles_to_collect[k] for k in profile_colnames ])
+
+            # Only the root process does the writing, so the others just                                                                                
+            # go to the next set of clusters.
+            if self.rank != 0:
+                continue
+
+
+            # And finally write out all the data from the root process.                                                                                                  
+            n = len(profile_len)
+            print(f"Created {n} profile length in catalog for cluster {c['id']}")
+
+            catalog_group["cluster_sample_start"][i] = start
+            catalog_group["cluster_sample_count"][i] = n
+            catalog_group["cluster_id"][i] = c["id"]
+
+            # ISSUE HERE - NOT QUITE THE SAME AS THE SOURCES_SELECT_COMPUTE step, as we have profiles
+            profile_group["cluster_index"][start:start + n] = i
+            j = 1
+            for k in profile_colnames : 
+                profile_group[k][start:start + n] = collected_data[j]
+                j = j+1
+
+            start += n
+
+        if self.rank == 0:
+            outfile.close()
+
+                    
+
+
+
     def load_cluster_shear_catalog(self) :
         from astropy.table import Table
 
@@ -160,6 +219,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             z_lens=z_cluster)
 
 
-        return profile
+        return {k: profile[k] for k in profile.colnames}
 
 
