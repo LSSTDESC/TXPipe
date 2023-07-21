@@ -78,12 +78,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             cluster_index = g['cluster_index'][:],
             tangential_comp = g['tangential_comp'][:]
             cross_comp = g['cross_comp'][:]
-            source_index = g['source_index']
+            source_index = g['source_index'][:]
             weight = g['weight'][:]
             distance_arcmin = g['distance_arcmin'][:]
 
 
-            
         return Table({"cluster_index": cluster_index, "tangential_comp_clmm": tangential_comp,
                       "cross_comp_clmm": cross_comp, "source_index": source_index,
                       "weight_clmm": weight, "distance_arcmin": distance_arcmin})
