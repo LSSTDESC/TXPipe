@@ -13,9 +13,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
         ("cluster_catalog", HDFFile),
-        #("shear_catalog", ShearCatalog),
+        ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        #("source_photoz_pdfs", PhotozPDFFile),
+        ("shear_tomography_catalog", TomographyCatalog),
+        ("source_photoz_pdfs", PhotozPDFFile),
         ("cluster_shear_catalogs", HDFFile),
     ]
 
@@ -59,7 +60,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         # Loop through clusters and calculate the profiles
         for cluster_index in range(ncluster) :
-            print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
 
             # Select subset of background shear information for this particular cluster
             mask = (cluster_shears_cat["cluster_index"] == cluster_index)
@@ -68,6 +68,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             source_redshifts = []
             # find shear redshifts from shear catalog
             for s, e, data in self.iterate_source_catalog() :
+                print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
                 # Now, we only want redshifts for source galaxies selected in bg_cat
                 source_redshifts.append(data["redshifts"][bg_cat["source_index"]])
 
