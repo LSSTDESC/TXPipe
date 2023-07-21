@@ -66,15 +66,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             bg_cat = cluster_shears_cat[mask]
                             
             z_cluster = clusters[cluster_index]["redshift"]
-            profile, profile_colnames = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo, num_profile_bins)
+            profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo, num_profile_bins)
 
             # We want to append the columns as numpy arrays
-            per_cluster_data[cluster_index].append(tuple([profile[k] for k in profile_colnames]))
+            per_cluster_data[cluster_index] = profile
 
         profile_len = num_profile_bins
-    
-        print( profile_colnames, profile_len, profile_colnames[0], type(profile[profile_colnames[0]]) )
-        
+        profile_colnames = list(profile.keys())
+                
         # The root process saves all the data. First it setps up the output
         # file here.
         if self.rank == 0:
@@ -88,9 +87,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             
             # and for the profile columns into that catalog
             profile_group = outfile.create_group("profile")
+            profile_group.create_dataset("cluster_index", shape=(ncluster, profile_len), dtype=np.int64)
+           
             for colname in profile_colnames :
                 profile_group.create_dataset(colname, shape=(ncluster,profile_len), dtype=np.float64)
-
+                
 
         # Now we loop through each cluster and collect all the profile values we calculated
         # from all the different processes.
@@ -101,24 +102,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             if (self.rank == 0) and (i%100 == 0):
                 print(f"Collecting data for cluster {i}")
 
-            if len(per_cluster_data[i]) == 0 :
-                for k in profile_colnames :
-                    profiles_to_collect = {}
-
-                    profiles_to_collect[k] = np.zeros(profile_len)
-                   
-            # Each process flattens the profiles for this cluster (????????)
-            else :
-                for k in profile_colnames :
-                    profiles_to_collect = {}
-                    profiles_to_collect[k] = np.concatenate(d[k] for d in per_cluster_data[i])
-
-
-
+            profiles_to_collect = per_cluster_data[i]
             # If we are running in parallel then collect together
             # the values from all the processes                                                                                                                                          
             if self.comm is not None:
-                collected_data = self.collect(*[ profiles_to_collect[k] for k in profile_colnames ])
+                profiles_to_collect = self.collect(*[ profiles_to_collect[k] for k in profile_colnames ])
 
             # Only the root process does the writing, so the others just                                                                                
             # go to the next set of clusters.
@@ -127,8 +115,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
 
             # And finally write out all the data from the root process.                                                                                                  
-            n = len(profile_len)
-            print(f"Created {n} profile length in catalog for cluster {c['id']}")
+            n = profile_len
+            print(f"Created profile length {n} in catalog for cluster {c['id']}")
 
             catalog_group["cluster_sample_start"][i] = start
             catalog_group["cluster_sample_count"][i] = n
@@ -136,10 +124,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             # ISSUE HERE - NOT QUITE THE SAME AS THE SOURCES_SELECT_COMPUTE step, as we have profiles
             profile_group["cluster_index"][start:start + n] = i
-            j = 1
             for k in profile_colnames : 
-                profile_group[k][start:start + n] = collected_data[j]
-                j = j+1
+                profile_group[k][start:start + n] = profiles_to_collect[k]
 
             start += n
 
@@ -220,6 +206,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             z_lens=z_cluster)
 
 
-        return {k: profile[k] for k in profile.colnames}, profile.colnames
+        return {k: np.array(profile[k]) for k in profile.colnames}
 
 
