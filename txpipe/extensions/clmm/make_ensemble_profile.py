@@ -64,19 +64,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # Select subset of background shear information for this particular cluster
             mask = (cluster_shears_cat["cluster_index"] == cluster_index)
             bg_cat = cluster_shears_cat[mask]
-            
-            source_redshifts = []
-            # find shear redshifts from shear catalog
-            for s, e, data in self.iterate_source_catalog() :
-                print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
-                # Now, we only want redshifts for source galaxies selected in bg_cat
-                source_redshifts.append(data["redshifts"][bg_cat["source_index"]])
-
+                            
             z_cluster = clusters[cluster_index]["redshift"]
-            profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo, source_redshifts)
+            profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo)
 
 
-            per_cluster_data[i].append(profiles)
+            per_cluster_data[cluster_index].append(profiles)
+            print(profiles)
 
             
     def load_cluster_shear_catalog(self) :
@@ -130,25 +124,25 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         return indices, weights, distances
 
 
-    def make_clmm_profiles(self, bg_cat, z_cluster, clmm_cosmo, source_redshifts):
+    def make_clmm_profiles(self, bg_cat, z_cluster, clmm_cosmo):
         import clmm
 
         tangential_comp = bg_cat["tangential_comp_clmm"]
         cross_comp = bg_cat["cross_comp_clmm"]
-        source_redshifts = source_redshifts   #bg_cat["zmean"]
         weights = bg_cat["weight_clmm"]
         angsep = bg_cat["distance_arcmin"]
 
         profiles = clmm.dataops.make_radial_profile(
-            [tangential_comp, cross_comp, source_redshifts],
+            [tangential_comp, cross_comp],
             weights=weights,
             angsep=angsep,
             angsep_units="radians",
             bin_units="Mpc",
             bins=10,
             cosmo=clmm_cosmo,
-            zlens=z_cluster)
+            z_lens=z_cluster)
 
 
         return profiles
+
 
