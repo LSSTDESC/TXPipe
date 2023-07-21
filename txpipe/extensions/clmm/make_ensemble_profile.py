@@ -44,10 +44,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         
         # load cluster shear catalog using similar astropy table set up as cluster catalog
         cluster_shears_cat = self.load_cluster_shear_catalog()
-
+        
         
         # Store the profiles for each cluster
         per_cluster_data = [list() for i in range(ncluster)]
+
 
 
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
@@ -57,12 +58,19 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
 
         # Loop through clusters and calculate the profiles
-        for cluster_index in enumerate(ncluster) :
+        for cluster_index in range(ncluster) :
+            print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
 
             # Select subset of background shear information for this particular cluster
             mask = (cluster_shears_cat["cluster_index"] == cluster_index)
             bg_cat = cluster_shears_cat[mask]
             
+            
+            
+            # find shear redshifts from shear catalog
+            #for s, e, data in self.iterate_source_catalog() :
+                
+
             z_cluster = clusters[cluster_index]["redshift"]
             profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo)
 
@@ -75,13 +83,15 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         with self.open_input("cluster_shear_catalogs") as f:
             g = f["index/"]
-            cluster_index = g['cluster_index'][:],
+            cluster_index = g['cluster_index'][:]
             tangential_comp = g['tangential_comp'][:]
             cross_comp = g['cross_comp'][:]
             source_index = g['source_index'][:]
             weight = g['weight'][:]
             distance_arcmin = g['distance_arcmin'][:]
+            zmean = g['zmean'][:]
 
+        print(len(cluster_index), len(tangential_comp), len(source_index))
 
         return Table({"cluster_index": cluster_index, "tangential_comp_clmm": tangential_comp,
                       "cross_comp_clmm": cross_comp, "source_index": source_index,
