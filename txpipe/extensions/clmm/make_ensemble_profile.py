@@ -65,14 +65,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             mask = (cluster_shears_cat["cluster_index"] == cluster_index)
             bg_cat = cluster_shears_cat[mask]
             
-            
-            
+            source_redshifts = []
             # find shear redshifts from shear catalog
-            #for s, e, data in self.iterate_source_catalog() :
-                
+            for s, e, data in self.iterate_source_catalog() :
+                # Now, we only want redshifts for source galaxies selected in bg_cat
+                source_redshifts.append(data["redshifts"][bg_cat["source_index"]])
 
             z_cluster = clusters[cluster_index]["redshift"]
-            profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo)
+            profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo, source_redshifts)
 
 
             per_cluster_data[i].append(profiles)
@@ -89,7 +89,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             source_index = g['source_index'][:]
             weight = g['weight'][:]
             distance_arcmin = g['distance_arcmin'][:]
-            zmean = g['zmean'][:]
 
         print(len(cluster_index), len(tangential_comp), len(source_index))
 
@@ -130,12 +129,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         return indices, weights, distances
 
 
-    def make_clmm_profiles(self, bg_cat, z_cluster, clmm_cosmo):
+    def make_clmm_profiles(self, bg_cat, z_cluster, clmm_cosmo, source_redshifts):
         import clmm
 
         tangential_comp = bg_cat["tangential_comp_clmm"]
         cross_comp = bg_cat["cross_comp_clmm"]
-        source_redshifts = bg_cat["zmean"]
+        source_redshifts = source_redshifts   #bg_cat["zmean"]
         weights = bg_cat["weight_clmm"]
         angsep = bg_cat["distance_arcmin"]
 
