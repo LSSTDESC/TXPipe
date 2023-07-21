@@ -21,7 +21,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     ]
 
     outputs = [
-        ("cluster_profiles", PickleFile),
+        ("cluster_profiles", HDFFile),
     ]
 
     config_options = {
@@ -50,8 +50,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         # Store the profiles for each cluster
         per_cluster_data = [list() for i in range(ncluster)]
 
-
-
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             ccl_cosmo = f.to_ccl()
             clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
@@ -66,11 +64,30 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             bg_cat = cluster_shears_cat[mask]
                             
             z_cluster = clusters[cluster_index]["redshift"]
-            profiles = self.make_clmm_profiles(bg_cat, z_cluster, clmm_cosmo)
+            profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo)
 
 
-            per_cluster_data[cluster_index].append(profiles)
-            print(profiles)
+            per_cluster_data[cluster_index].append(profile)
+            
+    
+        # The root process saves all the data. First it setps up the output
+        # file here.
+        if self.rank == 0:
+            outfile = self.open_output("cluster_profiles")
+            # Create space for the catalog
+            catalog_group = outfile.create_group("catalog")
+            catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=clmm.GCData)
+#             catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int32)
+#            catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
+#             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
+#             # and for the index into that catalog
+#             index_group = outfile.create_group("index")
+#             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
+#             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
+#             index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
+#             index_group.create_dataset("tangential_comp", shape=(total_count,), dtype=np.float64)
+#             index_group.create_dataset("cross_comp", shape=(total_count,), dtype=np.float64)
+#             index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
 
             
     def load_cluster_shear_catalog(self) :
@@ -124,7 +141,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         return indices, weights, distances
 
 
-    def make_clmm_profiles(self, bg_cat, z_cluster, clmm_cosmo):
+    def make_clmm_profile(self, bg_cat, z_cluster, clmm_cosmo):
         import clmm
 
         tangential_comp = bg_cat["tangential_comp_clmm"]
@@ -132,17 +149,17 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         weights = bg_cat["weight_clmm"]
         angsep = bg_cat["distance_arcmin"]
 
-        profiles = clmm.dataops.make_radial_profile(
+        profile = clmm.dataops.make_radial_profile(
             [tangential_comp, cross_comp],
             weights=weights,
             angsep=angsep,
-            angsep_units="radians",
+            angsep_units="arcmin",
             bin_units="Mpc",
             bins=10,
             cosmo=clmm_cosmo,
             z_lens=z_cluster)
 
 
-        return profiles
+        return profile
 
 
