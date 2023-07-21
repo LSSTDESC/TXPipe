@@ -10,8 +10,6 @@ import yaml
 import ceci
 import itertools
 
-#from ...data_types import HDFFile, MapsFile
-
 
 class CLClusterBinningRedshiftRichness(PipelineStage):
     name = "CLClusterBinningRedshiftRichness"
@@ -31,8 +29,8 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
         zedge = np.array(self.config['zedge'])
         richedge = np.array(self.config['richedge'])
 
-        nz = len(zedge) 
-        nr = len(richedge)
+        nz = len(zedge - 1) 
+        nr = len(richedge - 1)
 
         # add infinities to either end to catch objects that spill out
         zedge = np.concatenate([[-np.inf], zedge, [np.inf]])
@@ -40,14 +38,14 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
 
         # all pairs of z bin, richness bin indices
         bins = list(itertools.product(range(nz), range(nr)))
-        bin_names = {f"{i}_{j}":initial_size for i,j in bins}
+        bin_names = {f"zbin_{i}_richbin_{j}":initial_size for i,j in bins}
 
         # Columns we want to save for each object
         cols = ['cluster_id', 'dec', 'ra', 'redshift', 'redshift_err', 'richness', 'richness_err', 'scaleval']
 
 
         f = self.open_output("cluster_catalog_tomography")
-        g = f.create_group("lens")
+        g = f.create_group("cluster_bin")
         g.attrs['nr'] = nr
         g.attrs['nz'] = nz
         splitter = DynamicSplitter(g, "bin", cols, bin_names)
@@ -66,8 +64,8 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
 
             # Find which bin each object is in, or None
             for zi in range(1, nz):
-                for mi in range(1, nr):
-                    w = np.where((zbin == zi) & (richbin == mi))
+                for ri in range(1, nr):
+                    w = np.where((zbin == zi) & (richbin == ri))
                     # if there are no objects in this bin in this chunk,
                     # then we skip the rest
                     if w[0].size == 0:
@@ -77,7 +75,7 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
                     # data that is in this bin and have our splitter
                     # object write it out.
                     d = {name:col[w] for name, col in data.items()}
-                    bin_name = f"{zi - 1}_{mi - 1}" #TO CHANGE ?
+                    bin_name = f"zbin_{zi-1}_richbin_{ri-1}" #TO CHANGE ?
                     splitter.write_bin(d, bin_name)
 
         # Truncate arrays to correct size
@@ -86,29 +84,12 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
         # Save metadata
         for (i, j), name in zip(bins, bin_names):
             metadata = splitter.subgroups[name].attrs
-            metadata['rich_min'] = richedge[i]
-            #metadata['rich_max'] = richedge[i+1]
+            metadata['rich_min'] = richedge[j]
+            metadata['rich_max'] = richedge[j+1]
             metadata['z_min'] = zedge[i]
-            #metadata['z_max'] = zedge[i+1]
+            metadata['z_max'] = zedge[i+1]
 
         f.close()
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
 
 class CLClusterShearCatalogs(PipelineStage):
