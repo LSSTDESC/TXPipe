@@ -59,7 +59,8 @@ class TXLSSweights(TXMapCorrelations):
 		"""
 		pixel_scheme = choose_pixelization(**self.config)
 		self.pixel_metadata = pixel_scheme.metadata
-		
+		self.cov_sample_variance_full = None 
+
 		#check the metadata nside matches the mask (might not be true of you use an external mask)
 		with self.open_input("mask", wrapper=True) as map_file:
 			mask_nside = map_file.read_map_info("mask")["nside"]
@@ -449,7 +450,12 @@ class TXLSSweightsSimReg(TXLSSweights):
 			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, sys_maps)
 			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
-			#TO DO: add clustering Sample Variance here
+			#add clustering Sample Variance 
+			#this only depend on the SP maps, not the sample
+			#so subsequent lens bins can use the first bin calculation
+			if self.cov_sample_variance_full is None:
+				self.cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, sys_maps)
+			density_correlation.add_external_covariance(self.cov_sample_variance_full, assert_empty=False)
 
 		f = time.time()
 		print("calc_covariance took {0}s".format(f-s))
@@ -483,8 +489,6 @@ class TXLSSweightsSimReg(TXLSSweights):
 		#Covariance matrix on number *counts*
 		nbinstotal = len(density_correlation.map_index)
 		covmat_N = np.zeros((nbinstotal,nbinstotal))
-		
-		map_list = np.unique(density_correlation.map_index).astype('int')
 
 		#loop over each pair of maps to get 2d histograms
 		# and fill in the Nobj covarianace matrix blocks
@@ -522,6 +526,72 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		return covmat_ndens
 
+	def calc_covariance_sample_variance(self, density_correlation, sys_maps):
+		"""
+		Sample variance term in 1d binned covariance
+		
+		uses treecorr to compute teh two point function between pixel positions in different SP bins
+		see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
+
+		"""
+		import numpy as np 
+		import treecorr
+		import healpy as hp 
+		from scipy.interpolate import interp1d
+
+		#Covariance matrix on number *counts*
+		nbinstotal = len(density_correlation.map_index)
+		covmat_N = np.zeros((nbinstotal,nbinstotal))
+
+		#load theory wtheta 
+		mintheta = hp.nside2resol(sys_maps[0].nside_sparse,arcmin=True)
+		maxtheta = 250.
+		theta = np.linspace(mintheta, maxtheta, 100)
+		wtheta = np.ones(len(theta))*0.03
+		print('USING CONSTANT WTHETA FOR TESTING')
+		wtheta_interp = interp1d(theta, wtheta)
+
+		map_list = np.unique(density_correlation.map_index).astype('int')
+
+		#make a dict of treecorr Catalog objects
+		#TO DO: test how the memory use here scales with NSIDE
+		cats = {}
+		for imap in map_list:
+			ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
+			edges_i = density_correlation.get_edges(imap)
+			for isp in range(len(edges_i)-1):
+				selecti = density_correlation.precomputed_array[imap][isp]
+				cat_i = treecorr.Catalog(ra=ra_i[selecti], dec=dec_i[selecti],ra_units='degrees',dec_units='degrees')
+				cats[imap,isp] = cat_i
+
+		#TO DO: Parralelize this
+		map_list = np.unique(density_correlation.map_index).astype('int')
+		for imap in map_list:
+			edges_i = density_correlation.get_edges(imap)
+			print('SV covariance for map', imap)
+			for isp in range(len(edges_i)-1):
+				cat_i = cats[imap,isp]
+				indexi = imap*(len(edges_i)-1)+isp
+
+				for jmap in map_list:
+					edges_j = density_correlation.get_edges(jmap)
+					for jsp in range(len(edges_j)-1):
+						cat_j = cats[jmap,jsp]
+						indexj = jmap*(len(edges_j)-1)+jsp
+						if (indexi > indexj):
+							continue
+
+						nn = treecorr.NNCorrelation(max_sep=maxtheta,min_sep=mintheta,
+							nbins=20,bin_slop=0.5,sep_units='arcmin' )
+						nn.process(cat_i,cat_j)
+						covmat_N[indexi,indexj] = np.sum(nn.npairs*wtheta_interp(nn.meanr))
+						covmat_N[indexj,indexi] = covmat_N[indexi,indexj]
+
+		#I did not include the nbar in covmat_N because this would get divided out here
+		npix1npix2 = np.matrix(density_correlation.npix).T*np.matrix(density_correlation.npix)
+		covmat_ndens = covmat_N / np.array(npix1npix2)
+
+		return covmat_ndens
 
 	def select_maps(self, density_correlation):
 		"""
