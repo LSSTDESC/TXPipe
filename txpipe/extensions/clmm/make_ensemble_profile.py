@@ -39,18 +39,17 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import clmm
         import clmm.cosmology.ccl
 
-        num_profile_bins = 10
+        num_profile_bins = 5
         
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
         ncluster = len(clusters)
         
         # load cluster shear catalog using similar astropy table set up as cluster catalog
-        cluster_shears_cat = self.load_cluster_shear_catalog()
-        
+        cluster_shears_cat = self.load_cluster_shear_catalog()  
         
         # Store the profiles for each cluster
-        per_cluster_data = [list() for i in range(ncluster)]
+        per_cluster_data = list()
 
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             ccl_cosmo = f.to_ccl()
@@ -69,8 +68,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo, num_profile_bins)
 
             # We want to append the columns as numpy arrays
-            per_cluster_data[cluster_index] = profile
+            per_cluster_data.append(profile)
 
+        print(len(per_cluster_data))
+        print(type(per_cluster_data[0]))
+        
         profile_len = num_profile_bins
         profile_colnames = list(profile.keys())
                 
@@ -123,18 +125,17 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             catalog_group["cluster_id"][i] = c["id"]
 
             # ISSUE HERE - NOT QUITE THE SAME AS THE SOURCES_SELECT_COMPUTE step, as we have profiles
-            profile_group["cluster_index"][start:start + n] = i
+            print(start)
+            profile_group["cluster_index"][start] = i
             for k in profile_colnames : 
-                profile_group[k][start:start + n] = profiles_to_collect[k]
+                profile_group[k][start] = profiles_to_collect[k]
 
-            start += n
+            start += 1
 
         if self.rank == 0:
             outfile.close()
 
                     
-
-
 
     def load_cluster_shear_catalog(self) :
         from astropy.table import Table
