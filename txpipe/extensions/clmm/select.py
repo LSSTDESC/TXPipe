@@ -28,18 +28,20 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
         
         zedge = np.array(self.config['zedge'])
         richedge = np.array(self.config['richedge'])
-
-        nz = len(zedge - 1) 
-        nr = len(richedge - 1)
-
+        
+        nz = len(zedge) - 1
+        nr = len(richedge) - 1
+                    
         # add infinities to either end to catch objects that spill out
         zedge = np.concatenate([[-np.inf], zedge, [np.inf]])
         richedge = np.concatenate([[-np.inf], richedge, [np.inf]])
-
+        
         # all pairs of z bin, richness bin indices
         bins = list(itertools.product(range(nz), range(nr)))
         bin_names = {f"zbin_{i}_richbin_{j}":initial_size for i,j in bins}
+        #bin_names = [f"zbin_{i}_richbin_{j}" for i,j in bins]
 
+        
         # Columns we want to save for each object
         cols = ['cluster_id', 'dec', 'ra', 'redshift', 'redshift_err', 'richness', 'richness_err', 'scaleval']
 
@@ -59,12 +61,12 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
             n = len(data["redshift"])
 
             # Figure out which bin each halo it in, if any, starts at 0
-            zbin = np.digitize(data['redshift'], zedge) - 1
-            richbin = np.digitize(data["richness"], richedge) - 1
+            zbin = np.digitize(data['redshift'], zedge) - 2
+            richbin = np.digitize(data["richness"], richedge) - 2
 
             # Find which bin each object is in, or None
-            for zi in range(1, nz):
-                for ri in range(1, nr):
+            for zi in range(0, nz):
+                for ri in range(0, nr):
                     w = np.where((zbin == zi) & (richbin == ri))
                     # if there are no objects in this bin in this chunk,
                     # then we skip the rest
@@ -75,7 +77,7 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
                     # data that is in this bin and have our splitter
                     # object write it out.
                     d = {name:col[w] for name, col in data.items()}
-                    bin_name = f"zbin_{zi-1}_richbin_{ri-1}" #TO CHANGE ?
+                    bin_name = f"zbin_{zi}_richbin_{ri}" #TO CHANGE ?
                     splitter.write_bin(d, bin_name)
 
         # Truncate arrays to correct size
@@ -84,10 +86,10 @@ class CLClusterBinningRedshiftRichness(PipelineStage):
         # Save metadata
         for (i, j), name in zip(bins, bin_names):
             metadata = splitter.subgroups[name].attrs
-            metadata['rich_min'] = richedge[j]
-            metadata['rich_max'] = richedge[j+1]
-            metadata['z_min'] = zedge[i]
-            metadata['z_max'] = zedge[i+1]
+            metadata['rich_min'] = richedge[j+1]
+            metadata['rich_max'] = richedge[j+2]
+            metadata['z_min'] = zedge[i+1]
+            metadata['z_max'] = zedge[i+2]
 
         f.close()
         
