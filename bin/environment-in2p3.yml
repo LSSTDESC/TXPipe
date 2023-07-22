@@ -8,14 +8,15 @@ dependencies:
   - dm-tree=0.1.7
   - firecrown=1.4.0
   - fitsio=1.1.8
-  - h5py=3.8.*=mpi_mpich_*
+  - h5py=3.8.*=mpi_openmpi_*
   - healpy=1.16.*
   - healsparse=1.6.*
   - jax=0.4.8
   - jupyter=1.0.*
   - matplotlib=3.7.*
   - mpi4py=3.1.*
-  - mpich=4.1.*
+  - namaster=1.5.*
+  - openmpi=4.1.*=external_*
   - numpy=1.24.*
   - pandas=1.5.*
   - psutil=5.9.*
@@ -26,15 +27,6 @@ dependencies:
   - tables-io-full=0.8.*
   - threadpoolctl=3.1.*
   - treecorr=4.3.*
+  - pygraphviz=1.11.*
   - pip
-  - pip:
-    - ceci==1.13
-    - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
-    - git+https://github.com/joezuntz/dask-mpi@31e35759cfb03780a12ad6ffe2b82279b0fab442
-    - git+https://github.com/LSSTDESC/CLMM.git@1.8.0
-    - healpix==2023.1.13
-    - parallel-statistics==0.13
-    - pz-rail[dev]==0.99.1
-    - pz-rail-bpz==0.1.0
-    - sacc==0.8
-    - tjpcov==0.3.0
+  - ipykernel

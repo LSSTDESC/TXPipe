@@ -42,6 +42,7 @@ class TXMapPlots(PipelineStage):
     config_options = {
         # can also set moll
         "projection": "cart",
+        "debug": False,
     }
 
     def run(self):
@@ -66,10 +67,21 @@ class TXMapPlots(PipelineStage):
             try:
                 m()
             except:
+                if self.config["debug"]:
+                    raise
                 sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
     def aux_source_plots(self):
         import matplotlib.pyplot as plt
+        
+        if self.get_input("aux_source_maps") == "none":
+            # Make empty plots if no data available, so that the
+            # pipeline thinks it is complete.
+            with self.open_output("flag_map", wrapper=True) as f:
+                pass
+            with self.open_output("psf_map", wrapper=True) as f:
+                pass
+            return
 
         m = self.open_input("aux_source_maps", wrapper=True)
 
@@ -99,21 +111,30 @@ class TXMapPlots(PipelineStage):
 
     def aux_lens_plots(self):
         import matplotlib.pyplot as plt
+        if self.get_input("aux_lens_maps") == "none":
+            with self.open_output("depth_map", wrapper=True) as f:
+                pass
+            with self.open_output("bright_object_map", wrapper=True) as f:
+                pass
+            return
 
         m = self.open_input("aux_lens_maps", wrapper=True)
 
         # Depth plots
-        fig = self.open_output("depth_map", wrapper=True, figsize=(5, 5))
-        m.plot("depth/depth", view=self.config["projection"])
-        fig.close()
+        with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
+            m.plot("depth/depth", view=self.config["projection"])
 
         # Bright objects
-        fig = self.open_output("bright_object_map", wrapper=True, figsize=(5, 5))
-        m.plot("bright_objects/count", view=self.config["projection"])
-        fig.close()
+        with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
+            m.plot("bright_objects/count", view=self.config["projection"])
 
     def source_plots(self):
         import matplotlib.pyplot as plt
+
+        if self.get_input("source_maps") == "none":
+            with self.open_output("shear_map", wrapper=True) as f:
+                pass
+            return
 
         m = self.open_input("source_maps", wrapper=True)
 
@@ -136,6 +157,11 @@ class TXMapPlots(PipelineStage):
 
     def lens_plots(self):
         import matplotlib.pyplot as plt
+
+        if self.get_input("lens_maps") == "none":
+            with self.open_output("lens_map", wrapper=True) as f:
+                pass
+            return
 
         m = self.open_input("lens_maps", wrapper=True)
         rho = self.open_input("density_maps", wrapper=True)
