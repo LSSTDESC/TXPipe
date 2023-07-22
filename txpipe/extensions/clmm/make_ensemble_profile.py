@@ -108,7 +108,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # If we are running in parallel then collect together
             # the values from all the processes                                                                                                                                          
             if self.comm is not None:
-                profiles_to_collect = self.collect(*[ profiles_to_collect[k] for k in profile_colnames ])
+                profiles_to_collect = self.collect(profiles_to_collect)
 
             # Only the root process does the writing, so the others just                                                                                
             # go to the next set of clusters.
@@ -156,36 +156,37 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                       "weight_clmm": weight, "distance_arcmin": distance_arcmin})
 
         
-    def collect(self, indices, weights, distances):
-        # total number of background objects for t
+    def collect(self, profiles_to_collect):
+        # total number of background objects for t??????  Number of profiles per cluster?
 
+        collected_profiles = **profiles_to_collect
+
+        profile_colnames = list(collected_profiles.keys())
+        num_profile_bins = len(collected_profiles[profile_colnames[0]])
+        
         counts = np.array(self.comm.allgather(indices.size))
         total = counts.sum()
 
-        # Early exit if nothing here
-        if total == 0:
-            indices = np.zeros(0, dtype=int)
-            weights = np.zeros(0)
-            distances = np.zeros(0)
-            return indices, weights, distances
-
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:
-            all_indices = np.empty(total, dtype=indices.dtype)
-            all_weights = np.empty(total, dtype=weights.dtype)
-            all_distances = np.empty(total, dtype=distances.dtype)
-            self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
-            self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
-            indices = all_indices
-            weights = all_weights
-            distances = all_distances
-        else:
-            self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
+            all_profiles = {}
 
-        return indices, weights, distances
+            for colname in profile_colnames :
+                all_profiles[colname] = np.empty(num_profile_bins,
+                                                 dtype=collected_profiles[colname].dtype)
+
+                self.comm.Gatherv(sendbuf=collected_profile[colname],
+                                  recvbuf=(all_profiles[colname], 1))
+
+            for colname in profile_colnames :
+                collected_profiles[colname] = all_profiles[colname]
+
+        else:
+            for colname in profile_colnames :
+                
+                self.comm.Gatherv(sendbuf=collected_profiles[colname], recvbuf=(None, 1))
+
+        return collected_profiles
 
 
     def make_clmm_profile(self, bg_cat, z_cluster, clmm_cosmo, num_bins):
