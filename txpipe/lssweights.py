@@ -416,7 +416,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"nbin": 20,
 		"outlier_fraction": 0.05,
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
-		"equal_area_bins": True #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
+		"equal_area_bins": True, #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
 		"b0": 1.0, 
 	}
