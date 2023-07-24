@@ -31,8 +31,6 @@ class TXLSSweights(TXMapCorrelations):
 		("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
 		("lens_tomography_catalog_unweighted", HDFFile), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
 		("mask", MapsFile),
-		("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
-		("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters, needed for the sample variance term
 	]
 
 	outputs = [
@@ -398,6 +396,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 	"""
 	name = "TXLSSweightsSimReg"
 	parallel = False
+
+	inputs = [
+		("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
+		("lens_tomography_catalog_unweighted", HDFFile), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+		("mask", MapsFile),
+		("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
+		("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters, needed for the sample variance term
+	]
 
 	config_options = {
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
