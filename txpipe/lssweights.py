@@ -267,7 +267,13 @@ class TXLSSweights(TXMapCorrelations):
 			else:
 				frac = mask[hp.nest2ring(nside, sys_map.valid_pixels)]
 
-			edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
+			if self.config["equal_area_bins"]:
+				edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
+			else:
+				edges = np.linspace( 
+					np.percentile(sys_vals, percentiles[0]), 
+					np.percentile(sys_vals, percentiles[-1]), 
+					nsysbins + 1 )
 
 			sys_name = None if sys_names is None else sys_names[imap]
 
@@ -410,6 +416,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"nbin": 20,
 		"outlier_fraction": 0.05,
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
+		"equal_area_bins": True #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
 		"b0": 1.0, 
 	}
