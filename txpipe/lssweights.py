@@ -271,8 +271,8 @@ class TXLSSweights(TXMapCorrelations):
 				edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
 			else:
 				edges = np.linspace( 
-					np.percentile(sys_vals, percentiles[0]), 
-					np.percentile(sys_vals, percentiles[-1]), 
+					np.percentile(sys_vals, 100.*percentiles[0]), 
+					np.percentile(sys_vals, 100.*percentiles[-1]), 
 					nsysbins + 1 )
 
 			sys_name = None if sys_names is None else sys_names[imap]
