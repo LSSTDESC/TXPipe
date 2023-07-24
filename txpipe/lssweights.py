@@ -6,10 +6,12 @@ from .data_types import (
     ShearCatalog,
     TextFile,
     MapsFile,
-    FileCollection
+    FileCollection,
+    FiducialCosmology,
 )
 import glob
 import time
+from .utils.theory import theory_3x2pt
 
 class TXLSSweights(TXMapCorrelations):
 	"""
@@ -29,6 +31,8 @@ class TXLSSweights(TXMapCorrelations):
 		("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
 		("lens_tomography_catalog_unweighted", HDFFile), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
 		("mask", MapsFile),
+		("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
+		("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters, needed for the sample variance term
 	]
 
 	outputs = [
@@ -400,7 +404,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"nbin": 20,
 		"outlier_fraction": 0.05,
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
-		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations  
+		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
+		"b0": 1.0, 
 	}
 
 	def prepare_sys_maps(self):
@@ -451,7 +456,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#add clustering Sample Variance 
-			#this only depend on the SP maps, not the sample
+			#this only depends on the SP maps, not the sample
 			#so subsequent lens bins can use the first bin calculation
 			if self.cov_sample_variance_full is None:
 				self.cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, sys_maps)
@@ -536,7 +541,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"""
 		import numpy as np 
 		import treecorr
-		import healpy as hp 
+		import healpy as hp
+		import pyccl
 		from scipy.interpolate import interp1d
 
 		#Covariance matrix on number *counts*
@@ -545,16 +551,22 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		#load theory wtheta 
 		mintheta = hp.nside2resol(sys_maps[0].nside_sparse,arcmin=True)
-		maxtheta = 250.
+		maxtheta = 250. #in arcmin
 		theta = np.linspace(mintheta, maxtheta, 100)
-		wtheta = np.ones(len(theta))*0.03
-		print('USING CONSTANT WTHETA FOR TESTING')
+		with self.open_input("fiducial_cosmology", wrapper=True) as f:
+			cosmo = f.to_ccl()
+		z_n,nz = self.load_tracer(density_correlation.tomobin)
+		theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
+		bias = self.config["b0"]*np.ones(len(z_n))
+		gal_tracer = pyccl.NumberCountsTracer(cosmo, dndz=(z_n, nz), bias=(z_n,bias), has_rsd=True)
+		C_l = cosmo.angular_cl(gal_tracer, gal_tracer, theory_ell)
+		wtheta = cosmo.correlation(theory_ell, C_l, theta/60., type='NN',)
 		wtheta_interp = interp1d(theta, wtheta)
 
 		map_list = np.unique(density_correlation.map_index).astype('int')
 
 		#make a dict of treecorr Catalog objects
-		#TO DO: test how the memory use here scales with NSIDE
+		#TO DO: test how the memory use scales with NSIDE
 		cats = {}
 		for imap in map_list:
 			ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
@@ -576,10 +588,10 @@ class TXLSSweightsSimReg(TXLSSweights):
 				for jmap in map_list:
 					edges_j = density_correlation.get_edges(jmap)
 					for jsp in range(len(edges_j)-1):
-						cat_j = cats[jmap,jsp]
 						indexj = jmap*(len(edges_j)-1)+jsp
 						if (indexi > indexj):
 							continue
+						cat_j = cats[jmap,jsp]
 
 						nn = treecorr.NNCorrelation(max_sep=maxtheta,min_sep=mintheta,
 							nbins=20,bin_slop=0.5,sep_units='arcmin' )
@@ -592,6 +604,27 @@ class TXLSSweightsSimReg(TXLSSweights):
 		covmat_ndens = covmat_N / np.array(npix1npix2)
 
 		return covmat_ndens
+
+	def load_tracer(self, tomobin):
+		# Load the N(z) and convert to sacc tracers (lenses only)
+		# We need this  to compute the theory guess
+		# for the SV term
+		import sacc
+
+		f_lens = self.open_input("lens_photoz_stack")
+
+		#tracers = {}
+		#sacc_data = sacc.Sacc()
+
+		name = f"lens_{tomobin}"
+		z = f_lens["n_of_z/lens/z"][:]
+		Nz = f_lens[f"n_of_z/lens/bin_{tomobin}"][:]
+		#sacc_data.add_tracer("NZ", name, z, Nz)
+
+		#f_lens.close()
+
+		return z, Nz
+
 
 	def select_maps(self, density_correlation):
 		"""
