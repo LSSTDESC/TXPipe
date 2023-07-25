@@ -734,8 +734,7 @@ class MeanShearInBins:
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
         count2, g2, var2 = self.g2.collect(comm, mode="gather")
         wi2 = self._weight
-        print("wi2", wi2)
-        print("c2: ", count1**2)
+        
         _, mu = self.x.collect(comm, mode="gather")
         # Now we have the complete sample we can get the calibration matrix
         # to apply to it.
