@@ -752,6 +752,17 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 	name = "TXLSSweightsLinPix"
 	parallel = False
 
+	config_options = {
+		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
+		"nbin": 20,
+		"outlier_fraction": 0.05,
+		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
+		"equal_area_bins": True, #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
+		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
+		"b0": 1.0, 
+		"regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
+	}
+
 	def compute_weights(self, density_correlation, sys_maps ):
 		"""
 		Least square fit to a simple linear model at pixel level 
@@ -802,8 +813,14 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		weight = frac[sys_maps[0].valid_pixels] #weight for samples (prop to 1/sigma^2)
 
 		#do linear regression
-		reg = sk_linear_model.LinearRegression()
-		reg.fit(sysmap_table.T, dg1, sample_weight=weight )
+		if self.config["regression_class"].lower() == "linearregression":
+			reg = sk_linear_model.LinearRegression()
+			reg.fit(sysmap_table.T, dg1, sample_weight=weight )
+		elif self.config["regression_class"].lower() == "elasticnetcv":
+			reg = sk_linear_model.ElasticNetCV()
+			reg.fit(sysmap_table.T, dg1, sample_weight=weight )
+		else:
+			raise IOError("regression method {0} not yet implemented".format(self.config["regression_class"]))
 
 		#get output of regression
 		Fvals = reg.predict(sysmap_table.T)
