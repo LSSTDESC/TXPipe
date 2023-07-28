@@ -156,7 +156,8 @@ TXGammaTStars: {}
 
 TXGammaTRandoms: {}
 
-TXRoweStatistics: {}
+TXRoweStatistics: 
+    psf_size_units: 'T'
 
 TXFocalPlanePlot: {}
 
