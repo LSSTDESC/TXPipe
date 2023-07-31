@@ -272,8 +272,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         plt.subplot(2, 1, 1)
 
-        plt.plot(mu1, line11, color="red", label=r"$m=%.4f \pm %.4f$" % (slope11, std_err11))
-        plt.plot(mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12))
+        plt.plot(mu1, line11, color="red", label=r"$m=%.2e \pm %.2e$" % (slope11, std_err11))
+
+        plt.plot(mu1, line12, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
         plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=5, color="red")
@@ -285,8 +286,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         plt.subplot(2, 1, 2)
 
-        plt.plot(mu2, line21, color="red", label=r"$m=%.4f \pm %.4f$" % (slope21, std_err21))
-        plt.plot(mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22))
+        plt.plot(mu2, line21, color="red", label=r"$m=%.2e \pm %.2e$" % (slope21, std_err21))
+        plt.plot(mu2, line22, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
         
         plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=5, color="red")
@@ -349,8 +350,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         fig = self.open_output("g_psf_T", wrapper=True)
 
-        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
@@ -410,17 +411,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
         idx = np.where(np.isfinite(mu))[0]
         slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
-        line1 = slope1 * mu[idx] + intercept1
+        line1 = slope1 * mu + intercept1
         
         slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], std2[idx])
         std_err2 = mc_cov[0, 0] ** 0.5
-        line2 = slope2 * mu[idx] + intercept2
+        line2 = slope2 * mu + intercept2
         
         
         fig = self.open_output("g_snr", wrapper=True)
 
-        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
@@ -483,8 +484,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         fig = self.open_output("g_T", wrapper=True)
 
-        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o",markersize=5, color="blue")
