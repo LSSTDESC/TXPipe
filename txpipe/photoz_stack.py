@@ -172,7 +172,7 @@ class TXPhotozSourceStack(PipelineStage):
             # Feed back on our progress
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Add data to the stacks
-            self.stack_data("source", data, outputs)
+            self.stack_data(data, outputs)
         # Save the stacks
         self.write_outputs("shear_photoz_stack", outputs)
 
@@ -200,13 +200,13 @@ class TXPhotozSourceStack(PipelineStage):
 
         return rename_iterated(it, rename)
 
-    def stack_data(self, name, data, outputs):
+    def stack_data(self, data, outputs):
         # add the data we have loaded into the stacks
         stack, stack2d = outputs
-        stack.add_pdfs(data[f"{name}_bin"], data["pdf"])
+        stack.add_pdfs(data["bin"], data["pdf"])
         # -1 indicates no selection.  For the non-tomo 2d case
         # we just say anything that is >=0 is set to bin zero, like this
-        bin2d = data[f"{name}_bin"].clip(-1, 0)
+        bin2d = data["bin"].clip(-1, 0)
         stack2d.add_pdfs(bin2d, data["pdf"])
 
     def write_outputs(self, tag, outputs):
@@ -295,7 +295,7 @@ class TXPhotozLensStack(TXPhotozSourceStack):
             # Feed back on our progress
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Add data to the stacks
-            self.stack_data("lens", data, outputs)
+            self.stack_data(data, outputs)
         # Save the stacks
         self.write_outputs("lens_photoz_stack", outputs)
 
@@ -420,10 +420,10 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
             ["bin"],  # column(s) to read
         )
 
-    def stack_data(self, name, data, outputs):
+    def stack_data(self, data, outputs):
         stack, stack2d = outputs
-        stack.add_delta_function(data[f"{name}_bin"], data["redshift_true"])
-        bin2d = data[f"{name}_bin"].clip(-1, 0)
+        stack.add_delta_function(data["bin"], data["redshift_true"])
+        bin2d = data["bin"].clip(-1, 0)
         stack2d.add_delta_function(bin2d, data["redshift_true"])
 
     def get_metadata(self):
