@@ -31,7 +31,13 @@ TXShearCalibration:
     use_true_shear: True
     subtract_mean_shear: True
 
-TXMainMaps:
+TXSourceMaps:
+    chunk_rows:  100000
+    pixelization: healpix
+    nside: 2048
+    sparse: True
+
+TXLensMaps:
     chunk_rows:  100000
     pixelization: healpix
     nside: 2048

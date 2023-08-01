@@ -195,7 +195,7 @@ class TXPhotozSourceStack(PipelineStage):
             ["yvals"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["source_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
 
         return rename_iterated(it, rename)
@@ -250,7 +250,7 @@ class TXPhotozSourceStack(PipelineStage):
 
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("shear_tomography_catalog") as tomo_file:
-            nbin_source = tomo_file["tomography"].attrs["nbin_source"]
+            nbin_source = tomo_file["tomography"].attrs["nbin"]
 
         return z, nbin_source
 
@@ -311,7 +311,7 @@ class TXPhotozLensStack(TXPhotozSourceStack):
             ["yvals"],  # column(s) to read
             "lens_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["lens_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
         return rename_iterated(it, rename)
 
@@ -340,7 +340,7 @@ class TXPhotozLensStack(TXPhotozSourceStack):
 
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("lens_tomography_catalog") as tomo_file:
-            nbin_lens = tomo_file["tomography"].attrs["nbin_lens"]
+            nbin_lens = tomo_file["tomography"].attrs["nbin"]
 
         return z, nbin_lens
 
@@ -416,7 +416,7 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
             ["redshift_true"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["source_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
 
     def stack_data(self, name, data, outputs):
@@ -444,7 +444,7 @@ class TXSourceTrueNumberDensity(TXPhotozSourceStack):
         z = np.linspace(0, zmax, nz)
 
         shear_tomo_file = self.open_input("shear_tomography_catalog")
-        nbin_source = shear_tomo_file["tomography"].attrs["nbin_source"]
+        nbin_source = shear_tomo_file["tomography"].attrs["nbin"]
         shear_tomo_file.close()
 
         return z, nbin_source
@@ -481,7 +481,7 @@ class TXLensTrueNumberDensity(TXPhotozLensStack, TXSourceTrueNumberDensity):
             ["redshift_true"],  # column(s) to read
             "lens_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["lens_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
 
     def get_metadata(self):
@@ -490,6 +490,6 @@ class TXLensTrueNumberDensity(TXPhotozLensStack, TXSourceTrueNumberDensity):
         z = np.linspace(0, zmax, nz)
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("lens_tomography_catalog") as tomo_file:
-            nbin_lens = tomo_file["tomography"].attrs["nbin_lens"]
+            nbin_lens = tomo_file["tomography"].attrs["nbin"]
 
         return z, nbin_lens

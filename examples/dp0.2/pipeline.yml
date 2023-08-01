@@ -24,7 +24,10 @@ stages:
     - name: TXPhotozLensStack
       nprocess: 32
       threads_per_process: 2
-    - name: TXMainMaps
+    - name: TXSourceMaps
+      nprocess: 8
+      threads_per_process: 8
+    - name: TXLensMaps
       nprocess: 8
       threads_per_process: 8
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps

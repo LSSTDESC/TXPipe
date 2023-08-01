@@ -103,7 +103,6 @@ class TXConvergenceMapPlots(PipelineStage):
     config_options = {
         # can also set this parameter as:
         # "moll" for Mollweide
-        # "gnom" for Gnomonic
         # "orth" for Orthogonal
         "projection": "cart",
     }

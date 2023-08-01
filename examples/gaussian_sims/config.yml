@@ -18,7 +18,7 @@ TXGaussianSimsMock:
     unit_response: True
     apply_mag_cut: False
 
-TXMainMaps:
+TXLensMaps:
     chunk_rows:  100000
     pixelization: healpix
     nside: 4096
