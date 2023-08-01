@@ -318,8 +318,6 @@ class TXRoweStatistics(PipelineStage):
                     capsize=3,
                     transform=tr,
                 )
-            #plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
-            #plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
             plt.xscale("log")
             plt.yscale("log")
             plt.xlabel(r"$\theta$")
@@ -346,8 +344,6 @@ class TXRoweStatistics(PipelineStage):
                     transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
-                #plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
-                #plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
                 plt.xscale("log")
                 plt.yscale("log")
                 plt.xlabel(r"$\theta$")

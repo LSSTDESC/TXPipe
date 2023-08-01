@@ -1,5 +1,6 @@
 import numpy as np
 from parallel_statistics import ParallelMeanVariance, ParallelMean
+from .mpi_utils import in_place_reduce
 
 
 def read_shear_catalog_type(stage):
@@ -733,7 +734,10 @@ class MeanShearInBins:
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
         count2, g2, var2 = self.g2.collect(comm, mode="gather")
-        wi2 = self._weight
+        wi2=self._weight
+        
+        if comm is not None:
+            in_place_reduce(wi2,comm)
         
         _, mu = self.x.collect(comm, mode="gather")
         # Now we have the complete sample we can get the calibration matrix
