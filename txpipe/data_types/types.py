@@ -4,7 +4,7 @@ generic types in base.py
 """
 from .base import HDFFile, DataFile, YamlFile
 import yaml
-
+import numpy as np
 
 def metacalibration_names(names):
     """
@@ -337,6 +337,9 @@ class ClusteringNoiseMaps(MapsFile):
 class PhotozPDFFile(HDFFile):
     required_datasets = []
 
+    def get_z_grid(self):
+        return self.file["/meta/xvals"][:][0]
+
 
 class CSVFile(DataFile):
     suffix = "csv"
@@ -452,6 +455,172 @@ class FiducialCosmology(YamlFile):
 
         return ccl.Cosmology(**inits)
 
-class QPFile(DataFile):
-    # TODO: Flesh this out
-    suffix = "hdf5"
+
+class QPNOfZFile(HDFFile):
+    def write_qp(self, name, qp):
+        """
+        Write a qp ensemble to the file.
+
+        The ensemble will be saved to the HDF5 group qp/{name}.
+
+        Parameters
+        ----------
+        name : str
+            The name of the ensemble to save.
+        qp : qp.Ensemble
+            The ensemble to save.
+        """
+        if not "qp" in self.file.keys():
+            self.file.create_group("qp")
+
+        if not isinstance(name, str):
+            name = f"bin_{name}"
+
+        tables = qp.build_tables()
+        group = self.file["qp"].create_group(name)
+        subnames = ["data", "meta"]
+
+        if "ancil" in tables:
+            subnames.append("ancil")
+
+        # Save each of these sections to this HDF5 group
+        for subname in subnames:
+            subname = group.create_group(subname)
+            for k, v in tables[subname].items():
+                subname.create_dataset(k, data=v)
+    
+    def read_qp(self, name):
+        """
+        Read a qp ensemble from the file.
+
+        The ensemble will be read from the HDF5 group qp/{name}.
+
+        Parameters
+        ----------
+        name : str or int
+            The name of the ensemble to read.
+        """
+        import qp
+
+        if not isinstance(name, str):
+            name = f"bin_{name}"
+
+        tables = {}
+
+        # Read the bits of info saved above
+        group = self.file["qp"][name]
+        tables["meta"] = {k: v[:] for k, v in group["meta"].items()}
+        tables["data"] = {k: v[:] for k, v in group["data"].items()}
+
+        if "ancil" in group:
+            tables["ancil"] = {k: v[:] for k, v in group["ancil"].items()}
+
+        return qp.from_tables(tables)
+    
+    
+    def set_nbin(self, nbin):
+        self.file["qp"].attrs["nbin"] = nbin
+
+    def get_nbin(self):
+        return self.file["n_of_z"].attrs["nbin"]
+
+    def get_z(self, name):
+        """
+        Get the z grid for a qp ensemble.
+
+        Parameters
+        ----------
+        name : str
+            The name of the ensemble to read.
+        """
+        qp = self.read_qp(name);
+        metadata = qp.metadata()
+        
+        if "bins" in metadata:
+            z = metadata["bins"]
+
+        return z
+
+    def get_n_of_z(self, bin_index, zmax=None, nz=None):
+        ens = self.read_qp(bin_index)
+
+        metadata = ens.metadata()
+        if "bins" in metadata:
+            z = metadata["bins"]
+        else:
+            if nz is None or zmax is None:
+                raise ValueError("Must specify nz and zmax to get n(z) if qp object is not natively binned")
+            z = np.linspace(0.0, zmax, nz)
+        
+        return z, ens.pdf(z)
+
+    def get_n_of_z_spline(self, bin_index, kind="cubic", zmin=None, zmax=None, **kwargs):
+        import scipy.interpolate
+
+        z, nz = self.get_n_of_z(bin_index, zmin=zmin, zmax=zmax)
+        spline = scipy.interpolate.interp1d(z, nz, kind=kind, **kwargs)
+        return spline
+
+
+class QPFile(HDFFile):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.mode == "r":
+            self._metadata = None
+            self._ensemble = None
+
+    def ensemble(self):
+        """
+        Read the complete QP object from this file.
+
+        Don't use this method on PDF files, the data will be very large. Use iterate instead.
+
+        It should be fine for n(z) files.
+        """
+        import qp
+        import tables_io
+        if self.mode != "r":
+            raise ValueError("Can only read from file opened in read mode")
+
+        # Use cached ensemble if available
+        if self._ensemble is not None:
+            return self._ensemble
+
+        # Build ensemble, following approach in qp factory code
+        read = tables_io.io.readHdf5GroupToDict
+        tables = dict([(key, read(val)) for key, val in self.file.items()])
+
+        self._ensemble = qp.from_tables(tables)
+        return self._ensemble
+    
+    def iterate(self, chunk_rows, rank=0, size=1):
+        import qp
+        return qp.iterator(self.path, chunk_size=chunk_rows, rank=rank, parallel_size=size)
+
+    @property
+    def metadata(self):
+        import tables_io
+        meta = tables_io.io.readHdf5GroupToDict(self.file["meta"])
+        self._metadata = meta
+        return self._metadata
+
+    def get_qp_pdf_type(self):
+        meta = self.file["meta"]
+        pdf_name = meta["pdf_name"][0].decode()
+        return pdf_name
+
+    def get_z(self):
+        pdf_name = self.get_qp_pdf_type()
+        meta = self.file["meta"]
+        if pdf_name == "interp":
+            z = meta["xvals"][:]
+        elif pdf_name == "hist":
+            z = meta["bins"][:]
+        else:
+            raise ValueError(f"TXPipe cannot understand pdf_name in QP file: {pdf_name}")
+        return z.squeeze()
+    
+    # def get_n_of_z(self, bin_index):
+
+    
