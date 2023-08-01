@@ -112,13 +112,13 @@ You should always use TXPipe to find the paths to input data files. You can also
 
     it = self.combined_iterators(100_000,
         "shear_catalog", "shear", ["ra", "dec"],
-        "shear_tomography_catalog", "tomography", ["source_bin"],
+        "shear_tomography_catalog", "tomography", ["bin"],
     )
     for start, end, data in it:
         print(f"Read data from {start} - {end}")
         ra = data["ra"]
         dec = data["dec"]
-        source_bin = data["source_bin"]
+        source_bin = data["bin"]
         ...
 
 

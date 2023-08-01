@@ -689,7 +689,7 @@ class MeanShearInBins:
         x = data[self.x_name]
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
-            w &= data["source_bin"] != -1
+            w &= data["bin"] != -1
         return np.where(w)
 
     def add_data(self, data):

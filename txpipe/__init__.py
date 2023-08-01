@@ -21,7 +21,7 @@ from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
-from .maps import TXMainMaps
+from .maps import TXSourceMaps, TXLensMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
 from .masks import TXSimpleMask, TXSimpleMaskFrac

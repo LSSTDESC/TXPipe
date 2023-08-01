@@ -94,20 +94,37 @@ class ShearCatalog(HDFFile):
 class TomographyCatalog(HDFFile):
     required_datasets = []
 
-    def read_zbins(self, bin_type):
+    def write_zbins(self, edges):
+        """
+        Write redshift bin edges to attributes
+        """
+        d = dict(self.file["tomography"].attrs)
+        d[f"nbin"] = len(edges) - 1
+        for i, (zmin, zmax) in enumerate(zip(edges[:-1], edges[1:])):
+            d[f"zmin_{i}"] = zmin
+            d[f"zmax_{i}"] = zmax
+
+    def read_zbins(self):
         """
         Read saved redshift bin edges from attributes
         """
         d = dict(self.file["tomography"].attrs)
-        nbin = d[f"nbin_{bin_type}"]
+        nbin = d[f"nbin"]
         zbins = [
-            (d[f"{bin_type}_zmin_{i}"], d[f"{bin_type}_zmax_{i}"]) for i in range(nbin)
+            (d[f"zmin_{i}"], d[f"zmax_{i}"]) for i in range(nbin)
         ]
         return zbins
-
-    def read_nbin(self, bin_type):
+    
+    def write_nbin(self, nbin):
+        """
+        Write number of redshift bins to attributes
+        """
         d = dict(self.file["tomography"].attrs)
-        return d[f"nbin_{bin_type}"]
+        d[f"nbin"] = nbin
+
+    def read_nbin(self):
+        d = dict(self.file["tomography"].attrs)
+        return d[f"nbin"]
 
 
 class RandomsCatalog(HDFFile):

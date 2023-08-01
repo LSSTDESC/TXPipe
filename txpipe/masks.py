@@ -26,8 +26,8 @@ class TXSimpleMask(PipelineStage):
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
             f.write_map("mask", pix, mask, metadata)
-
-    def compute_binary_mask(self):
+    
+    def make_binary_mask(self):
         import healpy
 
         with self.open_input("aux_lens_maps", wrapper=True) as f:
@@ -47,6 +47,11 @@ class TXSimpleMask(PipelineStage):
 
         # Overall mask
         mask = np.logical_and.reduce([mask for _, mask in masks])
+
+        return mask, pixel_scheme, metadata
+
+    def compute_binary_mask(self):
+        mask, pixel_scheme, metadata = self.make_binary_mask()
 
         # Total survey area calculation. This is simplistic:
         # TODO: account for weights / hit fractions here, and allow
@@ -71,6 +76,28 @@ class TXSimpleMask(PipelineStage):
 
         return pix, mask, metadata
 
+class TXSimpleMaskSource(TXSimpleMask):
+    name = "TXSimpleMaskSource"
+    parallel = False
+    # make a mask from the source maps
+    inputs = [("source_maps", MapsFile)]
+    outputs = [("mask", MapsFile)]
+    config_options = {
+    }
+
+    def make_binary_mask(self):
+        lensing_weights = []
+        with self.open_input("source_maps", wrapper=True) as f:
+            metadata = dict(f.file["maps"].attrs)
+            pixel_scheme = choose_pixelization(**metadata)
+            for i in range(metadata['nbin_source']):
+                lw = f.read_map(f"lensing_weight_{i}")
+                lensing_weights.append(lw)
+        
+        lensing_weights = np.array(lensing_weights)
+        mask = np.logical_and.reduce(lensing_weights > 0.0, axis=0)
+
+        return mask, pixel_scheme, metadata
 
 
 

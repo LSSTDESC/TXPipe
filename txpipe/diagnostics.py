@@ -150,7 +150,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "c2",
             ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
 
-        shear_tomo_cols = ["source_bin"]
+        shear_tomo_cols = ["bin"]
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
@@ -522,7 +522,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["source_bin"] != -1
+            qual_cut = data["bin"] != -1
 
             if cat_type == "metacal":
                 g1 = data["mcal_g1"]
@@ -592,8 +592,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["source_bin"] != -1
-            #            qual_cut |= data['lens_bin'] !=-1
+            qual_cut = data["bin"] != -1
 
             b1 = np.digitize(data[f"{shear_prefix}s2n"][qual_cut], edges) - 1
 
@@ -662,7 +661,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 continue
 
             # check if selected for any source bin
-            in_shear_sample = data["source_bin"] != -1
+            in_shear_sample = data["bin"] != -1
             if cat_type == "metacal":
                 B = np.digitize(data["R_gamma"], edges) - 1
                 # loop through this chunk of data.
@@ -790,7 +789,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                     count = w.sum()
                     h1[i] += count
 
-                    w &= data["source_bin"] >= 0
+                    w &= data["bin"] >= 0
                     count = w.sum()
                     h2[i] += count
 
@@ -870,7 +869,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         g = self.open_input("lens_tomography_catalog")
 
         # read nbin from metadata
-        nbin = g["tomography"].attrs["nbin_lens"]
+        nbin = g["tomography"].attrs["nbin"]
 
         # Default to the automatic value but expose as an option
         block = self.config["block_size"]
@@ -882,7 +881,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         for b in bands:
             data[f"mag_{b}"] = da.from_array(f[f"photometry/mag_{b}"], block)
             data[f"snr_{b}"] = da.from_array(f[f"photometry/snr_{b}"], block)
-        data["bin"] = da.from_array(g["tomography/lens_bin"], block)
+        data["bin"] = da.from_array(g["tomography/bin"], block)
 
         # Avoid recomputing selections in each histogram by doing it externally here
         data["sel"] = da.nonzero(data["bin"] >= 0)

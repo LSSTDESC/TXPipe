@@ -187,13 +187,225 @@ class TXTrueNumberDensity(PipelineStage):
             # Feed back on our progress
             print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
             # Add data to the stacks
-            self.stack_data("source", data, outputs)
+            self.stack_data(data, outputs)
         # Save the stacks
         self.write_outputs("shear_photoz_stack", outputs)
 
+<<<<<<< HEAD
 
 
 class TXSourceTrueNumberDensity(PipelineStage):
+=======
+    def prepare_outputs(self, name):
+        z, nbin_source = self.get_metadata()
+        # For this class we do two stacks, and main one and a 2d one
+        stack = Stack(name, z, nbin_source)
+        stack2d = Stack(f"{name}2d", z, 1)
+        return stack, stack2d
+
+    def data_iterator(self):
+        # This collects together matching inputs from the different
+        # input files and returns an iterator to them which yields
+        # start, end, data
+        rename = {"yvals": "pdf"}
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            "source_photoz_pdfs",  # tag of input file to iterate through
+            "data",  # data group within file to look at
+            ["yvals"],  # column(s) to read
+            "shear_tomography_catalog",  # tag of input file to iterate through
+            "tomography",  # data group within file to look at
+            ["bin"],  # column(s) to read
+        )
+
+        return rename_iterated(it, rename)
+
+    def stack_data(self, data, outputs):
+        # add the data we have loaded into the stacks
+        stack, stack2d = outputs
+        stack.add_pdfs(data["bin"], data["pdf"])
+        # -1 indicates no selection.  For the non-tomo 2d case
+        # we just say anything that is >=0 is set to bin zero, like this
+        bin2d = data["bin"].clip(-1, 0)
+        stack2d.add_pdfs(bin2d, data["pdf"])
+
+    def write_outputs(self, tag, outputs):
+        stack, stack2d = outputs
+        # only the root process opens the file.
+        # The others don't use that so we have to
+        # give them something in place
+        # (i.e. inside the save method the non-root procs
+        # will not reference the first arg)
+        if self.rank == 0:
+            f = self.open_output(tag)
+            stack.save(f, self.comm)
+            stack2d.save(f, self.comm)
+            f.close()
+        else:
+            stack.save(None, self.comm)
+            stack2d.save(None, self.comm)
+
+    def get_metadata(self):
+        """
+        Load the z column and the number of bins
+
+        Returns
+        -------
+        z: array
+            Redshift column for photo-z PDFs
+        nbin:
+            Number of different redshift bins
+            to split into.
+
+        """
+        # It's a bit odd but we will just get this from the file and
+        # then close it again, because we're going to use the
+        # built-in iterator method to get the rest of the data
+
+        # open_input is a method defined on the superclass.
+        # it knows about different file formats (pdf, fits, etc)
+        with self.open_input("source_photoz_pdfs") as photoz_file:
+            # This is the syntax for reading a complete HDF column
+            z = photoz_file["meta/xvals"][0, :]
+
+        # Save again but for the number of bins in the tomography catalog
+        with self.open_input("shear_tomography_catalog") as tomo_file:
+            nbin_source = tomo_file["tomography"].attrs["nbin"]
+
+        return z, nbin_source
+
+
+class TXPhotozLensStack(TXPhotozSourceStack):
+    """
+    Naively stack lens photo-z PDFs in bins
+
+    This parent class does only the source bins.
+    """
+
+    name = "TXPhotozLensStack"
+    inputs = [
+        ("lens_photoz_pdfs", PhotozPDFFile),
+        ("lens_tomography_catalog", TomographyCatalog),
+    ]
+    outputs = [
+        ("lens_photoz_stack", NOfZFile),
+    ]
+    config_options = {
+        "chunk_rows": 5000,  # number of rows to read at once
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+
+         - Get metadata and allocate space for output
+         - Set up iterators to loop through tomography and PDF input files
+         - Accumulate the PDFs for each object in each bin
+         - Divide by the counts to get the stacked PDF
+        """
+
+        # Create the stack objects
+        outputs = self.prepare_outputs("lens")
+        warnings.warn(
+            "WEIGHTS/RESPONSE ARE NOT CURRENTLY INCLUDED CORRECTLY in PZ STACKING"
+        )
+
+        # So we just do a single loop through the pair of files.
+        for (s, e, data) in self.data_iterator():
+            # Feed back on our progress
+            print(f"Process {self.rank} read data chunk {s:,} - {e:,}")
+            # Add data to the stacks
+            self.stack_data(data, outputs)
+        # Save the stacks
+        self.write_outputs("lens_photoz_stack", outputs)
+
+    def data_iterator(self):
+        # This collects together matching inputs from the different
+        # input files and returns an iterator to them which yields
+        # start, end, data
+        rename = {"yvals": "pdf"}
+        it = self.combined_iterators(
+            self.config["chunk_rows"],
+            "lens_photoz_pdfs",  # tag of input file to iterate through
+            "data",  # data group within file to look at
+            ["yvals"],  # column(s) to read
+            "lens_tomography_catalog",  # tag of input file to iterate through
+            "tomography",  # data group within file to look at
+            ["bin"],  # column(s) to read
+        )
+        return rename_iterated(it, rename)
+
+    def get_metadata(self):
+        """
+        Load the z column and the number of bins
+
+        Returns
+        -------
+        z: array
+            Redshift column for photo-z PDFs
+        nbin:
+            Number of different redshift bins
+            to split into.
+
+        """
+        # It's a bit odd but we will just get this from the file and
+        # then close it again, because we're going to use the
+        # built-in iterator method to get the rest of the data
+
+        # open_input is a method defined on the superclass.
+        # it knows about different file formats (pdf, fits, etc)
+        with self.open_input("lens_photoz_pdfs") as photoz_file:
+            # This is the syntax for reading a complete HDF column
+            z = photoz_file["meta/xvals"][0, :]
+
+        # Save again but for the number of bins in the tomography catalog
+        with self.open_input("lens_tomography_catalog") as tomo_file:
+            nbin_lens = tomo_file["tomography"].attrs["nbin"]
+
+        return z, nbin_lens
+
+
+class TXPhotozPlots(PipelineStage):
+    """
+    Make n(z) plots of source and lens galaxies
+    """
+    parallel = False
+    name = "TXPhotozPlots"
+    inputs = [("shear_photoz_stack", NOfZFile), ("lens_photoz_stack", NOfZFile)]
+    outputs = [
+        ("nz_lens", PNGFile),
+        ("nz_source", PNGFile),
+    ]
+
+    config_options = {}
+
+    def run(self):
+        import matplotlib
+
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+
+        out1 = self.open_output("nz_lens", wrapper=True)
+        if self.get_input("lens_photoz_stack") != "none":
+            with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                f.plot("lens")
+        plt.legend(frameon=False)
+        plt.title("Lens n(z)")
+        plt.xlim(xmin=0)
+        out1.close()
+
+        out2 = self.open_output("nz_source", wrapper=True)
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            if self.get_input("shear_photoz_stack") != "none":
+                f.plot("source")
+        plt.legend(frameon=False)
+        plt.title("Source n(z)")
+        plt.xlim(xmin=0)
+        out2.close()
+
+
+class TXSourceTrueNumberDensity(TXPhotozSourceStack):
+>>>>>>> simplify-tomo-files
     """
     Make an ideal true source n(z) using true redshifts
 
@@ -226,13 +438,13 @@ class TXSourceTrueNumberDensity(PipelineStage):
             ["redshift_true"],  # column(s) to read
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["source_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
 
-    def stack_data(self, name, data, outputs):
+    def stack_data(self, data, outputs):
         stack, stack2d = outputs
-        stack.add_delta_function(data[f"{name}_bin"], data["redshift_true"])
-        bin2d = data[f"{name}_bin"].clip(-1, 0)
+        stack.add_delta_function(data["bin"], data["redshift_true"])
+        bin2d = data["bin"].clip(-1, 0)
         stack2d.add_delta_function(bin2d, data["redshift_true"])
 
     def get_metadata(self):
@@ -291,7 +503,7 @@ class TXLensTrueNumberDensity(TXSourceTrueNumberDensity):
             ["redshift_true"],  # column(s) to read
             "lens_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["lens_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
 
     def get_metadata(self):
@@ -300,6 +512,6 @@ class TXLensTrueNumberDensity(TXSourceTrueNumberDensity):
         z = np.linspace(0, zmax, nz)
         # Save again but for the number of bins in the tomography catalog
         with self.open_input("lens_tomography_catalog") as tomo_file:
-            nbin_lens = tomo_file["tomography"].attrs["nbin_lens"]
+            nbin_lens = tomo_file["tomography"].attrs["nbin"]
 
         return z, nbin_lens
