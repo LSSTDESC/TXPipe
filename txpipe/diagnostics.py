@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TextFile, TomographyCatalog
 from parallel_statistics import ParallelMeanVariance, ParallelHistogram
 from .utils.calibrators import Calibrator
 from .utils.calibration_tools import (
@@ -41,6 +41,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         ("source_snr_hist", PNGFile),
         ("source_mag_hist", PNGFile),
         ("response_hist", PNGFile),
+        ("g_psf_T_out",TextFile),
+        ("g_psf_g_out",TextFile),
+        ("g_snr_out",TextFile),
+        ("g_T_out",TextFile),
     ]
 
     config_options = {
@@ -299,6 +303,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # This also saves the figure
         fig.close()
+        
+        f = self.open_output("g_psf_g_out")
+        labels =["mu1","mu2",
+                 "mean11","mean12","mean21","mean22",
+                 "std11","std12","std21","std22",
+                 "line11","line12","line21","line22"]
+        data   =[mu1,mu2,
+                 mean11,mean12,mean21,mean22,
+                 std11,std12,std21,std22,
+                 line11,line12,line21,line22]
+        f.write('\n'.join([str(i) for e in  zip(labels, data) for i in e]))
+        f.close()
     
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
@@ -361,7 +377,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
-       
+        
+        f = self.open_output("g_psf_T_out")
+        labels =["mu",
+                 "mean1","mean2",
+                 "std1","std2",
+                 "line1","line1"]
+        data   =[mu,
+                 mean1,mean2,
+                 std1,std2,
+                 line1,line2]
+        f.write('\n'.join([str(i) for e in  zip(labels, data) for i in e]))
+        f.close()
     
     def plot_snr_shear(self):
         # mean shear in bins of snr
@@ -430,6 +457,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend()
         plt.tight_layout()
         fig.close()
+        
+        f = self.open_output("g_snr_out")
+        labels =["mu",
+                 "mean1","mean2",
+                 "std1","std2",
+                 "line1","line1"]
+        data   =[mu,
+                 mean1,mean2,
+                 std1,std2,
+                 line1,line2]
+        f.write('\n'.join([str(i) for e in  zip(labels, data) for i in e]))
+        f.close()
     
     def plot_size_shear(self):
         # mean shear in bins of galaxy size
@@ -495,6 +534,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend()
         plt.tight_layout()
         fig.close()
+        
+        f = self.open_output("g_T_out")
+        labels =["mu",
+                 "mean1","mean2",
+                 "std1","std2",
+                 "line1","line1"]
+        data   =[mu,
+                 mean1,mean2,
+                 std1,std2,
+                 line1,line2]
+        f.write('\n'.join([str(i) for e in  zip(labels, data) for i in e]))
+        f.close()
         
     def plot_g_histogram(self):
         print("plotting histogram")
