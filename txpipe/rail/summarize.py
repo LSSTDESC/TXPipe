@@ -1,20 +1,20 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, NOfZFile, PNGFile
-from ..photoz_stack import Stack
+from ..data_types import HDFFile, PickleFile, PNGFile, QPFile, TomographyCatalog
 import numpy as np
+import collections
 
 class PZRailSummarize(PipelineStage):
     name = "PZRailSummarize"
     inputs = [
-        ("tomography_catalog", HDFFile),
+        ("tomography_catalog", TomographyCatalog),
         ("photometry_catalog", HDFFile),
         ("model", PickleFile),
 
     ]
     outputs = [
         # TODO: Change to using QP files throughout
-        ("photoz_stack", NOfZFile),
-        ("photoz_realizations", HDFFile),
+        ("photoz_stack", QPFile),
+        ("photoz_realizations", QPFile),
     ]
 
     # pull these out automatically
@@ -28,9 +28,10 @@ class PZRailSummarize(PipelineStage):
         import pickle
         from rail.estimation.algos.NZDir import NZDir
         from rail.core.data import TableHandle
-        import tables_io
+        import qp
 
-        model_filename = self.get_input(self.get_aliased_tag("model"))
+
+        model_filename = self.get_input("model")
 
         # The usual way of opening pickle files puts a bunch
         # of provenance at the start of them. External pickle files
@@ -124,62 +125,16 @@ class PZRailSummarize(PipelineStage):
         if self.rank > 0:
             return
 
-        # TODO: Convert to just saving QP files. Might need to fix metadata saving.
-        # Also, this currently assumes that the histogram form of the QP ensemble
-        # is used, which may not always be true.
 
-        # All the tomo bins should have the same z values
-        # so copy out the first one's values here
-        t = qp_per_bin[0].build_tables()
+        combined_qp = concatenate_ensembles(qp_per_bin + [qp_2d])
 
-        # The stack class just wants the lower edges, and
-        # the bins value has shape (1, nbin) here.
-        z = t['meta']['bins'][0, :-1]
-        nz = len(z)
-        tomo_name = self.config["tomography_name"]
-        stack = Stack(tomo_name, z, nbin)
-
-        # Go through each bin setting n(z) on our object directly.
-        for i,q in enumerate(qp_per_bin):
-            t = q.build_tables()
-            stack.set_bin(i, t['data']['pdfs'][0])
-
-
-
-        stack_2d = Stack(tomo_name + "2d", z, 1)
-        t = qp_2d.build_tables()
-        stack_2d.set_bin(0, t['data']['pdfs'][0])
-            
-        # Save final stack
-        with self.open_output("photoz_stack") as f:
-            stack.save(f)
-            stack_2d.save(f)
-
-
-        # Save the realizations
-        with self.open_output("photoz_realizations") as f:
-            group = f.create_group("realizations")
-            npdf = realizations_per_bin["bin_0"].npdf
-
-            group.attrs["nbin"] = nbin
-            group.attrs["nz"] = nz
-            group.attrs["nreal"] = npdf
-
-            # Collect all the PDFs as a single 3D array
-            pdfs = np.empty((npdf, nbin, nz))
-            for i in range(nbin):
-                ensemble = realizations_per_bin[f"bin_{i}"]
-                for j in range(npdf):
-                    pdfs[j, i] = ensemble[j].objdata()["pdfs"]
-                
-            group.create_dataset("pdfs", data=pdfs)
-            group.create_dataset("z", data=z)
-
-            pdfs_2d = np.empty((npdf, nz))
-            for j in range(npdf):
-                pdfs_2d[j] = realizations_2d[j].objdata()["pdfs"]
-
-            group.create_dataset("pdfs_2d", data=pdfs_2d)
+        with self.open_output("photoz_stack", wrapper=True) as f:
+            f.write_ensemble(combined_qp)
+        
+        with self.open_output("photoz_realizations", wrapper=True) as f:
+            for key, realizations in realizations_per_bin.items():
+                f.write_ensemble(realizations, key)
+            f.write_ensemble(realizations_2d, "bin_2d")
 
                 
 class PZRealizationsPlot(PipelineStage):
@@ -223,3 +178,37 @@ class PZRealizationsPlot(PipelineStage):
             ax.set_ylim(0, None)
             ax.set_xlabel("z")
             ax.set_ylabel("n(z)")
+
+
+
+def concatenate_ensembles(ensembles):
+    """
+    Create a qp object by concatenating a selection of others.
+
+    Parameters
+    ----------
+    ensembles : list of qp.Ensemble
+        The ensembles to concatenate.
+
+    Returns
+    -------
+    qp.Ensemble
+        The concatenated ensemble.
+    """
+    import qp
+    tables = ensembles[0].build_tables()
+
+    pdf_info = collections.defaultdict(list)
+    for k, v in tables["data"].items():
+        pdf_info[k].append(v)
+
+    # get just t
+    for ens in ensembles[1:]:
+        data_table = ens.build_tables()['data']
+        for k, v in data_table.items():
+            pdf_info[k].append(v)
+
+    # concatenate all the data bits, and replace the first
+    # ensemble's data with the concatenated version
+    tables["data"] = {k: np.concatenate(v) for k, v in pdf_info.items()}
+    return qp.from_tables(tables)

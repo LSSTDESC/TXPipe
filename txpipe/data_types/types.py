@@ -614,6 +614,22 @@ class QPFile(HDFFile):
     def iterate(self, chunk_rows, rank=0, size=1):
         import qp
         return qp.iterator(self.path, chunk_size=chunk_rows, rank=rank, parallel_size=size)
+    
+    def write_ensemble(self, ensemble, group_name="/"):
+        if group_name == "/":
+            group = self.file
+        else:
+            if group_name in self.file.keys():
+                group = self.file[group_name]
+            else:
+                group = self.file.create_group(group_name)
+
+        tables = ensemble.build_tables()
+        for subgroup_name, subtables in tables.items():
+            subgroup = group.create_group(subgroup_name)
+            for key, val in subtables.items():
+                subgroup.create_dataset(key, dtype=val.dtype, data=val.data)
+
 
     @property
     def metadata(self):

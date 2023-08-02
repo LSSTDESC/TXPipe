@@ -404,3 +404,15 @@ PZRealizationsPlotLens:
     aliases:
         photoz_realizations: lens_photoz_realizations
         photoz_realizations_plot: lens_photoz_realizations_plot
+
+TXPhotozPlotsSource:
+    name: TXPhotozPlotsSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotsLens:
+    name: TXPhotozPlotsLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
