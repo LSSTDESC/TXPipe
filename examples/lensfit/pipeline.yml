@@ -43,7 +43,7 @@ stages:
     - name: TXGalaxyStarShear
     - name: TXPSFDiagnostics
     - name: TXBrighterFatterPlot
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     # disabling these as they takes too long for a quick test

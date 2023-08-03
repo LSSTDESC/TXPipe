@@ -5,7 +5,8 @@ stages:
     - name: TXShearCalibration
     - name: TXExternalLensCatalogSplitter
     - name: TXStarCatalogSplitter
-    - name: TXSourceTrueNumberDensity
+    - name: TXTruePhotozStackSource
+      classname: TXTruePhotozStack
     - name: TXIngestRedmagic
     - name: TXTracerMetadata
     - name: TXSourceMaps
@@ -17,7 +18,6 @@ stages:
     - name: TXMapPlots
     - name: TXRandomCat
     - name: TXJackknifeCenters
-    - name: TXPhotozPlots
     - name: TXTwoPoint
       threads_per_process: 2
     - name: TXTwoPointRLens
@@ -25,7 +25,10 @@ stages:
     - name: TXBlinding           # Blind the data following Muir et al
       threads_per_process: 2
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
-    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXPhotozPlotSource        # Plot the bin n(z)
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotLens        # Plot the bin n(z)
+      classname: TXPhotozPlot
     - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
     - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points

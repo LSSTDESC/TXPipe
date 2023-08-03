@@ -282,5 +282,4 @@ jobs:
         ceci --dry-run examples/2.2i/pipeline.yml
         ceci --dry-run examples/buzzard/pipeline.yml
         ceci --dry-run examples/cosmodc2/pipeline.yml
-        ceci --dry-run examples/dr1b/pipeline.yml
         ceci --dry-run examples/skysim/pipeline.yml

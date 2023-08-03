@@ -16,7 +16,7 @@ global:
 # TXShearCalibration
 # TXTruthLensCatalogSplitter
 # TXStarCatalogSplitter     
-# TXPhotozPlots 
+# TXPhotozPlot 
 # TXSourceMaps
 # TXLensMaps
 # TXAuxiliarySourceMaps  
@@ -64,7 +64,7 @@ TXSourceSelectorMetacal:
 TXShearCalibration: {}
 TXTruthLensCatalogSplitter: {}
 TXStarCatalogSplitter: {} 
-TXPhotozPlots: {}
+TXPhotozPlot: {}
 
 TXSourceMaps:
     sparse: True  # Generate sparse maps - faster if using small areas

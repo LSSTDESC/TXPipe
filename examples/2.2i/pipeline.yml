@@ -36,16 +36,22 @@ stages:
       nprocess: 8
     - name: TXTruthLensSelector
       nprocess: 32
-    - name: TXLensTrueNumberDensity
+    - name: TXTruePhotozStackSource
+      classname: TXTruePhotozStack
       nprocess: 32
       nodes: 2
-    - name: TXSourceTrueNumberDensity
+    - name: TXTruePhotozStackLens
+      classname: TXTruePhotozStack
       nprocess: 32
       nodes: 2
     - name: TXTwoPointTheoryReal
       nprocess: 1
       threads_per_process: 8
-    - name: TXPhotozPlots
+    - name: TXPhotozPlotSource
+      classname: TXPhotozPlot
+      nprocess: 8
+    - name: TXPhotozPlotLens
+      classname: TXPhotozPlot
       nprocess: 8
     - name: TXSourceMaps
       nprocess: 16
@@ -110,6 +116,7 @@ inputs:
     calibration_table: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/sample_cosmodc2_w10year_errors.dat
     star_catalog: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i_dr6/star_catalog.hdf5
     exposures: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/exposures.hdf5
+    dummy: none
 
 resume: True
 log_dir: data/2.2i_dr6/logs

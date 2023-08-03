@@ -54,10 +54,10 @@ stages:
     - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-    - name: TXPhotozPlotsSource        # Plot the bin n(z)
-      classname: TXPhotozPlots
-    - name: TXPhotozPlotsLens        # Plot the bin n(z)
-      classname: TXPhotozPlots
+    - name: TXPhotozPlotSource        # Plot the bin n(z)
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotLens        # Plot the bin n(z)
+      classname: TXPhotozPlot
     - name: PZRealizationsPlotSource   # Plot n(z) realizations
       classname: PZRealizationsPlot
     - name: PZRealizationsPlotLens   # Plot n(z) realizations

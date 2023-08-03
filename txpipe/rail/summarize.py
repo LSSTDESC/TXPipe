@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, PNGFile, QPFile, TomographyCatalog
+from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, TomographyCatalog
 import numpy as np
 import collections
 
@@ -13,8 +13,8 @@ class PZRailSummarize(PipelineStage):
     ]
     outputs = [
         # TODO: Change to using QP files throughout
-        ("photoz_stack", QPFile),
-        ("photoz_realizations", QPFile),
+        ("photoz_stack", QPNOfZFile),
+        ("photoz_realizations", QPMultiFile),
     ]
 
     # pull these out automatically
@@ -122,9 +122,9 @@ class PZRailSummarize(PipelineStage):
             realizations_2d = substage.get_handle('output').data
             qp_2d = substage.get_handle('single_NZ').data
 
+        # Only the root process writes the output
         if self.rank > 0:
             return
-
 
         combined_qp = concatenate_ensembles(qp_per_bin + [qp_2d])
 
@@ -135,13 +135,14 @@ class PZRailSummarize(PipelineStage):
             for key, realizations in realizations_per_bin.items():
                 f.write_ensemble(realizations, key)
             f.write_ensemble(realizations_2d, "bin_2d")
+            f.file['qps'].attrs['nbin'] = nbin
 
                 
 class PZRealizationsPlot(PipelineStage):
     name = "PZRealizationsPlot"
 
     inputs = [
-        ("photoz_realizations", HDFFile),
+        ("photoz_realizations", QPMultiFile),
     ]
 
     outputs = [
@@ -149,35 +150,40 @@ class PZRealizationsPlot(PipelineStage):
     ]
 
     config_options = {
-        "zmax": -1.0,
+        "zmax": 3.0,
+        "nz": 301,
     }
 
     def run(self):
         import h5py
         import matplotlib.pyplot as plt
 
-        with self.open_input("photoz_realizations") as f:
-            pdfs = f["/realizations/pdfs"][:]
-            z = f["/realizations/z"][:]
 
-        nreal, nbin, nz = pdfs.shape
-        alpha = 1.0 / nreal
+        zmax = self.config["zmax"]
+        nz = self.config["nz"]
+        z = np.linspace(0, zmax, nz)
+        print(z)
 
-        # if there are more than 1000 of these then don't bother plotting them all
-        nreal = min(nreal, 1000)
+        with self.open_input("photoz_realizations", wrapper=True) as f:
+            names = f.get_names()
+            pdfs = {}
+            for tomo_bin in names:
+                realizations = f.read_ensemble(tomo_bin)
+                pdfs[tomo_bin] = realizations.pdf(z)
 
-        with self.open_output("photoz_realizations_plot", wrapper=True) as fig:
-            ax = fig.file.subplots()
-            for b in range(nbin):
-                line, = ax.plot(z, pdfs[0, b], alpha=0.2)
-                color = line.get_color()
-                for i in range(1, nreal):
-                    ax.plot(z, pdfs[i, b], alpha=0.2, color=color)
-            if self.config["zmax"] > 0:
-                ax.set_xlim(0, self.config["zmax"])
-            ax.set_ylim(0, None)
-            ax.set_xlabel("z")
-            ax.set_ylabel("n(z)")
+        # Here nbin includes the 2D bin
+        nbin = len(names)
+        with self.open_output("photoz_realizations_plot", wrapper=True, figsize=(6, 4*nbin)) as fig:
+            axes = fig.file.subplots(len(names), 1)
+            for i, tomo_bin in enumerate(names):
+                ax = axes[i]
+                pdfs_i = pdfs[tomo_bin]
+                print(pdfs_i.shape)
+                ax.plot(z, pdfs_i.mean(0))
+                ax.fill_between(z, pdfs_i.min(0), pdfs_i.max(0), alpha=0.2)
+
+                ax.set_xlabel("z")
+                ax.set_ylabel(f"{tomo_bin} n(z)")
 
 
 

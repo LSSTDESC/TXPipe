@@ -5,6 +5,7 @@ from .data_types import (
     SACCFile,
     TextFile,
     MapsFile,
+    QPNOfZFile,
 )
 from .utils.patches import PatchMaker
 import numpy as np
@@ -40,8 +41,8 @@ class TXTwoPoint(PipelineStage):
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
         ("binned_random_catalog_sub", HDFFile),
-        ("shear_photoz_stack", HDFFile),
-        ("lens_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
+        ("lens_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
     ]
@@ -395,10 +396,9 @@ class TXTwoPoint(PipelineStage):
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
         if source_list:
-            with self.open_input("shear_photoz_stack") as f:
+            with self.open_input("shear_photoz_stack", wrapper=True) as f:
                 for i in source_list:
-                    z = f["n_of_z/source/z"][:]
-                    Nz = f[f"n_of_z/source/bin_{i}"][:]
+                    z, Nz = f.get_bin_n_of_z(i)
                     S.add_tracer("NZ", f"source_{i}", z, Nz)
                     if self.config["do_shear_pos"] == True:
                         S2.add_tracer("NZ", f"source_{i}", z, Nz)
@@ -406,11 +406,10 @@ class TXTwoPoint(PipelineStage):
         f.close()
 
         if lens_list:
-            with self.open_input("lens_photoz_stack") as f:
+            with self.open_input("lens_photoz_stack", wrapper=True) as f:
                 # For both source and lens
                 for i in lens_list:
-                    z = f["n_of_z/lens/z"][:]
-                    Nz = f[f"n_of_z/lens/bin_{i}"][:]
+                    z, Nz = f.get_bin_n_of_z(i)
                     S.add_tracer("NZ", f"lens_{i}", z, Nz)
                     if self.config["do_shear_pos"] == True:
                         S2.add_tracer("NZ", f"lens_{i}", z, Nz)
@@ -946,8 +945,8 @@ class TXTwoPointPixel(TXTwoPoint):
         ("binned_shear_catalog", ShearCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
-        ("shear_photoz_stack", HDFFile),
-        ("lens_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
+        ("lens_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
         ("mask", MapsFile),

@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import PhotozPDFFile, TomographyCatalog, HDFFile, PNGFile, NOfZFile, ShearCatalog, QPFile
+from .data_types import TomographyCatalog, HDFFile, PNGFile, QPPDFFile, QPNOfZFile
 from .utils.mpi_utils import in_place_reduce
 from .utils import rename_iterated
 import numpy as np
@@ -13,12 +13,12 @@ class TXPhotozStack(PipelineStage):
     """
     name = "TXPhotozStack"
     inputs = [
-        ("photoz_pdfs", QPFile),
+        ("photoz_pdfs", QPPDFFile),
         ("tomography_catalog", TomographyCatalog),
         ('weights_catalog', HDFFile),
     ]
     outputs = [
-        ("photoz_stack", QPFile),
+        ("photoz_stack", QPPDFFile),
     ]
     config_options = {
         "chunk_rows": 5000,
@@ -124,7 +124,7 @@ class TXTruePhotozStack(PipelineStage):
     name = "TXTruePhotozStack"
     inputs = [("tomography_catalog", TomographyCatalog), ("catalog", HDFFile), ("weights_catalog", HDFFile)]
     outputs = [
-        ("photoz_stack", QPFile),
+        ("photoz_stack", QPNOfZFile),
     ]
     config_options = {
         "chunk_rows": 5000,  # number of rows to read at once
@@ -190,7 +190,7 @@ class TXTruePhotozStack(PipelineStage):
 
         # If we have weights, add them to the iterator
         if weight_col is not None:
-            input_spec.extend(["weights_catalog", "/", weight_col])
+            input_spec.extend(["weights_catalog", "/", [weight_col]])
 
         return self.combined_iterators(self.config["chunk_rows"], *input_spec)
     
@@ -223,13 +223,13 @@ class TXTruePhotozStack(PipelineStage):
         
         
 
-class TXPhotozPlots(PipelineStage):
+class TXPhotozPlot(PipelineStage):
     """
     Make n(z) plots of source and lens galaxies
     """
     parallel = False
-    name = "TXPhotozPlots"
-    inputs = [("photoz_stack", QPFile)]
+    name = "TXPhotozPlot"
+    inputs = [("photoz_stack", QPNOfZFile)]
     outputs = [
         ("nz_plot", PNGFile),
     ]
@@ -245,7 +245,7 @@ class TXPhotozPlots(PipelineStage):
         import matplotlib.pyplot as plt
 
         with self.open_input("photoz_stack", wrapper=True) as f:
-            ensemble = f.ensemble()
+            ensemble = f.read_ensemble()
 
         label = self.config["label"]
         if label:

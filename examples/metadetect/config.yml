@@ -331,6 +331,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    nsamples: 100
     mag_prefix: "/shear/00/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
@@ -405,14 +406,14 @@ PZRealizationsPlotLens:
         photoz_realizations: lens_photoz_realizations
         photoz_realizations_plot: lens_photoz_realizations_plot
 
-TXPhotozPlotsSource:
-    name: TXPhotozPlotsSource
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
     aliases:
         photoz_stack: shear_photoz_stack
         nz_plot: nz_source
 
-TXPhotozPlotsLens:
-    name: TXPhotozPlotsLens
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
     aliases:
         photoz_stack: lens_photoz_stack
         nz_plot: nz_lens

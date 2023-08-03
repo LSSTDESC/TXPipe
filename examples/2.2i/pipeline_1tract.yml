@@ -32,7 +32,7 @@ stages:
     - name: TXLensCatalogSplitter
     - name: TXPhotozSourceStack
     - name: TXPhotozLensStack
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
     - name: TXSourceMaps
     - name: TXLensMaps
     - name: TXAuxiliarySourceMaps
