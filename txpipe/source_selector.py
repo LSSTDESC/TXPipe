@@ -301,6 +301,7 @@ class TXSourceSelectorBase(PipelineStage):
         output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
         outfile = output.file
         group = outfile.create_group("tomography")
+        group.attrs['catalog_type'] = cat_type
         output.write_zbins(zbins)
         group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("counts", (nbin_source,), dtype="i")
