@@ -26,7 +26,7 @@ stages:
     - name: TXLensMaps             # make source lens and n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
-    - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXSimpleMaskFrac     # combine maps to make a simple mask
     - name: TXSourceNoiseMaps    # Compute shear noise using rotations
     - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
@@ -78,8 +78,12 @@ stages:
 
 # modules and packages to import that have pipeline
 # stages defined in them
-modules: txpipe rail.stages
-# modules: txpipe rail tjpcov
+modules: >
+    txpipe
+    rail.creation.degradation.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.NZDir
+    rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
 # and any other code we need.

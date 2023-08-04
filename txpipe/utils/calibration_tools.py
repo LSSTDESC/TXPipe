@@ -1,5 +1,6 @@
 import numpy as np
 from parallel_statistics import ParallelMeanVariance, ParallelMean
+from .mpi_utils import in_place_reduce
 
 
 def read_shear_catalog_type(stage):
@@ -464,11 +465,10 @@ class LensfitCalculator:
         """
         # These all wrap the catalog such that lookups find the variant
         # column if available
-
         # This is just to let the selection tools access data.variant for feedback
         data = _DataWrapper(data, "")
         sel = self.selector(data, *args, **kwargs)
-
+        
         # Extract the calibration quantities for the selected objects
         w = data["weight"]
         K = data["m"]
@@ -489,9 +489,9 @@ class LensfitCalculator:
             self.K.add_data(0, K[sel], w[sel])
         self.C.add_data(0, g1[sel], w[sel])
         self.C.add_data(1, g2[sel], w[sel])
-
+        
         return sel
-
+    
     def collect(self, comm=None, allgather=False):
         """
         Finalize and sum up all the response values, returning calibration
@@ -520,8 +520,10 @@ class LensfitCalculator:
                 count = comm.allreduce(self.count)
             else:
                 count = comm.reduce(self.count)
+
         else:
             count = self.count
+
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
@@ -659,7 +661,7 @@ class MeanShearInBins:
         self.cut_source_bin = cut_source_bin
         self.shear_catalog_type = shear_catalog_type
         self.size = len(self.limits) - 1
-
+        self._weight =  np.zeros(self.size)
         # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
         self.g2 = ParallelMeanVariance(self.size)
@@ -693,32 +695,51 @@ class MeanShearInBins:
         return np.where(w)
 
     def add_data(self, data):
+
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
             if self.shear_catalog_type == "metacal":
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["mcal_g1"][w], weight)
                 self.g2.add_data(i, data["mcal_g2"][w], weight)
+                self.parallelsum(i,weight,self._weight)
             elif self.shear_catalog_type == "metadetect":
                 weight = data["00/weight"][w]
                 self.g1.add_data(i, data["00/g1"][w], weight)
                 self.g2.add_data(i, data["00/g2"][w], weight)
+                self.parallelsum(i,weight,self._weight)
             elif self.shear_catalog_type in ["lensfit", "metadetect"]:
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["g1"][w], weight)
                 self.g2.add_data(i, data["g2"][w], weight)
+                self.parallelsum(i,weight,self._weight)
             elif self.shear_catalog_type == "hsc":
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["g1"][w] - data["c1"][w], weight)
                 self.g2.add_data(i, data["g2"][w] - data["c2"][w], weight)
+                self.parallelsum(i,weight,self._weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
+            
+    def parallelsum(self,bin, weights, _weight):
+        n = len(weights)
+        for i in range(n):
+            w = weights[i]**2
+            if w == 0:
+                continue
+            _weight[bin] += w
+        
+                 
+        
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
         count2, g2, var2 = self.g2.collect(comm, mode="gather")
-
+        wi2=self._weight
+        
+        if comm is not None:
+            in_place_reduce(wi2,comm)
+        
         _, mu = self.x.collect(comm, mode="gather")
-
         # Now we have the complete sample we can get the calibration matrix
         # to apply to it.
         R = []
@@ -735,7 +756,6 @@ class MeanShearInBins:
                 r, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r)
-
             elif self.shear_catalog_type == "lensfit":
                 k, c, _ = self.calibrators[i].collect(comm)
                 K.append(k)
@@ -751,11 +771,10 @@ class MeanShearInBins:
 
         sigma1 = np.zeros(self.size)
         sigma2 = np.zeros(self.size)
-
         for i in range(self.size):
             # Get the shears and the errors on their means
             g = [g1[i], g2[i]]
-            sigma = np.sqrt([var1[i] / count1[i], var2[i] / count2[i]])
+            sigma = np.sqrt([ var1[i]/(count1[i]**2/wi2[i]), var2[i]/(count2[i]**2/wi2[i])])
 
             if self.shear_catalog_type in ["metacal", "metadetect"]:
                 # Get the inverse response matrix to apply

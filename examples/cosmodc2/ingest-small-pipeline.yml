@@ -1,0 +1,26 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+    image: ghcr.io/lsstdesc/txpipe
+
+modules: txpipe
+
+python_paths: []
+
+stages:
+    - name: TXCosmoDC2Mock 
+
+output_dir: data/cosmodc2-small
+config: examples/cosmodc2/ingest-small-config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs: {}
+resume: False
+log_dir: ./
+pipeline_log: ./log.txt
+

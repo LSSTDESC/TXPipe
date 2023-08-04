@@ -16,14 +16,12 @@ from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
 
-
 class TXSourceDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the shear catalog
 
     This includes both tomographic and 2D measurements, and includes
-    the PSF as a function of various quantities as well as overall
-    histograms.
+    the PSF as a function of various quantities
     """
 
     name = "TXSourceDiagnosticPlots"
@@ -50,9 +48,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "delta_gamma": 0.02,
         "shear_prefix": "mcal_",
         "psf_prefix": "mcal_psf_",
-        "T_min": 0.2,
-        "T_max": 0.28,
+        "nbins": 20,
+        "g_min":-0.03,
+        "g_max": 0.05,
+        "psfT_min": 0.04,
+        "psfT_max": 0.36,
+        "T_min": 0.04,
+        "T_max": 4.0,
+        "s2n_min": 10,
+        "s2n_max": 300,
         "bands": "riz",
+        
     }
 
     def run(self):
@@ -63,14 +69,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # this also sets self.config["shear_catalog_type"]
         cat_type = read_shear_catalog_type(self)
-
+        
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
         # use the yield feature to pause and wait for more input.
         # We instantiate them all here
 
         plotters = [getattr(self, f)() for f in dir(self) if f.startswith("plot_")]
-
+       
         # Start off each of the plotters.  This will make them all run up to the
         # first yield statement, then pause and wait for the first chunk of data
         for plotter in plotters:
@@ -83,6 +89,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         shear_prefix = self.config["shear_prefix"]
         bands = self.config["bands"]
+        if self.rank == 0:
+            print("Catalog type = ", cat_type)
 
         if cat_type == "metacal":
             shear_cols = [
@@ -127,6 +135,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 bands, "mag", "mag_err", shear_catalog_type="metadetect"
             )
         else:
+        
             shear_cols = [
                 "psf_g1",
                 "psf_g2",
@@ -146,10 +155,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
-        elif self.config["shear_catalog_type"] == "lensfit":
-            more_iters = []
         else:
-            more_iters = ["shear_tomography_catalog", "response", ["R"]]
+            more_iters = []
 
         it = self.combined_iterators(
             chunk_rows,
@@ -161,7 +168,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             shear_tomo_cols,
             *more_iters,
         )
-
+        
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for (start, end, data) in it:
@@ -180,21 +187,34 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
-
+            
+    def BinEdges(self, data,nbins):
+        import scipy.stats as sts
+        
+        # calculate bin edges for equal number of objects per bin
+        nbquant = np.linspace(0,1,nbins,endpoint=False)
+        edges = sts.mstats.mquantiles(data,prob=nbquant)
+        return edges
+    
+    
     def plot_psf_shear(self):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
         from scipy import stats
-        from .utils.fitting import fit_straight_line
-
-        delta_gamma = self.config["delta_gamma"]
-        size = 5
-        gr = np.logspace(-3, -2, size // 2)
-        psf_g_edges = np.concatenate([-gr[::-1], gr])
-        print("psf_g_edges", psf_g_edges)
+        
         psf_prefix = self.config["psf_prefix"]
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+        g_min = self.config["g_min"]
+        g_max = self.config["g_max"]
 
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{psf_prefix}g1"][:]
+            psfg = col[(col > g_min) & (col < g_max)]
+            psf_g_edges = self.BinEdges(psfg,nbins)
+            del psfg
+            
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
             psf_g_edges,
@@ -217,74 +237,61 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
             if data is None:
                 break
-
             p1.add_data(data)
             p2.add_data(data)
-
+      
         mu1, mean11, mean12, std11, std12 = p1.collect(self.comm)
         mu2, mean21, mean22, std21, std22 = p2.collect(self.comm)
-
+      
+        
         if self.rank != 0:
             return
-
+       
+        
         fig = self.open_output("g_psf_g", wrapper=True)
+        
         # Include a small shift to be able to see the g1 / g2 points on the plot
-        dx = 0.1 * (mu1[1] - mu1[0])
-
-        slope11, intercept11, mc_cov = fit_straight_line(
-            mu1, mean11, y_err=std11, nan_error=True, skip_nan=True
-        )
+        dx = 0.1 * (psf_g_edges[1]-psf_g_edges[0])
+        idx = np.where(np.isfinite(mu1))[0]
+        
+        slope11, intercept11, mc_cov = fit_straight_line(mu1[idx], mean11[idx], std11[idx])
         std_err11 = mc_cov[0, 0] ** 0.5
         line11 = slope11 * (mu1) + intercept11
-
-        slope12, intercept12, mc_cov = fit_straight_line(
-            mu1, mean12, y_err=std12, nan_error=True, skip_nan=True
-        )
+        
+        slope12, intercept12, mc_cov = fit_straight_line(mu1[idx], mean12[idx], std12[idx])
         std_err12 = mc_cov[0, 0] ** 0.5
         line12 = slope12 * (mu1) + intercept12
-
-        slope21, intercept21, mc_cov = fit_straight_line(
-            mu2, mean21, y_err=std21, nan_error=True, skip_nan=True
-        )
+        
+        slope21, intercept21, mc_cov = fit_straight_line(mu2[idx], mean21[idx], std21[idx])
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
-
-        slope22, intercept22, mc_cov = fit_straight_line(
-            mu2, mean22, y_err=std22, nan_error=True, skip_nan=True
-        )
+        
+        slope22, intercept22, mc_cov = fit_straight_line(mu2, mean22, y_err=std22)
         std_err22 = mc_cov[0, 0] ** 0.5
         line22 = slope22 * (mu2) + intercept22
-
+        
         plt.subplot(2, 1, 1)
 
-        plt.plot(
-            mu1, line11, color="red", label=r"$m=%.4f \pm %.4f$" % (slope11, std_err11)
-        )
+        plt.plot(mu1, line11, color="red", label=r"$m=%.2e \pm %.2e$" % (slope11, std_err11))
+
+        plt.plot(mu1, line12, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
-        plt.plot(
-            mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12)
-        )
-        plt.plot(mu1, [0] * len(line12), color="black")
-        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="+", color="red")
-        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="+", color="blue")
+        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", markersize=5, color="blue")
+        
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
 
         plt.subplot(2, 1, 2)
 
-        plt.plot(
-            mu2, line21, color="red", label=r"$m=%.4f \pm %.4f$" % (slope21, std_err21)
-        )
-        plt.plot(mu2, [0] * len(line21), color="black")
-
-        plt.plot(
-            mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22)
-        )
+        plt.plot(mu2, line21, color="red", label=r"$m=%.2e \pm %.2e$" % (slope21, std_err21))
+        plt.plot(mu2, line22, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
-        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="+", color="red")
-        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="+", color="blue")
+        
+        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", markersize=5, color="blue")
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
@@ -292,21 +299,25 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # This also saves the figure
         fig.close()
-
+    
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
-        print("Making PSF size plot")
+        print("making shear psf size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
 
         psf_prefix = self.config["psf_prefix"]
-
         delta_gamma = self.config["delta_gamma"]
-        size = 5
-        T_min = self.config["T_min"]
-        T_max = self.config["T_max"]
-        psf_T_edges = np.linspace(T_min, T_max, size + 1)
-
+        nbins = self.config["nbins"]
+        psfT_min = self.config["psfT_min"]
+        psfT_max = self.config["psfT_max"]
+        
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{psf_prefix}T_mean"][:]
+            psfT = col[(col > psfT_min) & (col < psfT_max)]
+            psf_T_edges = self.BinEdges(psfT,nbins)
+            del psfT
+        
         binnedShear = MeanShearInBins(
             f"{psf_prefix}T_mean",
             psf_T_edges,
@@ -314,7 +325,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
-
+        
         while True:
             data = yield
 
@@ -322,55 +333,36 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 break
 
             binnedShear.add_data(data)
-
+            
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
-
+        
         if self.rank != 0:
             return
 
-        w = (mu != 0) & np.isfinite(std1)
-        mu = mu[w]
-        mean1 = mean1[w]
-        mean2 = mean2[w]
-        std1 = std1[w]
-        std2 = std2[w]
-
         dx = 0.05 * (psf_T_edges[1] - psf_T_edges[0])
-        slope1, intercept1, cov1 = fit_straight_line(
-            mu, mean1, std1, skip_nan=True, nan_error=True
-        )
+        idx = np.where(np.isfinite(mu))[0]
+        slope1, intercept1, cov1 = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = cov1[0, 0] ** 0.5
         line1 = slope1 * mu + intercept1
-        slope2, intercept2, cov2 = fit_straight_line(
-            mu, mean2, std2, skip_nan=True, nan_error=True
-        )
+        slope2, intercept2, cov2 = fit_straight_line(mu[idx], mean2[idx], std2[idx])
         std_err2 = cov2[0, 0] ** 0.5
         line2 = slope2 * mu + intercept2
-
+        
         fig = self.open_output("g_psf_T", wrapper=True)
 
-        plt.plot(
-            mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1)
-        )
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
-        plt.legend(loc="best")
-
-        plt.plot(
-            mu - dx,
-            line2,
-            color="blue",
-            label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2),
-        )
-        plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
-        plt.xlabel("PSF T")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
+        plt.xlabel("PSF $T$")
         plt.ylabel("Mean g")
-        # plt.ylim(-0.0015,0.0015)
+
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
-
+       
+    
     def plot_snr_shear(self):
         # mean shear in bins of snr
         print("Making mean shear SNR plot")
@@ -378,11 +370,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         # Parameters of the binning in SNR
-        size = 5
-        delta_gamma = self.config["delta_gamma"]
         shear_prefix = self.config["shear_prefix"]
-        snr_edges = np.logspace(0.1, 2.5, size + 1)
-
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+        s2n_min = self.config["s2n_min"]
+        s2n_max = self.config["s2n_max"]
+        
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{shear_prefix}s2n"][:]
+            s2n = col[(col > s2n_min) & (col < s2n_max)]
+            snr_edges = self.BinEdges(s2n,nbins)
+            del s2n
+        
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
         binnedShear = MeanShearInBins(
@@ -392,7 +391,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
-
         while True:
             # This happens when we have loaded a new data chunk
             data = yield
@@ -407,54 +405,50 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         if self.rank != 0:
             return
-
+        
         # Get the error on the mean
         dx = 0.05 * (snr_edges[1] - snr_edges[0])
-        good = (mu > 0) & (np.isfinite(mean1))
-        slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(
-            np.log10(mu[good]), mean1[good]
-        )
-        line1 = slope1 * (np.log10(mu)) + intercept1
-
-        good = (mu > 0) & (np.isfinite(mean2))
-        slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(
-            np.log10(mu[good]), mean2[good]
-        )
-        line2 = slope2 * (np.log10(mu)) + intercept2
+        idx = np.where(np.isfinite(mu))[0]
+        slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], std1[idx])
+        std_err1 = mc_cov[0, 0] ** 0.5
+        line1 = slope1 * mu + intercept1
+        
+        slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], std2[idx])
+        std_err2 = mc_cov[0, 0] ** 0.5
+        line2 = slope2 * mu + intercept2
+        
+        
         fig = self.open_output("g_snr", wrapper=True)
 
-        plt.plot(
-            mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1)
-        )
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
-
-        plt.plot(
-            mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2)
-        )
-        plt.plot(mu, [0] * len(mu - dx), color="black")
-        plt.xscale("log")
-        # plt.ylim(-0.0015,0.0015)
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
         plt.tight_layout()
         fig.close()
-
+    
     def plot_size_shear(self):
         # mean shear in bins of galaxy size
         print("Making mean shear galaxy size plot")
         import matplotlib.pyplot as plt
         from scipy import stats
 
-        delta_gamma = self.config["delta_gamma"]
-        psf_prefix = self.config["psf_prefix"]
-
-        size = 5
-
-        T_edges = np.linspace(0.1, 2.1, size + 1)
         shear_prefix = self.config["shear_prefix"]
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+        T_min = self.config["T_min"]
+        T_max = self.config["T_max"]
+        
+        with self.open_input("shear_catalog") as c:
+            col = c[f"shear/{shear_prefix}T"][:]
+            T = col[(col > T_min) & (col < T_max)]
+            T_edges = self.BinEdges(T,nbins)
+            del T
+        
         binnedShear = MeanShearInBins(
             f"{shear_prefix}T",
             T_edges,
@@ -479,35 +473,29 @@ class TXSourceDiagnosticPlots(PipelineStage):
             return
 
         dx = 0.05 * (T_edges[1] - T_edges[0])
-        slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(
-            np.log10(mu), mean1
-        )
-        line1 = slope1 * (np.log10(mu)) + intercept1
-        slope2, intercept2, r_value2, p_value2, std_err2 = stats.linregress(
-            np.log10(mu), mean2
-        )
-        line2 = slope2 * (np.log10(mu)) + intercept2
+        idx = np.where(np.isfinite(mu))[0]
+        slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], y_err=std1[idx])
+        std_err1 = mc_cov[0, 0] ** 0.5
+        line1 = slope1 * mu + intercept1
+        
+        slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], y_err=std2[idx])
+        std_err2 = mc_cov[0, 0] ** 0.5
+        line2 = slope2 * mu + intercept2
+        
         fig = self.open_output("g_T", wrapper=True)
 
-        plt.plot(
-            mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1)
-        )
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="+", color="red")
-
-        plt.plot(
-            mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2)
-        )
-        plt.plot(mu, [0] * len(mu), color="black")
-        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="+", color="blue")
-        # plt.ylim(-0.0015,0.0015)
-        plt.xscale("log")
+        plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o",markersize=5, color="blue")
+        
         plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
         plt.legend()
         plt.tight_layout()
         fig.close()
-
+        
     def plot_g_histogram(self):
         print("plotting histogram")
         import matplotlib.pyplot as plt
@@ -543,12 +531,22 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g1 = data["00/g1"]
                 g2 = data["00/g2"]
                 w = data["00/weight"]
-            else:
+            elif cat_type == "lensfit":
                 g1 = data["g1"]
                 g2 = data["g2"]
                 w = data["weight"]
+            else:
+                g1 = data["g1"]
+                g2 = data["g2"]
+                c1 = data['c1']
+                c2 = data['c2']
+                w = data["weight"]
 
-            g1, g2 = cal.apply(g1, g2)
+            if cat_type=='metacal' or cat_type=='metadetect' or cat_type=='lensfit':
+                g1, g2 = cal.apply(g1,g2)
+            else:
+                g1, g2 = cal.apply(g1,g2,c1,c2)
+
             H1.add_data(g1)
             H2.add_data(g2)
             H1_weighted.add_data(g1, w)
@@ -826,7 +824,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             plt.tight_layout()
             fig.close()
 
-
+    
 class TXLensDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the lens catalog

@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import yaml
+import pdb
 
 W = "galaxy_density_xi"
 GAMMA = "galaxy_shearDensity_xi_t"
@@ -128,7 +129,7 @@ def full_3x2pt_plots(
 
     for t in types:
         if any(obs[t] for obs in obs_data):
-            print("Making Plot")
+            print(f"Making Plot {t}")
             f = figures.get(t)
             output_figures[t] = make_plot(
                 t, obs_data, obs_theory, fig=f, xlogscale=xlogscale, ratios=ratios
@@ -228,7 +229,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
     f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))
     ax = {}
 
-    axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=True)
+    axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=False)
     for i in range(ny):
         if auto_only:
             J = [i]

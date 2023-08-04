@@ -6,7 +6,6 @@ import numpy as np
 class TXTwoPointTheoryReal(PipelineStage):
     """
     Compute theory predictions for real-space 3x2pt measurements.
-
     Uses CCL in real space and saves to a sacc file.
     """
 
@@ -65,7 +64,6 @@ class TXTwoPointTheoryReal(PipelineStage):
 class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     """
     Compute theory predictions for Fourier-space 3x2pt measurements.
-
     Also uses CCL and saves to a sacc file
     """
 

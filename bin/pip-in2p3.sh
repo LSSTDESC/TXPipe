@@ -1,0 +1,9 @@
+pip install git+https://github.com/LSSTDESC/ceci@in2p3-update
+pip install git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
+pip install git+https://github.com/joezuntz/dask-mpi@31e35759cfb03780a12ad6ffe2b82279b0fab442
+pip install git+https://github.com/LSSTDESC/CLMM.git@1.8.0
+pip install healpix==2023.1.13
+pip install parallel-statistics==0.13
+pip install pz-rail[dev]==0.99.1
+pip install sacc==0.8
+pip install tjpcov==0.3.0

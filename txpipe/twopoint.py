@@ -178,14 +178,20 @@ class TXTwoPoint(PipelineStage):
 
     # These two functions can be combined into a single one.
     def _read_nbin_from_tomography(self):
-        with self.open_input("binned_shear_catalog") as f:
-            nbin_source = f["shear"].attrs["nbin_source"]
+        if self.get_input("binned_shear_catalog") == "none":
+            nbin_source = 0
+        else:
+            with self.open_input("binned_shear_catalog") as f:
+                nbin_source = f["shear"].attrs["nbin_source"]
 
-        with self.open_input("binned_lens_catalog") as f:
-            nbin_lens = f["lens"].attrs["nbin_lens"]
+        if self.get_input("binned_lens_catalog") == "none":
+            nbin_lens = 0
+        else:
+            with self.open_input("binned_lens_catalog") as f:
+                nbin_lens = f["lens"].attrs["nbin_lens"]
 
-        source_list = range(nbin_source)
-        lens_list = range(nbin_lens)
+        source_list = list(range(nbin_source))
+        lens_list = list(range(nbin_lens))
 
         return source_list, lens_list
 
@@ -381,34 +387,34 @@ class TXTwoPoint(PipelineStage):
         WTHETA = sacc.standard_types.galaxy_density_xi
 
         S = sacc.Sacc()
-        if self.config["do_shear_pos"] == True:
-            S2 = sacc.Sacc()
+        S2 = sacc.Sacc()
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
-        f = self.open_input("shear_photoz_stack")
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        for i in source_list:
-            z = f["n_of_z/source/z"][:]
-            Nz = f[f"n_of_z/source/bin_{i}"][:]
-            S.add_tracer("NZ", f"source_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"source_{i}", z, Nz)
+        if source_list:
+            with self.open_input("shear_photoz_stack") as f:
+                for i in source_list:
+                    z = f["n_of_z/source/z"][:]
+                    Nz = f[f"n_of_z/source/bin_{i}"][:]
+                    S.add_tracer("NZ", f"source_{i}", z, Nz)
+                    if self.config["do_shear_pos"] == True:
+                        S2.add_tracer("NZ", f"source_{i}", z, Nz)
 
         f.close()
 
-        f = self.open_input("lens_photoz_stack")
-        # For both source and lens
-        for i in lens_list:
-            z = f["n_of_z/lens/z"][:]
-            Nz = f[f"n_of_z/lens/bin_{i}"][:]
-            S.add_tracer("NZ", f"lens_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"lens_{i}", z, Nz)
-        # Closing n(z) file
-        f.close()
+        if lens_list:
+            with self.open_input("lens_photoz_stack") as f:
+                # For both source and lens
+                for i in lens_list:
+                    z = f["n_of_z/lens/z"][:]
+                    Nz = f[f"n_of_z/lens/bin_{i}"][:]
+                    S.add_tracer("NZ", f"lens_{i}", z, Nz)
+                    if self.config["do_shear_pos"] == True:
+                        S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
         self.add_data_points(S, results)
@@ -438,7 +444,8 @@ class TXTwoPoint(PipelineStage):
             self.add_gamma_x_data_points(S2, results)
             S2.to_canonical_order()
             self.write_metadata(S2, meta)
-            S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
+        # always write the file, even if it is empty
+        S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
 
     def write_metadata(self, S, meta):
         # We also save the associated metadata to the file
@@ -864,6 +871,8 @@ class TXTwoPoint(PipelineStage):
             print(
                 f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms"
             )
+            if self.config["use_subsampled_randoms"]:
+                print(f"and for the rr term, {n_rand_sub_i} x {n_rand_sub_j} pairs")
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
@@ -941,6 +950,7 @@ class TXTwoPointPixel(TXTwoPoint):
         ("lens_photoz_stack", HDFFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
+        ("mask", MapsFile),
     ]
     outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
     # Add values to the config file that are not previously defined
@@ -971,7 +981,7 @@ class TXTwoPointPixel(TXTwoPoint):
         "use_randoms": True,
         "auto_only": False,
         "gaussian_sims_factor": [1.], 
-
+        "use_subsampled_randoms":False, #not used for pixel estimator
     }
     
 
@@ -983,6 +993,10 @@ class TXTwoPointPixel(TXTwoPoint):
             map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
             print(f"Loaded {i} overdensity maps")
 
+        # Read the mask to get fracdet weights
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_map("mask")
+
         scheme = choose_pixelization(**info) 
         ra_pix, dec_pix = scheme.pix2ang(pix)
 
@@ -990,7 +1004,7 @@ class TXTwoPointPixel(TXTwoPoint):
         cat = treecorr.Catalog(
             ra=ra_pix,
             dec=dec_pix,
-            #w=,
+            w=mask[pix], #weight pixels by their fracdet
             k=map_d[pix],
             ra_units="degree",
             dec_units="degree",
