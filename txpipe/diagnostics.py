@@ -42,7 +42,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         ("source_mag_hist", PNGFile),
         ("response_hist", PNGFile),
         ("g_psf_T_out",TextFile),
-        ("g_psf_g_out",PickleFile),
+        ("g_psf_g_out",TextFile),
         ("g_snr_out",TextFile),
         ("g_T_out",TextFile),
     ]
