@@ -34,6 +34,7 @@ class DensityCorrelation:
 		self.precomputed_array = {}
 		self.precomputed_npix = {}
 		self.precomputed_sumsys = {}
+		self.sys_meta = {}
 
 
 	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, sys_name=None, use_precompute=False):
@@ -198,6 +199,11 @@ class DensityCorrelation:
 		select_map = (self.map_index == map_index)
 		smean = self.smean[select_map]
 		ndens = self.ndens[select_map]
+
+		if self.sys_meta['normed']:
+			sys_width = self.sys_meta['std'][int(map_index)]
+			sys_mean = self.sys_meta['mean'][int(map_index)]
+			smean = smean*sys_width + sys_mean
 
 		fig, ax = plt.subplots()
 		ax.axhline(1,color='k',ls='--')

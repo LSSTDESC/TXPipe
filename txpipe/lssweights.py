@@ -76,7 +76,7 @@ class TXLSSweights(TXMapCorrelations):
 		output_dir = self.open_output("lss_weight_summary", wrapper=True)
 
 		#load the SP maps, apply the mask, normalize the maps (as needed by the method)
-		sys_maps, sys_names, sys_meta = self.prepare_sys_maps()
+		sys_maps, sys_names, self.sys_meta = self.prepare_sys_maps()
 
 		Fmap_list = []
 		for ibin in range(self.Ntomo):
@@ -117,7 +117,7 @@ class TXLSSweights(TXMapCorrelations):
 		(e.g. adding a normalization of the maps)
 		"""
 		sys_maps, sys_names = self.load_and_mask_sysmaps()
-		sys_meta = {'masked':True}
+		sys_meta = {'masked':True,'normed':False}
 		return sys_maps, sys_names, sys_meta
 
 	def get_deltag(self, tomobin):
@@ -282,6 +282,8 @@ class TXLSSweights(TXMapCorrelations):
 			#also precompute the SP bined arrays and pixel counts
 			density_corrs.precompute(imap, edges, sys_vals, frac=frac )
 
+		density_corrs.sys_meta.update(self.sys_meta)
+
 		f = time.time()
 		print("calc_1d_density took {0}s".format(f-s))
 
@@ -361,7 +363,7 @@ class TXLSSweights(TXMapCorrelations):
 		#make 1d density plots
 		for imap in np.unique(density_correlation.map_index):
 			filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
-			density_correlation.plot1d_singlemap(filepath, imap )
+			density_correlation.plot1d_singlemap(filepath, imap)
 
 
 		#save fitted map names and IDs
@@ -429,7 +431,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		#normalize sysmaps (and keep track of the normalization factors)
 		mean, std = self.normalize_sysmaps(sys_maps)
-		sys_meta = {'masked':True,'mean':mean,'std':std}
+		sys_meta = {'masked':True,'normed':True,'mean':mean,'std':std}
 		
 		return sys_maps, sys_names, sys_meta
 
