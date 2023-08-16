@@ -363,33 +363,11 @@ class TXLSSweights(TXMapCorrelations):
 			filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
 			density_correlation.plot1d_singlemap(filepath, imap)
 
+		#save the 1D density trends
+		dens_corr_file_name = output_dir.path_for_file(f"density_correlation_lens{ibin}.hdf5")
+		density_correlation.save_to_hdf5(dens_corr_file_name)
 
-		#save fitted map names and IDs
-		fitted_maps_id_file = output_dir.path_for_file(f"fitted_map_id_lens{ibin}.txt")
-		np.savetxt(fitted_maps_id_file, fit_output['sig_map_index'])
-		fitted_maps_names = [density_correlation.mapnames[i] for i in fit_output['sig_map_index']]
-		fitted_maps_names_file = output_dir.path_for_file(f"fitted_map_names_lens{ibin}.txt")
-		names_file = open(fitted_maps_names_file,'w')
-		names_file.write('\n'.join(fitted_maps_names))
-		names_file.close()
-
-
-
-		#save fitted coefficients 
-		coeff_file = output_dir.path_for_file(f"coeff_lens{ibin}.txt")
-		np.savetxt(coeff_file, fit_output['coeff'])		
-
-		#save coeff covariances
-		if fit_output['coeff_cov'] is not None:
-			coeff_cov_file = output_dir.path_for_file(f"coeff_cov_lens{ibin}.txt")
-			np.savetxt(coeff_cov_file, fit_output['coeff_cov'])	
-
-		#save chi2 for all models
-		for model in density_correlation.chi2.keys():
-			chi2_file = output_dir.path_for_file(f"chi2_lens{ibin}_{model}.txt")
-			np.savetxt(chi2_file, np.array(list(density_correlation.chi2[model].items())))
-
-		#save map names, coefficients and chi2 into an hdf5 file
+		#save map names, coefficients and chi2 from the fit into an hdf5 file
 		fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
 		fit_summary_file = h5py.File(fit_summary_file_name, 'w')
 		fit_summary_file.file.create_group("fit_summary")
@@ -402,9 +380,7 @@ class TXLSSweights(TXMapCorrelations):
 			fit_summary_file["fit_summary"].create_dataset('coeff_cov', data=fit_output['coeff_cov'] )
 		for model in density_correlation.chi2.keys():
 			fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
-
-
-
+		fit_summary_file.close()
 
 
 

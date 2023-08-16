@@ -254,6 +254,23 @@ class DensityCorrelation:
 				chi2_map = self.calc_chi2(ndens, covmat, model[select_map])
 				self.chi2[model_name][map_index] = chi2_map
 
+	def save_to_hdf5(self, filename):
+		"""
+		save the density correlation to an hdf5 object including covariance
+		"""
+		import h5py
+
+		output_file = h5py.File(filename, 'w')
+		output_file.file.create_group("density")
+
+		output_file["density"].attrs.update({"tomobin":self.tomobin})
+
+		#save all the attribute that are numpy array
+		for att_name in self.__dict__.keys():
+			att = getattr(self, att_name)
+			if isinstance(att, np.ndarray):
+				output_file["density"].create_dataset(att_name, data=att)
+		output_file.close()
 
 	@staticmethod
 	def calc_chi2(y, err, yfit , v = False):
