@@ -76,19 +76,19 @@ class TXLSSweights(TXMapCorrelations):
 		output_dir = self.open_output("lss_weight_summary", wrapper=True)
 
 		#load the SP maps, apply the mask, normalize the maps (as needed by the method)
-		sys_maps, sys_names, self.sys_meta = self.prepare_sys_maps()
+		self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
 		Fmap_list = []
 		for ibin in range(self.Ntomo):
 
 			#compute density vs SP map data vector
-			density_corrs = self.calc_1d_density(ibin, sys_maps, sys_names=sys_names)
+			density_corrs = self.calc_1d_density(ibin)
 
 			#compute covariance of data vector
-			covmat = self.calc_covariance(density_corrs, sys_maps) #will need to change the argument to this
+			covmat = self.calc_covariance(density_corrs) #will need to change the argument to this
 
 			#compute the weights
-			Fmap, fit_output = self.compute_weights(density_corrs, sys_maps)
+			Fmap, fit_output = self.compute_weights(density_corrs)
 			Fmap_list.append(Fmap)
 
 			#make summary stats and plots
@@ -209,7 +209,7 @@ class TXLSSweights(TXMapCorrelations):
 
 		return np.array(sys_maps), np.array(sys_names)
 
-	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
+	def calc_1d_density(self, tomobin):
 		"""
 		compute the binned 1d density correlations for a single tomographic lens bin
 
@@ -217,10 +217,6 @@ class TXLSSweights(TXMapCorrelations):
 		------
 		tomobin: Integer
 			index for the tomographic lens bin 
-		sys_maps: list of Healsparse objects
-			list of systematic maps
-		sys_names: list of strings, optional
-			list of systematic map labels (for labeling plots)
 
 	    Returns
     	-------
@@ -258,7 +254,7 @@ class TXLSSweights(TXMapCorrelations):
 		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
 
 		density_corrs = lsstools.DensityCorrelation(tomobin=tomobin) #keeps track of the 1d plots
-		for imap, sys_map in enumerate(sys_maps):
+		for imap, sys_map in enumerate(self.sys_maps):
 			sys_vals = sys_map[sys_map.valid_pixels] #SP value in each valid pixel
 			sys_obj = sys_map[obj_pix] #SP value for each object in catalog
 			
@@ -275,7 +271,7 @@ class TXLSSweights(TXMapCorrelations):
 					np.percentile(sys_vals, 100.*percentiles[-1]), 
 					nsysbins + 1 )
 
-			sys_name = None if sys_names is None else sys_names[imap]
+			sys_name = None if self.sys_names is None else self.sys_names[imap]
 
 			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, frac=frac, sys_name=sys_name)
 
@@ -455,7 +451,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		return np.array(means), np.array(stds) #return means and stds to help reconstruct the original maps later
 
-	def calc_covariance(self, density_correlation, sys_maps):
+	def calc_covariance(self, density_correlation):
 		"""
 		Construct the covariance matrix of the ndens vs SP data-vector 
 		"""
@@ -467,14 +463,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		if self.config["simple_cov"] == False:
 			#add diagonal shot noise
-			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, sys_maps)
+			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
 			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#add clustering Sample Variance 
 			#this only depends on the SP maps, not the sample
 			#so subsequent lens bins can use the first bin calculation
 			if self.cov_sample_variance_full is None:
-				self.cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, sys_maps)
+				self.cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps)
 			density_correlation.add_external_covariance(self.cov_sample_variance_full, assert_empty=False)
 
 		f = time.time()
@@ -661,7 +657,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		return sig_maps
 
-	def compute_weights(self, density_correlation, sys_maps ):
+	def compute_weights(self, density_correlation ):
 		"""
 		Least square fit to a simple linear model
 	
@@ -670,7 +666,6 @@ class TXLSSweightsSimReg(TXLSSweights):
 		Params
 		------
 		density_correlation: lsstools.DensityCorrelation
-		sys_maps: list of Healsparse maps
 
 		Returns
 		------
@@ -699,7 +694,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		#select only the significant trends
 		sig_map_index = self.select_maps(density_correlation)
-		sys_maps = sys_maps[sig_map_index]
+		sys_maps = self.sys_maps[sig_map_index]
 		sysmap_table = hsplist2array(sys_maps)
 
 		#initial parameters
@@ -765,7 +760,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		"regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
 	}
 
-	def compute_weights(self, density_correlation, sys_maps ):
+	def compute_weights(self, density_correlation ):
 		"""
 		Least square fit to a simple linear model at pixel level 
 	
@@ -774,7 +769,6 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		Params
 		------
 		density_correlation: lsstools.DensityCorrelation
-		sys_maps: list of Healsparse maps
 
 		Returns
 		------
@@ -806,7 +800,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 
 		#select only the significant trends
 		sig_map_index = self.select_maps(density_correlation)
-		sys_maps = sys_maps[sig_map_index]
+		sys_maps = self.sys_maps[sig_map_index]
 		sysmap_table = hsplist2array(sys_maps)
 
 		#make the delta_g map and fracdet weights
@@ -884,14 +878,14 @@ class TXLSSweightsUnit(TXLSSweights):
 		sys_maps = sys_names = sys_meta = None
 		return sys_maps, sys_names, sys_meta
 
-	def calc_1d_density(self, tomobin, sys_maps, sys_names=None):
+	def calc_1d_density(self, tomobin ):
 		"""
 		For unit weights we dont need 1d density trends
 		"""
 		return None
 
 
-	def calc_covariance(self, density_correlation, sys_maps):
+	def calc_covariance(self, density_correlation ):
 		"""
 		For unit weights we dont need 1d density trends
 		"""
@@ -904,7 +898,7 @@ class TXLSSweightsUnit(TXLSSweights):
 		pass
 
 
-	def compute_weights(self, density_correlation, sys_maps ):
+	def compute_weights(self, density_correlation ):
 		"""
 		Creates a healsparse map of unit weights
 		Uses the mask directly
