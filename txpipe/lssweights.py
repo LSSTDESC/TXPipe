@@ -85,7 +85,7 @@ class TXLSSweights(TXMapCorrelations):
 			density_corrs = self.calc_1d_density(ibin)
 
 			#compute covariance of data vector
-			covmat = self.calc_covariance(density_corrs) #will need to change the argument to this
+			self.calc_covariance(density_corrs) #matrix added to density_corrs
 
 			#compute the weights
 			Fmap, fit_output = self.compute_weights(density_corrs)
@@ -476,7 +476,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		f = time.time()
 		print("calc_covariance took {0}s".format(f-s))
 
-		return density_correlation.covmat
+		return
 
 	def calc_covariance_shot_noise_offdiag(self, density_correlation, sys_maps):
 		"""
