@@ -354,6 +354,8 @@ class TXLSSweights(TXMapCorrelations):
 		density_correlation: lsstools.DensityCorrelation 
 		"""
 		import numpy as np
+		import h5py 
+
 		ibin = density_correlation.tomobin
 
 		#make 1d density plots
@@ -371,6 +373,8 @@ class TXLSSweights(TXMapCorrelations):
 		names_file.write('\n'.join(fitted_maps_names))
 		names_file.close()
 
+
+
 		#save fitted coefficients 
 		coeff_file = output_dir.path_for_file(f"coeff_lens{ibin}.txt")
 		np.savetxt(coeff_file, fit_output['coeff'])		
@@ -384,6 +388,23 @@ class TXLSSweights(TXMapCorrelations):
 		for model in density_correlation.chi2.keys():
 			chi2_file = output_dir.path_for_file(f"chi2_lens{ibin}_{model}.txt")
 			np.savetxt(chi2_file, np.array(list(density_correlation.chi2[model].items())))
+
+		#save map names, coefficients and chi2 into an hdf5 file
+		fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
+		fit_summary_file = h5py.File(fit_summary_file_name, 'w')
+		fit_summary_file.file.create_group("fit_summary")
+		fit_summary_file["fit_summary"].create_dataset('fitted_map_id', data=fit_output['sig_map_index'])
+		fitted_maps_names = np.array([density_correlation.mapnames[i] for i in fit_output['sig_map_index']])
+		fit_summary_file["fit_summary"].create_dataset('fitted_map_names', data=fitted_maps_names.astype(np.string_))
+		fit_summary_file["fit_summary"].create_dataset('all_map_names', data=self.sys_names.astype(np.string_))
+		fit_summary_file["fit_summary"].create_dataset('coeff', data=fit_output['coeff'] )
+		if fit_output['coeff_cov'] is not None:
+			fit_summary_file["fit_summary"].create_dataset('coeff_cov', data=fit_output['coeff_cov'] )
+		for model in density_correlation.chi2.keys():
+			fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
+
+
+
 
 
 
