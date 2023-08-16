@@ -61,7 +61,6 @@ class TXLSSweights(TXMapCorrelations):
 		"""
 		pixel_scheme = choose_pixelization(**self.config)
 		self.pixel_metadata = pixel_scheme.metadata
-		self.cov_sample_variance_full = None 
 
 		#check the metadata nside matches the mask (might not be true of you use an external mask)
 		with self.open_input("mask", wrapper=True) as map_file:
@@ -413,7 +412,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
 		"equal_area_bins": True, #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
-		"b0": 1.0, 
+		"b0": [1.0], 
 	}
 
 	def prepare_sys_maps(self):
@@ -464,11 +463,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#add clustering Sample Variance 
-			#this only depends on the SP maps, not the sample
-			#so subsequent lens bins can use the first bin calculation
-			if self.cov_sample_variance_full is None:
-				self.cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps)
-			density_correlation.add_external_covariance(self.cov_sample_variance_full, assert_empty=False)
+			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps)
+			density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
 
 		f = time.time()
 		print("calc_covariance took {0}s".format(f-s))
@@ -557,7 +553,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		nbinstotal = len(density_correlation.map_index)
 		covmat_N = np.zeros((nbinstotal,nbinstotal))
 
-		#load theory wtheta 
+		#generate theory wtheta 
 		mintheta = hp.nside2resol(sys_maps[0].nside_sparse,arcmin=True)
 		maxtheta = 250. #in arcmin
 		theta = np.linspace(mintheta, maxtheta, 100)
@@ -565,7 +561,16 @@ class TXLSSweightsSimReg(TXLSSweights):
 			cosmo = f.to_ccl()
 		z_n,nz = self.load_tracer(density_correlation.tomobin)
 		theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
-		bias = self.config["b0"]*np.ones(len(z_n))
+		if isinstance(self.config["b0"],list):
+			if len(self.config["b0"]) == 1 and self.Ntomo != 1:
+				print("Recieved one linear galaxy bias b0, but you have more than one tomographic bin. Using single value for all bins")
+				b0 = self.config["b0"][0]
+			else:
+				assert len(self.config["b0"]) == self.Ntomo
+				b0 = self.config["b0"][density_correlation.tomobin]
+		else:
+			b0 = self.config["b0"]
+		bias = b0*np.ones(len(z_n))
 		gal_tracer = pyccl.NumberCountsTracer(cosmo, dndz=(z_n, nz), bias=(z_n,bias), has_rsd=True)
 		C_l = cosmo.angular_cl(gal_tracer, gal_tracer, theory_ell)
 		wtheta = cosmo.correlation(theory_ell, C_l, theta/60., type='NN',)
@@ -753,7 +758,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
 		"equal_area_bins": True, #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
-		"b0": 1.0, 
+		"b0": [1.0], 
 		"regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
 	}
 
