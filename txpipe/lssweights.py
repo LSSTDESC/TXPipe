@@ -463,7 +463,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#add clustering Sample Variance 
-			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps)
+			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=False)
 			density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
 
 		f = time.time()
@@ -535,7 +535,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		return covmat_ndens
 
-	def calc_covariance_sample_variance(self, density_correlation, sys_maps):
+	def calc_covariance_sample_variance(self, density_correlation, sys_maps, diag_blocks_only=False):
 		"""
 		Sample variance term in 1d binned covariance
 		
@@ -590,7 +590,6 @@ class TXLSSweightsSimReg(TXLSSweights):
 				cats[imap,isp] = cat_i
 
 		#TO DO: Parralelize this
-		map_list = np.unique(density_correlation.map_index).astype('int')
 		for imap in map_list:
 			edges_i = density_correlation.get_edges(imap)
 			print('SV covariance for map', imap)
@@ -603,6 +602,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 					for jsp in range(len(edges_j)-1):
 						indexj = jmap*(len(edges_j)-1)+jsp
 						if (indexi > indexj):
+							continue
+						if diag_blocks_only and imap != jmap: #sometimes we dont need the covarinace between maps
 							continue
 						cat_j = cats[jmap,jsp]
 
@@ -761,6 +762,33 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		"b0": [1.0], 
 		"regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
 	}
+
+	def calc_covariance(self, density_correlation):
+		"""
+		Construct the covariance matrix of the ndens vs SP data-vector 
+
+		when doing pixel estimator we only use 1d binned covariance for template selection
+		so we can set diag_blocks_only=True
+		"""
+
+		s = time.time()
+
+		#add diagonal shot noise
+		density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
+
+		if self.config["simple_cov"] == False:
+			#add diagonal shot noise
+			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
+			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
+
+			#add clustering Sample Variance 
+			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=True )
+			density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
+
+		f = time.time()
+		print("calc_covariance took {0}s".format(f-s))
+
+		return
 
 	def compute_weights(self, density_correlation ):
 		"""
