@@ -90,8 +90,11 @@ class TXLSSweights(TXMapCorrelations):
 			Fmap, fit_output = self.compute_weights(density_corrs)
 			Fmap_list.append(Fmap)
 
+			weighted_density_corrs = self.calc_1d_density(ibin, Fmap=Fmap)
+			weighted_density_corrs.postprocess(density_corrs) #adds needed info from unweighted density_corrs to weighted
+
 			#make summary stats and plots
-			self.summarize(output_dir, density_corrs, fit_output)
+			self.summarize(output_dir, density_corrs, weighted_density_corrs, fit_output )
 
 		#save object weights and weight maps
 		self.save_weights(Fmap_list)
@@ -208,7 +211,7 @@ class TXLSSweights(TXMapCorrelations):
 
 		return np.array(sys_maps), np.array(sys_names)
 
-	def calc_1d_density(self, tomobin):
+	def calc_1d_density(self, tomobin, Fmap=None):
 		"""
 		compute the binned 1d density correlations for a single tomographic lens bin
 
@@ -216,6 +219,9 @@ class TXLSSweights(TXMapCorrelations):
 		------
 		tomobin: Integer
 			index for the tomographic lens bin 
+		Fmap: healsparse map (None)
+			map of inverse weight to be applied to the galaxies
+			if None, will use unweighted lens catalog
 
 	    Returns
     	-------
@@ -243,14 +249,19 @@ class TXLSSweights(TXMapCorrelations):
 		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
 			ra = f[f"lens/bin_{tomobin}/ra"][:]
 			dec = f[f"lens/bin_{tomobin}/dec"][:]
-			input_weight = f[f"lens/bin_{tomobin}/weight"][:]
 
-			assert (input_weight==1.).all() # For now lets assume the input weights have to be 1 
-											# (we could drop this condition 
-											# If we ever want to input a weighted catalog)
+			#pixel ID for each lens galaxy
+			obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
+			
+			if Fmap is None:
+				weight = f[f"lens/bin_{tomobin}/weight"][:]
 
-		#pixel ID for each lens galaxy
-		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
+				assert (weight==1.).all() # For now lets assume the input weights have to be 1 
+												# (we could drop this condition 
+												# If we ever want to input a weighted catalog)
+			else:
+				weight = 1./Fmap[obj_pix]
+
 
 		density_corrs = lsstools.DensityCorrelation(tomobin=tomobin) #keeps track of the 1d plots
 		for imap, sys_map in enumerate(self.sys_maps):
@@ -272,7 +283,7 @@ class TXLSSweights(TXMapCorrelations):
 
 			sys_name = None if self.sys_names is None else self.sys_names[imap]
 
-			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, frac=frac, sys_name=sys_name)
+			density_corrs.add_correlation(imap, edges, sys_vals, sys_obj, frac=frac, weight=weight, sys_name=sys_name)
 
 			#also precompute the SP bined arrays and pixel counts
 			density_corrs.precompute(imap, edges, sys_vals, frac=frac )
@@ -344,7 +355,7 @@ class TXLSSweights(TXMapCorrelations):
 
 
 
-	def summarize(self, output_dir, density_correlation, fit_output):
+	def summarize(self, output_dir, density_correlation, weighted_density_correlation, fit_output):
 		"""
 		make 1d density plots and other summary statistics and save them
 		
@@ -360,11 +371,13 @@ class TXLSSweights(TXMapCorrelations):
 		#make 1d density plots
 		for imap in np.unique(density_correlation.map_index):
 			filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
-			density_correlation.plot1d_singlemap(filepath, imap)
+			density_correlation.plot1d_singlemap(filepath, imap, extra_density_correlations=[weighted_density_correlation] )
 
 		#save the 1D density trends
-		dens_corr_file_name = output_dir.path_for_file(f"density_correlation_lens{ibin}.hdf5")
+		dens_corr_file_name = output_dir.path_for_file(f"unweighted_density_correlation_lens{ibin}.hdf5")
 		density_correlation.save_to_hdf5(dens_corr_file_name)
+		weighted_dens_corr_file_name = output_dir.path_for_file(f"weighted_density_correlation_lens{ibin}.hdf5")
+		weighted_density_correlation.save_to_hdf5(weighted_dens_corr_file_name)
 
 		#save map names, coefficients and chi2 from the fit into an hdf5 file
 		fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
@@ -380,7 +393,6 @@ class TXLSSweights(TXMapCorrelations):
 		for model in density_correlation.chi2.keys():
 			fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
 		fit_summary_file.close()
-
 
 
 class TXLSSweightsSimReg(TXLSSweights):

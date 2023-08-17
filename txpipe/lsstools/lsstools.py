@@ -37,7 +37,7 @@ class DensityCorrelation:
 		self.sys_meta = {}
 
 
-	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, sys_name=None, use_precompute=False):
+	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, weight=None, sys_name=None, use_precompute=False):
 		"""
 		add a 1d density correlation
 
@@ -56,6 +56,8 @@ class DensityCorrelation:
 			if False will assume data is the sys value evaluate at each object location
 		frac: 1D array or None
 			fractional pixel coverage or each pixel in sys_vals
+		weight: 1d array or None
+			input galaxy or galaxy count weights
 		sys_name: str
 			a label for this map
 		use_precompute: bool
@@ -64,6 +66,8 @@ class DensityCorrelation:
 		"""
 		if sys_name is not None:
 			self.mapnames[map_index] = sys_name
+		if weight is None:
+			weight = np.ones(len(data))
 
 		if use_precompute:
 			#use the precomputed boolean arrays to get 1d trends
@@ -86,9 +90,9 @@ class DensityCorrelation:
 
 			#number counts
 			if map_input:
-				nobj_sys,_ = np.histogram(sys_vals,bins=edges,weights=data)
+				nobj_sys,_ = np.histogram(sys_vals,bins=edges,weights=data*weight)
 			else:
-				nobj_sys,_ = np.histogram(data,bins=edges)
+				nobj_sys,_ = np.histogram(data,bins=edges, weights=weight)
 
 			#pixel counts (weighted by frac coverage)
 			npix_sys,_ = np.histogram(sys_vals,bins=edges,weights=frac)
@@ -193,9 +197,14 @@ class DensityCorrelation:
 		select_map = (self.map_index == map_index)
 		return np.array([line[select_map] for line in self.covmat[select_map] ]) 
 
-	def plot1d_singlemap(self, filepath, map_index):
+	def plot1d_singlemap(self, filepath, map_index,  extra_density_correlations=None):
 		import matplotlib.pyplot as plt
 
+		fig, ax = plt.subplots()
+		ax.axhline(1,color='k',ls='--')
+
+
+		##### plot data from this object
 		select_map = (self.map_index == map_index)
 		smean = self.smean[select_map]
 		ndens = self.ndens[select_map]
@@ -204,20 +213,46 @@ class DensityCorrelation:
 			sys_width = self.sys_meta['std'][int(map_index)]
 			sys_mean = self.sys_meta['mean'][int(map_index)]
 			smean = smean*sys_width + sys_mean
-
-		fig, ax = plt.subplots()
-		ax.axhline(1,color='k',ls='--')
+		
 		if self.ndens_err is None:
-			ax.plot(smean, ndens,'.')
+			ax.plot(smean, ndens,'.',color='b')
 		else:
+			chi2_null = self.chi2['null'][map_index]
+			ndata = len(ndens)
+			legend_label = "null"+": "+r'$\chi^2=$'+'{0}/{1}'.format(np.round(chi2_null,1), ndata)
 			ndens_err = self.ndens_err[select_map]
-			ax.errorbar(smean, ndens, ndens_err, fmt='.')
+			ax.errorbar(smean, ndens, ndens_err, fmt='.',color='b', capsize=3, label=legend_label)
 
+		##### plot data from any extra density correlations
+		if extra_density_correlations is not None:
+			for idc, dc in enumerate(extra_density_correlations):
+				select_map_extra = (dc.map_index == map_index)
+				smean_extra = dc.smean[select_map_extra]
+				ndens_extra = dc.ndens[select_map_extra]
+				offset = (idc+1)*0.05*(smean_extra[1:]-smean_extra[:-1]).min()
+				if dc.sys_meta['normed']:
+					sys_width_extra = dc.sys_meta['std'][int(map_index)]
+					sys_mean_extra = dc.sys_meta['mean'][int(map_index)]
+					smean_extra = smean_extra*sys_width_extra + sys_mean_extra
+				
+				if dc.ndens_err is None:
+					ax.plot(offset+smean_extra, ndens_extra,'.',color='green')
+				else:
+					chi2_null_extra = dc.chi2['null'][map_index]
+					ndata_extra = len(ndens_extra)
+					legend_label_extra = "null"+": "+r'$\chi^2=$'+'{0}/{1}'.format(np.round(chi2_null_extra,1), ndata_extra)
+					ndens_err_extra = dc.ndens_err[select_map_extra]
+					ax.errorbar(offset+smean_extra, ndens_extra, ndens_err_extra, fmt='.', color='green', capsize=3, label=legend_label_extra)
+
+		#plot any models other than null (from this object only)
 		for model_name in self.ndens_models:
+			if model_name == 'null':
+				continue
 			ndens_model = self.ndens_models[model_name][select_map]
 			chi2 = self.chi2[model_name][map_index]
 			ndata = len(ndens)
 			legend_label = model_name+": "+r'$\chi^2=$'+'{0}/{1}'.format(np.round(chi2,1), ndata)
+			#legend_label = None
 			ax.plot(smean, ndens_model,'-',label=legend_label)
 
 		if map_index in self.mapnames.keys():
@@ -225,8 +260,9 @@ class DensityCorrelation:
 		else:
 			xlabel=f'SP {map_index}'
 		ax.set_xlabel(xlabel)
-		ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$")
+		ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$", fontsize=16)
 		ax.legend()
+		fig.tight_layout()
 		fig.savefig(filepath)
 		fig.clear()
 		plt.close()
@@ -271,6 +307,19 @@ class DensityCorrelation:
 			if isinstance(att, np.ndarray):
 				output_file["density"].create_dataset(att_name, data=att)
 		output_file.close()
+
+	def postprocess(self, density_correlation):
+		"""
+		PostProcess this object with an external density correlation
+
+		adds the covarinace from density_correlation
+		then adds the null signal model
+
+		TO DO: come up with a cleaner way to do this
+		"""
+		self.add_external_covariance(density_correlation.covmat, assert_empty=True)
+		self.add_model(density_correlation.ndens_models['null'], 'null')
+
 
 	@staticmethod
 	def calc_chi2(y, err, yfit , v = False):
