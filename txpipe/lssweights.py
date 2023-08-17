@@ -91,7 +91,8 @@ class TXLSSweights(TXMapCorrelations):
 			Fmap_list.append(Fmap)
 
 			weighted_density_corrs = self.calc_1d_density(ibin, Fmap=Fmap)
-			weighted_density_corrs.postprocess(density_corrs) #adds needed info from unweighted density_corrs to weighted
+			if weighted_density_corrs is not None:
+				weighted_density_corrs.postprocess(density_corrs) #adds needed info from unweighted density_corrs to weighted
 
 			#make summary stats and plots
 			self.summarize(output_dir, density_corrs, weighted_density_corrs, fit_output )
