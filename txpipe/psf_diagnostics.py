@@ -207,23 +207,106 @@ class TXTauStatistics(PipelineStage):
 
         matplotlib.use("agg")
 
+        # Load star properties
         ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
-        
-        rho0,rho1,rho2,rho3,rho4,rho5 = load_rowestats()
 
+        # Load Rowe stats if they exist already
+        rowe_stats = self.load_rowestats(rowe)
+
+        # Compute tau stats 
         tau_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
             # Joint tau 0-2-5 data vector and cov
             # We need the off-diagonal 0-2-5 blocks
-            tau,cov = self.compute_alltau(s, ra, dec, e_psf, e_mod, de_psf, T_f)
+            tau_stats[t] = self.compute_alltau(gra, gdec, g,  s, ra, dec, e_psf, e_mod, de_psf, T_f)
+
+        #Save tau stats in a h5 file
+        self.save_taustats(tau_stats)
 
         # Run simple mcmc to find best-fit values for alpha,beta,eta
-        a_best, a_best_err, b_best, b_best_err, n_best, n_best_err = sample(tau,cov,rho0,rho1,rho2,rho3,rho4,rho5)
+        a_best, a_best_err, b_best, b_best_err, n_best, n_best_err = sample(tau_stats,rowe_stats[:,s])
 
-        tau_stats[0, t] = alpha*rho0 + beta*rho2 + eta*rho5
-        tau_stats[2, t] = alpha*rho2 + beta*rho1 + eta*rho4
-        tau_stats[5, t] = alpha*rho5 + beta*rho4 + eta*rho3
+        #tau_stats[0, t] = alpha*rho0 + beta*rho2 + eta*rho5
+        #tau_stats[2, t] = alpha*rho2 + beta*rho1 + eta*rho4
+        #tau_stats[5, t] = alpha*rho5 + beta*rho4 + eta*rho3
+
+        # Save tau plots
+        self.tau_plots(tau_stats)
+
+
+    def sample(self, tau_stats, rowe_stats, ):#sample(self,tau,cov,rho0,rho1,rho2,rho3,rho4,rho5, nwalkers=10, ndim=3):
+        '''
+        Run a simple mcmc chain to detemine the best-fit values for  
+        '''
+        import emcee
+
+        ret = {}
+        var = ['alpha','beta','eta']
+
+        for s in STAR_TYPES:
+            print("Computing best-fit alpha, beta, eta")
+            theta, tau0, tau2, tau5, cov = tau_stats[s]
+            invcov = np.linalg.inv(cov)
+            
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, logProb, args=(tau_stats, rowe_stats, invcov))
+            sampler.run_mcmc(pos, 5000, progress=True);
+
+            flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
+            
+            for i,v in enumerate(var):
+                mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
+                q    = np.diff(mcmc)
+                ret[s,v] = {'mean': mcmc[1],'lerr': q[0], 'rerr': q[1]}
+
+        return ret
+
+
+    def logPrior(theta):
+        '''
+        If parameter in defined range return 0, otherwise -np.inf
+        '''
+        alpha, beta, eta = theta
+        if (-0.1 < alpha < 0.1) and (0.0 < beta < 2.0) and (-2.0 < eta < 2.0):
+            return 0.0
+        return -np.inf
+
+
+    def logLike(self, theta, tau_stats, rowe_stats, invcov):
+        '''
+        Compute likelihood
+        theta     : parameters
+        tau_stats : Measured tau stats
+        rowe_stats: Measured rowe stats to be used for Tau 
+        invcov    : Inverse covariance matrix 
+        '''
+        
+        # Load parameters
+        alpha, beta, eta = theta
+
+        # Load rowe and tau
+        rowe0,rowe1,rowe2,rowe3,rowe4,rowe5 = rowe_stats[(0,1,2,3,4,5), s]
+        _, tau0, tau2, tau5, cov            = tau_stats[s]
+
+        # Create combined template
+        T0    = alpha*rowe0 + beta*rowe2 + eta*rowe5
+        T2    = alpha*rowe2 + beta*rowe1 + eta*rowe4
+        T5    = alpha*rowe5 + beta*rowe4 + eta*rowe3
+        
+        # Create data and template vector
+        Tall  = np.concatenate([T0,T2,T5])
+        Xall  = np.concatenate([tau0,tau2,tau5])
+
+        return -0.5*np.dot(Xall-Tall,np.dot(Xall-Tall,invcov))
+    
+
+    def logProb(theta, tau_stats, rowe_stats, invcov):
+        lp = logPrior(theta)
+        if not np.isfinite(lp):
+            return -np.inf
+        return lp + logLike(theta, tau_stats, rowe_stats, invcov)
+
+
 
 
     def compute_alltau(self, gra, gdec, g, s, sra, sdec, e_psf, e_mod, de_psf, T_f):
@@ -241,7 +324,7 @@ class TXTauStatistics(PipelineStage):
         
         e_psf  : measured ellipticities of PSF from stars 
         e_mod  : model ellipticities of PSF
-        de_psf : e_psf-e_mod
+        de_psf : e_psf-e_mod 
         T_f    : (T_meas - T_model)/T_meas
         
         '''
@@ -250,20 +333,22 @@ class TXTauStatistics(PipelineStage):
         #de_psf = np.array((de1, de2))
         
         p = e_mod
-        w = de_psf
-        p = e_psf * T_f
+        q = de_psf
+        w = e_psf * T_f
         
         import treecorr
 
-        sra,sdec = sra[s],sdec[s] # Get ra/dec for  specific stars
+        sra, sdec = sra[s], sdec[s] # Get ra/dec for  specific stars
                 
-        print(f"Computing Tau statistic rho_{i} from {n} objects")
+        print(f"Computing Tau 0,2,5 and the covariance from {n} objects")
         
+        # Load all catalogs
         catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], ra_units="deg", dec_units="deg") # galaxy shear
         catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg") # e_model
         catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg") # (e_* - e_model)
         catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg") # (e_*(T_* - T_model)/T_* )
             
+        # Compute all corrleations
         corr0 = treecorr.GGCorrelation(self.config)
         corr0.process(catg, catp)
         corr2 = treecorr.GGCorrelation(self.config)
@@ -274,61 +359,44 @@ class TXTauStatistics(PipelineStage):
         # Estimate covariance using jackknice
         cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'jackknife')
 
-        return corr.meanr, corr.xip, cov
+        return corr0.meanr, corr0.xip, corr2.xip, corr5.xip, cov
     
 
-
-
-
-    def sample(self,tau,cov,rho0,rho1,rho2,rho3,rho4,rho5, nwalkers=10, ndim=3):
+    def load_rowestats(self, rowe_stats):
         '''
-        Run a simple mcmc chain to detemine the best-fit values for  
+        Load Rowe stats from h5 file that was saved during the Rowestats stage
         '''
-        import emcee
+        '''
+        f = self.open_output("rowe_stats")
+        g = f.create_group("rowe_statistics")
+        for i in 0, 1, 2, 3, 4, 5:
+            for s in STAR_TYPES:
+                theta, xi, err = rowe_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f"rowe_{i}_{name}")
+                h.create_dataset("theta", data=theta)
+                h.create_dataset("xi_plus", data=xi)
+                h.create_dataset("xi_err", data=err)
+        f.close()
+        return rho
+        '''
 
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, logProb, args=(x, y, yerr))
-        sampler.run_mcmc(pos, 5000, progress=True);
-
-        flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
-
-        ret = {}
-        var = ['alpha','beta','eta']
-
-        for i,v in enumerate(var):
-           mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
-           q    = np.diff(mcmc)
-           ret[v] = {'mean': mcmc[1],'lerr': q[0], 'rerr': q[1]}
-
-        return ret
-
-    
-
-    def logPrior(theta):
-        ''''''
-        m, b, log_f = theta
-        if -5.0 < m < 0.5 and 0.0 < b < 10.0 and -10.0 < log_f < 1.0:
-            return 0.0
-        return -np.inf
-
-
-    def logLike(self, X, alpha, beta, eta, cov):
-        # Create combined template
-        t_0    = alpha*rho0 + beta*rho2 + eta*rho5
-        t_2    = alpha*rho2 + beta*rho1 + eta*rho4
-        t_5    = alpha*rho5 + beta*rho4 + eta*rho3
-        t_all  = np.concatenate([t_0,t_2,t_5])
- 
-        #Compute chi2
-        chi2_0 = np.dot((X-t_all),np.dot(X-t_all,cov))
-
-        return -0.5*chi2_0
-
-    def logProb(theta, x, y, yerr):
-        lp = logPrior(theta)
-        if not np.isfinite(lp):
-            return -np.inf
-        return lp + loglike(theta, x, y, yerr)
-
+    def save_taustats(self, tau_stats):
+        '''
+        tau_stats: (dict) dictionary containing theta,tau0,tau2,tau5 and cov
+        '''
+        f = self.open_output("tau_stats")
+        g = f.create_group("tau_statistics")
+        for s in STAR_TYPES:
+            theta, tau0, tau2, tau5, cov = tau_stats[s]
+            name = STAR_TYPE_NAMES[s]
+            h = g.create_group(f"tau_{i}_{name}")
+            h.create_dataset("theta"  , data=theta)
+            h.create_dataset("tau0"   , data=tau0)
+            h.create_dataset("tau2"   , data=tau2)
+            h.create_dataset("tau5"   , data=tau5)
+            h.create_dataset("cov"    , data=cov)
+        f.close()
 
 
 class TXRoweStatistics(PipelineStage):
