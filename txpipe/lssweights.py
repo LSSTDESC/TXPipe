@@ -934,7 +934,7 @@ class TXLSSweightsUnit(TXLSSweights):
 		"""
 		return None
 
-	def summarize(self, output_dir, density_correlation, fit_output):
+	def summarize(self, output_dir, density_correlation, weighted_density_correlation, fit_output):
 		"""
 		For unit weights we have nothing to summarize
 		"""
