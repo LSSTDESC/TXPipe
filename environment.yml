@@ -34,7 +34,17 @@ dependencies:
     - git+https://github.com/LSSTDESC/CLMM.git@1.8.0
     - healpix==2023.1.13
     - parallel-statistics==0.13
-    - pz-rail[dev]==0.99.1
-    - pz-rail-bpz==0.1.0
     - sacc==0.8
     - tjpcov==0.3.0
+    - pz-rail[dev]==0.99.1
+    - pz-rail-bpz==0.1.0
+    - pz-rail-astro-tools==0.0.2
+    - pz-rail-base==0.0.4
+    - pz-rail-dsps==0.0.2
+    - pz-rail-flexzboost==0.1.1
+    - pz-rail-fsps==0.0.2
+    - pz-rail-gpz-v1==0.1.2
+    - pz-rail-pipelines==0.1.0
+    - pz-rail-pzflow==0.0.1
+    - pz-rail-sklearn==0.0.1
+    - pz-rail-som==0.0.2
