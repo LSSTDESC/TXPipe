@@ -172,6 +172,165 @@ class TXPSFDiagnostics(PipelineStage):
         return results
 
 
+class TXTauStatistics(PipelineStage):
+    """
+    Compute and plot PSF Tau statistics where the definition of Tau stats are eq.20-22
+    of Gatti et al 2023.
+    """
+    name     = "TXTauStatistics"
+    parallel = False
+    inputs   = [
+                ("star_catalog", HDFFile),
+                ("rowe"        , HDFFile),
+               ]
+
+    outputs  = [
+                ("tau25"    , PNGFile),
+                ("tau0"     , PNGFile),
+                ("tau_stats", HDFFile),
+               ]
+
+
+    config_options = {
+                       "min_sep"  : 0.5,
+                       "max_sep"  : 250.0,
+                       "nbins"    : 20,
+                       "bin_slop" : 0.01,
+                       "sep_units": "arcmin",
+                       "psf_size_units": "sigma",
+                     }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+
+        matplotlib.use("agg")
+
+        ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
+        
+        rho0,rho1,rho2,rho3,rho4,rho5 = load_rowestats()
+
+        tau_stats = {}
+        for t in STAR_TYPES:
+            s = star_type == t
+            # Joint tau 0-2-5 data vector and cov
+            # We need the off-diagonal 0-2-5 blocks
+            tau,cov = self.compute_alltau(s, ra, dec, e_psf, e_mod, de_psf, T_f)
+
+        # Run simple mcmc to find best-fit values for alpha,beta,eta
+        a_best, a_best_err, b_best, b_best_err, n_best, n_best_err = sample(tau,cov,rho0,rho1,rho2,rho3,rho4,rho5)
+
+        tau_stats[0, t] = alpha*rho0 + beta*rho2 + eta*rho5
+        tau_stats[2, t] = alpha*rho2 + beta*rho1 + eta*rho4
+        tau_stats[5, t] = alpha*rho5 + beta*rho4 + eta*rho3
+
+
+    def compute_alltau(self, gra, gdec, g, s, sra, sdec, e_psf, e_mod, de_psf, T_f):
+        '''
+        Compute tau0, tau2, tau5.
+        All three needs to be computed at once due to covariance.
+
+        gra    : RA of galaxies
+        gdec   : DEC of galaxies
+        g      : shear for observed galaxies np.array((e1, e2))
+
+        s      : indices of stars to use in calculation
+        sra    : RA of stars
+        sdec   : DEC of stars
+        
+        e_psf  : measured ellipticities of PSF from stars 
+        e_mod  : model ellipticities of PSF
+        de_psf : e_psf-e_mod
+        T_f    : (T_meas - T_model)/T_meas
+        
+        '''
+        #e_psf = np.array((e1psf, e2psf))
+        #e_mod = np.array((e1mod,e2mod))
+        #de_psf = np.array((de1, de2))
+        
+        p = e_mod
+        w = de_psf
+        p = e_psf * T_f
+        
+        import treecorr
+
+        sra,sdec = sra[s],sdec[s] # Get ra/dec for  specific stars
+                
+        print(f"Computing Tau statistic rho_{i} from {n} objects")
+        
+        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], ra_units="deg", dec_units="deg") # galaxy shear
+        catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg") # e_model
+        catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg") # (e_* - e_model)
+        catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg") # (e_*(T_* - T_model)/T_* )
+            
+        corr0 = treecorr.GGCorrelation(self.config)
+        corr0.process(catg, catp)
+        corr2 = treecorr.GGCorrelation(self.config)
+        corr2.process(catg, catq)
+        corr5 = treecorr.GGCorrelation(self.config)
+        corr5.process(catg, catw)
+        
+        # Estimate covariance using jackknice
+        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'jackknife')
+
+        return corr.meanr, corr.xip, cov
+    
+
+
+
+
+    def sample(self,tau,cov,rho0,rho1,rho2,rho3,rho4,rho5, nwalkers=10, ndim=3):
+        '''
+        Run a simple mcmc chain to detemine the best-fit values for  
+        '''
+        import emcee
+
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, logProb, args=(x, y, yerr))
+        sampler.run_mcmc(pos, 5000, progress=True);
+
+        flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
+
+        ret = {}
+        var = ['alpha','beta','eta']
+
+        for i,v in enumerate(var):
+           mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
+           q    = np.diff(mcmc)
+           ret[v] = {'mean': mcmc[1],'lerr': q[0], 'rerr': q[1]}
+
+        return ret
+
+    
+
+    def logPrior(theta):
+        ''''''
+        m, b, log_f = theta
+        if -5.0 < m < 0.5 and 0.0 < b < 10.0 and -10.0 < log_f < 1.0:
+            return 0.0
+        return -np.inf
+
+
+    def logLike(self, X, alpha, beta, eta, cov):
+        # Create combined template
+        t_0    = alpha*rho0 + beta*rho2 + eta*rho5
+        t_2    = alpha*rho2 + beta*rho1 + eta*rho4
+        t_5    = alpha*rho5 + beta*rho4 + eta*rho3
+        t_all  = np.concatenate([t_0,t_2,t_5])
+ 
+        #Compute chi2
+        chi2_0 = np.dot((X-t_all),np.dot(X-t_all,cov))
+
+        return -0.5*chi2_0
+
+    def logProb(theta, x, y, yerr):
+        lp = logPrior(theta)
+        if not np.isfinite(lp):
+            return -np.inf
+        return lp + loglike(theta, x, y, yerr)
+
+
+
 class TXRoweStatistics(PipelineStage):
     """
     Compute and plot PSF Rowe statistics
