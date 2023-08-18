@@ -39,7 +39,7 @@ class DensityCorrelation:
 
 	def add_correlation(self, map_index, edges, sys_vals, data, map_input=False, frac=None, weight=None, sys_name=None, use_precompute=False):
 		"""
-		add a 1d density correlation
+		Add a 1d density correlation
 
 		Params
 		------
@@ -55,7 +55,7 @@ class DensityCorrelation:
 			if True  will assume data is the map pixel values
 			if False will assume data is the sys value evaluate at each object location
 		frac: 1D array or None
-			fractional pixel coverage or each pixel in sys_vals
+			fractional pixel coverage for each pixel in sys_vals
 		weight: 1d array or None
 			input galaxy or galaxy count weights
 		sys_name: str
@@ -129,6 +129,8 @@ class DensityCorrelation:
 		sys_vals: 1D array
 			systematic map for each fo the valid pixels
 			The order of these pixels should be preserved in any later calculations
+		frac: 1D array
+			fractional coverage of each pixel
 		"""
 		if frac is None:
 			frac = np.ones(len(sys_vals))
@@ -195,6 +197,9 @@ class DensityCorrelation:
 		self.covmat = None
 
 	def get_covmat_singlemap(self, map_index):
+		"""
+		Returns the covariance matrix block for a single Survey Property map
+		"""
 		select_map = (self.map_index == map_index)
 		return np.array([line[select_map] for line in self.covmat[select_map] ]) 
 
@@ -279,6 +284,15 @@ class DensityCorrelation:
 		return edges 
 
 	def add_model(self, model, model_name):
+		"""
+		Adds a model and computes chi2 with teh data for each Survey Property map
+
+		Params
+		------
+		model: 1D array
+
+		model_name: string
+		"""
 		self.ndens_models[model_name] = model
 
 		#if we have error bars, loop over survey property maps and compute the chi2 for each
@@ -293,7 +307,7 @@ class DensityCorrelation:
 
 	def save_to_hdf5(self, filename):
 		"""
-		save the density correlation to an hdf5 object including covariance
+		Save the density correlation to an hdf5 object including covariance
 		"""
 		import h5py
 
@@ -311,12 +325,12 @@ class DensityCorrelation:
 
 	def postprocess(self, density_correlation):
 		"""
-		PostProcess this object with an external density correlation
+		PostProcess this object with an external density correlation object
 
-		adds the covarinace from density_correlation
-		then adds the null signal model
+		Adds the covariance from density_correlation
+		Then adds the null signal model + computes chi2
 
-		TO DO: come up with a cleaner way to do this
+		TO DO: come up with a neater way to do this
 		"""
 		self.add_external_covariance(density_correlation.covmat, assert_empty=True)
 		self.add_model(density_correlation.ndens_models['null'], 'null')

@@ -362,7 +362,13 @@ class TXLSSweights(TXMapCorrelations):
 		
 		Params
 		------
+		output_dir: string
+
 		density_correlation: lsstools.DensityCorrelation 
+		
+		weighted_density_correlation: lsstools.DensityCorrelation 
+		
+		fit_output: dict
 		"""
 		import numpy as np
 		import h5py 
@@ -463,8 +469,12 @@ class TXLSSweightsSimReg(TXLSSweights):
 	def calc_covariance(self, density_correlation):
 		"""
 		Construct the covariance matrix of the ndens vs SP data-vector 
-		"""
 
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation 
+		
+		"""
 		s = time.time()
 
 		#add diagonal shot noise
@@ -490,6 +500,13 @@ class TXLSSweightsSimReg(TXLSSweights):
 		Does not include sample variance terms
 		Off-diagonal terms are between different SP maps
 		see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
+
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation 
+
+		sys_maps: array of healsparse maps
+
 		"""
 		import healpy as hp 
 		import numpy as np 
@@ -552,8 +569,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"""
 		Sample variance term in 1d binned covariance
 		
-		uses treecorr to compute teh two point function between pixel positions in different SP bins
+		uses treecorr to compute the two point function between pixel positions in different SP bins
 		see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
+
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation 
+
+		sys_maps: array of healsparse maps
 
 		"""
 		import numpy as np 
@@ -621,7 +644,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 						cat_j = cats[jmap,jsp]
 
 						nn = treecorr.NNCorrelation(max_sep=maxtheta,min_sep=mintheta,
-							nbins=20,bin_slop=0.5,sep_units='arcmin' )
+							nbins=20,sep_units='arcmin' )
 						nn.process(cat_i,cat_j)
 						covmat_N[indexi,indexj] = np.sum(nn.npairs*wtheta_interp(nn.meanr))
 						covmat_N[indexj,indexi] = covmat_N[indexi,indexj]
@@ -633,22 +656,18 @@ class TXLSSweightsSimReg(TXLSSweights):
 		return covmat_ndens
 
 	def load_tracer(self, tomobin):
-		# Load the N(z) and convert to sacc tracers (lenses only)
-		# We need this  to compute the theory guess
-		# for the SV term
+		"""
+		Load the N(z) and convert to sacc tracers (lenses only)
+		We need this to compute the theory guess
+		for the SV term
+		"""
 		import sacc
 
 		f_lens = self.open_input("lens_photoz_stack")
 
-		#tracers = {}
-		#sacc_data = sacc.Sacc()
-
 		name = f"lens_{tomobin}"
 		z = f_lens["n_of_z/lens/z"][:]
 		Nz = f_lens[f"n_of_z/lens/bin_{tomobin}"][:]
-		#sacc_data.add_tracer("NZ", name, z, Nz)
-
-		#f_lens.close()
 
 		return z, Nz
 
@@ -657,6 +676,11 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"""
 		Returns the map indices that have small null p-values (large chi2)
 		Threshold p-value set in config
+
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation 
+
 		"""
 		import scipy.stats
 		import numpy as np 
@@ -782,6 +806,11 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 
 		when doing pixel estimator we only use 1d binned covariance for template selection
 		so we can set diag_blocks_only=True
+		
+		Params
+		------
+		density_correlation: lsstools.DensityCorrelation 
+
 		"""
 
 		s = time.time()
