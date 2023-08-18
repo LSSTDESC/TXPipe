@@ -873,7 +873,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		Fdc_bf.set_precompute(density_correlation)
 		for imap, sys_vals in enumerate(sysmap_table):
 			edges = density_correlation.get_edges(imap)
-			Fdc_bf.add_correlation(imap, edges, sys_vals, Fmap_bf[Fmap_bf.valid_pixels], map_input=True, use_precompute=True )
+			Fdc_bf.add_correlation(imap, edges, sys_vals, Fmap_bf[Fmap_bf.valid_pixels], frac=frac[Fmap_bf.valid_pixels], map_input=True, use_precompute=True )
 		density_correlation.add_model(Fdc_bf.ndens, 'linear')
 
 		#assemble the fitting outputs (chi2, values, coefficents, )
@@ -921,7 +921,7 @@ class TXLSSweightsUnit(TXLSSweights):
 		sys_maps = sys_names = sys_meta = None
 		return sys_maps, sys_names, sys_meta
 
-	def calc_1d_density(self, tomobin ):
+	def calc_1d_density(self, tomobin, Fmap=None):
 		"""
 		For unit weights we dont need 1d density trends
 		"""

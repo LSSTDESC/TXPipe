@@ -77,7 +77,8 @@ class DensityCorrelation:
 			assert map_input
 			nobj_sys = np.zeros(len(self.precomputed_array[map_index]))
 			for i, select_sp in enumerate(self.precomputed_array[map_index]):
-				nobj_sys[i] = np.sum(data[select_sp])
+				#nobj_sys[i] = np.sum(data[select_sp])
+				nobj_sys[i] = np.sum(data[select_sp]*frac[select_sp])
 
 			npix_sys = self.precomputed_npix[map_index]
 			sumsys_sys = self.precomputed_sumsys[map_index]
