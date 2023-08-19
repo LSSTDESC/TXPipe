@@ -186,8 +186,9 @@ class TXTauStatistics(PipelineStage):
                ]
 
     outputs  = [
-                ("tau25"    , PNGFile),
-                ("tau0"     , PNGFile),
+                ("tau0p"    , PNGFile),
+                ("tau2p"    , PNGFile),
+                ("tau5p"    , PNGFile),
                 ("tau_stats", HDFFile),
                ]
 
@@ -220,6 +221,8 @@ class TXTauStatistics(PipelineStage):
         p_bestfits = {}
 
         for t in STAR_TYPES:
+            if t==1:
+                break
             s = star_type == t
     
             # Load precomputed Rowe stats if they exist already
@@ -242,7 +245,7 @@ class TXTauStatistics(PipelineStage):
         self.save_taustats(tau_stats, p_bestfits)
 
         # Save tau plots
-        #self.tau_plots(tau_stats)
+        self.tau_plots(tau_stats)
 
 
     def load_rowe(self,t):
@@ -280,6 +283,7 @@ class TXTauStatistics(PipelineStage):
 
         print("Computing best-fit alpha, beta, eta")
         _, _, _, _, cov = tau_stats
+        np.save('covb.npy',cov)
         eigenvalues = np.linalg.eigvals(cov)
         invcov = np.linalg.inv(cov)
         #import pdb; pdb.set_trace()
@@ -293,10 +297,13 @@ class TXTauStatistics(PipelineStage):
 
         flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
         
+        print('================ BEST-FIT ====================')
         for i,v in enumerate(var):
             mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
             q    = np.diff(mcmc)
             ret[v] = {'mean': mcmc[1],'lerr': q[0], 'rerr': q[1]}
+
+            print(v, mcmc[1],q[0],q[1])
 
         return ret
 
@@ -398,11 +405,27 @@ class TXTauStatistics(PipelineStage):
         corr5.process(catg, catw)
         
         # Estimate covariance using jackknice
-        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'shot')
+        #cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'shot')
 
         # For our purposes we only care about xip not xim
-        cov = cov[:int(cov.shape[0]/2),:int(cov.shape[0]/2)]
-
+        #cov = cov[:int(cov.shape[0]/2),:int(cov.shape[0]/2)]
+        
+        # If cov is not invertible just use diagonal elements
+        tht0,xip0,cov0 = corr0.meanr, corr0.xip, corr0.varxip**0.5
+        tht2,xip2,cov2 = corr2.meanr, corr2.xip, corr2.varxip**0.5
+        tht5,xip5,cov5 = corr5.meanr, corr5.xip, corr5.varxip**0.5
+        
+        nbins = tht0.shape[0]
+        cov = np.zeros((nbins*3,nbins*3))
+        tmp = np.zeros((nbins,nbins))
+        np.fill_diagonal(tmp,cov0)
+        #print(tmp)
+        cov[int(nbins*0):int(nbins*1),int(nbins*0):int(nbins*1)]=tmp
+        np.fill_diagonal(tmp,cov2)
+        cov[int(nbins*1):int(nbins*2),int(nbins*1):int(nbins*2)]=tmp
+        np.fill_diagonal(tmp,cov5)
+        cov[int(nbins*2):int(nbins*3),int(nbins*2):int(nbins*3)]=tmp
+        
         return corr0.meanr, corr0.xip, corr2.xip, corr5.xip, cov
         
 
@@ -413,24 +436,29 @@ class TXTauStatistics(PipelineStage):
         f = self.open_output("tau_stats")
         g = f.create_group("tau_statistics")
         for s in STAR_TYPES:
+            if s==1:
+                break
             theta, tau0, tau2, tau5, cov = tau_stats[s]
             name = STAR_TYPE_NAMES[s]
-            h = g.create_group(f"tau_{i}_{name}")
+            h = g.create_group(f"tau_{name}")
             h.create_dataset("theta"  , data=theta)
             h.create_dataset("tau0"   , data=tau0)
             h.create_dataset("tau2"   , data=tau2)
             h.create_dataset("tau5"   , data=tau5)
             h.create_dataset("cov"    , data=cov)
-
-        # Also save best-fit values 
-        h = g.create_group(f"bestfits")
-        h.create_dataset("alpha"    , data=p_bestfits['alpha'])
-        h.create_dataset("alpha_err", data=p_bestfits['alpha_err'])
-        h.create_dataset("beta"     , data=p_bestfits['beta'])
-        h.create_dataset("beta_err" , data=p_bestfits['beta_err'])
-        h.create_dataset("eta"      , data=p_bestfits['beta'])
-        h.create_dataset("eta_err"  , data=p_bestfits['beta_err'])
-        
+            
+            # Also save best-fit values 
+            h = g.create_group(f"bestfits_{name}")
+            alpha_err = max(p_bestfits[s]['alpha']['lerr'],p_bestfits[s]['alpha']['rerr']) 
+            beta_err  = max(p_bestfits[s]['beta']['lerr'] ,p_bestfits[s]['beta']['rerr']) 
+            eta_err   = max(p_bestfits[s]['eta']['lerr']  ,p_bestfits[s]['eta']['rerr']) 
+            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['mean'])
+            h.create_dataset("alpha_err", data=alpha_err)
+            h.create_dataset("beta"     , data=p_bestfits[s]['beta']['mean'])
+            h.create_dataset("beta_err" , data=beta_err)
+            h.create_dataset("eta"      , data=p_bestfits[s]['eta']['mean'])
+            h.create_dataset("eta_err"  , data=eta_err)
+            
         f.close()
 
     def load_stars(self):
@@ -522,7 +550,51 @@ class TXTauStatistics(PipelineStage):
             print("Shear calibration type not recognized.")
 
         return ra, dec, g1, g2, weight
+
+    def tau_plots(self, tau_stats):
+        # First plot - stats 1,3,4
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+        
+        for s in STAR_TYPES:
+            if s==1:
+                break
+
+            theta, tau0, tau2, tau5, cov = tau_stats[s]
+            nb    = len(theta)
+            taus  = {0:tau0, 2:tau2, 5:tau5}
+            errs  = {0: np.diag(cov[int(0*nb):int(1*nb),int(0*nb):int(1*nb)])**0.5,
+                     2: np.diag(cov[int(1*nb):int(2*nb),int(1*nb):int(2*nb)])**0.5,
+                     5: np.diag(cov[int(2*nb):int(3*nb),int(2*nb):int(3*nb)])**0.5
+                    }
     
+
+            
+            for j,i in enumerate([0,2,5]):
+                f = self.open_output("tau%dp"%i,wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+                ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
+        
+                tr = mtrans.offset_copy(
+                                        ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
+                                       )
+                plt.errorbar(
+                             theta,
+                             taus[i],
+                             errs[i],
+                             fmt=".",
+                             label=rf"$\tau_{i}$",
+                             capsize=3,
+                             transform=tr,
+                            )
+                
+                plt.xscale("log")
+                plt.yscale("log")
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\tau_{%d+}(\theta)$"%i)
+                plt.legend()
+                plt.title(STAR_TYPE_NAMES[s])
+
+                f.close()
 
 class TXRoweStatistics(PipelineStage):
     """
