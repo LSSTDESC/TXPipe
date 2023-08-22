@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, PickleFile,TextFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TextFile, TomographyCatalog
 from parallel_statistics import ParallelMeanVariance, ParallelHistogram
 from .utils.calibrators import Calibrator
 from .utils.calibration_tools import (
@@ -42,7 +42,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         ("source_mag_hist", PNGFile),
         ("response_hist", PNGFile),
         ("g_psf_T_out",TextFile),
-        ("g_psf_g_out",PickleFile),
+        ("g_psf_g_out",TextFile),
         ("g_snr_out",TextFile),
         ("g_T_out",TextFile),
     ]
@@ -205,7 +205,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
         import matplotlib.pyplot as plt
-        import pickle
         from scipy import stats
         
         psf_prefix = self.config["psf_prefix"]
@@ -305,11 +304,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This also saves the figure
         fig.close()
         
-        with self.open_output("g_psf_g_out","wb") as f:
-            data   =[mu1,mu2,mean11,mean12,mean21,mean22,std11,std12,std21,std22,line11,line12,line21,line22]
-            f.write('\n'.join([str(i) for i in  data]))
-            f.close()
-    '''
+        f = self.open_output("g_psf_g_out")
+        labels =["mu1","mu2",
+                 "mean11","mean12","mean21","mean22",
+                 "std11","std12","std21","std22",
+                 "line11","line12","line21","line22"]
+        data   =[mu1,mu2,
+                 mean11,mean12,mean21,mean22,
+                 std11,std12,std21,std22,
+                 line11,line12,line21,line22]
+        f.write('\n'.join([str(i) for e in  zip(labels, data) for i in e]))
+        f.close()
+    
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
         print("making shear psf size plot")
@@ -530,6 +536,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         fig.close()
         
         f = self.open_output("g_T_out")
+        labels =["mu",
+                 "mean1","mean2",
+                 "std1","std2",
+                 "line1","line1"]
         data   =[mu,
                  mean1,mean2,
                  std1,std2,
@@ -865,7 +875,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             plt.tight_layout()
             fig.close()
 
-    '''
+    
 class TXLensDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the lens catalog
