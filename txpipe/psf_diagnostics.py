@@ -1001,3 +1001,109 @@ def load_star_type(data):
     star_type[reserved] = STAR_PSF_RESERVED
 
     return star_type
+
+class TXPHStatistics{PipelineStage}:
+    """
+    Compute and plot statisics as described in Paulin-Henricksson et. al 2008
+    """
+    
+    name = "TXPHStatistics"
+    parallel = False
+    inputs = [("star_catalog", HDFFile),
+              ("patch_centers", TextFile),
+             ]
+    outputs = [
+        ("PH_stats", PNGFile),
+        ("PH_stats", HDFFile),
+    ]
+
+    config_options = {
+        "min_sep": 0.5,
+        "max_sep": 300.0,
+        "nbins": 9,
+        "bin_slop": 0.05,
+        "sep_units": "arcmin",
+        "psf_size_units": "sigma",
+        "var_method": 'jackknife'
+    }
+    
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+
+        matplotlib.use("agg")
+
+        ra,dec,e_psf,de_psf,Tpsf,dT,star_type = self.load_stars()
+        
+        ph_stats = {}
+        for t in STAR_TYPES:
+            s = star_type  ==t
+            ph_stats[0,t] = compute_PH(0, s, ra, dec,
+                                        e_psf[0]*dT, e_psf[1]*dT,
+                                        e_psf[0]*dT, e_psf[1]*dT)
+            
+            ph_stats[1,t]= compute_PH(0, s, ra, dec,
+                                       e_psf[0]*dT, e_psf[1]*dT,
+                                       de_psf[0]*Tpsf, de_psf[1]*Tpsf)
+            
+            ph_stats[2,t] = compute_PH(0, s, ra, dec,
+                                        de_psf[0]*Tpsf, de_psf[1]*Tpsf,
+                                        de_psf[0]*Tpsf, de_psf[1]*Tpsf)
+        self.save_stats(ph_stats)
+        #self.ph_plots(ph_stats)
+   
+    def load_stars(self):
+        with self.open_input("star_catalog") as f:
+            g = f["stars"]
+            ra = g["ra"][:]
+            dec = g["dec"][:]
+            e1psf = g["measured_e1"][:]
+            e2psf = g["measured_e2"][:]
+            e1mod = g["model_e1"][:]
+            e2mod = g["model_e2"][:]
+            de1 = e1psf - e1mod
+            de2 = e2psf - e2mod
+            if self.config["psf_size_units"] == "T":
+                Tpsf = g["measured_T"][:]
+                dT = (g["measured_T"][:] - g["model_T"][:])
+                #T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
+            elif self.config["psf_size_units"] == "sigma":
+                Tpsf = g["measured_T"][:]**2
+                dT = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2)
+                #T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+
+            e_psf = np.array((e1psf, e2psf))
+            e_mod = np.array((e1mod,e2mod))
+            de_psf = np.array((de1, de2))
+
+            star_type = load_star_type(g)
+
+        return ra, dec, e_psf, e_mod, de_psf, Tpsf, dT, star_type
+
+    def compute_PH(self,i,s,ra,dec,q1,q2):#y1,y2,z1,z2):
+        corr = treecorr.GGCorrelation(self.config)
+        cat1 = treecorr.Catalog(ra=ra, dec=dec,
+                                ra_units="deg", dec_units="deg",
+                                g1=y1,g2=y2, patch_centers=self.get_input("patch_centers"),var_method='jackknife')
+        
+        cat2 = treecorr.Catalog(ra=ra, dec=dec,
+                                ra_units="deg", dec_units="deg",
+                                g1=z1, g2=z2, patch_centers=self.get_input("patch_centers"))    
+        corr.process(cat1,cat2)
+        return corr.meanr, corr.xip, corr.xim, corr.varxi #corr.weight was outputted to create bootstrap errors.
+
+    def save_stats(self, ph_stats):
+        f = self.open_output("ph_stats")
+        g = f.create_group("ph_statistics")
+        for i in 0, 1, 2:
+            for s in STAR_TYPES:
+                theta, xip, xim, weight, err = ph_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f"ph_term{i+1}_{name}")
+                h.create_dataset("theta", data=theta)
+                h.create_dataset("xi_plus", data=xi)
+                h.create_dataset("xi_min", data=xi)
+                h.create_dataset("xi_err", data=err)
+        f.close()
+    #we will also want to write some functions to read in theory and plot
