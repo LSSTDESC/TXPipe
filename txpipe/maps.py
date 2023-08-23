@@ -255,6 +255,7 @@ class TXSourceMaps(PipelineStage):
 
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
+
             for i in bins:
 
                 # again rename "all" to "2D"
@@ -269,6 +270,7 @@ class TXSourceMaps(PipelineStage):
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2":
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
+            out.file['maps'].attrs.update(metadata)
 
 
 
