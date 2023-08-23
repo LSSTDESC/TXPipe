@@ -182,7 +182,6 @@ class DensityCorrelation:
 
 		self.covmat = self.covmat + covmat_new
 
-
 	def add_external_covariance(self, covmat, assert_empty=True):
 		"""
 		Adds an external covariance matrix
@@ -193,7 +192,7 @@ class DensityCorrelation:
 			self.covmat = np.zeros((len(self.N),len(self.N)))
 
 		self.covmat = self.covmat+covmat
-		self.ndens_err = np.sqrt(covmat.diagonal())
+		self.ndens_err = np.sqrt(self.covmat.diagonal())
 
 	def clear_covariance(self):
 		self.ndens_err = None
