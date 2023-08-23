@@ -741,7 +741,6 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		#get the frac det (TO DO: get frac only, dont need deltag)
 		_, frac = self.get_deltag(density_correlation.tomobin)
-		import 
 
 		#initial parameters
 		p0 = np.array([1.0]+[0.0]*len(sys_maps))
