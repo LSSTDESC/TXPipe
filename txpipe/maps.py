@@ -242,6 +242,8 @@ class TXSourceMaps(PipelineStage):
         # mask is where a pixel is hit in any of the tomo bins
         mask = da.zeros(npix, dtype=bool)
         for i in bins:
+            if i == "all":
+                i = "2D"
             mask |= output[f"lensing_weight_{i}"] > 0
 
         output["mask"] = mask
