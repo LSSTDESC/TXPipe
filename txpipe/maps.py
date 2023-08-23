@@ -201,9 +201,12 @@ class TXSourceMaps(PipelineStage):
             esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
 
             # normalize by weights where we want a mean
-            hit = da.where(weight_map > 0)
-            g1_map[hit] /= weight_map[hit]
-            g2_map[hit] /= weight_map[hit]
+            # hit = da.where(weight_map > 0)
+            # g1_map[hit] /= weight_map[hit]
+            # g2_map[hit] /= weight_map[hit]
+
+            g1_map /= weight_map
+            g2_map /= weight_map
 
             # Generate a catalog-like vector of the means so we can
             # subtract from the full catalog.  Not sure if this ever actually gets
@@ -219,8 +222,8 @@ class TXSourceMaps(PipelineStage):
             # (to go from the sum to the variance) and then by the count (to get the
             # variance on the mean). Have verified that this is the same as using
             # var() on the original arrays.
-            var1_map[hit] /= (weight_map[hit] * count_map[hit])
-            var2_map[hit] /= (weight_map[hit] * count_map[hit])
+            var1_map /= (weight_map * count_map)
+            var2_map /= (weight_map * count_map)
             
             # slight change in output name
             if i == "all":
