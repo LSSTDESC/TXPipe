@@ -275,6 +275,8 @@ class TXSourceMaps(PipelineStage):
                 # use the lensing weight to decide which pixels to write
                 # - we skip the empty ones so they read in as healpy.UNSEEN
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
+                    m = output[f"{key}_{i}"]
+                    m[np.isnan(m)] = healpy.UNSEEN
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
             out.file['maps'].attrs.update(metadata)
