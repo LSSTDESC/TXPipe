@@ -428,9 +428,10 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
 		"nbin": 20,
 		"outlier_fraction": 0.05,
-		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
-		"equal_area_bins": True, #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
+		"pvalue_threshold": 0.05, #max p-value for maps to be included in the corrected (a very simple form of regularization)
+		"equal_area_bins": True, #if you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
+		"diag_blocks_only":True, #If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
 		"b0": [1.0], 
 	}
 
@@ -481,12 +482,13 @@ class TXLSSweightsSimReg(TXLSSweights):
 		density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
 
 		if self.config["simple_cov"] == False:
-			#add diagonal shot noise
-			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
-			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
+			if self.config["diag_blocks_only"] == False:
+				#add off-diagonal shot noise
+				cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
+				density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#add clustering Sample Variance 
-			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=False)
+			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=self.config["diag_blocks_only"])
 			density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
 
 		f = time.time()
@@ -737,6 +739,10 @@ class TXLSSweightsSimReg(TXLSSweights):
 		sys_maps = self.sys_maps[sig_map_index]
 		sysmap_table = hsplist2array(sys_maps)
 
+		#get the frac det (TO DO: get frac only, dont need deltag)
+		_, frac = self.get_deltag(density_correlation.tomobin)
+		import 
+
 		#initial parameters
 		p0 = np.array([1.0]+[0.0]*len(sys_maps))
 
@@ -747,7 +753,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 			F, Fdc = lsstools.lsstools.linear_model(beta,*alphas,
 				density_correlation=density_correlation, 
 				sys_maps=sys_maps,
-				sysmap_table=sysmap_table,)
+				sysmap_table=sysmap_table,
+				frac=frac)
 			chi2 = lsstools.lsstools.calc_chi2(density_correlation.ndens,density_correlation.covmat,Fdc.ndens)
 			return chi2/2.
 
@@ -759,7 +766,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 		Fmap_bf, Fdc_bf = lsstools.lsstools.linear_model(coeff[0],*coeff[1:],
 			density_correlation=density_correlation, 
 				sys_maps=sys_maps,
-				sysmap_table=sysmap_table,)
+				sysmap_table=sysmap_table,
+				frac=frac)
 		density_correlation.add_model(Fdc_bf.ndens, 'linear')
 
 		#assemble the fitting outputs (chi2, values, coefficents, )
@@ -796,6 +804,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		"pvalue_threshold": 0.05, #max p-value for maps to be corrected
 		"equal_area_bins": True, #if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
+		"diag_blocks_only":True, #if True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
 		"b0": [1.0], 
 		"regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
 	}
@@ -806,7 +815,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 
 		when doing pixel estimator we only use 1d binned covariance for template selection
 		so we can set diag_blocks_only=True
-		
+
 		Params
 		------
 		density_correlation: lsstools.DensityCorrelation 
@@ -819,12 +828,13 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
 
 		if self.config["simple_cov"] == False:
-			#add diagonal shot noise
-			cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
-			density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
+			if self.config["diag_blocks_only"] == False:
+				#add off-diagonal shot noise
+				cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
+				density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
 			#add clustering Sample Variance 
-			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=True )
+			cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=self.config["diag_blocks_only"] )
 			density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
 
 		f = time.time()

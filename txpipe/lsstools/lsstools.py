@@ -78,7 +78,10 @@ class DensityCorrelation:
 			nobj_sys = np.zeros(len(self.precomputed_array[map_index]))
 			for i, select_sp in enumerate(self.precomputed_array[map_index]):
 				#nobj_sys[i] = np.sum(data[select_sp])
-				nobj_sys[i] = np.sum(data[select_sp]*frac[select_sp])
+				if frac is None:
+					nobj_sys[i] = np.sum(data[select_sp])
+				else:
+					nobj_sys[i] = np.sum(data[select_sp]*frac[select_sp])
 
 			npix_sys = self.precomputed_npix[map_index]
 			sumsys_sys = self.precomputed_sumsys[map_index]
@@ -357,7 +360,7 @@ class DensityCorrelation:
 			raise IOError('error in err or cov_mat input shape')
 
 
-def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None):
+def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None, frac=None):
 	"""
 	linear contamination model:
 	F(s) = alpha1*s1 + alpha2*s2 + ... + beta
@@ -391,7 +394,7 @@ def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_
 	F_density_corrs.set_precompute(density_correlation)
 	for imap, sys_vals in enumerate(sysmap_table):
 			edges = density_correlation.get_edges(imap)
-			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True )
+			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True, frac=frac)
 
 	return F, F_density_corrs
 
