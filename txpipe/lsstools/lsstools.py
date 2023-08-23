@@ -276,6 +276,25 @@ class DensityCorrelation:
 		fig.clear()
 		plt.close()
 
+	def plot_chi2_hist(self, filepath, extra_density_correlations=None):
+		import matplotlib.pyplot as plt
+		import scipy.stats
+
+		fig, ax = plt.subplots(1,1,figsize=(5,5))
+		ax.hist(self.chi2['null'].values(), bins=10, density=True, histtype="step", color='blue',)
+		if extra_density_correlations is not None:
+			for extra_density_correlation in extra_density_correlations:
+				ax.hist(extra_density_correlation.chi2['null'].values(), bins=10, density=True, histtype="step", color='green')
+		
+		ndata = len(self.get_edges(self.map_index[0]))-1
+		chi2_array = np.linspace(0,ndata*3,100)
+		ax.plot(chi2_array, scipy.stats.chi2(ndata).pdf(chi2_array))
+		ax.set_xlabel(r'$\chi^2_{\rm null}$')
+		fig.tight_layout()
+		fig.savefig(filepath)
+		fig.clear()
+		plt.close()
+
 	def get_edges(self, map_index):
 		"""get the sys map bin edges for a given map"""
 		select_map = (self.map_index == map_index)

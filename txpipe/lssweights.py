@@ -98,7 +98,7 @@ class TXLSSweights(TXMapCorrelations):
 			self.summarize(output_dir, density_corrs, weighted_density_corrs, fit_output )
 
 		#save object weights and weight maps
-		self.save_weights(Fmap_list)
+		self.save_weights(output_dir, Fmap_list)
 
 
 	def read_healsparse(self, map_path, nside):
@@ -296,7 +296,7 @@ class TXLSSweights(TXMapCorrelations):
 
 		return density_corrs
 
-	def save_weights(self, Fmap_list):
+	def save_weights(self, output_dir, Fmap_list):
 		"""
 		Save the weights maps and galaxy weights
 
@@ -308,6 +308,7 @@ class TXLSSweights(TXMapCorrelations):
 
 		"""
 		import healpy as hp
+		import matplotlib.pyplot as plt 
 
 		#### save the weights maps
 		map_output_file = self.open_output("lss_weight_maps", wrapper=True)
@@ -326,6 +327,7 @@ class TXLSSweights(TXMapCorrelations):
 		with self.open_input("binned_lens_catalog_unweighted") as binned_input:
 			binned_output.copy(binned_input["lens"],"lens")
 
+		fig, axs = plt.subplots( 1, self.Ntomo, figsize=(3*self.Ntomo, 3) )
 		for ibin in range(self.Ntomo):
 			#get weight per lens object
 			subgroup = binned_output[f"lens/bin_{ibin}/"]
@@ -336,6 +338,18 @@ class TXLSSweights(TXMapCorrelations):
 			obj_weight[obj_weight==1./hp.UNSEEN] = 0.0
 
 			subgroup["weight"][...] *= obj_weight
+
+			#also plot a histogram of the weights
+			axs[ibin].hist(obj_weight, bins=100)
+			axs[ibin].set_xlabel('weight')
+			axs[ibin].set_yticks([])
+			axs[ibin].set_title(f'lens {ibin}')
+		filepath = output_dir.path_for_file(f"weights_hist.png")
+		fig.tight_layout()
+		fig.savefig(filepath)
+		fig.clear()
+		plt.close()
+
 
 
 		#### save the tomography file
@@ -372,6 +386,7 @@ class TXLSSweights(TXMapCorrelations):
 		"""
 		import numpy as np
 		import h5py 
+		import scipy.stats
 
 		ibin = density_correlation.tomobin
 
@@ -400,6 +415,10 @@ class TXLSSweights(TXMapCorrelations):
 		for model in density_correlation.chi2.keys():
 			fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
 		fit_summary_file.close()
+
+		#plot the un-weighted and weighted chi2 distribution
+		filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
+		density_correlation.plot_chi2_hist(filepath, extra_density_correlations=[weighted_density_correlation])
 
 
 class TXLSSweightsSimReg(TXLSSweights):
