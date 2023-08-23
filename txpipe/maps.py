@@ -261,6 +261,7 @@ class TXSourceMaps(PipelineStage):
         metadata['nbin'] = nbin
         metadata['nbin_source'] = nbin
 
+        pix = np.where(output["mask"])[0]
 
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
@@ -273,9 +274,7 @@ class TXSourceMaps(PipelineStage):
 
                 # use the lensing weight to decide which pixels to write
                 # - we skip the empty ones so they read in as healpy.UNSEEN
-                pix = np.where(mask)[0]
-                out.write_map(f"lensing_weight_{i}", pix, m[pix], metadata)
-                for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2":
+                for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
             out.file['maps'].attrs.update(metadata)
