@@ -239,6 +239,12 @@ class TXSourceMaps(PipelineStage):
             output[f"var_g1_{i}"] = var1_map
             output[f"var_g2_{i}"] = var2_map
         
+        # mask is where a pixel is hit in any of the tomo bins
+        mask = da.zeros(npix, dtype=bool)
+        for i in bins:
+            mask |= output[f"lensing_weight_{i}"] > 0
+
+        output["mask"] = mask
 
         # Everything above is lazy - this forces the computation.
         # It works out an efficient (we hope) way of doing everything in parallel
@@ -253,6 +259,7 @@ class TXSourceMaps(PipelineStage):
         metadata['nbin'] = nbin
         metadata['nbin_source'] = nbin
 
+
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
 
@@ -264,8 +271,7 @@ class TXSourceMaps(PipelineStage):
 
                 # use the lensing weight to decide which pixels to write
                 # - we skip the empty ones so they read in as healpy.UNSEEN
-                m = output[f"lensing_weight_{i}"]
-                pix = np.where(m != 0)[0]
+                pix = np.where(mask)[0]
                 out.write_map(f"lensing_weight_{i}", pix, m[pix], metadata)
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2":
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
