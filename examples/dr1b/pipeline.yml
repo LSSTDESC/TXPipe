@@ -6,6 +6,7 @@ stages:
     - name: TXSourceTrueNumberDensity
     - name: TXLensTrueNumberDensity
     - name: TXPhotozPlots
+    - name: TXShearCalibration
     - name: TXTwoPointFourier
       nprocess: 8
       nodes: 8
