@@ -11,6 +11,8 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
+NON_TOMO_BIN = 999999
+
 # These generic mapping options are used by multiple different
 # map types.
 # TODO: consider dropping support for gnomonic maps.
@@ -290,6 +292,143 @@ class TXSourceMaps(TXBaseMaps):
         return maps
 
 
+class TXSourceMapsPreCalibrated(PipelineStage):
+    """Generate source maps directly from binned, calibrated shear catalogs.
+
+    This is a lazy implementation - we just use the parent class and
+    replace the input and calibration steps.  It could be improved.
+    """
+    name = "TXSourceMapsPreCalibrated"
+    dask_parallel = True
+
+    inputs = [
+        ("binned_shear_catalog", HDFFile),
+    ]
+
+    outputs = [
+        ("source_maps", MapsFile),
+    ]
+
+    config_options = {
+        "block_size": 0,
+        **map_config_options
+    }
+
+    def run(self):
+        import dask
+        import dask.array as da
+        import healpy
+
+        # Configuration options
+        pixel_scheme = choose_pixelization(**self.config)
+        nside = self.config["nside"]
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
+
+        # We have to keep this open throughout the process, because
+        # dask will internally load chunks of the input hdf5 data.
+        f = self.open_input("binned_shear_catalog")
+        nbin = f['shear'].attrs['nbin_source']
+
+        npix = healpy.nside2npix(nside)
+
+        # The "all" bin is the non-tomographic case.
+        bins = list(range(nbin)) + ["all"]
+        output = {}
+
+        for i in bins:
+            # These don't actually load all the data - everything is lazy
+            ra = da.from_array(f[f"shear/bin_{i}/ra"], block_size)
+            dec = da.from_array(f[f"shear/bin_{i}/dec"], block_size)
+            g1 = da.from_array(f[f"shear/bin_{i}/g1"], block_size)
+            g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
+            weight = da.from_array(f[f"shear/bin_{i}/weight"], block_size)
+
+            # This seems to work directly, but we should check performance
+            pix = pixel_scheme.ang2pix(ra, dec)
+
+            # count map is just the number of galaxies per pixel
+            count_map = da.bincount(pix, minlength=npix)
+
+            # For the other map we use bincount with weights - these are the
+            # various maps by pixel. bincount gives the number of objects in each
+            # vaue of the first argument, weighted by the weights keyword, so effectively
+            # it gives us
+            # p_i = sum_{j} x[j] * delta_{pix[j], i}
+            # which is out map
+            weight_map = da.bincount(pix, weights=weight, minlength=npix)
+            g1_map = da.bincount(pix, weights=weight * g1, minlength=npix)
+            g2_map = da.bincount(pix, weights=weight * g2, minlength=npix)
+            esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
+
+            # normalize by weights where we want a mean
+            hit = da.where(weight_map > 0)
+            g1_map[hit] /= weight_map[hit]
+            g2_map[hit] /= weight_map[hit]
+
+            # Generate a catalog-like vector of the means so we can
+            # subtract from the full catalog.  Not sure if this ever actually gets
+            # created.
+            g1_mean = g1_map[pix]
+            g2_mean = g2_map[pix]
+
+            # Also generate variance maps
+            var1_map = da.bincount(pix, weights=weight * (g1 - g1_mean)**2, minlength=npix)
+            var2_map = da.bincount(pix, weights=weight * (g2 - g2_mean)**2, minlength=npix)
+
+            # we want the variance on the mean, so we divide by both the weight
+            # (to go from the sum to the variance) and then by the count (to get the
+            # variance on the mean). Have verified that this is the same as using
+            # var() on the original arrays.
+            var1_map[hit] /= (weight_map[hit] * count_map[hit])
+            var2_map[hit] /= (weight_map[hit] * count_map[hit])
+            
+            # slight change in output name
+            if i == "all":
+                i = "2D"
+
+            # Save all the stuff we want here.
+            output[f"count_{i}"] = count_map
+            output[f"g1_{i}"] = g1_map
+            output[f"g2_{i}"] = g2_map
+            output[f"lensing_weight_{i}"] = weight_map
+            output[f"count_{i}"] = count_map
+            output[f"var_e_{i}"] = esq_map
+            output[f"var_g1_{i}"] = var1_map
+            output[f"var_g2_{i}"] = var2_map
+        
+
+        # Everything above is lazy - this forces the computation.
+        # It works out an efficient (we hope) way of doing everything in parallel
+        output, = dask.compute(output)
+        f.close()
+
+        # collate metadata
+        metadata = {
+            key: self.config[key]
+            for key in map_config_options
+        }
+
+        # write the output maps
+        with self.open_output("source_maps", wrapper=True) as out:
+            for i in bins:
+
+                # again rename "all" to "2D"
+                if i == "all":
+                    i = "2D"
+
+                # use the lensing weight to decide which pixels to write
+                # - we skip the empty ones so they read in as healpy.UNSEEN
+                m = output[f"lensing_weight_{i}"]
+                pix = np.where(m != 0)[0]
+                out.write_map(f"lensing_weight_{i}", pix, m[pix], metadata)
+                for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2":
+                    out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
+
+
+
+
 class TXLensMaps(TXBaseMaps):
     """
     Make tomographic lens number count maps
@@ -329,7 +468,6 @@ class TXLensMaps(TXBaseMaps):
         return [mapper]
 
     def data_iterator(self):
-        print("TODO: add use of lens weights here")
         # see TXSourceMaps abov for info on this
         return self.combined_iterators(
             self.config["chunk_rows"],
