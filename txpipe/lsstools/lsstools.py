@@ -390,11 +390,12 @@ def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_
 	F.update_values_pix(validpixels, F[validpixels]/meanF)
 
 	data_vals = F[validpixels]
+	frac_vals = frac[validpixels]
 	F_density_corrs = lsstools.DensityCorrelation()
 	F_density_corrs.set_precompute(density_correlation)
 	for imap, sys_vals in enumerate(sysmap_table):
 			edges = density_correlation.get_edges(imap)
-			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True, frac=frac)
+			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True, frac=frac_vals)
 
 	return F, F_density_corrs
 
