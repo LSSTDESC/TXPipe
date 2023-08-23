@@ -250,6 +250,8 @@ class TXSourceMaps(PipelineStage):
             key: self.config[key]
             for key in map_config_options
         }
+        metadata['nbin'] = nbin
+        metadata['nbin_source'] = nbin
 
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
