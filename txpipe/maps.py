@@ -228,6 +228,13 @@ class TXSourceMaps(PipelineStage):
             # slight change in output name
             if i == "all":
                 i = "2D"
+            
+            g1_map[da.isnan(g1_map)] = healpy.UNSEEN
+            g2_map[da.isnan(g1_map)] = healpy.UNSEEN
+            var1_map[da.isnan(var1_map)] = healpy.UNSEEN
+            var2_map[da.isnan(var2_map)] = healpy.UNSEEN
+            esq_map[da.isnan(esq_map)] = healpy.UNSEEN
+
 
             # Save all the stuff we want here.
             output[f"count_{i}"] = count_map
@@ -275,8 +282,6 @@ class TXSourceMaps(PipelineStage):
                 # use the lensing weight to decide which pixels to write
                 # - we skip the empty ones so they read in as healpy.UNSEEN
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
-                    m = output[f"{key}_{i}"]
-                    m[np.isnan(m)] = healpy.UNSEEN
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
             out.file['maps'].attrs.update(metadata)
