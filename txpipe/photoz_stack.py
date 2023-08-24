@@ -255,11 +255,14 @@ class TXPhotozPlot(PipelineStage):
 
         with self.open_output("nz_plot", wrapper=True) as fig:
             ax = fig.file.gca()
-            ax.set_xlim(0, self.config["zmax"])
+            zmax = self.config["zmax"]
+            ax.set_xlim(0, zmax)
+            zg = np.linspace(0, zmax, int(zmax * 100))
+            pdfs = ensemble.pdf(zg)
             for i in range(ensemble.npdf - 1):
-                ensemble.plot(i, axes=ax, label=f"Bin {i}")
+                ax.plot(zg, pdfs[i], label=f"Bin {i}")
 
-            ensemble.plot(ensemble.npdf - 1, axes=ax, label=f"Total", norm=ensemble.npdf - 1, linestyle='--')
+            ax.plot(zg, pdfs[ensemble.npdf - 1] * (ensemble.npdf - 1), label=f"Total", linestyle='--')
 
             plt.legend()
             plt.title(label)
