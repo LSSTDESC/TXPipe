@@ -530,6 +530,7 @@ class TXNoiseMapsJax(PipelineStage):
         ngal_split_add_jit = jit(ngal_split_add, static_argnums=(2,))
 
         # Loop through the data
+        # TODO: this whole bit should be a single jax.jit kernel for speed
         for (s, e, data) in it:
             # Number of objects in this chunk
             n = e - s
@@ -604,10 +605,10 @@ class TXNoiseMapsJax(PipelineStage):
             import mpi4jax
             from mpi4py import MPI
 
-            mpi4jax.reduce(G1, MPI.SUM, root=0)
-            mpi4jax.reduce(G2, MPI.SUM, root=0)
-            mpi4jax.reduce(GW, MPI.SUM, root=0)
-            mpi4jax.reduce(ngal_split, MPI.SUM, root=0)
+            G1, token = mpi4jax.reduce(G1, MPI.SUM, root=0)
+            G2, token = mpi4jax.reduce(G2, MPI.SUM, root=0, token=token)
+            G2, token = mpi4jax.reduce(GW, MPI.SUM, root=0, token=token)
+            ngal_split, token = mpi4jax.reduce(ngal_split, MPI.SUM, root=0, token=token)
             if self.rank != 0:
                 del G1, G2, GW, ngal_split
 
