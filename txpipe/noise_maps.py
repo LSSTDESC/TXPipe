@@ -620,6 +620,7 @@ class TXNoiseMapsJax(PipelineStage):
 
             # The top section has the metadata in it
             group = outfile.file.create_group("maps")
+            # TODO: sort out nbin vs nbin_source, nbin_lens
             group.attrs["nbin_source"] = nbin_source
             group.attrs["nbin"] = nbin_source
             group.attrs["lensing_realizations"] = lensing_realizations
