@@ -58,7 +58,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
             mask = maps_file.read_map("mask")
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
-            nbin_source = f.file["tomography"].attrs["nbin_source"]
+            nbin_source = f.file["tomography"].attrs["nbin"]
 
         # Mapping from 0 .. nhit - 1 to healpix indices
         reverse_map = np.where(mask > 0)[0]
@@ -93,14 +93,14 @@ class TXSourceNoiseMaps(TXBaseMaps):
             shear_cols,
             "shear_tomography_catalog",
             "tomography",
-            ["source_bin"],
+            ["bin"],
         )
         return rename_iterated(it, renames)
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
         npix, G1, G2, GW, index_map, _, _ = mappers
         lensing_realizations = self.config["lensing_realizations"]
-        source_bin = data["source_bin"]
+        source_bin = data["bin"]
 
         # Get the pixel index for each object and convert
         # to the reduced index
@@ -229,7 +229,7 @@ class TXLensNoiseMaps(TXBaseMaps):
             mask = maps_file.read_map("mask")
 
         with self.open_input("lens_tomography_catalog", wrapper=True) as f:
-            nbin_lens = f.file["tomography"].attrs["nbin_lens"]
+            nbin_lens = f.file["tomography"].attrs["nbin"]
 
         # Mapping from 0 .. nhit - 1  to healpix indices
         reverse_map = np.where(mask > 0)[0]
@@ -259,7 +259,7 @@ class TXLensNoiseMaps(TXBaseMaps):
             ["ra", "dec"],
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin"],
+            ["bin"],
         )
         return it
 
@@ -268,7 +268,7 @@ class TXLensNoiseMaps(TXBaseMaps):
         clustering_realizations = self.config["clustering_realizations"]
 
         # Tomographic bin
-        lens_bin = data["lens_bin"]
+        lens_bin = data["bin"]
 
         # Get the pixel index for each object and convert
         # to the reduced index
@@ -376,7 +376,7 @@ class TXExternalLensNoiseMaps(TXLensNoiseMaps):
             ["ra", "dec"],
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin"],
+            ["bin"],
         )
         return it
 
@@ -447,6 +447,8 @@ class TXNoiseMapsJax(PipelineStage):
         from jax import random, jit, device_get, device_put
         from .utils import choose_pixelization
 
+        raise ValueError("This code needs rewriting because source_bin and lens_bin now have the same name in the tomo files.")
+
         # get the number of bins.
         nbin_source, nbin_lens, ngal_maps, mask, map_info = self.read_inputs()
         pixel_scheme = choose_pixelization(**map_info)
@@ -466,10 +468,10 @@ class TXNoiseMapsJax(PipelineStage):
             shear_cols,
             "shear_tomography_catalog",
             "tomography",
-            ["source_bin"],
+            ["bin"],
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin"],
+            ["bin"],
         )
 
         # Get a mapping from healpix indices to masked pixel indices
@@ -535,8 +537,8 @@ class TXNoiseMapsJax(PipelineStage):
             print(f"Rank {self.rank} processing rows {s} - {e}")
 
             # Send data to GPU
-            source_bin = device_put(data["source_bin"])
-            lens_bin = device_put(data["lens_bin"])
+            source_bin = device_put(data["bin"])
+            lens_bin = device_put(data["bin"])
             weights = device_put(data["weight"])
             g1 = device_put(data["mcal_g1"]) * weights
             g2 = device_put(data["mcal_g2"]) * weights
@@ -619,7 +621,9 @@ class TXNoiseMapsJax(PipelineStage):
 
             # The top section has the metadata in it
             group = outfile.file.create_group("maps")
+            # TODO: sort out nbin vs nbin_source, nbin_lens
             group.attrs["nbin_source"] = nbin_source
+            group.attrs["nbin"] = nbin_source
             group.attrs["lensing_realizations"] = lensing_realizations
 
             # Get outputs from GPU
@@ -689,15 +693,15 @@ class TXNoiseMapsJax(PipelineStage):
             map_info = f.read_map_info("mask")
 
         with self.open_input("lens_maps", wrapper=True) as f:
-            nbin_lens = f.file["maps"].attrs["nbin_lens"]
+            nbin_lens = f.file["maps"].attrs["nbin"]
             ngal_maps = [f.read_map(f"ngal_{b}") for b in range(nbin_lens)]
 
         with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin_source"]
-            sz1 = f["tomography/source_bin"].size
+            nbin_source = f["tomography"].attrs["nbin"]
+            sz1 = f["tomography/bin"].size
 
         with self.open_input("lens_tomography_catalog") as f:
-            sz2 = f["tomography/lens_bin"].size
+            sz2 = f["tomography/bin"].size
 
         if sz1 != sz2:
             raise ValueError(

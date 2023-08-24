@@ -35,7 +35,7 @@ TXLensTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
-TXMainMaps:
+TXLensMaps:
     chunk_rows:  100000
     pixelization: healpix
     sparse: True

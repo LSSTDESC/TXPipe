@@ -40,7 +40,7 @@ We can create variables to represent groups in the file::
 
     g = f["tomography"]
     print(g.keys())
-    # prints <KeysViewHDF5 ['N_eff', 'N_eff_2d', 'mean_e1', 'mean_e1_2d', 'mean_e2', 'mean_e2_2d', 'sigma_e', 'sigma_e_2d', 'source_bin', 'source_counts', 'source_counts_2d']>
+    # prints <KeysViewHDF5 ['N_eff', 'N_eff_2d', 'mean_e1', 'mean_e1_2d', 'mean_e2', 'mean_e2_2d', 'sigma_e', 'sigma_e_2d', 'bin', 'counts', 'counts_2d']>
 
 
 Printing a dataset doesn't load it, it just shows the size and type of the data::
@@ -57,7 +57,7 @@ Instead we load data sets as a numpy arrays with a slice::
 
 For longer arrays we may want to just read a subset of the data::
 
-    b = g["source_bins"][0:100]
+    b = g["bin"][0:100]
 
 Attributes
 ----------
