@@ -151,7 +151,6 @@ class LensMapper:
         self,
         pixel_scheme,
         bins,
-        do_lens=True,
         sparse=False,
     ):
         self.pixel_scheme = pixel_scheme
