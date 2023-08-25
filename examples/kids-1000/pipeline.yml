@@ -1,0 +1,109 @@
+
+# Stages to run
+stages:
+
+    - name: TXSourceSelectorLensfit # select and split objects into source bins
+    - name: TXShearCalibration   # Calibrate and split the source sample tomographically
+    
+    #- name: TXPhotozPlots
+    #- name: TXPhotozSourceStack 
+    #- name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)    
+    #- name: TXSourceMaps
+      #nprocess: 6
+      #threads_per_process: 1
+      #nodes: 1
+    #- name: TXLensMaps
+    #- name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    #- name: TXAuxiliaryLensMaps    # make depth and bright object maps
+    #- name: TXSourceNoiseMaps    # noise maps for sources using random rotations
+    # stage below is not working because TXAuxiliaryLensMaps is broken
+    #- name: TXLensNoiseMaps      # noise maps for lenses using density splits
+    #- name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    #- name: TXMapPlots           # make pictures of all the maps
+    #- name: TXTracerMetadata     # collate metadata
+    #- name: TXRandomCat
+    #- name: TXJackknifeCenters   # Split the area into jackknife regions
+    #- name: TXTwoPoint           # Compute real-space 2-point correlations
+    #  threads_per_process: 128
+    #- name: TXBlinding           # Blind the data following Muir et al
+        #threads_per_process: 2
+    #- name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    #- name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
+      #nprocess: 8 
+      #nodes: 2
+    #- name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
+    #- name: TXGammaTFieldCenters # Compute and plot gamma_t around center points # ERROR: EXPOSURE FILE
+      ##threads_per_process: 2
+    #- name: TXGammaTStars  # Compute and plot gamma_t around bright stars
+      #threads_per_process: 2
+    #- name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
+      #threads_per_process: 2
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+    #  threads_per_process: 128
+    #- name: TXFocalPlanePlot      # mean PSF ellipticity and mean residual on the focal plane 
+      #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
+      #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    #- name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
+    #- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps #ERROR: WLMASSMAP
+    #- name: TXConvergenceMapPlots # Plot the convergence map
+    #- name: TXMapCorrelations    # plot the correlations between systematics and data # ERROR: NEEDS CONVERGENCE MAP
+    #- name: TXApertureMass        # Compute aperture-mass statistics
+      ##threads_per_process: 2
+    # Disabled since not yet synchronised with new Treecorr MPI
+    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+    #
+    # Disabling these as they takes too long for a quick test.
+    # The latter three need NaMaster
+    
+      ##- name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+      ##- name: TXTwoPointFourier          # Compute power spectra C_ell
+      ##- name: TXFourierNamasterCovariance # Compute the C_ell covariance
+      ##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+
+#===========
+
+launcher:
+    name: mini
+    interval: 1.0
+    
+site:
+    name: local 
+    max_threads: 128
+
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+
+# where to put outputs
+output_dir: data/kids/outputs
+
+# configuration settings
+config: examples/kids-1000/config.yml
+
+# These are overall inputs to the whole pipeline, not generated within it
+inputs:
+    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/KiDS-1000/shear_catalog_kids1000.h5 
+    photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/KiDS-1000/photometry_catalog_kids1000.h5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/KiDS-1000/lens_tomography_kids1000.h5
+    binned_lens_catalog:  data/kids/inputs/binned_shear_catalog.hdf5
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/kids/KiDS-1000_psf_catalog.h5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    random_cats_source: Null
+    flow: data/example/inputs/example_flow.pkl
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+
+# where to put output logs for individual stages
+log_dir: data/kids/logs
+
+# where to put an overall parsl pipeline log
+pipeline_log: data/kids/log.txt
