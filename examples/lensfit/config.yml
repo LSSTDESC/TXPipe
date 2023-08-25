@@ -54,7 +54,7 @@ PZRailEstimateLens:
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
     aliases:
-        photoz_stack: source_photoz_stack
+        photoz_stack: shear_photoz_stack
         nz_plot: nz_source
 
 TXPhotozPlotLens:
@@ -79,7 +79,7 @@ TXPhotozSourceStack:
         photoz_pdfs: lens_photoz_pdfs
         tomography_catalog: shear_tomography_catalog
         weights_catalog: shear_catalog
-        photoz_stack: source_photoz_stack
+        photoz_stack: shear_photoz_stack
 
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
