@@ -51,11 +51,33 @@ PZRailEstimateLens:
     convert_unseen: True
     bands: ugrizy
 
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: source_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+
+TXPhotozLensStack:
+    name: TXPhotozLensStack
+    aliases:
+        photoz_pdfs: lens_photoz_pdfs
+        tomography_catalog: lens_tomography_catalog
+        weights_catalog: none
+        photoz_stack: lens_photoz_stack
 
 TXPhotozSourceStack:
     name: TXPhotozSourceStack
     aliases:
-        source_photoz_pdfs: lens_photoz_pdfs
+        photoz_pdfs: source_photoz_pdfs
+        tomography_catalog: shear_tomography_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: source_photoz_stack
 
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
