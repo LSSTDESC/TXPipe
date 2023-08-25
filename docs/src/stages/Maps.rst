@@ -12,8 +12,6 @@ plotting.
 
 * :py:class:`~txpipe.maps.TXExternalLensMaps` - Make tomographic lens number count maps from external data
 
-* :py:class:`~txpipe.maps.TXMainMaps` - Make both shear and number count maps
-
 * :py:class:`~txpipe.maps.TXDensityMaps` - Convert galaxy count maps to overdensity delta maps
 
 * :py:class:`~txpipe.noise_maps.TXSourceNoiseMaps` - Generate realizations of shear noise maps with random rotations
@@ -51,10 +49,6 @@ plotting.
 
 
 .. autoclass:: txpipe.maps.TXExternalLensMaps
-   :members:
-
-
-.. autoclass:: txpipe.maps.TXMainMaps
    :members:
 
 

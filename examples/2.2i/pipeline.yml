@@ -47,7 +47,10 @@ stages:
       threads_per_process: 8
     - name: TXPhotozPlots
       nprocess: 8
-    - name: TXMainMaps
+    - name: TXSourceMaps
+      nprocess: 16
+      nodes: 2
+    - name: TXLensMaps
       nprocess: 16
       nodes: 2
     - name: TXAuxiliarySourceMaps

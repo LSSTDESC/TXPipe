@@ -4,7 +4,7 @@ import numpy as np
 from .utils import unique_list, choose_pixelization, rename_iterated
 from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
 from .utils.calibrators import Calibrator
-from .mapping import Mapper, FlagMapper
+from .mapping import ShearMapper, LensMapper, FlagMapper
 
 
 SHEAR_SHEAR = 0
@@ -161,12 +161,9 @@ class TXSourceMaps(TXBaseMaps):
         self.config["nbin_source"] = nbin_source
         # create basic mapper object
         source_bins = list(range(nbin_source))
-        lens_bins = []
-        mapper = Mapper(
+        mapper = ShearMapper(
             pixel_scheme,
-            lens_bins,
             source_bins,
-            do_lens=False,
             sparse=self.config["sparse"],
         )
         return [mapper, cal]
@@ -195,7 +192,7 @@ class TXSourceMaps(TXBaseMaps):
             # next file
             "shear_tomography_catalog",  # tag of input file to iterate through
             "tomography",  # data group within file to look at
-            ["source_bin"],  # column(s) to read
+            ["bin"],  # column(s) to read
         )
         return rename_iterated(it, renames)
 
@@ -245,7 +242,7 @@ class TXSourceMaps(TXBaseMaps):
         # only one mapper here - we call its finalize method
         # to collect everything
         mapper, cal = mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
+        pix, counts, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
 
         # build up output
         maps = {}
@@ -257,13 +254,14 @@ class TXSourceMaps(TXBaseMaps):
         # Calibrate the maps
         g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
 
-        for b in mapper.source_bins:
+        for b in mapper.bins:
             # keys are the output tag and the map name
             maps["source_maps", f"g1_{b}"] = (pix, g1[b])
             maps["source_maps", f"g2_{b}"] = (pix, g2[b])
             maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
             maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
             maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
+            maps["source_maps", f"count_{b}"] = (pix, counts[b])
             # added from HSC branch, to get analytic noise in twopoint_fourier
             out_e = np.zeros_like(esq[b])
             out_e[esq[b] > 0] = esq[b][esq[b] > 0]
@@ -317,17 +315,15 @@ class TXLensMaps(TXBaseMaps):
     def prepare_mappers(self, pixel_scheme):
         # read nbin_lens and save
         with self.open_input("lens_tomography_catalog") as f:
-            nbin_lens = f["tomography"].attrs["nbin_lens"]
+            nbin_lens = f["tomography"].attrs["nbin"]
         self.config["nbin_lens"] = nbin_lens
 
         # create lone mapper
         lens_bins = list(range(nbin_lens))
         source_bins = []
-        mapper = Mapper(
+        mapper = LensMapper(
             pixel_scheme,
             lens_bins,
-            source_bins,
-            do_g=False,
             sparse=self.config["sparse"],
         )
         return [mapper]
@@ -344,7 +340,7 @@ class TXLensMaps(TXBaseMaps):
             # next file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
         )
 
     def accumulate_maps(self, pixel_scheme, data, mappers):
@@ -356,13 +352,13 @@ class TXLensMaps(TXBaseMaps):
         # Again just the one mapper
         mapper = mappers[0]
         # Ignored return values are empty dicts for shear
-        pix, ngal, weighted_ngal, _, _, _, _, _, _ = mapper.finalize(self.comm)
+        pix, ngal, weighted_ngal = mapper.finalize(self.comm)
         maps = {}
 
         if self.rank != 0:
             return maps
 
-        for b in mapper.lens_bins:
+        for b in mapper.bins:
             # keys are the output tag and the map name
             maps["lens_maps", f"ngal_{b}"] = (pix, ngal[b])
             maps["lens_maps", f"weighted_ngal_{b}"] = (pix, weighted_ngal[b])
@@ -398,143 +394,9 @@ class TXExternalLensMaps(TXLensMaps):
             # next file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # another section in the same file
         )
-
-
-class TXMainMaps(TXSourceMaps, TXLensMaps):
-    """
-    Make both shear and number count maps
-
-    Combined source and photometric lens maps, from the
-    same photometry catalog. This might be slightly faster than
-    running two maps separately, but it only works if the source
-    and lens catalogs are the same set of objects. Otherwise use
-    TXSourceMaps and TXLensMaps.
-    """
-
-    name = "TXMainMaps"
-
-    inputs = [
-        ("photometry_catalog", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
-        ("shear_tomography_catalog", TomographyCatalog),
-        ("shear_catalog", ShearCatalog),
-    ]
-    outputs = [
-        ("lens_maps", MapsFile),
-        ("source_maps", MapsFile),
-    ]
-
-    config_options = {"true_shear": False, **map_config_options}
-
-    def data_iterator(self):
-        # This is just the combination of
-        # the source and lens map columns
-        print("TODO: no lens weights here")
-
-        with self.open_input("photometry_catalog") as f:
-            sz1 = f["photometry/ra"].size
-
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            sz2 = f.get_size()
-
-        if sz1 != sz2:
-            raise ValueError(
-                "Shear and photometry catalogs in TXMainMaps are "
-                "different sizes. To use separate source and lens "
-                "samples use TXSourceMaps and TXLensMaps separately."
-            )
-
-        # metacal, lensfit, etc.
-        shear_catalog_type = read_shear_catalog_type(self)
-
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
-
-        it = self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "photometry_catalog",
-            "photometry",
-            ["ra", "dec"],
-            # next file
-            "shear_catalog",
-            "shear",
-            shear_cols,
-            # next file
-            "lens_tomography_catalog",
-            "tomography",
-            ["lens_bin", "lens_weight"],
-            # next file
-            "shear_tomography_catalog",
-            "tomography",
-            ["source_bin"],
-        )
-
-        return rename_iterated(it, renames)
-
-    def prepare_mappers(self, pixel_scheme):
-        nbin_source, cal = self.get_calibrators()
-
-        with self.open_input("lens_tomography_catalog") as f:
-            nbin_lens = f["tomography"].attrs["nbin_lens"]
-
-        self.config["nbin_source"] = nbin_source
-        self.config["nbin_lens"] = nbin_lens
-
-        source_bins = list(range(nbin_source))
-        lens_bins = list(range(nbin_lens))
-
-        # still a single mapper doing source and lens
-        mapper = Mapper(
-            pixel_scheme, lens_bins, source_bins, sparse=self.config["sparse"]
-        )
-        return [mapper, cal]
-
-    # accumulate_maps is inherited from TXSourceMaps because
-    # that appears first in the parent classes
-
-    def finalize_mappers(self, pixel_scheme, mappers):
-        # Still one mapper, but now we read both source and
-        # lens maps from it.
-        mapper, cal = mappers
-        (
-            pix,
-            ngal,
-            weighted_ngal,
-            g1,
-            g2,
-            var_g1,
-            var_g2,
-            weights_g,
-            esq,
-        ) = mapper.finalize(self.comm)
-        maps = {}
-
-        if self.rank != 0:
-            return maps
-
-        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
-
-        # Now both loops, source and lens
-        for b in mapper.lens_bins:
-            maps["lens_maps", f"ngal_{b}"] = (pix, ngal[b])
-            maps["lens_maps", f"weighted_ngal_{b}"] = (pix, weighted_ngal[b])
-
-        for b in mapper.source_bins:
-            maps["source_maps", f"g1_{b}"] = (pix, g1[b])
-            maps["source_maps", f"g2_{b}"] = (pix, g2[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
-
-            out_e = np.zeros_like(esq[b])
-            out_e[esq[b] > 0] = esq[b][esq[b] > 0]
-            maps["source_maps", f"var_e_{b}"] = (pix, out_e)
-
-        return maps
 
 
 class TXDensityMaps(PipelineStage):

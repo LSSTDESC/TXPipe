@@ -79,10 +79,16 @@ TXTwoPoint:
     verbose: 0
     subtract_mean_shear: True
 
-TXMainMaps:
+TXSourceMaps:
     pixelization: healpix
     nside: 1024
     sparse: True
+
+TXLensMaps:
+    pixelization: healpix
+    nside: 1024
+    sparse: True
+
 
 TXAuxiliarySourceMaps:
     chunk_rows:  100000

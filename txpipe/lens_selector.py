@@ -156,13 +156,13 @@ class TXBaseLensSelector(PipelineStage):
 
         outfile = self.open_output("lens_tomography_catalog", parallel=True)
         group = outfile.create_group("tomography")
-        group.create_dataset("lens_bin", (n,), dtype="i")
+        group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
-        group.create_dataset("lens_counts", (nbin_lens,), dtype="i")
-        group.create_dataset("lens_counts_2d", (1,), dtype="i")
+        group.create_dataset("counts", (nbin_lens,), dtype="i")
+        group.create_dataset("counts_2d", (1,), dtype="i")
 
-        group.attrs["nbin_lens"] = nbin_lens
-        group.attrs[f"lens_zbin_edges"] = self.config["lens_zbin_edges"]
+        group.attrs["nbin"] = nbin_lens
+        group.attrs[f"zbin_edges"] = self.config["lens_zbin_edges"]
 
         return outfile
 
@@ -188,7 +188,7 @@ class TXBaseLensSelector(PipelineStage):
         """
 
         group = outfile["tomography"]
-        group["lens_bin"][start:end] = lens_bin
+        group["bin"][start:end] = lens_bin
         group["lens_weight"][start:end] = 1.0
 
     def write_global_values(self, outfile, number_density_stats):
@@ -203,8 +203,8 @@ class TXBaseLensSelector(PipelineStage):
 
         if self.rank == 0:
             group = outfile["tomography"]
-            group["lens_counts"][:] = lens_counts
-            group["lens_counts_2d"][:] = lens_counts_2d
+            group["counts"][:] = lens_counts
+            group["counts_2d"][:] = lens_counts_2d
 
     def select_lens(self, phot_data):
         t = self.config["selection_type"]
@@ -459,9 +459,9 @@ class TXLensCatalogSplitter(PipelineStage):
     def run(self):
 
         with self.open_input("lens_tomography_catalog") as f:
-            nbin = f["tomography"].attrs["nbin_lens"]
-            counts = f["tomography/lens_counts"][:]
-            count2d = f["tomography/lens_counts_2d"][:]
+            nbin = f["tomography"].attrs["nbin"]
+            counts = f["tomography/counts"][:]
+            count2d = f["tomography/counts_2d"][:]
 
         extra_cols = [c for c in self.config["extra_cols"] if c]
         cols = ["ra", "dec", "weight", "comoving_distance"]
@@ -491,9 +491,9 @@ class TXLensCatalogSplitter(PipelineStage):
             data["weight"] = data["lens_weight"]
             for b in my_bins:
                 if b == "all":
-                    w = np.where(data["lens_bin"] >= 0)
+                    w = np.where(data["bin"] >= 0)
                 else:
-                    w = np.where(data["lens_bin"] == b)
+                    w = np.where(data["bin"] == b)
                 d = {name: col[w] for name, col in data.items()}
                 splitter.write_bin(d, b)
 
@@ -509,7 +509,7 @@ class TXLensCatalogSplitter(PipelineStage):
             # first file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # second file
             "photometry_catalog",
             "photometry",
@@ -564,7 +564,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
             # first file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # second file
             "photometry_catalog",
             "photometry",
@@ -602,7 +602,7 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
             # first file
             "lens_tomography_catalog",
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # second file
             "lens_catalog",
             "lens",
