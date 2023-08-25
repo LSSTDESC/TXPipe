@@ -73,6 +73,7 @@ TXPhotozLensStack:
 
 TXPhotozSourceStack:
     name: TXPhotozSourceStack
+    weight_col: shear/weight
     aliases:
         # not a mistake - we use the same photoz_pdfs for both
         photoz_pdfs: lens_photoz_pdfs
@@ -166,8 +167,6 @@ TXTwoPoint:
     subtract_mean_shear: True
     # Using the arc metric here to test it works
     metric: Arc
-    aliases:
-        shear_photoz_stack: lens_photoz_stack
 
 TXGammaTBrightStars:
     shear_catalog_type: metacal
@@ -327,10 +326,6 @@ PZEstimatorLens:
         mag_z: 27.98
         mag_y: 27.05
 
-TXGammaTStars:
-    aliases:
-        shear_photoz_stack: lens_photoz_stack
+TXGammaTStars: {}
 
-TXGammaTRandoms:
-    aliases:
-        shear_photoz_stack: lens_photoz_stack
+TXGammaTRandoms: {}

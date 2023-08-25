@@ -65,7 +65,7 @@ class TXRandomCat(PipelineStage):
             # This is a QP object
             n_of_z_object = f.read_ensemble()
             Ntomo = n_of_z_object.npdf - 1 # ensemble includes the non-tomo 2D n(z)
-            
+
         # We also generate comoving distances under a fiducial cosmology
         # for each random, for use in Rlens type metrics
         with self.open_input("fiducial_cosmology", wrapper=True) as f:

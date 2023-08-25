@@ -18,7 +18,7 @@ class TXPhotozStack(PipelineStage):
         ('weights_catalog', HDFFile),
     ]
     outputs = [
-        ("photoz_stack", QPPDFFile),
+        ("photoz_stack", QPNOfZFile),
     ]
     config_options = {
         "chunk_rows": 5000,
@@ -58,8 +58,8 @@ class TXPhotozStack(PipelineStage):
                 raise ValueError(f"TXPipe cannot yet use QP PDF type {pdf_type}")
 
 
-        pdfs = np.zeros((nbin, nz))
-        total_weight = np.zeros(nbin)
+        pdfs = np.zeros((nbin + 1, nz))
+        total_weight = np.zeros(nbin + 1)
         with self.open_input("photoz_pdfs", wrapper=True) as f:
             for start, end, qp_chunk in f.iterate(chunk_rows, rank=self.rank, size=self.size):
                 print(f"Rank {self.rank} stacking PDFs {start} to {end}")
@@ -84,12 +84,22 @@ class TXPhotozStack(PipelineStage):
                         raise ValueError(f"TXPipe cannot yet use QP PDF type {pdf_type}")
 
                     if weights is None:
-                        pdfs[i] += pdfs_chunk.sum(axis=0)
+                        chunk_stack = pdfs_chunk.sum(axis=0)
+                        pdfs[i] += chunk_stack
                         total_weight[i] += qp_bin.npdf
+                        # 2D bin
+                        pdfs[-1] += chunk_stack
+                        total_weight[-1] += qp_bin.npdf
                     else:
                         # This is not yet tested!
-                        pdfs[i] += weights[sel] @ pdfs_chunk
-                        total_weight[i] += weights[sel].sum()
+                        chunk_stack = weights[sel] @ pdfs_chunk
+                        w = weights[sel].sum()
+                        pdfs[i] += chunk_stack
+                        total_weight[i] += w
+                        pdfs[-1] += chunk_stack
+                        total_weight[-1] += w
+                
+                
         
         # Collect the results from all processors
         in_place_reduce(pdfs, self.comm)
@@ -107,7 +117,8 @@ class TXPhotozStack(PipelineStage):
             else:
                 raise ValueError(f"TXPipe cannot yet use QP PDF type {pdf_type}")
 
-            q.write_to(self.get_output("photoz_stack"))
+            with self.open_output("photoz_stack", "w") as f:
+                f.write_ensemble(q)
 
 
 
