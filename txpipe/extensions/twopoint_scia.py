@@ -186,7 +186,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
         # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
-        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True)  # getting the cosmology
         r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
         a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
         Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
@@ -235,7 +235,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         
 
         # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
-        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True)  # getting the cosmology
         r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
         a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
         Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
@@ -284,7 +284,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
             rancat_j = rancat_i
 
         # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
-        cosmo = ccl.Cosmology.read_yaml(self.get_input('fiducial_cosmology')) # getting the cosmology
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True)  # getting the cosmology
         r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
         a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
         Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
