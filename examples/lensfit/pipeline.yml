@@ -99,6 +99,7 @@ inputs:
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     flow: data/example/inputs/example_flow.pkl
+    none: none
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

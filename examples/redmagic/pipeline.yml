@@ -45,6 +45,7 @@ stages:
     - name: TXExternalLensNoiseMaps
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
+    - name: TXTwoPointPlots
     # - name: TXTwoPointFourier
       # threads_per_process: 2
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
