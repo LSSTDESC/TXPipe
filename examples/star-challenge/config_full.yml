@@ -61,13 +61,6 @@ TXLensTrueNumberDensity:
     nz: 301
 
 
-
-TXMainMaps:
-    chunk_rows:  100000
-    pixelization: healpix
-    nside: 4096
-    sparse: True
-
 TXSourceMaps:
     nside: 4096
     sparse: True

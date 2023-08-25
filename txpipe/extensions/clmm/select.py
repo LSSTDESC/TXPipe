@@ -393,7 +393,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # any selected object, so we just ask for bin >= 0.
         # (bin = -1 means non-selected)
         tomo_group = "tomography"
-        tomo_cols = ["source_bin"]
+        tomo_cols = ["bin"]
 
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
@@ -415,7 +415,7 @@ class CLClusterShearCatalogs(PipelineStage):
             data["original_index"] = np.arange(s, e, dtype=int)
 
             # cut down to objects in the WL sample
-            wl_sample = data["source_bin"] >= 0
+            wl_sample = data["bin"] >= 0
             data = {name: col[wl_sample] for name, col in data.items()}
 
             # give the shear columns a unified name, whether

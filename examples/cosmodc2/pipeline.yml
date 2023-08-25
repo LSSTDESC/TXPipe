@@ -28,7 +28,9 @@ stages:
       nodes: 2
       threads_per_process: 32
     - name: TXJackknifeCenters
-    - name: TXMainMaps
+    - name: TXSourceMaps
+      nprocess: 8
+    - name: TXLensMaps
       nprocess: 8
     - name: TXAuxiliarySourceMaps
       nprocess: 8

@@ -1,7 +1,7 @@
 from .maps import TXBaseMaps, map_config_options
 import numpy as np
 from .base_stage import PipelineStage
-from .mapping import Mapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
+from .mapping import ShearMapper, LensMapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
 
@@ -48,13 +48,13 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         # We make a suite of mappers here.
         # We read nbin_source because we want PSF maps per-bin
         with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin_source"]
+            nbin_source = f["tomography"].attrs["nbin"]
         self.config["nbin_source"] = nbin_source  # so it gets saved later
         source_bins = list(range(nbin_source))
 
         # For making psf_g1, psf_g2 maps, per source-bin
-        psf_mapper = Mapper(
-            pixel_scheme, [], source_bins, do_lens=False, sparse=self.config["sparse"]
+        psf_mapper = ShearMapper(
+            pixel_scheme, source_bins, sparse=self.config["sparse"]
         )
 
         # for mapping the density of flagged objects
@@ -124,7 +124,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
             # next file
             "shear_tomography_catalog",
             "tomography",
-            ["source_bin"],
+            ["bin"],
         )
 
         return rename_iterated(it, renames)
@@ -142,7 +142,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
             "g2": data["psf_g2"],
             "ra": data["ra"],
             "dec": data["dec"],
-            "source_bin": data["source_bin"],
+            "bin": data["bin"],
             "weight": data["weight"],
         }
 
@@ -159,7 +159,7 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
         psf_mapper, flag_mapper = mappers
 
         # Four different mappers
-        pix, _, _, g1, g2, var_g1, var_g2, weight, _ = psf_mapper.finalize(self.comm)
+        pix, counts, g1, g2, var_g1, var_g2, weight, _ = psf_mapper.finalize(self.comm)
         flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
 
         # Collect all the maps
@@ -169,11 +169,12 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
             return maps
 
         # Save PSF maps
-        for b in psf_mapper.source_bins:
+        for b in psf_mapper.bins:
+            maps["aux_source_maps", f"psf/counts_{b}"] = (pix, counts[b])
             maps["aux_source_maps", f"psf/g1_{b}"] = (pix, g1[b])
-            maps["aux_source_maps", f"psf/g2_{b}"] = (pix, g1[b])
+            maps["aux_source_maps", f"psf/g2_{b}"] = (pix, g2[b])
             maps["aux_source_maps", f"psf/var_g2_{b}"] = (pix, var_g1[b])
-            maps["aux_source_maps", f"psf/var_g2_{b}"] = (pix, var_g1[b])
+            maps["aux_source_maps", f"psf/var_g2_{b}"] = (pix, var_g2[b])
             maps["aux_source_maps", f"psf/lensing_weight_{b}"] = (pix, weight[b])
 
         # Save flag maps
