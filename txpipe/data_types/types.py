@@ -450,12 +450,17 @@ class FiducialCosmology(YamlFile):
             Neff=params["Neff"],
             w0=params["w0"],
             wa=params["wa"],
+        )
+        if ccl.__version__[0] == "2":
+            inits.update(dict(
             bcm_log10Mc=params["bcm_log10Mc"],
             bcm_etab=params["bcm_etab"],
             bcm_ks=params["bcm_ks"],
             mu_0=params["mu_0"],
             sigma_0=params["sigma_0"],
-        )
+            ))
+
+
 
         if "z_mg" in params:
             inits["z_mg"] = params["z_mg"]

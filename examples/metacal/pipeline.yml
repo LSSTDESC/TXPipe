@@ -60,10 +60,12 @@ stages:
     - name: TXMapCorrelations    # plot the correlations between systematics and data
     - name: TXApertureMass        # Compute aperture-mass statistics
       threads_per_process: 2
-    - name: TXTwoPointFourier    # Compute power spectra C_ell
-    # Disablig this since not yet synchronised with new Treecorr MPI
-    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
-    # Disabling these as they take too long for a quick test.
+    # Disabled since not yet synchronised with new Treecorr MPI
+    - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+      threads_per_process: 2
+
+    # Disabling these as they takes too long for a quick test.
+    # The latter three need NaMaster
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
     # - name: TXTwoPointFourier          # Compute power spectra C_ell
     # - name: TXFourierNamasterCovariance # Compute the C_ell covariance
@@ -111,8 +113,9 @@ inputs:
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now
-    # So it is set to Null, so the yaml intepreter returns a None value to python. 
-    random_cats_source: Null
+    # So it is set to None, so the yaml intepreter returns a None value to python. 
+    random_cats_source: None
+    binned_random_catalog_source: None
     flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off

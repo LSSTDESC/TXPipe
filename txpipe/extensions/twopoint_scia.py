@@ -2,12 +2,9 @@ from ..twopoint import TXTwoPoint
 from ..data_types import (
     HDFFile,
     ShearCatalog,
-    TomographyCatalog,
     RandomsCatalog,
     FiducialCosmology,
     SACCFile,
-    PhotozPDFFile,
-    PNGFile,
     TextFile,
 )
 from ..utils.calibration_tools import read_shear_catalog_type
@@ -15,6 +12,11 @@ import numpy as np
 import random
 import collections
 import sys
+import pathlib
+from time import perf_counter
+import gc
+from ..utils.patches import PatchMaker
+
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
@@ -42,27 +44,28 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
     name = "TXSelfCalibrationIA"
     inputs = [
-        ("shear_catalog", ShearCatalog),
-        ("shear_tomography_catalog", TomographyCatalog),
-        ("shear_photoz_stack", HDFFile),
-        ("random_cats_source", RandomsCatalog),
-        ("lens_tomography_catalog", TomographyCatalog),
-        ("patch_centers", TextFile),
-        ("photoz_pdfs", PhotozPDFFile),
+        ('binned_shear_catalog', ShearCatalog),
+        ('binned_lens_catalog', HDFFile),
+        ('binned_random_catalog_source', HDFFile),
+        ('shear_photoz_stack', HDFFile),
+        ('lens_photoz_stack', HDFFile),
+        ('patch_centers', TextFile),
         ("fiducial_cosmology", FiducialCosmology),
-        ("tracer_metadata", HDFFile),
+        ('tracer_metadata', HDFFile),
     ]
     outputs = [
         ("twopoint_data_SCIA", SACCFile),
         ("gammaX_scia", SACCFile),
     ]
-    # Add values to the config file that are not previously defined
+    # Consider rewritting this so it takes copy from base file, and 
+    # then adds to it.
     config_options = {
         "calcs": [0, 1, 2],
         "min_sep": 2.5,
         "max_sep": 250.0,
-        "nbins": 20,
-        "bin_slop": 0.1,
+        "nbins": 9,
+        "bin_slop": 0.0,
+        "flip_g1": False,
         "flip_g2": True,
         "cores_per_task": 20,
         "verbose": 1,
@@ -80,28 +83,30 @@ class TXSelfCalibrationIA(TXTwoPoint):
         "redshift_shearcatalog": False,
         "chunk_rows": 100_000,
         "use_subsampled_randoms": False,
+        "patch_dir": "./cache/patches",
+        "share_patch_files": False,
+        "gaussian_sims_factor": [1.],
+        "low_mem": False,
+        "use_randoms": False,
     }
 
     def run(self):
 
         super().run()
 
-    def select_calculations(self, data):
-        source_list = data["source_list"]
+    def select_calculations(self, source_list, lens_list):
         calcs = []
 
         if self.config["do_shear_pos"]:
             k = SHEAR_POS
             l = SHEAR_POS_SELECT  # adding extra calls to do the selection function version for the shear_position.
             for i in source_list:
-                calcs.append((i, i, k))
-                calcs.append((i, i, l))
-
-        if self.config["do_pos_pos"]:
-            if not "random_bin" in data:
-                raise ValueError(
-                    "You need to have a random catalog to calculate position-position correlations"
-                )
+                calcs.append((i,i,k))
+                calcs.append((i,i,l))
+        
+        if self.config['do_pos_pos']:
+            if not self.config['use_randoms']:
+                raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             for i in source_list:
                 calcs.append((i, i, k))
@@ -118,241 +123,76 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         return calcs
 
-    def load_shear_catalog(self, data):
+    def get_lens_catalog(self, i):
+        raise ValueError(f"Something broke and TXPipe tried to load a lens catalog.")
 
-        # Columns we need from the shear catalog
-        read_shear_catalog_type(self)
-
-        if self.config["shear_catalog_type"] == "metacal":
-            if self.config["use_true_shear"]:
-                cat_cols = ["ra", "dec", "true_g1", "true_g2", "mcal_flags"]
-            else:
-                cat_cols = ["ra", "dec", "mcal_g1", "mcal_g2", "mcal_flags"]
-
-        else:
-            cat_cols = ["ra", "dec", "g1", "g2", "weight", "flags", "sigma_e", "m"]
-        print(f"Loading shear catalog columns: {cat_cols}")
-
-        f = self.open_input("shear_catalog")
-        g = f["shear"]
-        for col in cat_cols:
-            print(f"Loading {col}")
-            data[col] = g[col][:]
-
-        if self.config["3Dcoords"]:
-            # Temporary fix for not running PDF's on DES
-            if self.config["redshift_shearcatalog"]:
-                data["mu"] = g["mean_z"]
-            else:
-                h = self.open_input("photoz_pdfs")
-                g = h["point_estimates"]
-                data["mu"] = g["z_mean"][:]
-
-    def load_random_catalog(self, data):
-        # For now we are just bypassing this, since it is not needed
-
-        filename = self.get_input("random_cats_source")
-        if filename == "None":
-            filename = None
-
-        if filename is None:
-            print("Not using randoms")
-            return
-
-        # Columns we need from the tomography catalog
-        randoms_cols = ["dec", "ra", "bin", "z"]
-        print(f"Loading random catalog columns: {randoms_cols}")
-
-        f = self.open_input("random_cats_source")
-        group = f["randoms"]
-
-        cut = self.config["reduce_randoms_size"]
-        if 0.0 < cut < 1.0:
-            N = group["dec"].size
-            sel = np.random.uniform(size=N) < cut
-        else:
-            sel = slice(None)
-
-        data["random_ra"] = group["ra"][sel]
-        data["random_dec"] = group["dec"][sel]
-
-        data["random_bin"] = group["bin"][sel]
-        data["random_z"] = group["z"][sel]
-
-        f.close()
-
-    def get_lens_catalog(self, data, meta, i):
+    def get_shear_catalog(self, i):
         import treecorr
-        import pyccl as ccl
-
-        # Note that we are here actually loading the source bin as the lens bin!
-        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
-
-        if "lens_ra" in data:
-            ra = data["lens_ra"][mask]
-            dec = data["lens_dec"][mask]
-        else:
-            ra = data["ra"][mask]
-            dec = data["dec"][mask]
-
-        if self.config["3Dcoords"]:
-            mu = data["mu"][mask]
-            cosmo = ccl.Cosmology.read_yaml(self.get_input("fiducial_cosmology"))
-            r = ccl.background.comoving_radial_distance(cosmo, 1 / (1 + mu))
-
-            if self.config["var_method"] == "jackknife":
-                patch_centers = self.get_input("patch_centers")
-                cat = treecorr.Catalog(
-                    ra=ra,
-                    dec=dec,
-                    r=r,
-                    ra_units="degree",
-                    dec_units="degree",
-                    patch_centers=patch_centers,
-                )
-            else:
-                cat = treecorr.Catalog(
-                    ra=ra, dec=dec, r=r, ra_units="degree", dec_units="degree"
-                )
-
-            if "random_bin" in data:
-                random_mask = data["random_bin"] == i
-                z_rand = data["random_z"][random_mask]
-                r_rand = ccl.background.comoving_radial_distance(
-                    cosmo, 1 / (1 + z_rand)
-                )
-                if self.config["var_method"] == "jackknife":
-                    rancat = treecorr.Catalog(
-                        ra=data["random_ra"][random_mask],
-                        dec=data["random_dec"][random_mask],
-                        r=r_rand,
-                        ra_units="degree",
-                        dec_units="degree",
-                        patch_centers=patch_centers,
-                    )
-                else:
-                    rancat = treecorr.Catalog(
-                        ra=data["random_ra"][random_mask],
-                        dec=data["random_dec"][random_mask],
-                        r=r_rand,
-                        ra_units="degree",
-                        dec_units="degree",
-                    )
-            else:
-                rancat = None
-        else:
-            if self.config["var_method"] == "jackknife":
-                patch_centers = self.get_input("patch_centers")
-                cat = treecorr.Catalog(
-                    ra=ra,
-                    dec=dec,
-                    ra_units="degree",
-                    dec_units="degree",
-                    patch_centers=patch_centers,
-                )
-            else:
-                cat = treecorr.Catalog(
-                    ra=ra, dec=dec, ra_units="degree", dec_units="degree"
-                )
-
-            if "random_bin" in data:
-                random_mask = data["random_bin"] == i
-                if self.config["var_method"] == "jackknife":
-                    rancat = treecorr.Catalog(
-                        ra=data["random_ra"][random_mask],
-                        dec=data["random_dec"][random_mask],
-                        ra_units="degree",
-                        dec_units="degree",
-                        patch_centers=patch_centers,
-                    )
-                else:
-                    rancat = treecorr.Catalog(
-                        ra=data["random_ra"][random_mask],
-                        dec=data["random_dec"][random_mask],
-                        ra_units="degree",
-                        dec_units="degree",
-                    )
-            else:
-                rancat = None
-
-        return cat, rancat
-
-    def get_shear_catalog(self, data, meta, i):
-        import treecorr
-        import pyccl as ccl
-
-        g1, g2, mask = self.get_calibrated_catalog_bin(data, meta, i)
-
-        if self.config["3Dcoords"]:
-            mu = data["mu"][mask]
-            cosmo = ccl.Cosmology.read_yaml(self.get_input("fiducial_cosmology"))
-            r = ccl.background.comoving_radial_distance(cosmo, 1 / (1 + mu))
-
-            if self.config["var_method"] == "jackknife":
-                patch_centers = self.get_input("patch_centers")
-                cat = treecorr.Catalog(
-                    g1=g1,
-                    g2=g2,
-                    r=r,
-                    ra=data["ra"][mask],
-                    dec=data["dec"][mask],
-                    ra_units="degree",
-                    dec_units="degree",
-                    patch_centers=patch_centers,
-                )
-
-            else:
-                cat = treecorr.Catalog(
-                    g1=g1,
-                    g2=g2,
-                    r=r,
-                    ra=data["ra"][mask],
-                    dec=data["dec"][mask],
-                    ra_units="degree",
-                    dec_units="degree",
-                )
-        else:
-            if self.config["var_method"] == "jackknife":
-                patch_centers = self.get_input("patch_centers")
-                cat = treecorr.Catalog(
-                    g1=g1,
-                    g2=g2,
-                    ra=data["ra"][mask],
-                    dec=data["dec"][mask],
-                    ra_units="degree",
-                    dec_units="degree",
-                    patch_centers=patch_centers,
-                )
-
-            else:
-                cat = treecorr.Catalog(
-                    g1=g1,
-                    g2=g2,
-                    ra=data["ra"][mask],
-                    dec=data["dec"][mask],
-                    ra_units="degree",
-                    dec_units="degree",
-                )
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            self.get_input("binned_shear_catalog"),
+            ext = f"/shear/bin_{i}",
+            g1_col = "g1",
+            g2_col = "g2",
+            r_col = "r", 
+            ra_col = "ra",
+            dec_col = "dec",
+            w_col = "weight",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+            flip_g1 = self.config["flip_g1"],
+            flip_g2 = self.config["flip_g2"],
+        )
 
         return cat
 
-    def calculate_shear_pos_select(self, data, meta, i, j):
+    def get_random_catalog(self, i):
+        import treecorr
+        import pyccl as ccl
+        if not self.config["use_randoms"]:
+            return None
+
+        rancat = treecorr.Catalog(
+            self.get_input('binned_random_catalog_source'),
+            ext = f"/randoms/bin_{i}",
+            ra_col = "ra",
+            dec_col = "dec",
+            r_col = "r",
+            ra_units='degree',
+            dec_units='degree',
+            patch_centers=self.get_input('patch_centers'),
+            save_patch_dir=self.get_patch_dir('binned_random_catalog_source', i),
+        ) 
+        return rancat
+
+    def calculate_shear_pos_select(self, i, j):
         # This is the added calculation that uses the selection function, as defined in our paper. it picks
         # out all the pairs where the object in the source catalog is in front of the lens object.
         # Again the pairs picked out, are the pairs that should not be there.
         # note we are looking at auto-correlations for the source bins!
-        import treecorr
+        import treecorr 
+        import pyccl as ccl
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
-        cat_j, rancat_j = self.get_lens_catalog(data, meta, j)
+        cat_j = self.get_shear_catalog(j)
+        cat_j = self.touch_patches(cat_j)
+        rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(
-            f"Rank {self.rank} calculating shear-position-select bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms"
-        )
+        # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl()   # getting the cosmology
+        r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
+        a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
+        Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
+        config = self.config.copy() # copying the cofiguration options, so we don't overwrite the original configuration!
+        config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
+        config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
@@ -362,78 +202,156 @@ class TXSelfCalibrationIA(TXTwoPoint):
         ng = treecorr.NGCorrelation(
             self.config, max_rpar=0.0
         )  # The max_rpar = 0.0, is in fact the same as our selection function.
-        ng.process(cat_j, cat_i)
+        t1 = perf_counter()
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
 
         if rancat_j:
-            rg = treecorr.NGCorrelation(self.config, max_rpar=0.0)
-            rg.process(rancat_j, cat_i)
+            rg = treecorr.NGCorrelation(config, max_rpar = 0.0)
+            rg.process(rancat_j, cat_i, low_mem=self.config["low_mem"], comm=self.comm)
         else:
             rg = None
 
         ng.calculateXi(rg=rg)
+        t2 = perf_counter()
+        if self.rank == 0:
+            print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
 
-    def calculate_shear_pos(self, data, meta, i, j):
+    def calculate_shear_pos(self, i, j):
         import treecorr
+        import pyccl as ccl 
 
-        cat_i = self.get_shear_catalog(data, meta, i)
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
         n_i = cat_i.nobj
 
-        cat_j, rancat_j = self.get_lens_catalog(data, meta, j)
+        cat_j = self.get_shear_catalog(j)
+        cat_j = self.touch_patches(cat_j)
+        rancat_j = self.get_random_catalog(j)
         n_j = cat_j.nobj
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
-        print(
-            f"Rank {self.rank} calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms"
-        )
+        
 
+        # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl() # getting the cosmology
+        r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
+        a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
+        Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
+        config = self.config.copy() # copying the cofiguration options, so we don't overwrite the original configuration!
+        config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
+        config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+        if self.rank == 0:
+            print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+            print(config)
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
                 print("Empty catalog: returning None")
             return None
 
-        ng = treecorr.NGCorrelation(self.config)
-        ng.process(cat_j, cat_i)
+        #Notice we are now calling config instead of self.config!
+        ng = treecorr.NGCorrelation(config)
+        t1 = perf_counter()
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+        
 
         if rancat_j:
-            rg = treecorr.NGCorrelation(self.config)
-            rg.process(rancat_j, cat_i)
+            rg = treecorr.NGCorrelation(config)
+            rg.process(rancat_j, cat_i, low_mem=self.config["low_mem"], comm = self.comm)
         else:
             rg = None
 
         ng.calculateXi(rg=rg)
+        t2 = perf_counter()
+        if self.rank == 0:
+            print(f"Processing took {t2 - t1:.1f} seconds")
 
         return ng
 
-    def call_treecorr(self, data, meta, i, j, k):
-        import sacc
+    def calculate_pos_pos(self, i, j):
+        import pyccl as ccl
+        import treecorr
 
-        if k == SHEAR_SHEAR:
-            xx = self.calculate_shear_shear(data, meta, i, j)
+        cat_i = self.get_shear_catalog(i)
+        rancat_i = self.get_random_catalog(i)
+        n_i = cat_i.nobj
+        n_rand_i = rancat_i.nobj if rancat_i is not None else 0
+
+        if i==j:
+            cat_j = None
+            rancat_j = rancat_i
+
+        # NEW: we will calculate the separation in Mpc that corresponds to min_sep and max_sep, as if these were given in arcminutes!
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl() # getting the cosmology
+        r_mean_i = np.mean(cat_i.r) #getting the mean comoving distance in the bin
+        a_i = ccl.scale_factor_of_chi(cosmo, r_mean_i) #getting the corresponding scale factor
+        Da_i = ccl.angular_diameter_distance(cosmo, 1, a2= a_i) #calculating the angular diameter distance!
+        config = self.config.copy() # copying the cofiguration options, so we don't overwrite the original configuration!
+        config['min_sep'] = self.config['min_sep']*np.pi*Da_i /10_800
+        config['max_sep'] = self.config['max_sep']*np.pi*Da_i /10_800
+
+        if self.rank == 0:
+            print(f"Calculating position-position bin pair ({i}, {j}): {n_i} x {n_i} objects,  {n_rand_i} randoms")
+
+        t1 = perf_counter()
+        
+        nn = treecorr.NNCorrelation(config)
+        nn.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
+        
+        nr = treecorr.NNCorrelation(config)
+        nr.process(cat_i, rancat_j, low_mem=self.config["low_mem"], comm=self.comm)
+
+        # The next calculation is faster if we explicitly tell TreeCorr
+        # that its two catalogs here are the same one.
+        if i == j:
+            rancat_j = None
+        
+        rr = treecorr.NNCorrelation(config)
+        rr.process(rancat_i, rancat_j, comm=self.comm)
+        
+        if i==j:
+            rn = None
+        else:
+            rn = treecorr.NNCorrelation(config)
+            rn.process(rancat_i, cat_j, comm=self.comm)
+
+
+        if self.rank == 0:
+            t2 = perf_counter()
+            nn.calculateXi(rr, dr=nr, rd=rn)
+            print(f"Processing took {t2 - t1:.1f} seconds")   
+
+        return nn
+
+
+    def call_treecorr(self, i, j, k):
+        import sacc 
+
+        if k==SHEAR_SHEAR:
+            xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
-        elif k == SHEAR_POS:
-            xx = self.calculate_shear_pos(data, meta, i, j)
+        elif k==SHEAR_POS:
+            xx = self.calculate_shear_pos(i, j)
             xtype = sacc.standard_types.galaxy_shearDensity_xi_t
-        elif (
-            k == SHEAR_POS_SELECT
-        ):  # added the call to the selection function calculation.
-            xx = self.calculate_shear_pos_select(data, meta, i, j)
-            xtype = sacc.build_data_type_name(
-                "galaxy", ["shear", "Density"], "xi", subtype="ts"
-            )
-        elif k == POS_POS:
-            xx = self.calculate_pos_pos(data, meta, i, j)
+        elif k==SHEAR_POS_SELECT: #added the call to the selection function calculation.
+            xx = self.calculate_shear_pos_select( i, j)
+            xtype = sacc.build_data_type_name('galaxy',['shear','Density'],'xi',subtype ='ts')
+        elif k==POS_POS:
+            xx = self.calculate_pos_pos( i, j)
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
+
+        gc.collect()
 
         result = Measurement(xtype, xx, i, j)
 
         sys.stdout.flush()
         return result
 
-    def write_output(self, data, meta, results):
+    def write_output(self, source_list, lens_list, meta, results):
         # This subclass only needs the root process for this task
         if self.rank != 0:
             return
@@ -466,12 +384,13 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        for i in data["source_list"]:
-            z = f["n_of_z/source/z"][:]
-            Nz = f[f"n_of_z/source/bin_{i}"][:]
-            S.add_tracer("NZ", f"source_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"source_{i}", z, Nz)
+        for i in source_list:
+            z = f['n_of_z/source/z'][:]
+            Nz = f[f'n_of_z/source/bin_{i}'][:]
+            S.add_tracer('NZ', f'source_{i}', z, Nz)
+            if self.config['do_shear_pos'] == True:
+                S2.add_tracer('NZ', f'source_{i}', z, Nz)
+
 
         f.close()
 
@@ -601,5 +520,99 @@ class TXSelfCalibrationIA(TXTwoPoint):
                         )
             S2.add_covariance(comb)
             S2.to_canonical_order
-            self.write_metadata(S2, meta)
-            S2.save_fits(self.get_output("gammaX_scia"), overwrite=True)
+            self.write_metadata(S2,meta)
+            S2.save_fits(self.get_output('gammaX_scia'), overwrite=True)
+
+    def prepare_patches(self, calcs, meta):
+        """
+        For each catalog to be generated, have one process load the catalog
+        and write its patch files out to disc.  These are then re-used later
+        by all the different processes.
+
+        Parameters
+        ----------
+
+        calcs: list
+            A list of (bin1, bin2, bin_type) where bin1 and bin2 are indices
+            or bin labels and bin_type is one of the constants SHEAR_SHEAR,
+            SHEAR_POS, or POS_POS.
+        
+        meta: dict
+            A dict to which the number of patches (or zero, if no patches) will
+            be added for each catalog type, with keys "npatch_shear", "npatch_pos",
+            and "npatch_ran".
+        """
+        # Make the full list of catalogs to run
+        cats = set()
+
+        # Use shear-shear and pos-pos only here as they represent
+        # catalogs not pairs.
+        for i, j, k in calcs:
+            if k == SHEAR_SHEAR:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, SHEAR_SHEAR))
+            elif k == SHEAR_POS:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, POS_POS))
+            elif k == POS_POS:
+                cats.add((i, POS_POS))
+                cats.add((j, POS_POS))
+            elif k == SHEAR_POS_SELECT:
+                cats.add((i, SHEAR_SHEAR))
+                cats.add((j, POS_POS))
+        cats = list(cats)
+        cats.sort(key=str)
+
+        chunk_rows = self.config["chunk_rows"]
+        npatch_shear = 0
+        npatch_pos = 0
+        npatch_ran = 0
+
+        self.empty_patch_exists = {}
+
+        # This does a round-robin assignment to processes
+        for (h, k) in self.split_tasks_by_rank(cats):
+
+            print(f"Rank {self.rank} making patches for {k}-type bin {h}")
+
+            # For shear we just have the one catalog. For position we may
+            # have randoms also. We explicitly delete catalogs after loading
+            # them to ensure we don't have two in memory at once.
+            if k == SHEAR_SHEAR:
+                cat = self.get_shear_catalog(h)
+                print(f"Rank {self.rank} with a catalog len {len(cat.ra)} chunk_rows {chunk_rows}")
+
+                npatch_shear, contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                print(f"Rank {self.rank} with a catalog {h} is done with patches")
+                self.empty_patch_exists[cat.save_patch_dir] = contains_empty
+                del cat
+            else:
+                #cat = self.get_shear_catalog(h)
+                #npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                #self.empty_patch_exists[cat.save_patch_dir] = contains_empty
+                #del cat
+
+                ran_cat = self.get_random_catalog(h)
+                # support use_randoms = False
+                if ran_cat is None:
+                    print(f"Rank {self.rank} is done with lens part")
+                    continue
+
+                npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                del ran_cat
+
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
+                print(f"Rank {self.rank} is done with lens part")
+
+        meta["npatch_shear"] = npatch_shear
+        meta["npatch_pos"] = npatch_shear
+        meta["npatch_ran"] = npatch_ran
+        # stop other processes progressing to the rest of the code and
+        # trying to load things we have not written yet
+        if self.comm is not None:
+            self.comm.Barrier()
