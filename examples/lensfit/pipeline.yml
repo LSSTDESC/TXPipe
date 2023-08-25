@@ -14,7 +14,9 @@ stages:
     - name: PZEstimatorLens
       classname: BPZ_lite
     - name: TXPhotozSourceStack
+      classname: TXPhotozStack
     - name: TXPhotozLensStack
+      classname: TXPhotozStack
     - name: TXSourceMaps
     - name: TXLensMaps
     - name: TXAuxiliarySourceMaps

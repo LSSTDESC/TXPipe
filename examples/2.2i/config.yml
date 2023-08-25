@@ -43,7 +43,7 @@ TXPhotozPlotSource:
         nz_plot: lens_nz
 
 
-TXTruePhotozStackSource:
+TXTruePhotozSourceStack:
     name: TXTruePhotozStackSource
     aliases:
         tomography_catalog: shear_tomography_catalog
@@ -55,7 +55,7 @@ TXTruePhotozStackSource:
     zmax: 2.0
     nz: 201
 
-TXTruePhotozStackLens:
+TXTruePhotozLensStack:
     name: TXTruePhotozStackLens
     aliases:
         tomography_catalog: lens_tomography_catalog

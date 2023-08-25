@@ -53,6 +53,7 @@ PZRailEstimateLens:
 
 
 TXPhotozSourceStack:
+    name: TXPhotozSourceStack
     aliases:
         source_photoz_pdfs: lens_photoz_pdfs
 
