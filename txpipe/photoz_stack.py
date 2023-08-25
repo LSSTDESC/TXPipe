@@ -43,12 +43,12 @@ class TXPhotozStack(PipelineStage):
         chunk_rows = self.config["chunk_rows"]
 
         with self.open_input("tomography_catalog", wrapper=True) as f:
-            nbin = f.read_nbin(tomo_name)
+            nbin = f.read_nbin()
 
 
         with self.open_input("photoz_pdfs", wrapper=True) as f:
             z = f.get_z()
-            pdf_type = f.get_qp_pdf_type()
+            pdf_type = f.get_pdf_type()
             nz = z.size if pdf_type == "interp" else z.size - 1
             if pdf_type == "hist":
                 nz = z.size - 1
@@ -63,7 +63,7 @@ class TXPhotozStack(PipelineStage):
         with self.open_input("photoz_pdfs", wrapper=True) as f:
             for start, end, qp_chunk in f.iterate(chunk_rows, rank=self.rank, size=self.size):
                 print(f"Rank {self.rank} stacking PDFs {start} to {end}")
-                bins = tomo_cat[f"tomography/{tomo_name}_bin"][start:end]
+                bins = tomo_cat[f"tomography/bin"][start:end]
                 if weight_cat is None:
                     weights = None
                 else:
@@ -97,7 +97,6 @@ class TXPhotozStack(PipelineStage):
         
         # only root saves output
         if self.rank == 0:
-            print("pdfs", pdfs)
             pdfs /= total_weight[:, None]
 
             # Create a qp object for the n(z) information that we have.

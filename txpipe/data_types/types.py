@@ -461,6 +461,17 @@ class QPPDFFile(QPBaseFile):
         import qp
         return qp.iterator(self.path, chunk_size=chunk_rows, rank=rank, parallel_size=size)
 
+    def get_z(self):
+        import qp
+        metadata = qp.read_metadata(self.path)
+        return metadata['xvals'].copy().squeeze()
+
+    def get_pdf_type(self):
+        import qp
+        metadata = qp.read_metadata(self.path)
+        return metadata['pdf_name'][0].decode()
+
+
 
 class QPNOfZFile(QPBaseFile):
     """
