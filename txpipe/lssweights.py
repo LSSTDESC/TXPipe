@@ -360,7 +360,7 @@ class TXLSSweights(TXMapCorrelations):
 		lens_weight = tomo_output['tomography/lens_weight'][...]
 		for ibin in range(self.Ntomo):
 			binned_subgroup = binned_output[f"lens/bin_{ibin}/"]
-			mask = (tomo_output['tomography/lens_bin'][...] == ibin)
+			mask = (tomo_output['tomography/bin'][...] == ibin)
 			lens_weight[mask] *= binned_subgroup["weight"][...]
 		tomo_output['tomography/lens_weight'][...] = lens_weight
 
