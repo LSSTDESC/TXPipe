@@ -33,17 +33,17 @@ PZPDFMLZ:
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
     aliases:
-        photoz_stack: shear_photoz_stack
+        photoz_stack: lens_photoz_stack
         nz_plot: source_nz
 
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
     aliases:
-        photoz_stack: lens_photoz_stack
+        photoz_stack: shear_photoz_stack
         nz_plot: lens_nz
 
 
-TXTruePhotozSourceStack:
+TXTruePhotozStackSource:
     name: TXTruePhotozStackSource
     aliases:
         tomography_catalog: shear_tomography_catalog
@@ -55,7 +55,7 @@ TXTruePhotozSourceStack:
     zmax: 2.0
     nz: 201
 
-TXTruePhotozLensStack:
+TXTruePhotozStackLens:
     name: TXTruePhotozStackLens
     aliases:
         tomography_catalog: lens_tomography_catalog
