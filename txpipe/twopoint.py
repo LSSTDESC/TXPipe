@@ -915,10 +915,16 @@ class TXTwoPoint(PipelineStage):
     def read_metadata(self):
         meta_data = self.open_input("tracer_metadata")
         area = meta_data["tracers"].attrs["area"]
-        sigma_e = meta_data["tracers/sigma_e"][:]
-        N_eff = meta_data["tracers/N_eff"][:]
-        mean_e1 = meta_data["tracers/mean_e1"][:]
-        mean_e2 = meta_data["tracers/mean_e2"][:]
+        try:
+            sigma_e = meta_data["tracers/sigma_e"][:]
+            N_eff = meta_data["tracers/N_eff"][:]
+            mean_e1 = meta_data["tracers/mean_e1"][:]
+            mean_e2 = meta_data["tracers/mean_e2"][:]
+        except KeyError: #will happen for lens only runs
+            sigma_e = None
+            N_eff = None
+            mean_e1 = None
+            mean_e2 = None
 
         meta = {}
         meta["neff"] = N_eff
