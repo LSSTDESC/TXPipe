@@ -456,9 +456,14 @@ class TXLensCatalogSplitter(PipelineStage):
         "redshift_column": "zmean",
     }
 
+    def get_lens_tomo_name(self): #can overwrite this in a weighted subclass
+        return "lens_tomography_catalog_unweighted"
+    def get_binned_lens_name(self): #can overwrite this in a weighted subclass
+        return "binned_lens_catalog_unweighted"
+
     def run(self):
 
-        with self.open_input("lens_tomography_catalog_unweighted") as f:
+        with self.open_input(self.get_lens_tomo_name()) as f:
             nbin = f["tomography"].attrs["nbin"]
             counts = f["tomography/counts"][:]
             count2d = f["tomography/counts_2d"][:]
@@ -467,7 +472,7 @@ class TXLensCatalogSplitter(PipelineStage):
         cols = ["ra", "dec", "weight", "comoving_distance"]
 
         # Object we use to make the separate lens bins catalog
-        cat_output = self.open_output("binned_lens_catalog_unweighted", parallel=True)
+        cat_output = self.open_output(self.get_binned_lens_name(), parallel=True)
         cat_group = cat_output.create_group("lens")
         cat_group.attrs["nbin"] = len(counts)
         cat_group.attrs["nbin_lens"] = len(counts)
@@ -507,7 +512,7 @@ class TXLensCatalogSplitter(PipelineStage):
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog_unweighted",
+            self.get_lens_tomo_name(),
             "tomography",
             ["bin", "lens_weight"],
             # second file
@@ -562,7 +567,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog_unweighted",
+            self.get_lens_tomo_name(),
             "tomography",
             ["bin", "lens_weight"],
             # second file
@@ -600,7 +605,7 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
         iterator = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog_unweighted",
+            self.get_lens_tomo_name(),
             "tomography",
             ["bin", "lens_weight"],
             # second file
@@ -627,6 +632,11 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
     outputs = [
         ("binned_lens_catalog", HDFFile),
     ]
+    def get_lens_tomo_name(self): #can overwrite this in a weighted subclass
+        return "lens_tomography_catalog"
+    def get_binned_lens_name(self): #can overwrite this in a weighted subclass
+        return "binned_lens_catalog"
+    
     def data_iterator(self):
         z_col = self.config["redshift_column"]
         extra_cols = [
@@ -635,7 +645,7 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
         iterator = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            self.get_lens_tomo_name(),
             "tomography",
             ["bin", "lens_weight"],
             # second file
