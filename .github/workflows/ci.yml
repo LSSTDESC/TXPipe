@@ -21,16 +21,15 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v1
+        key: example-data-v2
 
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
       run: |
         wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
-        tar -zxvf example.tar.gz
 
 
   Unit_Tests:
@@ -64,21 +63,17 @@ jobs:
       with:
         submodules: true
 
-    - name: Cache example data
-      id: cache-example
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-example-data
+    - name: Restore example data
+      uses: actions/cache/restore@v3
       with:
-        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v1
+        key: example-data-v2
+        fail-on-cache-miss: true
 
-    - name: Download test data
-      if: steps.cache-example.outputs.cache-hit != 'true'
+    - name: Extract test data
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
         tar -zxvf example.tar.gz
 
     - name: Run metacal pipeline
@@ -105,21 +100,17 @@ jobs:
       with:
         submodules: true
 
-    - name: Cache example data
-      id: cache-example
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-example-data
+    - name: Restore example data
+      uses: actions/cache/restore@v3
       with:
-        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v1
+        key: example-data-v2
+        fail-on-cache-miss: true
 
-    - name: Download test data
-      if: steps.cache-example.outputs.cache-hit != 'true'
+    - name: Extract test data
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
         tar -zxvf example.tar.gz
 
     - name: Run metadetect pipeline
@@ -155,21 +146,17 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache example data
-        id: cache-example
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-example-data
+      - name: Restore example data
+        uses: actions/cache/restore@v3
         with:
-          path: ./data/example/inputs ./data/example/rail-bpz-inputs
+          path: example.tar.gz
           # update this when we change package contents and want
           # to force an update
-          key: example-data-v1
+          key: example-data-v2
+          fail-on-cache-miss: true
 
-      - name: Download test data
-        if: steps.cache-example.outputs.cache-hit != 'true'
+      - name: Extract test data
         run: |
-          wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
           tar -zxvf example.tar.gz
 
       - name: Run metadetect pipeline
@@ -197,21 +184,17 @@ jobs:
       with:
         submodules: true
 
-    - name: Cache example data
-      id: cache-example
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-example-data
+    - name: Restore example data
+      uses: actions/cache/restore@v3
       with:
-        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v1
+        key: example-data-v2
+        fail-on-cache-miss: true
 
-    - name: Download test data
-      if: steps.cache-example.outputs.cache-hit != 'true'
+    - name: Extract test data
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
         tar -zxvf example.tar.gz
 
     - name: Run lensfit pipeline
@@ -239,21 +222,17 @@ jobs:
       with:
         submodules: true
 
-    - name: Cache example data
-      id: cache-example
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-example-data
+    - name: Restore example data
+      uses: actions/cache/restore@v3
       with:
-        path: ./data/example/inputs ./data/example/rail-bpz-inputs
+        path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v1
+        key: example-data-v2
+        fail-on-cache-miss: true
 
-    - name: Download test data
-      if: steps.cache-example.outputs.cache-hit != 'true'
+    - name: Extract test data
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
         tar -zxvf example.tar.gz
 
     - name: Run redmagic pipeline
