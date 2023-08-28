@@ -81,6 +81,7 @@ jobs:
 
     - name: Run metacal pipeline
       run: |
+        mkdir -p cache/workspaces
         ceci examples/metacal/pipeline.yml
         test -f data/example/outputs/shear_xi_plus.png
 
@@ -118,6 +119,7 @@ jobs:
 
     - name: Run metadetect pipeline
       run: |
+        mkdir -p cache/workspaces
         ceci examples/metadetect/pipeline.yml
         test -f data/example/outputs_metadetect/shear_xi_plus.png
 
@@ -164,6 +166,7 @@ jobs:
 
       - name: Run metadetect pipeline
         run: |
+          mkdir -p cache/workspaces
           ceci examples/metadetect_source_only/pipeline.yml
           test -f data/example/metadetect_source_only/shear_xi_plus.png
 
@@ -202,6 +205,7 @@ jobs:
 
     - name: Run lensfit pipeline
       run: |
+        mkdir -p cache/workspaces
         ceci examples/lensfit/pipeline.yml
         test -f data/example/outputs_lensfit/shear_xi_plus.png
 
@@ -240,6 +244,7 @@ jobs:
 
     - name: Run redmagic pipeline
       run: |
+        mkdir -p cache/workspaces
         ceci examples/redmagic/pipeline.yml
         test -f data/example/outputs_redmagic/shear_xi_plus.png
 
@@ -307,6 +312,7 @@ jobs:
 
     - name: Test after auto-install
       run: |
+        mkdir -p cache/workspaces
         source ./conda/bin/activate
         ceci examples/metadetect/pipeline.yml
 
