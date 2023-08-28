@@ -263,3 +263,51 @@ jobs:
         ceci --dry-run examples/cosmodc2/pipeline.yml
         ceci --dry-run examples/dr1b/pipeline.yml
         ceci --dry-run examples/skysim/pipeline.yml
+
+
+  Test_Auto_Installer:
+    runs-on: ${{ matrix.os }}
+    needs: Download_Data
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
+          - os: macos-latest
+            INSTALL_DEPS: brew update-reset && brew install wget
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install wget
+      run: ${{ matrix.INSTALL_DEPS }}
+
+    - name: Run Auto-Install
+      run: ./bin/install.sh
+
+    - name: Restore example data
+      uses: actions/cache/restore@v3
+      with:
+        path: example.tar.gz
+        # update this when we change package contents and want
+        # to force an update
+        key: example-data-v2
+        fail-on-cache-miss: true
+
+    - name: Extract test data
+      run: |
+        tar -zxvf example.tar.gz
+
+    - name: Test after auto-install
+      run: |
+        source ./conda/bin/activate
+        ceci examples/metadetect/pipeline.yml
+
+    - name: Show logs
+      if: ${{ always() }}
+      run: |
+        tail -n +1 data/example/logs_metadetect/*
