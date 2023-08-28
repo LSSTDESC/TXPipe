@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  EXAMPLE_DATA_FILE_VERSION: v2
+
 jobs:
   # Run a download step first so that it is in
   # the cache, because all the other jobs will be running
@@ -24,7 +27,7 @@ jobs:
         path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v2
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
 
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
@@ -69,7 +72,7 @@ jobs:
         path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v2
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
     - name: Extract test data
@@ -106,7 +109,7 @@ jobs:
         path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v2
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
     - name: Extract test data
@@ -152,7 +155,7 @@ jobs:
           path: example.tar.gz
           # update this when we change package contents and want
           # to force an update
-          key: example-data-v2
+          key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
           fail-on-cache-miss: true
 
       - name: Extract test data
@@ -190,7 +193,7 @@ jobs:
         path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v2
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
     - name: Extract test data
@@ -228,7 +231,7 @@ jobs:
         path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v2
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
     - name: Extract test data
@@ -295,7 +298,7 @@ jobs:
         path: example.tar.gz
         # update this when we change package contents and want
         # to force an update
-        key: example-data-v2
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
     - name: Extract test data
