@@ -133,8 +133,9 @@ class TXBaseMaps(PipelineStage):
 class TXSourceMaps(PipelineStage):
     """Generate source maps directly from binned, calibrated shear catalogs.
 
-    This is a lazy implementation - we just use the parent class and
-    replace the input and calibration steps.  It could be improved.
+    This implementation uses DASK, which offers a numpy-like syntax and
+    hides the complicated parallelization details.
+    
     """
     name = "TXSourceMaps"
     dask_parallel = True
@@ -160,6 +161,7 @@ class TXSourceMaps(PipelineStage):
         # Configuration options
         pixel_scheme = choose_pixelization(**self.config)
         nside = self.config["nside"]
+        npix = healpy.nside2npix(nside)
         block_size = self.config["block_size"]
         if block_size == 0:
             block_size = "auto"
@@ -168,8 +170,6 @@ class TXSourceMaps(PipelineStage):
         # dask will internally load chunks of the input hdf5 data.
         f = self.open_input("binned_shear_catalog")
         nbin = f['shear'].attrs['nbin_source']
-
-        npix = healpy.nside2npix(nside)
 
         # The "all" bin is the non-tomographic case.
         bins = list(range(nbin)) + ["all"]
@@ -200,17 +200,13 @@ class TXSourceMaps(PipelineStage):
             g2_map = da.bincount(pix, weights=weight * g2, minlength=npix)
             esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
 
-            # normalize by weights where we want a mean
-            # hit = da.where(weight_map > 0)
-            # g1_map[hit] /= weight_map[hit]
-            # g2_map[hit] /= weight_map[hit]
-
+            # normalize by weights to get the mean map value in each pixel
             g1_map /= weight_map
             g2_map /= weight_map
 
             # Generate a catalog-like vector of the means so we can
             # subtract from the full catalog.  Not sure if this ever actually gets
-            # created.
+            # created, or if dask just keeps a conceptual reference to it.
             g1_mean = g1_map[pix]
             g2_mean = g2_map[pix]
 
@@ -228,13 +224,14 @@ class TXSourceMaps(PipelineStage):
             # slight change in output name
             if i == "all":
                 i = "2D"
-            
+
+            # replace nans with UNSEEN.  The NaNs can occur if there are no objects
+            # in a pixel, so the value is undefined.
             g1_map[da.isnan(g1_map)] = healpy.UNSEEN
             g2_map[da.isnan(g1_map)] = healpy.UNSEEN
             var1_map[da.isnan(var1_map)] = healpy.UNSEEN
             var2_map[da.isnan(var2_map)] = healpy.UNSEEN
             esq_map[da.isnan(esq_map)] = healpy.UNSEEN
-
 
             # Save all the stuff we want here.
             output[f"count_{i}"] = count_map
@@ -272,15 +269,13 @@ class TXSourceMaps(PipelineStage):
 
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
-
             for i in bins:
-
                 # again rename "all" to "2D"
                 if i == "all":
                     i = "2D"
 
-                # use the lensing weight to decide which pixels to write
-                # - we skip the empty ones so they read in as healpy.UNSEEN
+                # We save the pixels in the mask - i.g. any pixel that is hit in any
+                # tomographic bin is included. Some will be UNSEEN.
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
