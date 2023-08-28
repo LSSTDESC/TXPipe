@@ -649,8 +649,8 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
             "tomography",
             ["bin", "lens_weight"],
             # second file
-            "lens_catalog",
-            "lens",
+            "photometry_catalog",
+            "photometry",
             ["ra", "dec", z_col] + extra_cols,
             parallel=False,
         )
