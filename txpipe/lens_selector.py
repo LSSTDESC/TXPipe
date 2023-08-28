@@ -654,6 +654,8 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
             ["ra", "dec", z_col] + extra_cols,
             parallel=False,
         )
+        
+        return self.add_redshifts(iterator)
 
 
 if __name__ == "__main__":
