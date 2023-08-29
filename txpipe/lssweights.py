@@ -611,9 +611,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		import pyccl
 		from scipy.interpolate import interp1d
 
-		#Covariance matrix on number *counts*
 		nbinstotal = len(density_correlation.map_index)
-		covmat_N = np.zeros((nbinstotal,nbinstotal))
 
 		#generate theory wtheta 
 		mintheta = hp.nside2resol(sys_maps[0].nside_sparse,arcmin=True)
@@ -651,14 +649,40 @@ class TXLSSweightsSimReg(TXLSSweights):
 				cat_i = treecorr.Catalog(ra=ra_i[selecti], dec=dec_i[selecti],ra_units='degrees',dec_units='degrees')
 				cats[imap,isp] = cat_i
 
-		#TO DO: Parralelize this
+		#Compute 2point function of the SP map pixel centres
+		#This should be the same for all lens bins so only compute it if this is the first bin
+		if "sp_pixel_twopoint" not in self.sys_meta.keys():
+			self.sys_meta["sp_pixel_twopoint"] = {}
+			for imap in map_list:
+				edges_i = density_correlation.get_edges(imap)
+				print('SV covariance for map', imap)
+				for isp in range(len(edges_i)-1):
+					cat_i = cats[imap,isp]
+					indexi = imap*(len(edges_i)-1)+isp
+
+					for jmap in map_list:
+						edges_j = density_correlation.get_edges(jmap)
+						for jsp in range(len(edges_j)-1):
+							indexj = jmap*(len(edges_j)-1)+jsp
+							if (indexi > indexj):
+								continue
+							if diag_blocks_only and imap != jmap: #sometimes we dont need the covarinace between maps
+								continue
+							cat_j = cats[jmap,jsp]
+
+							nn = treecorr.NNCorrelation(max_sep=maxtheta,min_sep=mintheta,
+								nbins=20,sep_units='arcmin' )
+							nn.process(cat_i,cat_j)
+							self.sys_meta["sp_pixel_twopoint"][indexi,indexj] = nn
+							self.sys_meta["sp_pixel_twopoint"][indexj,indexi] = nn
+
+		#now contruct the covariance from the Npairs and theory curve
+		#Covariance matrix on number *counts*
+		covmat_N = np.zeros((nbinstotal,nbinstotal))
 		for imap in map_list:
 			edges_i = density_correlation.get_edges(imap)
-			print('SV covariance for map', imap)
 			for isp in range(len(edges_i)-1):
-				cat_i = cats[imap,isp]
 				indexi = imap*(len(edges_i)-1)+isp
-
 				for jmap in map_list:
 					edges_j = density_correlation.get_edges(jmap)
 					for jsp in range(len(edges_j)-1):
@@ -667,15 +691,11 @@ class TXLSSweightsSimReg(TXLSSweights):
 							continue
 						if diag_blocks_only and imap != jmap: #sometimes we dont need the covarinace between maps
 							continue
-						cat_j = cats[jmap,jsp]
-
-						nn = treecorr.NNCorrelation(max_sep=maxtheta,min_sep=mintheta,
-							nbins=20,sep_units='arcmin' )
-						nn.process(cat_i,cat_j)
+						nn = self.sys_meta["sp_pixel_twopoint"][indexi,indexj]
 						covmat_N[indexi,indexj] = np.sum(nn.npairs*wtheta_interp(nn.meanr))
 						covmat_N[indexj,indexi] = covmat_N[indexi,indexj]
 
-		#I did not include the nbar in covmat_N because this would get divided out here
+		#I did not include nbar in covmat_N because this would get divided out here
 		npix1npix2 = np.matrix(density_correlation.npix).T*np.matrix(density_correlation.npix)
 		covmat_ndens = covmat_N / np.array(npix1npix2)
 
