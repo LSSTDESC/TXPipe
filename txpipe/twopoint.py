@@ -403,7 +403,6 @@ class TXTwoPoint(PipelineStage):
                     if self.config["do_shear_pos"] == True:
                         S2.add_tracer("NZ", f"source_{i}", z, Nz)
 
-        f.close()
 
         if lens_list:
             with self.open_input("lens_photoz_stack") as f:
@@ -915,24 +914,23 @@ class TXTwoPoint(PipelineStage):
     def read_metadata(self):
         meta_data = self.open_input("tracer_metadata")
         area = meta_data["tracers"].attrs["area"]
+        meta = {}
+        meta["area"] = area
         try:
             sigma_e = meta_data["tracers/sigma_e"][:]
             N_eff = meta_data["tracers/N_eff"][:]
             mean_e1 = meta_data["tracers/mean_e1"][:]
             mean_e2 = meta_data["tracers/mean_e2"][:]
+
+            meta["neff"] = N_eff
+            meta["area"] = area
+            meta["sigma_e"] = sigma_e
+            meta["mean_e1"] = mean_e1
+            meta["mean_e2"] = mean_e2
+        
         except KeyError: #will happen for lens only runs
-            sigma_e = None
-            N_eff = None
-            mean_e1 = None
-            mean_e2 = None
-
-        meta = {}
-        meta["neff"] = N_eff
-        meta["area"] = area
-        meta["sigma_e"] = sigma_e
-        meta["mean_e1"] = mean_e1
-        meta["mean_e2"] = mean_e2
-
+            pass
+        
         return meta
 
 
