@@ -405,20 +405,25 @@ class TXLSSweights(TXMapCorrelations):
 		fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
 		fit_summary_file = h5py.File(fit_summary_file_name, 'w')
 		fit_summary_file.file.create_group("fit_summary")
-		fit_summary_file["fit_summary"].create_dataset('fitted_map_id', data=fit_output['sig_map_index'])
-		fitted_maps_names = np.array([density_correlation.mapnames[i] for i in fit_output['sig_map_index']])
-		fit_summary_file["fit_summary"].create_dataset('fitted_map_names', data=fitted_maps_names.astype(np.string_))
-		fit_summary_file["fit_summary"].create_dataset('all_map_names', data=self.sys_names.astype(np.string_))
-		fit_summary_file["fit_summary"].create_dataset('coeff', data=fit_output['coeff'] )
-		if fit_output['coeff_cov'] is not None:
-			fit_summary_file["fit_summary"].create_dataset('coeff_cov', data=fit_output['coeff_cov'] )
-		for model in density_correlation.chi2.keys():
-			fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
-		fit_summary_file.close()
+		if len(fit_output['sig_map_index']) != 0:
+			fit_summary_file["fit_summary"].create_dataset('fitted_map_id', data=fit_output['sig_map_index'])
+			fitted_maps_names = np.array([density_correlation.mapnames[i] for i in fit_output['sig_map_index']])
+			fit_summary_file["fit_summary"].create_dataset('fitted_map_names', data=fitted_maps_names.astype(np.string_))
+			fit_summary_file["fit_summary"].create_dataset('all_map_names', data=self.sys_names.astype(np.string_))
+			fit_summary_file["fit_summary"].create_dataset('coeff', data=fit_output['coeff'] )
+			if fit_output['coeff_cov'] is not None:
+				fit_summary_file["fit_summary"].create_dataset('coeff_cov', data=fit_output['coeff_cov'] )
+			for model in density_correlation.chi2.keys():
+				fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
+			fit_summary_file.close()
 
 		#plot the un-weighted and weighted chi2 distribution
 		filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
-		density_correlation.plot_chi2_hist(filepath, extra_density_correlations=[weighted_density_correlation])
+		if "pvalue_threshold" in self.config.keys():
+			chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(0.05)
+		else:
+			chi2_threshold = None
+		density_correlation.plot_chi2_hist(filepath, extra_density_correlations=[weighted_density_correlation], chi2_threshold=chi2_threshold )
 
 
 class TXLSSweightsSimReg(TXLSSweights):
@@ -745,6 +750,8 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"""
 		import scipy.optimize
 		import numpy as np
+		import healsparse as hsp
+		import healpy as hp
 		from . import lsstools
 
 		s = time.time()
@@ -755,44 +762,68 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 		#select only the significant trends
 		sig_map_index = self.select_maps(density_correlation)
-		sys_maps = self.sys_maps[sig_map_index]
-		sysmap_table = hsplist2array(sys_maps)
+		sysmap_table_all = hsplist2array(self.sys_maps)
 
-		#get the frac det (TO DO: get frac only, dont need deltag)
-		_, frac = self.get_deltag(density_correlation.tomobin)
+		if len(sig_map_index) == 0:  #there are no maps to correct
+			print('No maps selected for correction')
 
-		#initial parameters
-		p0 = np.array([1.0]+[0.0]*len(sys_maps))
+			#Fmap is all ones
+			Fmap_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+			Fmap_bf.update_values_pix(self.sys_maps[0].valid_pixels, np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64) )
 
-		#negative log likelihood to be minimized
-		def neg_log_like(params):
-			beta = params[0]
-			alphas = params[1:]
-			F, Fdc = lsstools.lsstools.linear_model(beta,*alphas,
+			fit_output = {}
+			fit_output['sig_map_index'] = sig_map_index
+			fit_output['coeff'] = None
+			fit_output['coeff_cov'] = None
+		else:
+			print('{0} map(s) selected for correction'.format(len(sig_map_index)))
+			sys_maps_selected = self.sys_maps[sig_map_index]
+			sysmap_table_selected = sysmap_table_all[sig_map_index]
+
+			#get the frac det (TO DO: get frac only, dont need deltag)
+			_, frac = self.get_deltag(density_correlation.tomobin)
+
+			#initial parameters
+			p0 = np.array([1.0]+[0.0]*len(sys_maps_selected))
+
+			#we need to mask the density correlation  to only use the selected maps
+			dc_mask = np.in1d(density_correlation.map_index, sig_map_index)
+			dc_covmat_masked = density_correlation.covmat[dc_mask].T[dc_mask].T
+			dc_ndens_masked = density_correlation.ndens[dc_mask]
+
+			#negative log likelihood to be minimized
+			def neg_log_like(params):
+				beta = params[0]
+				alphas = params[1:]
+				F, Fdc = lsstools.lsstools.linear_model(beta,*alphas,
+					density_correlation=density_correlation, 
+					sys_maps=sys_maps_selected,
+					sysmap_table=sysmap_table_selected,
+					frac=frac)
+				chi2 = lsstools.lsstools.calc_chi2(dc_ndens_masked,dc_covmat_masked,Fdc.ndens)
+				return chi2/2.
+
+			minimize_output = scipy.optimize.minimize(neg_log_like, p0, method="Nelder-Mead" )
+			coeff = minimize_output.x
+			coeff_cov = None
+
+			#make best fit model (including the maps that were not selected)
+			#and add this best fit model to the DensityCorrelation instance
+			best_fit = np.array([1.0]+[0.0]*len(self.sys_maps))
+			best_fit[0] = coeff[0]
+			best_fit[sig_map_index+1] = coeff[1:]
+			Fmap_bf, Fdc_bf = lsstools.lsstools.linear_model(best_fit[0],*best_fit[1:],
 				density_correlation=density_correlation, 
-				sys_maps=sys_maps,
-				sysmap_table=sysmap_table,
-				frac=frac)
-			chi2 = lsstools.lsstools.calc_chi2(density_correlation.ndens,density_correlation.covmat,Fdc.ndens)
-			return chi2/2.
+					sys_maps=self.sys_maps,
+					sysmap_table=sysmap_table_all,
+					frac=frac)
+			density_correlation.add_model(Fdc_bf.ndens, 'linear')
 
-		minimize_output = scipy.optimize.minimize(neg_log_like, p0, method="Nelder-Mead" )
-		coeff = minimize_output.x
-		coeff_cov = None
-
-		#add the best fit model to this DensityCorrelation instance
-		Fmap_bf, Fdc_bf = lsstools.lsstools.linear_model(coeff[0],*coeff[1:],
-			density_correlation=density_correlation, 
-				sys_maps=sys_maps,
-				sysmap_table=sysmap_table,
-				frac=frac)
-		density_correlation.add_model(Fdc_bf.ndens, 'linear')
-
-		#assemble the fitting outputs (chi2, values, coefficents, )
-		fit_output = {}
-		fit_output['sig_map_index'] = sig_map_index
-		fit_output['coeff'] = coeff
-		fit_output['coeff_cov'] = coeff_cov
+			#assemble the fitting outputs (chi2, values, coefficents, )
+			fit_output = {}
+			fit_output['sig_map_index'] = sig_map_index
+			fit_output['coeff'] = coeff
+			fit_output['coeff_cov'] = coeff_cov
 
 		f = time.time()
 		print("compute_weights took {0}s".format(f-s))
@@ -900,44 +931,59 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 
 		#select only the significant trends
 		sig_map_index = self.select_maps(density_correlation)
-		sys_maps = self.sys_maps[sig_map_index]
-		sysmap_table = hsplist2array(sys_maps)
+		sysmap_table_all = hsplist2array(self.sys_maps)
 
-		#make the delta_g map and fracdet weights
-		deltag, frac = self.get_deltag(density_correlation.tomobin)
-		dg1 = deltag[sys_maps[0].valid_pixels]+1.0 #deltag+1 for valid pixels
-		weight = frac[sys_maps[0].valid_pixels] #weight for samples (prop to 1/sigma^2)
+		if len(sig_map_index) == 0: #there are no maps to correct
+			print('0 maps selected for correction')
 
-		#do linear regression
-		if self.config["regression_class"].lower() == "linearregression":
-			reg = sk_linear_model.LinearRegression()
-			reg.fit(sysmap_table.T, dg1, sample_weight=weight )
-		elif self.config["regression_class"].lower() == "elasticnetcv":
-			reg = sk_linear_model.ElasticNetCV()
-			reg.fit(sysmap_table.T, dg1, sample_weight=weight )
-		else:
-			raise IOError("regression method {0} not yet implemented".format(self.config["regression_class"]))
+			#Fmap is all ones
+			Fmap_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+			Fmap_bf.update_values_pix(self.sys_maps[0].valid_pixels, np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64) )
 
-		#get output of regression
-		Fvals = reg.predict(sysmap_table.T)
-		Fmap_bf = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-		Fmap_bf.update_values_pix(sys_maps[0].valid_pixels, Fvals.astype(np.float64) )
-		coeff = np.append(reg.intercept_,reg.coef_)
-		coeff_cov = None
+			fit_output = {}
+			fit_output['sig_map_index'] = sig_map_index
+			fit_output['coeff'] = None
+			fit_output['coeff_cov'] = None
 
-		#make the 1d trends for the regression output
-		Fdc_bf = lsstools.DensityCorrelation()
-		Fdc_bf.set_precompute(density_correlation)
-		for imap, sys_vals in enumerate(sysmap_table):
-			edges = density_correlation.get_edges(imap)
-			Fdc_bf.add_correlation(imap, edges, sys_vals, Fmap_bf[Fmap_bf.valid_pixels], frac=frac[Fmap_bf.valid_pixels], map_input=True, use_precompute=True )
-		density_correlation.add_model(Fdc_bf.ndens, 'linear')
+		else: #there are maps to correct
+			print('{0} map(s) selected for correction'.format(len(sig_map_index)))
+			sysmap_table_selected = sysmap_table_all[sig_map_index]
 
-		#assemble the fitting outputs (chi2, values, coefficents, )
-		fit_output = {}
-		fit_output['sig_map_index'] = sig_map_index
-		fit_output['coeff'] = coeff
-		fit_output['coeff_cov'] = coeff_cov
+			#make the delta_g map and fracdet weights
+			deltag, frac = self.get_deltag(density_correlation.tomobin)
+			dg1 = deltag[self.sys_maps[0].valid_pixels]+1.0 #deltag+1 for valid pixels
+			weight = frac[self.sys_maps[0].valid_pixels] #weight for samples (prop to 1/sigma^2)
+
+			#do linear regression
+			if self.config["regression_class"].lower() == "linearregression":
+				reg = sk_linear_model.LinearRegression()
+				reg.fit(sysmap_table_selected.T, dg1, sample_weight=weight )
+			elif self.config["regression_class"].lower() == "elasticnetcv":
+				reg = sk_linear_model.ElasticNetCV()
+				reg.fit(sysmap_table_selected.T, dg1, sample_weight=weight )
+			else:
+				raise IOError("regression method {0} not yet implemented".format(self.config["regression_class"]))
+
+			#get output of regression
+			Fvals = reg.predict(sysmap_table_selected.T)
+			Fmap_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+			Fmap_bf.update_values_pix(self.sys_maps[0].valid_pixels, Fvals.astype(np.float64) )
+			coeff = np.append(reg.intercept_,reg.coef_)
+			coeff_cov = None
+
+			#make the 1d trends for the regression output
+			Fdc_bf = lsstools.DensityCorrelation()
+			Fdc_bf.set_precompute(density_correlation)
+			for imap, sys_vals in enumerate(sysmap_table_all):
+				edges = density_correlation.get_edges(imap)
+				Fdc_bf.add_correlation(imap, edges, sys_vals, Fmap_bf[Fmap_bf.valid_pixels], frac=frac[Fmap_bf.valid_pixels], map_input=True, use_precompute=True )
+			density_correlation.add_model(Fdc_bf.ndens, 'linear')
+
+			#assemble the fitting outputs (chi2, values, coefficents, )
+			fit_output = {}
+			fit_output['sig_map_index'] = sig_map_index
+			fit_output['coeff'] = coeff
+			fit_output['coeff_cov'] = coeff_cov
 
 		f = time.time()
 		print("compute_weights took {0}s".format(f-s))
