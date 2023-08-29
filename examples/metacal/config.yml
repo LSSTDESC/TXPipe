@@ -262,7 +262,8 @@ TXExternalLensMaps:
     nside: 512
 
 
-TXMainMaps: {}
+TXSourceMaps: {}
+TXLensMaps: {}
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8

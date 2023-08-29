@@ -5,10 +5,12 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile, YamlFile, ShearCat
 from .utils.calibration_tools import read_shear_catalog_type
 from .utils import choose_pixelization
 
-def copy(tomo, in_section, out_section, name, meta_file, metadata):
+def copy(tomo, in_section, out_section, name, meta_file, metadata, new_name=None):
+    if new_name is None:
+        new_name = name
     x = tomo[f"{in_section}/{name}"][:]
-    meta_file.create_dataset(f"{out_section}/{name}", data=x)
-    metadata[name] = x.tolist()
+    meta_file.create_dataset(f"{out_section}/{new_name}", data=x)
+    metadata[new_name] = x.tolist()
 
 def copy_attrs(tomo, name, out_name, meta_file, metadata):
     for k, v in tomo[name].attrs.items():
@@ -77,21 +79,21 @@ class TXTracerMetadata(PipelineStage):
             copy(shear_tomo_file, "tomography", "tracers", "sigma_e", meta_file, metadata)
             copy(shear_tomo_file, "tomography", "tracers", "mean_e1", meta_file, metadata)
             copy(shear_tomo_file, "tomography", "tracers", "mean_e2", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "source_counts", meta_file, metadata)
+            copy(shear_tomo_file, "tomography", "tracers", "counts", meta_file, metadata, "source_counts")
 
             copy(shear_tomo_file, "tomography", "tracers", "N_eff_2d", meta_file, metadata)
             copy(shear_tomo_file, "tomography", "tracers", "sigma_e_2d", meta_file, metadata)
             copy(shear_tomo_file, "tomography", "tracers", "mean_e1_2d", meta_file, metadata)
             copy(shear_tomo_file, "tomography", "tracers", "mean_e2_2d", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "source_counts_2d", meta_file, metadata)
+            copy(shear_tomo_file, "tomography", "tracers", "counts_2d", meta_file, metadata, "source_counts_2d")
 
             N_eff = shear_tomo_file["tomography/N_eff"][:]
             N_eff_2d = shear_tomo_file["tomography/N_eff_2d"][:]
             n_eff = N_eff / area_sq_arcmin
             n_eff_2d = N_eff_2d / area_sq_arcmin
 
-            source_counts = shear_tomo_file["tomography/source_counts"][:]
-            source_counts_2d = shear_tomo_file["tomography/source_counts_2d"][:]
+            source_counts = shear_tomo_file["tomography/counts"][:]
+            source_counts_2d = shear_tomo_file["tomography/counts_2d"][:]
 
             source_density = source_counts / area_sq_arcmin
             source_density_2d = source_counts_2d / area_sq_arcmin
@@ -118,11 +120,11 @@ class TXTracerMetadata(PipelineStage):
 
         with self.open_input("lens_tomography_catalog") as lens_tomo_file:
 
-            copy(lens_tomo_file, "tomography", "tracers", "lens_counts", meta_file, metadata)
-            copy(lens_tomo_file, "tomography", "tracers", "lens_counts_2d", meta_file, metadata)
+            copy(lens_tomo_file, "tomography", "tracers", "counts", meta_file, metadata, "lens_counts")
+            copy(lens_tomo_file, "tomography", "tracers", "counts_2d", meta_file, metadata, "lens_counts_2d")
 
-            lens_counts = lens_tomo_file["tomography/lens_counts"][:]
-            lens_counts_2d = lens_tomo_file["tomography/lens_counts_2d"][:]
+            lens_counts = lens_tomo_file["tomography/counts"][:]
+            lens_counts_2d = lens_tomo_file["tomography/counts_2d"][:]
 
             lens_density = lens_counts / area_sq_arcmin
             lens_density_2d = lens_counts_2d / area_sq_arcmin

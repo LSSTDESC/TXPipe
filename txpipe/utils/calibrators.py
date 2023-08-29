@@ -129,7 +129,7 @@ class NullCalibrator:
         import h5py
 
         with h5py.File(tomo_file, "r") as f:
-            nbin = f["tomography"].attrs["nbin_source"]
+            nbin = f["tomography"].attrs["nbin"]
 
             # Load the mean shear values
             mu1 = f["tomography/mean_e1"][:]

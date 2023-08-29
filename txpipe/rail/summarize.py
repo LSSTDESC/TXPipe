@@ -54,11 +54,10 @@ class PZRailSummarize(PipelineStage):
         with self.open_input("photometry_catalog") as f:
             full_data = {b: f[f"{prefix}{b}"][:] for b in bands}
 
-        tomo_name = self.config["tomography_name"]
         with self.open_input("tomography_catalog") as f:
             g = f['tomography']
-            nbin = g.attrs[f'nbin_{tomo_name}']
-            bins = g[f'{tomo_name}_bin'][:]
+            nbin = g.attrs[f'nbin']
+            bins = g[f'bin'][:]
 
 
         # Generate the configuration for RAIL. Anything set in the
@@ -137,6 +136,7 @@ class PZRailSummarize(PipelineStage):
         # the bins value has shape (1, nbin) here.
         z = t['meta']['bins'][0, :-1]
         nz = len(z)
+        tomo_name = self.config["tomography_name"]
         stack = Stack(tomo_name, z, nbin)
 
         # Go through each bin setting n(z) on our object directly.

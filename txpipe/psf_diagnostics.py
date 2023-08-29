@@ -188,6 +188,7 @@ class TXRoweStatistics(PipelineStage):
     outputs = [
         ("rowe134", PNGFile),
         ("rowe25", PNGFile),
+        ("rowe0", PNGFile),
         ("rowe_stats", HDFFile),
     ]
 
@@ -207,16 +208,17 @@ class TXRoweStatistics(PipelineStage):
 
         matplotlib.use("agg")
 
-        ra, dec, e_psf, de_psf, T_f, star_type = self.load_stars()
+        ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
 
         rowe_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
+            rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
             rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de_psf, de_psf)
-            rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, e_psf, de_psf)
+            rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de_psf, e_mod)
             rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_psf * T_f, e_psf * T_f)
             rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de_psf, e_psf * T_f)
-            rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_psf, e_psf * T_f)
+            rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_psf * T_f)
 
         self.save_stats(rowe_stats)
         self.rowe_plots(rowe_stats)
@@ -226,10 +228,12 @@ class TXRoweStatistics(PipelineStage):
             g = f["stars"]
             ra = g["ra"][:]
             dec = g["dec"][:]
-            e1 = g["measured_e1"][:]
-            e2 = g["measured_e2"][:]
-            de1 = e1 - g["model_e1"][:]
-            de2 = e2 - g["model_e2"][:]
+            e1psf = g["measured_e1"][:]
+            e2psf = g["measured_e2"][:]
+            e1mod = g["model_e1"][:]
+            e2mod = g["model_e2"][:]
+            de1 = e1psf - e1mod
+            de2 = e2psf - e2mod
             if self.config["psf_size_units"] == "T":
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
             elif self.config["psf_size_units"] == "sigma":
@@ -237,12 +241,13 @@ class TXRoweStatistics(PipelineStage):
                     "measured_T"
                 ][:] ** 2
 
-            e_psf = np.array((e1, e2))
+            e_psf = np.array((e1psf, e2psf))
+            e_mod = np.array((e1mod,e2mod))
             de_psf = np.array((de1, de2))
 
             star_type = load_star_type(g)
 
-        return ra, dec, e_psf, de_psf, T_frac, star_type
+        return ra, dec, e_psf, e_mod, de_psf, T_frac, star_type
 
     def compute_rowe(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
@@ -268,6 +273,32 @@ class TXRoweStatistics(PipelineStage):
         # First plot - stats 1,3,4
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
+        
+        f = self.open_output("rowe0",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
+            
+            for j,i in enumerate([0]):
+                theta,xi,err = rowe_stats[i,s]
+                tr = mtrans.offset_copy(
+                    ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
+                )
+                plt.errorbar(
+                    theta,
+                    abs(xi),
+                    err,
+                    fmt=".",
+                    label=rf"$\rho_{i}$",
+                    capsize=3,
+                    transform=tr,
+                )
+            plt.xscale("log")
+            plt.yscale("log")
+            plt.xlabel(r"$\theta$")
+            plt.ylabel(r"$\xi_+(\theta)$")
+            plt.legend()
+            plt.title(STAR_TYPE_NAMES[s])
+        f.close()
 
         f = self.open_output("rowe134", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
@@ -287,8 +318,6 @@ class TXRoweStatistics(PipelineStage):
                     capsize=3,
                     transform=tr,
                 )
-            plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
-            plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
             plt.xscale("log")
             plt.yscale("log")
             plt.xlabel(r"$\theta$")
@@ -300,7 +329,7 @@ class TXRoweStatistics(PipelineStage):
         f = self.open_output("rowe25", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-            for j, i in enumerate([2, 5]):
+            for j, i in enumerate([2, 5]): 
                 theta, xi, err = rowe_stats[i, s]
                 tr = mtrans.offset_copy(
                     ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
@@ -315,8 +344,6 @@ class TXRoweStatistics(PipelineStage):
                     transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
-                plt.bar(0.0, 2e-05, width=5, align="edge", color="gray", alpha=0.2)
-                plt.bar(5, 1e-07, width=245, align="edge", color="gray", alpha=0.2)
                 plt.xscale("log")
                 plt.yscale("log")
                 plt.xlabel(r"$\theta$")
@@ -327,7 +354,7 @@ class TXRoweStatistics(PipelineStage):
     def save_stats(self, rowe_stats):
         f = self.open_output("rowe_stats")
         g = f.create_group("rowe_statistics")
-        for i in 1, 2, 3, 4, 5:
+        for i in 0, 1, 2, 3, 4, 5:
             for s in STAR_TYPES:
                 theta, xi, err = rowe_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
@@ -428,7 +455,7 @@ class TXGalaxyStarShear(PipelineStage):
 
         # load tomography data
         with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/source_bin"][:]
+            source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
             if cat_type == "metacal":
                 R_total_2d = f["response/R_total_2d"][:]
@@ -696,7 +723,7 @@ class TXGalaxyStarDensity(PipelineStage):
 
         # load tomography data
         with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/source_bin"][:]
+            source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:

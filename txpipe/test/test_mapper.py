@@ -1,5 +1,5 @@
 import numpy as np
-from ..mapping import Mapper
+from ..mapping import ShearMapper
 from ..utils import choose_pixelization
 import healpy
 
@@ -8,7 +8,7 @@ def test_mapper():
     # 12 pixels
     nside = 1
     scheme = choose_pixelization(pixelization="healpix", nside=nside)
-    mapper = Mapper(scheme, [0], [0])
+    mapper = ShearMapper(scheme, [0], [0])
     npix = healpy.nside2npix(nside)
     pix = np.arange(npix)
     ra, dec = healpy.pix2ang(nside, pix, lonlat=True)
@@ -18,10 +18,8 @@ def test_mapper():
         data = {
             "ra": ra,
             "dec": dec,
-            "source_bin": np.zeros(npix, dtype=float),
+            "bin": np.zeros(npix, dtype=float),
             "weight": np.ones(npix, dtype=float),
-            "lens_bin": np.zeros(npix, dtype=float),
-            "lens_weight": np.ones(npix, dtype=float),
             "g1": pix.astype(float) * 2,
             "g2": np.ones(npix) * i,
         }
@@ -32,7 +30,6 @@ def test_mapper():
     (
         pixel,
         ngal,
-        lens_weight,
         g1,
         g2,
         var_g1,
@@ -59,4 +56,3 @@ def test_mapper():
     assert np.allclose(var_g1[0], 0.0)
     assert np.allclose(var_g2[0], var_2)
     assert np.allclose(source_weight[0], 5)
-    assert np.allclose(lens_weight[0], 5)
