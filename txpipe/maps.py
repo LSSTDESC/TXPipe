@@ -228,7 +228,7 @@ class TXSourceMaps(PipelineStage):
             # replace nans with UNSEEN.  The NaNs can occur if there are no objects
             # in a pixel, so the value is undefined.
             g1_map[da.isnan(g1_map)] = healpy.UNSEEN
-            g2_map[da.isnan(g1_map)] = healpy.UNSEEN
+            g2_map[da.isnan(g2_map)] = healpy.UNSEEN
             var1_map[da.isnan(var1_map)] = healpy.UNSEEN
             var2_map[da.isnan(var2_map)] = healpy.UNSEEN
             esq_map[da.isnan(esq_map)] = healpy.UNSEEN
