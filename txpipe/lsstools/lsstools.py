@@ -275,7 +275,7 @@ class DensityCorrelation:
 		fig.clear()
 		plt.close()
 
-	def plot_chi2_hist(self, filepath, extra_density_correlations=None):
+	def plot_chi2_hist(self, filepath, extra_density_correlations=None, chi2_threshold=None):
 		import matplotlib.pyplot as plt
 		import scipy.stats
 
@@ -288,6 +288,10 @@ class DensityCorrelation:
 		ndata = len(self.get_edges(self.map_index[0]))-1
 		chi2_array = np.linspace(0,ndata*3,100)
 		ax.plot(chi2_array, scipy.stats.chi2(ndata).pdf(chi2_array))
+		
+		if chi2_threshold is not None:
+			plt.axvline(chi2_threshold, color='k', ls='--')
+
 		ax.set_xlabel(r'$\chi^2_{\rm null}$')
 		fig.tight_layout()
 		fig.savefig(filepath)
