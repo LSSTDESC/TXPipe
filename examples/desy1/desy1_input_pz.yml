@@ -44,7 +44,7 @@ output_dir: data/desy1/outputs
 
 
 # configuration settings
-config: desy1/config_input_pz.yml
+config: examples/desy1/config_input_pz.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
