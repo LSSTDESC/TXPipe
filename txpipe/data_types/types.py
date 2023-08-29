@@ -99,10 +99,8 @@ class TomographyCatalog(HDFFile):
         Write redshift bin edges to attributes
         """
         d = self.file["tomography"].attrs
-        print("Writing zbins")
         d[f"nbin"] = len(edges) - 1
         for i, (zmin, zmax) in enumerate(zip(edges[:-1], edges[1:])):
-            print("Writing zbin", zmin, zmax)
             d[f"zmin_{i}"] = zmin
             d[f"zmax_{i}"] = zmax
 
