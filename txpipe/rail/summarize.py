@@ -126,7 +126,7 @@ class PZRailSummarize(PipelineStage):
         if self.rank > 0:
             return
 
-        combined_qp = concatenate_ensembles(qp_per_bin + [qp_2d])
+        combined_qp = qp.concatenate(qp_per_bin + [qp_2d])
 
         with self.open_output("photoz_stack", wrapper=True) as f:
             f.write_ensemble(combined_qp)
@@ -185,36 +185,3 @@ class PZRealizationsPlot(PipelineStage):
                 ax.set_xlabel("z")
                 ax.set_ylabel(f"{tomo_bin} n(z)")
 
-
-
-def concatenate_ensembles(ensembles):
-    """
-    Create a qp object by concatenating a selection of others.
-
-    Parameters
-    ----------
-    ensembles : list of qp.Ensemble
-        The ensembles to concatenate.
-
-    Returns
-    -------
-    qp.Ensemble
-        The concatenated ensemble.
-    """
-    import qp
-    tables = ensembles[0].build_tables()
-
-    pdf_info = collections.defaultdict(list)
-    for k, v in tables["data"].items():
-        pdf_info[k].append(v)
-
-    # get just t
-    for ens in ensembles[1:]:
-        data_table = ens.build_tables()['data']
-        for k, v in data_table.items():
-            pdf_info[k].append(v)
-
-    # concatenate all the data bits, and replace the first
-    # ensemble's data with the concatenated version
-    tables["data"] = {k: np.concatenate(v) for k, v in pdf_info.items()}
-    return qp.from_tables(tables)
