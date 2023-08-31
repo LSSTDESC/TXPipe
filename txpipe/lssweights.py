@@ -797,16 +797,14 @@ class TXLSSweightsSimReg(TXLSSweights):
 			fit_output['coeff_cov'] = None
 		else:
 			print('{0} map(s) selected for correction'.format(len(sig_map_index)))
-			sys_maps_selected = self.sys_maps[sig_map_index]
-			sysmap_table_selected = sysmap_table_all[sig_map_index]
 
 			#get the frac det (TO DO: get frac only, dont need deltag)
 			_, frac = self.get_deltag(density_correlation.tomobin)
 
 			#initial parameters
-			p0 = np.array([1.0]+[0.0]*len(sys_maps_selected))
+			p0 = np.array([1.0]+[0.0]*len(sig_map_index))
 
-			#we need to mask the density correlation  to only use the selected maps
+			#we need to mask the density correlation to only use the selected maps
 			dc_mask = np.in1d(density_correlation.map_index, sig_map_index)
 			dc_covmat_masked = density_correlation.covmat[dc_mask].T[dc_mask].T
 			dc_ndens_masked = density_correlation.ndens[dc_mask]
@@ -817,8 +815,9 @@ class TXLSSweightsSimReg(TXLSSweights):
 				alphas = params[1:]
 				F, Fdc = lsstools.lsstools.linear_model(beta,*alphas,
 					density_correlation=density_correlation, 
-					sys_maps=sys_maps_selected,
-					sysmap_table=sysmap_table_selected,
+					sys_maps=self.sys_maps,
+					sysmap_table=sysmap_table_all,
+					map_index = sig_map_index, 
 					frac=frac)
 				chi2 = lsstools.lsstools.calc_chi2(dc_ndens_masked,dc_covmat_masked,Fdc.ndens)
 				return chi2/2.
