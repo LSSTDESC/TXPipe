@@ -382,7 +382,7 @@ class DensityCorrelation:
 			raise IOError('error in err or cov_mat input shape')
 
 
-def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None, frac=None):
+def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None, map_index=None, frac=None):
 	"""
 	linear contamination model:
 	F(s) = alpha1*s1 + alpha2*s2 + ... + beta
@@ -396,7 +396,11 @@ def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_
 	import numpy as np 
 	from . import lsstools
 
-	assert len(alphas) == len(sys_maps)
+	if map_index is not None:
+		assert len(map_index) == len(alphas)
+	else:
+		assert len(alphas) == len(sys_maps)
+		map_index = np.arange(len(sys_maps))
 
 	if sysmap_table is None:
 		sysmap_table = hsplist2array(sys_map)
@@ -404,7 +408,7 @@ def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_
 	#make empty F(s) map
 	validpixels = sys_maps[0].valid_pixels
 	F = hsp.HealSparseMap.make_empty(sys_maps[0].nside_coverage, sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-	Fvals = np.sum(np.array([alphas]).T*sysmap_table,axis=0) + beta
+	Fvals = np.sum(np.array([alphas]).T*sysmap_table[map_index],axis=0) + beta
 	F.update_values_pix(validpixels, Fvals)
 
 	#normalize the map
@@ -415,9 +419,10 @@ def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_
 	frac_vals = frac[validpixels]
 	F_density_corrs = lsstools.DensityCorrelation()
 	F_density_corrs.set_precompute(density_correlation)
-	for imap, sys_vals in enumerate(sysmap_table):
-			edges = density_correlation.get_edges(imap)
-			F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True, frac=frac_vals)
+	for imap in map_index:
+		sys_vals = sysmap_table[imap]
+		edges = density_correlation.get_edges(imap)
+		F_density_corrs.add_correlation(imap, edges, sys_vals, data_vals, map_input=True, use_precompute=True, frac=frac_vals)
 
 	return F, F_density_corrs
 
