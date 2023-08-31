@@ -44,6 +44,7 @@ class TXLSSweights(TXMapCorrelations):
 		"supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
 		"nbin": 20,
 		"outlier_fraction": 0.01,
+		"allow_weighted_input":False,
 	}
 
 	def run(self):
@@ -253,15 +254,19 @@ class TXLSSweights(TXMapCorrelations):
 
 			#pixel ID for each lens galaxy
 			obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
-			
-			if Fmap is None:
-				weight = f[f"lens/bin_{tomobin}/weight"][:]
 
-				assert (weight==1.).all() # For now lets assume the input weights have to be 1 
-												# (we could drop this condition 
-												# If we ever want to input a weighted catalog)
+			weight = f[f"lens/bin_{tomobin}/weight"][:] #input object weights
+
+			if self.config["allow_weighted_input"] == False:
+				assert (weight==1.).all() # Lets assume the input weights have to be 1 by default
 			else:
-				weight = 1./Fmap[obj_pix]
+				if (weight==1.).all() == False:
+					print('WARNING: Your input lens catalog has weights != 1')
+					print('You have set allow_weighted_input==True so I will allow this')
+					print('Output weight=input_weight*sys_weight')
+
+			if Fmap is not None:
+				weight = weight * 1./Fmap[obj_pix]
 
 
 		density_corrs = lsstools.DensityCorrelation(tomobin=tomobin) #keeps track of the 1d plots
@@ -457,6 +462,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		"simple_cov":False, #if True will use a diagonal shot noise only covariance for the 1d relations 
 		"diag_blocks_only":True, #If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
 		"b0": [1.0], 
+		"allow_weighted_input":False,
 	}
 
 	def prepare_sys_maps(self):
@@ -547,6 +553,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
 			ra = f[f"lens/bin_{tomobin}/ra"][:]
 			dec = f[f"lens/bin_{tomobin}/dec"][:]
+			weight = f[f"lens/bin_{tomobin}/weight"][:]
 
 		#pixel ID for each lens galaxy
 		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
@@ -576,10 +583,10 @@ class TXLSSweightsSimReg(TXLSSweights):
 				startj = maskj[0]
 				finishj = maskj[-1]+1
 
-				n2d_pair,_,_ = np.histogram2d(sys_obj_i,sys_obj_j,bins=(edgesi,edgesj))
+				n2d_pair,_,_ = np.histogram2d(sys_obj_i,sys_obj_j,bins=(edgesi,edgesj), weights=weight)
 				n2d[imap,jmap] = n2d_pair
 
-				#CHECK I GOT THESE THE RIGHT WAY AROUND!!!!
+				#TO DO: CHECK I GOT THESE THE RIGHT WAY AROUND!!!!
 				covmat_N[starti:finishi,startj:finishj] = n2d_pair
 				covmat_N[startj:finishj,starti:finishi] = n2d_pair.T
 
@@ -875,6 +882,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 		"diag_blocks_only":True, #if True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
 		"b0": [1.0], 
 		"regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
+		"allow_weighted_input":False,
 	}
 
 	def calc_covariance(self, density_correlation):
