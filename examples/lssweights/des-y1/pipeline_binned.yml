@@ -1,0 +1,64 @@
+
+# Stages to run
+stages:
+    - name: TXTruthLensCatalogSplitter  # Split the lens sample tomographically
+    - name: TXLSSweightsSimReg     # compute LSS weights
+      threads_per_process: 64
+      nprocess: 1
+      nodes: 1
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
+      threads_per_process: 64
+      nprocess: 1
+      nodes: 1
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe 
+
+# Where to put outputs
+output_dir: txpipe_utils/examples/desy1_weights/output_binned/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: cori-batch
+    image: ghcr.io/lsstdesc/txpipe
+
+# configuration settings
+config: txpipe_utils/examples/desy1_weights/config_binned.yml
+
+inputs:
+    # See README for paths to download these files
+    photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/photometry_catalog_desy1_RM.h5
+    lens_tomography_catalog_unweighted: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/lens_tomography_catalog_desy1_RM_unweighted.h5
+    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.hdf5
+    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
+    binned_random_catalog_sub: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
+    mask: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/mask_desy1_4096.h5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_photoz_stack.hdf5
+    shear_catalog: none
+    shear_tomography_catalog: none
+    binned_shear_catalog: none
+    shear_photoz_stack: none
+
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension we are not using Random_cat_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    random_cats_source: Null
+    flow: data/example/inputs/example_flow.pkl
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: False
+# where to put output logs for individual stages
+log_dir: txpipe_utils/examples/desy1_weights/output_binned/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: txpipe_utils/examples/desy1_weights/output_binned/log.txt
