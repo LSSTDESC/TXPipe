@@ -159,7 +159,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     def collect(self, profiles_to_collect):
         # total number of background objects for t??????  Number of profiles per cluster?
 
-        collected_profiles = **profiles_to_collect
+#        collected_profiles = **profiles_to_collect
 
         profile_colnames = list(collected_profiles.keys())
         num_profile_bins = len(collected_profiles[profile_colnames[0]])
