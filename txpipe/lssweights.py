@@ -128,7 +128,6 @@ class TXLSSweights(TXMapCorrelations):
 		"""
 		convert the ra, dec of the lens sample to pixel number counts
 		"""
-		import collections
 		import healpy as hp
 		import numpy as np  
 		import healsparse as hsp
@@ -142,13 +141,16 @@ class TXLSSweights(TXMapCorrelations):
 		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
 			ra = f[f"lens/bin_{tomobin}/ra"][:]
 			dec = f[f"lens/bin_{tomobin}/dec"][:]
+			weight = f[f"lens/bin_{tomobin}/weight"][:]
 
 		#pixel ID for each lens galaxy
 		obj_pix = hp.ang2pix(nside,ra,dec,lonlat=True, nest=True)
 
-		count = collections.Counter(obj_pix)
-		pixel = np.array(list(count.keys()))
-		Ncounts = np.array(list(count.values())).astype(np.float64)
+		Ncounts_bincount = np.bincount(obj_pix, weights=weight)
+		pixels_bincount = np.arange(len(Ncounts_bincount))
+		
+		pixel = pixels_bincount[Ncounts_bincount != 0.]
+		Ncounts = Ncounts_bincount[Ncounts_bincount != 0.]
 
 		if nest:
 			maskpix = np.where(mask!=hp.UNSEEN)[0]
