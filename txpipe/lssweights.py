@@ -332,7 +332,7 @@ class TXLSSweights(TXMapCorrelations):
 		with self.open_input("binned_lens_catalog_unweighted") as binned_input:
 			binned_output.copy(binned_input["lens"],"lens")
 
-		fig, axs = plt.subplots( 1, self.Ntomo, figsize=(3*self.Ntomo, 3) )
+		fig, axs = plt.subplots( 1, self.Ntomo, figsize=(3*self.Ntomo, 3), squeeze=False)
 		for ibin in range(self.Ntomo):
 			#get weight per lens object
 			subgroup = binned_output[f"lens/bin_{ibin}/"]
@@ -345,10 +345,10 @@ class TXLSSweights(TXMapCorrelations):
 			subgroup["weight"][...] *= obj_weight
 
 			#also plot a histogram of the weights
-			axs[ibin].hist(obj_weight, bins=100)
-			axs[ibin].set_xlabel('weight')
-			axs[ibin].set_yticks([])
-			axs[ibin].set_title(f'lens {ibin}')
+			axs[0][ibin].hist(obj_weight, bins=100)
+			axs[0][ibin].set_xlabel('weight')
+			axs[0][ibin].set_yticks([])
+			axs[0][ibin].set_title(f'lens {ibin}')
 		filepath = output_dir.path_for_file(f"weights_hist.png")
 		fig.tight_layout()
 		fig.savefig(filepath)
