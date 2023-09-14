@@ -796,20 +796,20 @@ class MeanShearInBins:
         for i in range(self.size):
             if self.shear_catalog_type == "metacal":
                 # Tell the Calibrators to work out the responses
-                r, s, _ = self.calibrators[i].collect(comm)
+                r, s, _, _  = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r + s)
             elif self.shear_catalog_type == "metadetect":
                 # Tell the Calibrators to work out the responses
-                r, _ = self.calibrators[i].collect(comm)
+                r, _, _ = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r)
             elif self.shear_catalog_type == "lensfit":
-                k, c, _ = self.calibrators[i].collect(comm)
+                k, c, _, _ = self.calibrators[i].collect(comm)
                 K.append(k)
                 C.append(c)
             else:
-                r, k, _ = self.calibrators[i].collect(comm)
+                r, k, _, _ = self.calibrators[i].collect(comm)
                 K.append(k)
                 R.append(r)
 
