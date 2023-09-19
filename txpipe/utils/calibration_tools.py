@@ -434,7 +434,7 @@ class MetaDetectCalculator:
         R /= self.delta_gamma, sum_weights**2/sum_weights_sq
 
         # we just want the count of the 00 base catalog
-        return R, counts[0]
+        return R, counts[0], sum_weights**2/sum_weights_sq
 
 
 class LensfitCalculator:
@@ -709,7 +709,6 @@ class MeanShearInBins:
         self.cut_source_bin = cut_source_bin
         self.shear_catalog_type = shear_catalog_type
         self.size = len(self.limits) - 1
-        self._weight =  np.zeros(self.size)
         # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
         self.g2 = ParallelMeanVariance(self.size)
@@ -750,42 +749,24 @@ class MeanShearInBins:
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["mcal_g1"][w], weight)
                 self.g2.add_data(i, data["mcal_g2"][w], weight)
-                self.parallelsum(i,weight,self._weight)
             elif self.shear_catalog_type == "metadetect":
                 weight = data["00/weight"][w]
                 self.g1.add_data(i, data["00/g1"][w], weight)
                 self.g2.add_data(i, data["00/g2"][w], weight)
-                self.parallelsum(i,weight,self._weight)
             elif self.shear_catalog_type in ["lensfit", "metadetect"]:
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["g1"][w], weight)
                 self.g2.add_data(i, data["g2"][w], weight)
-                self.parallelsum(i,weight,self._weight)
             elif self.shear_catalog_type == "hsc":
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["g1"][w] - data["c1"][w], weight)
                 self.g2.add_data(i, data["g2"][w] - data["c2"][w], weight)
-                self.parallelsum(i,weight,self._weight)
             self.x.add_data(i, data[self.x_name][w], weight)
 
-            
-    def parallelsum(self,bin, weights, _weight):
-        n = len(weights)
-        for i in range(n):
-            w = weights[i]**2
-            if w == 0:
-                continue
-            _weight[bin] += w
-        
-                 
         
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
         count2, g2, var2 = self.g2.collect(comm, mode="gather")
-        wi2=self._weight
-        
-        if comm is not None:
-            in_place_reduce(wi2,comm)
         
         _, mu = self.x.collect(comm, mode="gather")
         # Now we have the complete sample we can get the calibration matrix
@@ -793,25 +774,35 @@ class MeanShearInBins:
         R = []
         K = []
         C = []
+        N = []
+        Neff = []
         for i in range(self.size):
             if self.shear_catalog_type == "metacal":
                 # Tell the Calibrators to work out the responses
-                r, s, _, _  = self.calibrators[i].collect(comm)
+                r, s, n, neff  = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r + s)
+                N.append(n)
+                Neff.append(neff)
             elif self.shear_catalog_type == "metadetect":
                 # Tell the Calibrators to work out the responses
-                r, _, _ = self.calibrators[i].collect(comm)
+                r, n, neff = self.calibrators[i].collect(comm)
                 # and record the total (a 2x2 matrix)
                 R.append(r)
+                N.append(n)
+                Neff.append(neff)
             elif self.shear_catalog_type == "lensfit":
-                k, c, _, _ = self.calibrators[i].collect(comm)
+                k, c, n, neff = self.calibrators[i].collect(comm)
                 K.append(k)
                 C.append(c)
+                N.append(n)
+                Neff.append(neff)
             else:
-                r, k, _, _ = self.calibrators[i].collect(comm)
+                r, k, n, neff = self.calibrators[i].collect(comm)
                 K.append(k)
                 R.append(r)
+                N.append(n)
+                Neff.append(neff)
 
         # Only the root processor does the rest
         if (comm is not None) and (comm.Get_rank() != 0):
@@ -822,7 +813,7 @@ class MeanShearInBins:
         for i in range(self.size):
             # Get the shears and the errors on their means
             g = [g1[i], g2[i]]
-            sigma = np.sqrt([ var1[i]/(count1[i]**2/wi2[i]), var2[i]/(count2[i]**2/wi2[i])])
+            sigma = np.sqrt([ var1[i]/Neff[i], var2[i]/Neff[i]])
 
             if self.shear_catalog_type in ["metacal", "metadetect"]:
                 # Get the inverse response matrix to apply
