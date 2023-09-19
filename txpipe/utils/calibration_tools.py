@@ -400,16 +400,16 @@ class MetaDetectCalculator:
 
         if comm is not None:
             if allgather:
-                count = comm.allreduce(self.count)
+                counts = comm.allreduce(self.counts)
                 sum_weights    = comm.allreduce(self.sum_weights)
                 sum_weights_sq = comm.allreduce(self.sum_weights_sq)
             else:
-                count = comm.reduce(self.count)
+                counts = comm.reduce(self.counts)
                 sum_weights    = comm.reduce(self.sum_weights)
                 sum_weights_sq = comm.reduce(self.sum_weights_sq)
 
         else:
-            count = self.count
+            counts = self.counts
             sum_weights    = self.sum_weights
             sum_weights_sq = self.sum_weights_sq
 
