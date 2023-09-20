@@ -431,10 +431,10 @@ class MetaDetectCalculator:
         R[0, 1] = mean_e[6] - mean_e[8]  # g1_2p - g1_2m
         R[1, 0] = mean_e[3] - mean_e[5]  # g2_1p - g2_1m
         R[1, 1] = mean_e[7] - mean_e[9]  # g2_2p - g2_2m
-        R /= self.delta_gamma, sum_weights**2/sum_weights_sq
+        R /= self.delta_gamma
 
         # we just want the count of the 00 base catalog
-        return R, counts[0], sum_weights**2/sum_weights_sq
+        return R, counts[0], sum_weights[0]**2/sum_weights_sq[0]
 
 
 class LensfitCalculator:

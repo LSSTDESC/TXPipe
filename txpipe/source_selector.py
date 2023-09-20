@@ -77,7 +77,7 @@ class BinStats:
             group["sigma_e_2d"][:] = self.sigma_e
         else:
             group["counts"][i] = self.source_count
-            group["N_eff"][i] = self.N_eff
+            group["N_eff"][i]   = self.N_eff
             group["mean_e1"][i] = self.mean_e[0]
             group["mean_e2"][i] = self.mean_e[1]
             group["sigma_e"][i] = self.sigma_e
