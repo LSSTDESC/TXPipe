@@ -141,7 +141,7 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n , _ = cal.collect(comm, allgather=True)
+        R, n , _, _ = cal.collect(comm, allgather=True)
 
         assert np.allclose(R, R_true)
         assert np.allclose(n, N * nproc)
@@ -155,7 +155,7 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
+        R, n, _, _ = cal.collect(comm, allgather=True)
         print("R = ", R)
         assert np.allclose(n, N * nproc)
 
@@ -168,7 +168,7 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
+        R, n, _, _ = cal.collect(comm, allgather=True)
         print("R = ", R)
 
         assert np.allclose(R, R_true)
