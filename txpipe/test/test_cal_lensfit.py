@@ -56,7 +56,7 @@ def core_lensfit(comm):
         cal = LensfitCalculator(sel)
         cal.add_data(data)
 
-        K, C, n = cal.collect(comm, allgather=True)
+        K, C, n, _ = cal.collect(comm, allgather=True)
         assert np.allclose(C, C_true)
         assert np.allclose(K, K_true)
         assert n == N * nproc
