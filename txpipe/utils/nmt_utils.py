@@ -134,6 +134,6 @@ class WorkspaceCache:
             return
 
         else:
-            os.makedirs(os.path.dirname(p), exist_ok=True)
+            os.makedirs(os.path.dirname(str(p)), exist_ok=True)
 
         workspace.write_to(str(p))
