@@ -97,3 +97,4 @@ Continuous Integration
 ----------------------
 
 Github actions is set up to run unit tests several pipelines whenever commits are pushed to an open pull request.  We need to keep these pipelines up to date: https://github.com/LSSTDESC/TXPipe/actions
+
