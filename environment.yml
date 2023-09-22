@@ -12,6 +12,7 @@ dependencies:
   - healpy=1.16.*
   - healsparse=1.6.*
   - jax=0.4.8
+  - jaxlib=0.4.14
   - jupyter=1.0.*
   - matplotlib=3.7.*
   - mpi4py=3.1.*
