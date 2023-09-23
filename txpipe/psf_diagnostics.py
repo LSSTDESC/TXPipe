@@ -287,10 +287,10 @@ class TXTauStatistics(PipelineStage):
         eigenvalues = np.linalg.eigvals(cov)
         invcov = np.linalg.inv(cov)
         #import pdb; pdb.set_trace()
-        if np.any(np.isclose(eigenvalues, 0.0)):
-            sys.exit("The covariance matrix is singular.")
-        else:
-            print("The covariance matrix is not singular.")
+        #if np.any(np.isclose(eigenvalues, 0.0)):
+        #    sys.exit("The covariance matrix is singular.")
+        #else:
+        #    print("The covariance matrix is not singular.")
         
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov))
         sampler.run_mcmc(initpos, 5000, progress=True);
@@ -492,10 +492,10 @@ class TXTauStatistics(PipelineStage):
 
         # Load tomography data
         with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/source_bin"][:]
+            source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
             if cat_type == "metacal":
-                R_total_2d = f["response/R_total_2d"][:]
+                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
             elif cat_type == "metadetect":
                 R_total_2d = f["response/R_2d"][:]
 
@@ -882,7 +882,7 @@ class TXGalaxyStarShear(PipelineStage):
             source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
             if cat_type == "metacal":
-                R_total_2d = f["response/R_total_2d"][:]
+                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
             elif cat_type == "metadetect":
                 R_total_2d = f["response/R_2d"][:]
 
