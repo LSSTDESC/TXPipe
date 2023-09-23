@@ -207,8 +207,6 @@ TXSourceMaps: {}
 
 TXLensMaps: {}
 
-TXMainMaps: {}
-
 TXAuxiliarySourceMaps:
     flag_exponent_max: 1
     psf_prefix: psf_

@@ -25,7 +25,7 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXMainMaps:
+TXLensMaps:
     pixelization: healpix
     nside: 512
     sparse: True

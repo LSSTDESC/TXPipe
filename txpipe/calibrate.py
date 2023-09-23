@@ -98,7 +98,7 @@ class TXShearCalibration(PipelineStage):
             cat_cols,
             "shear_tomography_catalog",
             "tomography",
-            ["source_bin"],
+            ["bin"],
             parallel=False,
         )
 
@@ -117,11 +117,11 @@ class TXShearCalibration(PipelineStage):
                 # Select objects to go in this bin
                 if b == "all":
                     # the 2D case is any object from any other bin
-                    w = np.where(data["source_bin"] >= 0)
+                    w = np.where(data["bin"] >= 0)
                     cal = cal2d
                 else:
                     # otherwise just objects in this bin
-                    w = np.where(data["source_bin"] == b)
+                    w = np.where(data["bin"] == b)
                     cal = cals[b]
 
                 # Cut down the data to just this selection for output
@@ -146,8 +146,8 @@ class TXShearCalibration(PipelineStage):
     def setup_output(self, extra_cols):
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
-            counts = f["tomography/source_counts"][:]
-            count2d = f["tomography/source_counts_2d"][0]
+            counts = f["tomography/counts"][:]
+            count2d = f["tomography/counts_2d"][0]
             nbin = len(counts)
 
         # Prepare the calibrated output catalog
