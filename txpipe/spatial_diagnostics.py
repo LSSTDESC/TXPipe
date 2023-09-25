@@ -23,31 +23,9 @@ class TXFocalPlanePlot(PipelineStage):
 
     def run(self):
         import matplotlib
-        import matplotlib.pyplot as plt
-        
         matplotlib.use("agg")
-
-        
-        fov_x, fov_y, e1, e2, de1, de2 = self.load_stars()
-        
-  
-        fig = self.open_output("focalplane_g", wrapper=True)
-        
-        weights = [e1,de1,e2,de2]
-        labels = ['e1','res','e2','res2']
-        
-        plot, axes = plt.subplots(nrows=2, ncols=2)
-        for ax,w,l in zip(axes.flat,weights,labels):
-            H,xedge,yedge= np.histogram2d(fov_x, fov_y, bins=(100,100), weights=w)
-            im = ax.imshow(H,cmap='RdBu')
-            ax.set_ylabel(l)
-
-        plot.subplots_adjust(right=0.85)
-        cbar_ax = plot.add_axes([0.9, 0.15, 0.05, 0.7])
-        plot.colorbar(im,cax=cbar_ax,cmap='RdBu')
-        plt.tight_layout()
-    
-        fig.close()    
+                
+        self.plot()
         
         
     def load_stars(self):
@@ -61,3 +39,40 @@ class TXFocalPlanePlot(PipelineStage):
             de2 = e2 - g["model_e2"][:]
             
         return fov_x, fov_y, e1, e2, de1, de2
+    
+    def plot(self):
+        import matplotlib
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+
+        fov_x, fov_y, e1, e2, de1, de2 = self.load_stars()
+
+        fig = self.open_output("focalplane_g", wrapper=True, figsize=(10,10))
+        
+        weights = [e1,  e2, de1*10, de2*10]
+        labels = [r'e$_1$',r'e$_2$',r'res $[\times 10]$',r'res $[\times 10]$']
+        
+        cmap=cm.seismic
+        
+        Hnorm = []
+        for w in weights:
+            Hw, _, _= np.histogram2d(fov_x, fov_y, bins=(100,100), weights=w)
+            H, _, _= np.histogram2d(fov_x, fov_y, bins=(100,100))
+            Hnorm.append(Hw/H)
+        
+        vmin = min(np.nanmin(h) for h in Hnorm)
+        vmax = max(np.nanmax(h) for h in Hnorm)
+     
+        divnorm=matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=0., vmax=vmax)
+        
+        for i,l in zip(range(0,4), labels):
+            plt.subplot(2,2,i+1)
+            im = plt.imshow(Hnorm[i], cmap=cmap,norm=divnorm)
+            plt.ylabel(l)
+            plt.xticks([])
+            plt.yticks([])
+            
+        plt.subplots_adjust(left=0.1,right=0.7)
+        cax = plt.axes([0.85, 0.15, 0.05, 0.7])
+        plt.colorbar(im,cax)      
+        fig.close()
