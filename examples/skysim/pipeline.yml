@@ -35,7 +35,10 @@ stages:
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXDensityMaps
-    - name: TXMainMaps
+    - name: TXSourceMaps
+      nodes: 8
+      nprocess: 64
+    - name: TXLensMaps
       nodes: 8
       nprocess: 64
     - name: TXAuxiliarySourceMaps

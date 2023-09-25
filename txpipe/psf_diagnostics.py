@@ -455,7 +455,7 @@ class TXGalaxyStarShear(PipelineStage):
 
         # load tomography data
         with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/source_bin"][:]
+            source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
             if cat_type == "metacal":
                 R_total_2d = f["response/R_total_2d"][:]
@@ -723,7 +723,7 @@ class TXGalaxyStarDensity(PipelineStage):
 
         # load tomography data
         with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/source_bin"][:]
+            source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:
