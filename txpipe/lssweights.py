@@ -137,6 +137,7 @@ class TXLSSWeights(TXMapCorrelations):
 			nest = map_file.read_map_info("mask")["nest"]
 			mask = map_file.read_map("mask")
 
+		#TO DO: Parallelize this
 		#load the ra and dec of this lens bins
 		with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
 			ra = f[f"lens/bin_{tomobin}/ra"][:]
