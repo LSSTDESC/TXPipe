@@ -77,7 +77,6 @@ class DensityCorrelation:
 			assert map_input
 			nobj_sys = np.zeros(len(self.precomputed_array[map_index]))
 			for i, select_sp in enumerate(self.precomputed_array[map_index]):
-				#nobj_sys[i] = np.sum(data[select_sp])
 				if frac is None:
 					nobj_sys[i] = np.sum(data[select_sp])
 				else:
