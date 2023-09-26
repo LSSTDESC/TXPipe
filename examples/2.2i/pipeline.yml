@@ -60,7 +60,7 @@ stages:
       nprocess: 16
       nodes: 2
     - name: TXSimpleMask
-    - name: TXLSSweightsUnit
+    - name: TXLSSWeightsUnit
     - name: TXDensityMaps
     - name: TXMapPlots
     - name: TXTracerMetadata

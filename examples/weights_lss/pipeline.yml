@@ -19,7 +19,7 @@ stages:
     - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
 
-    - name: TXLSSweightsSimReg   #compute LSS weights using linear regression 
+    - name: TXLSSWeightsSimReg   #compute LSS weights using linear regression 
 
 
 # modules and packages to import that have pipeline

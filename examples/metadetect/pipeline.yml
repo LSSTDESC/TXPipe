@@ -22,7 +22,7 @@ stages:
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
-    - name: TXLSSweightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
+    - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
     - name: TXSourceMaps           # make source g1 and g2 maps
     - name: TXLensMaps             # make source lens and n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps

@@ -46,7 +46,7 @@ stages:
       nodes: 1
       threads_per_process: 1
     - name: TXSimpleMask
-    - name: TXLSSweightsUnit       
+    - name: TXLSSWeightsUnit       
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXNullBlinding

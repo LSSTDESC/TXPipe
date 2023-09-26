@@ -2,7 +2,7 @@
 # Stages to run
 stages:
     - name: TXTruthLensCatalogSplitter  # Split the lens sample tomographically
-    - name: TXLSSweightsSimReg     # compute LSS weights
+    - name: TXLSSWeightsSimReg     # compute LSS weights
       threads_per_process: 64
       nprocess: 1
       nodes: 1

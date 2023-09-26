@@ -13,7 +13,7 @@ import glob
 import time
 from .utils.theory import theory_3x2pt
 
-class TXLSSweights(TXMapCorrelations):
+class TXLSSWeights(TXMapCorrelations):
 	"""
 	BaseClass to compute LSS systematic weights
 
@@ -25,7 +25,7 @@ class TXLSSweights(TXMapCorrelations):
     	- compute 1d density correlations+covariance
     	- compute weights with a regression method
 	"""
-	name = "TXLSSweights"
+	name = "TXLSSWeights"
 	parallel = False
 	inputs = [
 		("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
@@ -433,7 +433,7 @@ class TXLSSweights(TXMapCorrelations):
 		density_correlation.plot_chi2_hist(filepath, extra_density_correlations=[weighted_density_correlation], chi2_threshold=chi2_threshold )
 
 
-class TXLSSweightsSimReg(TXLSSweights):
+class TXLSSWeightsSimReg(TXLSSWeights):
 	"""
 	Class compute LSS systematic weights using simultanious linear regression on the binned
 	1D correlations
@@ -444,7 +444,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 				and calculating Ndens vs sysmap directly
 
 	"""
-	name = "TXLSSweightsSimReg"
+	name = "TXLSSWeightsSimReg"
 	parallel = False
 
 	inputs = [
@@ -860,7 +860,7 @@ class TXLSSweightsSimReg(TXLSSweights):
 
 
 
-class TXLSSweightsLinPix(TXLSSweightsSimReg):
+class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
 	"""
 	Class compute LSS systematic weights using simultanious linear regression at the 
 	pixel level using scikitlearn simple linear regression
@@ -871,7 +871,7 @@ class TXLSSweightsLinPix(TXLSSweightsSimReg):
 	Fit:				Simultaniously fits all sysmaps using sklearn
 
 	"""
-	name = "TXLSSweightsLinPix"
+	name = "TXLSSWeightsLinPix"
 	parallel = False
 
 	config_options = {
@@ -1035,12 +1035,12 @@ def hsplist2array(hsp_list):
 
 
 
-class TXLSSweightsUnit(TXLSSweights):
+class TXLSSWeightsUnit(TXLSSWeights):
 	"""
 	Class assigns weight=1 to all lens objects
 
 	"""
-	name = "TXLSSweightsUnit"
+	name = "TXLSSWeightsUnit"
 	parallel = False
 
 	config_options = { 
