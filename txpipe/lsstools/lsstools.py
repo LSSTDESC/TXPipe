@@ -365,7 +365,7 @@ class DensityCorrelation:
 	def calc_chi2(y, err, yfit , v = False):
 		if err.shape == (len(y),len(y)):
 			#use full covariance
-			if v == True:
+			if v:
 				print('cov_mat chi2')
 			inv_cov = np.linalg.inv( np.matrix(err) )
 			chi2 = 0
@@ -375,7 +375,7 @@ class DensityCorrelation:
 			return chi2
 			
 		elif err.shape == (len(y),):
-			if v == True:
+			if v:
 				print('diagonal chi2')
 			return sum(((y-yfit)**2.)/(err**2.))
 		else:
@@ -426,16 +426,4 @@ def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_
 
 	return F, F_density_corrs
 
-
-def calc_chi2(y, cov, yfit):
-	import numpy as np 
-
-	inv_cov = np.linalg.inv( np.matrix(cov) )
-
-	chi2 = 0
-	for i in range(len(y)):
-		for j in range(len(y)):
-			chi2 = chi2 + (y[i]-yfit[i])*inv_cov[i,j]*(y[j]-yfit[j])
-
-	return chi2
 
