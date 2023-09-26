@@ -19,7 +19,7 @@ stages:
 modules: txpipe 
 
 # Where to put outputs
-output_dir: txpipe_utils/examples/desy1_weights/output_binned/
+output_dir: examples/lssweights/des-y1/output_binned/
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -32,7 +32,7 @@ site:
     image: ghcr.io/lsstdesc/txpipe
 
 # configuration settings
-config: txpipe_utils/examples/desy1_weights/config_binned.yml
+config: examples/lssweights/des-y1//config_binned.yml
 
 inputs:
     # See README for paths to download these files
@@ -59,6 +59,6 @@ inputs:
 # if interrupted
 resume: False
 # where to put output logs for individual stages
-log_dir: txpipe_utils/examples/desy1_weights/output_binned/logs/
+log_dir: examples/lssweights/des-y1/output_binned/logs/
 # where to put an overall parsl pipeline log
-pipeline_log: txpipe_utils/examples/desy1_weights/output_binned/log.txt
+pipeline_log: examples/lssweights/des-y1/output_binned/log.txt
