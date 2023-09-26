@@ -36,7 +36,7 @@ from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointP
 from .calibrate import TXShearCalibration
 from .ingest import *
 from .spatial_diagnostics import TXFocalPlanePlot
-from .lssweights import TXLSSweights
+from .lssweights import TXLSSWeights
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
