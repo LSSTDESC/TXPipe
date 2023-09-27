@@ -135,10 +135,10 @@ class TXLSSWeights(TXMapCorrelations):
         import healsparse as hsp
 
         with self.open_input("mask", wrapper=True) as map_file:
-            map_info = map_file.read_map_info("mask")
+            mask_map_info = map_file.read_map_info("mask")
             mask = map_file.read_map("mask")
-        nside = map_info["nside"]
-        nest = map_info["nest"]
+        nside = mask_map_info["nside"]
+        nest = mask_map_info["nest"]
 
         #TO DO: Parallelize this
         #load the ra and dec of this lens bins
@@ -192,12 +192,14 @@ class TXLSSWeights(TXMapCorrelations):
 
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
-            mask_nest = map_file.read_map_info("mask")["nest"]
+            mask_map_info = map_file.read_map_info("mask")
             mask = hsp.HealSparseMap(
                 nside_coverage=self.config["nside_coverage"], 
                 healpix_map=(mask==hp.UNSEEN).astype('int'), 
                 nest=mask_nest, sentinel=0)
-            nside = map_file.read_map_info("mask")["nside"]
+            
+        mask_nest = mask_map_info["nest"]
+        nside = mask_map_info["nside"]
 
         sys_maps = []
         sys_names = []
