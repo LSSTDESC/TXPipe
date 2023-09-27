@@ -134,9 +134,10 @@ class TXLSSWeights(TXMapCorrelations):
         import healsparse as hsp
 
         with self.open_input("mask", wrapper=True) as map_file:
-            nside = map_file.read_map_info("mask")["nside"]
-            nest = map_file.read_map_info("mask")["nest"]
+            map_info = map_file.read_map_info("mask")
             mask = map_file.read_map("mask")
+        nside = map_info["nside"]
+        nest = map_info["nest"]
 
         #TO DO: Parallelize this
         #load the ra and dec of this lens bins
