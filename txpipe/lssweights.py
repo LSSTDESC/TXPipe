@@ -193,12 +193,12 @@ class TXLSSWeights(TXMapCorrelations):
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
             mask_map_info = map_file.read_map_info("mask")
+            mask_nest = mask_map_info["nest"]
             mask = hsp.HealSparseMap(
                 nside_coverage=self.config["nside_coverage"], 
                 healpix_map=(mask==hp.UNSEEN).astype('int'), 
                 nest=mask_nest, sentinel=0)
             
-        mask_nest = mask_map_info["nest"]
         nside = mask_map_info["nside"]
 
         sys_maps = []
@@ -351,7 +351,7 @@ class TXLSSWeights(TXMapCorrelations):
             obj_weight = 1./mean_density_map_list[ibin][pix]
             obj_weight[obj_weight==1./hp.UNSEEN] = 0.0
 
-            subgroup["weight"][...] *= obj_weight
+            subgroup["weight"][:] *= obj_weight
 
             #also plot a histogram of the weights
             axs[0][ibin].hist(obj_weight, bins=100)
