@@ -436,7 +436,7 @@ class TXLSSWeights(TXMapCorrelations):
         #plot the un-weighted and weighted chi2 distribution
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
         if "pvalue_threshold" in self.config.keys():
-            chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(0.05)
+            chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(self.config["pvalue_threshold"])
         else:
             chi2_threshold = None
         density_correlation.plot_chi2_hist(filepath, extra_density_correlations=[weighted_density_correlation], chi2_threshold=chi2_threshold )
