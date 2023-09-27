@@ -420,16 +420,17 @@ class TXLSSWeights(TXMapCorrelations):
         fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
         fit_summary_file = h5py.File(fit_summary_file_name, 'w')
         fit_summary_file.file.create_group("fit_summary")
+        summary_group = fit_summary_file["fit_summary"]
         if len(fit_output['sig_map_index']) != 0:
-            fit_summary_file["fit_summary"].create_dataset('fitted_map_id', data=fit_output['sig_map_index'])
+            summary_group.create_dataset('fitted_map_id', data=fit_output['sig_map_index'])
             fitted_maps_names = np.array([density_correlation.mapnames[i] for i in fit_output['sig_map_index']])
-            fit_summary_file["fit_summary"].create_dataset('fitted_map_names', data=fitted_maps_names.astype(np.string_))
-            fit_summary_file["fit_summary"].create_dataset('all_map_names', data=self.sys_names.astype(np.string_))
-            fit_summary_file["fit_summary"].create_dataset('coeff', data=fit_output['coeff'] )
+            summary_group.create_dataset('fitted_map_names', data=fitted_maps_names.astype(np.string_))
+            summary_group.create_dataset('all_map_names', data=self.sys_names.astype(np.string_))
+            summary_group.create_dataset('coeff', data=fit_output['coeff'] )
             if fit_output['coeff_cov'] is not None:
-                fit_summary_file["fit_summary"].create_dataset('coeff_cov', data=fit_output['coeff_cov'] )
+                summary_group.create_dataset('coeff_cov', data=fit_output['coeff_cov'] )
             for model in density_correlation.chi2.keys():
-                fit_summary_file["fit_summary"].create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
+                summary_group.create_dataset(f'chi2_{model}', data=np.array(list(density_correlation.chi2[model].items())).T )
             fit_summary_file.close()
 
         #plot the un-weighted and weighted chi2 distribution
