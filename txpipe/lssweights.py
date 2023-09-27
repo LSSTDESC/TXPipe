@@ -80,7 +80,7 @@ class TXLSSWeights(TXMapCorrelations):
         #load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
-        Fmap_list = []
+        mean_density_map_list = []
         for ibin in range(self.Ntomo):
 
             #compute density vs SP map data vector
@@ -90,10 +90,10 @@ class TXLSSWeights(TXMapCorrelations):
             self.calc_covariance(density_corrs) #matrix added to density_corrs
 
             #compute the weights
-            Fmap, fit_output = self.compute_weights(density_corrs)
-            Fmap_list.append(Fmap)
+            mean_density_map, fit_output = self.compute_weights(density_corrs)
+            mean_density_map_list.append(mean_density_map)
 
-            weighted_density_corrs = self.calc_1d_density(ibin, Fmap=Fmap)
+            weighted_density_corrs = self.calc_1d_density(ibin, mean_density_map=mean_density_map)
             if weighted_density_corrs is not None:
                 weighted_density_corrs.postprocess(density_corrs) #adds needed info from unweighted density_corrs to weighted
 
@@ -101,7 +101,7 @@ class TXLSSWeights(TXMapCorrelations):
             self.summarize(output_dir, density_corrs, weighted_density_corrs, fit_output )
 
         #save object weights and weight maps
-        self.save_weights(output_dir, Fmap_list)
+        self.save_weights(output_dir, mean_density_map_list)
 
 
     def read_healsparse(self, map_path, nside):
@@ -221,7 +221,7 @@ class TXLSSWeights(TXMapCorrelations):
 
         return np.array(sys_maps), np.array(sys_names)
 
-    def calc_1d_density(self, tomobin, Fmap=None):
+    def calc_1d_density(self, tomobin, mean_density_map=None):
         """
         compute the binned 1d density correlations for a single tomographic lens bin
 
@@ -229,7 +229,7 @@ class TXLSSWeights(TXMapCorrelations):
         ------
         tomobin: Integer
             index for the tomographic lens bin 
-        Fmap: healsparse map (None)
+        mean_density_map: healsparse map (None)
             map of inverse weight to be applied to the galaxies
             if None, will use unweighted lens catalog
 
@@ -274,8 +274,8 @@ class TXLSSWeights(TXMapCorrelations):
                     print('You have set allow_weighted_input==True so I will allow this')
                     print('Output weight=input_weight*sys_weight')
 
-            if Fmap is not None:
-                weight = weight * 1./Fmap[obj_pix]
+            if mean_density_map is not None:
+                weight = weight * 1./mean_density_map[obj_pix]
 
 
         density_corrs = lsstools.DensityCorrelation(tomobin=tomobin) #keeps track of the 1d plots
@@ -310,13 +310,13 @@ class TXLSSWeights(TXMapCorrelations):
 
         return density_corrs
 
-    def save_weights(self, output_dir, Fmap_list):
+    def save_weights(self, output_dir, mean_density_map_list):
         """
         Save the weights maps and galaxy weights
 
         Params
         ------
-        Fmap_list: list of Healsparse maps
+        mean_density_map_list: list of Healsparse maps
             list of the F(s) maps. one for each tomo bin
             F(s) = 1/weight
 
@@ -329,9 +329,9 @@ class TXLSSWeights(TXMapCorrelations):
         map_output_file.file.create_group("maps")
         map_output_file.file["maps"].attrs.update(self.config)
 
-        for ibin, Fmap in enumerate(Fmap_list):
-            pix = Fmap.valid_pixels
-            map_data = 1./Fmap[pix]
+        for ibin, mean_density_map in enumerate(mean_density_map_list):
+            pix = mean_density_map.valid_pixels
+            map_data = 1./mean_density_map[pix]
             map_output_file.write_map(f"weight_map_bin_{ibin}", pix, map_data, self.pixel_metadata)
 
 
@@ -348,7 +348,7 @@ class TXLSSWeights(TXMapCorrelations):
             ra = subgroup["ra"][:]
             dec = subgroup["dec"][:]
             pix = hp.ang2pix(self.pixel_metadata['nside'],ra,dec,lonlat=True,nest=True) #can switch to using txpipe tools for this?
-            obj_weight = 1./Fmap_list[ibin][pix]
+            obj_weight = 1./mean_density_map_list[ibin][pix]
             obj_weight[obj_weight==1./hp.UNSEEN] = 0.0
 
             subgroup["weight"][...] *= obj_weight
@@ -772,7 +772,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
 
         Returns
         ------
-        Fmap: Healsparse map
+        mean_density_map: Healsparse map
             Map of the fitted function F(s) 
             where F(s) = 1/weight
         coeff_output: (sig_map_index, coeff, coeff_cov)
@@ -804,9 +804,9 @@ class TXLSSWeightsSimReg(TXLSSWeights):
         if len(sig_map_index) == 0:  #there are no maps to correct
             print('No maps selected for correction')
 
-            #Fmap is all ones
-            Fmap_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-            Fmap_bf.update_values_pix(self.sys_maps[0].valid_pixels, np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64) )
+            #mean_density_map is all ones
+            mean_density_map_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+            mean_density_map_bf.update_values_pix(self.sys_maps[0].valid_pixels, np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64) )
 
             fit_output = {}
             fit_output['sig_map_index'] = sig_map_index
@@ -848,7 +848,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
             best_fit = np.array([1.0]+[0.0]*len(self.sys_maps))
             best_fit[0] = coeff[0]
             best_fit[sig_map_index+1] = coeff[1:]
-            Fmap_bf, Fdc_bf = lsstools.lsstools.linear_model(best_fit[0],*best_fit[1:],
+            mean_density_map_bf, Fdc_bf = lsstools.lsstools.linear_model(best_fit[0],*best_fit[1:],
                 density_correlation=density_correlation, 
                     sys_maps=self.sys_maps,
                     sysmap_table=sysmap_table_all,
@@ -864,7 +864,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
         f = time.time()
         print("compute_weights took {0}s".format(f-s))
 
-        return Fmap_bf, fit_output
+        return mean_density_map_bf, fit_output
 
 
 class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
@@ -940,7 +940,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
 
         Returns
         ------
-        Fmap: Healsparse map
+        mean_density_map: Healsparse map
             Map of the fitted function F(s) 
             where F(s) = 1/weight
         coeff_output: (sig_map_index, coeff, coeff_cov)
@@ -973,9 +973,9 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
         if len(sig_map_index) == 0: #there are no maps to correct
             print('0 maps selected for correction')
 
-            #Fmap is all ones
-            Fmap_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-            Fmap_bf.update_values_pix(self.sys_maps[0].valid_pixels, np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64) )
+            #mean_density_map is all ones
+            mean_density_map_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+            mean_density_map_bf.update_values_pix(self.sys_maps[0].valid_pixels, np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64) )
 
             fit_output = {}
             fit_output['sig_map_index'] = sig_map_index
@@ -1003,8 +1003,8 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
 
             #get output of regression
             Fvals = reg.predict(sysmap_table_selected.T)
-            Fmap_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-            Fmap_bf.update_values_pix(self.sys_maps[0].valid_pixels, Fvals.astype(np.float64) )
+            mean_density_map_bf = hsp.HealSparseMap.make_empty(self.sys_maps[0].nside_coverage, self.sys_maps[0].nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+            mean_density_map_bf.update_values_pix(self.sys_maps[0].valid_pixels, Fvals.astype(np.float64) )
             coeff = np.append(reg.intercept_,reg.coef_)
             coeff_cov = None
 
@@ -1013,7 +1013,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
             Fdc_bf.set_precompute(density_correlation)
             for imap, sys_vals in enumerate(sysmap_table_all):
                 edges = density_correlation.get_edges(imap)
-                Fdc_bf.add_correlation(imap, edges, sys_vals, Fmap_bf[Fmap_bf.valid_pixels], frac=frac[Fmap_bf.valid_pixels], map_input=True, use_precompute=True )
+                Fdc_bf.add_correlation(imap, edges, sys_vals, mean_density_map_bf[mean_density_map_bf.valid_pixels], frac=frac[mean_density_map_bf.valid_pixels], map_input=True, use_precompute=True )
             density_correlation.add_model(Fdc_bf.ndens, 'linear')
 
             #assemble the fitting outputs (chi2, values, coefficents, )
@@ -1025,7 +1025,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
         f = time.time()
         print("compute_weights took {0}s".format(f-s))
 
-        return Fmap_bf, fit_output
+        return mean_density_map_bf, fit_output
 
 
 def hsplist2array(hsp_list):
@@ -1058,7 +1058,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
         sys_maps = sys_names = sys_meta = None
         return sys_maps, sys_names, sys_meta
 
-    def calc_1d_density(self, tomobin, Fmap=None):
+    def calc_1d_density(self, tomobin, mean_density_map=None):
         """
         For unit weights we dont need 1d density trends
         """
@@ -1099,10 +1099,10 @@ class TXLSSWeightsUnit(TXLSSWeights):
         if nest == False:
             validpixels = hp.ring2nest(nside, validpixels)
 
-        Fmap = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
-        Fmap.update_values_pix(validpixels, 1.0)
+        mean_density_map = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN)
+        mean_density_map.update_values_pix(validpixels, 1.0)
 
         fit_output = None
-        return Fmap, fit_output
+        return mean_density_map, fit_output
 
 
