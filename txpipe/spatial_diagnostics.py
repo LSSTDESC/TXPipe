@@ -41,9 +41,9 @@ class TXFocalPlanePlot(PipelineStage):
         return fov_x, fov_y, e1, e2, de1, de2
     
     def plot(self):
-        import matplotlib
         import matplotlib.pyplot as plt
         import matplotlib.cm as cm
+        from matplotlib.colors import TwoSlopeNorm
 
         fov_x, fov_y, e1, e2, de1, de2 = self.load_stars()
 
@@ -59,11 +59,8 @@ class TXFocalPlanePlot(PipelineStage):
             Hw, _, _= np.histogram2d(fov_x, fov_y, bins=(100,100), weights=w)
             H, _, _= np.histogram2d(fov_x, fov_y, bins=(100,100))
             Hnorm.append(Hw/H)
-        
-        vmin = min(np.nanmin(h) for h in Hnorm)
-        vmax = max(np.nanmax(h) for h in Hnorm)
      
-        divnorm=matplotlib.colors.TwoSlopeNorm(vmin=vmin, vcenter=0., vmax=vmax)
+        divnorm=TwoSlopeNorm(vmin=-0.1, vcenter=0., vmax=0.1)
         
         for i,l in zip(range(0,4), labels):
             plt.subplot(2,2,i+1)
