@@ -379,6 +379,7 @@ class TXLSSWeights(TXMapCorrelations):
         tomo_output['tomography/lens_weight'][...] = lens_weight
 
         #### close the outputs
+        map_output_file.close()
         tomo_output.close()
         binned_output.close()
 
