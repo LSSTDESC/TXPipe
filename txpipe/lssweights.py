@@ -46,6 +46,7 @@ class TXLSSWeights(TXMapCorrelations):
         "nbin": 20,
         "outlier_fraction": 0.01,
         "allow_weighted_input":False,
+        "nside_coverage":32,
     }
 
     def run(self):
@@ -161,10 +162,10 @@ class TXLSSWeights(TXMapCorrelations):
             maskpix = hp.ring2nest(nside, np.where(mask!=hp.UNSEEN)[0])
 
         #fractional coverage
-        frac = hsp.HealSparseMap.make_empty(32, nside, dtype=np.float64)
+        frac = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
         frac.update_values_pix(maskpix, mask[np.where(mask!=hp.UNSEEN)[0]])
 
-        deltag = hsp.HealSparseMap.make_empty(32, nside, dtype=np.float64)
+        deltag = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
         deltag.update_values_pix(maskpix, 0.0)
         deltag.update_values_pix( pixel, Ncounts )
         n = deltag[maskpix]/frac[maskpix]
@@ -193,7 +194,7 @@ class TXLSSWeights(TXMapCorrelations):
             mask = map_file.read_map("mask")
             mask_nest = map_file.read_map_info("mask")["nest"]
             mask = hsp.HealSparseMap(
-                nside_coverage=32, 
+                nside_coverage=self.config["nside_coverage"], 
                 healpix_map=(mask==hp.UNSEEN).astype('int'), 
                 nest=mask_nest, sentinel=0)
             nside = map_file.read_map_info("mask")["nside"]
@@ -1086,7 +1087,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
             nside = map_file.read_map_info("mask")["nside"]
             nest = map_file.read_map_info("mask")["nest"]
 
-        nside_coverage = 32
+        nside_coverage = self.config["nside_coverage"]
         nside_sparse = nside
 
         validpixels = np.where(mask != hp.UNSEEN)[0]
