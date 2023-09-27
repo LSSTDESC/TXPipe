@@ -8,6 +8,7 @@ from .data_types import (
     MapsFile,
     FileCollection,
     FiducialCosmology,
+    TomographyCatalog,
 )
 import glob
 import time
@@ -28,8 +29,8 @@ class TXLSSWeights(TXMapCorrelations):
     name = "TXLSSWeights"
     parallel = False
     inputs = [
-        ("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
-        ("lens_tomography_catalog_unweighted", HDFFile), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        ("binned_lens_catalog_unweighted", TomographyCatalog,), #this file is used by the stage to compute weights
+        ("lens_tomography_catalog_unweighted", TomographyCatalog,), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
         ("mask", MapsFile),
     ]
 
@@ -449,8 +450,8 @@ class TXLSSWeightsSimReg(TXLSSWeights):
     parallel = False
 
     inputs = [
-        ("binned_lens_catalog_unweighted", HDFFile), #this file is used by the stage to compute weights
-        ("lens_tomography_catalog_unweighted", HDFFile), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        ("binned_lens_catalog_unweighted", TomographyCatalog,), #this file is used by the stage to compute weights
+        ("lens_tomography_catalog_unweighted", TomographyCatalog,), #this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
         ("mask", MapsFile),
         ("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
         ("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters, needed for the sample variance term
@@ -860,7 +861,6 @@ class TXLSSWeightsSimReg(TXLSSWeights):
         return Fmap_bf, fit_output
 
 
-
 class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
     """
     Class compute LSS systematic weights using simultanious linear regression at the 
@@ -1021,7 +1021,6 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
         return Fmap_bf, fit_output
 
 
-
 def hsplist2array(hsp_list):
     """
     Convert a list of healsparse maps to a 2d array of the valid pixels
@@ -1033,8 +1032,6 @@ def hsplist2array(hsp_list):
     for i in range(len(hsp_list)):
         out_array.append(hsp_list[i][validpixels])
     return np.array(out_array)
-
-
 
 class TXLSSWeightsUnit(TXLSSWeights):
     """
