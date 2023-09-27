@@ -469,6 +469,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
         "diag_blocks_only":True, #If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
         "b0": [1.0], 
         "allow_weighted_input":False,
+        "nside_coverage":32,
     }
 
     def prepare_sys_maps(self):
@@ -888,6 +889,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
         "b0": [1.0], 
         "regression_class": "LinearRegression", #sklearn.linear_model class to use in regression
         "allow_weighted_input":False,
+        "nside_coverage":32,
     }
 
     def calc_covariance(self, density_correlation):
