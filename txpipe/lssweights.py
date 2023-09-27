@@ -251,9 +251,10 @@ class TXLSSWeights(TXMapCorrelations):
         percentiles = np.linspace(f, 1 - f, nsysbins + 1)
 
         with self.open_input("mask", wrapper=True) as map_file:
-            nside = map_file.read_map_info("mask")["nside"]
-            nest = map_file.read_map_info("mask")["nest"]
+            mask_map_info = map_file.read_map_info("mask")
             mask = map_file.read_map("mask")
+        nside = mask_map_info["nside"]
+        nest = mask_map_info["nest"]
 
         #load the ra and dec of this lens bins
         with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
