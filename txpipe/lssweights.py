@@ -371,12 +371,12 @@ class TXLSSWeights(TXMapCorrelations):
         with self.open_input("lens_tomography_catalog_unweighted") as tomo_input:
             tomo_output.copy(tomo_input["tomography"],"tomography")
 
-        lens_weight = tomo_output['tomography/lens_weight'][...]
+        lens_weight = tomo_output['tomography/lens_weight'][:]
         for ibin in range(self.Ntomo):
             binned_subgroup = binned_output[f"lens/bin_{ibin}/"]
-            mask = (tomo_output['tomography/bin'][...] == ibin)
-            lens_weight[mask] *= binned_subgroup["weight"][...]
-        tomo_output['tomography/lens_weight'][...] = lens_weight
+            mask = (tomo_output['tomography/bin'][:] == ibin)
+            lens_weight[mask] *= binned_subgroup["weight"][:]
+        tomo_output['tomography/lens_weight'][:] = lens_weight
 
         #### close the outputs
         map_output_file.close()
