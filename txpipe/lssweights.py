@@ -496,7 +496,7 @@ class TXLSSWeights(TXMapCorrelations):
         )
 
 
-class TXLSSWeightsSimReg(TXLSSWeights):
+class TXLSSWeightsLinBinned(TXLSSWeights):
     """
     Class compute LSS systematic weights using simultanious linear regression on the binned
     1D correlations
@@ -508,7 +508,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
 
     """
 
-    name = "TXLSSWeightsSimReg"
+    name = "TXLSSWeightsLinBinned"
     parallel = False
 
     inputs = [
@@ -984,7 +984,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
         return mean_density_map_bf, fit_output
 
 
-class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
+class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
     """
     Class compute LSS systematic weights using simultanious linear regression at the
     pixel level using scikitlearn simple linear regression
