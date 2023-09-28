@@ -43,7 +43,7 @@ class TXLSSWeights(TXMapCorrelations):
     ]
 
     config_options = {
-        "supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
+        "supreme_path_root": "",
         "nbin": 20,
         "outlier_fraction": 0.01,
         "allow_weighted_input":False,
@@ -466,7 +466,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
     ]
 
     config_options = {
-        "supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
+        "supreme_path_root": "",
         "nbin": 20,
         "outlier_fraction": 0.05,
         "pvalue_threshold": 0.05, #max p-value for maps to be included in the corrected (a very simple form of regularization)
@@ -885,7 +885,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
     parallel = False
 
     config_options = {
-        "supreme_path_root": "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2",
+        "supreme_path_root": "",
         "nbin": 20,
         "outlier_fraction": 0.05,
         "pvalue_threshold": 0.05, #max p-value for maps to be corrected
