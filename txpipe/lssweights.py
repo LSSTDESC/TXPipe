@@ -13,6 +13,7 @@ from .data_types import (
 import glob
 import time
 from .utils.theory import theory_3x2pt
+from .utils.fitting import calc_chi2
 
 class TXLSSWeights(TXMapCorrelations):
     """
@@ -838,7 +839,7 @@ class TXLSSWeightsSimReg(TXLSSWeights):
                     sysmap_table=sysmap_table_all,
                     map_index = sig_map_index, 
                     frac=frac)
-                chi2 = lsstools.lsstools.calc_chi2(dc_ndens_masked,dc_covmat_masked,Fdc.ndens)
+                chi2 = calc_chi2(dc_ndens_masked,dc_covmat_masked,Fdc.ndens)
                 return chi2/2.
 
             minimize_output = scipy.optimize.minimize(neg_log_like, p0, method="Nelder-Mead" )

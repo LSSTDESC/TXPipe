@@ -3,6 +3,7 @@ Classes and functions to help computing lss tools
 (primarily within the lss weights stages)
 """
 import numpy as np 
+from ..utils.fitting import calc_chi2
 
 class DensityCorrelation:
 
@@ -326,7 +327,7 @@ class DensityCorrelation:
                 select_map = (self.map_index == map_index)
                 ndens = self.ndens[select_map]
                 covmat = self.get_covmat_singlemap(map_index)
-                chi2_map = self.calc_chi2(ndens, covmat, model[select_map])
+                chi2_map = calc_chi2(ndens, covmat, model[select_map])
                 self.chi2[model_name][map_index] = chi2_map
 
     def save_to_hdf5(self, filename):
@@ -358,27 +359,6 @@ class DensityCorrelation:
         """
         self.add_external_covariance(density_correlation.covmat, assert_empty=True)
         self.add_model(density_correlation.ndens_models['null'], 'null')
-
-
-    @staticmethod
-    def calc_chi2(y, err, yfit , v = False):
-        if err.shape == (len(y),len(y)):
-            #use full covariance
-            if v:
-                print('cov_mat chi2')
-            inv_cov = np.linalg.inv( np.matrix(err) )
-            chi2 = 0
-            for i in range(len(y)):
-                for j in range(len(y)):
-                    chi2 = chi2 + (y[i]-yfit[i])*inv_cov[i,j]*(y[j]-yfit[j])
-            return chi2
-            
-        elif err.shape == (len(y),):
-            if v:
-                print('diagonal chi2')
-            return sum(((y-yfit)**2.)/(err**2.))
-        else:
-            raise IOError('error in err or cov_mat input shape')
 
 
 def linear_model(beta, *alphas, density_correlation=None, sys_maps=None, sysmap_table=None, map_index=None, frac=None):
