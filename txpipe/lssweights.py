@@ -598,9 +598,9 @@ class TXLSSWeightsSimReg(TXLSSWeights):
                 n2d_pair,_,_ = np.histogram2d(sys_obj_i,sys_obj_j,bins=(edgesi,edgesj), weights=weight)
                 n2d[imap,jmap] = n2d_pair
 
-                #TO DO: CHECK I GOT THESE THE RIGHT WAY AROUND!!!!
                 covmat_N[starti:finishi,startj:finishj] = n2d_pair
                 covmat_N[startj:finishj,starti:finishi] = n2d_pair.T
+
 
         #convert N (number count) covariance into n (normalized number density) covariance
         #cov(n1,n2) = cov(N1,N2)*norm**2/(Npix1*Npix2)
@@ -896,39 +896,6 @@ class TXLSSWeightsLinPix(TXLSSWeightsSimReg):
         "allow_weighted_input":False,
         "nside_coverage":32,
     }
-
-    def calc_covariance(self, density_correlation):
-        """
-        Construct the covariance matrix of the ndens vs SP data-vector 
-
-        when doing pixel estimator we only use 1d binned covariance for template selection
-        so we can set diag_blocks_only=True
-
-        Params
-        ------
-        density_correlation: lsstools.DensityCorrelation 
-
-        """
-
-        s = time.time()
-
-        #add diagonal shot noise
-        density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
-
-        if self.config["simple_cov"] == False:
-            if self.config["diag_blocks_only"] == False:
-                #add off-diagonal shot noise
-                cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
-                density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
-
-            #add clustering Sample Variance 
-            cov_sample_variance_full = self.calc_covariance_sample_variance(density_correlation, self.sys_maps, diag_blocks_only=self.config["diag_blocks_only"] )
-            density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
-
-        f = time.time()
-        print("calc_covariance took {0}s".format(f-s))
-
-        return
 
     def compute_weights(self, density_correlation ):
         """
