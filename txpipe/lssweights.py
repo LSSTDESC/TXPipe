@@ -1017,7 +1017,8 @@ class TXLSSWeightsUnit(TXLSSWeights):
     name = "TXLSSWeightsUnit"
     parallel = False
 
-    config_options = { 
+    config_options = {
+        "nside_coverage":32,
     }
 
     def prepare_sys_maps(self):
