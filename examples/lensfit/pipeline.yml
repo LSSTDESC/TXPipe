@@ -20,6 +20,7 @@ stages:
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
+    - name: TXLSSWeightsUnit
     - name: TXDensityMaps
     - name: TXMapPlots
     - name: TXTracerMetadata

@@ -122,7 +122,20 @@ class TXBaseMaps(PipelineStage):
         # add a maps section to each
         for output_file in output_files.values():
             output_file.file.create_group("maps")
-            output_file.file["maps"].attrs.update(self.config)
+            
+            #this is a bit of a hack, but if you have set an alias 
+            #it can't be added as an attr to the hdf5 file
+            #this saves everythinkg but aliases
+            from ceci.config import StageConfig
+            config_no_alias = {}
+            for k in self.config.keys():
+                if k == 'aliases':
+                    continue
+                config_no_alias[k] = self.config[k]
+            config_no_alias = StageConfig(**config_no_alias)
+
+            #output_file.file["maps"].attrs.update(self.config)
+            output_file.file["maps"].attrs.update(config_no_alias)
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():

@@ -46,7 +46,7 @@ def core_hsc(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = HSCCalculator(select_all_bool)
         cal.add_data(data)
-        R, K, n = cal.collect(comm, allgather=True)
+        R, K, n, _ = cal.collect(comm, allgather=True)
         print("K_true", K_true)
         print("K", K)
         print("R_true", R_true)
@@ -59,7 +59,7 @@ def core_hsc(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = HSCCalculator(sel)
         cal.add_data(data)
-        R, K, n = cal.collect(comm, allgather=True)
+        R, K, n, _ = cal.collect(comm, allgather=True)
         print("K_true", K_true)
         print("K", K)
         print("R_true", R_true)

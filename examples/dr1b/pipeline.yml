@@ -20,6 +20,8 @@ stages:
     - name: TXSourceNoiseMaps
     - name: TXLensNoiseMaps
     - name: TXSimpleMask
+    - name: TXTruthLensCatalogSplitter
+    - name: TXLSSWeightsUnit
     - name: TXMapPlots
     - name: TXTracerMetadata
 

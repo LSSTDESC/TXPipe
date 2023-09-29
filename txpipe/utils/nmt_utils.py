@@ -1,3 +1,4 @@
+import os
 import pymaster as nmt
 import numpy as np
 import healpy
@@ -131,5 +132,8 @@ class WorkspaceCache:
 
         if p.exists():
             return
+
+        else:
+            os.makedirs(os.path.dirname(str(p)), exist_ok=True)
 
         workspace.write_to(str(p))
