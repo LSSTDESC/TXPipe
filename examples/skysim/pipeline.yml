@@ -55,6 +55,7 @@ stages:
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointTheoryFourier
     - name: TXSimpleMask
+    - name: TXLSSWeightsUnit
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXNullBlinding

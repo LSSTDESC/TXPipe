@@ -132,6 +132,9 @@ class TXTracerMetadata(PipelineStage):
             meta_file.create_dataset("tracers/lens_density", data=lens_density)
             meta_file.create_dataset("tracers/lens_density_2d", data=lens_density_2d)
 
+            meta_file["tracers"].attrs["area"] = area
+            meta_file["tracers"].attrs["area_unit"] = "deg^2"
+            meta_file["tracers"].attrs["density_unit"] = "arcmin^{-2}"
             metadata["lens_density"] = lens_density.tolist()
             metadata["lens_density_2d"] = lens_density_2d.tolist()
 

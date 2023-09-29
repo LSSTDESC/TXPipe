@@ -77,7 +77,7 @@ class BinStats:
             group["sigma_e_2d"][:] = self.sigma_e
         else:
             group["counts"][i] = self.source_count
-            group["N_eff"][i] = self.N_eff
+            group["N_eff"][i]   = self.N_eff
             group["mean_e1"][i] = self.mean_e[0]
             group["mean_e2"][i] = self.mean_e[1]
             group["sigma_e"][i] = self.sigma_e
@@ -577,7 +577,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         We collate these into a BinStats object for clarity.
         """
-        R, S, N = calculator.collect(self.comm, allgather=True)
+        R, S, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu.copy()
 
@@ -589,7 +589,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         # In metacal all weights are unity, so the effective N is the same
         # as the raw N.
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):
@@ -697,7 +697,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def compute_output_stats(self, calculator, mean, variance):
         # Collate calibration values
-        R, N = calculator.collect(self.comm, allgather=True)
+        R, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = MetaDetectCalibrator(R, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu.copy()
 
@@ -706,7 +706,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         sigma_e = np.sqrt(0.5 * P @ variance)
 
         # Like metacal, N_eff = N for metadetect
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
@@ -776,12 +776,12 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
-        K, C, N = calculator.collect(self.comm, allgather=True)
+        K, C, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = LensfitCalibrator(K, C)
         mean_e = C.copy()
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorHSC(TXSourceSelectorBase):
@@ -865,10 +865,10 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return R
 
     def compute_output_stats(self, calculator, mean, variance):
-        R, K, N = calculator.collect(self.comm, allgather=True)
+        R, K, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = HSCCalibrator(R, K)
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
-        return BinStats(N, N, mean, sigma_e, calibrator)
+        return BinStats(N, Neff, mean, sigma_e, calibrator)
 
     def setup_response_calculators(self, nbin_source):
         calculators = [

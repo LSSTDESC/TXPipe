@@ -1,0 +1,34 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 4096 #if you load an external map this should match the nside of that mask
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLSSweightsLinPix:
+    supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/spmaps/
+    outlier_fraction: 0.01  # Will remove this fraction of the maps is most extreme regions when computing 1d trends
+    nbin: 10                # number of bins per SP map to compute 1d trends
+    pvalue_threshold: 1.0   # max p-value for maps to be corrected (0 is no maps, 1 is all maps)
+    simple_cov: False       # If True will use diagonal shot noise covariance
+    diag_blocks_only: True
+    regression_class: ElasticNetCV
+    b0: [1.4, 1.6, 1.6, 1.93, 1.98]
+
+TXTwoPoint:
+    bin_slop: 0.1
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: False
+    do_shear_pos: False
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 250.0
+    nbins: 20
+    verbose: 0
+    subtract_mean_shear: True
