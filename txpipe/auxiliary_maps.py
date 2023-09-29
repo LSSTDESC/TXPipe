@@ -201,7 +201,6 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     name = "TXAuxiliaryLensMaps"
     inputs = [
         ("photometry_catalog", HDFFile),  # for mags etc
-        ("lens_maps", MapsFile),  # we copy the pixel scheme from here
     ]
     outputs = [
         ("aux_lens_maps", MapsFile),
@@ -215,12 +214,8 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
     }
-    # instead of reading from config we match the basic maps
-    def choose_pixel_scheme(self):
-        with self.open_input("lens_maps", wrapper=True) as maps_file:
-            pix_info = dict(maps_file.file["maps"].attrs)
 
-        return choose_pixelization(**pix_info)
+    # we dont redefine choose_pixel_scheme for lens_maps to prevent circular modules
 
     def prepare_mappers(self, pixel_scheme):
         # We make a suite of mappers here.

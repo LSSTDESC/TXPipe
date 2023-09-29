@@ -1,0 +1,18 @@
+Examples of how to run the LSS systematics weights pipeline 
+These examples use the DES Y1 lens sample as an example
+The files are on NERSC at the following locations:
+/global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/
+/global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/
+
+
+pipeline_binned.yml
+	- linear regression on the binned density vs SP map plots 
+	- Fits to all maps with null trend p-value < threshold
+
+pipeline_pix_lin.yml
+	- linear regression on the healpix pixel density vs SP value 
+	- Fits to all maps with binned null trend p-value < threshold
+
+pipeline_pix_enet.yml
+	- linear regression on the healpix pixel density vs SP value 
+	- Fits to all maps, regularisation is done with the scikit learn ENET implementation 
