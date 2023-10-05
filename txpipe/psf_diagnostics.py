@@ -230,13 +230,13 @@ class TXTauStatistics(PipelineStage):
 
             # Joint tau 0-2-5 data vector and cov
             # tau_stats contains [ang, tau0, tau2, tau5, cov]
-            tau_stats[t] = self.compute_alltau(gal_ra, gal_dec, gal_g,  s, ra, dec, e_psf, e_mod, de_psf, T_f)
+            tau_stats[t] = self.compute_alltau(gal_ra, gal_dec, gal_g, gal_weight, s, ra, dec, e_psf, e_mod, de_psf, T_f)
             
             # Run simple mcmc to find best-fit values for alpha,beta,eta
             ranges = {}
-            ranges['alpha'] = [-0.01, 0.01]
-            ranges['beta']  = [ 0.00, 2.00]
-            ranges['eta']   = [ 0.00, 1.00]
+            ranges['alpha'] = [-0.10, 0.10]
+            ranges['beta']  = [-5.00, 5.00]
+            ranges['eta']   = [-5.00, 5.00]
             
 
             p_bestfits[t] = self.sample(tau_stats[t],rowe_stats,ranges)
@@ -264,7 +264,7 @@ class TXTauStatistics(PipelineStage):
         return rowe_stats
 
 
-    def sample(self, tau_stats, rowe_stats, ranges, nwalkers=32, ndim=3):#sample(self,tau,cov,rho0,rho1,rho2,rho3,rho4,rho5, nwalkers=10, ndim=3):
+    def sample(self, tau_stats, rowe_stats, ranges, nwalkers=32, ndim=3):
         '''
         Run a simple mcmc chain to detemine the best-fit values for  
         '''
@@ -283,27 +283,18 @@ class TXTauStatistics(PipelineStage):
 
         print("Computing best-fit alpha, beta, eta")
         _, _, _, _, cov = tau_stats
-        np.save('covb.npy',cov)
         eigenvalues = np.linalg.eigvals(cov)
-        invcov = np.linalg.inv(cov)
-        #import pdb; pdb.set_trace()
-        #if np.any(np.isclose(eigenvalues, 0.0)):
-        #    sys.exit("The covariance matrix is singular.")
-        #else:
-        #    print("The covariance matrix is not singular.")
+        invcov      = np.linalg.inv(cov)
         
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov))
         sampler.run_mcmc(initpos, 5000, progress=True);
 
-        flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
+        flat_samples = sampler.get_chain(discard=2000, flat=True)
         
-        print('================ BEST-FIT ====================')
         for i,v in enumerate(var):
             mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
             q    = np.diff(mcmc)
             ret[v] = {'mean': mcmc[1],'lerr': q[0], 'rerr': q[1]}
-
-            print(v, mcmc[1],q[0],q[1])
 
         return ret
 
@@ -313,7 +304,8 @@ class TXTauStatistics(PipelineStage):
         If parameter in defined range return 0, otherwise -np.inf
         '''
         alpha, beta, eta = theta
-        if (-0.1 < alpha < 0.1) and (0.0 < beta < 2.0) and (-2.0 < eta < 2.0):
+
+        if (ranges['alpha'][0] < alpha < ranges['alpha'][1]) and (ranges['beta'][0] < beta < ranges['beta'][1]) and (ranges['eta'][0] < eta < ranges['eta'][1]):
             return 0.0
         return -np.inf
 
@@ -358,14 +350,15 @@ class TXTauStatistics(PipelineStage):
         return lp + self.logLike(theta, tau_stats, rowe_stats, invcov)
 
 
-    def compute_alltau(self, gra, gdec, g, s, sra, sdec, e_psf, e_mod, de_psf, T_f):
+    def compute_alltau(self, gra, gdec, g, gw, s, sra, sdec, e_psf, e_mod, de_psf, T_f):
         '''
         Compute tau0, tau2, tau5.
         All three needs to be computed at once due to covariance.
 
         gra    : RA of galaxies
         gdec   : DEC of galaxies
-        g      : shear for observed galaxies np.array((e1, e2))
+        g      : shear for observed galaxies np.array((e1, e2)
+        gw     : weights
 
         s      : indices of stars to use in calculation
         sra    : RA of stars
@@ -375,7 +368,6 @@ class TXTauStatistics(PipelineStage):
         e_mod  : model ellipticities of PSF               -- np.array((e1mod, e2mod))
         de_psf : e_psf-e_mod                              -- np.array((e1psf, e2psf))
         T_f    : (T_meas - T_model)/T_meas                -- np.array((e1psf, e2psf))
-        
         '''
         
         p = e_mod
@@ -391,11 +383,11 @@ class TXTauStatistics(PipelineStage):
         print(f"Computing Tau 0,2,5 and the covariance")
         
         # Load all catalogs
-        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], ra_units="deg", dec_units="deg") # galaxy shear
-        catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg") # e_model
-        catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg") # (e_* - e_model)
-        catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg") # (e_*(T_* - T_model)/T_* )
-            
+        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=40) # galaxy shear
+        catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # e_model
+        catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_* - e_model)
+        catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_*(T_* - T_model)/T_* )
+        
         # Compute all corrleations
         corr0 = treecorr.GGCorrelation(self.config)
         corr0.process(catg, catp)
@@ -404,27 +396,20 @@ class TXTauStatistics(PipelineStage):
         corr5 = treecorr.GGCorrelation(self.config)
         corr5.process(catg, catw)
         
-        # Estimate covariance using jackknice
-        #cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'shot')
-
-        # For our purposes we only care about xip not xim
-        #cov = cov[:int(cov.shape[0]/2),:int(cov.shape[0]/2)]
+        # Estimate covariance using bootstrap ordering is xip,xim,xip,xim,xip,xim
+        # For our particular purpose we only care about xip so remove xim elements. 
+        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'bootstrap')
+        cov = np.delete(cov,np.arange(100,120),axis=0)
+        cov = np.delete(cov,np.arange(100,120),axis=1)
+        cov = np.delete(cov,np.arange(60,80),axis=0)
+        cov = np.delete(cov,np.arange(60,80),axis=1)
+        cov = np.delete(cov,np.arange(20,40),axis=0)
+        cov = np.delete(cov,np.arange(20,40),axis=1)
         
         # If cov is not invertible just use diagonal elements
-        tht0,xip0,cov0 = corr0.meanr, corr0.xip, corr0.varxip**0.5
-        tht2,xip2,cov2 = corr2.meanr, corr2.xip, corr2.varxip**0.5
-        tht5,xip5,cov5 = corr5.meanr, corr5.xip, corr5.varxip**0.5
-        
-        nbins = tht0.shape[0]
-        cov = np.zeros((nbins*3,nbins*3))
-        tmp = np.zeros((nbins,nbins))
-        np.fill_diagonal(tmp,cov0)
-        #print(tmp)
-        cov[int(nbins*0):int(nbins*1),int(nbins*0):int(nbins*1)]=tmp
-        np.fill_diagonal(tmp,cov2)
-        cov[int(nbins*1):int(nbins*2),int(nbins*1):int(nbins*2)]=tmp
-        np.fill_diagonal(tmp,cov5)
-        cov[int(nbins*2):int(nbins*3),int(nbins*2):int(nbins*3)]=tmp
+        tht0,xip0 = corr0.meanr, corr0.xip
+        tht2,xip2 = corr2.meanr, corr2.xip
+        tht5,xip5 = corr5.meanr, corr5.xip
         
         return corr0.meanr, corr0.xip, corr2.xip, corr5.xip, cov
         
