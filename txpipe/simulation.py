@@ -28,7 +28,7 @@ class TXLogNormalGlass(PipelineStage):
     ]
 
     outputs = [
-        ("binned_lens_catalog_unweighted", TomographyCatalog),  
+        ("photometry_catalog", HDFFile),
         ("lens_tomography_catalog_unweighted", TomographyCatalog), 
         #TO DO: add shear maps to output
     ]
