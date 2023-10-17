@@ -16,7 +16,7 @@ class TXIngestRedmagic(PipelineStage):
 
     outputs = [
         ("lens_catalog", HDFFile),
-        ("lens_tomography_catalog", HDFFile),
+        ("lens_tomography_catalog_unweighted", HDFFile),
         ("lens_photoz_stack", HDFFile),
     ]
 
@@ -41,7 +41,7 @@ class TXIngestRedmagic(PipelineStage):
         nbin_lens = len(zbin_edges) - 1
 
         cat = self.open_output("lens_catalog")
-        tomo = self.open_output("lens_tomography_catalog")
+        tomo = self.open_output("lens_tomography_catalog_unweighted")
 
         # redshift grid
         zmin = self.config["zmin"]

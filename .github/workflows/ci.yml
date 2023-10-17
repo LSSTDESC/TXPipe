@@ -5,6 +5,9 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  schedule:
+    # run this every week at 12 noon on Monday
+    - cron: '0 12 * * 1'
 
 env:
   EXAMPLE_DATA_FILE_VERSION: v2
