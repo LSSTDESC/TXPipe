@@ -16,7 +16,7 @@ class TXIngestRedmagic(PipelineStage):
 
     outputs = [
         ("lens_catalog", HDFFile),
-        ("lens_tomography_catalog", HDFFile),
+        ("lens_tomography_catalog_unweighted", HDFFile),
         ("lens_photoz_stack", HDFFile),
     ]
 
@@ -41,7 +41,7 @@ class TXIngestRedmagic(PipelineStage):
         nbin_lens = len(zbin_edges) - 1
 
         cat = self.open_output("lens_catalog")
-        tomo = self.open_output("lens_tomography_catalog")
+        tomo = self.open_output("lens_tomography_catalog_unweighted")
 
         # redshift grid
         zmin = self.config["zmin"]
@@ -62,12 +62,12 @@ class TXIngestRedmagic(PipelineStage):
             g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
 
         h = tomo.create_group("tomography")
-        h.create_dataset("lens_bin", (n,), dtype=np.int32)
+        h.create_dataset("bin", (n,), dtype=np.int32)
         h.create_dataset("lens_weight", (n,), dtype=np.float64)
-        h.create_dataset("lens_counts", (nbin_lens,), dtype="i")
-        h.create_dataset("lens_counts_2d", (1,), dtype="i")
-        h.attrs["nbin_lens"] = nbin_lens
-        h.attrs[f"lens_zbin_edges"] = zbin_edges
+        h.create_dataset("counts", (nbin_lens,), dtype="i")
+        h.create_dataset("counts_2d", (1,), dtype="i")
+        h.attrs["nbin"] = nbin_lens
+        h.attrs[f"zbin_edges"] = zbin_edges
 
         # we keep track of the counts per-bin also
         counts = np.zeros(nbin_lens, dtype=np.int64)
@@ -116,12 +116,12 @@ class TXIngestRedmagic(PipelineStage):
                 g[f"mag_{b}"][s:e] = data["mag"][:, i]
                 g[f"mag_err_{b}"][s:e] = data["mag_err"][:, i]
 
-            h["lens_bin"][s:e] = zbin
+            h["bin"][s:e] = zbin
             h["lens_weight"][s:e] = 1.0
 
         # this is an overall count
-        h["lens_counts"][:] = counts
-        h["lens_counts_2d"][:] = counts_2d
+        h["counts"][:] = counts
+        h["counts_2d"][:] = counts_2d
 
         # Finally save the n(z) values we have built up
         stack = self.open_output("lens_photoz_stack")

@@ -28,7 +28,9 @@ stages:
       nodes: 2
       threads_per_process: 32
     - name: TXJackknifeCenters
-    - name: TXMainMaps
+    - name: TXSourceMaps
+      nprocess: 8
+    - name: TXLensMaps
       nprocess: 8
     - name: TXAuxiliarySourceMaps
       nprocess: 8
@@ -44,6 +46,7 @@ stages:
       nodes: 1
       threads_per_process: 1
     - name: TXSimpleMask
+    - name: TXLSSWeightsUnit       
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXNullBlinding

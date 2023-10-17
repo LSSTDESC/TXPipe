@@ -15,10 +15,12 @@ stages:
       classname: BPZ_lite
     - name: TXPhotozSourceStack
     - name: TXPhotozLensStack
-    - name: TXMainMaps
+    - name: TXSourceMaps
+    - name: TXLensMaps
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
+    - name: TXLSSWeightsUnit
     - name: TXDensityMaps
     - name: TXMapPlots
     - name: TXTracerMetadata

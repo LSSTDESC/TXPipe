@@ -91,7 +91,8 @@ TXPhotozLensStack:
     aliases:
         lens_photoz_pdfs: photoz_pdfs
 
-TXMainMaps: {}
+TXSourceMaps: {}
+TXLensMaps: {}
 
 TXAuxiliarySourceMaps: {}
 

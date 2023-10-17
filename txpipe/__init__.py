@@ -21,7 +21,7 @@ from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
-from .maps import TXMainMaps
+from .maps import TXSourceMaps, TXLensMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
 from .masks import TXSimpleMask, TXSimpleMaskFrac
@@ -36,6 +36,7 @@ from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointP
 from .calibrate import TXShearCalibration
 from .ingest import *
 from .spatial_diagnostics import TXFocalPlanePlot
+from .lssweights import TXLSSWeights
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.

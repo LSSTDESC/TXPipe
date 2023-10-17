@@ -27,7 +27,7 @@ class TXBaseLensSelector(PipelineStage):
     name = "TXBaseLensSelector"
 
     outputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
     ]
 
     config_options = {
@@ -154,15 +154,15 @@ class TXBaseLensSelector(PipelineStage):
         n = self.open_input("photometry_catalog")["photometry/ra"].size
         nbin_lens = len(self.config["lens_zbin_edges"]) - 1
 
-        outfile = self.open_output("lens_tomography_catalog", parallel=True)
+        outfile = self.open_output("lens_tomography_catalog_unweighted", parallel=True)
         group = outfile.create_group("tomography")
-        group.create_dataset("lens_bin", (n,), dtype="i")
+        group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
-        group.create_dataset("lens_counts", (nbin_lens,), dtype="i")
-        group.create_dataset("lens_counts_2d", (1,), dtype="i")
+        group.create_dataset("counts", (nbin_lens,), dtype="i")
+        group.create_dataset("counts_2d", (1,), dtype="i")
 
-        group.attrs["nbin_lens"] = nbin_lens
-        group.attrs[f"lens_zbin_edges"] = self.config["lens_zbin_edges"]
+        group.attrs["nbin"] = nbin_lens
+        group.attrs[f"zbin_edges"] = self.config["lens_zbin_edges"]
 
         return outfile
 
@@ -188,7 +188,7 @@ class TXBaseLensSelector(PipelineStage):
         """
 
         group = outfile["tomography"]
-        group["lens_bin"][start:end] = lens_bin
+        group["bin"][start:end] = lens_bin
         group["lens_weight"][start:end] = 1.0
 
     def write_global_values(self, outfile, number_density_stats):
@@ -203,8 +203,8 @@ class TXBaseLensSelector(PipelineStage):
 
         if self.rank == 0:
             group = outfile["tomography"]
-            group["lens_counts"][:] = lens_counts
-            group["lens_counts_2d"][:] = lens_counts_2d
+            group["counts"][:] = lens_counts
+            group["counts_2d"][:] = lens_counts_2d
 
     def select_lens(self, phot_data):
         t = self.config["selection_type"]
@@ -439,14 +439,14 @@ class TXLensCatalogSplitter(PipelineStage):
     name = "TXLensCatalogSplitter"
 
     inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
         ("photometry_catalog", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
         ("lens_photoz_pdfs", HDFFile),
     ]
 
     outputs = [
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog_unweighted", HDFFile),
     ]
 
     config_options = {
@@ -456,18 +456,23 @@ class TXLensCatalogSplitter(PipelineStage):
         "redshift_column": "zmean",
     }
 
+    def get_lens_tomo_name(self): #can overwrite this in a weighted subclass
+        return "lens_tomography_catalog_unweighted"
+    def get_binned_lens_name(self): #can overwrite this in a weighted subclass
+        return "binned_lens_catalog_unweighted"
+
     def run(self):
 
-        with self.open_input("lens_tomography_catalog") as f:
-            nbin = f["tomography"].attrs["nbin_lens"]
-            counts = f["tomography/lens_counts"][:]
-            count2d = f["tomography/lens_counts_2d"][:]
+        with self.open_input(self.get_lens_tomo_name()) as f:
+            nbin = f["tomography"].attrs["nbin"]
+            counts = f["tomography/counts"][:]
+            count2d = f["tomography/counts_2d"][:]
 
         extra_cols = [c for c in self.config["extra_cols"] if c]
         cols = ["ra", "dec", "weight", "comoving_distance"]
 
         # Object we use to make the separate lens bins catalog
-        cat_output = self.open_output("binned_lens_catalog", parallel=True)
+        cat_output = self.open_output(self.get_binned_lens_name(), parallel=True)
         cat_group = cat_output.create_group("lens")
         cat_group.attrs["nbin"] = len(counts)
         cat_group.attrs["nbin_lens"] = len(counts)
@@ -491,9 +496,9 @@ class TXLensCatalogSplitter(PipelineStage):
             data["weight"] = data["lens_weight"]
             for b in my_bins:
                 if b == "all":
-                    w = np.where(data["lens_bin"] >= 0)
+                    w = np.where(data["bin"] >= 0)
                 else:
-                    w = np.where(data["lens_bin"] == b)
+                    w = np.where(data["bin"] == b)
                 d = {name: col[w] for name, col in data.items()}
                 splitter.write_bin(d, b)
 
@@ -507,9 +512,9 @@ class TXLensCatalogSplitter(PipelineStage):
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            self.get_lens_tomo_name(),
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # second file
             "photometry_catalog",
             "photometry",
@@ -547,7 +552,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
     """
     name = "TXTruthLensCatalogSplitter"
     inputs = [
-            ("lens_tomography_catalog", TomographyCatalog),
+            ("lens_tomography_catalog_unweighted", TomographyCatalog),
             ("photometry_catalog", HDFFile),
             ("fiducial_cosmology", FiducialCosmology),
         ]
@@ -562,9 +567,9 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
         it = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            self.get_lens_tomo_name(),
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # second file
             "photometry_catalog",
             "photometry",
@@ -587,7 +592,7 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
 
     name = "TXExternalLensCatalogSplitter"
     inputs = [
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
         ("lens_catalog", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
     ]
@@ -600,9 +605,9 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
         iterator = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
-            "lens_tomography_catalog",
+            self.get_lens_tomo_name(),
             "tomography",
-            ["lens_bin", "lens_weight"],
+            ["bin", "lens_weight"],
             # second file
             "lens_catalog",
             "lens",
@@ -612,7 +617,45 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
 
         return self.add_redshifts(iterator)
 
+class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
+    """
+    Split a lens catalog file into a new file with separate bins with true redshifts.
 
+    The redshifts are used to calculate the comoving distances.
+    """
+    name = "TXTruthLensCatalogSplitterWeighted"
+    inputs = [
+            ("lens_tomography_catalog", TomographyCatalog),
+            ("photometry_catalog", HDFFile),
+            ("fiducial_cosmology", FiducialCosmology),
+        ]
+    outputs = [
+        ("binned_lens_catalog", HDFFile),
+    ]
+    def get_lens_tomo_name(self): #can overwrite this in a weighted subclass
+        return "lens_tomography_catalog"
+    def get_binned_lens_name(self): #can overwrite this in a weighted subclass
+        return "binned_lens_catalog"
+    
+    def data_iterator(self):
+        z_col = self.config["redshift_column"]
+        extra_cols = [
+            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
+        ]
+        iterator = self.combined_iterators(
+            self.config["chunk_rows"],
+            # first file
+            self.get_lens_tomo_name(),
+            "tomography",
+            ["bin", "lens_weight"],
+            # second file
+            "photometry_catalog",
+            "photometry",
+            ["ra", "dec", z_col] + extra_cols,
+            parallel=False,
+        )
+        
+        return self.add_redshifts(iterator)
 
 
 if __name__ == "__main__":

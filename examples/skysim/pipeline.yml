@@ -35,7 +35,10 @@ stages:
     - name: TXPhotozPlots
     - name: TXJackknifeCenters
     - name: TXDensityMaps
-    - name: TXMainMaps
+    - name: TXSourceMaps
+      nodes: 8
+      nprocess: 64
+    - name: TXLensMaps
       nodes: 8
       nprocess: 64
     - name: TXAuxiliarySourceMaps
@@ -47,6 +50,7 @@ stages:
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointTheoryFourier
     - name: TXSimpleMask
+    - name: TXLSSWeightsUnit
     - name: TXMapPlots
     - name: TXTracerMetadata
     - name: TXNullBlinding

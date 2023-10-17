@@ -68,7 +68,7 @@ class BinStats:
         """
         group = outfile["tomography"]
         if i == "2d":
-            group["source_counts_2d"][:] = self.source_count
+            group["counts_2d"][:] = self.source_count
             group["N_eff_2d"][:] = self.N_eff
             # This might get saved by the calibrator also
             # but in case not we do it here.
@@ -76,8 +76,8 @@ class BinStats:
             group["mean_e2_2d"][:] = self.mean_e[1]
             group["sigma_e_2d"][:] = self.sigma_e
         else:
-            group["source_counts"][i] = self.source_count
-            group["N_eff"][i] = self.N_eff
+            group["counts"][i] = self.source_count
+            group["N_eff"][i]   = self.N_eff
             group["mean_e1"][i] = self.mean_e[0]
             group["mean_e2"][i] = self.mean_e[1]
             group["sigma_e"][i] = self.sigma_e
@@ -300,9 +300,9 @@ class TXSourceSelectorBase(PipelineStage):
 
         outfile = self.open_output("shear_tomography_catalog", parallel=True)
         group = outfile.create_group("tomography")
-        group.create_dataset("source_bin", (n,), dtype="i")
-        group.create_dataset("source_counts", (nbin_source,), dtype="i")
-        group.create_dataset("source_counts_2d", (1,), dtype="i")
+        group.create_dataset("bin", (n,), dtype="i")
+        group.create_dataset("counts", (nbin_source,), dtype="i")
+        group.create_dataset("counts_2d", (1,), dtype="i")
         group.create_dataset("sigma_e", (nbin_source,), dtype="f")
         group.create_dataset("sigma_e_2d", (1,), dtype="f")
         group.create_dataset("mean_e1", (nbin_source,), dtype="f")
@@ -312,7 +312,7 @@ class TXSourceSelectorBase(PipelineStage):
         group.create_dataset("N_eff", (nbin_source,), dtype="f")
         group.create_dataset("N_eff_2d", (1,), dtype="f")
 
-        group.attrs["nbin_source"] = nbin_source
+        group.attrs["nbin"] = nbin_source
         group.attrs["catalog_type"] = self.config["shear_catalog_type"]
         for i in range(nbin_source):
             group.attrs[f"source_zmin_{i}"] = zbins[i]
@@ -345,7 +345,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         """
         group = outfile["tomography"]
-        group["source_bin"][start:end] = source_bin
+        group["bin"][start:end] = source_bin
 
     def write_global_values(self, outfile, calculators, number_density_stats):
         """
@@ -507,8 +507,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile["tomography/source_bin"].size
-        nbin_source = outfile["tomography/source_counts"].size
+        n = outfile["tomography/bin"].size
+        nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("R_gamma", (n, 2, 2), dtype="f")
         group.create_dataset("R_S", (nbin_source, 2, 2), dtype="f")
@@ -578,7 +578,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         We collate these into a BinStats object for clarity.
         """
-        R, S, N = calculator.collect(self.comm, allgather=True)
+        R, S, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu.copy()
 
@@ -590,7 +590,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         # In metacal all weights are unity, so the effective N is the same
         # as the raw N.
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):
@@ -686,8 +686,8 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile["tomography/source_bin"].size
-        nbin_source = outfile["tomography/source_counts"].size
+        n = outfile["tomography/bin"].size
+        nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
 
         # Per-bin 2x2 calibration matrix
@@ -698,7 +698,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def compute_output_stats(self, calculator, mean, variance):
         # Collate calibration values
-        R, N = calculator.collect(self.comm, allgather=True)
+        R, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = MetaDetectCalibrator(R, mean, mu_is_calibrated=False)
         mean_e = calibrator.mu.copy()
 
@@ -707,7 +707,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         sigma_e = np.sqrt(0.5 * P @ variance)
 
         # Like metacal, N_eff = N for metadetect
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
@@ -767,8 +767,8 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile["tomography/source_bin"].size
-        nbin_source = outfile["tomography/source_counts"].size
+        n = outfile["tomography/bin"].size
+        nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("K", (nbin_source,), dtype="f")
         group.create_dataset("C", (nbin_source, 2), dtype="f")
@@ -777,12 +777,12 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
-        K, C, N = calculator.collect(self.comm, allgather=True)
+        K, C, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = LensfitCalibrator(K, C)
         mean_e = C.copy()
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
-        return BinStats(N, N, mean_e, sigma_e, calibrator)
+        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
 class TXSourceSelectorHSC(TXSourceSelectorBase):
@@ -835,8 +835,8 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         # here, so the rest of this method only does things specific to this
         # calibration scheme
         outfile = super().setup_output()
-        n = outfile["tomography/source_bin"].size
-        nbin_source = outfile["tomography/source_counts"].size
+        n = outfile["tomography/bin"].size
+        nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
 
         # There is a single scalar per-object value for this scheme
@@ -866,10 +866,10 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return R
 
     def compute_output_stats(self, calculator, mean, variance):
-        R, K, N = calculator.collect(self.comm, allgather=True)
+        R, K, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = HSCCalibrator(R, K)
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
-        return BinStats(N, N, mean, sigma_e, calibrator)
+        return BinStats(N, Neff, mean, sigma_e, calibrator)
 
     def setup_response_calculators(self, nbin_source):
         calculators = [

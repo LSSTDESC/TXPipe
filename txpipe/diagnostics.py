@@ -135,6 +135,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 bands, "mag", "mag_err", shear_catalog_type="metadetect"
             )
         else:
+        
             shear_cols = [
                 "psf_g1",
                 "psf_g2",
@@ -150,7 +151,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "c2",
             ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
 
-        shear_tomo_cols = ["source_bin"]
+        shear_tomo_cols = ["bin"]
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
@@ -271,8 +272,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         plt.subplot(2, 1, 1)
 
-        plt.plot(mu1, line11, color="red", label=r"$m=%.4f \pm %.4f$" % (slope11, std_err11))
-        plt.plot(mu1, line12, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope12, std_err12))
+        plt.plot(mu1, line11, color="red", label=r"$m=%.2e \pm %.2e$" % (slope11, std_err11))
+
+        plt.plot(mu1, line12, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
         plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=5, color="red")
@@ -284,8 +286,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         plt.subplot(2, 1, 2)
 
-        plt.plot(mu2, line21, color="red", label=r"$m=%.4f \pm %.4f$" % (slope21, std_err21))
-        plt.plot(mu2, line22, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope22, std_err22))
+        plt.plot(mu2, line21, color="red", label=r"$m=%.2e \pm %.2e$" % (slope21, std_err21))
+        plt.plot(mu2, line22, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
         
         plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=5, color="red")
@@ -348,12 +350,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         fig = self.open_output("g_psf_T", wrapper=True)
 
-        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
-        plt.xlabel("PSF $T^{1/2}$")
+        plt.xlabel("PSF $T$")
         plt.ylabel("Mean g")
 
         plt.legend(loc="best")
@@ -407,23 +409,22 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Get the error on the mean
         dx = 0.05 * (snr_edges[1] - snr_edges[0])
         idx = np.where(np.isfinite(mu))[0]
-        slope1, intercept1, mc_cov = fit_straight_line(np.log10(mu[idx]), mean1[idx], std1[idx])
+        slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
-        line1 = slope1 * (np.log10(mu)) + intercept1
+        line1 = slope1 * mu + intercept1
         
-        slope2, intercept2, mc_cov = fit_straight_line(np.log10(mu[idx]), mean2[idx], std2[idx])
+        slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], std2[idx])
         std_err2 = mc_cov[0, 0] ** 0.5
-        line2 = slope2 * (np.log10(mu)) + intercept2
+        line2 = slope2 * mu + intercept2
         
         
         fig = self.open_output("g_snr", wrapper=True)
 
-        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o", markersize=5, color="blue")
-        plt.xscale("log")
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
@@ -475,23 +476,21 @@ class TXSourceDiagnosticPlots(PipelineStage):
         idx = np.where(np.isfinite(mu))[0]
         slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], y_err=std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
-        line1 = slope1 * (np.log10(mu)) + intercept1
+        line1 = slope1 * mu + intercept1
         
         slope2, intercept2, mc_cov = fit_straight_line(mu[idx], mean2[idx], y_err=std2[idx])
         std_err2 = mc_cov[0, 0] ** 0.5
-        line2 = slope2 * (np.log10(mu)) + intercept2
-        
+        line2 = slope2 * mu + intercept2
         
         fig = self.open_output("g_T", wrapper=True)
 
-        plt.plot(mu, line1, color="red", label=r"$m=%.4f \pm %.4f$" % (slope1, std_err1))
-        plt.plot(mu, line2, color="blue", label=r"$m=%.4f \pm %.4f$" % (slope2, std_err2))
+        plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
+        plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
         plt.plot(mu, [0] * len(mu), color="black")
         plt.errorbar(mu + dx, mean1, std1, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu - dx, mean2, std2, label="g2", fmt="o",markersize=5, color="blue")
         
-        plt.xscale("log")
-        plt.xlabel("galaxy size T$^{1/2}$")
+        plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
         plt.legend()
         plt.tight_layout()
@@ -522,7 +521,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["source_bin"] != -1
+            qual_cut = data["bin"] != -1
 
             if cat_type == "metacal":
                 g1 = data["mcal_g1"]
@@ -532,12 +531,22 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g1 = data["00/g1"]
                 g2 = data["00/g2"]
                 w = data["00/weight"]
-            else:
+            elif cat_type == "lensfit":
                 g1 = data["g1"]
                 g2 = data["g2"]
                 w = data["weight"]
+            else:
+                g1 = data["g1"]
+                g2 = data["g2"]
+                c1 = data['c1']
+                c2 = data['c2']
+                w = data["weight"]
 
-            g1, g2 = cal.apply(g1, g2)
+            if cat_type=='metacal' or cat_type=='metadetect' or cat_type=='lensfit':
+                g1, g2 = cal.apply(g1,g2)
+            else:
+                g1, g2 = cal.apply(g1,g2,c1,c2)
+
             H1.add_data(g1)
             H2.add_data(g2)
             H1_weighted.add_data(g1, w)
@@ -592,8 +601,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["source_bin"] != -1
-            #            qual_cut |= data['lens_bin'] !=-1
+            qual_cut = data["bin"] != -1
 
             b1 = np.digitize(data[f"{shear_prefix}s2n"][qual_cut], edges) - 1
 
@@ -662,7 +670,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 continue
 
             # check if selected for any source bin
-            in_shear_sample = data["source_bin"] != -1
+            in_shear_sample = data["bin"] != -1
             if cat_type == "metacal":
                 B = np.digitize(data["R_gamma"], edges) - 1
                 # loop through this chunk of data.
@@ -790,7 +798,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                     count = w.sum()
                     h1[i] += count
 
-                    w &= data["source_bin"] >= 0
+                    w &= data["bin"] >= 0
                     count = w.sum()
                     h2[i] += count
 
@@ -870,7 +878,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         g = self.open_input("lens_tomography_catalog")
 
         # read nbin from metadata
-        nbin = g["tomography"].attrs["nbin_lens"]
+        nbin = g["tomography"].attrs["nbin"]
 
         # Default to the automatic value but expose as an option
         block = self.config["block_size"]
@@ -882,7 +890,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         for b in bands:
             data[f"mag_{b}"] = da.from_array(f[f"photometry/mag_{b}"], block)
             data[f"snr_{b}"] = da.from_array(f[f"photometry/snr_{b}"], block)
-        data["bin"] = da.from_array(g["tomography/lens_bin"], block)
+        data["bin"] = da.from_array(g["tomography/bin"], block)
 
         # Avoid recomputing selections in each histogram by doing it externally here
         data["sel"] = da.nonzero(data["bin"] >= 0)
