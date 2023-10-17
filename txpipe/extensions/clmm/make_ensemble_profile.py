@@ -65,6 +65,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             bg_cat = cluster_shears_cat[mask]
                             
             z_cluster = clusters[cluster_index]["redshift"]
+     
+            # richness = clusters[cluster_index]["richness"]
+            # ra_cl = clusters[cluster_index]["ra"]
+            # dec_cl = clusters[cluster_index]["dec"]
+            # id_cluster = clusters[cluster_index]["id"]
+
             profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo, num_profile_bins)
 
             # We want to append the columns as numpy arrays
@@ -76,7 +82,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         profile_len = num_profile_bins
         profile_colnames = list(profile.keys())
                 
-        # The root process saves all the data. First it setps up the output
+        # The root process saves all the data. First it sets up the output
         # file here.
         if self.rank == 0:
             outfile = self.open_output("cluster_profiles")
@@ -106,7 +112,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             profiles_to_collect = per_cluster_data[i]
             # If we are running in parallel then collect together
-            # the values from all the processes                                                                                                                                          
+            # the values from all the processes  
+            print(self.comm)                                                                                                                                        
             if self.comm is not None:
                 profiles_to_collect = self.collect(profiles_to_collect)
 
