@@ -40,6 +40,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import clmm.cosmology.ccl
 
         num_profile_bins = 5
+        radial_bins = clmm.dataops.make_bins(1., 5., nbins=num_profile_bins, method="evenlog10width")
+
         
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
@@ -84,7 +86,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             gc_object.make_radial_profile(
                 "Mpc", 
-                bins=num_profile_bins,
+                bins=radial_bins,
                 cosmo=clmm_cosmo, 
                 tan_component_in = "tangential_comp_clmm",
                 cross_component_in = "cross_comp_clmm",
@@ -93,8 +95,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 weights_in = "weight_clmm",
                 )
 
-            if cluster_index == 0:
-                print(galcat['weight_clmm'])
+            if cluster_index == 0 or cluster_index == 1:
+#                print(galcat['weight_clmm'])
                 print(gc_object.profile)
 
             # add the profile to the ensemble
