@@ -56,6 +56,9 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             clmm_cosmo.set_be_cosmo(ccl_cosmo)
 
+        # Create empty cluster ensemble
+
+        cluster_ensemble = clmm.ClusterEnsemble(0)
 
         # Loop through clusters and calculate the profiles
         for cluster_index in range(ncluster) :
@@ -64,17 +67,58 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             mask = (cluster_shears_cat["cluster_index"] == cluster_index)
             bg_cat = cluster_shears_cat[mask]
                             
-            z_cluster = clusters[cluster_index]["redshift"]
+            z_cl = clusters[cluster_index]["redshift"]
      
-            # richness = clusters[cluster_index]["richness"]
-            # ra_cl = clusters[cluster_index]["ra"]
-            # dec_cl = clusters[cluster_index]["dec"]
-            # id_cluster = clusters[cluster_index]["id"]
+            rich_cl = clusters[cluster_index]["richness"]
+            ra_cl = clusters[cluster_index]["ra"]
+            dec_cl = clusters[cluster_index]["dec"]
+            id_cl = clusters[cluster_index]["id"]
 
-            profile = self.make_clmm_profile(bg_cat, z_cluster, clmm_cosmo, num_profile_bins)
+            galcat = clmm.GCData(bg_cat)
+            galcat['theta'] = galcat['distance_arcmin']*np.pi/(60*180) # galcat needs to have a column called "theta" in radians
+            galcat['z'] = np.zeros(len(galcat)) # clmm needs a column named 'z' but all computation have been done 
+                                                # in source_select_compute --> don't need it here, filling dummy array
+            gc_object = clmm.GalaxyCluster(id_cl, ra_cl, dec_cl, z_cl, galcat)
+            gc_object.richness = rich_cl
+
+            gc_object.make_radial_profile(
+                "Mpc", 
+                bins=num_profile_bins,
+                cosmo=clmm_cosmo, 
+                tan_component_in = "tangential_comp_clmm",
+                cross_component_in = "cross_comp_clmm",
+                tan_component_out = "tangential_comp",
+                cross_component_out = "cross_comp",
+                weights_in = "weight_clmm",
+                )
+
+            if cluster_index == 0:
+                print(galcat['weight_clmm'])
+                print(gc_object.profile)
+
+
+            profile = self.make_clmm_profile(bg_cat, z_cl, clmm_cosmo, num_profile_bins)
+
+            # add the profile to the ensemble
+            cluster_ensemble.add_individual_radial_profile(
+                galaxycluster=gc_object,
+                profile_table=gc_object.profile, 
+                tan_component="tangential_comp",
+                cross_component="cross_comp",
+                weights="W_l")
 
             # We want to append the columns as numpy arrays
             per_cluster_data.append(profile)
+
+        # print(cluster_ensemble.data['radius'], 
+        #     cluster_ensemble.data['tangential_comp'], 
+        #     cluster_ensemble.data['W_l']
+        #     )
+
+        cluster_ensemble.make_stacked_radial_profile(tan_component="tangential_comp", 
+            cross_component="cross_comp", weights="W_l")
+
+        print(cluster_ensemble.stacked_data)
 
         print(len(per_cluster_data))
         print(type(per_cluster_data[0]))
