@@ -64,8 +64,8 @@ BPZ_lite:
         mag_z: 27.98
 
 CLClusterBinningRedshiftRichness:
-    zedge : [0.2, 0.4, 0.6, 0.8, 1.0]
-    richedge : [5., 10., 20.]
+    zedge : [0.1, 0.4, 0.6, 0.8]
+    richedge : [5., 10., 20.,25.]
 
 CLClusterShearCatalogs:
     max_radius: 5.0  # Mpc

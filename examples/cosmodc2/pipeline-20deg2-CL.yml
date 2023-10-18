@@ -1,12 +1,19 @@
-launcher:
-    name: mini
-    interval: 3.0
-
+#this step depends on where you run
+#for CCin2p3
 site:
     name: cc-parallel
     mpi_command: "mpirun -n"
 
+#for NERSC
+#site:
+#    name: cori-batch
+#    image: ghcr.io/lsstdesc/txpipe-dev
 
+
+#all the following steps should not depend on where you run 
+launcher:
+    name: mini
+    interval: 3.0
 modules: >
     txpipe
     rail.estimation.algos.bpz_lite
