@@ -68,12 +68,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             bg_cat = cluster_shears_cat[mask]
                             
             z_cl = clusters[cluster_index]["redshift"]
-     
             rich_cl = clusters[cluster_index]["richness"]
             ra_cl = clusters[cluster_index]["ra"]
             dec_cl = clusters[cluster_index]["dec"]
             id_cl = clusters[cluster_index]["id"]
 
+
+            # To use CLMM, need to have galaxy table in clmm.GCData type
             galcat = clmm.GCData(bg_cat)
             galcat['theta'] = galcat['distance_arcmin']*np.pi/(60*180) # galcat needs to have a column called "theta" in radians
             galcat['z'] = np.zeros(len(galcat)) # clmm needs a column named 'z' but all computation have been done 
@@ -96,9 +97,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 print(galcat['weight_clmm'])
                 print(gc_object.profile)
 
-
-            profile = self.make_clmm_profile(bg_cat, z_cl, clmm_cosmo, num_profile_bins)
-
             # add the profile to the ensemble
             cluster_ensemble.add_individual_radial_profile(
                 galaxycluster=gc_object,
@@ -107,6 +105,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 cross_component="cross_comp",
                 weights="W_l")
 
+            profile = self.make_clmm_profile(bg_cat, z_cl, clmm_cosmo, num_profile_bins)
+    
             # We want to append the columns as numpy arrays
             per_cluster_data.append(profile)
 
