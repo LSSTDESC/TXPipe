@@ -6,4 +6,4 @@
 #SBATCH --mem=128000
 
 source /pbs/throng/lsst/users/jzuntz/txpipe-environments/setup-txpipe
-ceci examples/cosmodc2/pipeline-1deg2-CL.yml
+ceci examples/cosmodc2/pipeline-1deg2-CL-in2p3.yml

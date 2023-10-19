@@ -7,5 +7,4 @@
 #SBATCH --ntasks-per-node=32
 
 source $CFS/lsst/groups/WL/users/zuntz/setup-txpipe
-
-tx ceci examples/cosmodc2/pipeline-20deg2-clmm-nersc.yml
+tx ceci examples/cosmodc2/pipeline-20deg2-CL-nersc.yml
