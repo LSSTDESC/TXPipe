@@ -27,14 +27,14 @@ stages:
       nprocess: 1
     - name: BPZ_lite
       nprocess: 30
-    - name: CLClusterBinning
+    - name: CLClusterBinningRedshiftRichness
       nprocess: 1
-    - name: CLClusterShearCatalogs
-      nprocess: 30
-    - name: CLClusterEnsembleProfiles
-      nprocess: 30
-    - name: CLClusterDataVector
-      nprocess: 1
+#    - name: CLClusterShearCatalogs
+#      nprocess: 30
+#    - name: CLClusterEnsembleProfiles
+#      nprocess: 1
+#    - name: CLClusterDataVector
+#      nprocess: 1
 
 
 
