@@ -63,7 +63,25 @@ BPZ_lite:
         mag_i: 28.62
         mag_z: 27.98
 
+CLClusterBinningRedshiftRichness:
+    zedge : [0.1, 0.4, 0.6, 0.8]
+    richedge : [5., 10., 20.,25.]
 
 CLClusterShearCatalogs:
     max_radius: 5.0  # Mpc
     delta_z: 0.2  # redshift buffer
+
+CLClusterEnsembleProfiles:
+    #radial bin definition
+    r_min : 0.2 #in Mpc
+    r_max : 5.0 #in Mpc
+    #type of profile
+    delta_sigma_profile : True
+    shear_profile : False
+    magnification_profile : False
+    #stacking step or not
+    stack_profile : True
+    
+
+    
+
