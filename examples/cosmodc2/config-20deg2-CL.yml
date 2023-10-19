@@ -63,11 +63,9 @@ BPZ_lite:
         mag_i: 28.62
         mag_z: 27.98
 
-CLClusterBinning:
-    z_min : 0
-    z_max : 1.2
-    lambda_min : 5
-    lambda_max : 1e3
+CLClusterBinningRedshiftRichness:
+    zedge : [0.1, 0.4, 0.6, 0.8]
+    richedge : [5., 10., 20.,25.]
 
 CLClusterShearCatalogs:
     max_radius: 5.0  # Mpc
@@ -83,6 +81,7 @@ CLClusterEnsembleProfiles:
     magnification_profile : False
     #stacking step or not
     stack_profile : True
+    
     
 
     
