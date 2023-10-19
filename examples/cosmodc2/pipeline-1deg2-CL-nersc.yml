@@ -22,12 +22,12 @@ modules: >
 python_paths: []
 
 stages:
-    - name: TXSourceSelectorMetadetect
-      nprocess: 1
-    - name: Inform_BPZ_lite
-      nprocess: 1
-    - name: BPZ_lite
-      nprocess: 1
+#    - name: TXSourceSelectorMetadetect
+#      nprocess: 1
+#    - name: Inform_BPZ_lite
+#      nprocess: 1
+#    - name: BPZ_lite
+#      nprocess: 1
     - name: CLClusterBinningRedshiftRichness
       nprocess: 1
 #    - name: CLClusterShearCatalogs
@@ -39,19 +39,19 @@ stages:
 
 
 
-output_dir: data/cosmodc2/outputs-1deg2-CL
-config: examples/cosmodc2/config-1deg2-CL.yml
+output_dir: ./data/cosmodc2/outputs-1deg2-CL
+config: ./examples/cosmodc2/config-1deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  ./data/example/inputs/metadetect_shear_catalog.hdf5
-    photometry_catalog:  ./data/example/inputs/photometry_catalog.hdf5
-    fiducial_cosmology: data/fiducial_cosmology.yml
-    calibration_table: ./data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    spectroscopic_catalog: ./data/example/inputs/mock_spectroscopic_catalog.hdf5
+#    shear_catalog:  ./data/example/inputs/metadetect_shear_catalog.hdf5
+#    photometry_catalog:  ./data/example/inputs/photometry_catalog.hdf5
+#    fiducial_cosmology: ./data/fiducial_cosmology.yml
+#    calibration_table: ./data/example/inputs/sample_cosmodc2_w10year_errors.dat
+#    spectroscopic_catalog: ./data/example/inputs/mock_spectroscopic_catalog.hdf5
     cluster_catalog: ./data/example/inputs/cluster_catalog.hdf5
  
 resume: True
-log_dir: data/cosmodc2/logs
-pipeline_log: data/cosmodc2/log_1deg2.txt
+log_dir: ./data/cosmodc2/logs
+pipeline_log: ./data/cosmodc2/log_1deg2.txt
 
