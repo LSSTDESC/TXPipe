@@ -12,7 +12,7 @@ import ceci
 class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
-        ("cluster_catalog", HDFFile),
+        ("cluster_catalog_tomography", HDFFile),
 #        ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
 #        ("shear_tomography_catalog", TomographyCatalog),
