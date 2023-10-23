@@ -44,7 +44,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         
         # load cluster catalog as an astropy table
-        clusters = self.load_cluster_catalog()
+        #clusters = self.load_cluster_catalog()
+        clusters = self.load_cluster_catalog_tomography()
         ncluster = len(clusters)
         
         # load cluster shear catalog using similar astropy table set up as cluster catalog
