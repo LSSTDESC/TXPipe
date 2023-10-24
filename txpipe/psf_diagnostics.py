@@ -200,12 +200,16 @@ class TXTauStatistics(PipelineStage):
                        "bin_slop"      : 0.01,
                        "sep_units"     : "arcmin",
                        "psf_size_units": "sigma",
+                       'star_type'     : 'PSF-reserved',
+                       'cov_method'    : 'bootstrap'
                      }
 
     def run(self):
         import treecorr
         import h5py
         import matplotlib
+        import emcee
+        from scipy.stats import qmc
 
         matplotlib.use("agg")
 
@@ -215,52 +219,53 @@ class TXTauStatistics(PipelineStage):
         
         # Load star properties
         ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
-
+        
         # Compute tau stats 
         tau_stats  = {}
         p_bestfits = {}
 
-        for t in STAR_TYPES:
-            if t==1:
-                break
-            s = star_type == t
+        for s in STAR_TYPES:
+            
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+
+            #s = star_type == s
     
             # Load precomputed Rowe stats if they exist already
-            rowe_stats = self.load_rowe(t)
+            rowe_stats = self.load_rowe(s)
 
             # Joint tau 0-2-5 data vector and cov
             # tau_stats contains [ang, tau0, tau2, tau5, cov]
-            tau_stats[t] = self.compute_alltau(gal_ra, gal_dec, gal_g, gal_weight, s, ra, dec, e_psf, e_mod, de_psf, T_f)
+            
+            tau_stats[s] = self.compute_all_tau(gal_ra, gal_dec, gal_g, gal_weight, s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type)
             
             # Run simple mcmc to find best-fit values for alpha,beta,eta
             ranges = {}
             ranges['alpha'] = [-0.10, 0.10]
             ranges['beta']  = [-5.00, 5.00]
             ranges['eta']   = [-5.00, 5.00]
-            
 
-            p_bestfits[t] = self.sample(tau_stats[t],rowe_stats,ranges)
+            p_bestfits[s] = self.sample(tau_stats[s],rowe_stats,ranges)
             
         #Save tau stats in a h5 file
-        self.save_taustats(tau_stats, p_bestfits)
+        self.save_tau_stats(tau_stats, p_bestfits)
 
         # Save tau plots
         self.tau_plots(tau_stats)
 
 
-    def load_rowe(self,t):
-        f = self.open_input("rowe_stats") 
-        
+    def load_rowe(self,s):
+        f = self.open_input("rowe_stats")   
         rowe_stats = {}
 
         for i in 0, 1, 2, 3, 4, 5:
-            name    = STAR_TYPE_NAMES[t]
+            name    = STAR_TYPE_NAMES[s]
             theta   = f['rowe_statistics'][f"rowe_{i}_{name}"]['theta'][:]
             xi_plus = f['rowe_statistics'][f"rowe_{i}_{name}"]['xi_plus'][:]
             xi_err  = f['rowe_statistics'][f"rowe_{i}_{name}"]['xi_err'][:]
             
             rowe_stats[i] = theta, xi_plus, xi_err
-
+        
         return rowe_stats
 
 
@@ -268,13 +273,12 @@ class TXTauStatistics(PipelineStage):
         '''
         Run a simple mcmc chain to detemine the best-fit values for  
         '''
-        import emcee,sys
+        import emcee
         from scipy.stats import qmc
 
         sampler = qmc.LatinHypercube(d=3, optimization="random-cd")
         sample  = sampler.random(n=nwalkers)
-        qmc.discrepancy(sample)
-
+        
         initpos = qmc.scale(sample, [ ranges['alpha'][0], ranges['beta'][0], ranges['eta'][0] ],
                                     [ ranges['alpha'][1], ranges['beta'][1], ranges['eta'][1] ])
 
@@ -283,7 +287,6 @@ class TXTauStatistics(PipelineStage):
 
         print("Computing best-fit alpha, beta, eta")
         _, _, _, _, cov = tau_stats
-        eigenvalues = np.linalg.eigvals(cov)
         invcov      = np.linalg.inv(cov)
         
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov))
@@ -350,7 +353,7 @@ class TXTauStatistics(PipelineStage):
         return lp + self.logLike(theta, tau_stats, rowe_stats, invcov)
 
 
-    def compute_alltau(self, gra, gdec, g, gw, s, sra, sdec, e_psf, e_mod, de_psf, T_f):
+    def compute_all_tau(self, gra, gdec, g, gw, s, sra, sdec, e_psf, e_mod, de_psf, T_f, star_type):
         '''
         Compute tau0, tau2, tau5.
         All three needs to be computed at once due to covariance.
@@ -370,15 +373,16 @@ class TXTauStatistics(PipelineStage):
         T_f    : (T_meas - T_model)/T_meas                -- np.array((e1psf, e2psf))
         '''
         
+        import treecorr
+
         p = e_mod
         q = de_psf
         w = e_psf * T_f
         
-        import treecorr
-        sra, sdec = np.array((sra[s], sdec[s])) # Get ra/dec for specific stars
-        p = np.array(( [p[0][s], p[1][s]]))     # Get p for specific stars
-        q = np.array(( [q[0][s], q[1][s]]))     # Get q for specific stars
-        w = np.array(( [w[0][s], w[1][s]]))     # Get w for specific stars
+        sra, sdec = np.array((sra[star_type==s], sdec[star_type==s])) # Get ra/dec for specific stars
+        p = np.array(( [p[0][star_type==s], p[1][star_type==s]]))     # Get p for specific stars
+        q = np.array(( [q[0][star_type==s], q[1][star_type==s]]))     # Get q for specific stars
+        w = np.array(( [w[0][star_type==s], w[1][star_type==s]]))     # Get w for specific stars
 
         print(f"Computing Tau 0,2,5 and the covariance")
         
@@ -396,17 +400,16 @@ class TXTauStatistics(PipelineStage):
         corr5 = treecorr.GGCorrelation(self.config)
         corr5.process(catg, catw)
         
-        # Estimate covariance using bootstrap ordering is xip,xim,xip,xim,xip,xim
-        # For our particular purpose we only care about xip so remove xim elements. 
-        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], 'bootstrap')
-        cov = np.delete(cov,np.arange(100,120),axis=0)
-        cov = np.delete(cov,np.arange(100,120),axis=1)
-        cov = np.delete(cov,np.arange(60,80),axis=0)
-        cov = np.delete(cov,np.arange(60,80),axis=1)
-        cov = np.delete(cov,np.arange(20,40),axis=0)
-        cov = np.delete(cov,np.arange(20,40),axis=1)
+        # Estimate covariance using bootstrap. The ordering is xip0,xim0,xip2,xim2,xip5,xim5.
+        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], self.config.cov_method)
+
+        # For our particular purpose, we only care about xip so can remove the xim elements. 
+        nbins = self.config.nbins
+        idx = [i + j for i in range(nbins, 6*nbins, nbins * 2) for j in range(nbins) if i + j < 6*nbins]
+        cov = np.delete(cov,idx,axis=0)
+        cov = np.delete(cov,idx,axis=1)
         
-        # If cov is not invertible just use diagonal elements
+        # Get both theta and xip
         tht0,xip0 = corr0.meanr, corr0.xip
         tht2,xip2 = corr2.meanr, corr2.xip
         tht5,xip5 = corr5.meanr, corr5.xip
@@ -414,15 +417,17 @@ class TXTauStatistics(PipelineStage):
         return corr0.meanr, corr0.xip, corr2.xip, corr5.xip, cov
         
 
-    def save_taustats(self, tau_stats, p_bestfits):
+    def save_tau_stats(self, tau_stats, p_bestfits):
         '''
         tau_stats: (dict) dictionary containing theta,tau0,tau2,tau5 and cov
         '''
         f = self.open_output("tau_stats")
         g = f.create_group("tau_statistics")
+
         for s in STAR_TYPES:
-            if s==1:
-                break
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+        
             theta, tau0, tau2, tau5, cov = tau_stats[s]
             name = STAR_TYPE_NAMES[s]
             h = g.create_group(f"tau_{name}")
@@ -542,8 +547,8 @@ class TXTauStatistics(PipelineStage):
         import matplotlib.transforms as mtrans
         
         for s in STAR_TYPES:
-            if s==1:
-                break
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
 
             theta, tau0, tau2, tau5, cov = tau_stats[s]
             nb    = len(theta)
@@ -1402,11 +1407,11 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
 def load_star_type(data):
-    used = data["calib_psf_used"][:].astype('int')
+    used     = data["calib_psf_used"][:].astype('int')
     reserved = data["calib_psf_reserved"][:].astype('int')
 
     star_type = np.zeros(used.size, dtype=int)
-    star_type[used] = STAR_PSF_USED
-    star_type[reserved] = STAR_PSF_RESERVED
+    star_type[used==1]     = STAR_PSF_USED
+    star_type[reserved==1] = STAR_PSF_RESERVED
 
     return star_type
