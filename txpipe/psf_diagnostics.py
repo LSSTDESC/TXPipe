@@ -446,7 +446,7 @@ class TXTauStatistics(PipelineStage):
             alpha_err = max(p_bestfits[s]['alpha']['lerr'],p_bestfits[s]['alpha']['rerr']) 
             beta_err  = max(p_bestfits[s]['beta']['lerr'] ,p_bestfits[s]['beta']['rerr']) 
             eta_err   = max(p_bestfits[s]['eta']['lerr']  ,p_bestfits[s]['eta']['rerr']) 
-            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['meadian'])
+            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['median'])
             h.create_dataset("alpha_err", data=alpha_err)
             h.create_dataset("beta"     , data=p_bestfits[s]['beta']['median'])
             h.create_dataset("beta_err" , data=beta_err)
