@@ -201,7 +201,8 @@ class TXTauStatistics(PipelineStage):
                        "sep_units"     : "arcmin",
                        "psf_size_units": "sigma",
                        'star_type'     : 'PSF-reserved',
-                       'cov_method'    : 'bootstrap'
+                       'cov_method'    : 'bootstrap',
+                       'flip_g2'       : False,
                      }
 
     def run(self):
@@ -287,9 +288,12 @@ class TXTauStatistics(PipelineStage):
 
         print("Computing best-fit alpha, beta, eta")
         _, _, _, _, cov = tau_stats
+
+        mask = cov.diagonal() > 0
+        cov = cov[mask][:, mask]
         invcov      = np.linalg.inv(cov)
         
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov))
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask))
         sampler.run_mcmc(initpos, 5000, progress=True);
 
         flat_samples = sampler.get_chain(discard=2000, flat=True)
@@ -313,7 +317,7 @@ class TXTauStatistics(PipelineStage):
         return -np.inf
 
 
-    def logLike(self, theta, tau_stats, rowe_stats, invcov):
+    def logLike(self, theta, tau_stats, rowe_stats, invcov, mask):
         '''
         Compute likelihood
         theta     : parameters
@@ -340,17 +344,17 @@ class TXTauStatistics(PipelineStage):
         T5    = alpha*rowe5 + beta*rowe4 + eta*rowe3
         
         # Create data and template vector
-        Tall  = np.concatenate([T0,T2,T5])
-        Xall  = np.concatenate([tau0,tau2,tau5])
+        Tall  = np.concatenate([T0,T2,T5])[mask]
+        Xall  = np.concatenate([tau0,tau2,tau5])[mask]
 
         return -0.5*np.dot(Xall-Tall,np.dot(Xall-Tall,invcov))
     
 
-    def logProb(self, theta, tau_stats, rowe_stats, ranges, invcov):
+    def logProb(self, theta, tau_stats, rowe_stats, ranges, invcov, mask):
         lp = self.logPrior(theta,ranges)
         if not np.isfinite(lp):
             return -np.inf
-        return lp + self.logLike(theta, tau_stats, rowe_stats, invcov)
+        return lp + self.logLike(theta, tau_stats, rowe_stats, invcov, mask)
 
 
     def compute_all_tau(self, gra, gdec, g, gw, s, sra, sdec, e_psf, e_mod, de_psf, T_f, star_type):
@@ -492,12 +496,12 @@ class TXTauStatistics(PipelineStage):
         with self.open_input("shear_catalog") as f:
             g = f["shear"]
 
-            ra,dec = g["ra"][:][mask], g["dec"][:][mask]
 
             # Get the base catalog for metadetect
             if cat_type == "metadetect":
                 g = g["00"]
             
+            ra,dec = g["ra"][:][mask], g["dec"][:][mask]
 
             # Load shape and weight for metacal
             if cat_type == "metacal":
@@ -578,7 +582,8 @@ class TXTauStatistics(PipelineStage):
                             )
                 
                 plt.xscale("log")
-                plt.yscale("log")
+                if np.all(taus[i] >= 0):
+                    plt.yscale("log")
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(r"$\tau_{%d+}(\theta)$"%i)
                 plt.legend()
