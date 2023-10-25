@@ -301,7 +301,7 @@ class TXTauStatistics(PipelineStage):
         for i,v in enumerate(var):
             mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
             q    = np.diff(mcmc)
-            ret[v] = {'mean': mcmc[1],'lerr': q[0], 'rerr': q[1]}
+            ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
 
         return ret
 
@@ -446,11 +446,11 @@ class TXTauStatistics(PipelineStage):
             alpha_err = max(p_bestfits[s]['alpha']['lerr'],p_bestfits[s]['alpha']['rerr']) 
             beta_err  = max(p_bestfits[s]['beta']['lerr'] ,p_bestfits[s]['beta']['rerr']) 
             eta_err   = max(p_bestfits[s]['eta']['lerr']  ,p_bestfits[s]['eta']['rerr']) 
-            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['mean'])
+            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['meadian'])
             h.create_dataset("alpha_err", data=alpha_err)
-            h.create_dataset("beta"     , data=p_bestfits[s]['beta']['mean'])
+            h.create_dataset("beta"     , data=p_bestfits[s]['beta']['median'])
             h.create_dataset("beta_err" , data=beta_err)
-            h.create_dataset("eta"      , data=p_bestfits[s]['eta']['mean'])
+            h.create_dataset("eta"      , data=p_bestfits[s]['eta']['median'])
             h.create_dataset("eta_err"  , data=eta_err)
             
         f.close()
