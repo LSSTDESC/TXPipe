@@ -18,6 +18,12 @@ class TXLogNormalGlass(PipelineStage):
     Uses GLASS to generate a simulated catalog from lognormal fields
     GLASS citation: 
     https://ui.adsabs.harvard.edu/abs/2023OJAp....6E..11T
+
+    Contamination is applied to the density field by poission sampling 
+    the density field at a higher rate than target density, then 
+    removing objects with prob proportional to 1/input_weight
+    This allows us to produce contaminated/ucontamined maps of the same 
+    galaxy realisation
     """
 
     name = "TXLogNormalGlass"
@@ -26,6 +32,7 @@ class TXLogNormalGlass(PipelineStage):
         ("mask", MapsFile),
         ("lens_photoz_stack", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
+        ("input_lss_weight_maps", MapsFile),
     ]
 
     outputs = [
@@ -42,6 +49,18 @@ class TXLogNormalGlass(PipelineStage):
     }
 
     def run(self):
+        """
+        Execute the TXLogNormalGlass pipeline stage
+
+        This method coordinates the execution of the GLASS-based pipeline,
+        generating simulated catalogs from lognormal fields
+
+        It calls the following sub-methods:
+        - set_z_shells
+        - generate_cls
+        - generate_catalogs
+        - save_catalogs
+        """
 
         #get nside and nest info from mask
         with self.open_input("mask", wrapper=True) as map_file:
@@ -59,8 +78,13 @@ class TXLogNormalGlass(PipelineStage):
 
     def set_z_shells(self):
         """
-        Redshift grid with uniform spacing in comoving distance
-        uses CCl rather than glass.shells.distance_grid to avoid mixing CCL and CAMB
+        Set up redshift shells with uniform spacing in comoving distance
+
+        This method initializes redshift bins based on the provided configuration
+        options. It calculates redshift shells and associated weight functions
+        for later use
+
+        Uses CCl rather than glass.shells.distance_grid to avoid mixing CCL and CAMB
         """
         import glass.shells
 
@@ -78,7 +102,10 @@ class TXLogNormalGlass(PipelineStage):
 
     def generate_cls(self):
         """
-        Generate C(l)s for each shell at the fiducial cosmology 
+        Generate angular power spectra (C(l)s) for each redshift shell
+
+        This method computes matter C(l)s using CCL for each pair of redshift shells based on the
+        provided fiducial cosmology
         """
         import scipy.interpolate
         import pyccl as ccl
@@ -120,8 +147,44 @@ class TXLogNormalGlass(PipelineStage):
 
         print('Cls done')
 
+    def ping_input_weight(self):
+        try:
+            with self.open_input("input_lss_weight_maps") as f:
+                pass
+            return True 
+        except FileNotFoundError: #no input weight map
+            return False
+
+    def get_max_inverse_weight(self):
+        """
+        Get the maximum 1/weight for each tomographic bin
+        """
+        max_inv_w = np.ones(self.nbin_lens)
+        try:
+            with self.open_input("input_lss_weight_maps") as f:
+                for tomobin in range(self.nbin_lens):
+                    value = f[f'maps/weight_map_bin_{tomobin}/value'][:]
+                    max_inv_w[tomobin] = (1./value).max()
+                assert f['maps'].attrs['nside'] == self.mask_map_info['nside']
+        except FileNotFoundError: #no input weight map
+            pass
+        return max_inv_w
+
+    def get_obj_weight(self, tomobin, obj_pix):
+        try:
+            with self.open_input("input_lss_weight_maps", wrapper=True) as f:
+                wmap = f.read_map(f"weight_map_bin_{tomobin}")
+            return wmap[obj_pix]
+        except FileNotFoundError: #no input weight map
+            return np.ones(len(obj_pix))
+
     def generate_catalogs(self):
         """
+        Generate simulated galaxy catalogs based on lognormal fields
+
+        This method simulates galaxy positions within each matter shell and
+        populates them with corresponding redshifts and bin information
+
         """
         import glass.fields
         import glass.points
@@ -139,14 +202,12 @@ class TXLogNormalGlass(PipelineStage):
         #load mask
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
-            mask_map_info = map_file.read_map_info("mask")
-        #mask[mask == hp.UNSEEN] = 0.0 #glass doesn't take UNSEEN values
-        #mask_area = mask_map_info['area']
+            self.mask_map_info = map_file.read_map_info("mask")
         mask_area = np.sum(mask[mask!=hp.UNSEEN])*hp.nside2pixarea(self.nside,degrees=True)
 
         #get number density arcmin^-2 for each z bin from config
-        num_dens = np.array(self.config["num_dens"])
-        assert len(num_dens) == len(nzs)
+        target_num_dens = np.array(self.config["num_dens"])
+        assert len(target_num_dens) == len(nzs)
         self.nbin_lens = len(nzs)
 
         #prepare the Lognormal C(l)
@@ -163,6 +224,10 @@ class TXLogNormalGlass(PipelineStage):
         # generator for lognormal matter fields
         matter = glass.fields.generate_lognormal(self.gls, self.nside, ncorr=3)
 
+        #prepare weight maps
+        apply_contamination = self.ping_input_weight()
+        max_inv_w = self.get_max_inverse_weight()
+
         # simulate and add galaxies in each matter shell 
         shell_catalogs = []
         for ishell, delta_i in enumerate(matter):
@@ -174,15 +239,14 @@ class TXLogNormalGlass(PipelineStage):
                 continue
 
             # compute galaxy density (for each n(z)) in this shell
-            ngal_in_shell = num_dens*np.trapz(dndz_i, z_i)/np.trapz(nzs, z_nz)
+            ngal_in_shell = max_inv_w*target_num_dens*np.trapz(dndz_i, z_i)/np.trapz(nzs, z_nz)
             print('Ngal',ngal_in_shell*mask_area*60*60)
-
 
             # simulate positions from matter density
             # TO DO: add galaxy biasing
             for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, vis=mask):
 
-                #Figure out which bin was generated
+                #Figure out which bin was generated (len(ngal_in_shell) = Nbins)
                 occupied_bins = np.where(gal_count != 0)[0]
                 assert len(occupied_bins) == 1 #only one bin should be generated per call
                 ibin = occupied_bins[0]
@@ -193,6 +257,17 @@ class TXLogNormalGlass(PipelineStage):
 
                 gal_lon[gal_lon < 0] += 360 #keep 0 < ra < 360
 
+                #TO DO: If input_weight_map is defined, subsample here
+                if apply_contamination:
+                    obj_pixel = hp.ang2pix(self.mask_map_info['nside'], gal_lon, gal_lat, lonlat=True, nest=True)
+                    obj_weight = self.get_obj_weight(ibin, obj_pixel)
+                    prob_accept = (1./obj_weight)/max_inv_w[ibin]
+                    obj_accept_contaminated = np.random.rand(len(gal_lon)) < prob_accept
+                    gal_lon = gal_lon[obj_accept_contaminated]
+                    gal_lat = gal_lat[obj_accept_contaminated]
+                    gal_z   = gal_z[obj_accept_contaminated]
+                    gal_count_bin = np.sum(obj_accept_contaminated.astype('int'))
+
                 shell_catalog = np.empty( gal_count_bin, 
                     dtype=[('RA', float), ('DEC', float), ('Z_TRUE', float), ('BIN', int)] )
                 shell_catalog['RA'] = gal_lon
@@ -201,11 +276,22 @@ class TXLogNormalGlass(PipelineStage):
                 shell_catalog['BIN'] = np.full(gal_count_bin, ibin)
                 shell_catalogs.append(shell_catalog)
 
+                # TO DO: add a save_catalog_chunk method to save to hdf5 file in-loop 
+                # (look at lens_selector.TXBaseLensSelector for an example of how to do this)
+
         self.catalog = np.hstack(shell_catalogs)
+        self.counts = np.bincount(self.catalog['BIN'])
         del shell_catalogs
 
     def save_catalogs(self):
         """
+        Save generated catalogs to output files
+
+        This method saves the generated photometry catalog and lens tomography
+        catalog to output files. The catalogs are stored in HDF5 format
+
+        Note: It currently saves RA, DEC and Z_TRUE in the photometry catalog and bin
+        information in the lens tomography catalog
         """
 
         #TO DO: use iterator for the catalogs in case they get big
@@ -216,27 +302,33 @@ class TXLogNormalGlass(PipelineStage):
         group = phot_output.create_group("photometry")
         group.create_dataset("ra", data=self.catalog["RA"], dtype="f")
         group.create_dataset("dec", data=self.catalog["DEC"], dtype="f")
+        group.create_dataset("redshift_true", data=self.catalog["Z_TRUE"], dtype="f")
         phot_output.close()
 
         tomo_output = self.open_output("lens_tomography_catalog_unweighted", parallel=True)
         group = tomo_output.create_group("tomography")
         group.create_dataset("bin", data=self.catalog['BIN'], dtype="i")
         group.create_dataset("lens_weight", data=np.ones(len(self.catalog)), dtype="f")
-        #group.create_dataset("counts", (nbin_lens,), dtype="i")
-        #group.create_dataset("counts_2d", (1,), dtype="i")
+        group.create_dataset("counts", data=self.counts, dtype="i")
+        group.create_dataset("counts_2d", data = np.array([np.sum(self.counts)]), dtype="i")
         
         group.attrs["nbin"] = self.nbin_lens
         tomo_output.close()
 
 
 def camb_tophat_weight(z):
-    '''FROM GLASS
-    Weight function for tophat window functions and CAMB.
+    """
+    TAKEN FROM GLASS
 
-    This weight function linearly ramps up the redshift at low values,
-    from :math:`w(z = 0) = 0` to :math:`w(z = 0.1) = 1`.
+    This function returns a weight for a given redshift (z) based on a linear
+    ramp from 0 to 1, transitioning from z=0 to z=0.1.
 
-    '''
+    Args:
+        z (float): The redshift at which to calculate the weight.
+
+    Returns:
+        float: The weight for the given redshift, between 0 and 1.
+    """
     return np.clip(z/0.1, None, 1.)
 
 
