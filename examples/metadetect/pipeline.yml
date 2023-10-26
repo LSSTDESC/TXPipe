@@ -54,6 +54,7 @@ stages:
     - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
     - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXTauStatistics      # Compute and plot the tau statistics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
     - name: TXPhotozPlots        # Plot the bin n(z)
     - name: PZRealizationsPlotSource   # Plot n(z) realizations
