@@ -474,6 +474,10 @@ class QPPDFFile(QPBaseFile):
 class QPNOfZFile(QPBaseFile):
     """
     The final ensemble row represents the 2D (non-tomographic) n(z).
+
+    In a few places TXPipe assumes that the pdf type is one of the
+    grid types, and will raise an error otherwise; in particular the
+    stacking stage.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -530,6 +534,12 @@ class QPNOfZFile(QPBaseFile):
         return z, ensemble.pdf(z)[bin_index]
 
     def get_z(self):
+        """
+        Get the redshift grid for this n(z) file.
+
+        If the QP representation used does not have a simple z grid
+        (e.g. if it is a gaussian mixture) then this will raise an error.
+        """
         pdf_name = self.get_qp_pdf_type()
         meta = self.metadata
         if pdf_name == "interp":
@@ -537,11 +547,17 @@ class QPNOfZFile(QPBaseFile):
         elif pdf_name == "hist":
             z = meta["bins"][:]
         else:
-            raise ValueError(f"TXPipe cannot understand pdf_name in QP file: {pdf_name}")
+            raise ValueError(f"TXPipe cannot read a z grid from QP file with type {pdf_name}")
         return z.squeeze()
     
     
 class QPMultiFile(HDFFile):
+    """
+    This type represents and HDF file collecting multiple qp objects together.
+
+    We currently use it when multiple realizations of the same n(z) are
+    being generated in the summarize stage.
+    """
     def get_names(self):
         return list(self.file["qps"].keys())
 

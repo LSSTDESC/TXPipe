@@ -12,7 +12,6 @@ class PZRailSummarize(PipelineStage):
 
     ]
     outputs = [
-        # TODO: Change to using QP files throughout
         ("photoz_stack", QPNOfZFile),
         ("photoz_realizations", QPMultiFile),
     ]
@@ -162,7 +161,6 @@ class PZRealizationsPlot(PipelineStage):
         zmax = self.config["zmax"]
         nz = self.config["nz"]
         z = np.linspace(0, zmax, nz)
-        print(z)
 
         with self.open_input("photoz_realizations", wrapper=True) as f:
             names = f.get_names()

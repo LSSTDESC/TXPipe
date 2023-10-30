@@ -8,8 +8,10 @@ import warnings
 
 class TXPhotozStack(PipelineStage):
     """
-    Naive stacker using QP
-    
+    Naive stacker using QP.
+
+    Can only cope with hist or interp PDF types. Ideally this should
+    be replaced by a RAIL stage.
     """
     name = "TXPhotozStack"
     inputs = [
@@ -142,6 +144,7 @@ class TXTruePhotozStack(PipelineStage):
         "nz": int,
         "weight_col": "weight",
         "redshift_group": str,
+        "redshift_col": "redshift_true",
     }
 
     def run(self):
@@ -191,11 +194,12 @@ class TXTruePhotozStack(PipelineStage):
         # input files and returns an iterator to them which yields
         # start, end, data
         redshift_group = self.config["redshift_group"]
+        redshift_col = self.config["redshift_col"]
 
         # basic arguments to the iterator function
         input_spec = [
             "tomography_catalog", "tomography", ["bin"],
-            "catalog", redshift_group, ["redshift_true"],
+            "catalog", redshift_group, [redshift_col],
         ]
 
         # If we have weights, add them to the iterator
@@ -207,7 +211,8 @@ class TXTruePhotozStack(PipelineStage):
     def stack_data(self, data, histograms, total_weight, zmax, weight_col):
         # Stack the data from a single chunk into the histograms
         # and total weight arrays
-        z = data["redshift_true"]
+        redshift_col = self.config["redshift_col"]
+        z = data[redshift_col]
         bin = data["bin"]
 
         if weight_col:
