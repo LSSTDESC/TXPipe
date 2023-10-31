@@ -3,7 +3,7 @@ Plots
 
 These stages make plots out TXPipe output data
 
-* :py:class:`~txpipe.photoz_stack.TXPhotozPlots` - Make n(z) plots of source and lens galaxies
+* :py:class:`~txpipe.photoz_stack.TXPhotozPlot` - Make n(z) plots of source and lens galaxies
 
 * :py:class:`~txpipe.map_plots.TXMapPlots` - Make plots of all the available maps
 
@@ -15,7 +15,7 @@ These stages make plots out TXPipe output data
 
 
 
-.. autoclass:: txpipe.photoz_stack.TXPhotozPlots
+.. autoclass:: txpipe.photoz_stack.TXPhotozPlot
    :members:
 
 

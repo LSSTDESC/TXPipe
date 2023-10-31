@@ -244,3 +244,27 @@ TXMapCorrelations:
     supreme_path_root: data/example/inputs/supreme
     outlier_fraction: 0.05
     nbin: 20
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+
+TXTruePhotozStackSource:
+    name: TXTruePhotozStackSource
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+    weight_col: metacal/weight
+    redshift_group: metacal
+    zmax: 2.0
+    nz: 201

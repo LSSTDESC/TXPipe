@@ -23,7 +23,7 @@ stages:
       nprocess: 64
       nodes: 2
     - name: TXSourceTrueNumberDensity
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
     - name: TXJackknifeCenters
     - name: TXMapPlots
     - name: TXTracerMetadata

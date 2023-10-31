@@ -23,14 +23,29 @@ TXIngestRedmagic:
     lens_zbin_edges: [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]
 
 TXSourceTrueNumberDensity:
+    name: TXSourceTrueNumberDensity
     nz: 601
     zmax: 3.0
     chunk_rows: 100000
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+    weight_col: metacal/weight
+    redshift_group: metacal
 
 TXLensTrueNumberDensity:
+    name: TXLensTrueNumberDensity
     nz: 601
     zmax: 3.0
     chunk_rows: 100000
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        catalog: photometry_catalog
+        weights_catalog: none
+        photoz_stack: lens_photoz_stack
+    redshift_group: photometry
 
 TXLensMaps:
     chunk_rows:  100000
@@ -184,3 +199,15 @@ TXTruthLensSelector:
     i_lo_cut: 17.5
     i_hi_cut: 21.9
     r_i_cut: 2.0
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: lens_nz
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: source_nz

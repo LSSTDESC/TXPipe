@@ -6,7 +6,7 @@ stages:
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
     - name: TXTruthLensCatalogSplitter
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)    
-    - name: TXPhotozPlots 
+    - name: TXPhotozPlot 
     - name: TXSourceMaps
       #nprocess: 6
       #threads_per_process: 1

@@ -74,6 +74,8 @@ def mpi_reduce_large(data, comm, max_chunk_count=2**30, root=0, op=None, debug=F
 
 
 def in_place_reduce(data, comm, allreduce=False):
+    if comm is None:
+        return
     import mpi4py.MPI
 
     if allreduce:

@@ -1,6 +1,5 @@
 from ..base_stage import PipelineStage
 from ..data_types import ParquetFile, HDFFile, FitsFile
-from ..photoz_stack import Stack
 
 class TXParqetToHDF(PipelineStage):
     """Generic stage to convert a Parquet File to HDF
