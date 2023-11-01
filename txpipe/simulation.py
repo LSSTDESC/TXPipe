@@ -47,6 +47,7 @@ class TXLogNormalGlass(PipelineStage):
         "zmax": 2.0,
         "dx": 100,
         "bias": [1.],
+        "shift": 1.0,
     }
 
     def run(self):
@@ -185,7 +186,7 @@ class TXLogNormalGlass(PipelineStage):
         self.nbin_lens = len(nzs)
 
         #prepare the Lognormal C(l)
-        self.gls = glass.fields.lognormal_gls(self.cls, nside=self.nside, lmax=self.lmax, ncorr=3)
+        self.gls = glass.fields.lognormal_gls(self.cls, shift=self.config["shift"], nside=self.nside, lmax=self.lmax, ncorr=3)
 
         #check for negative values in the gls
         for i,g in enumerate(self.gls):
@@ -196,7 +197,7 @@ class TXLogNormalGlass(PipelineStage):
                     g[g<0] = 0.
 
         # generator for lognormal matter fields
-        matter = glass.fields.generate_lognormal(self.gls, self.nside, ncorr=3)
+        matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3)
 
         #prepare weight maps
         apply_contamination = self.ping_input_weight()
