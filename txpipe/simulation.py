@@ -38,6 +38,7 @@ class TXLogNormalGlass(PipelineStage):
     outputs = [
         ("photometry_catalog", HDFFile),
         ("lens_tomography_catalog_unweighted", TomographyCatalog), 
+        ("glass_cl", HDFFile ),
         #TO DO: add shear maps to output
     ]
 
@@ -143,14 +144,17 @@ class TXLogNormalGlass(PipelineStage):
 
         self.ell = np.arange(self.lmax)
         self.cls = []
-        self.cls2 = []
-        self.cls_dict = {}
         for i in range(1,self.nshells+1):
             for j in range(i, 0, -1):
                 cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell)
                 self.cls.append( cl_bin )
-                self.cls2.append( [(i,j),cl_bin] )
-                self.cls_dict[i,j] = cl_bin
+
+        #save the C(l)
+        cl_output = self.open_output("glass_cl", parallel=True)
+        group = cl_output.create_group("lognormal_cl")
+        group.create_dataset("ell", data=self.ell, dtype="f")
+        group.create_dataset("cls", data=self.cls, dtype="f")
+        cl_output.close()
 
         print('Cls done')
 
