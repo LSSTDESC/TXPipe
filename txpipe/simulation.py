@@ -43,9 +43,10 @@ class TXLogNormalGlass(PipelineStage):
 
     config_options = {
         "num_dens": None,
-        "zmin":0.,
-        "zmax":2.0,
-        "dx":100,
+        "zmin": 0.,
+        "zmax": 2.0,
+        "dx": 100,
+        "bias": [1.],
     }
 
     def run(self):
@@ -79,6 +80,9 @@ class TXLogNormalGlass(PipelineStage):
     def set_z_shells(self):
         """
         Set up redshift shells with uniform spacing in comoving distance
+
+        These shells determine the redshift resolution of the simulation so should
+        be narrower than the n(z)s
 
         This method initializes redshift bins based on the provided configuration
         options. It calculates redshift shells and associated weight functions
@@ -147,37 +151,6 @@ class TXLogNormalGlass(PipelineStage):
 
         print('Cls done')
 
-    def ping_input_weight(self):
-        try:
-            with self.open_input("input_lss_weight_maps") as f:
-                pass
-            return True 
-        except FileNotFoundError: #no input weight map
-            return False
-
-    def get_max_inverse_weight(self):
-        """
-        Get the maximum 1/weight for each tomographic bin
-        """
-        max_inv_w = np.ones(self.nbin_lens)
-        try:
-            with self.open_input("input_lss_weight_maps") as f:
-                for tomobin in range(self.nbin_lens):
-                    value = f[f'maps/weight_map_bin_{tomobin}/value'][:]
-                    max_inv_w[tomobin] = (1./value).max()
-                assert f['maps'].attrs['nside'] == self.mask_map_info['nside']
-        except FileNotFoundError: #no input weight map
-            pass
-        return max_inv_w
-
-    def get_obj_weight(self, tomobin, obj_pix):
-        try:
-            with self.open_input("input_lss_weight_maps", wrapper=True) as f:
-                wmap = f.read_map(f"weight_map_bin_{tomobin}")
-            return wmap[obj_pix]
-        except FileNotFoundError: #no input weight map
-            return np.ones(len(obj_pix))
-
     def generate_catalogs(self):
         """
         Generate simulated galaxy catalogs based on lognormal fields
@@ -203,6 +176,7 @@ class TXLogNormalGlass(PipelineStage):
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
             self.mask_map_info = map_file.read_map_info("mask")
+        mask[mask==hp.UNSEEN] = 0. #set UNSEEN pixels to 0 (GLASS needs this)
         mask_area = np.sum(mask[mask!=hp.UNSEEN])*hp.nside2pixarea(self.nside,degrees=True)
 
         #get number density arcmin^-2 for each z bin from config
@@ -244,7 +218,7 @@ class TXLogNormalGlass(PipelineStage):
 
             # simulate positions from matter density
             # TO DO: add galaxy biasing
-            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, vis=mask):
+            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask):
 
                 #Figure out which bin was generated (len(ngal_in_shell) = Nbins)
                 occupied_bins = np.where(gal_count != 0)[0]
@@ -314,6 +288,41 @@ class TXLogNormalGlass(PipelineStage):
         
         group.attrs["nbin"] = self.nbin_lens
         tomo_output.close()
+
+    def ping_input_weight(self):
+        #Check if the input weight map exists
+        try:
+            with self.open_input("input_lss_weight_maps") as f:
+                pass
+            return True 
+        except FileNotFoundError: #no input weight map
+            return False
+
+    def get_max_inverse_weight(self):
+        """
+        Get the maximum 1/weight for each tomographic bin
+        """
+        max_inv_w = np.ones(self.nbin_lens)
+        try:
+            with self.open_input("input_lss_weight_maps") as f:
+                for tomobin in range(self.nbin_lens):
+                    value = f[f'maps/weight_map_bin_{tomobin}/value'][:]
+                    max_inv_w[tomobin] = (1./value).max()
+                assert f['maps'].attrs['nside'] == self.mask_map_info['nside']
+        except FileNotFoundError: #no input weight map
+            pass
+        return max_inv_w
+
+    def get_obj_weight(self, tomobin, obj_pix):
+        """
+        Returns the weight for each object in a given tomographic bin
+        """
+        try:
+            with self.open_input("input_lss_weight_maps", wrapper=True) as f:
+                wmap = f.read_map(f"weight_map_bin_{tomobin}")
+            return wmap[obj_pix]
+        except FileNotFoundError: #no input weight map
+            return np.ones(len(obj_pix))
 
 
 def camb_tophat_weight(z):
