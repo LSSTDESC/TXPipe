@@ -51,6 +51,7 @@ class TXLogNormalGlass(PipelineStage):
         "shift": 1.0,
         "contaminate": False,
         "random_seed": "def", 
+        "cl_optional_file": "none",
     }
 
     def run(self):
@@ -117,44 +118,51 @@ class TXLogNormalGlass(PipelineStage):
         """
         import scipy.interpolate
         import pyccl as ccl
+        import h5py
 
-        with self.open_input("fiducial_cosmology", wrapper=True) as f:
-            cosmo = f.to_ccl()
+        if self.config["cl_optional_file"] != "none":
+            with h5py.File(self.config["cl_optional_file"]) as cl_file:
+                self.ell = cl_file['lognormal_cl/ell'][:]
+                self.cls = cl_file['lognormal_cl/cls'][:]
+        else:
 
-        # In order for CCl to get the cross correlation between bins right, 
-        # we need to interpolate the windows at all z
-        dz = self.ws[0].za[1]-self.ws[0].za[0]
-        zb_grid = np.arange(self.config["zmin"], self.config["zmax"]+dz, dz)
+            with self.open_input("fiducial_cosmology", wrapper=True) as f:
+                cosmo = f.to_ccl()
 
-        #Make density shell objects for CCL
-        density = []
-        for ishell in range(self.nshells):
-            bz = np.ones(len(zb_grid)) #bias should be 1 for matter shells
-            wa_interped =  scipy.interpolate.interp1d( self.ws[ishell].za, self.ws[ishell].wa,
-            bounds_error=False,fill_value=0. )(zb_grid)
+            # In order for CCl to get the cross correlation between bins right, 
+            # we need to interpolate the windows at all z
+            dz = self.ws[0].za[1]-self.ws[0].za[0]
+            zb_grid = np.arange(self.config["zmin"], self.config["zmax"]+dz, dz)
 
-            density.append( ccl.NumberCountsTracer(
-                cosmo, 
-                dndz=(zb_grid, wa_interped),
-                has_rsd=False, 
-                bias=(zb_grid,bz), 
-                mag_bias=None
+            #Make density shell objects for CCL
+            density = []
+            for ishell in range(self.nshells):
+                bz = np.ones(len(zb_grid)) #bias should be 1 for matter shells
+                wa_interped =  scipy.interpolate.interp1d( self.ws[ishell].za, self.ws[ishell].wa,
+                bounds_error=False,fill_value=0. )(zb_grid)
+
+                density.append( ccl.NumberCountsTracer(
+                    cosmo, 
+                    dndz=(zb_grid, wa_interped),
+                    has_rsd=False, 
+                    bias=(zb_grid,bz), 
+                    mag_bias=None
+                    )
                 )
-            )
 
-        self.ell = np.arange(self.lmax)
-        self.cls = []
-        for i in range(1,self.nshells+1):
-            for j in range(i, 0, -1):
-                cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell)
-                self.cls.append( cl_bin )
+            self.ell = np.arange(self.lmax)
+            self.cls = []
+            for i in range(1,self.nshells+1):
+                for j in range(i, 0, -1):
+                    cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell)
+                    self.cls.append( cl_bin )
 
-        #save the C(l)
-        cl_output = self.open_output("glass_cl", parallel=True)
-        group = cl_output.create_group("lognormal_cl")
-        group.create_dataset("ell", data=self.ell, dtype="f")
-        group.create_dataset("cls", data=self.cls, dtype="f")
-        cl_output.close()
+            #save the C(l)
+            cl_output = self.open_output("glass_cl", parallel=True)
+            group = cl_output.create_group("lognormal_cl")
+            group.create_dataset("ell", data=self.ell, dtype="f")
+            group.create_dataset("cls", data=self.cls, dtype="f")
+            cl_output.close()
 
         print('Cls done')
 
@@ -218,7 +226,7 @@ class TXLogNormalGlass(PipelineStage):
         # simulate and add galaxies in each matter shell 
         shell_catalogs = []
         for ishell, delta_i in enumerate(matter):
-            print('computing shell', ishell)
+            print('computing shell', ishell, 'at z =', self.zb[ishell] )
 
             # restrict galaxy distributions to this shell 
             z_i, dndz_i = glass.shells.restrict(z_nz, nzs, self.ws[ishell])
