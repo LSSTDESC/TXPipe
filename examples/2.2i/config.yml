@@ -29,15 +29,44 @@ PZPDFMLZ:
     zmax: 3.0
     chunk_rows: 100000
 
-TXPhotozStack:
-    chunk_rows: 100000
 
-# Mock version of stacking:
-TXLensTrueNumberDensity:
-    nz: 301
-    zmax: 3.0
-    chunk_rows: 100000
-    
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: source_nz
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: lens_nz
+
+
+TXTruePhotozStackSource:
+    name: TXTruePhotozStackSource
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+    weight_col: metacal/weight
+    redshift_group: metacal
+    zmax: 2.0
+    nz: 201
+
+TXTruePhotozStackLens:
+    name: TXTruePhotozStackLens
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        catalog: photometry_catalog
+        weights_catalog: dummy
+        photoz_stack: lens_photoz_stack
+    redshift_group: photometry
+    zmax: 2.0
+    nz: 201
+
+
 TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
@@ -147,3 +176,4 @@ TXTruthLensSelector:
     i_lo_cut: 17.5
     i_hi_cut: 21.9
     r_i_cut: 2.0
+

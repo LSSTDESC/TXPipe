@@ -1,11 +1,10 @@
 # Stages to run
 stages:
-    - name: TXSourceSelectorHSC     # select and split objects into source bins
-  #  - name: TXShearCalibration
-  #  - name: TXSourceDiagnosticPlots
+  #- name: TXSourceSelectorHSC     # select and split objects into source bins
+  # - name: TXShearCalibration
+  # - name: TXSourceDiagnosticPlots
     - name: TXRoweStatistics  
-    - name: TXTauStatistics
-      #- name: TXPSFDiagnostics
+  # - name: TXPSFDiagnostics
 # modules and packages to import that have pipeline
 # stages defined in them
 modules: txpipe
@@ -42,14 +41,14 @@ config: examples/hscy1/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc2txpipe/shear_cat_WIDE12H.h5
+    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc2txpipe/shear_cat_XMM.h5
     #photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     #photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
     #photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     #exposures: data/example/inputs/exposures.hdf5
-    star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_allfields.h5
-    #star catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc_stars/GAMA09H_stars.fits
+    #star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/HSC/cosmic-shear-real-space//star_catalog.hdf5
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_XMM.h5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now

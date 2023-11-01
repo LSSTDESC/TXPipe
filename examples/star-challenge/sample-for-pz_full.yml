@@ -28,7 +28,7 @@ stages:
       nprocess: 32
     - name: TXLensTrueNumberDensity
       nprocess: 32
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
     - name: TXRandomCat
       nodes: 2
       nprocess: 64

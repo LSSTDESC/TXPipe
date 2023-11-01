@@ -27,12 +27,17 @@ stages:
       nodes: 1
       nprocess: 8
     - name: TXSourceTrueNumberDensity
+      classname: TXTruePhotozStack
       nodes: 8
       nprocess: 64
     - name: TXLensTrueNumberDensity
+      classname: TXTruePhotozStack
       nodes: 8
       nprocess: 64
-    - name: TXPhotozPlots
+    - name: TXPhotozPlotSource
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotLens
+      classname: TXPhotozPlot
     - name: TXJackknifeCenters
     - name: TXDensityMaps
     - name: TXSourceMaps
@@ -89,6 +94,7 @@ inputs:
     photometry_catalog: data/skysim5000_v1.1.1/inputs/photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    none: none
 
 resume: True
 log_dir: data/skysim5000_v1.1.1/logs

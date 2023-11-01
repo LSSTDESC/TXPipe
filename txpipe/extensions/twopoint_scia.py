@@ -8,6 +8,7 @@ from ..data_types import (
     SACCFile,
     PhotozPDFFile,
     PNGFile,
+    QPNOfZFile,
     TextFile,
 )
 from ..utils.calibration_tools import read_shear_catalog_type
@@ -44,7 +45,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
-        ("shear_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
         ("random_cats_source", RandomsCatalog),
         ("lens_tomography_catalog", TomographyCatalog),
         ("patch_centers", TextFile),
@@ -462,18 +463,15 @@ class TXSelfCalibrationIA(TXTwoPoint):
 
         # We include the n(z) data in the output.
         # So here we load it in and add it to the data
-        f = self.open_input("shear_photoz_stack")
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
 
-        # Load the tracer data N(z) from an input file and
-        # copy it to the output, for convenience
-        for i in data["source_list"]:
-            z = f["n_of_z/source/z"][:]
-            Nz = f[f"n_of_z/source/bin_{i}"][:]
-            S.add_tracer("NZ", f"source_{i}", z, Nz)
-            if self.config["do_shear_pos"] == True:
-                S2.add_tracer("NZ", f"source_{i}", z, Nz)
-
-        f.close()
+            # Load the tracer data N(z) from an input file and
+            # copy it to the output, for convenience
+            for i in data["source_list"]:
+                z, Nz = f.get_bin_n_of_z(i)
+                S.add_tracer("NZ", f"source_{i}", z, Nz)
+                if self.config["do_shear_pos"] == True:
+                    S2.add_tracer("NZ", f"source_{i}", z, Nz)
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.

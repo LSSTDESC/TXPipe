@@ -172,6 +172,425 @@ class TXPSFDiagnostics(PipelineStage):
         return results
 
 
+class TXTauStatistics(PipelineStage):
+    """
+    Compute and plot PSF Tau statistics where the definition of Tau stats are eq.20-22
+    of Gatti et al 2023.
+    """
+    name     = "TXTauStatistics"
+    parallel = False
+    inputs   = [("shear_catalog"           , ShearCatalog),
+                ("shear_tomography_catalog", TomographyCatalog),
+                ("star_catalog"            , HDFFile),
+                ("rowe_stats"              , HDFFile),
+               ]
+
+    outputs  = [
+                ("tau0p"    , PNGFile),
+                ("tau2p"    , PNGFile),
+                ("tau5p"    , PNGFile),
+                ("tau_stats", HDFFile),
+               ]
+
+
+    config_options = {
+                       "min_sep"       : 0.5,
+                       "max_sep"       : 250.0,
+                       "nbins"         : 20,
+                       "bin_slop"      : 0.01,
+                       "sep_units"     : "arcmin",
+                       "psf_size_units": "sigma",
+                       'star_type'     : 'PSF-reserved',
+                       'cov_method'    : 'bootstrap',
+                       'flip_g2'       : False,
+                     }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+        import emcee
+        from scipy.stats import qmc
+
+        matplotlib.use("agg")
+
+        # Load galaxies
+        gal_ra, gal_dec, gal_g1, gal_g2, gal_weight   = self.load_galaxies()
+        gal_g = np.array((gal_g1, gal_g2))
+        
+        # Load star properties
+        ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
+        
+        # Compute tau stats 
+        tau_stats  = {}
+        p_bestfits = {}
+
+        for s in STAR_TYPES:
+            
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+
+            #s = star_type == s
+    
+            # Load precomputed Rowe stats if they exist already
+            rowe_stats = self.load_rowe(s)
+
+            # Joint tau 0-2-5 data vector and cov
+            # tau_stats contains [ang, tau0, tau2, tau5, cov]
+            
+            tau_stats[s] = self.compute_all_tau(gal_ra, gal_dec, gal_g, gal_weight, s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type)
+            
+            # Run simple mcmc to find best-fit values for alpha,beta,eta
+            ranges = {}
+            ranges['alpha'] = [-0.10, 0.10]
+            ranges['beta']  = [-5.00, 5.00]
+            ranges['eta']   = [-5.00, 5.00]
+
+            p_bestfits[s] = self.sample(tau_stats[s],rowe_stats,ranges)
+            
+        #Save tau stats in a h5 file
+        self.save_tau_stats(tau_stats, p_bestfits)
+
+        # Save tau plots
+        self.tau_plots(tau_stats)
+
+
+    def load_rowe(self,s):
+        f = self.open_input("rowe_stats")   
+        rowe_stats = {}
+
+        for i in 0, 1, 2, 3, 4, 5:
+            name    = STAR_TYPE_NAMES[s]
+            theta   = f['rowe_statistics'][f"rowe_{i}_{name}"]['theta'][:]
+            xi_plus = f['rowe_statistics'][f"rowe_{i}_{name}"]['xi_plus'][:]
+            xi_err  = f['rowe_statistics'][f"rowe_{i}_{name}"]['xi_err'][:]
+            
+            rowe_stats[i] = theta, xi_plus, xi_err
+        
+        return rowe_stats
+
+
+    def sample(self, tau_stats, rowe_stats, ranges, nwalkers=32, ndim=3):
+        '''
+        Run a simple mcmc chain to detemine the best-fit values for  
+        '''
+        import emcee
+        from scipy.stats import qmc
+
+        sampler = qmc.LatinHypercube(d=3, optimization="random-cd")
+        sample  = sampler.random(n=nwalkers)
+        
+        initpos = qmc.scale(sample, [ ranges['alpha'][0], ranges['beta'][0], ranges['eta'][0] ],
+                                    [ ranges['alpha'][1], ranges['beta'][1], ranges['eta'][1] ])
+
+        ret = {}
+        var = ['alpha','beta','eta']
+
+        print("Computing best-fit alpha, beta, eta")
+        _, _, _, _, cov = tau_stats
+
+        mask = cov.diagonal() > 0
+        cov = cov[mask][:, mask]
+        invcov      = np.linalg.inv(cov)
+        
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask))
+        sampler.run_mcmc(initpos, 5000, progress=True);
+
+        flat_samples = sampler.get_chain(discard=2000, flat=True)
+        
+        for i,v in enumerate(var):
+            mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
+            q    = np.diff(mcmc)
+            ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
+
+        return ret
+
+
+    def logPrior(self,theta,ranges):
+        '''
+        If parameter in defined range return 0, otherwise -np.inf
+        '''
+        alpha, beta, eta = theta
+
+        if (ranges['alpha'][0] < alpha < ranges['alpha'][1]) and (ranges['beta'][0] < beta < ranges['beta'][1]) and (ranges['eta'][0] < eta < ranges['eta'][1]):
+            return 0.0
+        return -np.inf
+
+
+    def logLike(self, theta, tau_stats, rowe_stats, invcov, mask):
+        '''
+        Compute likelihood
+        theta     : parameters
+        tau_stats : Measured tau stats
+        rowe_stats: Measured rowe stats to be used for Tau 
+        invcov    : Inverse covariance matrix 
+        '''
+        
+        # Load parameters
+        alpha, beta, eta = theta
+
+        # Load rowe and tau
+        _, rowe0, _  = rowe_stats[0]
+        _, rowe1, _  = rowe_stats[1]
+        _, rowe2, _  = rowe_stats[2]
+        _, rowe3, _  = rowe_stats[3]
+        _, rowe4, _  = rowe_stats[4]
+        _, rowe5, _  = rowe_stats[5]
+        _, tau0, tau2, tau5, _  = tau_stats
+
+        # Create combined template
+        T0    = alpha*rowe0 + beta*rowe2 + eta*rowe5
+        T2    = alpha*rowe2 + beta*rowe1 + eta*rowe4
+        T5    = alpha*rowe5 + beta*rowe4 + eta*rowe3
+        
+        # Create data and template vector
+        Tall  = np.concatenate([T0,T2,T5])[mask]
+        Xall  = np.concatenate([tau0,tau2,tau5])[mask]
+
+        return -0.5*np.dot(Xall-Tall,np.dot(Xall-Tall,invcov))
+    
+
+    def logProb(self, theta, tau_stats, rowe_stats, ranges, invcov, mask):
+        lp = self.logPrior(theta,ranges)
+        if not np.isfinite(lp):
+            return -np.inf
+        return lp + self.logLike(theta, tau_stats, rowe_stats, invcov, mask)
+
+
+    def compute_all_tau(self, gra, gdec, g, gw, s, sra, sdec, e_psf, e_mod, de_psf, T_f, star_type):
+        '''
+        Compute tau0, tau2, tau5.
+        All three needs to be computed at once due to covariance.
+
+        gra    : RA of galaxies
+        gdec   : DEC of galaxies
+        g      : shear for observed galaxies np.array((e1, e2)
+        gw     : weights
+
+        s      : indices of stars to use in calculation
+        sra    : RA of stars
+        sdec   : DEC of stars
+        
+        e_psf  : measured ellipticities of PSF from stars -- np.array((e1psf, e2psf))
+        e_mod  : model ellipticities of PSF               -- np.array((e1mod, e2mod))
+        de_psf : e_psf-e_mod                              -- np.array((e1psf, e2psf))
+        T_f    : (T_meas - T_model)/T_meas                -- np.array((e1psf, e2psf))
+        '''
+        
+        import treecorr
+
+        p = e_mod
+        q = de_psf
+        w = e_psf * T_f
+        
+        sra, sdec = np.array((sra[star_type==s], sdec[star_type==s])) # Get ra/dec for specific stars
+        p = np.array(( [p[0][star_type==s], p[1][star_type==s]]))     # Get p for specific stars
+        q = np.array(( [q[0][star_type==s], q[1][star_type==s]]))     # Get q for specific stars
+        w = np.array(( [w[0][star_type==s], w[1][star_type==s]]))     # Get w for specific stars
+
+        print(f"Computing Tau 0,2,5 and the covariance")
+        
+        # Load all catalogs
+        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=40) # galaxy shear
+        catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # e_model
+        catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_* - e_model)
+        catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_*(T_* - T_model)/T_* )
+        
+        # Compute all corrleations
+        corr0 = treecorr.GGCorrelation(self.config)
+        corr0.process(catg, catp)
+        corr2 = treecorr.GGCorrelation(self.config)
+        corr2.process(catg, catq)
+        corr5 = treecorr.GGCorrelation(self.config)
+        corr5.process(catg, catw)
+        
+        # Estimate covariance using bootstrap. The ordering is xip0,xim0,xip2,xim2,xip5,xim5.
+        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], self.config.cov_method)
+
+        # For our particular purpose, we only care about xip so can remove the xim elements. 
+        nbins = self.config.nbins
+        idx = [i + j for i in range(nbins, 6*nbins, nbins * 2) for j in range(nbins) if i + j < 6*nbins]
+        cov = np.delete(cov,idx,axis=0)
+        cov = np.delete(cov,idx,axis=1)
+        
+        # Get both theta and xip
+        tht0,xip0 = corr0.meanr, corr0.xip
+        tht2,xip2 = corr2.meanr, corr2.xip
+        tht5,xip5 = corr5.meanr, corr5.xip
+        
+        return corr0.meanr, corr0.xip, corr2.xip, corr5.xip, cov
+        
+
+    def save_tau_stats(self, tau_stats, p_bestfits):
+        '''
+        tau_stats: (dict) dictionary containing theta,tau0,tau2,tau5 and cov
+        '''
+        f = self.open_output("tau_stats")
+        g = f.create_group("tau_statistics")
+
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+        
+            theta, tau0, tau2, tau5, cov = tau_stats[s]
+            name = STAR_TYPE_NAMES[s]
+            h = g.create_group(f"tau_{name}")
+            h.create_dataset("theta"  , data=theta)
+            h.create_dataset("tau0"   , data=tau0)
+            h.create_dataset("tau2"   , data=tau2)
+            h.create_dataset("tau5"   , data=tau5)
+            h.create_dataset("cov"    , data=cov)
+            
+            # Also save best-fit values 
+            h = g.create_group(f"bestfits_{name}")
+            alpha_err = max(p_bestfits[s]['alpha']['lerr'],p_bestfits[s]['alpha']['rerr']) 
+            beta_err  = max(p_bestfits[s]['beta']['lerr'] ,p_bestfits[s]['beta']['rerr']) 
+            eta_err   = max(p_bestfits[s]['eta']['lerr']  ,p_bestfits[s]['eta']['rerr']) 
+            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['median'])
+            h.create_dataset("alpha_err", data=alpha_err)
+            h.create_dataset("beta"     , data=p_bestfits[s]['beta']['median'])
+            h.create_dataset("beta_err" , data=beta_err)
+            h.create_dataset("eta"      , data=p_bestfits[s]['eta']['median'])
+            h.create_dataset("eta_err"  , data=eta_err)
+            
+        f.close()
+
+    def load_stars(self):
+        with self.open_input("star_catalog") as f:
+            g      = f["stars"]
+            ra     = g["ra"][:]
+            dec    = g["dec"][:]
+            e1psf  = g["measured_e1"][:]
+            e2psf  = g["measured_e2"][:]
+            e1mod  = g["model_e1"][:]
+            e2mod  = g["model_e2"][:]
+            de1    = e1psf - e1mod
+            de2    = e2psf - e2mod
+
+            if self.config["psf_size_units"] == "T":
+                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
+            elif self.config["psf_size_units"] == "sigma":
+                T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+
+            e_psf  = np.array((e1psf, e2psf))
+            e_mod  = np.array((e1mod,e2mod))
+            de_psf = np.array((de1, de2))
+
+            star_type = load_star_type(g)
+
+        return ra, dec, e_psf, e_mod, de_psf, T_frac, star_type
+    
+    def load_galaxies(self):
+        # Columns we need from the shear catalog
+        cat_type = read_shear_catalog_type(self)
+
+        # Load tomography data
+        with self.open_input("shear_tomography_catalog") as f:
+            source_bin = f["tomography/bin"][:]
+            mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
+            if cat_type == "metacal":
+                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
+            elif cat_type == "metadetect":
+                R_total_2d = f["response/R_2d"][:]
+
+        with self.open_input("shear_catalog") as f:
+            g = f["shear"]
+
+
+            # Get the base catalog for metadetect
+            if cat_type == "metadetect":
+                g = g["00"]
+            
+            ra,dec = g["ra"][:][mask], g["dec"][:][mask]
+
+            # Load shape and weight for metacal
+            if cat_type == "metacal":
+                g1      = g["mcal_g1"][:][mask]
+                g2      = g["mcal_g2"][:][mask]
+                weight  = g["weight"][:][mask]
+
+            # Load shape and weight for metadetect
+            elif cat_type == "metadetect":
+                g1      = g["g1"][:][mask]
+                g2      = g["g2"][:][mask]
+                weight  = g["weight"][:][mask]
+
+            # Load shape and weight for everything else
+            else:
+                g1      = g["g1"][:][mask]
+                g2      = g["g2"][:][mask]
+                weight  = g["weight"][:][mask]
+                sigma_e = g["sigma_e"][:][mask]
+                m       = g["m"][:][mask]
+
+        # Change shear convention 
+        if self.config["flip_g2"]:
+            g2 *= -1
+        
+        # Apply calibration factor
+        if cat_type == "metacal" or cat_type == "metadetect":
+            print("Applying metacal/metadetect response")
+            g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
+
+        elif cat_type == "lensfit":
+            print("Applying lensfit calibration")
+            g1, g2, weight, _ = apply_lensfit_calibration(g1      = g1,
+                                                          g2      = g2,
+                                                          weight  = weight,
+                                                          sigma_e = sigma_e,
+                                                          m       = m
+                                                          )
+        else:
+            print("Shear calibration type not recognized.")
+
+        return ra, dec, g1, g2, weight
+
+    def tau_plots(self, tau_stats):
+        # First plot - stats 1,3,4
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+        
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+
+            theta, tau0, tau2, tau5, cov = tau_stats[s]
+            nb    = len(theta)
+            taus  = {0:tau0, 2:tau2, 5:tau5}
+            errs  = {0: np.diag(cov[int(0*nb):int(1*nb),int(0*nb):int(1*nb)])**0.5,
+                     2: np.diag(cov[int(1*nb):int(2*nb),int(1*nb):int(2*nb)])**0.5,
+                     5: np.diag(cov[int(2*nb):int(3*nb),int(2*nb):int(3*nb)])**0.5
+                    }
+    
+
+            
+            for j,i in enumerate([0,2,5]):
+                f = self.open_output("tau%dp"%i,wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+                ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
+        
+                tr = mtrans.offset_copy(
+                                        ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
+                                       )
+                plt.errorbar(
+                             theta,
+                             taus[i],
+                             errs[i],
+                             fmt=".",
+                             label=rf"$\tau_{i}$",
+                             capsize=3,
+                             transform=tr,
+                            )
+                
+                plt.xscale("log")
+                if np.all(taus[i] >= 0):
+                    plt.yscale("log")
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$\tau_{%d+}(\theta)$"%i)
+                plt.legend()
+                plt.title(STAR_TYPE_NAMES[s])
+
+                f.close()
+
 class TXRoweStatistics(PipelineStage):
     """
     Compute and plot PSF Rowe statistics
@@ -458,7 +877,7 @@ class TXGalaxyStarShear(PipelineStage):
             source_bin = f["tomography/bin"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
             if cat_type == "metacal":
-                R_total_2d = f["response/R_total_2d"][:]
+                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
             elif cat_type == "metadetect":
                 R_total_2d = f["response/R_2d"][:]
 
@@ -993,11 +1412,11 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
 def load_star_type(data):
-    used = data["calib_psf_used"][:].astype('int')
+    used     = data["calib_psf_used"][:].astype('int')
     reserved = data["calib_psf_reserved"][:].astype('int')
 
     star_type = np.zeros(used.size, dtype=int)
-    star_type[used] = STAR_PSF_USED
-    star_type[reserved] = STAR_PSF_RESERVED
+    star_type[used==1]     = STAR_PSF_USED
+    star_type[reserved==1] = STAR_PSF_RESERVED
 
     return star_type

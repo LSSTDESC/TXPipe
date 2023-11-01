@@ -159,6 +159,9 @@ TXGammaTRandoms: {}
 TXRoweStatistics: 
     psf_size_units: 'T'
 
+TXTauStatistics:
+    flip_g2: False
+
 TXFocalPlanePlot: {}
 
 TXGalaxyStarDensity: {}

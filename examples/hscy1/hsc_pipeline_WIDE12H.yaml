@@ -1,11 +1,10 @@
 # Stages to run
 stages:
-    - name: TXSourceSelectorHSC     # select and split objects into source bins
+  # - name: TXSourceSelectorHSC     # select and split objects into source bins
   #  - name: TXShearCalibration
   #  - name: TXSourceDiagnosticPlots
     - name: TXRoweStatistics  
-    - name: TXTauStatistics
-      #- name: TXPSFDiagnostics
+      #  - name: TXPSFDiagnostics
 # modules and packages to import that have pipeline
 # stages defined in them
 modules: txpipe
@@ -48,9 +47,10 @@ inputs:
     #photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     #exposures: data/example/inputs/exposures.hdf5
-    star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_allfields.h5
+    #star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-reanalysis/HSC/cosmic-shear-real-space//star_catalog.hdf5
     #star catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc_stars/GAMA09H_stars.fits
-    # This file comes with the code
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_WIDE12H.h5
+      # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
