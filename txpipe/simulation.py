@@ -48,6 +48,7 @@ class TXLogNormalGlass(PipelineStage):
         "dx": 100,
         "bias": [1.],
         "shift": 1.0,
+        "contaminate": False,
     }
 
     def run(self):
@@ -200,8 +201,9 @@ class TXLogNormalGlass(PipelineStage):
         matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3)
 
         #prepare weight maps
-        apply_contamination = self.ping_input_weight()
-        max_inv_w = self.get_max_inverse_weight()
+        #apply_contamination = self.ping_input_weight()
+        if self.config["contaminate"]:
+            max_inv_w = self.get_max_inverse_weight()
 
         # simulate and add galaxies in each matter shell 
         shell_catalogs = []
@@ -214,7 +216,9 @@ class TXLogNormalGlass(PipelineStage):
                 continue
 
             # compute galaxy density (for each n(z)) in this shell
-            ngal_in_shell = max_inv_w*target_num_dens*np.trapz(dndz_i, z_i)/np.trapz(nzs, z_nz)
+            ngal_in_shell = target_num_dens*np.trapz(dndz_i, z_i)/np.trapz(nzs, z_nz)
+            if self.config["contaminate"]:
+                ngal_in_shell *= max_inv_w*ngal_in_shell
             print('Ngal',ngal_in_shell*mask_area*60*60)
 
             # simulate positions from matter density
@@ -232,8 +236,7 @@ class TXLogNormalGlass(PipelineStage):
 
                 gal_lon[gal_lon < 0] += 360 #keep 0 < ra < 360
 
-                #TO DO: If input_weight_map is defined, subsample here
-                if apply_contamination:
+                if self.config["contaminate"]:
                     obj_pixel = hp.ang2pix(self.mask_map_info['nside'], gal_lon, gal_lat, lonlat=True, nest=True)
                     obj_weight = self.get_obj_weight(ibin, obj_pixel)
                     prob_accept = (1./obj_weight)/max_inv_w[ibin]
@@ -290,40 +293,25 @@ class TXLogNormalGlass(PipelineStage):
         group.attrs["nbin"] = self.nbin_lens
         tomo_output.close()
 
-    def ping_input_weight(self):
-        #Check if the input weight map exists
-        try:
-            with self.open_input("input_lss_weight_maps") as f:
-                pass
-            return True 
-        except FileNotFoundError: #no input weight map
-            return False
-
     def get_max_inverse_weight(self):
         """
         Get the maximum 1/weight for each tomographic bin
         """
         max_inv_w = np.ones(self.nbin_lens)
-        try:
-            with self.open_input("input_lss_weight_maps") as f:
-                for tomobin in range(self.nbin_lens):
-                    value = f[f'maps/weight_map_bin_{tomobin}/value'][:]
-                    max_inv_w[tomobin] = (1./value).max()
-                assert f['maps'].attrs['nside'] == self.mask_map_info['nside']
-        except FileNotFoundError: #no input weight map
-            pass
+        with self.open_input("input_lss_weight_maps") as f:
+            for tomobin in range(self.nbin_lens):
+                value = f[f'maps/weight_map_bin_{tomobin}/value'][:]
+                max_inv_w[tomobin] = (1./value).max()
+            assert f['maps'].attrs['nside'] == self.mask_map_info['nside']
         return max_inv_w
 
     def get_obj_weight(self, tomobin, obj_pix):
         """
         Returns the weight for each object in a given tomographic bin
         """
-        try:
-            with self.open_input("input_lss_weight_maps", wrapper=True) as f:
-                wmap = f.read_map(f"weight_map_bin_{tomobin}")
-            return wmap[obj_pix]
-        except FileNotFoundError: #no input weight map
-            return np.ones(len(obj_pix))
+        with self.open_input("input_lss_weight_maps", wrapper=True) as f:
+            wmap = f.read_map(f"weight_map_bin_{tomobin}")
+        return wmap[obj_pix]
 
 
 def camb_tophat_weight(z):
