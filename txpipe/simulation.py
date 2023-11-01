@@ -49,6 +49,7 @@ class TXLogNormalGlass(PipelineStage):
         "bias": [1.],
         "shift": 1.0,
         "contaminate": False,
+        "random_seed": "def", 
     }
 
     def run(self):
@@ -166,6 +167,11 @@ class TXLogNormalGlass(PipelineStage):
         import glass.galaxies
         import healpy as hp 
 
+        if self.config["random_seed"] == "def":
+            rng = np.random.default_rng()
+        else:
+            rng = np.random.default_rng(int(self.config["random_seed"]))
+
         #load n(z)
         nzs = []
         with self.open_input("lens_photoz_stack") as f:
@@ -198,7 +204,7 @@ class TXLogNormalGlass(PipelineStage):
                     g[g<0] = 0.
 
         # generator for lognormal matter fields
-        matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3)
+        matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3, rng=rng )
 
         #prepare weight maps
         #apply_contamination = self.ping_input_weight()
@@ -223,7 +229,7 @@ class TXLogNormalGlass(PipelineStage):
 
             # simulate positions from matter density
             # TO DO: add galaxy biasing
-            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask):
+            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask, rng=rng ):
 
                 #Figure out which bin was generated (len(ngal_in_shell) = Nbins)
                 occupied_bins = np.where(gal_count != 0)[0]
