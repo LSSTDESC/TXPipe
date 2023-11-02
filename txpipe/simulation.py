@@ -80,8 +80,6 @@ class TXLogNormalGlass(PipelineStage):
 
         self.generate_catalogs()
 
-        self.save_catalogs()
-
     def set_z_shells(self):
         """
         Set up redshift shells with uniform spacing in comoving distance
@@ -218,13 +216,17 @@ class TXLogNormalGlass(PipelineStage):
         # generator for lognormal matter fields
         matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3, rng=rng )
 
-        #prepare weight maps
-        #apply_contamination = self.ping_input_weight()
+        #prepare for weight maps
         if self.config["contaminate"]:
             max_inv_w = self.get_max_inverse_weight()
 
+        #estimate max size of output catalog
+        self.est_max_n = int(1.5*np.sum(target_num_dens)*mask_area*60*60)
+        self.setup_output()
+
         # simulate and add galaxies in each matter shell 
         shell_catalogs = []
+        count = 0
         for ishell, delta_i in enumerate(matter):
             print('computing shell', ishell, 'at z =', self.zb[ishell] )
 
@@ -236,11 +238,10 @@ class TXLogNormalGlass(PipelineStage):
             # compute galaxy density (for each n(z)) in this shell
             ngal_in_shell = target_num_dens*np.trapz(dndz_i, z_i)/np.trapz(nzs, z_nz)
             if self.config["contaminate"]:
-                ngal_in_shell *= max_inv_w*ngal_in_shell
+                ngal_in_shell *= max_inv_w
             print('Ngal',ngal_in_shell*mask_area*60*60)
 
             # simulate positions from matter density
-            # TO DO: add galaxy biasing
             for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask, rng=rng ):
 
                 #Figure out which bin was generated (len(ngal_in_shell) = Nbins)
@@ -252,7 +253,7 @@ class TXLogNormalGlass(PipelineStage):
                 # sample redshifts uniformly in shell
                 gal_z = glass.galaxies.redshifts_from_nz(gal_count_bin, self.ws[ishell].za, self.ws[ishell].wa)
 
-                gal_lon[gal_lon < 0] += 360 #keep 0 < ra < 360
+                gal_lon[gal_lon < 0] += 360 #keeps 0 < ra < 360
 
                 if self.config["contaminate"]:
                     obj_pixel = hp.ang2pix(self.mask_map_info['nside'], gal_lon, gal_lat, lonlat=True, nest=True)
@@ -263,53 +264,80 @@ class TXLogNormalGlass(PipelineStage):
                     gal_lat = gal_lat[obj_accept_contaminated]
                     gal_z   = gal_z[obj_accept_contaminated]
                     gal_count_bin = np.sum(obj_accept_contaminated.astype('int'))
+                
+                self.write_output_chunk(count, count+gal_count_bin, gal_lon, gal_lat, gal_z, ibin)
 
-                shell_catalog = np.empty( gal_count_bin, 
-                    dtype=[('RA', float), ('DEC', float), ('Z_TRUE', float), ('BIN', int)] )
-                shell_catalog['RA'] = gal_lon
-                shell_catalog['DEC'] = gal_lat
-                shell_catalog['Z_TRUE'] = gal_z
-                shell_catalog['BIN'] = np.full(gal_count_bin, ibin)
-                shell_catalogs.append(shell_catalog)
+                count += gal_count_bin
 
-                # TO DO: add a save_catalog_chunk method to save to hdf5 file in-loop 
-                # (look at lens_selector.TXBaseLensSelector for an example of how to do this)
+        self.finalize_output(count)
 
-        self.catalog = np.hstack(shell_catalogs)
-        self.counts = np.bincount(self.catalog['BIN'])
-        del shell_catalogs
-
-    def save_catalogs(self):
+    def setup_output(self):
         """
-        Save generated catalogs to output files
+        Sets up the output data file for the catalog
 
-        This method saves the generated photometry catalog and lens tomography
-        catalog to output files. The catalogs are stored in HDF5 format
+        Creates the data sets and groups for the generated photometry catalog 
+        and lens tomography catalog output files
 
-        Note: It currently saves RA, DEC and Z_TRUE in the photometry catalog and bin
+        maxshape should be larger than a reasonable total Ngal 
+
+        Note: We will saves RA, DEC and Z_TRUE in the photometry catalog and bin
         information in the lens tomography catalog
         """
-
-        #TO DO: use iterator for the catalogs in case they get big
-        # e.g. look at LensNumberDensityStats in utils/number_density_stats.py
-
-        #save the RA and DEC in a "photometry catalog"
+        
         phot_output = self.open_output("photometry_catalog", parallel=True)
         group = phot_output.create_group("photometry")
-        group.create_dataset("ra", data=self.catalog["RA"], dtype="f")
-        group.create_dataset("dec", data=self.catalog["DEC"], dtype="f")
-        group.create_dataset("redshift_true", data=self.catalog["Z_TRUE"], dtype="f")
-        phot_output.close()
+        group.create_dataset("ra", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset("dec", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset("redshift_true", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        self.phot_output = phot_output
 
         tomo_output = self.open_output("lens_tomography_catalog_unweighted", parallel=True)
         group = tomo_output.create_group("tomography")
-        group.create_dataset("bin", data=self.catalog['BIN'], dtype="i")
-        group.create_dataset("lens_weight", data=np.ones(len(self.catalog)), dtype="f")
-        group.create_dataset("counts", data=self.counts, dtype="i")
-        group.create_dataset("counts_2d", data = np.array([np.sum(self.counts)]), dtype="i")
+        group.create_dataset("bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i")
+        group.create_dataset("lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset("counts", (self.nbin_lens,), dtype="i")
+        group.create_dataset("counts_2d", (1,), dtype="i")
+        self.tomo_output = tomo_output
+
+
+    def write_output_chunk(self, start, end, gal_lon, gal_lat, gal_z, tomobin):
+        """
+        Writes a chunk of the photometry and tomography file
+        """
         
+        assert end-start == len(gal_lat)
+
+        #write photometry catalog chunk
+        group = self.phot_output["photometry"]
+        group["ra"][start:end] = gal_lon
+        group["dec"][start:end] = gal_lat
+        group["redshift_true"][start:end] = gal_z
+
+        #write tomography catalog chunk
+        group = self.tomo_output["tomography"]
+        group["bin"][start:end] = np.full(end-start, tomobin)
+        group["lens_weight"][start:end] = np.ones(end-start)
+
+    def finalize_output(self, total_count):
+        """
+        Removes any unused entrys in the catalog and adds the total counts to tomography file
+        """
+        
+        #remove unfilled objects
+        group = self.phot_output["photometry"]
+        group['ra'].resize( (total_count,) )
+        group['dec'].resize( (total_count,) )
+        group['redshift_true'].resize( (total_count,) )
+
+        #write global values
+        group = self.tomo_output["tomography"]
+        group['bin'].resize( (total_count,) )
+        group['lens_weight'].resize( (total_count,) )
+        counts = np.bincount(group["bin"][:])
+        assert total_count == np.sum(counts)
+        group["counts"][:] = counts 
+        group["counts_2d"][:] = np.array([total_count])
         group.attrs["nbin"] = self.nbin_lens
-        tomo_output.close()
 
     def get_max_inverse_weight(self):
         """
