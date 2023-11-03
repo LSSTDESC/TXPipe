@@ -571,7 +571,7 @@ class TXSelfCalibrationIA(TXTwoPoint):
         self.empty_patch_exists = {}
 
         # This does a round-robin assignment to processes
-        for (h, k) in self.split_tasks_by_rank(cats):
+        for (h, k) in cats:
 
             print(f"Rank {self.rank} making patches for {k}-type bin {h}")
 
