@@ -4,6 +4,7 @@ from .data_types import (
     YamlFile,
     RandomsCatalog,
     TomographyCatalog,
+    QPNOfZFile,
     HDFFile,
     FiducialCosmology,
 )
@@ -21,7 +22,7 @@ class TXRandomCat(PipelineStage):
     inputs = [
         ("aux_lens_maps", MapsFile),
         ("mask", MapsFile),
-        ("lens_photoz_stack", HDFFile),
+        ("lens_photoz_stack", QPNOfZFile),
         ("fiducial_cosmology", FiducialCosmology),
     ]
     outputs = [
@@ -60,7 +61,10 @@ class TXRandomCat(PipelineStage):
         with self.open_input("mask", wrapper=True) as maps_file:
             mask = maps_file.read_map("mask")
 
-        pz_stack = self.open_input("lens_photoz_stack")
+        with self.open_input("lens_photoz_stack", wrapper=True) as f:
+            # This is a QP object
+            n_of_z_object = f.read_ensemble()
+            Ntomo = n_of_z_object.npdf - 1 # ensemble includes the non-tomo 2D n(z)
 
         # We also generate comoving distances under a fiducial cosmology
         # for each random, for use in Rlens type metrics
@@ -111,10 +115,6 @@ class TXRandomCat(PipelineStage):
         ##################################################################################
 
         ### I think this is redundant if your pz_stack file has separated lens bins
-
-        ### The current file in 'pz_stack' only has 1 lens bin, but zbins loads 4 bins!!
-        Ntomo = len(pz_stack["n_of_z"]["lens"].keys()) - 1
-        z_photo_arr = pz_stack["n_of_z"]["lens"]["z"][:]
 
         ### Loop over the tomographic bins to find number of galaxies in each pixel/zbin
         ### When the density changes per redshift bin, this can go into the main Ntomo loop
@@ -176,11 +176,6 @@ class TXRandomCat(PipelineStage):
 
         for j in range(Ntomo):
             ### Load pdf of ith lens redshift bin pz
-            n_hist = pz_stack[f"n_of_z/lens/bin_{j}"][:]
-
-            ### Make cdf and normalise
-            z_cdf = np.cumsum(n_hist)
-            z_cdf_norm = z_cdf / float(max(z_cdf))
 
             subgroup = subgroups[j]
             # Generate the random points in each pixel
@@ -237,14 +232,9 @@ class TXRandomCat(PipelineStage):
 
                     bin_index = np.repeat(j, N)
 
-                    ### Create random values [0,1] equal to the number of galaxies per pixel
-                    cdf_rand_val = np.random.uniform(0, 1.0, N)
-                    ### Interpolate those random values to a redshift value given by the cdf
-                    # z_photo_rand = np.interp(cdf_rand_val,z_cdf_norm,z_photo_arr)
-                    z_interp_func = scipy.interpolate.interp1d(z_cdf_norm, z_photo_arr)
-                    # Sometimes we don't quite go down to z - deal with that
-                    cdf_rand_val = cdf_rand_val.clip(z_cdf_norm.min(), z_cdf_norm.max())
-                    z_photo_rand = z_interp_func(cdf_rand_val)
+                    # Generate random redshifts in the distribution using QP's tools
+                    z_photo_rand = n_of_z_object.rvs(size=N)[j]
+
                     distance = pyccl.comoving_radial_distance(
                         cosmo, 1.0 / (1 + z_photo_rand)
                     )
@@ -275,14 +265,9 @@ class TXRandomCat(PipelineStage):
                 N = len(pix_catalog)
                 bin_index = np.repeat(j, N)
 
-                ### Create random values [0,1] equal to the number of galaxies per pixel
-                cdf_rand_val = np.random.uniform(0, 1.0, N)
-                ### Interpolate those random values to a redshift value given by the cdf
-                # z_photo_rand = np.interp(cdf_rand_val,z_cdf_norm,z_photo_arr)
-                z_interp_func = scipy.interpolate.interp1d(z_cdf_norm, z_photo_arr)
-                # Sometimes we don't quite go down to z - deal with that
-                cdf_rand_val = cdf_rand_val.clip(z_cdf_norm.min(), z_cdf_norm.max())
-                z_photo_rand = z_interp_func(cdf_rand_val)
+                # Generate random redshifts in the distribution using QP's tools
+                z_photo_rand = n_of_z_object.rvs(size=N)[j]
+
                 distance = pyccl.comoving_radial_distance(
                     cosmo, 1.0 / (1 + z_photo_rand)
                 )

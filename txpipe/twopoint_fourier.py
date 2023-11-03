@@ -9,6 +9,7 @@ from .data_types import (
     LensingNoiseMaps,
     ClusteringNoiseMaps,
     PNGFile,
+    QPNOfZFile
 )
 import numpy as np
 import collections
@@ -58,8 +59,8 @@ class TXTwoPointFourier(PipelineStage):
 
     name = "TXTwoPointFourier"
     inputs = [
-        ("shear_photoz_stack", HDFFile),  # Photoz stack
-        ("lens_photoz_stack", HDFFile),  # Photoz stack
+        ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
         ("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters
         ("tracer_metadata", TomographyCatalog),  # For density info
         ("source_maps", MapsFile),
@@ -781,26 +782,17 @@ class TXTwoPointFourier(PipelineStage):
         # for projecting out modes
         import sacc
 
-        f_shear = self.open_input("shear_photoz_stack")
-        f_lens = self.open_input("lens_photoz_stack")
-
-        tracers = {}
         sacc_data = sacc.Sacc()
 
-        for i in range(nbin_source):
-            name = f"source_{i}"
-            z = f_shear["n_of_z/source/z"][:]
-            Nz = f_shear[f"n_of_z/source/bin_{i}"][:]
-            sacc_data.add_tracer("NZ", name, z, Nz)
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            for i in range(nbin_source):
+                z, Nz = f.get_bin_n_of_z(i)
+                sacc_data.add_tracer("NZ", f"source_{i}", z, Nz)
 
-        for i in range(nbin_lens):
-            name = f"lens_{i}"
-            z = f_lens["n_of_z/lens/z"][:]
-            Nz = f_lens[f"n_of_z/lens/bin_{i}"][:]
-            sacc_data.add_tracer("NZ", name, z, Nz)
-
-        f_shear.close()
-        f_lens.close()
+        with self.open_input("lens_photoz_stack", wrapper=True) as f:
+            for i in range(nbin_lens):
+                z, Nz = f.get_bin_n_of_z(i)
+                sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz)
 
         return sacc_data
 

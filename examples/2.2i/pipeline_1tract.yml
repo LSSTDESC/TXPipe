@@ -31,8 +31,10 @@ stages:
     - name: TXTruthLensSelector
     - name: TXLensCatalogSplitter
     - name: TXPhotozSourceStack
+      classname: TXPhotozStack
     - name: TXPhotozLensStack
-    - name: TXPhotozPlots
+      classname: TXPhotozStack
+    - name: TXPhotozPlot
     - name: TXSourceMaps
     - name: TXLensMaps
     - name: TXAuxiliarySourceMaps

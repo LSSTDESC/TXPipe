@@ -95,7 +95,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         )
         print(cosmo)
 
-        s_theory = theory_3x2pt(s, cosmo)
+        s_theory = theory_3x2pt(cosmo, s)
 
         # Remove covariance
         s_theory.covariance = None
