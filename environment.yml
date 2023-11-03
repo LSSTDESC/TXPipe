@@ -49,3 +49,4 @@ dependencies:
     - pz-rail-pzflow==0.0.1
     - pz-rail-sklearn==0.0.1
     - pz-rail-som==0.0.2
+    - glass==2023.7
