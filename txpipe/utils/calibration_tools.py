@@ -417,6 +417,9 @@ class MetaDetectCalculator:
                 sum_weights    = comm.reduce(self.sum_weights)
                 sum_sq_weights = comm.reduce(self.sum_sq_weights)
 
+                if comm.rank > 0:
+                    return None, None, None, None
+
         else:
             counts = self.counts
             sum_weights    = self.sum_weights
@@ -433,7 +436,7 @@ class MetaDetectCalculator:
         # 7: g2_2p
         # 8: g1_2m
         # 9: g2_2m
-
+        
         # Compute the mean R components
         R = np.zeros((2, 2))
         R[0, 0] = mean_e[2] - mean_e[4]  # g1_1p - g1_1m

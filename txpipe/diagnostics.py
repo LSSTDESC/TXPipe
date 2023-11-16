@@ -16,6 +16,91 @@ from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
 
+class TXDiagnosticQuantiles(PipelineStage):
+    """
+    Measure quantiles of various values in the shear catalog.
+
+    This uses a library called "Distogram" which builds a
+    histogram that it gradually updates, tweaking the edges
+    as it goes along. This means we don't have to load
+    the full data into memory ever.
+
+    The algorithm used can be noisy if there are large outliers in
+    the data, but after selection cuts are made this seems to be okay here,
+    with all the quantiles for the base quantities (T, s2n, T_psf, g1_psf) within
+    10% of the true quantile and the majority within 1%. For our purposes
+    (defining bins for diagonstics) this is fine.
+    """
+    name = "TXDiagnosticQuantiles"
+    dask_parallel = True
+    inputs = [
+        ("shear_catalog", ShearCatalog),
+        ("shear_tomography_catalog", TomographyCatalog),
+    ]
+    outputs = [
+        ("shear_catalog_quantiles", HDFFile),
+    ]
+    config_options = {
+        "shear_prefix": "mcal_",
+        "psf_prefix": "mcal_psf_",
+        "nbins": 20,
+        "chunk_rows": 0,
+    }
+    def run(self):
+        import distogram
+        import dask.array as da
+
+        # Configuration parameters
+        psf_prefix = self.config["psf_prefix"]
+        shear_prefix = self.config["shear_prefix"]
+        chunk_rows = self.config["chunk_rows"]
+        nedge = self.config["nbins"] + 1
+        if chunk_rows == 0:
+            chunk_rows = "auto"
+
+        # We canonicalise the names here
+        cols = []
+        col_names = {
+            "psf_g1": f"{psf_prefix}g1",
+            "psf_T_mean": f"{psf_prefix}T_mean",
+            "s2n": f"{shear_prefix}s2n",
+            "T": f"{shear_prefix}T",
+        }
+
+        quantiles = np.linspace(0, 1, nedge, endpoint=True)
+        percentiles = quantiles * 100
+
+        with self.open_input("shear_catalog") as f, self.open_input("shear_tomography_catalog") as g:
+
+            # Create dask arrays of the columns. This loads lazily
+            cols = {
+                new_name: 
+                    da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
+                    for (new_name, old_name) in col_names.items()
+                }
+
+            # Cut down to just the source selection
+            bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
+            selected = bins >= 0
+
+            # Use dask to get the quantiles
+            quantile_values, = da.compute({
+                name: da.percentile(col[selected], percentiles) 
+                for name, col in cols.items()
+            })
+
+        # Open the output file and save the results
+        with self.open_output("shear_catalog_quantiles") as f:
+            # put everything in a group called "quantiles"
+            g = f.create_group("quantiles")
+            # Save the quantile points
+            g.create_dataset("quantiles", data=quantiles)
+            # Save the quantile values themselves
+            for name, quantile_values in quantile_values.items():
+                g.create_dataset(name, data=quantile_values)
+
+
+
 class TXSourceDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the shear catalog
@@ -29,6 +114,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
+        ("shear_catalog_quantiles", HDFFile)
     ]
 
     outputs = [
@@ -187,15 +273,15 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 plotter.send(None)
             except StopIteration:
                 pass
-            
-    def BinEdges(self, data,nbins):
-        import scipy.stats as sts
-        
-        # calculate bin edges for equal number of objects per bin
-        nbquant = np.linspace(0,1,nbins,endpoint=False)
-        edges = sts.mstats.mquantiles(data,prob=nbquant)
-        return edges
     
+    def get_bin_edges(self, col):
+        """
+        Get the bin edges for a given column from the quantiles file
+        """
+        with self.open_input("shear_catalog_quantiles") as f:
+            edges = f[f"quantiles/{col}"][:]
+        return edges
+
     
     def plot_psf_shear(self):
         # mean shear in bins of PSF
@@ -205,15 +291,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
-        nbins = self.config["nbins"]
-        g_min = self.config["g_min"]
-        g_max = self.config["g_max"]
 
-        with self.open_input("shear_catalog") as c:
-            col = c[f"shear/{psf_prefix}g1"][:]
-            psfg = col[(col > g_min) & (col < g_max)]
-            psf_g_edges = self.BinEdges(psfg,nbins)
-            del psfg
+        psf_g_edges = self.get_bin_edges("psf_g1")
             
         p1 = MeanShearInBins(
             f"{psf_prefix}g1",
@@ -308,15 +387,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
-        nbins = self.config["nbins"]
-        psfT_min = self.config["psfT_min"]
-        psfT_max = self.config["psfT_max"]
+
+        psf_T_edges = self.get_bin_edges("psf_T_mean")
         
-        with self.open_input("shear_catalog") as c:
-            col = c[f"shear/{psf_prefix}T_mean"][:]
-            psfT = col[(col > psfT_min) & (col < psfT_max)]
-            psf_T_edges = self.BinEdges(psfT,nbins)
-            del psfT
         
         binnedShear = MeanShearInBins(
             f"{psf_prefix}T_mean",
@@ -372,16 +445,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Parameters of the binning in SNR
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
-        nbins = self.config["nbins"]
-        s2n_min = self.config["s2n_min"]
-        s2n_max = self.config["s2n_max"]
-        
-        with self.open_input("shear_catalog") as c:
-            col = c[f"shear/{shear_prefix}s2n"][:]
-            s2n = col[(col > s2n_min) & (col < s2n_max)]
-            snr_edges = self.BinEdges(s2n,nbins)
-            del s2n
-        
+    
+        snr_edges = self.get_bin_edges("s2n")
+            
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
         binnedShear = MeanShearInBins(
@@ -439,16 +505,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
-        nbins = self.config["nbins"]
-        T_min = self.config["T_min"]
-        T_max = self.config["T_max"]
-        
-        with self.open_input("shear_catalog") as c:
-            col = c[f"shear/{shear_prefix}T"][:]
-            T = col[(col > T_min) & (col < T_max)]
-            T_edges = self.BinEdges(T,nbins)
-            del T
-        
+
+        T_edges = self.get_bin_edges("T")
+                
         binnedShear = MeanShearInBins(
             f"{shear_prefix}T",
             T_edges,
