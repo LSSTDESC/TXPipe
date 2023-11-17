@@ -3,7 +3,7 @@ launcher:
     interval: 3.0
 
 site:
-    name: cori-interactive
+    name: nersc-interactive
     image: ghcr.io/lsstdesc/txpipe
 
 modules: txpipe
@@ -32,7 +32,7 @@ stages:
     - name: TXTruthLensCatalogSplitter
       nprocess: 32
     - name: TXTwoPointFourier
-      nprocess: 2
+      nprocess: 4
       nodes: 2
       threads_per_process: 32
     - name: TXJackknifeCenters
@@ -63,6 +63,9 @@ stages:
       nprocess: 2
       nodes: 2
     - name: TXTwoPointPlots
+    - name: TXDiagnosticQuantiles
+      nodes: 1
+      nprocess: 16
     - name: TXLensDiagnosticPlots
       nprocess: 16
       nodes: 1

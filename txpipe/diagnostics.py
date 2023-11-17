@@ -47,7 +47,6 @@ class TXDiagnosticQuantiles(PipelineStage):
         "chunk_rows": 0,
     }
     def run(self):
-        import distogram
         import dask.array as da
 
         # Configuration parameters

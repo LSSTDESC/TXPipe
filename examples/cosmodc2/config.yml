@@ -15,6 +15,12 @@ TXLSSWeightsUnit:
     nside: 2048
     pixelization: healpix
 
+TXDiagnosticQuantiles:
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
+    nbins: 20    
+
+
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
@@ -178,6 +184,7 @@ TXTwoPointFourier:
     analytic_noise: True
     
 TXTwoPoint:
+    reduce_randoms_size: 0.5
     bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True

@@ -1,7 +1,7 @@
 
 from scipy.optimize import curve_fit
 import numpy as np
-
+import warnings
 
 def fit_straight_line(x, y, y_err=None):
     """
@@ -25,7 +25,12 @@ def fit_straight_line(x, y, y_err=None):
     c: float
         intercept
     """
-
+    if y.size == 0:
+        warnings.warn("Size 0 data passed to fit_straight_line - returning nan")
+        return np.nan, np.nan, np.zeros((2, 2)) * np.nan
+    if np.isnan(x).any() or np.isnan(y).any():
+        warnings.warn("Nan data passed to fit_straight_line - returning nan")
+        return np.nan, np.nan, np.zeros((2, 2)) * np.nan
     popt, cov = curve_fit(line, x, y, sigma=y_err)
     m = popt[0]
     c = popt[1]
