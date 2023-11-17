@@ -17,7 +17,7 @@ stages:
       nprocess: 16
     - name: TXSourceSelectorMetacal
       nprocess: 32
-    - name: TXTruthLensSelector
+    - name: TXRandomForestLensSelector
       nprocess: 32
     - name: TXLensTrueNumberDensity
       classname: TXTruePhotozStack
@@ -35,6 +35,8 @@ stages:
       nprocess: 4
       nodes: 2
       threads_per_process: 32
+    - name: TXTwoPointTheoryFourier
+    - name: TXTwoPointPlotsFourier
     - name: TXJackknifeCenters
     - name: TXSourceMaps
       nprocess: 8

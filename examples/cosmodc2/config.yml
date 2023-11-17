@@ -216,6 +216,15 @@ TXTruthLensSelector:
     i_hi_cut: 21.9
     r_i_cut: 2.0
 
+
+TXRandomForestLensSelector:
+    verbose: False
+    bands: ugrizy
+    lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    random_seed: 79521323
+    mag_i_limit: 24.1
+
+
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
     aliases:
