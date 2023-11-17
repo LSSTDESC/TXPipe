@@ -50,7 +50,7 @@ class TXLogNormalGlass(PipelineStage):
         "bias": [1.],
         "shift": 1.0,
         "contaminate": False,
-        "random_seed": "def", 
+        "random_seed": 0, 
         "cl_optional_file": "none",
     }
 
@@ -177,10 +177,7 @@ class TXLogNormalGlass(PipelineStage):
         import glass.galaxies
         import healpy as hp 
 
-        if self.config["random_seed"] == "def":
-            rng = np.random.default_rng()
-        else:
-            rng = np.random.default_rng(int(self.config["random_seed"]))
+        rng = np.random.default_rng(int(self.config["random_seed"]))
 
         #load n(z)
         nzs = []
