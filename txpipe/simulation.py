@@ -156,7 +156,7 @@ class TXLogNormalGlass(PipelineStage):
                     self.cls.append( cl_bin )
 
             #save the C(l)
-            cl_output = self.open_output("glass_cl", parallel=True)
+            cl_output = self.open_output("glass_cl")
             group = cl_output.create_group("lognormal_cl")
             group.create_dataset("ell", data=self.ell, dtype="f")
             group.create_dataset("cls", data=self.cls, dtype="f")
