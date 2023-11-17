@@ -394,7 +394,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         ("photometry_catalog", HDFFile),
         ("calibration_table", TextFile),
     ]
-    config_options = TXBaseLensSelector.config_options.copy().update({
+    config_options = TXBaseLensSelector.config_options.copy()
+    config_options.update({
         "verbose": False,
         "bands": "ugrizy",
         "chunk_rows": 10000,
