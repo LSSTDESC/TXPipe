@@ -150,16 +150,20 @@ class TXLogNormalGlass(PipelineStage):
 
             self.ell = np.arange(self.lmax)
             self.cls = []
+            self.cls_index = []
             for i in range(1,self.nshells+1):
                 for j in range(i, 0, -1):
                     cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell)
                     self.cls.append( cl_bin )
+                    self.cls_index.append( (i,j) )
 
             #save the C(l)
             cl_output = self.open_output("glass_cl")
             group = cl_output.create_group("lognormal_cl")
             group.create_dataset("ell", data=self.ell, dtype="f")
             group.create_dataset("cls", data=self.cls, dtype="f")
+            group.create_dataset("cls_index", data=self.cls_index, dtype="f")
+            group.create_dataset("zb_grid", data=zb_grid, dtype="f")
             cl_output.close()
 
         print('Cls done')
