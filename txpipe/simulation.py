@@ -38,7 +38,8 @@ class TXLogNormalGlass(PipelineStage):
     outputs = [
         ("photometry_catalog", HDFFile),
         ("lens_tomography_catalog_unweighted", TomographyCatalog), 
-        ("glass_cl", HDFFile ),
+        ("glass_cl_shells", HDFFile ),
+        ("glass_cl_binned", HDFFile ),
         #TO DO: add shear maps to output
     ]
 
@@ -76,7 +77,9 @@ class TXLogNormalGlass(PipelineStage):
 
         self.set_z_shells()
 
-        self.generate_cls()
+        self.generate_shell_cls()
+
+        self.generate_binned_cls()
 
         self.generate_catalogs()
 
@@ -107,7 +110,7 @@ class TXLogNormalGlass(PipelineStage):
         self.nshells = len(self.ws)
         #TO DO: figure out why GLASS needed the linear ramp weight here
 
-    def generate_cls(self):
+    def generate_shell_cls(self):
         """
         Generate angular power spectra (C(l)s) for each redshift shell
 
@@ -143,7 +146,7 @@ class TXLogNormalGlass(PipelineStage):
                     cosmo, 
                     dndz=(zb_grid, wa_interped),
                     has_rsd=False, 
-                    bias=(zb_grid,bz), 
+                    bias=(zb_grid, bz), 
                     mag_bias=None
                     )
                 )
@@ -158,7 +161,7 @@ class TXLogNormalGlass(PipelineStage):
                     self.cls_index.append( (i,j) )
 
             #save the C(l)
-            cl_output = self.open_output("glass_cl")
+            cl_output = self.open_output("glass_cl_shells")
             group = cl_output.create_group("lognormal_cl")
             group.create_dataset("ell", data=self.ell, dtype="f")
             group.create_dataset("cls", data=self.cls, dtype="f")
@@ -167,6 +170,64 @@ class TXLogNormalGlass(PipelineStage):
             cl_output.close()
 
         print('Cls done')
+
+    def generate_binned_cls(self):
+        """
+        Generate angular power spectra (C(l)s) for each tomographic redshift bin
+
+        The output of this method is not used in generating the simulation
+        It is just useful for comparing to the data
+
+        This method computes galaxy C(l)s using CCL for each pair of redshift bins based on the
+        provided fiducial cosmology
+        """
+        import scipy.interpolate
+        import pyccl as ccl
+        import h5py
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+
+        #load n(z)
+        nzs = []
+        with self.open_input("lens_photoz_stack") as f:
+            z_nz = f["n_of_z/lens/z"][:]
+            bin_names = [k for k in f['n_of_z/lens'].keys() if 'bin_' in k]
+            for bin_name in bin_names:
+                nzs.append(f[f"n_of_z/lens/"+bin_name][:])
+
+        #Make density bin objects for CCL
+        density = []
+        for ibin in range(len(nzs)):
+            bz = np.ones(len(z_nz))*self.config["bias"][ibin]
+
+            density.append( ccl.NumberCountsTracer(
+                cosmo, 
+                dndz=(z_nz, z_nz),
+                has_rsd=False, 
+                bias=(z_nz,bz), 
+                mag_bias=None
+                )
+            )
+
+        self.ell_binned = np.arange(self.lmax)
+        self.cls_binned = []
+        self.cls_index_binned = []
+        for i in range(1,len(nzs)+1):
+            for j in range(i, 0, -1):
+                cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell_binned)
+                self.cls_binned.append( cl_bin )
+                self.cls_index_binned.append( (i,j) )
+
+        #save the C(l)
+        cl_output = self.open_output("glass_cl_binned")
+        group = cl_output.create_group("lognormal_cl")
+        group.create_dataset("ell", data=self.ell, dtype="f")
+        group.create_dataset("cls", data=self.cls, dtype="f")
+        group.create_dataset("cls_index", data=self.cls_index, dtype="f")
+        cl_output.close()
+
+        print('binned Cls done')
 
     def generate_catalogs(self):
         """
