@@ -222,9 +222,9 @@ class TXLogNormalGlass(PipelineStage):
         #save the C(l)
         cl_output = self.open_output("glass_cl_binned")
         group = cl_output.create_group("lognormal_cl")
-        group.create_dataset("ell", data=self.ell, dtype="f")
-        group.create_dataset("cls", data=self.cls, dtype="f")
-        group.create_dataset("cls_index", data=self.cls_index, dtype="f")
+        group.create_dataset("ell", data=self.ell_binned, dtype="f")
+        group.create_dataset("cls", data=self.cls_binned, dtype="f")
+        group.create_dataset("cls_index", data=self.cls_index_binned, dtype="f")
         cl_output.close()
 
         print('binned Cls done')
