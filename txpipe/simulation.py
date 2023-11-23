@@ -13,22 +13,23 @@ import glob
 import time
 import numpy as np
 
+
 class TXLogNormalGlass(PipelineStage):
     """
     Uses GLASS to generate a simulated catalog from lognormal fields
-    GLASS citation: 
+    GLASS citation:
     https://ui.adsabs.harvard.edu/abs/2023OJAp....6E..11T
 
-    Contamination is applied to the density field by poission sampling 
-    the density field at a higher rate than target density, then 
+    Contamination is applied to the density field by poission sampling
+    the density field at a higher rate than target density, then
     removing objects with prob proportional to 1/input_weight
-    This allows us to produce contaminated/ucontamined maps of the same 
+    This allows us to produce contaminated/ucontamined maps of the same
     galaxy realisation
     """
 
     name = "TXLogNormalGlass"
     parallel = False
-    inputs = [ 
+    inputs = [
         ("mask", MapsFile),
         ("lens_photoz_stack", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
@@ -37,25 +38,25 @@ class TXLogNormalGlass(PipelineStage):
 
     outputs = [
         ("photometry_catalog", HDFFile),
-        ("lens_tomography_catalog_unweighted", TomographyCatalog), 
-        ("glass_cl_shells", HDFFile ),
-        ("glass_cl_binned", HDFFile ),
-        #TO DO: add shear maps to output
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
+        ("glass_cl_shells", HDFFile),
+        ("glass_cl_binned", HDFFile),
+        # TO DO: add shear maps to output
     ]
 
     config_options = {
         "num_dens": None,
-        "zmin": 0.,
+        "zmin": 0.0,
         "zmax": 2.0,
         "dx": 100,
-        "bias": [1.],
+        "bias": [1.0],
         "shift": 1.0,
         "contaminate": False,
-        "random_seed": 0, 
+        "random_seed": 0,
         "cl_optional_file": "none",
-        "ell_binned_max":0.1,
-        "ell_binned_min":5.0e5,
-        "ell_binned_nbins":100,
+        "ell_binned_max": 0.1,
+        "ell_binned_min": 5.0e5,
+        "ell_binned_nbins": 100,
     }
 
     def run(self):
@@ -72,7 +73,7 @@ class TXLogNormalGlass(PipelineStage):
         - save_catalogs
         """
 
-        #get nside and nest info from mask
+        # get nside and nest info from mask
         with self.open_input("mask", wrapper=True) as map_file:
             mask_map_info = map_file.read_map_info("mask")
         self.nside = self.lmax = mask_map_info["nside"]
@@ -104,14 +105,14 @@ class TXLogNormalGlass(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
 
-        chi_min = cosmo.comoving_radial_distance(1/(1+self.config["zmin"]))
-        chi_max = cosmo.comoving_radial_distance(1/(1+self.config["zmax"]))
-        chi_grid = np.arange(chi_min, chi_max+self.config["dx"], self.config["dx"])
+        chi_min = cosmo.comoving_radial_distance(1 / (1 + self.config["zmin"]))
+        chi_max = cosmo.comoving_radial_distance(1 / (1 + self.config["zmax"]))
+        chi_grid = np.arange(chi_min, chi_max + self.config["dx"], self.config["dx"])
         a_grid = cosmo.scale_factor_of_chi(chi_grid)
-        self.zb = (1./a_grid) - 1.
+        self.zb = (1.0 / a_grid) - 1.0
         self.ws = glass.shells.tophat_windows(self.zb, weight=camb_tophat_weight)
         self.nshells = len(self.ws)
-        #TO DO: figure out why GLASS needed the linear ramp weight here
+        # TO DO: figure out why GLASS needed the linear ramp weight here
 
     def generate_shell_cls(self):
         """
@@ -126,44 +127,48 @@ class TXLogNormalGlass(PipelineStage):
 
         if self.config["cl_optional_file"] != "none":
             with h5py.File(self.config["cl_optional_file"]) as cl_file:
-                self.ell = cl_file['lognormal_cl/ell'][:]
-                self.cls = cl_file['lognormal_cl/cls'][:]
+                self.ell = cl_file["lognormal_cl/ell"][:]
+                self.cls = cl_file["lognormal_cl/cls"][:]
         else:
-
             with self.open_input("fiducial_cosmology", wrapper=True) as f:
                 cosmo = f.to_ccl()
 
-            # In order for CCl to get the cross correlation between bins right, 
+            # In order for CCl to get the cross correlation between bins right,
             # we need to interpolate the windows at all z
-            dz = self.ws[0].za[1]-self.ws[0].za[0]
-            zb_grid = np.arange(self.config["zmin"], self.config["zmax"]+dz, dz)
+            dz = self.ws[0].za[1] - self.ws[0].za[0]
+            zb_grid = np.arange(self.config["zmin"], self.config["zmax"] + dz, dz)
 
-            #Make density shell objects for CCL
+            # Make density shell objects for CCL
             density = []
             for ishell in range(self.nshells):
-                bz = np.ones(len(zb_grid)) #bias should be 1 for matter shells
-                wa_interped =  scipy.interpolate.interp1d( self.ws[ishell].za, self.ws[ishell].wa,
-                bounds_error=False,fill_value=0. )(zb_grid)
+                bz = np.ones(len(zb_grid))  # bias should be 1 for matter shells
+                wa_interped = scipy.interpolate.interp1d(
+                    self.ws[ishell].za,
+                    self.ws[ishell].wa,
+                    bounds_error=False,
+                    fill_value=0.0,
+                )(zb_grid)
 
-                density.append( ccl.NumberCountsTracer(
-                    cosmo, 
-                    dndz=(zb_grid, wa_interped),
-                    has_rsd=False, 
-                    bias=(zb_grid, bz), 
-                    mag_bias=None
+                density.append(
+                    ccl.NumberCountsTracer(
+                        cosmo,
+                        dndz=(zb_grid, wa_interped),
+                        has_rsd=False,
+                        bias=(zb_grid, bz),
+                        mag_bias=None,
                     )
                 )
 
             self.ell = np.arange(self.lmax)
             self.cls = []
             self.cls_index = []
-            for i in range(1,self.nshells+1):
+            for i in range(1, self.nshells + 1):
                 for j in range(i, 0, -1):
-                    cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell)
-                    self.cls.append( cl_bin )
-                    self.cls_index.append( (i,j) )
+                    cl_bin = cosmo.angular_cl(density[i - 1], density[j - 1], self.ell)
+                    self.cls.append(cl_bin)
+                    self.cls_index.append((i, j))
 
-            #save the C(l)
+            # save the C(l)
             cl_output = self.open_output("glass_cl_shells")
             group = cl_output.create_group("lognormal_cl")
             group.create_dataset("ell", data=self.ell, dtype="f")
@@ -172,7 +177,7 @@ class TXLogNormalGlass(PipelineStage):
             group.create_dataset("zb_grid", data=zb_grid, dtype="f")
             cl_output.close()
 
-        print('shell Cls done')
+        print("shell Cls done")
 
     def generate_binned_cls(self):
         """
@@ -191,43 +196,46 @@ class TXLogNormalGlass(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
 
-        #load n(z)
+        # load n(z)
         nzs = []
         with self.open_input("lens_photoz_stack") as f:
             z_nz = f["n_of_z/lens/z"][:]
-            bin_names = [k for k in f['n_of_z/lens'].keys() if 'bin_' in k]
+            bin_names = [k for k in f["n_of_z/lens"].keys() if "bin_" in k]
             for bin_name in bin_names:
-                nzs.append(f[f"n_of_z/lens/"+bin_name][:])
+                nzs.append(f[f"n_of_z/lens/" + bin_name][:])
 
-        #Make density bin objects for CCL
+        # Make density bin objects for CCL
         density = []
         for ibin in range(len(nzs)):
-            bz = np.ones(len(z_nz))*self.config["bias"][ibin]
+            bz = np.ones(len(z_nz)) * self.config["bias"][ibin]
 
-            density.append( ccl.NumberCountsTracer(
-                cosmo, 
-                dndz=(z_nz, nzs[ibin]),
-                has_rsd=False, 
-                bias=(z_nz,bz), 
-                mag_bias=None
+            density.append(
+                ccl.NumberCountsTracer(
+                    cosmo,
+                    dndz=(z_nz, nzs[ibin]),
+                    has_rsd=False,
+                    bias=(z_nz, bz),
+                    mag_bias=None,
                 )
             )
 
         # user can define the ell binning for the binned case
         self.ell_binned = np.logspace(
-            np.log10(config['ell_binned_min']), 
-            np.log10(config['ell_binned_max']), 
-            config['ell_binned_nbins']
-            )
+            np.log10(config["ell_binned_min"]),
+            np.log10(config["ell_binned_max"]),
+            config["ell_binned_nbins"],
+        )
         self.cls_binned = []
         self.cls_index_binned = []
-        for i in range(1,len(nzs)+1):
+        for i in range(1, len(nzs) + 1):
             for j in range(i, 0, -1):
-                cl_bin = cosmo.angular_cl(density[i-1], density[j-1], self.ell_binned)
-                self.cls_binned.append( cl_bin )
-                self.cls_index_binned.append( (i,j) )
+                cl_bin = cosmo.angular_cl(
+                    density[i - 1], density[j - 1], self.ell_binned
+                )
+                self.cls_binned.append(cl_bin)
+                self.cls_index_binned.append((i, j))
 
-        #save the C(l)
+        # save the C(l)
         cl_output = self.open_output("glass_cl_binned")
         group = cl_output.create_group("lognormal_cl")
         group.create_dataset("ell", data=self.ell_binned, dtype="f")
@@ -235,7 +243,7 @@ class TXLogNormalGlass(PipelineStage):
         group.create_dataset("cls_index", data=self.cls_index_binned, dtype="f")
         cl_output.close()
 
-        print('binned Cls done')
+        print("binned Cls done")
 
     def generate_catalogs(self):
         """
@@ -248,94 +256,119 @@ class TXLogNormalGlass(PipelineStage):
         import glass.fields
         import glass.points
         import glass.galaxies
-        import healpy as hp 
+        import healpy as hp
 
         rng = np.random.default_rng(int(self.config["random_seed"]))
 
-        #load n(z)
+        # load n(z)
         nzs = []
         with self.open_input("lens_photoz_stack") as f:
             z_nz = f["n_of_z/lens/z"][:]
-            bin_names = [k for k in f['n_of_z/lens'].keys() if 'bin_' in k]
+            bin_names = [k for k in f["n_of_z/lens"].keys() if "bin_" in k]
             for bin_name in bin_names:
-                nzs.append(f[f"n_of_z/lens/"+bin_name][:])
+                nzs.append(f[f"n_of_z/lens/" + bin_name][:])
 
-        #load mask
+        # load mask
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
             self.mask_map_info = map_file.read_map_info("mask")
-        mask[mask==hp.UNSEEN] = 0. #set UNSEEN pixels to 0 (GLASS needs this)
-        mask_area = np.sum(mask[mask!=hp.UNSEEN])*hp.nside2pixarea(self.nside,degrees=True)
+        mask[mask == hp.UNSEEN] = 0.0  # set UNSEEN pixels to 0 (GLASS needs this)
+        mask_area = np.sum(mask[mask != hp.UNSEEN]) * hp.nside2pixarea(
+            self.nside, degrees=True
+        )
 
-        #get number density arcmin^-2 for each z bin from config
+        # get number density arcmin^-2 for each z bin from config
         target_num_dens = np.array(self.config["num_dens"])
         assert len(target_num_dens) == len(nzs)
         self.nbin_lens = len(nzs)
 
-        #prepare the Lognormal C(l)
-        self.gls = glass.fields.lognormal_gls(self.cls, shift=self.config["shift"], nside=self.nside, lmax=self.lmax, ncorr=3)
+        # prepare the Lognormal C(l)
+        self.gls = glass.fields.lognormal_gls(
+            self.cls,
+            shift=self.config["shift"],
+            nside=self.nside,
+            lmax=self.lmax,
+            ncorr=3,
+        )
 
-        #check for negative values in the gls
-        for i,g in enumerate(self.gls):
+        # check for negative values in the gls
+        for i, g in enumerate(self.gls):
             if len(g) > 0:
-                if (g<0).any():
-                    print('negative values found in gC(l)',i,'setting to 0.')
-                    print(g[g<0])
-                    g[g<0] = 0.
+                if (g < 0).any():
+                    print("negative values found in gC(l)", i, "setting to 0.")
+                    print(g[g < 0])
+                    g[g < 0] = 0.0
 
         # generator for lognormal matter fields
-        matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3, rng=rng )
+        matter = glass.fields.generate_lognormal(
+            self.gls, self.nside, shift=self.config["shift"], ncorr=3, rng=rng
+        )
 
-        #prepare for weight maps
+        # prepare for weight maps
         if self.config["contaminate"]:
             max_inv_w = self.get_max_inverse_weight()
 
-        #estimate max size of output catalog
-        self.est_max_n = int(1.5*np.sum(target_num_dens)*mask_area*60*60)
+        # estimate max size of output catalog
+        self.est_max_n = int(1.5 * np.sum(target_num_dens) * mask_area * 60 * 60)
         self.setup_output()
 
-        # simulate and add galaxies in each matter shell 
+        # simulate and add galaxies in each matter shell
         shell_catalogs = []
         count = 0
         for ishell, delta_i in enumerate(matter):
-            print('computing shell', ishell, 'at z =', self.zb[ishell] )
+            print("computing shell", ishell, "at z =", self.zb[ishell])
 
-            # restrict galaxy distributions to this shell 
+            # restrict galaxy distributions to this shell
             z_i, dndz_i = glass.shells.restrict(z_nz, nzs, self.ws[ishell])
-            if (dndz_i==0).all():
+            if (dndz_i == 0).all():
                 continue
 
             # compute galaxy density (for each n(z)) in this shell
-            ngal_in_shell = target_num_dens*np.trapz(dndz_i, z_i)/np.trapz(nzs, z_nz)
+            ngal_in_shell = (
+                target_num_dens * np.trapz(dndz_i, z_i) / np.trapz(nzs, z_nz)
+            )
             if self.config["contaminate"]:
                 ngal_in_shell *= max_inv_w
-            print('Ngal',ngal_in_shell*mask_area*60*60)
+            print("Ngal", ngal_in_shell * mask_area * 60 * 60)
 
             # simulate positions from matter density
-            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask, rng=rng ):
-
-                #Figure out which bin was generated (len(ngal_in_shell) = Nbins)
+            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
+                ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask, rng=rng
+            ):
+                # Figure out which bin was generated (len(ngal_in_shell) = Nbins)
                 occupied_bins = np.where(gal_count != 0)[0]
-                assert len(occupied_bins) == 1 #only one bin should be generated per call
+                assert (
+                    len(occupied_bins) == 1
+                )  # only one bin should be generated per call
                 ibin = occupied_bins[0]
                 gal_count_bin = gal_count[ibin]
 
                 # sample redshifts uniformly in shell
-                gal_z = glass.galaxies.redshifts_from_nz(gal_count_bin, self.ws[ishell].za, self.ws[ishell].wa)
+                gal_z = glass.galaxies.redshifts_from_nz(
+                    gal_count_bin, self.ws[ishell].za, self.ws[ishell].wa
+                )
 
-                gal_lon[gal_lon < 0] += 360 #keeps 0 < ra < 360
+                gal_lon[gal_lon < 0] += 360  # keeps 0 < ra < 360
 
                 if self.config["contaminate"]:
-                    obj_pixel = hp.ang2pix(self.mask_map_info['nside'], gal_lon, gal_lat, lonlat=True, nest=True)
+                    obj_pixel = hp.ang2pix(
+                        self.mask_map_info["nside"],
+                        gal_lon,
+                        gal_lat,
+                        lonlat=True,
+                        nest=True,
+                    )
                     obj_weight = self.get_obj_weight(ibin, obj_pixel)
-                    prob_accept = (1./obj_weight)/max_inv_w[ibin]
+                    prob_accept = (1.0 / obj_weight) / max_inv_w[ibin]
                     obj_accept_contaminated = np.random.rand(len(gal_lon)) < prob_accept
                     gal_lon = gal_lon[obj_accept_contaminated]
                     gal_lat = gal_lat[obj_accept_contaminated]
-                    gal_z   = gal_z[obj_accept_contaminated]
-                    gal_count_bin = np.sum(obj_accept_contaminated.astype('int'))
-                
-                self.write_output_chunk(count, count+gal_count_bin, gal_lon, gal_lat, gal_z, ibin)
+                    gal_z = gal_z[obj_accept_contaminated]
+                    gal_count_bin = np.sum(obj_accept_contaminated.astype("int"))
+
+                self.write_output_chunk(
+                    count, count + gal_count_bin, gal_lon, gal_lat, gal_z, ibin
+                )
 
                 count += gal_count_bin
 
@@ -345,67 +378,78 @@ class TXLogNormalGlass(PipelineStage):
         """
         Sets up the output data file for the catalog
 
-        Creates the data sets and groups for the generated photometry catalog 
+        Creates the data sets and groups for the generated photometry catalog
         and lens tomography catalog output files
 
-        maxshape should be larger than a reasonable total Ngal 
+        maxshape should be larger than a reasonable total Ngal
 
         Note: We will saves RA, DEC and Z_TRUE in the photometry catalog and bin
         information in the lens tomography catalog
         """
-        
+
         phot_output = self.open_output("photometry_catalog", parallel=True)
         group = phot_output.create_group("photometry")
-        group.create_dataset("ra", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
-        group.create_dataset("dec", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
-        group.create_dataset("redshift_true", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset(
+            "ra", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
+        )
+        group.create_dataset(
+            "dec", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
+        )
+        group.create_dataset(
+            "redshift_true", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
+        )
         self.phot_output = phot_output
 
-        tomo_output = self.open_output("lens_tomography_catalog_unweighted", parallel=True)
+        tomo_output = self.open_output(
+            "lens_tomography_catalog_unweighted", parallel=True
+        )
         group = tomo_output.create_group("tomography")
-        group.create_dataset("bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i")
-        group.create_dataset("lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset(
+            "bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i"
+        )
+        group.create_dataset(
+            "lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
+        )
         group.create_dataset("counts", (self.nbin_lens,), dtype="i")
         group.create_dataset("counts_2d", (1,), dtype="i")
         self.tomo_output = tomo_output
-
 
     def write_output_chunk(self, start, end, gal_lon, gal_lat, gal_z, tomobin):
         """
         Writes a chunk of the photometry and tomography file
         """
-        
-        assert end-start == len(gal_lat)
 
-        #write photometry catalog chunk
+        assert end - start == len(gal_lat)
+
+        # write photometry catalog chunk
         group = self.phot_output["photometry"]
         group["ra"][start:end] = gal_lon
         group["dec"][start:end] = gal_lat
         group["redshift_true"][start:end] = gal_z
 
-        #write tomography catalog chunk
+        # write tomography catalog chunk
         group = self.tomo_output["tomography"]
-        group["bin"][start:end] = np.full(end-start, tomobin)
-        group["lens_weight"][start:end] = np.ones(end-start)
+        group["bin"][start:end] = np.full(end - start, tomobin)
+        group["lens_weight"][start:end] = np.ones(end - start)
 
     def finalize_output(self, total_count):
         """
         Removes any unused entrys in the catalog and adds the total counts to tomography file
         """
-        
-        #remove unfilled objects
-        group = self.phot_output["photometry"]
-        group['ra'].resize( (total_count,) )
-        group['dec'].resize( (total_count,) )
-        group['redshift_true'].resize( (total_count,) )
 
-        #write global values
+        # remove unfilled objects
+        group = self.phot_output["photometry"]
+        group["ra"].resize((total_count,))
+        group["dec"].resize((total_count,))
+        group["redshift_true"].resize((total_count,))
+
+        # write global values
         group = self.tomo_output["tomography"]
-        group['bin'].resize( (total_count,) )
-        group['lens_weight'].resize( (total_count,) )
+        group["bin"].resize((total_count,))
+        group["lens_weight"].resize((total_count,))
         counts = np.bincount(group["bin"][:])
         assert total_count == np.sum(counts)
-        group["counts"][:] = counts 
+        group["counts"][:] = counts
         group["counts_2d"][:] = np.array([total_count])
         group.attrs["nbin"] = self.nbin_lens
 
@@ -416,9 +460,9 @@ class TXLogNormalGlass(PipelineStage):
         max_inv_w = np.ones(self.nbin_lens)
         with self.open_input("input_lss_weight_maps") as f:
             for tomobin in range(self.nbin_lens):
-                value = f[f'maps/weight_map_bin_{tomobin}/value'][:]
-                max_inv_w[tomobin] = (1./value).max()
-            assert f['maps'].attrs['nside'] == self.mask_map_info['nside']
+                value = f[f"maps/weight_map_bin_{tomobin}/value"][:]
+                max_inv_w[tomobin] = (1.0 / value).max()
+            assert f["maps"].attrs["nside"] == self.mask_map_info["nside"]
         return max_inv_w
 
     def get_obj_weight(self, tomobin, obj_pix):
@@ -443,7 +487,4 @@ def camb_tophat_weight(z):
     Returns:
         float: The weight for the given redshift, between 0 and 1.
     """
-    return np.clip(z/0.1, None, 1.)
-
-
-
+    return np.clip(z / 0.1, None, 1.0)
