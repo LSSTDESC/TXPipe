@@ -387,7 +387,7 @@ class TXLogNormalGlass(PipelineStage):
         information in the lens tomography catalog
         """
 
-        phot_output = self.open_output("photometry_catalog", parallel=True)
+        phot_output = self.open_output("photometry_catalog", parallel=False)
         group = phot_output.create_group("photometry")
         group.create_dataset(
             "ra", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
@@ -401,7 +401,7 @@ class TXLogNormalGlass(PipelineStage):
         self.phot_output = phot_output
 
         tomo_output = self.open_output(
-            "lens_tomography_catalog_unweighted", parallel=True
+            "lens_tomography_catalog_unweighted", parallel=False
         )
         group = tomo_output.create_group("tomography")
         group.create_dataset(
