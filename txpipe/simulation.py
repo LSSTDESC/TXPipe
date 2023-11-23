@@ -221,9 +221,9 @@ class TXLogNormalGlass(PipelineStage):
 
         # user can define the ell binning for the binned case
         self.ell_binned = np.logspace(
-            np.log10(config["ell_binned_min"]),
-            np.log10(config["ell_binned_max"]),
-            config["ell_binned_nbins"],
+            np.log10(self.config["ell_binned_min"]),
+            np.log10(self.config["ell_binned_max"]),
+            self.config["ell_binned_nbins"],
         )
         self.cls_binned = []
         self.cls_index_binned = []
