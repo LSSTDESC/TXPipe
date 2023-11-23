@@ -53,6 +53,9 @@ class TXLogNormalGlass(PipelineStage):
         "contaminate": False,
         "random_seed": 0, 
         "cl_optional_file": "none",
+        "ell_binned_max":0.1,
+        "ell_binned_min":5.0e5,
+        "ell_binned_nbins":100,
     }
 
     def run(self):
@@ -169,7 +172,7 @@ class TXLogNormalGlass(PipelineStage):
             group.create_dataset("zb_grid", data=zb_grid, dtype="f")
             cl_output.close()
 
-        print('Cls done')
+        print('shell Cls done')
 
     def generate_binned_cls(self):
         """
@@ -203,14 +206,19 @@ class TXLogNormalGlass(PipelineStage):
 
             density.append( ccl.NumberCountsTracer(
                 cosmo, 
-                dndz=(z_nz, z_nz),
+                dndz=(z_nz, nzs[ibin]),
                 has_rsd=False, 
                 bias=(z_nz,bz), 
                 mag_bias=None
                 )
             )
 
-        self.ell_binned = np.arange(self.lmax)
+        # user can define the ell binning for the binned case
+        self.ell_binned = np.logspace(
+            np.log10(config['ell_binned_min']), 
+            np.log10(config['ell_binned_max']), 
+            config['ell_binned_nbins']
+            )
         self.cls_binned = []
         self.cls_index_binned = []
         for i in range(1,len(nzs)+1):
