@@ -54,8 +54,8 @@ class TXLogNormalGlass(PipelineStage):
         "contaminate": False,
         "random_seed": 0,
         "cl_optional_file": "none",
-        "ell_binned_max": 0.1,
-        "ell_binned_min": 5.0e5,
+        "ell_binned_min": 0.1,
+        "ell_binned_max": 5.0e5,
         "ell_binned_nbins": 100,
     }
 
@@ -68,7 +68,8 @@ class TXLogNormalGlass(PipelineStage):
 
         It calls the following sub-methods:
         - set_z_shells
-        - generate_cls
+        - generate_shell_cls #these are the C(l) used to generate the mocks
+        - generate_binned_cls #these are the C(l) the user can use for testing
         - generate_catalogs
         - save_catalogs
         """
