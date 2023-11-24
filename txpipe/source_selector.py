@@ -131,7 +131,6 @@ class TXSourceSelectorBase(PipelineStage):
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
         "random_seed": 42,
-        "resp_mean_diag": False
     }
 
     def run(self):
@@ -462,7 +461,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     config_options = {
         **TXSourceSelectorBase.config_options,
         "delta_gamma": float,
-        "resp_mean_diag": bool 
+        "resp_mean_diag": False
     }
 
 
@@ -490,7 +489,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             shear_cols += ["redshift_true"]
 
         chunk_rows = self.config["chunk_rows"]
-        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
+        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
 
     def setup_output(self):
         """
