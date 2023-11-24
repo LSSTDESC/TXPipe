@@ -131,6 +131,7 @@ class TXSourceSelectorBase(PipelineStage):
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
         "random_seed": 42,
+        "resp_mean_diag": False
     }
 
     def run(self):
@@ -277,7 +278,7 @@ class TXSourceSelectorBase(PipelineStage):
         # This calibrator refers to self.select_2d
         calculators[-1].add_data(data)
 
-        return tomo_bin, R, counts
+        return tomo_bin[tomo_bin>=0], R[tomo_bin>=0], counts
 
     def compute_per_object_response(self, data):
         # The default implementation has no per-object response
@@ -402,11 +403,10 @@ class TXSourceSelectorBase(PipelineStage):
         variant = data.suffix
 
         shear_prefix = self.config["shear_prefix"]
-        s2n = data[f"{shear_prefix}s2n"]
-        T = data[f"{shear_prefix}T"]
-
+        s2n  = data[f"{shear_prefix}s2n{variant}"]
+        T    = data[f"{shear_prefix}T{variant}"]
         Tpsf = data[f"{shear_prefix}psf_T_mean"]
-        flag = data[f"{shear_prefix}flags"]
+        flag = data[f"{shear_prefix}flags{variant}"]
 
         # Apply our cuts.  We keep track of the number of objects
         # reject by each cut in case it's important.
@@ -461,7 +461,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float
+        "delta_gamma": float,
+        "resp_mean_diag": bool 
     }
 
 
@@ -476,9 +477,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         """
         bands = self.config["bands"]
         shear_cols = metacal_variants(
-            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags"
+            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight"
         )
-        shear_cols += ["ra", "dec", "mcal_psf_T_mean", "weight"]
+        shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
         shear_cols += band_variants(
             bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
         )
@@ -520,10 +521,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
+        resp_mean_diag = self.config["resp_mean_diag"]
         calculators = [
-            MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)
+            MetacalCalculator(self.select, delta_gamma,resp_mean_diag) for i in range(nbin_source)
         ]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma))
+        calculators.append(MetacalCalculator(self.select_2d, delta_gamma,resp_mean_diag))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):

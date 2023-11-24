@@ -159,7 +159,7 @@ class MetacalCalculator:
     that are looked up.
     """
 
-    def __init__(self, selector, delta_gamma):
+    def __init__(self, selector, delta_gamma, resp_mean_diag=False):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -185,6 +185,7 @@ class MetacalCalculator:
         self.sum_weights    = 0
         self.sum_weights_sq = 0
         self.delta_gamma = delta_gamma
+        self.resp_mean_diag  = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
         self.sel_bias_means = ParallelMean(size=8)
 
@@ -224,7 +225,11 @@ class MetacalCalculator:
 
         g1 = data_00["mcal_g1"]
         g2 = data_00["mcal_g2"]
-        weight = data_00["weight"]
+        weight   = data_00["weight"]
+        weight1p = data_1p["weight"]
+        weight1m = data_1m["weight"]
+        weight2p = data_2p["weight"]
+        weight2m = data_2m["weight"]
         n = g1[sel_00].size
 
         # Record the count for this chunk, for summation later
@@ -257,14 +262,14 @@ class MetacalCalculator:
         # (g1 or g2) X (shear applied to 1 or 2) X (plus or minus shear)
         # We again use the ParallelMean class to handle this for us.
 
-        self.sel_bias_means.add_data(0, g1[sel_1p], weight[sel_1p])
-        self.sel_bias_means.add_data(1, g1[sel_1m], weight[sel_1m])
-        self.sel_bias_means.add_data(2, g1[sel_2p], weight[sel_2p])
-        self.sel_bias_means.add_data(3, g1[sel_2m], weight[sel_2m])
-        self.sel_bias_means.add_data(4, g2[sel_1p], weight[sel_1p])
-        self.sel_bias_means.add_data(5, g2[sel_1m], weight[sel_1m])
-        self.sel_bias_means.add_data(6, g2[sel_2p], weight[sel_2p])
-        self.sel_bias_means.add_data(7, g2[sel_2m], weight[sel_2m])
+        self.sel_bias_means.add_data(0, g1[sel_1p], weight1p[sel_1p])
+        self.sel_bias_means.add_data(1, g1[sel_1m], weight1m[sel_1m])
+        self.sel_bias_means.add_data(2, g1[sel_2p], weight2p[sel_2p])
+        self.sel_bias_means.add_data(3, g1[sel_2m], weight2m[sel_2m])
+        self.sel_bias_means.add_data(4, g2[sel_1p], weight1p[sel_1p])
+        self.sel_bias_means.add_data(5, g2[sel_1m], weight1m[sel_1m])
+        self.sel_bias_means.add_data(6, g2[sel_2p], weight2p[sel_2p])
+        self.sel_bias_means.add_data(7, g2[sel_2m], weight2m[sel_2m])
 
         # The user of this class may need the base selection, so return it
         return sel_00
@@ -322,6 +327,17 @@ class MetacalCalculator:
         S_mean[1, 0] = S[4] - S[5]
         S_mean[1, 1] = S[6] - S[7]
         S_mean /= self.delta_gamma
+
+        if self.resp_mean_diag:
+            # Sets response to scalar R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2 and nulls the off-diagonal elements (used in DES-Y3)
+            print("Setting  R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2")
+            Ravg = (R_mean[0,0]+R_mean[1,1])/2.
+            R_mean[1,0]=R_mean[0,1]=0
+            R_mean[0,0]=R_mean[1,1]=Ravg
+            
+            Savg = (S_mean[0,0]+S_mean[1,1])/2.
+            S_mean[1,0]=S_mean[0,1]=0
+            S_mean[0,0]=S_mean[1,1]=Savg
 
         return R_mean, S_mean, count, sum_weights**2/sum_weights_sq
 
