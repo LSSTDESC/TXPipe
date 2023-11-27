@@ -8,6 +8,7 @@ from .data_types import (
     FileCollection,
     FiducialCosmology,
     TomographyCatalog,
+    QPNOfZFile,
 )
 import glob
 import time
@@ -31,7 +32,7 @@ class TXLogNormalGlass(PipelineStage):
     parallel = False
     inputs = [
         ("mask", MapsFile),
-        ("lens_photoz_stack", HDFFile),
+        ("lens_photoz_stack", QPNOfZFile),
         ("fiducial_cosmology", FiducialCosmology),
         ("input_lss_weight_maps", MapsFile),
     ]
@@ -199,11 +200,10 @@ class TXLogNormalGlass(PipelineStage):
 
         # load n(z)
         nzs = []
-        with self.open_input("lens_photoz_stack") as f:
-            z_nz = f["n_of_z/lens/z"][:]
-            bin_names = [k for k in f["n_of_z/lens"].keys() if "bin_" in k]
-            for bin_name in bin_names:
-                nzs.append(f[f"n_of_z/lens/" + bin_name][:])
+        with self.open_input("lens_photoz_stack", wrapper=True) as f:
+            for ibin in range(f.get_nbin()):
+                z_nz, nz_i = f.get_bin_n_of_z(ibin)
+                nzs.append(nz_i)
 
         # Make density bin objects for CCL
         density = []
@@ -263,11 +263,10 @@ class TXLogNormalGlass(PipelineStage):
 
         # load n(z)
         nzs = []
-        with self.open_input("lens_photoz_stack") as f:
-            z_nz = f["n_of_z/lens/z"][:]
-            bin_names = [k for k in f["n_of_z/lens"].keys() if "bin_" in k]
-            for bin_name in bin_names:
-                nzs.append(f[f"n_of_z/lens/" + bin_name][:])
+        with self.open_input("lens_photoz_stack", wrapper=True) as f:
+            for ibin in range(f.get_nbin()):
+                z_nz, nz_i = f.get_bin_n_of_z(ibin)
+                nzs.append(nz_i)
 
         # load mask
         with self.open_input("mask", wrapper=True) as map_file:
