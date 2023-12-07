@@ -461,7 +461,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     config_options = {
         **TXSourceSelectorBase.config_options,
         "delta_gamma": float,
-        "use_mean_diag": False
+        "use_diagonal_response": False
     }
 
 
