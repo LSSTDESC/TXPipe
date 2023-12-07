@@ -461,7 +461,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     config_options = {
         **TXSourceSelectorBase.config_options,
         "delta_gamma": float,
-        "resp_mean_diag": False
+        "use_mean_diag": False
     }
 
 
@@ -489,7 +489,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             shear_cols += ["redshift_true"]
 
         chunk_rows = self.config["chunk_rows"]
-        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
+        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)#, longest=True)
 
     def setup_output(self):
         """
@@ -520,11 +520,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        resp_mean_diag = self.config["resp_mean_diag"]
+        use_diagonal_response = self.config["use_diagonal_response"]
         calculators = [
-            MetacalCalculator(self.select, delta_gamma,resp_mean_diag) for i in range(nbin_source)
+            MetacalCalculator(self.select, delta_gamma,use_diagonal_response) for i in range(nbin_source)
         ]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma,resp_mean_diag))
+        calculators.append(MetacalCalculator(self.select_2d, delta_gamma,use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):
