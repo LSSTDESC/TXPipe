@@ -277,7 +277,7 @@ class TXSourceSelectorBase(PipelineStage):
         # This calibrator refers to self.select_2d
         calculators[-1].add_data(data)
 
-        return tomo_bin[tomo_bin>=0], R[tomo_bin>=0], counts
+        return tomo_bin, R, counts
 
     def compute_per_object_response(self, data):
         # The default implementation has no per-object response
@@ -489,7 +489,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             shear_cols += ["redshift_true"]
 
         chunk_rows = self.config["chunk_rows"]
-        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)#, longest=True)
+        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_output(self):
         """
