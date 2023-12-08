@@ -17,6 +17,7 @@ class TXFocalPlanePlot(PipelineStage):
 
     outputs = [
         ("focalplane_g", PNGFile),
+        ("focalplane_whisker", PNGFile)
     ]
 
     config_options = {}
@@ -47,7 +48,23 @@ class TXFocalPlanePlot(PipelineStage):
         plot.colorbar(im,cax=cbar_ax,cmap='RdBu')
         plt.tight_layout()
     
-        fig.close()    
+        fig.close()
+        
+        fig = self.open_output("focalplane_whisker", wrapper=True)
+        
+        labels = ['PSF e', 'res']
+        mean_e = [(e1**2 + e2**2)**0.5,(de1**2 + de2**2)**0.5]
+        theta = [0.5*np.arctan2(e2, e1),0.5*np.arctan2(de1,de2)]
+        whskr = [[mean_e[0]*np.cos(theta[0]),mean_e[0]*np.sin(theta[0])],
+                 [mean_e[1]*np.cos(theta[1]),mean_e[1]*np.sin(theta[1])]]
+        
+        plot, axes = plt.subplots(nrows=1, ncols=2)
+        
+        for ax,l,w in zip(axes.flat,labels,whskr):
+            ax.quiver(fov_x, fov_y, 50*w[0], 50*w[1], scale=16, headwidth=0, pivot='middle', units='width')
+            ax.set_ylabel(l)
+        plt.tight_layout()
+        fig.close()
         
         
     def load_stars(self):
@@ -61,3 +78,4 @@ class TXFocalPlanePlot(PipelineStage):
             de2 = e2 - g["model_e2"][:]
             
         return fov_x, fov_y, e1, e2, de1, de2
+    
