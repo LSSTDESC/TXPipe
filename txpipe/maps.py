@@ -408,7 +408,7 @@ class TXDensityMaps(PipelineStage):
     """
     Convert galaxy count maps to overdensity delta maps
 
-    delta = (ngal - <ngal>) / <ngal>
+    delta = ngal / (weight * <ngal>/<weight>) - 1
 
     This has to be separate from the lens mappers above
     because it requires the mask, which is created elsewhere
@@ -424,6 +424,9 @@ class TXDensityMaps(PipelineStage):
     outputs = [
         ("density_maps", MapsFile),
     ]
+    config_options = {
+        'weight_thresh': 0.
+    }
 
     def run(self):
         import healpy
@@ -436,7 +439,9 @@ class TXDensityMaps(PipelineStage):
         mask[mask == healpy.UNSEEN] = 0
         mask[np.isnan(mask)] = 0
         mask = mask.flatten()
-        pix = np.where(mask > 0)[0]
+        #identify pixels to keep (i.e. mask value above specified threshold)
+        pix_keep = mask > self.config['weight_thresh']
+        pix = np.where(pix_keep)[0]
 
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
@@ -452,11 +457,10 @@ class TXDensityMaps(PipelineStage):
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask.shape, dtype=np.float64)
-            delta_map[mask > 0] = (
-                ng[mask > 0] / mask[mask > 0]
-            )  # Assuming that the weights do not include the mask
-            mu = np.mean(delta_map[mask > 0])
-            delta_map[mask > 0] = delta_map[mask > 0] / mu - 1
+            #calculate mean of ng and mean of mask
+            mu_n = np.mean(ng[pix_keep])
+            mu_w = np.mean(mask[pix_keep])
+            delta_map[pix_keep] = (ng[pix_keep] / (mask[pix_keep] * mu_n / mu_w)) - 1
             density_maps.append(delta_map)
 
         # write output
