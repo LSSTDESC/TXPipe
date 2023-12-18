@@ -88,13 +88,12 @@ config: examples/desy3/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    shear_catalog: //global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
-    photometry_catalog: 
-    #shear_tomography_catalog: /global/cfs/cdirs/desc-wl/projects/txpipe-sys-tests/des-y3/shear_tomography_desy3_unmasked_test.h5
-    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
-    lens_photoz_stack: 
+    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez.hdf5
+    photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/photometry_catalog_desy3_RM.hdf5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/lens_tomography_catalog_desy3_RM.h5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/lens_photoz_stack.hdf5
     mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
-    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.h5
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     fiducial_cosmology: data/fiducial_cosmology.yml
     random_cats_source: Null
