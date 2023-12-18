@@ -402,11 +402,10 @@ class TXSourceSelectorBase(PipelineStage):
         variant = data.suffix
 
         shear_prefix = self.config["shear_prefix"]
-        s2n = data[f"{shear_prefix}s2n"]
-        T = data[f"{shear_prefix}T"]
-
+        s2n  = data[f"{shear_prefix}s2n{variant}"]
+        T    = data[f"{shear_prefix}T{variant}"]
         Tpsf = data[f"{shear_prefix}psf_T_mean"]
-        flag = data[f"{shear_prefix}flags"]
+        flag = data[f"{shear_prefix}flags{variant}"]
 
         # Apply our cuts.  We keep track of the number of objects
         # reject by each cut in case it's important.
@@ -461,7 +460,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float
+        "delta_gamma": float,
+        "use_diagonal_response": False
     }
 
 
@@ -476,9 +476,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         """
         bands = self.config["bands"]
         shear_cols = metacal_variants(
-            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags"
+            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight"
         )
-        shear_cols += ["ra", "dec", "mcal_psf_T_mean", "weight"]
+        shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
         shear_cols += band_variants(
             bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
         )
@@ -520,10 +520,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
+        use_diagonal_response = self.config["use_diagonal_response"]
         calculators = [
-            MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)
+            MetacalCalculator(self.select, delta_gamma,use_diagonal_response) for i in range(nbin_source)
         ]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma))
+        calculators.append(MetacalCalculator(self.select_2d, delta_gamma,use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):
