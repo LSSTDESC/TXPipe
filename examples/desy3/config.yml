@@ -60,7 +60,7 @@ TXSourceSelectorMetacal:
     delta_gamma: 0.02
     source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
     shear_prefix: mcal_
-    resp_mean_diag : True
+    use_diagonal_response : True
 
 TXSourceSelectorLensfit:
     bands: ri #used for selection
