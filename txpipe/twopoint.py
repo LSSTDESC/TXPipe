@@ -25,6 +25,9 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
+#external cross correlations
+POS_EXT = 3
+SHEAR_EXT = 4
 
 class TXTwoPoint(PipelineStage):
     """
@@ -240,7 +243,7 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
-    def add_data_points(self, S, results):
+    def add_data_points(self, S, results, tracers_later=False):
         import treecorr
         import sacc
 
@@ -250,12 +253,14 @@ class TXTwoPoint(PipelineStage):
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
+        POS_EXT = "pos_ext"
+        SHEAR_EXT = "shear_ext"
 
         comb = []
         for index, d in enumerate(results):
             # First the tracers and generic tags
-            tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
-            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
+            tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT, SHEAR_EXT] else f"lens_{d.i}"
+            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else (f"sp_{d.j}" if d.corr_type in [POS_EXT, SHEAR_EXT] else f"lens_{d.j}")
 
             # This happens when there is an empty bin. We can't do a covariance
             # here, or anything useful, really, so we just skip this bin.
@@ -283,6 +288,7 @@ class TXTwoPoint(PipelineStage):
                         error=xiperr[i],
                         npair=npair[i],
                         weight=weight[i],
+                        tracers_later=tracers_later,
                     )
                 for i in range(n):
                     S.add_data_point(
@@ -293,6 +299,7 @@ class TXTwoPoint(PipelineStage):
                         error=ximerr[i],
                         npair=npair[i],
                         weight=weight[i],
+                        tracers_later=tracers_later,
                     )
             else:
                 if self.config['gaussian_sims_factor'] != [1.]:
@@ -318,6 +325,7 @@ class TXTwoPoint(PipelineStage):
                         theta=theta[i],
                         error=err[i],
                         weight=weight[i],
+                        tracers_later=tracers_later,
                     )
                     
             # We build up the comb list to get the covariance of it later
@@ -474,9 +482,11 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import pickle
         #TODO: fix up the caching code
-        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
-            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
-            #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
+        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]: 
+            if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
+                pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            elif self.name == "TXTwoPointPixelExtCross":
+                pickle_filename = self.get_output("twopoint_data_ext_cross_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
                 print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
@@ -493,6 +503,18 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_POS:
             xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
+        elif k == POS_EXT:
+            assert self.name == "TXTwoPointPixelExtCross"
+            xx = self.calculate_pos_ext(i, j)
+            # TODO: make a new data type in sacc for external cross correlations
+            # for now we will use a string as a place holder
+            xtype = "pos_ext"
+        elif k == SHEAR_EXT:
+            assert self.name == "TXTwoPointPixelExtCross"
+            xx = self.calculate_shear_ext(i, j)
+            # TODO: make a new data type in sacc for external cross correlations
+            # for now we will use a string as a place holder
+            xtype = "shear_ext"
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
@@ -510,7 +532,7 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
+        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]:
             if self.rank == 0:
                 print(f"Pickling result to {pickle_filename}")
                 with open(pickle_filename, "wb") as f:
@@ -1091,6 +1113,237 @@ class TXTwoPointPixel(TXTwoPoint):
         kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         return kk
+
+class TXTwoPointPixelExtCross(TXTwoPointPixel):
+    """
+    TXTwoPointPixel - External - Cross correlation
+    This subclass of TXTwoPointPixel uses maps to compute
+    cross correlations between the galaxy density maps and 
+    an external set of Survey Property (or other contaminant) 
+    maps
+    """
+
+    name = "TXTwoPointPixelExtCross"
+    inputs = [
+        ("density_maps", MapsFile),
+        ("source_maps", MapsFile),
+        ("binned_shear_catalog", ShearCatalog),
+        ("binned_lens_catalog", HDFFile),
+        ("binned_random_catalog", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
+        ("lens_photoz_stack", QPNOfZFile),
+        ("patch_centers", TextFile),
+        ("tracer_metadata", HDFFile),
+        ("mask", MapsFile),
+    ]
+    outputs = [("twopoint_data_ext_cross_raw", SACCFile)]
+    # Add values to the config file that are not previously defined
+    config_options = {
+        "supreme_path_root": "",
+        "do_pos": True,
+        "do_shear": True,
+
+        # TODO: Remove any unnesesary config options here
+        "calcs": [0, 1, 2],
+        "min_sep": 0.5,
+        "max_sep": 300.0,
+        "nbins": 9,
+        "bin_slop": 0.0,
+        "sep_units": "arcmin",
+        "flip_g1": False,
+        "flip_g2": True,
+        "cores_per_task": 20,
+        "verbose": 1,
+        "source_bins": [-1],
+        "lens_bins": [-1],
+        "reduce_randoms_size": 1.0,
+        "do_shear_shear": True,
+        "do_shear_pos": True,
+        "do_pos_pos": True,
+        "var_method": "jackknife",
+        "low_mem": False,
+        "patch_dir": "./cache/patches",
+        "chunk_rows": 100_000,
+        "share_patch_files": False,
+        "metric": "Euclidean",
+        "use_randoms": True,
+        "auto_only": False,
+        "gaussian_sims_factor": [1.], 
+        "use_subsampled_randoms":False, #not used for pixel estimator
+    }
+
+    def get_ext_list(self):
+        import glob
+        root = self.config["supreme_path_root"]
+        sys_files = glob.glob(f"{root}*.hs")
+        return sys_files
+
+    def select_calculations(self, source_list, lens_list):
+        """
+        For TXTwoPointPixelExtCross, this method only selects
+        the cross correlations between data and external maps
+        """
+        calcs = []
+
+        #get the list of external map files
+        ext_list = np.arange(len( self.get_ext_list() ))
+
+        # For shear-ext
+        if self.config["do_shear"]:
+            k = SHEAR_EXT
+            for i in source_list:
+                for j in ext_list:
+                    calcs.append((i, j, k))
+
+        # For position-position we omit pairs with j>i
+        if self.config["do_pos"]:
+            k = POS_EXT
+            for i in lens_list:
+                for j in ext_list:
+                    calcs.append((i, j, k))
+
+        if self.rank == 0:
+            print(f"Running {len(calcs)} calculations: {calcs}")
+
+        return calcs
+
+    def calculate_pos_ext(self, i, j):
+        import treecorr
+
+        cat_i = self.get_density_map(i)
+
+        cat_j = self.get_ext_map(j)
+
+        if self.rank == 0:
+            print(
+                f"Calculating position-external bin pair ({i}, {j})"
+            )
+
+        t1 = perf_counter()
+
+        kk = treecorr.KKCorrelation(self.config)
+        kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        return kk
+
+
+    def calculate_shear_ext(self, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_map(i)
+
+        cat_j = self.get_ext_map(j)
+
+        if self.rank == 0:
+            print(
+                f"Calculating shear-external bin pair ({i},{j})."
+            )
+
+        kg = treecorr.KGCorrelation(self.config)
+        t1 = perf_counter()
+        kg.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+
+        return kg
+
+    def get_ext_map(self, i):
+        """
+        get the ith external map (e.g. SP map) from the directory specified in the config 
+        """
+        import treecorr
+        import healsparse
+        import healpy as hp 
+        
+        # Read the mask to get fracdet weights
+        with self.open_input("mask", wrapper=True) as f:
+            info = f.read_map_info('mask')
+            mask, pix, nside = f.read_healpix('mask', return_all=True)
+
+        # open the input healsparse map
+        sys_files = self.get_ext_list()
+        sys_file = sys_files[i]
+        m = healsparse.HealSparseMap.read(sys_file)
+        m = m.degrade(nside)
+        if info['nest'] == True:
+            map_d = m[pix]
+        else:
+            map_d = m[hp.ring2nest(nside, pix)] 
+
+        #convert SP map to an overdensity
+        mean_data = np.average(map_d, weights=mask[pix] )
+        map_d = map_d/mean_data - 1.
+
+        scheme = choose_pixelization(**info) 
+        ra_pix, dec_pix = scheme.pix2ang(pix)
+
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            ra=ra_pix,
+            dec=dec_pix,
+            w=mask[pix], #weight pixels by their fracdet
+            k=map_d,
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+        )
+        return cat
+
+
+    def write_output(self, source_list, lens_list, meta, results):
+        """
+        Re-define method to use external cross-correlation outputs 
+        """
+        import sacc
+        import treecorr
+
+        S = sacc.Sacc()
+
+        # We include the n(z) data in the output.
+        # So here we load it in and add it to the data
+
+        # Load the tracer data N(z) from an input file and
+        # copy it to the output, for convenience
+        if source_list:
+            with self.open_input("shear_photoz_stack", wrapper=True) as f:
+                for i in source_list:
+                    z, Nz = f.get_bin_n_of_z(i)
+                    S.add_tracer("NZ", f"source_{i}", z, Nz)
+                    if self.config["do_shear_pos"] == True:
+                        S2.add_tracer("NZ", f"source_{i}", z, Nz)
+
+
+        if lens_list:
+            with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                # For both source and lens
+                for i in lens_list:
+                    z, Nz = f.get_bin_n_of_z(i)
+                    S.add_tracer("NZ", f"lens_{i}", z, Nz)
+                    if self.config["do_shear_pos"] == True:
+                        S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+
+        # Now build up the collection of data points, adding them all to
+        # the sacc data one by one.
+        self.add_data_points(S, results, tracers_later=True )
+
+        # The other processes are only needed for the covariance estimation.
+        # They do a bunch of other stuff here that isn't actually needed, but
+        # it should all be very fast. After this point they are not needed
+        # at all so return
+        if self.rank != 0:
+            return
+
+
+        # Our data points may currently be in any order depending on which processes
+        # ran which calculations.  Re-order them.
+        S.to_canonical_order()
+
+
+        self.write_metadata(S, meta)
+
+
+        # Finally, save the output to Sacc file
+        S.save_fits(self.get_output("twopoint_data_ext_cross_raw"), overwrite=True)
+
+
 
 
 if __name__ == "__main__":
