@@ -1140,8 +1140,8 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
     # Add values to the config file that are not previously defined
     config_options = {
         "supreme_path_root": "",
-        "do_pos": True,
-        "do_shear": True,
+        "do_pos_ext": True,
+        "do_shear_ext": True,
 
         # TODO: Remove any unnesesary config options here
         "calcs": [0, 1, 2],
@@ -1157,9 +1157,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "source_bins": [-1],
         "lens_bins": [-1],
         "reduce_randoms_size": 1.0,
-        "do_shear_shear": True,
-        "do_shear_pos": True,
-        "do_pos_pos": True,
+        "do_shear_shear": False,
+        "do_shear_pos": False,
+        "do_pos_pos": False,
         "var_method": "jackknife",
         "low_mem": False,
         "patch_dir": "./cache/patches",
@@ -1189,14 +1189,13 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         ext_list = np.arange(len( self.get_ext_list() ))
 
         # For shear-ext
-        if self.config["do_shear"]:
+        if self.config["do_shear_ext"]:
             k = SHEAR_EXT
             for i in source_list:
                 for j in ext_list:
                     calcs.append((i, j, k))
 
-        # For position-position we omit pairs with j>i
-        if self.config["do_pos"]:
+        if self.config["do_pos_ext"]:
             k = POS_EXT
             for i in lens_list:
                 for j in ext_list:
@@ -1307,9 +1306,6 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                 for i in source_list:
                     z, Nz = f.get_bin_n_of_z(i)
                     S.add_tracer("NZ", f"source_{i}", z, Nz)
-                    if self.config["do_shear_pos"] == True:
-                        S2.add_tracer("NZ", f"source_{i}", z, Nz)
-
 
         if lens_list:
             with self.open_input("lens_photoz_stack", wrapper=True) as f:
@@ -1317,8 +1313,6 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                 for i in lens_list:
                     z, Nz = f.get_bin_n_of_z(i)
                     S.add_tracer("NZ", f"lens_{i}", z, Nz)
-                    if self.config["do_shear_pos"] == True:
-                        S2.add_tracer("NZ", f"lens_{i}", z, Nz)
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
