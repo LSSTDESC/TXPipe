@@ -37,6 +37,8 @@ dependencies:
     - parallel-statistics==0.13
     - sacc==0.8
     - tjpcov==0.3.0
+    - jaxlib==0.4.14
+    - jax==0.4.14
     - pz-rail[dev]==0.99.1
     - pz-rail-bpz==0.1.0
     - pz-rail-astro-tools==0.0.2
