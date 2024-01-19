@@ -1186,7 +1186,8 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         calcs = []
 
         #get the list of external map files
-        ext_list = np.arange(len( self.get_ext_list() ))
+        self.ext_list = self.get_ext_list()
+        ext_list = np.arange(len( self.ext_list ))
 
         # For shear-ext
         if self.config["do_shear_ext"]:
@@ -1330,6 +1331,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
+
+        #add list of sp map names to the metadata
+        meta['ext_list'] = self.ext_list
 
         self.write_metadata(S, meta)
 
