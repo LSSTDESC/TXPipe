@@ -260,7 +260,7 @@ class TXTwoPoint(PipelineStage):
         for index, d in enumerate(results):
             # First the tracers and generic tags
             tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT, SHEAR_EXT] else f"lens_{d.i}"
-            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else (f"sp_{d.j}" if d.corr_type in [POS_EXT, SHEAR_EXT] else f"lens_{d.j}")
+            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else (f"external_{d.j}" if d.corr_type in [POS_EXT, SHEAR_EXT] else f"lens_{d.j}")
 
             # This happens when there is an empty bin. We can't do a covariance
             # here, or anything useful, really, so we just skip this bin.
