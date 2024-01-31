@@ -86,6 +86,7 @@ class TXTwoPointFourier(PipelineStage):
         "true_shear": False,
         "analytic_noise": False,
         "gaussian_sims_factor": [1.],
+        "galaxy_bias": [0.0],
         "b0": 1.0,
     }
 
@@ -119,10 +120,17 @@ class TXTwoPointFourier(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
 
+        if self.config["galaxy_bias"] == [0.0]:
+            bias = self.config["b0"]
+            print(f"Using bias b = b0 / D(z) with b0 = {b0}")
+        else:
+            bias = self.config["galaxy_bias"]
+            print(f"Using input galaxy bias per bin = {bias}")
+
         theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
         theory_sacc = theory_3x2pt(cosmo,
                                    tracer_sacc,
-                                   bias=self.config["b0"],
+                                   bias=bias,
                                    smooth=True,
                                    ell_values=theory_ell
         )
