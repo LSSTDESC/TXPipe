@@ -296,7 +296,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
         bias_dict = {}
         for name in lens_tracers.keys():
             i = int(name.split('_')[1])
-            bias_dict[name + "_bias"] = bias_values[i]
+            bias_dict[name + "_bias"] = bias_option[i]
 
     # Form 5: float
     else:
