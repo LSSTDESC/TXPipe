@@ -150,7 +150,9 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             
         #     # and for the profile columns into that catalog
-        #     profile_group = outfile.create_group("profile")
+            profile_group = outfile.create_group("profile")
+            profile_group["profile"] = cluster_ensemble.stacked_data
+            outfile.close()
         #     profile_group.create_dataset("cluster_index", shape=(ncluster, profile_len), dtype=np.int64)
            
         #     for colname in profile_colnames :
@@ -195,8 +197,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         #     start += 1
 
-        if self.rank == 0:
-            outfile.close()
+        #if self.rank == 0:
+        #    outfile.close()
 
                     
 
