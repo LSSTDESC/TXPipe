@@ -128,7 +128,15 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         print(cluster_ensemble.stacked_data)
 
+        #compute sample covariance
+        cluster_ensemble.compute_sample_covariance(tan_component="tangential_comp", cross_component="cross_comp")
+        
+            
+        err_DS_t = cluster_ensemble.cov["tan_sc"].diagonal() ** 0.5 
+        err_DS_x = cluster_ensemble.cov["cross_sc"].diagonal() ** 0.5 
 
+        print(err_DS_t, err_DS_x)
+        
 ###### The commented code below has to do with running in parallel... Not sure how to adapt it for the above
 ###### Or even if it is needed...
 
@@ -152,7 +160,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         #     # and for the profile columns into that catalog
             profile_group = outfile.create_group("profile")
             profile_group["profile"] = cluster_ensemble.stacked_data
+            profile_group = outfile.create_group("covariance")
+            profile_group["covariance"] = [cluster_ensemble.cov["tan_sc"], cluster_ensemble.cov["cross_sc"]]        
+          
             outfile.close()
+            
         #     profile_group.create_dataset("cluster_index", shape=(ncluster, profile_len), dtype=np.int64)
            
         #     for colname in profile_colnames :
