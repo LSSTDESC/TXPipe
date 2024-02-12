@@ -486,6 +486,18 @@ class CLClusterShearCatalogs(PipelineStage):
             # Give this chunk of data to the main run function
             yield s, e, data
 
+    def load_cluster_catalog_tomography(self):
+        from astropy.table import Table
+        with self.open_input("cluster_catalog_tomography") as f:
+            g = f["clusters/"]
+            ra = g["ra"][:]
+            dec = g["dec"][:]
+            redshift = g["redshift"][:]
+            rich = g["richness"][:]
+            ids = g["cluster_id"][:]
+
+        return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})
+
 
 
 class CombinedClusterCatalog:
@@ -590,15 +602,3 @@ class CombinedClusterCatalog:
 
         return clmm.GCData(data=cat)
     
-
-    def load_cluster_catalog_tomography(self):
-        from astropy.table import Table
-        with self.open_input("cluster_catalog_tomography") as f:
-            g = f["clusters/"]
-            ra = g["ra"][:]
-            dec = g["dec"][:]
-            redshift = g["redshift"][:]
-            rich = g["richness"][:]
-            ids = g["cluster_id"][:]
-
-        return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})

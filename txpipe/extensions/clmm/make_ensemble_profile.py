@@ -12,7 +12,7 @@ import ceci
 class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
-        ("cluster_catalog_tomography", HDFFile),
+        ("cluster_catalog", HDFFile),
 #        ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
 #        ("shear_tomography_catalog", TomographyCatalog),
@@ -44,8 +44,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         
         # load cluster catalog as an astropy table
-        #clusters = self.load_cluster_catalog()
-        clusters = self.load_cluster_catalog_tomography()
+        clusters = self.load_cluster_catalog()
+        #clusters = self.load_cluster_catalog_tomography() ### TEST BUT NOT WORKING
         ncluster = len(clusters)
         
         # load cluster shear catalog using similar astropy table set up as cluster catalog
