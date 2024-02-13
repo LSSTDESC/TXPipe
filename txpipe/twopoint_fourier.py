@@ -37,6 +37,93 @@ Measurement = collections.namedtuple(
 )
 
 
+class TXpureB(TXTwoPointFourier):
+    '''
+    Make shear B-mode measurements
+    '''
+    name = "TXpureB"
+
+    config_options = {
+                      'method'    : 'becker' # 'namaster' or 'becker'
+                      'Nell'      : 20,      # Number of ell bins
+                      'lmin'      : 200,     # ell min 
+                      'lmax'      : 2000,    # ell max
+                      'lspacing'  : 'log'    # ell spacing for binning 
+                      'bin_file'  : None,    # specifiy bins        
+                      'theta_min' : 2.5,     # (only for hybrideb) theta min in arcmin 
+                      'theta_max' : 250,     # (only for hybrideb) theta max in arcmin 
+                      'Ntheta'    : 1000,    # (only for hybrideb) Number of theta bins 
+                      'precomputed_hybrideb_weights' : None
+                      }
+    
+    def run(self):
+        import pymaster
+        import healpy
+        import sacc
+        import pyccl
+        import hybrideb
+
+        if method == 'namaster':
+            # Create bins !!!!!!!!!!!!!!!!!!!!! fix
+            b     = nmt.NmtBin.from_nside_linear(hp.npix2nside(mask.shape[0]), self.config["Nell"])
+            
+            # Initialize the fields
+            f2yp0 = nmt.NmtField(mask, [dmap[1], dmap[2]], purify_e=False, purify_b=True)
+
+            # Initialize workspace and compute coupling matrix
+            w_yp  = nmt.NmtWorkspace()
+            w_yp.compute_coupling_matrix(f2yp0, f2yp0, b)
+            
+            #Compute spectra
+            cl_coupled   = nmt.compute_coupled_cell(f2yp0, f2yp0)
+            cl_decoupled = w_yp.decouple_cell(cl_coupled)
+            
+            #return ell bins and the deconvolved clbb
+            return b.get_effective_ells(), cl_decoupled
+        
+
+        elif method == 'becker'
+            '''
+            B-mode method of Becker and Rozo 2015 http://arxiv.org/abs/1412.3851
+            '''
+            if self.config["precomputed_hybrideb_weights"] is None:
+                # Recomputing all weight functinons -- slow
+                heb = hybrideb.HybridEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
+                beb = hybrideb.BinEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
+                geb = hybrideb.GaussEB(beb, heb)
+
+            else:
+                # Loading precomputed weight functions
+                geb_nosep = np.load('/lcrc/project/SPT3G/users/ac.yomori/repo/nulltests_txpipe/geb_nosep_dict.npz',allow_pickle=True)
+                geb_sep   = np.load('/lcrc/project/SPT3G/users/ac.yomori/repo/nulltests_txpipe/geb_sep_dict.npz',allow_pickle=True)
+
+            En  = np.zeros(Nl); En_nosep = np.zeros(Nl)
+            Bn  = np.zeros(Nl); Bn_nosep = np.zeros(Nl)
+            ell = np.zeros(Nl)
+
+            for i in range(int(Nl)):
+                
+                # with-separation calculation
+                res = geb_sep['%d'%(i+1)].tolist()   
+
+                Fp  = res['2']
+                Fm  = res['3']
+                En[i]  = np.sum(Fp*xip + Fm*xim)/2 
+                Bn[i]  = np.sum(Fp*xip - Fm*xim)/2
+                ell[i] = res['4'][np.argmax(res['5'])]
+
+                # no-separation calculation
+                res = geb_nosep['%d'%(i+1)].tolist()
+                
+                Fp_nosep = res['2']
+                Fm_nosep = res['3']
+                
+                En_nosep[i] = np.sum(Fp_nosep*xip + Fm_nosep*xim)/2
+                Bn_nosep[i] = np.sum(Fp_nosep*xip - Fm_nosep*xim)/2
+
+
+
+
 class TXTwoPointFourier(PipelineStage):
     """
     Make Fourier space 3x2pt measurements using NaMaster
