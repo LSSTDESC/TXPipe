@@ -64,6 +64,9 @@ class TXpureB(TXTwoPointFourier):
         import hybrideb
 
         if method == 'namaster':
+            '''
+            B-mode method that is already implemented in NaMaster
+            '''
             # Create bins !!!!!!!!!!!!!!!!!!!!! fix
             b     = nmt.NmtBin.from_nside_linear(hp.npix2nside(mask.shape[0]), self.config["Nell"])
             
@@ -94,11 +97,10 @@ class TXpureB(TXTwoPointFourier):
 
             else:
                 # Loading precomputed weight functions
-                geb_nosep = np.load('/lcrc/project/SPT3G/users/ac.yomori/repo/nulltests_txpipe/geb_nosep_dict.npz',allow_pickle=True)
-                geb_sep   = np.load('/lcrc/project/SPT3G/users/ac.yomori/repo/nulltests_txpipe/geb_sep_dict.npz',allow_pickle=True)
+                geb_sep   = np.load(self.config['precomputed_hybrideb_weights'],allow_pickle=True)
 
-            En  = np.zeros(Nl); En_nosep = np.zeros(Nl)
-            Bn  = np.zeros(Nl); Bn_nosep = np.zeros(Nl)
+            En  = np.zeros(Nl)
+            Bn  = np.zeros(Nl)
             ell = np.zeros(Nl)
 
             for i in range(int(Nl)):
@@ -112,16 +114,7 @@ class TXpureB(TXTwoPointFourier):
                 Bn[i]  = np.sum(Fp*xip - Fm*xim)/2
                 ell[i] = res['4'][np.argmax(res['5'])]
 
-                # no-separation calculation
-                res = geb_nosep['%d'%(i+1)].tolist()
-                
-                Fp_nosep = res['2']
-                Fm_nosep = res['3']
-                
-                En_nosep[i] = np.sum(Fp_nosep*xip + Fm_nosep*xim)/2
-                Bn_nosep[i] = np.sum(Fp_nosep*xip - Fm_nosep*xim)/2
-
-
+            return ell, Bn
 
 
 class TXTwoPointFourier(PipelineStage):
