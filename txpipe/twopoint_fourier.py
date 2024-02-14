@@ -95,27 +95,36 @@ class TXpureB(TXTwoPointFourier):
                 beb = hybrideb.BinEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
                 geb = hybrideb.GaussEB(beb, heb)
 
+                geb_dict = {}
+                for i in range(0,self.config['Nell']):
+                    geb_dict['%d'%(i+1)] = {}
+                    for j in range(0,6):
+                        geb_dict['%d'%(i+1)]['%d'%(j+1)]=geb(i)[j]
+
+                        np.savez('/lcrc/project/SPT3G/users/ac.yomori/repo/nulltests_txpipe/geb_nosep_dict.npz', **geb_dict)
+
             else:
                 # Loading precomputed weight functions
-                geb_sep   = np.load(self.config['precomputed_hybrideb_weights'],allow_pickle=True)
+                geb   = np.load(self.config['precomputed_hybrideb_weights'],allow_pickle=True)
 
             En  = np.zeros(Nl)
             Bn  = np.zeros(Nl)
             ell = np.zeros(Nl)
 
             for i in range(int(Nl)):
-                
+        
                 # with-separation calculation
-                res = geb_sep['%d'%(i+1)].tolist()   
-
-                Fp  = res['2']
-                Fm  = res['3']
+                res    = geb['%d'%(i+1)].tolist()   
+                Fp     = res['2']
+                Fm     = res['3']
                 En[i]  = np.sum(Fp*xip + Fm*xim)/2 
                 Bn[i]  = np.sum(Fp*xip - Fm*xim)/2
                 ell[i] = res['4'][np.argmax(res['5'])]
 
             return ell, Bn
 
+        else:
+            sys.exit("The only method implemented right now are 'becker' or 'namaster' ")
 
 class TXTwoPointFourier(PipelineStage):
     """
