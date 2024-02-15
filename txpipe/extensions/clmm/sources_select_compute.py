@@ -371,17 +371,25 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
 
-    def load_cluster_catalog(self):
+    def load_cluster_catalog(self):   # TO TEST
         from astropy.table import Table
         with self.open_input("cluster_catalog") as f:
             g = f["clusters/"]
-            ra = g["ra"][:]
-            dec = g["dec"][:]
-            redshift = g["redshift"][:]
-            rich = g["richness"][:]
-            ids = g["cluster_id"][:]
-
+            cl_liste = self.load_cluster_list(group=g)
+            
+        return cl_list
+    
+    
+    def load_cluster_list(self, group=None):
+        from astropy.table import Table
+        ra = group["ra"][:]
+        dec = group["dec"][:]
+        redshift = group["redshift"][:]
+        rich = group["richness"][:]
+        ids = group["cluster_id"][:]        
+        
         return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})
+          
 
     def iterate_source_catalog(self):
         """
@@ -485,19 +493,6 @@ class CLClusterShearCatalogs(PipelineStage):
 
             # Give this chunk of data to the main run function
             yield s, e, data
-
-    def load_cluster_catalog_tomography(self):
-        from astropy.table import Table
-        with self.open_input("cluster_catalog_tomography") as f:
-            g = f["clusters/"]
-            ra = g["ra"][:]
-            dec = g["dec"][:]
-            redshift = g["redshift"][:]
-            rich = g["richness"][:]
-            ids = g["cluster_id"][:]
-
-        return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})
-
 
 
 class CombinedClusterCatalog:

@@ -64,23 +64,27 @@ BPZ_lite:
         mag_z: 27.98
 
 CLClusterBinningRedshiftRichness:
-    zedge : [0.1, 0.4, 0.6, 0.8]
-    richedge : [5., 10., 20.,25.]
+    zedge : [0.2, 0.4, 0.6, 0.8]
+    richedge : [5., 10., 20.,25., 50.]
 
-CLClusterShearCatalogs:
-    max_radius: 5.0  # Mpc
-    delta_z: 0.2  # redshift buffer
+CLClusterShearCatalogs: 
+    chunk_rows : 100_000 # rows to read at once from source cat
+    max_radius : 5  # Mpc
+    delta_z : 0.2  # redshift buffer
+    redshift_criterion : "mean"  # might also need PDF
+    subtract_mean_shear : True
+    
 
 CLClusterEnsembleProfiles:
     #radial bin definition
     r_min : 0.2 #in Mpc
-    r_max : 5.0 #in Mpc
+    r_max : 3.0 #in Mpc
+    nbins : 4 # number of bins
     #type of profile
     delta_sigma_profile : True
     shear_profile : False
     magnification_profile : False
-    #stacking step or not
-    stack_profile : True
+
     
     
 
