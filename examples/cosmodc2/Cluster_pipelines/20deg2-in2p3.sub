@@ -1,0 +1,9 @@
+#!/usr/bin/bash
+#SBATCH --time=01:00:00
+#SBATCH --partition=hpc
+#SBATCH --ntasks=30
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=128000
+
+source /pbs/throng/lsst/users/jzuntz/txpipe-environments/setup-txpipe
+ceci examples/cosmodc2/pipeline-20deg2-CL-in2p3.yml
