@@ -7,7 +7,7 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 64
+    nside: 128
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
@@ -249,6 +249,7 @@ TXSourceMaps:
 
 TXLensMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
+    nside: 128
 
 # For redmagic mapping
 TXExternalLensMaps:
@@ -260,6 +261,10 @@ TXExternalLensMaps:
 
 TXSourceMaps: {}
 TXLensMaps: {}
+
+TXDensityMaps:
+    nside: 128
+
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
