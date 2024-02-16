@@ -39,7 +39,7 @@ stages:
 
 
 output_dir: ./data/cosmodc2/outputs-20deg2-CL
-config: ./examples/cosmodc2/config-20deg2-CL.yml
+config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
