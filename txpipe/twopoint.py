@@ -253,8 +253,8 @@ class TXTwoPoint(PipelineStage):
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
-        POS_EXT = "pos_ext"
-        SHEAR_EXT = "shear_ext"
+        POS_EXT = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
+        SHEAR_EXT = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
 
         comb = []
         for index, d in enumerate(results):
@@ -506,15 +506,11 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_EXT:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_pos_ext(i, j)
-            # TODO: make a new data type in sacc for external cross correlations
-            # for now we will use a string as a place holder
-            xtype = "pos_ext"
+            xtype = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
         elif k == SHEAR_EXT:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_shear_ext(i, j)
-            # TODO: make a new data type in sacc for external cross correlations
-            # for now we will use a string as a place holder
-            xtype = "shear_ext"
+            xtype = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
