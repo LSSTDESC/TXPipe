@@ -87,6 +87,9 @@ class TXTwoPointFourier(PipelineStage):
         "analytic_noise": False,
         "gaussian_sims_factor": [1.],
         "b0": 1.0,
+        "do_shear_shear": True,
+        "do_shear_pos": True,
+        "do_pos_pos": True,
     }
 
     def run(self):
@@ -189,23 +192,35 @@ class TXTwoPointFourier(PipelineStage):
             mask = f.read_map("mask")
             if self.rank == 0:
                 print("Loaded mask")
-        # Then the shear maps and weights
-        with self.open_input("source_maps", wrapper=True) as f:
-            nbin_source = f.file["maps"].attrs["nbin_source"]
-            g1_maps = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
-            g2_maps = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
-            lensing_weights = [
-                f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)
-            ]
-            if self.rank == 0:
-                print(f"Loaded 2 x {nbin_source} shear maps")
-                print(f"Loaded {nbin_source} lensing weight maps")
+        
+        # Using a flat mask as the clustering weight for now, since I need to know
+        # how to turn the depth map into a weight
+        clustering_weight = mask
 
-        # And finally the density maps
-        with self.open_input("density_maps", wrapper=True) as f:
-            nbin_lens = f.file["maps"].attrs["nbin_lens"]
-            d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
-            print(f"Loaded {nbin_lens} overdensity maps")
+        if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
+            # Then the shear maps and weights
+            with self.open_input("source_maps", wrapper=True) as f:
+                nbin_source = f.file["maps"].attrs["nbin_source"]
+                g1_maps = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
+                g2_maps = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
+                lensing_weights = [
+                    f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)
+                ]
+                if self.rank == 0:
+                    print(f"Loaded 2 x {nbin_source} shear maps")
+                    print(f"Loaded {nbin_source} lensing weight maps")
+        else:
+            g1_maps, g2_maps, lensing_weights = [], [], []
+
+
+        if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
+            # And finally the density maps
+            with self.open_input("density_maps", wrapper=True) as f:
+                nbin_lens = f.file["maps"].attrs["nbin_lens"]
+                d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+                print(f"Loaded {nbin_lens} overdensity maps")
+        else:
+            d_maps = []
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
@@ -216,10 +231,6 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
             print(f"Nside = {pixel_scheme.nside}")
-
-        # Using a flat mask as the clustering weight for now, since I need to know
-        # how to turn the depth map into a weight
-        clustering_weight = mask
 
         # Set any unseen pixels to zero weight.
         for d in d_maps:
@@ -311,20 +322,26 @@ class TXTwoPointFourier(PipelineStage):
         else:
             print("Not using systematics maps for deprojection in NaMaster")
 
-        if deproject_syst_clustering:
-            density_fields = [
-                (nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0))
-                for d in d_maps
+        if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
+            if deproject_syst_clustering:
+                density_fields = [
+                    (nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0))
+                    for d in d_maps
+                ]
+            else:
+                density_fields = [
+                    (nmt.NmtField(clustering_weight, [d], n_iter=0)) for d in d_maps
+                ]
+        else:
+            density_fields = []
+
+        if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
+            lensing_fields = [
+                (nmt.NmtField(lw, [g1, g2], n_iter=0))
+                for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)
             ]
         else:
-            density_fields = [
-                (nmt.NmtField(clustering_weight, [d], n_iter=0)) for d in d_maps
-            ]
-
-        lensing_fields = [
-            (nmt.NmtField(lw, [g1, g2], n_iter=0))
-            for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)
-        ]
+            lensing_fields = []
 
         # Collect together all the maps we will output
         maps = {
@@ -489,24 +506,27 @@ class TXTwoPointFourier(PipelineStage):
         calcs = []
 
         # For shear-shear we omit pairs with j>i
-        k = SHEAR_SHEAR
-        for i in range(nbins_source):
-            for j in range(i + 1):
-                calcs.append((i, j, k))
+        if self.config["do_shear_shear"]:
+            k = SHEAR_SHEAR
+            for i in range(nbins_source):
+                for j in range(i + 1):
+                    calcs.append((i, j, k))
 
         # For shear-position we use all pairs
-        k = SHEAR_POS
-        for i in range(nbins_source):
-            for j in range(nbins_lens):
-                calcs.append((i, j, k))
+        if self.config["do_shear_pos"]:
+            k = SHEAR_POS
+            for i in range(nbins_source):
+                for j in range(nbins_lens):
+                    calcs.append((i, j, k))
 
         # For position-position we omit pairs with j>i.
         # We do keep cross-pairs, since even though we may not want to
         # do parameter estimation with them they are useful diagnostics.
-        k = POS_POS
-        for i in range(nbins_lens):
-            for j in range(i + 1):
-                calcs.append((i, j, k))
+        if self.config["do_pos_pos"]:
+            k = POS_POS
+            for i in range(nbins_lens):
+                for j in range(i + 1):
+                    calcs.append((i, j, k))
 
         calcs = [calc for calc in self.split_tasks_by_rank(calcs)]
 
