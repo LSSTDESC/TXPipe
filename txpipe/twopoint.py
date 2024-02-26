@@ -253,8 +253,8 @@ class TXTwoPoint(PipelineStage):
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
-        POS_EXT = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
-        SHEAR_EXT = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
+        POS_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
+        SHEAR_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
 
         comb = []
         for index, d in enumerate(results):
@@ -268,10 +268,10 @@ class TXTwoPoint(PipelineStage):
             elif d.corr_type == WTHETA:
                 tracer1 = f"lens_{d.i}"
                 tracer2 = f"lens_{d.j}"
-            elif d.corr_type == POS_EXT:
+            elif d.corr_type == POS_EXT_TYPE:
                 tracer1 = f"lens_{d.i}"
                 tracer2 = f"external_{d.j}"
-            elif d.corr_type == SHEAR_EXT:
+            elif d.corr_type == SHEAR_EXT_TYPE:
                 tracer1 = f"source_{d.i}"
                 tracer2 = f"external_{d.j}"
             else:
@@ -518,11 +518,11 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_POS:
             xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
-        elif k == POS_EXT:
+        elif k == POS_EXT_TYPE:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_pos_ext(i, j)
             xtype = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
-        elif k == SHEAR_EXT:
+        elif k == SHEAR_EXT_TYPE:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_shear_ext(i, j)
             xtype = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
