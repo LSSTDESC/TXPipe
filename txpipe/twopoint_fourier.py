@@ -90,6 +90,7 @@ class TXTwoPointFourier(PipelineStage):
         "do_shear_shear": True,
         "do_shear_pos": True,
         "do_pos_pos": True,
+        "compute_theory": True,
     }
 
     def run(self):
@@ -119,28 +120,32 @@ class TXTwoPointFourier(PipelineStage):
         # fiducial theory C_ell, which is used in the deprojection calculation
         tracer_sacc = self.load_tracers(nbin_source, nbin_lens)
 
-        with self.open_input("fiducial_cosmology", wrapper=True) as f:
-            cosmo = f.to_ccl()
+        if self.config["compute_theory"]:
+            with self.open_input("fiducial_cosmology", wrapper=True) as f:
+                cosmo = f.to_ccl()
 
-        theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
-        theory_sacc = theory_3x2pt(cosmo,
-                                   tracer_sacc,
-                                   bias=self.config["b0"],
-                                   smooth=True,
-                                   ell_values=theory_ell
-        )
+            theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
+            theory_sacc = theory_3x2pt(cosmo,
+                                    tracer_sacc,
+                                    bias=self.config["b0"],
+                                    smooth=True,
+                                    ell_values=theory_ell
+            )
+        else:
+            theory_sacc = sacc.Sacc()
 
         # Get the complete list of calculations to be done,
         # for all the three spectra and all the bin pairs.
         # This will be used for parallelization.
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
-        # Load in the per-bin auto-correlation noise levels and
-        # mean response values
-        # Note - this is currently unused, because we are using the noise
-        # maps instead of an analytic form, but that could change later
-        # so I will leave this here.
-        tomo_info = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
+        if not self.config["analytic_noise"]:
+            # Load in the per-bin auto-correlation noise levels and
+            # mean response values
+            # Note - this is currently unused, because we are using the noise
+            # maps instead of an analytic form, but that could change later
+            # so I will leave this here.
+            tomo_info = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
 
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
@@ -804,15 +809,17 @@ class TXTwoPointFourier(PipelineStage):
 
         sacc_data = sacc.Sacc()
 
-        with self.open_input("shear_photoz_stack", wrapper=True) as f:
-            for i in range(nbin_source):
-                z, Nz = f.get_bin_n_of_z(i)
-                sacc_data.add_tracer("NZ", f"source_{i}", z, Nz)
+        if nbin_source > 0:
+            with self.open_input("shear_photoz_stack", wrapper=True) as f:
+                for i in range(nbin_source):
+                    z, Nz = f.get_bin_n_of_z(i)
+                    sacc_data.add_tracer("NZ", f"source_{i}", z, Nz)
 
-        with self.open_input("lens_photoz_stack", wrapper=True) as f:
-            for i in range(nbin_lens):
-                z, Nz = f.get_bin_n_of_z(i)
-                sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz)
+        if nbin_lens > 0:
+            with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                for i in range(nbin_lens):
+                    z, Nz = f.get_bin_n_of_z(i)
+                    sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz)
 
         return sacc_data
 
@@ -829,7 +836,7 @@ class TXTwoPointFourier(PipelineStage):
         Cdd = sacc.standard_types.galaxy_density_cl
 
         S = tracer_sacc.copy()
-
+    
         # We have saved the results in a big list.  Each entry contains a single
         # bin pair and spectrum type, but many data points at different angles.
         # Here we pull them all out to add to sacc
@@ -840,6 +847,7 @@ class TXTwoPointFourier(PipelineStage):
                 else f"lens_{d.i}"
             )
             tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CEB, CBE, CBB] else f"lens_{d.j}"
+
 
             n = len(d.l)
             # The full set of ell values (unbinned), used to store the
