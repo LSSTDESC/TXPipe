@@ -518,11 +518,11 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_POS:
             xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
-        elif k == POS_EXT_TYPE:
+        elif k == POS_EXT:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_pos_ext(i, j)
             xtype = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
-        elif k == SHEAR_EXT_TYPE:
+        elif k == SHEAR_EXT:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_shear_ext(i, j)
             xtype = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
