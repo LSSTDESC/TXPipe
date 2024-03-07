@@ -172,7 +172,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     tan_component_out = "tangential_comp",
                     cross_component_out = "cross_comp",
                     weights_in = "weight_clmm", # name given in the CLClusterShearCatalogs stage
-                    weights_out = "W_l"
+                    weights_out = "W_l",
+                    include_empty_bins = True
                     )
 
 
