@@ -63,6 +63,7 @@ class TXTwoPointFourier(PipelineStage):
         ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
         ("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters
         ("tracer_metadata", TomographyCatalog),  # For density info
+        ("lens_maps", MapsFile),
         ("source_maps", MapsFile),
         ("density_maps", MapsFile),
         ("mask", MapsFile),
@@ -759,8 +760,26 @@ class TXTwoPointFourier(PipelineStage):
             n_ell_coupled[3, 2:] = n_ls
 
         if k == POS_POS:
-            metadata = self.open_input("tracer_metadata")
+            ### New method ###
+            with self.open_input("lens_maps", wrapper=True) as f:
+                lens_map = f.read_map(f"ngal_{i}")
+            lens_map[lens_map == hp.UNSEEN] = 0.0
+            nside = hp.get_nside(lens_map)
+            pxarea = hp.nside2pixarea(nside)
+            #compute the mean galaxy counts (in pixels above the mask threshold)
+            above_thresh = mask > self.config["mask_threshold"]
+            mu_N = np.sum(lens_map[above_thresh]) / np.sum(mask[above_thresh])
+            #set to 0 any pixels in the mask below the threshold
+            mask[~above_thresh] = 0.
+            #coupled N_ells:
+            n_ls = pxarea * np.mean(mask) / mu_N
+            n_ell_coupled = n_ls * np.ones((1, 3 * nside))
+
+
+            ### Old method ###
+            '''
             nside = hp.get_nside(maps["dw"])
+            metadata = self.open_input("tracer_metadata")
             ndens = (
                 metadata["tracers/lens_density"][i] * 3600 * 180 / np.pi * 180 / np.pi
             )
@@ -769,6 +788,7 @@ class TXTwoPointFourier(PipelineStage):
             )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
             # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
+            '''
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
         
