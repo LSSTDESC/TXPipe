@@ -21,16 +21,16 @@ modules: >
 python_paths: []
 
 stages:
-    - name: TXSourceSelectorMetadetect
-      nprocess: 30
-    - name: Inform_BPZ_lite
-      nprocess: 1
-    - name: BPZ_lite
-      nprocess: 30
-    - name: CLClusterBinningRedshiftRichness
-      nprocess: 1
-    - name: CLClusterShearCatalogs
-      nprocess: 1 #>1 does not work with mpi
+#    - name: TXSourceSelectorMetadetect
+#      nprocess: 30
+#    - name: Inform_BPZ_lite
+#      nprocess: 1
+#    - name: BPZ_lite
+#      nprocess: 30
+#    - name: CLClusterBinningRedshiftRichness
+#      nprocess: 1
+#    - name: CLClusterShearCatalogs
+#      nprocess: 1 #>1 does not work with mpi
     - name: CLClusterEnsembleProfiles
       nprocess: 1
 #    - name: CLClusterDataVector
@@ -39,18 +39,20 @@ stages:
 
 
 output_dir: ./data/cosmodc2/outputs-20deg2-CL
-config: ./examples/cosmodc2/config-20deg2-CL.yml
+config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  ./data/cosmodc2/20deg2/shear_catalog.hdf5
+    #shear_catalog:  ./data/cosmodc2/20deg2/shear_catalog.hdf5
     #photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
-    calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
-    spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
-    cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
+    #calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
+    #spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
+    #cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
     #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
+    cluster_catalog_tomography : ./data/cosmodc2/20deg2/cluster_catalog_tomography.hdf5
+    cluster_shear_catalogs : ./data/cosmodc2/20deg2/cluster_shear_catalogs.hdf5
     
 resume: True
 log_dir: ./data/cosmodc2/logs

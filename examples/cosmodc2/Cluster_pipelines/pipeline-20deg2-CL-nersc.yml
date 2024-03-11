@@ -1,13 +1,13 @@
 #this step depends on where you run
 #for CCin2p3
-site:
-    name: cc-parallel
-    mpi_command: "mpirun -n"
+# site:
+#     name: cc-parallel
+#     mpi_command: "mpirun -n"
 
 #for NERSC
-#site:
-#    name: cori-batch
-#    image: ghcr.io/lsstdesc/txpipe-dev
+site:
+   name: cori-batch
+   image: ghcr.io/lsstdesc/txpipe-dev
 
 
 #all the following steps should not depend on where you run 
@@ -39,7 +39,7 @@ stages:
 
 
 output_dir: ./data/cosmodc2/outputs-20deg2-CL
-config: ./examples/cosmodc2/config-20deg2-CL.yml
+config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
@@ -55,4 +55,3 @@ inputs:
 resume: True
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_20deg2.txt
-
