@@ -4,7 +4,7 @@ global:
     # This is read by many stages that read complete
     # catalog data, and tells them how many rows to read
     # at once
-    chunk_rows: 100000
+    chunk_rows: 1000000000
     # These mapping options are also read by a range of stages
     pixelization: healpix
     nside: 128
@@ -56,10 +56,11 @@ TXSourceSelectorMetacal:
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
-    max_rows: 1000
+    max_rows: 10000000000
     delta_gamma: 0.02
-    source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
+    source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
     shear_prefix: mcal_
+    resp_mean_diag : True
 
 TXSourceSelectorLensfit:
     bands: ri #used for selection

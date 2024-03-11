@@ -34,7 +34,7 @@ chmod +x Mambaforge3.sh
 source ./conda/bin/activate
 
 # conda-installable stuff
-mamba env update  --file environment.yml
+conda env update   --file environment.yml
 
 
 if [[ "$CHIPSET" = "arm64" || "$CHIPSET" = "aarch64" ]]
