@@ -1,10 +1,15 @@
 # Stages to run
 stages:
     - name: TXSourceSelectorHSC     # select and split objects into source bins
-  #  - name: TXShearCalibration
-  #  - name: TXSourceDiagnosticPlots
+    - name: TXShearCalibration
+    #- name: TXSourceDiagnosticPlots
+    #- name: TXSourceMaps
+    #- name: TXSimpleMaskSource
+    - name: TXJackknifeCenters
     - name: TXRoweStatistics  
     - name: TXTauStatistics
+    #- name: TXTracerMetadata
+    #- name: TXGammaTStars
       #- name: TXPSFDiagnostics
 # modules and packages to import that have pipeline
 # stages defined in them
@@ -19,7 +24,7 @@ python_paths:
     - submodules/RAIL
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/hscy1/outputs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -42,24 +47,26 @@ config: examples/hscy1/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc2txpipe/shear_cat_WIDE12H.h5
+    shear_catalog:  /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/shear_cat_FULLCAT.hdf5
+    shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/shear_pz_stack.hdf5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/lens_pz_stack.hdf5
     #photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     #photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
     #photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    #exposures: data/example/inputs/exposures.hdf5
     star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_allfields.h5
-    #star catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc_stars/GAMA09H_stars.fits
-    # This file comes with the code
+    binned_star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/binned_star_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
-    random_cats_source: Null
+    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/randoms_new.hdf5
+    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/
+    tracer_metadata: data/hscy1/outputs/tracer_metadata.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: False
+resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/hscy1/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/hscy1/log.txt
