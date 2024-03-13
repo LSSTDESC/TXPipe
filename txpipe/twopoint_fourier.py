@@ -202,6 +202,10 @@ class TXTwoPointFourier(PipelineStage):
         # Using a flat mask as the clustering weight for now, since I need to know
         # how to turn the depth map into a weight
         clustering_weight = mask
+        clustering_weight[clustering_weight == healpy.UNSEEN] = 0
+        #set to 0 any pixels in the mask that are below the specified threshold
+        below_thresh = clustering_weight <= self.config["mask_threshold"]
+        clustering_weight[below_thresh] = 0.
 
         if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
             # Then the shear maps and weights
@@ -224,6 +228,8 @@ class TXTwoPointFourier(PipelineStage):
             with self.open_input("density_maps", wrapper=True) as f:
                 nbin_lens = f.file["maps"].attrs["nbin_lens"]
                 d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+                #for d in d_maps:
+                #    d[d == healpy.UNSEEN] = 0
                 print(f"Loaded {nbin_lens} overdensity maps")
         else:
             d_maps = []
@@ -241,6 +247,7 @@ class TXTwoPointFourier(PipelineStage):
         # Set any unseen pixels to zero weight.
         for d in d_maps:
             clustering_weight[clustering_weight == healpy.UNSEEN] = 0
+            print("Unseen in mask", np.unique(clustering_weight[d == healpy.UNSEEN]))
             clustering_weight[d == healpy.UNSEEN] = 0
 
         # Mask any pixels which have the healpix bad value
@@ -423,6 +430,8 @@ class TXTwoPointFourier(PipelineStage):
             else:
                 w1, f1 = density_field
                 w2, f2 = density_field
+            print("pre_field", np.mean(w1))
+            print("post_field", np.mean(f1.get_mask()))
 
 
             # First we derive a hash which will change whenever either
@@ -445,6 +454,7 @@ class TXTwoPointFourier(PipelineStage):
             if space is None:
                 print(f"Rank {self.rank} computing coupling matrix " f"{i}, {j}, {k}")
                 space = nmt.NmtWorkspace()
+                print(np.mean(f1.get_mask()), np.mean(f2.get_mask()))
                 space.compute_coupling_matrix(f1, f2, ell_bins, is_teb=False, n_iter=1)
             else:
                 print(
@@ -603,6 +613,7 @@ class TXTwoPointFourier(PipelineStage):
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
+            print("MCM", np.diag(workspace.get_coupling_matrix()))
             c = nmt.compute_full_master(
                 field_i,
                 field_j,
@@ -611,6 +622,7 @@ class TXTwoPointFourier(PipelineStage):
                 workspace=workspace,
                 n_iter=1,
             )
+            print('c_ell: ', c)
             # noise to subtract (already decoupled)
 
             # Load mask and pass to function below.
@@ -625,6 +637,7 @@ class TXTwoPointFourier(PipelineStage):
             )
             if n_ell is not None:
                 c = c - n_ell
+                print('c_ell - n_ell: ', c)
                 
             # Writing out the noise for later cross-checks
         else:
@@ -657,7 +670,7 @@ class TXTwoPointFourier(PipelineStage):
         # the window information
         ls = ell_bins.get_effective_ells()
 
-        c_beam = c / window_pixel(ls, pixel_scheme.nside) ** 2
+        c_beam = c# / window_pixel(ls, pixel_scheme.nside) ** 2
         print("c_beam, k, i, j", c_beam, k, i, j)
 
         # this has shape n_cls, n_bpws, n_cls, lmax+1
@@ -775,9 +788,7 @@ class TXTwoPointFourier(PipelineStage):
             n_ls = pxarea * np.mean(mask) / mu_N
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
-
-            ### Old method ###
-            '''
+            '''### Old method ###
             nside = hp.get_nside(maps["dw"])
             metadata = self.open_input("tracer_metadata")
             ndens = (
@@ -787,8 +798,10 @@ class TXTwoPointFourier(PipelineStage):
                 np.mean(mask) / ndens
             )  # Coupled noise from https://arxiv.org/pdf/1912.08209.pdf and
             # also checking https://github.com/LSSTDESC/DEHSC_LSS/blob/master/hsc_lss/power_specter.py#L109
-            n_ell_coupled = n_ls * np.ones((1, 3 * nside))
-            '''
+            print('######')
+            print(n_ls)
+            print('######')
+            n_ell_coupled = n_ls * np.ones((1, 3 * nside))'''
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
         
