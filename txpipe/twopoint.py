@@ -497,11 +497,9 @@ class TXTwoPoint(PipelineStage):
         import sacc
         import pickle
         #TODO: fix up the caching code
-        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]: 
-            if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
-                pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
-            elif self.name == "TXTwoPointPixelExtCross":
-                pickle_filename = self.get_output("twopoint_data_ext_cross_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
+            pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
                 print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
@@ -518,14 +516,6 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_POS:
             xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
-        elif k == POS_EXT:
-            assert self.name == "TXTwoPointPixelExtCross"
-            xx = self.calculate_pos_ext(i, j)
-            xtype = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
-        elif k == SHEAR_EXT:
-            assert self.name == "TXTwoPointPixelExtCross"
-            xx = self.calculate_shear_ext(i, j)
-            xtype = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
@@ -543,7 +533,7 @@ class TXTwoPoint(PipelineStage):
         if self.comm:
             self.comm.Barrier()
 
-        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]:
+        if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
             if self.rank == 0:
                 print(f"Pickling result to {pickle_filename}")
                 with open(pickle_filename, "wb") as f:
@@ -1217,6 +1207,69 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
             print(f"Running {len(calcs)} calculations: {calcs}")
 
         return calcs
+
+    def call_treecorr(self, i, j, k):
+        """
+        call_treecorr is modified for this sub-class to include the external-cross-correlations
+
+        This is a wrapper for interaction with treecorr.
+        """
+        import sacc
+        import pickle
+        #TODO: fix up the caching code
+        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]: 
+            if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
+                pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+            elif self.name == "TXTwoPointPixelExtCross":
+                pickle_filename = self.get_output("twopoint_data_ext_cross_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+
+            if os.path.exists(pickle_filename):
+                print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
+                with open(pickle_filename, "rb") as f:
+                    result = pickle.load(f)
+                return result
+ 
+        if k == SHEAR_SHEAR:
+            xx = self.calculate_shear_shear(i, j)
+            xtype = "combined"
+        elif k == SHEAR_POS:
+            xx = self.calculate_shear_pos(i, j)
+            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
+        elif k == POS_POS:
+            xx = self.calculate_pos_pos(i, j)
+            xtype = sacc.standard_types.galaxy_density_xi
+        elif k == POS_EXT:
+            assert self.name == "TXTwoPointPixelExtCross"
+            xx = self.calculate_pos_ext(i, j)
+            xtype = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
+        elif k == SHEAR_EXT:
+            assert self.name == "TXTwoPointPixelExtCross"
+            xx = self.calculate_shear_ext(i, j)
+            xtype = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
+        else:
+            raise ValueError(f"Unknown correlation function {k}")
+
+        # Force garbage collection here to make sure all the
+        # catalogs are definitely freed
+        gc.collect()
+
+        # The measurement object collects the results and type info.
+        # we use it because the ordering will not be simple if we have
+        # parallelized, so it's good to keep explicit track.
+        result = Measurement(xtype, xx, i, j)
+
+        sys.stdout.flush()
+
+        if self.comm:
+            self.comm.Barrier()
+
+        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]:
+            if self.rank == 0:
+                print(f"Pickling result to {pickle_filename}")
+                with open(pickle_filename, "wb") as f:
+                    pickle.dump(result, f)
+ 
+        return result
 
     def calculate_pos_ext(self, i, j):
         import treecorr
