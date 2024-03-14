@@ -1217,11 +1217,8 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         import sacc
         import pickle
         #TODO: fix up the caching code
-        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]: 
-            if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
-                pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
-            elif self.name == "TXTwoPointPixelExtCross":
-                pickle_filename = self.get_output("twopoint_data_ext_cross_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
+        if self.name == "TXTwoPointPixelExtCross": 
+            pickle_filename = self.get_output("twopoint_data_ext_cross_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
                 print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
@@ -1263,7 +1260,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         if self.comm:
             self.comm.Barrier()
 
-        if self.name in ["TXTwoPoint","TXTwoPointPixel","TXTwoPointPixelExtCross"]:
+        if self.name == "TXTwoPointPixelExtCross":
             if self.rank == 0:
                 print(f"Pickling result to {pickle_filename}")
                 with open(pickle_filename, "wb") as f:
