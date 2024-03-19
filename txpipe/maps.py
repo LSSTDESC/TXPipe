@@ -424,18 +424,16 @@ class TXDensityMaps(PipelineStage):
     outputs = [
         ("density_maps", MapsFile),
     ]
+    config_options = {
+        "mask_threshold": 0.0
+    }
 
     def run(self):
         import healpy
 
-        #check if mask threshold provided in config (assume 0 if not)
-        try:
-            thresh = self.config["mask_threshold"]
-        except KeyError:
-            thresh = 0
         # Read the mask and set all pixels below the threshold to 0
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask(thresh=thresh)
+            mask = f.read_mask(thresh=self.config["mask_threshold"])
         
         #identify unmasked pixels
         pix_keep = mask > 0.
