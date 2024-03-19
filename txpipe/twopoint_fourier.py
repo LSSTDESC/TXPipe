@@ -238,10 +238,13 @@ class TXTwoPointFourier(PipelineStage):
             print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
             print(f"Nside = {pixel_scheme.nside}")
 
+        #commented code below should be obsolete with current mask treatment
+        ''' 
         # Set any unseen pixels to zero weight.
         for d in d_maps:
             clustering_weight[clustering_weight == healpy.UNSEEN] = 0
             clustering_weight[d == healpy.UNSEEN] = 0
+        '''
 
         # Mask any pixels which have the healpix bad value
         for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
@@ -294,6 +297,15 @@ class TXTwoPointFourier(PipelineStage):
                             syst_map = healpy.read_map(systmap_file, verbose=False)
 
                             # normalize map for Namaster
+                            # calculate the mean, accounting for case where mask isn't binary
+                            unmasked = clustering_weight > self.config["mask_threshold"]
+                            mean = (syst_map[unmasked] * clustering_weight[unmasked]).sum() / clustering_weight[unmasked].sum()
+                            print("Syst map: mean value = ", mean)
+                            #subtract the mean rather than normalise by it, as some systematics will have ~0 mean
+                            #(other pixels can stay as hp.UNSEEN since they are masked anyway)
+                            syst_map[unmasked] -= mean
+                            '''
+                            ### Old method
                             # set pixel values to value/mean - 1
                             syst_map_mask = syst_map != healpy.UNSEEN
                             mean = np.mean(
@@ -306,6 +318,7 @@ class TXTwoPointFourier(PipelineStage):
                                 ] = 0  # sets unmasked pixels to zero
                                 syst_map = syst_map / mean - 1
                             #                                 print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
+                            '''
 
                             s_maps.append(syst_map)
                             n_systmaps += 1
@@ -601,8 +614,6 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspace_cache.get(i, j, k)
 
-        #print('t_i: ', np.mean(field_i.get_templates()))
-        #print('t_j: ', np.mean(field_j.get_templates()))
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
