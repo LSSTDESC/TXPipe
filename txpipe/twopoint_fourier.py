@@ -577,9 +577,6 @@ class TXTwoPointFourier(PipelineStage):
         )
         sys.stdout.flush()
 
-        # TODO Get cl_guess from cl_theory
-        cl_guess = None
-
         if k == SHEAR_SHEAR:
             field_i = maps["lf"][i]
             field_j = maps["lf"][j]
@@ -614,6 +611,14 @@ class TXTwoPointFourier(PipelineStage):
 
         workspace = workspace_cache.get(i, j, k)
 
+        # Load mask for calculation of cl_guess and (optionally) analytic noise calculation.
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask(thresh=self.config["mask_threshold"])
+            if self.rank == 0:
+                print("Loaded mask")
+
+        cl_guess = nmt.compute_coupled_cell(field_i, field_j) / np.mean(mask * mask)
+        print('cl_guess:', cl_guess)
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
@@ -626,13 +631,6 @@ class TXTwoPointFourier(PipelineStage):
                 n_iter=1,
             )
             # noise to subtract (already decoupled)
-
-            # Load mask and pass to function below.
-            with self.open_input("mask", wrapper=True) as f:
-                mask = f.read_mask(thresh=self.config["mask_threshold"])
-                if self.rank == 0:
-                    print("Loaded mask")
-
             n_ell, n_ell_coupled = self.compute_noise_analytic(
                 i, j, k, maps, f_sky, workspace, mask
             )
