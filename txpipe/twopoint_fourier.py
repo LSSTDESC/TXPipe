@@ -422,7 +422,10 @@ class TXTwoPointFourier(PipelineStage):
 
         # The density fields share a mask, so just use the field
         # object for the first one.
-        density_field = (density_weight, density_fields[0])
+        try:
+            density_field = (density_weight, density_fields[0])
+        except IndexError:
+            density_field = (density_weight, None)
 
         spaces = {}
 
