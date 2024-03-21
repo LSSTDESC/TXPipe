@@ -243,7 +243,8 @@ class TXTwoPoint(PipelineStage):
 
         return source_list, lens_list
 
-    def add_data_points(self, S, results, tracers_later=False):
+
+    def add_data_points(self, S, results):
         import treecorr
         import sacc
 
@@ -253,29 +254,12 @@ class TXTwoPoint(PipelineStage):
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
-        POS_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
-        SHEAR_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
 
         comb = []
         for index, d in enumerate(results):
             # First the tracers and generic tags
-            if d.corr_type in [XI,XIP,XIM]:
-                tracer1 = f"source_{d.i}"
-                tracer2 = f"source_{d.j}"
-            elif d.corr_type in [GAMMAT, GAMMAX]:
-                tracer1 = f"source_{d.i}"
-                tracer2 = f"lens_{d.j}"
-            elif d.corr_type == WTHETA:
-                tracer1 = f"lens_{d.i}"
-                tracer2 = f"lens_{d.j}"
-            elif d.corr_type == POS_EXT_TYPE:
-                tracer1 = f"lens_{d.i}"
-                tracer2 = f"external_{d.j}"
-            elif d.corr_type == SHEAR_EXT_TYPE:
-                tracer1 = f"source_{d.i}"
-                tracer2 = f"external_{d.j}"
-            else:
-                raise RuntimeError('unrecognised corr_type')
+            tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
+            tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
 
             # This happens when there is an empty bin. We can't do a covariance
             # here, or anything useful, really, so we just skip this bin.
@@ -303,7 +287,6 @@ class TXTwoPoint(PipelineStage):
                         error=xiperr[i],
                         npair=npair[i],
                         weight=weight[i],
-                        tracers_later=tracers_later,
                     )
                 for i in range(n):
                     S.add_data_point(
@@ -314,7 +297,6 @@ class TXTwoPoint(PipelineStage):
                         error=ximerr[i],
                         npair=npair[i],
                         weight=weight[i],
-                        tracers_later=tracers_later,
                     )
             else:
                 if self.config['gaussian_sims_factor'] != [1.]:
@@ -340,7 +322,6 @@ class TXTwoPoint(PipelineStage):
                         theta=theta[i],
                         error=err[i],
                         weight=weight[i],
-                        tracers_later=tracers_later,
                     )
                     
             # We build up the comb list to get the covariance of it later
@@ -1347,6 +1328,129 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
             patch_centers=self.get_input("patch_centers"),
         )
         return cat
+
+    def add_data_points(self, S, results, tracers_later=False):
+        """
+        modify add_data_points to know about external map cross correlations
+        and allow tracers_later=True
+        """
+        import treecorr
+        import sacc
+
+        XI = "combined"
+        XIP = sacc.standard_types.galaxy_shear_xi_plus
+        XIM = sacc.standard_types.galaxy_shear_xi_minus
+        GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
+        GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
+        WTHETA = sacc.standard_types.galaxy_density_xi
+        POS_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
+        SHEAR_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
+
+        comb = []
+        for index, d in enumerate(results):
+            # First the tracers and generic tags
+            if d.corr_type in [XI,XIP,XIM]:
+                tracer1 = f"source_{d.i}"
+                tracer2 = f"source_{d.j}"
+            elif d.corr_type in [GAMMAT, GAMMAX]:
+                tracer1 = f"source_{d.i}"
+                tracer2 = f"lens_{d.j}"
+            elif d.corr_type == WTHETA:
+                tracer1 = f"lens_{d.i}"
+                tracer2 = f"lens_{d.j}"
+            elif d.corr_type == POS_EXT_TYPE:
+                tracer1 = f"lens_{d.i}"
+                tracer2 = f"external_{d.j}"
+            elif d.corr_type == SHEAR_EXT_TYPE:
+                tracer1 = f"source_{d.i}"
+                tracer2 = f"external_{d.j}"
+            else:
+                raise RuntimeError('unrecognised corr_type')
+
+            # This happens when there is an empty bin. We can't do a covariance
+            # here, or anything useful, really, so we just skip this bin.
+            if d.object is None:
+                continue
+
+            theta = np.exp(d.object.meanlogr)
+            npair = d.object.npairs
+            weight = d.object.weight
+            # xip / xim is a special case because it has two observables.
+            # the other two are together below
+            if d.corr_type == XI:
+                xip = d.object.xip
+                xim = d.object.xim
+                xiperr = np.sqrt(d.object.varxip)
+                ximerr = np.sqrt(d.object.varxim)
+                n = len(xip)
+                # add all the data points to the sacc
+                for i in range(n):
+                    S.add_data_point(
+                        XIP,
+                        (tracer1, tracer2),
+                        xip[i],
+                        theta=theta[i],
+                        error=xiperr[i],
+                        npair=npair[i],
+                        weight=weight[i],
+                        tracers_later=tracers_later,
+                    )
+                for i in range(n):
+                    S.add_data_point(
+                        XIM,
+                        (tracer1, tracer2),
+                        xim[i],
+                        theta=theta[i],
+                        error=ximerr[i],
+                        npair=npair[i],
+                        weight=weight[i],
+                        tracers_later=tracers_later,
+                    )
+            else:
+                if self.config['gaussian_sims_factor'] != [1.]:
+                    # only for gammat and wtheta, for the gaussian simulations we need to scale the measurements up to correct for
+                    # the scaling of the density field when building the simulations.
+                    if 'lens' in tracer2:
+                        if 'lens' in tracer1:
+                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer1[-1])]*self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                        else:
+                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                            
+                    d.object.xi *=scaling_factor
+                    d.object.varxi *=(scaling_factor**2)
+                    
+                xi = d.object.xi
+                err = np.sqrt(d.object.varxi)
+                n = len(xi)
+                for i in range(n):
+                    S.add_data_point(
+                        d.corr_type,
+                        (tracer1, tracer2),
+                        xi[i],
+                        theta=theta[i],
+                        error=err[i],
+                        weight=weight[i],
+                        tracers_later=tracers_later,
+                    )
+                    
+            # We build up the comb list to get the covariance of it later
+            # in the same order as our data points
+            comb.append(d.object)
+
+
+                    
+        # Add the covariance.  There are several different jackknife approaches
+        # available - see the treecorr docs
+        if treecorr.__version__.startswith("4.2."):
+            if self.rank == 0:
+                print("Using old TreeCorr - covariance may be slow. "
+                      "Consider using 4.3 from github main branch.")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
+        else:
+            if self.rank == 0:
+                print("Using new TreeCorr 4.3 or above")
+            cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
+        S.add_covariance(cov)
 
 
     def write_output(self, source_list, lens_list, meta, results):
