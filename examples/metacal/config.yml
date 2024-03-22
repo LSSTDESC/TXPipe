@@ -289,6 +289,10 @@ TXTwoPointFourier:
     ell_max: 150
     bandwidth: 20
     cache_dir: ./cache/workspaces
+    do_shear_shear: False
+    do_shear_pos: False
+    do_pos_pos: True
+    compute_theory: False
 
 TXSimpleMask:
     depth_cut : 23.5
