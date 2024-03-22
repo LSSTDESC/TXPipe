@@ -116,6 +116,12 @@ class TXLogNormalGlass(PipelineStage):
         self.nshells = len(self.ws)
         # TO DO: figure out why GLASS needed the linear ramp weight here
 
+    def get_bias_at_z(self, z):
+        bias0 = self.config["bias0"]
+        alpha_bz = self.config["alpha_bz"]
+        zpivot = self.config["zpivot"]
+        return bias0 * (1. + (1./3.)*((1+z)**alpha_bz - 1) )/(1. + (1./3.)*((1+zpivot)**alpha_bz - 1) )
+
     def generate_shell_cls(self):
         """
         Generate angular power spectra (C(l)s) for each redshift shell
@@ -143,7 +149,10 @@ class TXLogNormalGlass(PipelineStage):
             # Make density shell objects for CCL
             density = []
             for ishell in range(self.nshells):
-                bz = np.ones(len(zb_grid))  # bias should be 1 for matter shells
+                #make bias const in shell
+                b_shell = self.get_bias_at_z( self.ws[ishell].zeff )
+                bz = np.ones( len(zb_grid) ) * b_shell
+
                 wa_interped = scipy.interpolate.interp1d(
                     self.ws[ishell].za,
                     self.ws[ishell].wa,
@@ -167,6 +176,10 @@ class TXLogNormalGlass(PipelineStage):
             for i in range(1, self.nshells + 1):
                 for j in range(i, 0, -1):
                     cl_bin = cosmo.angular_cl(density[i - 1], density[j - 1], self.ell)
+                    
+                    #fix monopole to 0
+                    cl_bin[0] = 0
+                    
                     self.cls.append(cl_bin)
                     self.cls_index.append((i, j))
 
@@ -208,7 +221,7 @@ class TXLogNormalGlass(PipelineStage):
         # Make density bin objects for CCL
         density = []
         for ibin in range(len(nzs)):
-            bz = np.ones(len(z_nz)) * self.config["bias"][ibin]
+            bz = self.get_bias_at_z(z_nz)
 
             density.append(
                 ccl.NumberCountsTracer(
@@ -333,7 +346,7 @@ class TXLogNormalGlass(PipelineStage):
 
             # simulate positions from matter density
             for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
-                ngal_in_shell, delta_i, bias=self.config["bias"], vis=mask, rng=rng
+                ngal_in_shell, delta_i, bias=None, vis=mask, rng=rng
             ):
                 # Figure out which bin was generated (len(ngal_in_shell) = Nbins)
                 occupied_bins = np.where(gal_count != 0)[0]
