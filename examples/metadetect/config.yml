@@ -297,6 +297,10 @@ TXTwoPointFourier:
     ell_max: 100
     bandwidth: 20
     cache_dir: ./cache/workspaces
+    do_shear_shear: True
+    do_shear_pos: True
+    do_pos_pos: True
+    compute_theory: True
 
 TXSimpleMaskFrac:
     supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
