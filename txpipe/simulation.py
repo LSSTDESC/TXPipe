@@ -42,7 +42,7 @@ class TXLogNormalGlass(PipelineStage):
         ("lens_tomography_catalog_unweighted", TomographyCatalog),
         ("glass_cl_shells", HDFFile),
         ("glass_cl_binned", HDFFile),
-        ("density_shell_maps", HDFFile),
+        ("density_shells", HDFFile),
         # TO DO: add shear maps
     ]
 
@@ -59,6 +59,7 @@ class TXLogNormalGlass(PipelineStage):
         "ell_binned_min": 0.1,
         "ell_binned_max": 5.0e5,
         "ell_binned_nbins": 100,
+        "output_density_shell_maps":False,
     }
 
     def run(self):
@@ -432,13 +433,14 @@ class TXLogNormalGlass(PipelineStage):
         group.create_dataset("counts_2d", (1,), dtype="i")
         self.tomo_output = tomo_output
 
-        density_shell_output = self.open_output("density_shell_maps")
-        group = density_shell_output.create_group("density_shell_maps")
-        fullsky_npix = hp.nside2npix(self.nside)
-        for ishell in range(self.nshells):
-            group.create_dataset(
-                f"shell{ishell}", (fullsky_npix,), dtype="f"
-            )
+        density_shell_output = self.open_output("density_shells")
+        if self.config["output_density_shell_maps"]:
+            group = density_shell_output.create_group("density_shell_maps")
+            fullsky_npix = hp.nside2npix(self.nside)
+            for ishell in range(self.nshells):
+                group.create_dataset(
+                    f"shell{ishell}", (fullsky_npix,), dtype="f"
+                )
         group = density_shell_output.create_group("num_dens_shell")
         group.create_dataset(
                 f"num_dens_shell", (self.nbin_lens, self.nshells), dtype="f"
@@ -452,8 +454,9 @@ class TXLogNormalGlass(PipelineStage):
         """
         write a single density shell to output
         """
-        group = self.density_shell_output['density_shell_maps']
-        group[f"shell{ishell}"][:] = delta_i
+        if self.config["output_density_shell_maps"]:
+            group = self.density_shell_output['density_shell_maps']
+            group[f"shell{ishell}"][:] = delta_i
 
         group = self.density_shell_output['num_dens_shell']
         group["num_dens_shell"][:,ishell] = ngal_in_shell
