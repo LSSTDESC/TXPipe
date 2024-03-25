@@ -35,3 +35,4 @@ git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 parallel_statistics
 pz-rail[dev]==0.99.1
 tjpcov
+glass
