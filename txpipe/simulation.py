@@ -42,7 +42,8 @@ class TXLogNormalGlass(PipelineStage):
         ("lens_tomography_catalog_unweighted", TomographyCatalog),
         ("glass_cl_shells", HDFFile),
         ("glass_cl_binned", HDFFile),
-        # TO DO: add shear maps to output
+        ("density_shell_maps", HDFFile),
+        # TO DO: add shear maps
     ]
 
     config_options = {
@@ -340,6 +341,9 @@ class TXLogNormalGlass(PipelineStage):
             ngal_in_shell = (
                 target_num_dens * np.trapz(dndz_i, z_i) / np.trapz(nzs, z_nz)
             )
+
+            self.write_shell_output(ishell, delta_i, ngal_in_shell, self.ws[ishell].zeff)
+
             if self.config["contaminate"]:
                 ngal_in_shell *= max_inv_w
             print("Ngal", ngal_in_shell * mask_area * 60 * 60)
@@ -379,7 +383,7 @@ class TXLogNormalGlass(PipelineStage):
                     gal_z = gal_z[obj_accept_contaminated]
                     gal_count_bin = np.sum(obj_accept_contaminated.astype("int"))
 
-                self.write_output_chunk(
+                self.write_catalog_output_chunk(
                     count, count + gal_count_bin, gal_lon, gal_lat, gal_z, ibin
                 )
 
@@ -399,6 +403,7 @@ class TXLogNormalGlass(PipelineStage):
         Note: We will saves RA, DEC and Z_TRUE in the photometry catalog and bin
         information in the lens tomography catalog
         """
+        import healpy as hp
 
         phot_output = self.open_output("photometry_catalog")
         group = phot_output.create_group("photometry")
@@ -427,7 +432,35 @@ class TXLogNormalGlass(PipelineStage):
         group.create_dataset("counts_2d", (1,), dtype="i")
         self.tomo_output = tomo_output
 
-    def write_output_chunk(self, start, end, gal_lon, gal_lat, gal_z, tomobin):
+        density_shell_output = self.open_output("density_shell_maps")
+        group = density_shell_output.create_group("density_shell_maps")
+        fullsky_npix = hp.nside2npix(self.nside)
+        for ishell in range(self.nshells):
+            group.create_dataset(
+                f"shell{ishell}", (fullsky_npix,), dtype="f"
+            )
+        group = density_shell_output.create_group("num_dens_shell")
+        group.create_dataset(
+                f"num_dens_shell", (self.nbin_lens, self.nshells), dtype="f"
+            )
+        group.create_dataset(
+                f"zeff_shell", (self.nshells,), dtype="f"
+            )
+        self.density_shell_output = density_shell_output 
+
+    def write_shell_output(self, ishell, delta_i, ngal_in_shell, zeff_shell):
+        """
+        write a single density shell to output
+        """
+        group = self.density_shell_output['density_shell_maps']
+        group[f"shell{ishell}"][:] = delta_i
+
+        group = self.density_shell_output['num_dens_shell']
+        group["num_dens_shell"][:,ishell] = ngal_in_shell
+        group["zeff_shell"][ishell] = zeff_shell
+
+
+    def write_catalog_output_chunk(self, start, end, gal_lon, gal_lat, gal_z, tomobin):
         """
         Writes a chunk of the photometry and tomography file
         """
@@ -465,6 +498,11 @@ class TXLogNormalGlass(PipelineStage):
         group["counts"][:] = counts
         group["counts_2d"][:] = np.array([total_count])
         group.attrs["nbin"] = self.nbin_lens
+
+        #close everything
+        self.phot_output.close()
+        self.tomo_output.close()
+        self.density_shell_output.close()
 
     def get_max_inverse_weight(self):
         """
