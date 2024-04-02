@@ -238,14 +238,6 @@ class TXTwoPointFourier(PipelineStage):
             print(f"Unmasked area = {area:.2f} deg^2, fsky = {f_sky:.2e}")
             print(f"Nside = {pixel_scheme.nside}")
 
-        #commented code below should be obsolete with current mask treatment
-        ''' 
-        # Set any unseen pixels to zero weight.
-        for d in d_maps:
-            clustering_weight[clustering_weight == healpy.UNSEEN] = 0
-            clustering_weight[d == healpy.UNSEEN] = 0
-        '''
-
         # Mask any pixels which have the healpix bad value
         for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
             lw[g1 == healpy.UNSEEN] = 0
@@ -298,27 +290,12 @@ class TXTwoPointFourier(PipelineStage):
 
                             # normalize map for Namaster
                             # calculate the mean, accounting for case where mask isn't binary
-                            unmasked = clustering_weight > self.config["mask_threshold"]
+                            unmasked = clustering_weight > 0.
                             mean = (syst_map[unmasked] * clustering_weight[unmasked]).sum() / clustering_weight[unmasked].sum()
                             print("Syst map: mean value = ", mean)
                             #subtract the mean rather than normalise by it, as some systematics will have ~0 mean
                             #(other pixels can stay as hp.UNSEEN since they are masked anyway)
                             syst_map[unmasked] -= mean
-                            '''
-                            ### Old method
-                            # set pixel values to value/mean - 1
-                            syst_map_mask = syst_map != healpy.UNSEEN
-                            mean = np.mean(
-                                syst_map[syst_map_mask]
-                            )  # gives mean of all pixels with mask applied
-                            if mean != 0:
-                                print("Syst map: mean value = ", mean)
-                                syst_map[
-                                    ~syst_map_mask
-                                ] = 0  # sets unmasked pixels to zero
-                                syst_map = syst_map / mean - 1
-                            #                                 print('Syst map', systmap_file, 'normalized value at ra,dec = 55,-30: ', syst_map[ipix])
-                            '''
 
                             s_maps.append(syst_map)
                             n_systmaps += 1
@@ -424,6 +401,7 @@ class TXTwoPointFourier(PipelineStage):
         # object for the first one.
         try:
             density_field = (density_weight, density_fields[0])
+        #if no density_maps provided, density_fields is an empty list
         except IndexError:
             density_field = (density_weight, None)
 
@@ -621,7 +599,6 @@ class TXTwoPointFourier(PipelineStage):
                 print("Loaded mask")
 
         cl_guess = nmt.compute_coupled_cell(field_i, field_j) / np.mean(mask * mask)
-        print('cl_guess:', cl_guess)
 
         if self.config["analytic_noise"]:
             # we are going to subtract the noise afterwards
@@ -671,6 +648,8 @@ class TXTwoPointFourier(PipelineStage):
         # the window information
         ls = ell_bins.get_effective_ells()
 
+        # Current treatment of the beam is incorrect so commented out for now.
+        # Issue has been opened on GitHub (#344)
         c_beam = c# / window_pixel(ls, pixel_scheme.nside) ** 2
         print("c_beam, k, i, j", c_beam, k, i, j)
 
@@ -781,10 +760,8 @@ class TXTwoPointFourier(PipelineStage):
             nside = hp.get_nside(lens_map)
             pxarea = hp.nside2pixarea(nside)
             #compute the mean galaxy counts (in pixels above the mask threshold)
-            above_thresh = mask > self.config["mask_threshold"]
+            above_thresh = mask > 0.
             mu_N = np.sum(lens_map[above_thresh]) / np.sum(mask[above_thresh])
-            #set to 0 any pixels in the mask below the threshold
-            mask[~above_thresh] = 0.
             #coupled N_ells:
             n_ls = pxarea * np.mean(mask) / mu_N
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
