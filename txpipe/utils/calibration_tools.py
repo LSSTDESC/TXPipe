@@ -103,14 +103,20 @@ def apply_metacal_response(R, S, g1, g2):
     return mcal_g[0], mcal_g[1]
 
 
-def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
-    w_tot = np.sum(weight)
-    m = np.sum(weight * m) / w_tot  # if m not provided, default is m=0, so one_plus_K=1
-    one_plus_K = 1.0 + m
-    R = 1.0 - np.sum(weight * sigma_e) / w_tot
-    g1 = (1.0 / (one_plus_K)) * ((g1 / R) - c1)
-    g2 = (1.0 / (one_plus_K)) * ((g2 / R) - c2)
-    return g1, g2, weight, one_plus_K
+def apply_lensfit_calibration(dec, g1, g2, c1_n, c1_s, c2_n, c2_s, m=0, weight):
+    Nmask = dec > -25.0
+    Smask = dec < -25.0
+    one_plus_K = 1+m
+    g1_c = np.zeros(len(dec))
+    g2_c = np.zeros(len(dec))
+    
+    g1_c[Nmask] = (1.0 / (one_plus_K[Nmask])) * g1[Nmask] - c1_n
+    g1_c[Smask] = (1.0 / (one_plus_K[Smask])) * g1[Smask] - c1_s
+    
+    g2_c[Nmask] = (1.0 / (one_plus_K[Nmask])) * g2[Nmask]- c2_n
+    g2_c[Smask] = (1.0 / (one_plus_K[Smask])) * g2[Smask]- c2_s
+
+    return g1_c, g2_c
 
 
 class _DataWrapper:
@@ -483,8 +489,10 @@ class LensfitCalculator:
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them
         # together over all the processes
+        
         self.K = ParallelMean(1)
-        self.C = ParallelMean(2)
+        self.C_N = ParallelMean(2)
+        self.C_S = ParallelMean(2)
         self.count = 0
         self.sum_weights = 0
         self.sum_weights_sq = 0
@@ -516,8 +524,9 @@ class LensfitCalculator:
         K = data["m"]
         g1 = data["g1"]
         g2 = data["g2"]
+        dec = data["dec"]
         n = g1[sel].size
-
+        
         # Record the count for this chunk, for summation later
         self.count += n
         self.sum_weights += np.sum(w[sel])
@@ -531,9 +540,15 @@ class LensfitCalculator:
         else:
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
-        self.C.add_data(0, g1[sel], w[sel])
-        self.C.add_data(1, g2[sel], w[sel])
+        # create selection mask for north field and south field 
+        Nmask = ((sel) & (dec > -25.0))
+        Smask = ((sel) & (dec <= -25.0))
+        # here either i can increase the dimensions of C or add a new C to denote one per field
+        self.C_N.add_data(0, g1[Nmask], w[Nmask])
+        self.C_N.add_data(1, g2[Nmask], w[Nmask])
         
+        self.C_S.add_data(0, g1[Smask], w[Smask])
+        self.C_S.add_data(1, g2[Smask], w[Smask])
         return sel
     
     def collect(self, comm=None, allgather=False):
@@ -579,8 +594,10 @@ class LensfitCalculator:
         # processes and over all the chunks of data
         mode = "allgather" if allgather else "gather"
         _, K = self.K.collect(comm, mode)
-        _, C = self.C.collect(comm, mode)
-        return K, C, count, sum_weights**2/sum_weights_sq
+        _, C_N = self.C_N.collect(comm, mode)
+        _, C_S = self.C_S.collect(comm, mode)
+
+        return K, C_N, C_S, count, sum_weights**2/sum_weights_sq
 
 
 class HSCCalculator:

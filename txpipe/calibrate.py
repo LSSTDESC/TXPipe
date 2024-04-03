@@ -134,7 +134,7 @@ class TXShearCalibration(PipelineStage):
                     )
                 else:
                     d["g1"], d["g2"] = cal.apply(
-                        d["g1"], d["g2"], subtract_mean=subtract_mean_shear
+                        d["dec"],d["g1"], d["g2"], subtract_mean=subtract_mean_shear
                     )
 
                 # Write output, keeping track of sizes

@@ -709,7 +709,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # Like metacal, N_eff = N for metadetect
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
-
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
     Source selection and tomography for lensfit catalogs
@@ -733,6 +732,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
         shear_cols = [
+            "dec",
             "psf_T_mean",
             "weight",
             "flags",
@@ -766,20 +766,24 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
+        print("set up the mf lensfit output")
         outfile = super().setup_output()
         n = outfile["tomography/bin"].size
         nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("K", (nbin_source,), dtype="f")
-        group.create_dataset("C", (nbin_source, 2), dtype="f")
+        group.create_dataset("C_N", (nbin_source, 2), dtype="f")
+        group.create_dataset("C_S", (nbin_source, 2), dtype="f")
         group.create_dataset("K_2d", (1,), dtype="f")
-        group.create_dataset("C_2d", (2), dtype="f")
+        group.create_dataset("C_2d_N", (2), dtype="f")
+        group.create_dataset("C_2d_S", (2), dtype="f")
+
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
-        K, C, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = LensfitCalibrator(K, C)
-        mean_e = C.copy()
+        K, C_N,C_S, N, Neff = calculator.collect(self.comm, allgather=True)
+        calibrator = LensfitCalibrator(K, C_N, C_S)
+        mean_e = (C_N+C_S)/2
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
