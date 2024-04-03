@@ -51,8 +51,10 @@ class TXLogNormalGlass(PipelineStage):
         "zmin": 0.0,
         "zmax": 2.0,
         "dx": 100,
-        "bias": [1.0],
-        "shift": 1.0,
+        "bias0": 2.0, #linear bias at zpivot
+        "alpha_bz":0.0, #controls redshift evolution of bias
+        "zpivot": 0.6, 
+        "shift": 1.0, #lognormal shift
         "contaminate": False,
         "random_seed": 0,
         "cl_optional_file": "none",
