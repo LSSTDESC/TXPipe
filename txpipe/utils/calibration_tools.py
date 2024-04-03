@@ -103,7 +103,7 @@ def apply_metacal_response(R, S, g1, g2):
     return mcal_g[0], mcal_g[1]
 
 
-def apply_lensfit_calibration(dec, g1, g2, c1_n, c1_s, c2_n, c2_s, m=0, weight):
+def apply_lensfit_calibration(dec, g1, g2, c1_n, c1_s, c2_n, c2_s, weight, m=0):
     Nmask = dec > -25.0
     Smask = dec < -25.0
     one_plus_K = 1+m
