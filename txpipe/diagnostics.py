@@ -62,6 +62,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "T_max": 4.0,
         "s2n_min": 10,
         "s2n_max": 300,
+        "psf_units": 'pixel',
         "bands": "riz",
     }
 
@@ -317,11 +318,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
+
         psfT_min = self.config["psfT_min"]
         psfT_max = self.config["psfT_max"]
-        
+
         with self.open_input("shear_catalog") as c:
             col = c[f"shear/{psf_prefix}T_mean"][:]
+            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_units']=='pixel')):
+                col = col * 0.214**2
             psfT = col[(col > psfT_min) & (col < psfT_max)]
             psf_T_edges = self.BinEdges(psfT,nbins)
             del psfT
@@ -332,6 +336,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
+            psf_units = self.config['psf_units']
         )
         
         while True:
@@ -458,11 +463,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
+        
         T_min = self.config["T_min"]
         T_max = self.config["T_max"]
         
         with self.open_input("shear_catalog") as c:
             col = c[f"shear/{shear_prefix}T"][:]
+            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_units']=='arcsec')):
+                col = col * 0.214**2
             T = col[(col > T_min) & (col < T_max)]
             T_edges = self.BinEdges(T,nbins)
             del T
@@ -473,6 +481,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
+            psf_units = self.config['psf_units']
         )
 
         while True:
