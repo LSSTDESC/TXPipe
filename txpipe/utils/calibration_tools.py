@@ -489,7 +489,6 @@ class LensfitCalculator:
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them
         # together over all the processes
-        
         self.K = ParallelMean(1)
         self.C_N = ParallelMean(2)
         self.C_S = ParallelMean(2)
@@ -541,14 +540,14 @@ class LensfitCalculator:
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
         # create selection mask for north field and south field 
-        Nmask = ((sel) & (dec > -25.0))
-        Smask = ((sel) & (dec <= -25.0))
+        Nmask = (dec[sel] > -25.0)
+        Smask = (dec[sel] <= -25.0)
         # here either i can increase the dimensions of C or add a new C to denote one per field
-        self.C_N.add_data(0, g1[Nmask], w[Nmask])
-        self.C_N.add_data(1, g2[Nmask], w[Nmask])
+        self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
+        self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
         
-        self.C_S.add_data(0, g1[Smask], w[Smask])
-        self.C_S.add_data(1, g2[Smask], w[Smask])
+        self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
+        self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
         return sel
     
     def collect(self, comm=None, allgather=False):
@@ -757,6 +756,7 @@ class MeanShearInBins:
                 for i in range(self.size)
             ]
         elif shear_catalog_type == "lensfit":
+            print("for i in range ", self.size)
             self.calibrators = [
                 LensfitCalculator(self.selector) for i in range(self.size)
             ]
@@ -775,7 +775,6 @@ class MeanShearInBins:
         return np.where(w)
 
     def add_data(self, data):
-
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
             if self.shear_catalog_type == "metacal":
@@ -798,6 +797,7 @@ class MeanShearInBins:
 
         
     def collect(self, comm=None):
+        print("does it make it to collector?")
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
         count2, g2, var2 = self.g2.collect(comm, mode="gather")
         
@@ -806,7 +806,8 @@ class MeanShearInBins:
         # to apply to it.
         R = []
         K = []
-        C = []
+        C_N = []
+        C_S = []
         N = []
         Neff = []
         for i in range(self.size):
@@ -825,9 +826,10 @@ class MeanShearInBins:
                 N.append(n)
                 Neff.append(neff)
             elif self.shear_catalog_type == "lensfit":
-                k, c, n, neff = self.calibrators[i].collect(comm)
+                k, c_n,c_s, n, neff = self.calibrators[i].collect(comm)
                 K.append(k)
-                C.append(c)
+                C_N.append(c_n)
+                C_S.append(c_s)
                 N.append(n)
                 Neff.append(neff)
             else:
