@@ -140,6 +140,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         else:
         
             shear_cols = [
+                "dec",
                 "psf_g1",
                 "psf_g2",
                 "g1",
@@ -635,6 +636,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g2 = data["00/g2"]
                 w = data["00/weight"]
             elif cat_type == "lensfit":
+                dec = data["dec"]
                 g1 = data["g1"]
                 g2 = data["g2"]
                 w = data["weight"]
@@ -645,8 +647,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 c2 = data['c2']
                 w = data["weight"]
 
-            if cat_type=='metacal' or cat_type=='metadetect' or cat_type=='lensfit':
+            if cat_type=='metacal' or cat_type=='metadetect':
                 g1, g2 = cal.apply(g1,g2)
+                
+            elif cat_type=='lensfit':
+                g1, g2 = cal.apply(dec, g1,g2)
             else:
                 g1, g2 = cal.apply(g1,g2,c1,c2)
 
