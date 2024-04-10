@@ -734,14 +734,14 @@ class MeanShearInBins:
         delta_gamma,
         cut_source_bin=False,
         shear_catalog_type="metacal",
-        psf_units= 'None'
+        psf_conv= False
     ):
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma
         self.cut_source_bin = cut_source_bin
         self.shear_catalog_type = shear_catalog_type
-        self.psf_units = psf_units
+        self.psf_conv = psf_conv
         self.size = len(self.limits) - 1
         # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
@@ -771,7 +771,7 @@ class MeanShearInBins:
 
     def selector(self, data, i):
         x = data[self.x_name]
-        if ((self.shear_catalog_type=='lensfit') & (self.psf_units == 'pixel') & ("T" in self.x_name)):
+        if ((self.shear_catalog_type=='lensfit') & (self.psf_conv == True) & ("T" in self.x_name)):
             x = x * 0.214**2
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
