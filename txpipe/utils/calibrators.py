@@ -370,7 +370,9 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
-
+        print(self.c_n)
+        print(self.c_s)
+        print(self.K)
         if subtract_mean:
             Nmask = dec > -25.0
             Smask = dec <= -25.0
