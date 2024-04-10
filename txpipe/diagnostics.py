@@ -62,7 +62,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "T_max": 4.0,
         "s2n_min": 10,
         "s2n_max": 300,
-        "psf_units": 'pixel',
+        "psf_conv": False,
         "bands": "riz",
     }
 
@@ -151,9 +151,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "T",
                 "weight",
                 "m",
-                "sigma_e",
-                "c1",
-                "c2",
             ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
 
         shear_tomo_cols = ["bin"]
@@ -324,7 +321,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         with self.open_input("shear_catalog") as c:
             col = c[f"shear/{psf_prefix}T_mean"][:]
-            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_units']=='pixel')):
+            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_conv']==True)):
                 col = col * 0.214**2
             psfT = col[(col > psfT_min) & (col < psfT_max)]
             psf_T_edges = self.BinEdges(psfT,nbins)
@@ -336,7 +333,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
-            psf_units = self.config['psf_units']
+            psf_conv = self.config['psf_conv']
         )
         
         while True:
@@ -469,7 +466,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         with self.open_input("shear_catalog") as c:
             col = c[f"shear/{shear_prefix}T"][:]
-            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_units']=='arcsec')):
+            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_conv']==True)):
                 col = col * 0.214**2
             T = col[(col > T_min) & (col < T_max)]
             T_edges = self.BinEdges(T,nbins)
@@ -481,7 +478,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
-            psf_units = self.config['psf_units']
+            psf_conv = self.config['psf_conv']
         )
 
         while True:
