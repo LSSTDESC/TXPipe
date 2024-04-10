@@ -7,12 +7,16 @@ from .data_types import (
     TomographyCatalog,
     RandomsCatalog,
     YamlFile,
+    TextFile
+
 )
 from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .plotting import manual_step_histogram
+from .utils.calibrators import Calibrator
+
 
 STAR_PSF_USED = 0
 STAR_PSF_RESERVED = 1
@@ -483,6 +487,7 @@ class TXTauStatistics(PipelineStage):
     def load_galaxies(self):
         # Columns we need from the shear catalog
         cat_type = read_shear_catalog_type(self)
+        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
 
         # Load tomography data
         with self.open_input("shear_tomography_catalog") as f:
@@ -526,7 +531,6 @@ class TXTauStatistics(PipelineStage):
         # Change shear convention 
         if self.config["flip_g2"]:
             g2 *= -1
-        
         # Apply calibration factor
         if cat_type == "metacal" or cat_type == "metadetect":
             print("Applying metacal/metadetect response")
@@ -534,12 +538,8 @@ class TXTauStatistics(PipelineStage):
 
         elif cat_type == "lensfit":
             print("Applying lensfit calibration")
-            g1, g2, weight, _ = apply_lensfit_calibration(g1      = g1,
-                                                          g2      = g2,
-                                                          weight  = weight,
-                                                          sigma_e = sigma_e,
-                                                          m       = m
-                                                          )
+            g1, g2 = cal.apply(dec, g1,g2)
+            
         else:
             print("Shear calibration type not recognized.")
 
@@ -603,7 +603,8 @@ class TXRoweStatistics(PipelineStage):
 
     name = "TXRoweStatistics"
     parallel = False
-    inputs = [("star_catalog", HDFFile)]
+    inputs = [("star_catalog", HDFFile),
+             ("patch_centers", TextFile)]
     outputs = [
         ("rowe134", PNGFile),
         ("rowe25", PNGFile),
@@ -618,6 +619,8 @@ class TXRoweStatistics(PipelineStage):
         "bin_slop": 0.01,
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
+        "star_type": 'PSF-reserved',
+        "var_method": 'bootstrap'
     }
 
     def run(self):
@@ -632,6 +635,8 @@ class TXRoweStatistics(PipelineStage):
         rowe_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
+            if STAR_TYPE_NAMES[t] != self.config.star_type:
+                continue
             rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
             rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de_psf, de_psf)
             rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de_psf, e_mod)
@@ -680,10 +685,12 @@ class TXRoweStatistics(PipelineStage):
 
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg"
+            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg",
+            patch_centers=self.get_input("patch_centers")
         )
         cat2 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg"
+            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg",
+            patch_centers=self.get_input("patch_centers")
         )
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
@@ -695,6 +702,8 @@ class TXRoweStatistics(PipelineStage):
         
         f = self.open_output("rowe0",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             
             for j,i in enumerate([0]):
@@ -721,6 +730,8 @@ class TXRoweStatistics(PipelineStage):
 
         f = self.open_output("rowe134", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
 
             for j, i in enumerate([1, 3, 4]):
@@ -747,6 +758,8 @@ class TXRoweStatistics(PipelineStage):
 
         f = self.open_output("rowe25", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([2, 5]): 
                 theta, xi, err = rowe_stats[i, s]
@@ -775,6 +788,8 @@ class TXRoweStatistics(PipelineStage):
         g = f.create_group("rowe_statistics")
         for i in 0, 1, 2, 3, 4, 5:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = rowe_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"rowe_{i}_{name}")
@@ -916,9 +931,7 @@ class TXGalaxyStarShear(PipelineStage):
             g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
 
         elif cat_type == "lensfit":
-            g1, g2, weight, _ = apply_lensfit_calibration(
-                g1=g1, g2=g2, weight=weight, sigma_e=sigma_e, m=m
-            )
+            g1, g2  = cal.apply(dec, g1,g2)
         else:
             print("Shear calibration type not recognized.")
 
