@@ -8,7 +8,7 @@ from .data_types import (
     TextFile,
 )
 from .utils import SourceNumberDensityStats, rename_iterated
-from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import (
     metacal_variants,
     metadetect_variants,
