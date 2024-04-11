@@ -103,22 +103,6 @@ def apply_metacal_response(R, S, g1, g2):
     return mcal_g[0], mcal_g[1]
 
 
-def apply_lensfit_calibration(dec, g1, g2, c1_n, c1_s, c2_n, c2_s, weight, m=0):
-    Nmask = dec > -25.0
-    Smask = dec < -25.0
-    one_plus_K = 1+m
-    g1_c = np.zeros(len(dec))
-    g2_c = np.zeros(len(dec))
-    
-    g1_c[Nmask] = (1.0 / (one_plus_K[Nmask])) * g1[Nmask] - c1_n
-    g1_c[Smask] = (1.0 / (one_plus_K[Smask])) * g1[Smask] - c1_s
-    
-    g2_c[Nmask] = (1.0 / (one_plus_K[Nmask])) * g2[Nmask]- c2_n
-    g2_c[Smask] = (1.0 / (one_plus_K[Smask])) * g2[Smask]- c2_s
-
-    return g1_c, g2_c
-
-
 class _DataWrapper:
     """
     This little helper class wraps dictionaries
