@@ -768,7 +768,6 @@ class MeanShearInBins:
 
         
     def collect(self, comm=None):
-        print("does it make it to collector?")
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
         count2, g2, var2 = self.g2.collect(comm, mode="gather")
         
