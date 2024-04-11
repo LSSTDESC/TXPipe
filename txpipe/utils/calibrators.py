@@ -339,23 +339,21 @@ class LensfitCalibrator(Calibrator):
             outfile["response/K_2d"][:] = self.K
             outfile["response/C_2d_N"][:] = self.c_n
             outfile["response/C_2d_S"][:] = self.c_s
-            outfile["tomography/mean_e1_2d"][0] = (self.c_n[0]+self.c_s[0])*0.5
-            outfile["tomography/mean_e2_2d"][0] = (self.c_n[1]+self.c_s[1])*0.5
+            outfile["tomography/mean_e1_2d"][0] = -99.0
+            outfile["tomography/mean_e2_2d"][0] = -99.0
         else:
             outfile["response/K"][i] = self.K
             outfile["response/C_N"][i] = self.c_n
             outfile["response/C_S"][i] = self.c_s
-            outfile["tomography/mean_e1"][i] = (self.c_n[0]+self.c_s[0])*0.5
-            outfile["tomography/mean_e2"][i] = (self.c_n[1]+self.c_s[1])*0.5
+            outfile["tomography/mean_e1"][i] = -99.0
+            outfile["tomography/mean_e2"][i] = -99.0
 
     def apply(self, dec, g1, g2, subtract_mean=True):
         """
         For KiDS (see Joachimi et al., 2020, arXiv:2007.01844):
         Appendix C, equation C.4 and C.5
-        Correcting for multiplicative shear calibration.
-        Additionally optionally correct for residual additive bias (true
+        Optionally correct for multiplicative shear calibration and residual additive bias (true
         for KiDS-1000 and KV450.)
-
 
         The c term is only included if subtract_mean = True
 
@@ -370,9 +368,7 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
-        print(self.c_n)
-        print(self.c_s)
-        print(self.K)
+
         if subtract_mean:
             Nmask = dec > -25.0
             Smask = dec <= -25.0
