@@ -140,14 +140,6 @@ class TXTwoPointFourier(PipelineStage):
         # This will be used for parallelization.
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
-        if not self.config["analytic_noise"]:
-            # Load in the per-bin auto-correlation noise levels and
-            # mean response values
-            # Note - this is currently unused, because we are using the noise
-            # maps instead of an analytic form, but that could change later
-            # so I will leave this here.
-            tomo_info = self.load_tomographic_quantities(nbin_source, nbin_lens, f_sky)
-
         # Binning scheme, currently chosen from the geometry.
         # TODO: set ell binning from config
         ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
