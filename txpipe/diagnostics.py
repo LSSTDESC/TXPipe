@@ -5,8 +5,6 @@ from .utils.calibrators import Calibrator
 from .utils.calibration_tools import (
     calculate_selection_response,
     calculate_shear_response,
-    apply_metacal_response,
-    apply_lensfit_calibration,
     MeanShearInBins,
     read_shear_catalog_type,
     metadetect_variants,

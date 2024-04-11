@@ -86,23 +86,6 @@ def calculate_shear_response(
     return R
 
 
-def apply_metacal_response(R, S, g1, g2):
-    # The values of R are assumed to already
-    # have had appropriate weights included
-    from numpy.linalg import pinv
-    import numpy as np
-
-    mcal_g = np.stack([g1, g2], axis=1)
-
-    R_total = R + S
-
-    # Invert the responsivity matrix
-    Rinv = pinv(R_total)
-    mcal_g = Rinv @ mcal_g.T
-
-    return mcal_g[0], mcal_g[1]
-
-
 class _DataWrapper:
     """
     This little helper class wraps dictionaries

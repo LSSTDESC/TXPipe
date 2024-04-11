@@ -13,7 +13,6 @@ from .data_types import (
 from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 from .utils.calibration_tools import read_shear_catalog_type
-from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .plotting import manual_step_histogram
 from .utils.calibrators import Calibrator
 
@@ -534,7 +533,7 @@ class TXTauStatistics(PipelineStage):
         # Apply calibration factor
         if cat_type == "metacal" or cat_type == "metadetect":
             print("Applying metacal/metadetect response")
-            g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
+            g1, g2 = cal.apply(g1, g2)
 
         elif cat_type == "lensfit":
             print("Applying lensfit calibration")
@@ -928,7 +927,7 @@ class TXGalaxyStarShear(PipelineStage):
 
         if cat_type == "metacal" or cat_type == "metadetect":
             # We use S=0 here because we have already included it in R_total
-            g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
+            g1, g2 = cal.apply(g1,g2)
 
         elif cat_type == "lensfit":
             g1, g2  = cal.apply(dec, g1,g2)
