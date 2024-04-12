@@ -32,8 +32,10 @@ def core_lensfit(comm):
     weight = np.random.uniform(0, 1, size=N)
 
     if comm is None:
-        C1_true = np.average(g1, weights=weight)
-        C2_true = np.average(g2, weights=weight)
+        C1_N_true = np.average(g1, weights=weight)
+        C2_N_true = np.average(g2, weights=weight)
+        C1_S_true = np.average(g1, weights=weight)
+        C2_S_true = np.average(g2, weights=weight)
     else:
         wsum = np.zeros_like(g1)
         comm.Allreduce(weight, wsum)
