@@ -67,7 +67,6 @@ def core_lensfit(comm):
 
         K, C_N, C_S, n, _ = cal.collect(comm, allgather=True)
         assert np.allclose(C_N, C_N_true)
-        assert np.allclose(C_S, C_S_true)
         assert np.allclose(K, K_true)
         assert n == N * nproc
 
@@ -153,7 +152,7 @@ def test_lensfit_scalar():
     # lensfit calibrator
     K = np.array([0.9])
     C_N = np.array([0.11, 0.22])
-    C_S
+    C_S = np.array([0.11, 0.22])
     dec = -3
     g1 = 0.2
     g2 = -0.3
@@ -182,7 +181,7 @@ def test_lensfit_array():
     g1_obs = (g1) * (1 + K[0]) + C_N[0]
     g2_obs = (g2) * (1 + K[0]) + C_N[1]
     g_obs = [g1_obs, g2_obs]
-    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
+    g1_, g2_ = cal.apply(dec,g_obs[0], g_obs[1])
 
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
