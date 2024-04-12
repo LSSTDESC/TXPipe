@@ -66,9 +66,12 @@ class TXTracerMetadata(PipelineStage):
                 copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
             elif shear_catalog_type == "lensfit":
                 copy(shear_tomo_file, "response", "tracers", "K", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "C", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_N", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_S", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "K_2d", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "C_2d", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_2d_N", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_2d_S", meta_file, metadata)
+
             elif shear_catalog_type == "hsc":
                 copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "K", meta_file, metadata)
