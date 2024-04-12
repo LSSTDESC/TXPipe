@@ -127,15 +127,19 @@ class TXShearCalibration(PipelineStage):
                 # Cut down the data to just this selection for output
                 d = {name: data[name][w] for name in output_cols}
 
-                # Calibrate the shear columns
+                # Calibrate the shear columns 
                 if cat_type=='hsc':
                     d["g1"], d["g2"] = cal.apply(
                         d["g1"], d["g2"], d["c1"], d["c2"]
                     )
-                else:
+                elif cat_type=='lensfit':
                     d["g1"], d["g2"] = cal.apply(
                         d["dec"],d["g1"], d["g2"], subtract_mean=subtract_mean_shear
                     )
+                else:
+                    d["g1"], d["g2"] = cal.apply(
+                    d["g1"], d["g2"]
+                )
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)
