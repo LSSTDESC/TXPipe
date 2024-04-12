@@ -45,7 +45,7 @@ def core_lensfit(comm):
         C1_S_true = csum.sum() / wsum.sum()
 
         comm.Allreduce(g2 * weight, csum)
-        C2_S_true = csum.sum() / wsum.sum()
+        C2_N_true = csum.sum() / wsum.sum()
         C2_S_true = csum.sum() / wsum.sum()
 
 
@@ -202,7 +202,7 @@ def test_null():
     g_obs = np.array([g1, g2])
     assert g_obs.shape == (2,)
     cal = NullCalibrator()
-    g1_, g2_ = cal.apply(dec, float(g_obs[0]), float(g_obs[1]))
+    g1_, g2_ = cal.apply(float(g_obs[0]), float(g_obs[1]))
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
     assert type(g1) == float
