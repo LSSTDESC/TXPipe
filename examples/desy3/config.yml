@@ -4,7 +4,7 @@ global:
     # This is read by many stages that read complete
     # catalog data, and tells them how many rows to read
     # at once
-    chunk_rows: 100000
+    chunk_rows: 1000000000
     # These mapping options are also read by a range of stages
     pixelization: healpix
     nside: 128
@@ -56,11 +56,26 @@ TXSourceSelectorMetacal:
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
-    max_rows: 1000
+    max_rows: 10000000000
     delta_gamma: 0.02
     source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
     shear_prefix: mcal_
+    resp_mean_diag : True
 
+TXSourceSelectorLensfit:
+    bands: ri #used for selection
+    T_cut: 0.0
+    s2n_cut: 0.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9, 1.2]
+    nsrc: 5
+    nlens: 0
+    shear_catalog_type: 'lensfit'
+    input_pz: True
+    shear_prefix: ''
+    # may also need one for r_cpar_cut
+    input_m_is_weighted: True
 
 TXShearCalibration: {}
 TXTruthLensCatalogSplitter: {}
@@ -91,7 +106,7 @@ TXMapPlots: {}
 TXTracerMetadata: {}
 
 TXJackknifeCenters:
-    npatch: 150
+    npatch: 100
     every_nth: 100
 
 TXTwoPoint:
@@ -125,8 +140,8 @@ TXTwoPointTheoryReal: {}
 TXTwoPointPlots: {}    
     
 TXSourceDiagnosticPlots:
-    psf_prefix: 'mcal_psf_'
-    shear_prefix: 'mcal_'
+    psf_prefix: 'psf_'
+    shear_prefix: ''
     psfT_min: 0.04
     psfT_max: 0.36
     T_min: 0.04
@@ -138,26 +153,15 @@ TXLensDiagnosticPlots: {}
 
 TXGammaTFieldCenters: {}
 
-TXGammaTStars: 
-    var_method: 'jackknife'
-    bin_slop: 0.1
+TXGammaTStars: {}
 
 TXGammaTRandoms: {}
 
 TXRoweStatistics: 
     psf_size_units: 'T'
-    STAR_TYPE_NAMES: ['psf-reserved']
-    STAR_TYPES: [STAR_PSF_RESERVED]
-    min_sep: 0.1
-    max_sep: 250.0
-    
 
 TXTauStatistics:
     flip_g2: False
-    min_sep: 0.1
-    max_sep: 250.0
-    cov_method: 'jackknife'
-    
 
 TXFocalPlanePlot: {}
 

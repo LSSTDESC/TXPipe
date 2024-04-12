@@ -20,9 +20,9 @@ stages:
     #- name: TXLensNoiseMaps      # noise maps for lenses using density splits
     #- name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     #- name: TXMapPlots           # make pictures of all the maps
-    - name: TXTracerMetadata     # collate metadata
+    #- name: TXTracerMetadata     # collate metadata
     #- name: TXRandomCat
-    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    #- name: TXJackknifeCenters   # Split the area into jackknife regions
     #- name: TXTwoPoint           # Compute real-space 2-point correlations
     #  threads_per_process: 128
     #- name: TXBlinding           # Blind the data following Muir et al
@@ -35,17 +35,12 @@ stages:
     #- name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
     #- name: TXGammaTFieldCenters # Compute and plot gamma_t around center points # ERROR: EXPOSURE FILE
       ##threads_per_process: 2
-    - name: TXGammaTStars  # Compute and plot gamma_t around bright stars
-      nodes: 2
-      threads_per_process: 128
+    #- name: TXGammaTStars  # Compute and plot gamma_t around bright stars
+      #threads_per_process: 2
     #- name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
       #threads_per_process: 2
-    - name: TXRoweStatistics     # Compute and plot Rowe statistics
-      nodes: 2
-      threads_per_process: 128
-    - name: TXTauStatistics
-      nodes: 2
-      threads_per_process: 128
+    #- name: TXRoweStatistics     # Compute and plot Rowe statistics
+    #  threads_per_process: 128
     #- name: TXFocalPlanePlot      # mean PSF ellipticity and mean residual on the focal plane 
       #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
       #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
@@ -93,23 +88,21 @@ config: examples/desy3/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
-    shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_photoz_stack.hdf5
-    photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/photometry_catalog_desy3_RM.hdf5
-    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/lens_tomography_catalog_desy3_RM_v2.h5
-    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/lens_photoz_stack.hdf5
+    shear_catalog: //global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
+    photometry_catalog: 
+    #shear_tomography_catalog: /global/cfs/cdirs/desc-wl/projects/txpipe-sys-tests/des-y3/shear_tomography_desy3_unmasked_test.h5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
+    lens_photoz_stack: 
     mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
-    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.hdf5
-    binned_star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/binned_star_catalog.hdf5
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.h5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
-    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/randoms_desy3_RM.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     random_cats_source: Null
     flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: False
 
 # where to put output logs for individual stages
 log_dir: data/desy3/logs

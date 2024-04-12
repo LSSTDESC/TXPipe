@@ -74,7 +74,6 @@ TXSourceSelectorHSC:
     r_lo_cut          : -99.
     true_z            : True
 
-
 TXShearCalibration: {}
 TXTruthLensCatalogSplitter: {}
 TXStarCatalogSplitter: {} 
@@ -122,14 +121,6 @@ TXTwoPoint:
     source_bins: [0]
     lens_bins: [0]
 
-TXGammaTStars:
-    bin_slop: 0.05
-    min_sep: 0.1
-    max_sep: 3
-    nbins: 20
-    #bin_slop: 0.1
-    var_method: 'jackknife'
-
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters
     Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
@@ -158,6 +149,7 @@ TXLensDiagnosticPlots: {}
 
 TXGammaTFieldCenters: {}
 
+TXGammaTStars: {}
 
 TXGammaTRandoms: {}
 
@@ -168,21 +160,20 @@ TXFocalPlanePlot: {}
 TXGalaxyStarDensity: {}
 
 TXRoweStatistics:
-  #min_sep: 8
-  #max_sep: 50
+  min_sep: 3.0
+  max_sep: 60.0
   nbins  : 20
-  bin_slop: 0.01
+  bin_slop: 0
   sep_units: 'arcmin'
   psf_size_units: 'T'
 
 TXTauStatistics:
-  #min_sep: 8
-  #max_sep: 50
+  min_sep: 3.0
+  max_sep: 60.0
   nbins  : 20
-  bin_slop: 0.01
+  bin_slop: 0
   sep_units: 'arcmin'
   psf_size_units: 'T'
-  var_method: 'jackknife'
   flip_g2 : False
 
 TXExposureInfo:

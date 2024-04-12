@@ -135,9 +135,7 @@ TXLensDiagnosticPlots: {}
 
 TXGammaTFieldCenters: {}
 
-TXGammaTStars:
-    max_sep: 450
-    var_method: 'jackknife'
+TXGammaTStars: {}
 
 TXGammaTRandoms: {}
 
@@ -166,6 +164,14 @@ TXSourceTrueNumberDensity:
 TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
+
+
+
+
+TXGammaTBrightStars: {}
+
+TXGammaTDimStars: {}
+
 
 
 
