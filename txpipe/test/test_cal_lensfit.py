@@ -160,7 +160,7 @@ def test_lensfit_scalar():
     g2_obs = (g2) * (1 + K[0]) + C_N[1]
     g_obs = np.array([g1_obs, g2_obs])
     cal = LensfitCalibrator(K, C_N,C_S)
-    g1_, g2_ = cal.apply(dec,g_obs[0], g_obs[1], subtract_mean=True)
+    g1_, g2_ = cal.apply([dec],g_obs[0], g_obs[1], subtract_mean=True)
 
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
@@ -213,7 +213,7 @@ def test_null():
     g1 = (g1 + C_N[0]) * (K)
     g2 = (g2 + C_N[1]) * (K)
     g_obs = [g1, g2]
-    g1_, g2_ = cal.apply(dec,g_obs[0], g_obs[1])
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1])
 
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
