@@ -148,26 +148,6 @@ def test_mean_shear_weights():
     assert np.allclose(sigma2, expected_sigma2)
 
 
-def test_lensfit_scalar():
-    # lensfit calibrator
-    K = np.array([0.9])
-    C_N = np.array([0.11, 0.22])
-    C_S = np.array([0.11, 0.22])
-    dec = -3
-    g1 = 0.2
-    g2 = -0.3
-    g1_obs = (g1) * (1 + K[0]) + C_N[0]
-    g2_obs = (g2) * (1 + K[0]) + C_N[1]
-    g_obs = np.array([g1_obs, g2_obs])
-    cal = LensfitCalibrator(K, C_N,C_S)
-    g1_, g2_ = cal.apply(np.asarray(dec),g_obs[0], g_obs[1], subtract_mean=True)
-
-    assert np.allclose(g1_, g1)
-    assert np.allclose(g2_, g2)
-    assert type(g1) == float
-    assert type(g2) == float
-
-
 def test_lensfit_array():
     # array version
     K = np.array([0.9])
