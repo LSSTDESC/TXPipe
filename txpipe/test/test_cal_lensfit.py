@@ -192,12 +192,13 @@ def test_lensfit_array():
 def test_null():
     # null calibrator
     K = 1.0
-    C = [0.0, 0.0]
+    C_N = [0.0, 0.0]
+    C_S= [0.0, 0.0]
     dec = -3
     g1 = 0.2
     g2 = -0.3
-    g1 = (g1 + C[0]) * (K)
-    g2 = (g2 + C[1]) * (K)
+    g1 = (g1 + C_N[0]) * (K)
+    g2 = (g2 + C_N[1]) * (K)
     g_obs = np.array([g1, g2])
     assert g_obs.shape == (2,)
     cal = NullCalibrator()
