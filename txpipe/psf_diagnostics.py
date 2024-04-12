@@ -475,9 +475,9 @@ class TXTauStatistics(PipelineStage):
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
 
-            e_psf  = np.array((e1psf, e2psf))
-            e_mod  = np.array((e1mod,e2mod))
-            de_psf = np.array((de1, de2))
+            e_psf  = np.array((e1psf-np.mean(e1psf), e2psf-np.mean(e2psf)))
+            e_mod  = np.array((e1mod-np.mean(e1mod),e2mod-np.mean(e2mod)))
+            de_psf = np.array((de1-np.mean(de1), de2-np.mean(de2)))
 
             star_type = load_star_type(g)
 
@@ -541,7 +541,8 @@ class TXTauStatistics(PipelineStage):
             
         else:
             print("Shear calibration type not recognized.")
-
+        g1 = g1 - np.mean(g1)
+        g2 = g2 - np.mean(g2)
         return ra, dec, g1, g2, weight
 
     def tau_plots(self, tau_stats):
@@ -664,9 +665,9 @@ class TXRoweStatistics(PipelineStage):
                     "measured_T"
                 ][:] ** 2
 
-            e_psf = np.array((e1psf, e2psf))
-            e_mod = np.array((e1mod,e2mod))
-            de_psf = np.array((de1, de2))
+            e_psf  = np.array((e1psf-np.mean(e1psf), e2psf-np.mean(e2psf)))
+            e_mod  = np.array((e1mod-np.mean(e1mod),e2mod-np.mean(e2mod)))
+            de_psf = np.array((de1-np.mean(de1), de2-np.mean(de2)))
 
             star_type = load_star_type(g)
 
@@ -885,6 +886,7 @@ class TXGalaxyStarShear(PipelineStage):
         # Columns we need from the shear catalog
         # TODO: not sure of an application where we would want to use true shear but can be added
         cat_type = read_shear_catalog_type(self)
+        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
 
         # load tomography data
         with self.open_input("shear_tomography_catalog") as f:
