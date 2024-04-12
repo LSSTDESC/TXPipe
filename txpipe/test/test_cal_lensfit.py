@@ -39,11 +39,16 @@ def core_lensfit(comm):
         comm.Allreduce(weight, wsum)
         csum = np.zeros_like(g1)
         comm.Allreduce(g1 * weight, csum)
-        C1_true = csum.sum() / wsum.sum()
-        comm.Allreduce(g2 * weight, csum)
-        C2_true = csum.sum() / wsum.sum()
+        C1_N_true = csum.sum() / wsum.sum()
+        C1_S_true = csum.sum() / wsum.sum()
 
-    C_true = np.array([C1_true, C2_true])  # mean of g1, g2
+        comm.Allreduce(g2 * weight, csum)
+        C2_S_true = csum.sum() / wsum.sum()
+        C2_S_true = csum.sum() / wsum.sum()
+
+
+    C_N_true = np.array([C1_N_true, C2_N_true])  # mean of g1, g2
+    C_S_true = np.array([C1_S_true, C2_S_true])  # mean of g1, g2
 
     data = {
         "dec":dec,
@@ -59,7 +64,8 @@ def core_lensfit(comm):
         cal.add_data(data)
 
         K, C_N, C_S, n, _ = cal.collect(comm, allgather=True)
-        assert np.allclose(C, C_true)
+        assert np.allclose(C_N, C_N_true)
+        assert np.allclose(C_S, C_S_true)
         assert np.allclose(K, K_true)
         assert n == N * nproc
 
@@ -144,14 +150,15 @@ def test_mean_shear_weights():
 def test_lensfit_scalar():
     # lensfit calibrator
     K = np.array([0.9])
-    C = np.array([0.11, 0.22])
+    C_N = np.array([0.11, 0.22])
+    C_S
     dec = -3
     g1 = 0.2
     g2 = -0.3
     g1_obs = (g1) * (1 + K[0]) + C[0]
     g2_obs = (g2) * (1 + K[0]) + C[1]
     g_obs = np.array([g1_obs, g2_obs])
-    cal = LensfitCalibrator(K, C)
+    cal = LensfitCalibrator(K, C_N,C_S)
     g1_, g2_ = cal.apply(dec,g_obs[0], g_obs[1], subtract_mean=True)
 
     assert np.allclose(g1_, g1)
@@ -163,8 +170,10 @@ def test_lensfit_scalar():
 def test_lensfit_array():
     # array version
     K = np.array([0.9])
-    C = np.array([0.11, 0.22])
-    cal = LensfitCalibrator(K, C)
+    C_N = np.array([0.11, 0.22])
+    C_S = np.array([0.11, 0.22])
+
+    cal = LensfitCalibrator(K, C_N,C_S)
     dec = np.random.normal(-5, 4, size=10)
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
