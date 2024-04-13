@@ -654,8 +654,8 @@ class TXRoweStatistics(PipelineStage):
                 rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de, de)
                 rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de, e_mod)
                 rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_mod * T_f, e_mod * T_f)
-                rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_meas * T_f)
-                rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
+                rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_mod * T_f)
+                rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_mod * T_f)
         self.save_stats(rowe_stats)
         self.rowe_plots(rowe_stats)
 
