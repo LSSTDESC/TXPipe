@@ -618,6 +618,8 @@ class TXRoweStatistics(PipelineStage):
         "bin_slop": 0.01,
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
+        "definition"    : 'des-y1',
+        "subtract_mean" : False
     }
 
     def run(self):
@@ -627,46 +629,67 @@ class TXRoweStatistics(PipelineStage):
 
         matplotlib.use("agg")
 
-        ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
+        ra, dec, e_meas, e_mod, de, T_f, star_type = self.load_stars()
 
         rowe_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
-            rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
-            rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de_psf, de_psf)
-            rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de_psf, e_mod)
-            rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_psf * T_f, e_psf * T_f)
-            rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de_psf, e_psf * T_f)
-            rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_psf * T_f)
-
+            print(s,t)
+            if self.config['definition']=='des-y1' or self.config['definition']=='des-y3':
+                rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
+                rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de, de)
+                rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de, e_mod)
+                rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_meas * T_f, e_meas * T_f)
+                rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_meas * T_f)
+                rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
+            elif self.config['definition'] == 'hsc-y1' or  self.config['definition'] == 'hsc-y3':
+                # de =  g_meas - g_model
+                # dT = (T_meas - T_model)/Tmodel
+                # rho1 = de x de
+                # rho2 = e_mod x de
+                # rho3 = e_mod(dT/T_mod) x e_mod(dT/T_mod)
+                # rho4 = de(e_mod*dT/T_mod)
+                # rho5 = e_mod*(e_mod*dT/T_mod)
+                rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
+                rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de, de)
+                rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de, e_mod)
+                rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_mod * T_f, e_mod * T_f)
+                rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_meas * T_f)
+                rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
         self.save_stats(rowe_stats)
         self.rowe_plots(rowe_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
-            g = f["stars"]
-            ra = g["ra"][:]
-            dec = g["dec"][:]
-            e1psf = g["measured_e1"][:]
-            e2psf = g["measured_e2"][:]
+            g     = f["stars"]
+            ra    = g["ra"][:]
+            dec   = g["dec"][:]
+            e1meas = g["measured_e1"][:]
+            e2meas = g["measured_e2"][:]
             e1mod = g["model_e1"][:]
             e2mod = g["model_e2"][:]
-            de1 = e1psf - e1mod
-            de2 = e2psf - e2mod
-            if self.config["psf_size_units"] == "T":
+            de1 = e1meas - e1mod
+            de2 = e2meas - e2mod
+            if self.config["psf_size_units"] == "Tmeas":
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
+            elif self.config["psf_size_units"] == "Tmodel":
+                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]    
             elif self.config["psf_size_units"] == "sigma":
-                T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g[
-                    "measured_T"
-                ][:] ** 2
+                T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
 
-            e_psf = np.array((e1psf, e2psf))
-            e_mod = np.array((e1mod,e2mod))
-            de_psf = np.array((de1, de2))
+            if self.config['subtract_mean']:
+                e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
+                e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
+                de     = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
+
+            else:
+                e_meas = np.array((e1meas, e2meas ))
+                e_mod  = np.array((e1mod , e2mod  ))
+                de     = np.array((de1   , de2    ))
 
             star_type = load_star_type(g)
 
-        return ra, dec, e_psf, e_mod, de_psf, T_frac, star_type
+        return ra, dec, e_meas, e_mod, de, T_frac, star_type
 
     def compute_rowe(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
