@@ -10,40 +10,6 @@ import numpy as np
 import warnings
 
 
-class TXSSIIngest(PipelineStage):
-    """
-    class for
-    """
-
-    name = "TXSSIIngest"
-
-    inputs = [
-        ("injection_catalog", HDFFile),
-        ("ssi_photometry_catalog", HDFFile),
-    ]
-
-    outputs = [
-        ("matched_ssi_photometry_catalog", HDFFile),
-    ]
-
-    config_options = {
-        "chunk_rows": 10000,
-        "match_radius": 0.1,
-    }
-
-    def run(self):
-        """
-        Run the analysis for this stage.
-        """
-        # prep the catalogs for reading
-
-        # loop through chunks of the ssi photometry
-        # catalog and match to the injections
-
-        # output the matched catalog with as much SSI metadata
-        # stored as possible 
-
-
 class TXSSIMagnification(PipelineStage):
     """
     class for
