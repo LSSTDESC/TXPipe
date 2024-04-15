@@ -38,6 +38,7 @@ from .ingest import *
 from .spatial_diagnostics import TXFocalPlanePlot
 from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
+from .injection import TXSSIMagnification
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
