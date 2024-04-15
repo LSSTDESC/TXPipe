@@ -12,7 +12,7 @@ import warnings
 
 class TXSSIMagnification(PipelineStage):
     """
-    class for
+    class for computing the exp
     """
 
     name = "TXSSIMagnification"
@@ -23,7 +23,7 @@ class TXSSIMagnification(PipelineStage):
     ]
 
     outputs = [
-        ("magnification", HDFFile),
+        ("magnification_coefficients", HDFFile),
     ]
 
     config_options = {
