@@ -60,7 +60,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "T_max": 4.0,
         "s2n_min": 10,
         "s2n_max": 300,
-        "psf_conv": False,
+        "psf_unit_conv": False,
         "bands": "riz",
     }
 
@@ -319,8 +319,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         with self.open_input("shear_catalog") as c:
             col = c[f"shear/{psf_prefix}T_mean"][:]
-            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_conv']==True)):
-                col = col * 0.214**2
+            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_unit_conv']==True)):
+                pix2arcsec = 0.214
+                col = col * pix2arcsec**2
             psfT = col[(col > psfT_min) & (col < psfT_max)]
             psf_T_edges = self.BinEdges(psfT,nbins)
             del psfT
@@ -331,7 +332,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
-            psf_conv = self.config['psf_conv']
+            psf_unit_conv = self.config['psf_unit_conv']
         )
         
         while True:
@@ -464,8 +465,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         
         with self.open_input("shear_catalog") as c:
             col = c[f"shear/{shear_prefix}T"][:]
-            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_conv']==True)):
-                col = col * 0.214**2
+            if ((self.config["shear_catalog_type"] == 'lensfit') & (self.config['psf_unit_conv']==True)):
+                pix2arcsec = 0.214
+                col = col * pix2arcsec**2
             T = col[(col > T_min) & (col < T_max)]
             T_edges = self.BinEdges(T,nbins)
             del T
@@ -476,7 +478,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
-            psf_conv = self.config['psf_conv']
+            psf_unit_conv = self.config['psf_unit_conv']
         )
 
         while True:
@@ -655,6 +657,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g1, g2 = cal.apply(g1,g2)
                 
             elif cat_type=='lensfit':
+                # In KiDS, the additive bias is calculated and removed per North and South field
+                # therefore, we add dec to split data into these fields. 
+                # You can choose not to by setting dec_cut = 90 in the config, for example.
                 g1, g2 = cal.apply(dec, g1,g2)
             else:
                 g1, g2 = cal.apply(g1,g2,c1,c2)
