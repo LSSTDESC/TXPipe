@@ -85,6 +85,21 @@ def calculate_shear_response(
     R = np.mean(R, axis=0)
     return R
 
+def apply_metacal_response(R, S, g1, g2):
+    # The values of R are assumed to already
+    # have had appropriate weights included
+    from numpy.linalg import pinv
+    import numpy as np
+
+    mcal_g = np.stack([g1, g2], axis=1)
+
+    R_total = R + S
+
+    # Invert the responsivity matrix
+    Rinv = pinv(R_total)
+    mcal_g = Rinv @ mcal_g.T
+
+    return mcal_g[0], mcal_g[1]
 
 class _DataWrapper:
     """
@@ -437,7 +452,7 @@ class LensfitCalculator:
 
     """
 
-    def __init__(self, selector, input_m_is_weighted=False):
+    def __init__(self, selector, dec_cut=-25.0, input_m_is_weighted=False):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -462,7 +477,9 @@ class LensfitCalculator:
         self.count = 0
         self.sum_weights = 0
         self.sum_weights_sq = 0
-        
+        # In KiDS, the additive bias is calculated and removed per North and South field
+        # we have implemented a config to cut on dec to do this. You can choose not to by setting dec_cut = 90, for example.
+        self.dec_cut = dec_cut
         self.input_m_is_weighted = input_m_is_weighted
 
     def add_data(self, data, *args, **kwargs):
@@ -507,8 +524,8 @@ class LensfitCalculator:
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
         # create selection mask for north field and south field 
-        Nmask = (dec[sel] > -25.0)
-        Smask = (dec[sel] <= -25.0)
+        Nmask = (dec[sel] > self.dec_cut)
+        Smask = (dec[sel] <= self.dec_cut)
         # here either i can increase the dimensions of C or add a new C to denote one per field
         self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
         self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
@@ -701,14 +718,14 @@ class MeanShearInBins:
         delta_gamma,
         cut_source_bin=False,
         shear_catalog_type="metacal",
-        psf_conv= False
+        psf_unit_conv= False
     ):
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma
         self.cut_source_bin = cut_source_bin
         self.shear_catalog_type = shear_catalog_type
-        self.psf_conv = psf_conv
+        self.psf_unit_conv = psf_unit_conv
         self.size = len(self.limits) - 1
         # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
@@ -738,8 +755,9 @@ class MeanShearInBins:
 
     def selector(self, data, i):
         x = data[self.x_name]
-        if ((self.shear_catalog_type=='lensfit') & (self.psf_conv == True) & ("T" in self.x_name)):
-            x = x * 0.214**2
+        if ((self.shear_catalog_type=='lensfit') & (self.psf_unit_conv == True) & ("T" in self.x_name)):
+            pix2arcsec = 0.214
+            x = x * pix2arcsec**2
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
             w &= data["bin"] != -1
