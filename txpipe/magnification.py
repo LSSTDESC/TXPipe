@@ -3,6 +3,7 @@ from .data_types import (
     YamlFile,
     HDFFile,
     FitsFile,
+    PNGFile,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier
@@ -26,6 +27,7 @@ class TXSSIMagnification(PipelineStage):
 
     outputs = [
         ("magnification_coefficients", HDFFile),
+        ("magnification_plot", PNGFile),
     ]
 
     config_options = {
@@ -88,13 +90,15 @@ class TXSSIMagnification(PipelineStage):
                 assert (label1 == np.arange(cluster.n_clusters)).all(), "empty JK patches"
                 assert (label2 == np.arange(cluster.n_clusters)).all(), "empty JK patches"
 
-                test = self.calc_frac_change(*[counts1, counts2])/deltak
                 boot = bootstrap([counts1, counts2], self.calc_frac_change)
 
                 csample_boot_mean = np.mean(boot.bootstrap_distribution)/deltak
                 csample_boot_err = np.std(boot.bootstrap_distribution)/np.abs(deltak)
                 self.write_output_boot(outfile, csample_boot_mean, csample_boot_err, ibin)
 
+
+        self.plot_results(outfile)
+        outfile.close()
 
     def calc_cluster_patches(self, nomag_cat ):
         """
@@ -149,6 +153,30 @@ class TXSSIMagnification(PipelineStage):
     def write_output_boot(self, outfile, csample_mean, csample_err, ibin ):
         outfile["magnification/csample_boot_mean"][ibin] = csample_mean
         outfile["magnification/csample_boot_err"][ibin]  = csample_err
+
+    def plot_results(self, outfile):
+        """
+        plot magnifiation coeff vs bin index
+        """
+        import matplotlib.pyplot as plt
+        
+        csample = outfile["magnification/csample"][:]
+        index = np.arange(len(csample))
+
+        fig = self.open_output("magnification_plot", wrapper=True)
+        plt.plot(index, csample, label='SSI', color='b')
+
+        if self.config["bootstrap_error"]:
+            mean = outfile["magnification/csample_boot_mean"][:]
+            err = outfile["magnification/csample_boot_mean"][:]
+            plt.errorbar(index+0.1, mean, err, fmt='.', color='r', label='SSI bootstrap')
+        
+        plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+        plt.xlabel("lens bin")
+        plt.ylabel(r"$C_{\rm sample}$")
+        plt.axhline(0, color='k', ls='-')
+        plt.axhline(2, color='k', ls='--')
+        fig.close()
 
     @staticmethod
     def calc_frac_change(weights_nomag, weights_mag):
