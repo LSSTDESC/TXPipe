@@ -831,6 +831,7 @@ class TXGalaxyStarShear(PipelineStage):
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
         "shear_catalog_type": "metacal",
+        "star_type": 'PSF-reserved',
         "flip_g2": False,
     }
 
@@ -1118,6 +1119,7 @@ class TXGalaxyStarDensity(PipelineStage):
         "bin_slop": 0.1,
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
+        "star_type": 'PSF-reserved',
         "flip_g2": False,
     }
 
