@@ -171,6 +171,148 @@ class TXPSFDiagnostics(PipelineStage):
 
         return results
 
+class TXPSFmoments(PipelineStage):
+    """
+    Compute PSF Moments
+    """
+
+    name     = "TXPSFMoments"
+    parallel = False
+    inputs   = [("star_catalog", HDFFile)]
+    outputs  = [
+                ("rowe134", PNGFile),
+                ("rowe25", PNGFile),
+                ("rowe0", PNGFile),
+                ("rowe_stats", HDFFile),
+               ]
+
+    config_options = {
+                      "min_sep": 0.5,
+                      "max_sep": 250.0,
+                      "nbins": 20,
+                      "bin_slop": 0.01,
+                      "sep_units": "arcmin",
+                      "psf_size_units": "sigma",
+                      "definition"    : 'des-y1',
+                      "subtract_mean" : False
+                     }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+
+        matplotlib.use("agg")
+
+        # Load the star catalog
+        ra, dec, e_meas, e_mod, de, moment4, star_type = self.load_stars()
+        
+        moments_stats = {}
+        for t in STAR_TYPES:
+            s = np.where(star_type==t)[0]
+            moment_stats[0, t] = self.compute_momentcorr(0, s, ra, dec, moment4, e_mod)
+            moment_stats[1, t] = self.compute_momentcorr(1, s, ra, dec, moment4, de)
+            moment_stats[2, t] = self.compute_momentcorr(2, s, ra, dec, moment4, moment4)
+        self.save_stats(moment_stats)
+        self.moment_plots(moment_stats)
+
+    def load_stars(self):
+        with self.open_input("star_catalog") as f:
+            g         = f["stars"]
+            ra        = g["ra"][:]
+            dec       = g["dec"][:]
+            e1meas    = g["measured_e1"][:]
+            e2meas    = g["measured_e2"][:]
+            e1mod     = g["model_e1"][:]
+            e2mod     = g["model_e2"][:]
+            e1mod     = g["model_e1"][:]
+            e2mod     = g["model_e2"][:]
+            e1moment4 = g["model_moment4_e1"][:]
+            e2moment4 = g["model_moment4_e2"][:]
+            
+            de1       = e1meas - e1mod
+            de2       = e2meas - e2mod
+
+            e_meas    = np.array((e1meas, e2meas ))
+            e_mod     = np.array((e1mod , e2mod  ))
+            de        = np.array((de1   , de2    ))
+            moment4   = np.array((e1moment4, e2moment4))
+
+            star_type = load_star_type(g)
+
+
+        return ra, dec, e_meas, e_mod, de, moment4, star_type
+
+    def compute_momentcorr(self, i, s, ra, dec, q1, q2):
+        # select a subset of the stars
+        ra = ra[s]
+        dec = dec[s]
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        n = len(ra)
+        np.save('tmp_wsnrcut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
+        
+        #np.save('tmp_nosnrcut_wareacut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
+        #import pdb;pdb.set_trace()
+        print(f"Computing Rowe statistic rho_{i} from {n} objects")
+        import treecorr
+
+        corr = treecorr.GGCorrelation(self.config)
+        cat1 = treecorr.Catalog(
+            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg"
+        )
+        cat2 = treecorr.Catalog(
+            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg"
+        )
+        corr.process(cat1, cat2)
+        return corr.meanr, corr.xip, corr.varxip**0.5
+
+    def moment_plots(self, rowe_stats):
+        # First plot - stats 1,3,4
+        import matplotlib.pyplot as plt
+        import matplotlib.transforms as mtrans
+        
+        f = self.open_output("moments",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+
+        for s in STAR_TYPES:
+            ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
+            
+            for j,i in enumerate([0]):
+                theta,xi,err = rowe_stats[i,s]
+                tr = mtrans.offset_copy(
+                    ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
+                )
+                plt.errorbar(
+                    theta,
+                    abs(xi),
+                    err,
+                    fmt=".",
+                    label=rf"$\rho_{i}$",
+                    capsize=3,
+                    transform=tr,
+                )
+            plt.xscale("log")
+            plt.yscale("log")
+            plt.xlabel(r"$\theta$")
+            plt.ylabel(r"$\xi_+(\theta)$")
+            plt.legend()
+            plt.title(STAR_TYPE_NAMES[s])
+        f.close()
+
+
+    def save_stats(self, moment_stats):
+        f = self.open_output("moment_stats")
+        g = f.create_group("moment_statistics")
+        for i in 0, 1, 2:
+            for s in STAR_TYPES:
+                theta, xi, err = moment_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f"moment_{i}_{name}")
+                h.create_dataset("theta", data=theta)
+                h.create_dataset("xi_plus", data=xi)
+                h.create_dataset("xi_err", data=err)
+        f.close()
+
 
 class TXTauStatistics(PipelineStage):
     """
@@ -630,12 +772,15 @@ class TXRoweStatistics(PipelineStage):
         matplotlib.use("agg")
 
         ra, dec, e_meas, e_mod, de, T_f, star_type = self.load_stars()
-
+        #import pdb; pdb.set_trace()
         rowe_stats = {}
         for t in STAR_TYPES:
-            s = star_type == t
-            print(s,t)
+            #s = star_type == t
+            s = np.where(star_type==t)[0]
+            #import pdb; pdb.set_trace()
+            #print("startype==0", s,t)
             if self.config['definition']=='des-y1' or self.config['definition']=='des-y3':
+                print("Using DES's definition of Rowes")
                 rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
                 rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de, de)
                 rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de, e_mod)
@@ -643,6 +788,7 @@ class TXRoweStatistics(PipelineStage):
                 rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_meas * T_f)
                 rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
             elif self.config['definition'] == 'hsc-y1' or  self.config['definition'] == 'hsc-y3':
+                print("Using HSC's definition of Rowes")
                 # de =  g_meas - g_model
                 # dT = (T_meas - T_model)/Tmodel
                 # rho1 = de x de
@@ -655,21 +801,22 @@ class TXRoweStatistics(PipelineStage):
                 rowe_stats[2, t] = self.compute_rowe(2, s, ra, dec, de, e_mod)
                 rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_mod * T_f, e_mod * T_f)
                 rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_mod * T_f)
-                rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_mod * T_f)
+                rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
         self.save_stats(rowe_stats)
         self.rowe_plots(rowe_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
-            g     = f["stars"]
-            ra    = g["ra"][:]
-            dec   = g["dec"][:]
+            g      = f["stars"]
+            ra     = g["ra"][:]
+            dec    = g["dec"][:]
             e1meas = g["measured_e1"][:]
             e2meas = g["measured_e2"][:]
-            e1mod = g["model_e1"][:]
-            e2mod = g["model_e2"][:]
-            de1 = e1meas - e1mod
-            de2 = e2meas - e2mod
+            e1mod  = g["model_e1"][:]
+            e2mod  = g["model_e2"][:]
+            de1    = e1meas - e1mod
+            de2    = e2meas - e2mod
+            #np.save('e1meas.npy', e1meas); np.save('e2meas.npy', e2meas); np.save('e1mod.npy', e1mod)
             if self.config["psf_size_units"] == "Tmeas":
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
             elif self.config["psf_size_units"] == "Tmodel":
@@ -689,6 +836,7 @@ class TXRoweStatistics(PipelineStage):
 
             star_type = load_star_type(g)
 
+
         return ra, dec, e_meas, e_mod, de, T_frac, star_type
 
     def compute_rowe(self, i, s, ra, dec, q1, q2):
@@ -698,6 +846,10 @@ class TXRoweStatistics(PipelineStage):
         q1 = q1[:, s]
         q2 = q2[:, s]
         n = len(ra)
+        np.save('tmp_wsnrcut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
+        
+        #np.save('tmp_nosnrcut_wareacut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
+        #import pdb;pdb.set_trace()
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
 
@@ -1437,8 +1589,8 @@ class TXBrighterFatterPlot(PipelineStage):
 def load_star_type(data):
     used     = data["calib_psf_used"][:].astype('int')
     reserved = data["calib_psf_reserved"][:].astype('int')
-
-    star_type = np.zeros(used.size, dtype=int)
+    
+    star_type              = np.full(used.size, -99, dtype=int)
     star_type[used==1]     = STAR_PSF_USED
     star_type[reserved==1] = STAR_PSF_RESERVED
 
