@@ -849,6 +849,8 @@ class TXGalaxyStarShear(PipelineStage):
         star_star_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
+            if STAR_TYPE_NAMES[t] != self.config.star_type:
+                    continue
             galaxy_star_stats[1, t] = self.compute_galaxy_star(
                 ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight
             )
@@ -999,6 +1001,8 @@ class TXGalaxyStarShear(PipelineStage):
         )
         TEST_TYPES = ["shear", "residual"]
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
@@ -1031,6 +1035,8 @@ class TXGalaxyStarShear(PipelineStage):
         )
         TEST_TYPES = ["shear", "residual"]
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = star_star_stats[i, s]
@@ -1060,6 +1066,8 @@ class TXGalaxyStarShear(PipelineStage):
         g = f.create_group("star_cross_galaxy")
         for i in 1, 2:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = galaxy_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"star_cross_galaxy_{i}_{name}")
@@ -1070,6 +1078,8 @@ class TXGalaxyStarShear(PipelineStage):
         g = f.create_group("star_cross_star")
         for i in 1, 2:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = star_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"star_cross_star_{i}_{name}")
@@ -1125,6 +1135,8 @@ class TXGalaxyStarDensity(PipelineStage):
         galaxy_star_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
+            if STAR_TYPE_NAMES[t] != self.config.star_type:
+                    continue
             galaxy_star_stats[1, t] = self.compute_galaxy_star(
                 ra, dec, s, ra_gal, dec_gal, ra_random, dec_random
             )
@@ -1242,6 +1254,8 @@ class TXGalaxyStarDensity(PipelineStage):
         )
         TEST_TYPES = ["star cross galaxy", "star cross star"]
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
@@ -1271,6 +1285,8 @@ class TXGalaxyStarDensity(PipelineStage):
         g = f.create_group("star_density")
         for i in 1, 2:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = galaxy_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"star_density_{i}_{name}")
