@@ -537,12 +537,14 @@ class TXTauStatistics(PipelineStage):
 
         elif cat_type == "lensfit":
             print("Applying lensfit calibration")
+            # In KiDS, the additive bias is calculated and removed per North and South field
+            # therefore, we add dec to split data into these fields. 
+            # You can choose not to by setting dec_cut = 90 in the config, for example.
             g1, g2 = cal.apply(dec, g1,g2)
             
         else:
             print("Shear calibration type not recognized.")
-        g1 = g1 
-        g2 = g2 
+            
         return ra, dec, g1, g2, weight
 
     def tau_plots(self, tau_stats):
@@ -932,6 +934,9 @@ class TXGalaxyStarShear(PipelineStage):
             g1, g2 = cal.apply(g1,g2)
 
         elif cat_type == "lensfit":
+            # In KiDS, the additive bias is calculated and removed per North and South field
+            # therefore, we add dec to split data into these fields. 
+            # You can choose not to by setting dec_cut = 90 in the config, for example.
             g1, g2  = cal.apply(dec, g1,g2)
         else:
             print("Shear calibration type not recognized.")
