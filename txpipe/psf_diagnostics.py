@@ -960,7 +960,7 @@ class TXGalaxyStarShear(PipelineStage):
         cat2 = treecorr.Catalog(
             ra=ra_gal,
             dec=dec_gal,
-            g1=g2,
+            g1=g1,
             g2=g2,
             ra_units="deg",
             dec_units="deg",
