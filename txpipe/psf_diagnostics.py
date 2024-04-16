@@ -878,7 +878,6 @@ class TXGalaxyStarShear(PipelineStage):
             e2 = g["measured_e2"][:]
             de1 = e1 - g["model_e1"][:]
             de2 = e2 - g["model_e2"][:]
-
             e_psf = np.array((e1, e2))
             de_psf = np.array((de1, de2))
 
@@ -940,7 +939,7 @@ class TXGalaxyStarShear(PipelineStage):
             # In KiDS, the additive bias is calculated and removed per North and South field
             # therefore, we add dec to split data into these fields. 
             # You can choose not to by setting dec_cut = 90 in the config, for example.
-            g1, g2  = cal.apply(dec, g1,g2)
+            g1, g2 = cal.apply(dec,g1,g2)
         else:
             print("Shear calibration type not recognized.")
 
@@ -1088,6 +1087,7 @@ class TXGalaxyStarShear(PipelineStage):
                 h.create_dataset("xi_plus", data=xi)
                 h.create_dataset("xi_err", data=err)
         f.close()
+
 
 
 class TXGalaxyStarDensity(PipelineStage):
