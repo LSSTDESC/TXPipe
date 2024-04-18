@@ -753,12 +753,12 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_response_calculators(self, nbin_source):
-        calculators = [
-            LensfitCalculator(self.select, self.config["input_m_is_weighted"])
+         calculators = [
+            LensfitCalculator(self.select, input_m_is_weighted=self.config["input_m_is_weighted"])
             for i in range(nbin_source)
         ]
         calculators.append(
-            LensfitCalculator(self.select_2d, self.config["input_m_is_weighted"])
+            LensfitCalculator(self.select_2d, input_m_is_weighted=self.config["input_m_is_weighted"])
         )
         return calculators
 
@@ -766,7 +766,6 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
-        print("set up the mf lensfit output")
         outfile = super().setup_output()
         n = outfile["tomography/bin"].size
         nbin_source = outfile["tomography/counts"].size
