@@ -753,7 +753,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_response_calculators(self, nbin_source):
-         calculators = [
+        calculators = [
             LensfitCalculator(self.select, input_m_is_weighted=self.config["input_m_is_weighted"])
             for i in range(nbin_source)
         ]
