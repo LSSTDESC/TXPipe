@@ -580,7 +580,7 @@ class LensfitCalculator:
         _, C_N = self.C_N.collect(comm, mode)
         _, C_S = self.C_S.collect(comm, mode)
 
-        return K, C_N, C_S, count, sum_weights**2/sum_weights_sq
+        return K, np.nan_to_num(C_N), np.nan_to_num(C_S), count, sum_weights**2/sum_weights_sq
 
 
 class HSCCalculator:
