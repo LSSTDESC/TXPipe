@@ -526,12 +526,24 @@ class LensfitCalculator:
         # create selection mask for north field and south field 
         Nmask = (dec[sel] > self.dec_cut)
         Smask = (dec[sel] <= self.dec_cut)
-        # here either i can increase the dimensions of C or add a new C to denote one per field
-        self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
-        self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
         
-        self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
-        self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
+        if len(g1[sel][Nmask]) == 0:
+            print('North field empty, calculating additive bias for South field only')
+            self.C_N.add_data(0, np.zeros(n),np.zeros(n))
+            self.C_N.add_data(1, np.zeros(n),np.zeros(n))
+            self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
+            self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
+        elif len(g1[sel][Smask]) == 0:
+            print('South field empty, calculating additive bias for North field only')
+            self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
+            self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
+            self.C_N.add_data(0, np.zeros(n),np.zeros(n))
+            self.C_N.add_data(1, np.zeros(n),np.zeros(n))
+        else:
+            self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
+            self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
+            self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
+            self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
         return sel
     
     def collect(self, comm=None, allgather=False):
@@ -580,7 +592,7 @@ class LensfitCalculator:
         _, C_N = self.C_N.collect(comm, mode)
         _, C_S = self.C_S.collect(comm, mode)
 
-        return K, np.nan_to_num(C_N), np.nan_to_num(C_S), count, sum_weights**2/sum_weights_sq
+        return K, C_N, C_S, count, sum_weights**2/sum_weights_sq
 
 
 class HSCCalculator:
