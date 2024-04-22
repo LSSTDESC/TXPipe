@@ -129,7 +129,7 @@ Plots:
         - TXTwoPointPlotsFourier
         - TXConvergenceMapPlots
         - TXMapPlots
-        - TXPhotozPlots
+        - TXPhotozPlot
 
 
 Diagnostics:

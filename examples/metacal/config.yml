@@ -132,10 +132,6 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-# Mock version of stacking:
-TXTrueNumberDensity:
-    nz: 301
-    zmax: 3.0
 
 TXSourceSelectorMetacal:
     input_pz: False
@@ -342,6 +338,18 @@ PZRailSummarizeSource:
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
 
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: lens_nz
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: source_nz
 
 FlowCreator:
     n_samples: 1000000

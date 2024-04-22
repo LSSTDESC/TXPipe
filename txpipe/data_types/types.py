@@ -4,7 +4,7 @@ generic types in base.py
 """
 from .base import HDFFile, DataFile, YamlFile
 import yaml
-
+import numpy as np
 
 def metacalibration_names(names):
     """
@@ -98,7 +98,7 @@ class TomographyCatalog(HDFFile):
         """
         Write redshift bin edges to attributes
         """
-        d = dict(self.file["tomography"].attrs)
+        d = self.file["tomography"].attrs
         d[f"nbin"] = len(edges) - 1
         for i, (zmin, zmax) in enumerate(zip(edges[:-1], edges[1:])):
             d[f"zmin_{i}"] = zmin
@@ -354,6 +354,9 @@ class ClusteringNoiseMaps(MapsFile):
 class PhotozPDFFile(HDFFile):
     required_datasets = []
 
+    def get_z_grid(self):
+        return self.file["/meta/xvals"][:][0]
+
 
 class CSVFile(DataFile):
     suffix = "csv"
@@ -390,44 +393,6 @@ class SACCFile(DataFile):
         pass
 
 
-class NOfZFile(HDFFile):
-
-    # Must have at least one bin in
-    required_datasets = []
-
-    def get_nbin(self, kind):
-        return self.file["n_of_z"][kind].attrs["nbin"]
-
-    def get_n_of_z(self, kind, bin_index):
-        group = self.file["n_of_z"][kind]
-        z = group["z"][:]
-        nz = group[f"bin_{bin_index}"][:]
-        return (z, nz)
-
-    def get_n_of_z_spline(self, bin_index, kind="cubic", **kwargs):
-        import scipy.interpolate
-
-        z, nz = self.get_n_of_z(bin_index)
-        spline = scipy.interpolate.interp1d(z, nz, kind=kind, **kwargs)
-        return spline
-
-    def save_plot(self, filename, **fig_kw):
-        import matplotlib.pyplot as plt
-
-        plt.figure(**fig_kw)
-        self.plot()
-        plt.legend()
-        plt.savefig(filename)
-        plt.close()
-
-    def plot(self, kind):
-        import matplotlib.pyplot as plt
-
-        for b in range(self.get_nbin(kind)):
-            z, nz = self.get_n_of_z(kind, b)
-            plt.plot(z, nz, label=f"Bin {b}")
-
-
 class FiducialCosmology(YamlFile):
 
     # TODO replace when CCL has more complete serialization tools.
@@ -461,7 +426,6 @@ class FiducialCosmology(YamlFile):
             ))
 
 
-
         if "z_mg" in params:
             inits["z_mg"] = params["z_mg"]
             inits["df_mg"] = params["df_mg"]
@@ -474,6 +438,152 @@ class FiducialCosmology(YamlFile):
 
         return ccl.Cosmology(**inits)
 
-class QPFile(DataFile):
-    # TODO: Flesh this out
-    suffix = "hdf5"
+
+class QPBaseFile(HDFFile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.mode == "r":
+            self._metadata = None
+
+    @property
+    def metadata(self):
+        import tables_io
+        if self._metadata is not None:
+            return self._metadata
+        meta = tables_io.io.readHdf5GroupToDict(self.file["meta"])
+        self._metadata = meta
+        return meta
+
+class QPPDFFile(QPBaseFile):
+    def iterate(self, chunk_rows, rank=0, size=1):
+        import qp
+        return qp.iterator(self.path, chunk_size=chunk_rows, rank=rank, parallel_size=size)
+
+    def get_z(self):
+        import qp
+        metadata = qp.read_metadata(self.path)
+        return metadata['xvals'].copy().squeeze()
+
+    def get_pdf_type(self):
+        import qp
+        metadata = qp.read_metadata(self.path)
+        return metadata['pdf_name'][0].decode()
+
+
+
+class QPNOfZFile(QPBaseFile):
+    """
+    The final ensemble row represents the 2D (non-tomographic) n(z).
+
+    In a few places TXPipe assumes that the pdf type is one of the
+    grid types, and will raise an error otherwise; in particular the
+    stacking stage.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._ensemble = None
+    
+    def write_ensemble(self, ensemble):
+        if not "qp" in self.file.keys():
+            self.file.create_group("qp")
+        group = self.file["qp"]
+        tables = ensemble.build_tables()
+        for subgroup_name, subtables in tables.items():
+            subgroup = group.create_group(subgroup_name)
+            for key, val in subtables.items():
+                subgroup.create_dataset(key, dtype=val.dtype, data=val.data)
+
+    def read_ensemble(self):
+        """
+        Read the complete QP object from this file.
+        """
+        import qp
+        import tables_io
+
+        # Use cached ensemble if available
+        if self._ensemble is not None:
+            return self._ensemble
+
+        # Build ensemble, following approach in qp factory code
+        read = tables_io.io.readHdf5GroupToDict
+        tables = dict([(key, read(val)) for key, val in self.file["qp"].items()])
+
+        self._ensemble = qp.from_tables(tables)
+        return self._ensemble
+        
+    def get_qp_pdf_type(self):
+        meta = self.metadata
+        pdf_name = meta["pdf_name"][0].decode()
+        return pdf_name
+    
+    def get_nbin(self):
+        ens = self.read_ensemble()
+        return ens.npdf - 1
+    
+    def get_2d_n_of_z(self, zmax=3.0, nz=301):
+        z = np.linspace(0, zmax, nz)
+        ensemble = self.read_ensemble()
+        return z, ensemble.pdf(z)[-1]
+
+    def get_bin_n_of_z(self, bin_index, zmax=3.0, nz=301):
+        ensemble = self.read_ensemble()
+        npdf = ensemble.npdf
+        if bin_index >= npdf - 1:
+            raise ValueError(f"Requested n(z) for bin {bin_index} but only {npdf-1} bins available. For the 2D bin use get_2d_n_of_z.")
+        z = np.linspace(0, zmax, nz)
+        return z, ensemble.pdf(z)[bin_index]
+
+    def get_z(self):
+        """
+        Get the redshift grid for this n(z) file.
+
+        If the QP representation used does not have a simple z grid
+        (e.g. if it is a gaussian mixture) then this will raise an error.
+        """
+        pdf_name = self.get_qp_pdf_type()
+        meta = self.metadata
+        if pdf_name == "interp":
+            z = meta["xvals"][:]
+        elif pdf_name == "hist":
+            z = meta["bins"][:]
+        else:
+            raise ValueError(f"TXPipe cannot read a z grid from QP file with type {pdf_name}")
+        return z.squeeze()
+    
+    
+class QPMultiFile(HDFFile):
+    """
+    This type represents and HDF file collecting multiple qp objects together.
+
+    We currently use it when multiple realizations of the same n(z) are
+    being generated in the summarize stage.
+    """
+    def get_names(self):
+        return list(self.file["qps"].keys())
+
+    def read_metadata(self, name):
+        import tables_io
+        if self.mode != "r":
+            raise ValueError("Can only read from file opened in read mode")
+        return tables_io.io.readHdf5GroupToDict(self.file[f"qps/{name}/meta"])
+
+    def read_ensemble(self, name):
+        import qp
+        import tables_io
+        g = self.file[f"qps/{name}"]
+        read = tables_io.io.readHdf5GroupToDict
+        tables = dict([(key, read(val)) for key, val in g.items()])
+        return qp.from_tables(tables)
+
+    def write_ensemble(self, ensemble, name):
+        if "qps" in self.file.keys():
+            g = self.file["qps"]
+        else:
+            g = self.file.create_group("qps")
+        group = g.create_group(name)
+        
+        tables = ensemble.build_tables()
+        for subgroup_name, subtables in tables.items():
+            subgroup = group.create_group(subgroup_name)
+            for key, val in subtables.items():
+                subgroup.create_dataset(key, dtype=val.dtype, data=val.data)

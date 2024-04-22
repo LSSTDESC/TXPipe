@@ -51,22 +51,28 @@ global:
 ##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
 
 TXSourceSelectorHSC:
-    bands      : i #used for selection
-    T_cut      : 0.5
-    s2n_cut    : 10.0
-    max_rows   : 1000
-    delta_gamma: 0.02
-    zbin_edges : [0.15, 0.5, 0.75, 1.0, 1.5]
-    chunk_rows : 100000
-    # Mag cuts
-    cperp_cut  : 0.2
-    r_cpar_cut : 13.5
-    r_lo_cut   : 16.0
-    r_hi_cut   : 19.6
-    i_lo_cut   : 17.5
-    i_hi_cut   : 19.9
-    r_i_cut    : 2.0
-    shear_prefix:
+    # From Gabriela's pipeline
+    bands             : i #used for selection
+    T_cut             : 0.0
+    s2n_cut           : 10.0
+    max_rows          : 1000
+    delta_gamma       : 0.02
+    # Hikage's redshift binning
+    source_zbin_edges : [0.3, 0.6, 0.9, 1.2, 1.5]
+    chunk_rows        : 100000
+    nsrc              : 4
+    nlens             : 0
+    # lens selection
+    select_lens       : False
+    apply_flag_cut    : True
+    shear_catalog_type: 'hsc'
+    shear_prefix      : ''
+    input_pz          : True
+    i_hi_cut          : 24.5
+    r_hi_cut          : -99.
+    i_lo_cut          : -99.
+    r_lo_cut          : -99.
+    true_z            : True
 
 TXShearCalibration: {}
 TXTruthLensCatalogSplitter: {}
@@ -130,13 +136,14 @@ TXTwoPointTheoryReal: {}
 TXTwoPointPlots: {}    
     
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
+    psf_prefix: psf_
+    shear_prefix: ''
     psfT_min: 0.04
     psfT_max: 0.36
     T_min: 0.04
     T_max: 4.0
     nbins: 20
+    bands: ir
 
 TXLensDiagnosticPlots: {}
 
@@ -152,10 +159,22 @@ TXFocalPlanePlot: {}
 
 TXGalaxyStarDensity: {}
 
+TXRoweStatistics:
+  min_sep: 3.0
+  max_sep: 60.0
+  nbins  : 20
+  bin_slop: 0
+  sep_units: 'arcmin'
+  psf_size_units: 'T'
 
-
-
-
+TXTauStatistics:
+  min_sep: 3.0
+  max_sep: 60.0
+  nbins  : 20
+  bin_slop: 0
+  sep_units: 'arcmin'
+  psf_size_units: 'T'
+  flip_g2 : False
 
 TXExposureInfo:
     dc2_name: '1.2p'

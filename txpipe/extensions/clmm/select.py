@@ -8,6 +8,8 @@ from collections import defaultdict
 import yaml
 import ceci
 
+    
+
 class CLClusterShearCatalogs(PipelineStage):
     name = "CLClusterShearCatalogs"
     inputs = [

@@ -22,6 +22,7 @@ stages:
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
+    - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
     - name: TXSourceMaps           # make source g1 and g2 maps
     - name: TXLensMaps             # make source lens and n_gal maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
@@ -53,8 +54,12 @@ stages:
     - name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
     - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
+    - name: TXTauStatistics      # Compute and plot the tau statistics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-    - name: TXPhotozPlots        # Plot the bin n(z)
+    - name: TXPhotozPlotSource        # Plot the bin n(z)
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotLens        # Plot the bin n(z)
+      classname: TXPhotozPlot
     - name: PZRealizationsPlotSource   # Plot n(z) realizations
       classname: PZRealizationsPlot
     - name: PZRealizationsPlotLens   # Plot n(z) realizations

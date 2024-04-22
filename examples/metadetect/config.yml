@@ -331,6 +331,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    nsamples: 100
     mag_prefix: "/shear/00/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
@@ -413,3 +414,15 @@ TXShearCalibration:
 TXSelfCalibrationIA:
     do_pos_pos: False
     use_randoms: False
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
