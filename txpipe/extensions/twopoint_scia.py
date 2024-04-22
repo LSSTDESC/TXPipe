@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from .twopoint import TXTwoPoint
+from ..twopoint import TXTwoPoint
 from ..data_types import (
     HDFFile,
     ShearCatalog,
@@ -9,7 +9,7 @@ from ..data_types import (
     QPNOfZFile,
     FiducialCosmology,
 )
-from .utils.patches import PatchMaker
+from ..utils.patches import PatchMaker
 import numpy as np
 import collections
 import sys
@@ -17,7 +17,7 @@ import os
 import pathlib
 from time import perf_counter
 import gc
-from .utils import choose_pixelization
+from ..utils import choose_pixelization
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements
