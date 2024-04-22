@@ -116,6 +116,20 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
             self.comm.Barrier()
 
         self.write_output(source_list, lens_list, meta, results)
+    
+    def _read_nbin_from_tomography(self):
+        if self.get_input("binned_shear_catalog") == "none":
+            nbin_source = 0
+        else:
+            with self.open_input("binned_shear_catalog") as f:
+                nbin_source = f["shear"].attrs["nbin_source"]
+        
+        nbin_lens = 0
+
+        source_list = list(range(nbin_source))
+        lens_list = list(range(nbin_lens))
+
+        return source_list, lens_list
 
     def select_calculations(self, source_list, lens_list):
         calcs = []
