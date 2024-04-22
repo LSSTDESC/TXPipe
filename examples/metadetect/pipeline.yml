@@ -71,7 +71,7 @@ stages:
       threads_per_process: 2
     - name: TXTwoPointFourier    # Compute power spectra C_ell
     # Disabled since not yet synchronised with new Treecorr MPI
-    - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+    - name: TXTwoPointSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster

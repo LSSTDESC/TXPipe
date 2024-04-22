@@ -304,7 +304,7 @@ TXShearCalibration:
     redshift_shearcatalog: True
     redshift_name: 'redshift_true'
 
-TXSelfCalibrationIA:
+TXTwoPointSelfCalibrationIA:
     do_pos_pos: False
     use_randoms: False
 
