@@ -47,7 +47,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
     name = "TXTwoPointSCIA"
     inputs = [
         ('binned_shear_catalog', ShearCatalog),
-        ('binned_random_catalog_sources', HDFFile),
+        ('binned_random_catalog_source', HDFFile),
         ('shear_photoz_stack', QPNOfZFile),
         ('patch_centers', TextFile),
         ('fiducial_cosmology', FiducialCosmology),
