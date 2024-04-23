@@ -73,7 +73,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
         "reduce_randoms_size": 1.0,
         "do_shear_source": True,
         "do_shear_source_select": True,
-        "do source_source": False,
+        "do_source_source": False,
         "var_method": "jackknife",
         "use_randoms": False,
         "low_mem": False,
