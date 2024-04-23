@@ -222,11 +222,11 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
                 self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
-            if self.config["use_subsampled_randoms"]:
-                ran_cat = self.get_subsampled_random_catalog(h)
-                npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
-                self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
-                del ran_cat
+                if self.config["use_subsampled_randoms"]:
+                    ran_cat = self.get_subsampled_random_catalog(h)
+                    npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
+                    del ran_cat
 
         meta["npatch_shear"] = npatch_shear
         meta["npatch_pos"] = npatch_pos
