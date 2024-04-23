@@ -579,7 +579,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
         S2.to_canonical_order()
         self.write_metadata(S2, meta)
 
-        S2.save_fits(self.get_output('gammaX_scia'), overwrite=True)
+        S2.save_fits(self.get_output('twopoint_gamma_x_SCIA'), overwrite=True)
 
     def add_data_points(self, S, results):
         import treecorr
