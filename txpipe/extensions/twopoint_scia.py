@@ -63,7 +63,6 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
         "max_sep": 250.0,
         "nbins": 9,
         "bin_slop": 0.0,
-        "sep_units": "arcmin", #THIS PROBABLY CAN GO
         "flip_g1": False,
         "flip_g2": True,
         "cores_per_task": 20,
@@ -353,7 +352,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
         config['max_sep'] = self.config['max_sep']*np.pi*Da_i / 10_800
 
         if self.rank == 0:
-            print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+            print(f"Calculating shear-position selected bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
             print(config)
 
         if n_i == 0 or n_j == 0:
