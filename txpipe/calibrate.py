@@ -42,6 +42,7 @@ class TXShearCalibration(PipelineStage):
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
         "extra_cols": [""],
+        "shear_catalog_type": ''
     }
 
     def run(self):
@@ -149,7 +150,7 @@ class TXShearCalibration(PipelineStage):
             counts = f["tomography/counts"][:]
             count2d = f["tomography/counts_2d"][0]
             nbin = len(counts)
-
+        
         # Prepare the calibrated output catalog
         f = self.open_output("binned_shear_catalog", parallel=True)
 

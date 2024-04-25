@@ -379,6 +379,7 @@ class HSCCalibrator(Calibrator):
     def __init__(self, R, K):
         self.R = R
         self.K = K
+        print('=============== caibrators/HSCCalibrator.__init__============================')
 
     @classmethod
     def load(cls, tomo_file):
@@ -401,7 +402,7 @@ class HSCCalibrator(Calibrator):
             A single HSCalibrator for the 2D bin
         """
         import h5py
-
+        print('=============== caibrators/HSCCalibrator.load============================')
         with h5py.File(tomo_file, "r") as f:
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][0]
@@ -421,6 +422,7 @@ class HSCCalibrator(Calibrator):
         else:
             outfile["response/R_mean"][i] = self.R
             outfile["response/K"][i] = self.K
+        print('=============== caibrators/HSCCalibrator.save============================')
 
     def apply(self, g1, g2, c1, c2):
         """
@@ -444,7 +446,7 @@ class HSCCalibrator(Calibrator):
         c2: array or float
             Shear 2 additive bias component
         """
-
+        print('=============== caibrators/HSCCalibrator.apply============================')
         g1 = (g1 / (2 * self.R) - c1) / (1 + self.K)
         g2 = (g2 / (2 * self.R) - c2) / (1 + self.K)
         return g1, g2

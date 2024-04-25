@@ -130,7 +130,7 @@ class TXSourceSelectorBase(PipelineStage):
         "s2n_cut": float,
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
-        "random_seed": 42,
+        "random_seed": 42
     }
 
     def run(self):
@@ -150,6 +150,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Are we using a metacal or lensfit catalog?
         shear_catalog_type = read_shear_catalog_type(self)
+
         bands = self.config["bands"]
 
         # The output file we will put the tomographic
@@ -291,7 +292,9 @@ class TXSourceSelectorBase(PipelineStage):
         Creates the data sets and groups to put module output
         in the shear_tomography_catalog output file.
         """
+
         cat_type = read_shear_catalog_type(self)
+
         with self.open_input("shear_catalog", wrapper=True) as f:
             n = f.get_size()
 
