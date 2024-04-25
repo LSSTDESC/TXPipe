@@ -9,6 +9,8 @@ global:
     pixelization: healpix
     nside: 1024
     sparse: True  # Generate sparse maps - faster if using small areas
+    shear_catalog_type: 'hsc'
+
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -132,7 +134,17 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-
+TXSourceSelectorHSC:
+    input_pz: True
+    true_z  : False
+    bands   : i #used for selection
+    T_cut   : 0.0
+    s2n_cut : 10.0
+    max_rows: 10000000000
+    source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
+    shear_prefix: ''
+    shear_catalog_type: 'hsc'
+   
 TXSourceSelectorMetacal:
     input_pz: True
     true_z: False
@@ -144,6 +156,13 @@ TXSourceSelectorMetacal:
     source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
     shear_prefix: mcal_
     use_diagonal_response : True
+ 
+TXShearCalibration:
+    use_true_shear: False
+    chunk_rows: 100000
+    subtract_mean_shear: True
+    extra_cols: [""]
+    shear_catalog_type: "hsc"
 
 TXTruthLensSelector:
     # Mag cuts
@@ -170,6 +189,24 @@ TXMeanLensSelector:
     i_hi_cut: 21.9
     r_i_cut: 2.0
 
+TXRoweStatistics:
+  min_sep  : 3.0
+  max_sep  : 102.0
+  nbins    : 20
+  bin_slop : 0
+  sep_units: 'arcmin'
+  psf_size_units: 'Tmodel' # HSC uses the Tfrac=(Tmeas-Tmodel)/Tmodel definition
+  definition    : 'hsc-y3' # Set all definitions to HSC
+  subtract_mean :  False    # subtract mean e1/e2
+
+TXPSFMomentCorr:
+  min_sep  : 1.0
+  max_sep  : 200.0
+  nbins    : 20
+  bin_slop : 0
+  sep_units: 'arcmin'
+  subtract_mean :  False    # subtract mean e1/e2
+
 TXModeLensSelector:
     # Mag cuts
     lens_zbin_edges: [0.0,0.2,0.4]
@@ -185,15 +222,14 @@ TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
-    bin_slop: 0.1
-    delta_gamma: 0.02
+    bin_slop: 0.02
     do_pos_pos: False
     do_shear_shear: True
     do_shear_pos: False
     flip_g2: True  # use true when using metacal shears
-    min_sep: 1.0
-    max_sep: 400.0
-    nbins: 1000
+    min_sep: 5.3
+    max_sep: 248
+    nbins: 13
     verbose: 0
     subtract_mean_shear: True
 
@@ -285,7 +321,7 @@ TXRealGaussianCovariance:
 
 
 TXJackknifeCenters:
-    npatch: 5
+    npatch: 50
 
 
 TXTwoPointFourier:
@@ -327,12 +363,12 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    mag_prefix: "/shear/mcal_mag_"
+    mag_prefix: "i"
     tomography_name: "source"
     name: PZRailSummarizeSource
     aliases:
         tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
+        photometry_catalog: photometry_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
 
