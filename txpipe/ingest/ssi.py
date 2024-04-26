@@ -20,7 +20,7 @@ class TXIngestSSI(PipelineStage):
     TO DO: make a separate stage to ingest the matched catalog directly
     """
 
-    name = "TXSSIIngest"
+    name = "TXIngestSSI"
 
     # TO DO: switch inputs from TXPipe format to either GCR or butler 
     inputs = [
@@ -141,6 +141,67 @@ class TXIngestSSI(PipelineStage):
             col.resize((ntot,))
         outfile.close()
         return
+
+
+
+class TXIngestSSIMatched(PipelineStage):
+    """
+    Base-stage for ingesting a matched SSI catalog
+
+    This stage will just read in a file in a given format and output to a 
+    HDF file that TXPIPE can use
+
+    """
+
+    name = "TXIngestSSIMatched"
+
+    outputs = [
+        ("matched_ssi_photometry_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "chunk_rows": 100000,
+        "magnification":0, # magnification label
+    }
+
+
+
+  class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
+    """
+    Class for ingesting a matched "SSI" catalog from DES (AKA Balrog)
+    """
+
+    name = "TXIngestSSIMatchedDESBalrog"
+
+    inputs = [
+        ("balrog_matched_catalog", FitsFile),
+    ]
+  
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+
+        f = self.open_input("balrog_matched_catalog")
+
+        #we will only load a subset of columns to save space
+        input_cols = [
+            "bal_id", 
+            "true_bdf_mag_deredden", "true_id", 
+            "meas_id", "meas_ra", "meas_dec", 
+            "meas_cm_mag_deredden", "meas_cm_T", 
+            "meas_EXTENDED_CLASS_SOF", 
+            "meas_FLAGS_GOLD_SOF_ONLY",
+            ]
+
+        
+
+
+
+
+
+
+
 
 
 
