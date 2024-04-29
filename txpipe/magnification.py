@@ -164,7 +164,7 @@ class TXSSIMagnification(PipelineStage):
         index = np.arange(len(csample))
 
         fig = self.open_output("magnification_plot", wrapper=True)
-        plt.plot(index, csample, label='SSI', color='b')
+        plt.plot(index, csample, 'o', label='SSI', color='b')
 
         if self.config["bootstrap_error"]:
             mean = outfile["magnification/csample_boot_mean"][:]
@@ -174,6 +174,7 @@ class TXSSIMagnification(PipelineStage):
         plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
         plt.xlabel("lens bin")
         plt.ylabel(r"$C_{\rm sample}$")
+        plt.legend()
         plt.axhline(0, color='k', ls='-')
         plt.axhline(2, color='k', ls='--')
         fig.close()
