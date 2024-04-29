@@ -60,6 +60,8 @@ class TXSSIMagnification(PipelineStage):
         nbins = nomag_cat['lens/'].attrs['nbin_lens']
         outfile = self.setup_output(nbins)
         for ibin in range(nbins):
+            print(f'Computing magnification coefficient for bin {ibin+1}')
+
             # single redshift bins should be low enough number 
             # count that we can load the whole sample
             w1 = nomag_cat[f'lens/bin_{ibin}/weight'][:]
@@ -70,6 +72,8 @@ class TXSSIMagnification(PipelineStage):
             self.write_output(outfile, csample, ibin)
 
             if self.config["bootstrap_error"]:
+                print(f'Computing uncertainty with bootstrap')
+
                 #compute mag coeff with subsampling patches to get a boostrap error
                 patch1 = cluster.predict(
                     np.transpose(
@@ -168,7 +172,7 @@ class TXSSIMagnification(PipelineStage):
 
         if self.config["bootstrap_error"]:
             mean = outfile["magnification/csample_boot_mean"][:]
-            err = outfile["magnification/csample_boot_mean"][:]
+            err = outfile["magnification/csample_boot_err"][:]
             plt.errorbar(index+0.1, mean, err, fmt='.', color='r', label='SSI bootstrap')
         
         plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
