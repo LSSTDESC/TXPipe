@@ -203,11 +203,11 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
             "meas_cm_mag_deredden":     "mag",  
             "meas_cm_T":                "cm_T", 
             "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",  
-            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD_SOF_ONLY", 
+            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD_SOF_ONLY",
             }
         cols = list(column_names.keys())
 
-        #set up theoutput file columns
+        #set up the output file columns
         output = self.open_output("matched_ssi_photometry_catalog")
         g = output.create_group("photometry")
         for col in cols:
@@ -230,6 +230,14 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
                         g[column_names[col]+f"_{b}"][s:e] = data[col][:,iband]
                 else:
                     g[column_names[col]][s:e] = data[col]
+
+        # Set up any dummy columns with sentinal values 
+        # that were not in the original files
+        dummy_columns = {
+            "redshift_true":10.0,
+            }
+        for col_name in dummy_columns.keys():
+            g.create_dataset(col_name, data=np.full(n,dummy_columns[col_name]))
 
         output.close()
 
