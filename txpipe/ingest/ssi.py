@@ -203,7 +203,7 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
             "meas_cm_mag_deredden":     "mag",  
             "meas_cm_T":                "cm_T", 
             "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",  
-            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD_SOF_ONLY",
+            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",
             }
         cols = list(column_names.keys())
 
