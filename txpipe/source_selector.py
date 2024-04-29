@@ -724,7 +724,8 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "input_m_is_weighted": bool
+        "input_m_is_weighted": bool,
+        "dec_cut": bool
     }
 
 

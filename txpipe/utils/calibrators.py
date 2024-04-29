@@ -293,12 +293,12 @@ class MetaDetectCalibrator(MetaCalibrator):
 
 
 class LensfitCalibrator(Calibrator):
-    def __init__(self, K, c_n,c_s,dec_cut = -25.0):
+    def __init__(self, K, c_n,c_s,dec_cut = True):
         self.K = K
         self.c_n = c_n
         self.c_s = c_s
         # In KiDS, the additive bias is calculated and removed per North and South field
-        # we have implemented a config to cut on dec to do this. You can choose not to by setting dec_cut = 90, for example.
+        # we have implemented a config to choose whether or not to do this split
         self.dec_cut = dec_cut
 
     @classmethod
@@ -371,16 +371,19 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
-
         if subtract_mean:
-            Nmask = dec > self.dec_cut
-            Smask = dec <= self.dec_cut
-            
-            g1[Nmask] = (g1[Nmask] - self.c_n[0]) / (1 + self.K)
-            g1[Smask] = (g1[Smask] - self.c_s[0]) / (1 + self.K)
-            
-            g2[Nmask] = (g2[Nmask] - self.c_n[1]) / (1 + self.K)
-            g2[Smask] = (g2[Smask] - self.c_s[1]) / (1 + self.K)
+            if self.dec_cut==True:
+                Nmask = dec > -25.0
+                Smask = dec <= -25.0
+
+                g1[Nmask] = (g1[Nmask] - self.c_n[0]) / (1 + self.K)
+                g1[Smask] = (g1[Smask] - self.c_s[0]) / (1 + self.K)
+
+                g2[Nmask] = (g2[Nmask] - self.c_n[1]) / (1 + self.K)
+                g2[Smask] = (g2[Smask] - self.c_s[1]) / (1 + self.K)
+            else:
+                g1 = (g1 - self.c_n[0]) / (1 + self.K)
+                g2 = (g2 - self.c_n[1]) / (1 + self.K)               
         else:
             g1 = g1 / (1 + self.K)
             g2 = g2 / (1 + self.K)

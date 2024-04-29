@@ -452,7 +452,7 @@ class LensfitCalculator:
 
     """
 
-    def __init__(self, selector, dec_cut=-25.0, input_m_is_weighted=False):
+    def __init__(self, selector, dec_cut=True, input_m_is_weighted=False):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -478,7 +478,7 @@ class LensfitCalculator:
         self.sum_weights = 0
         self.sum_weights_sq = 0
         # In KiDS, the additive bias is calculated and removed per North and South field
-        # we have implemented a config to cut on dec to do this. You can choose not to by setting dec_cut = 90, for example.
+        # we have implemented a config to choose whether or not to do this split
         self.dec_cut = dec_cut
         self.input_m_is_weighted = input_m_is_weighted
 
@@ -523,27 +523,22 @@ class LensfitCalculator:
         else:
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
-        # create selection mask for north field and south field 
-        Nmask = (dec[sel] > self.dec_cut)
-        Smask = (dec[sel] <= self.dec_cut)
-        
-        if len(g1[sel][Nmask]) == 0:
-            print('North field empty, calculating additive bias for South field only')
-            self.C_N.add_data(0, np.zeros(n),np.zeros(n))
-            self.C_N.add_data(1, np.zeros(n),np.zeros(n))
-            self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
-            self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
-        elif len(g1[sel][Smask]) == 0:
-            print('South field empty, calculating additive bias for North field only')
-            self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
-            self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
-            self.C_N.add_data(0, np.zeros(n),np.zeros(n))
-            self.C_N.add_data(1, np.zeros(n),np.zeros(n))
-        else:
+            
+        if self.dec_cut == True:
+            Nmask = (dec[sel] > -25.0)
+            Smask = (dec[sel] <= -25.0)
+            print('Computing additive bias for North and South fields')
             self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
             self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
             self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
             self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
+        else: 
+            print('Field split config set to False, computing additive bias for whole dataset')
+            self.C_N.add_data(0, g1[sel], w[sel])
+            self.C_N.add_data(1, g2[sel], w[sel])
+            self.C_S.add_data(0, np.zeros(n),np.zeros(n))
+            self.C_S.add_data(1, np.zeros(n),np.zeros(n))
+
         return sel
     
     def collect(self, comm=None, allgather=False):
