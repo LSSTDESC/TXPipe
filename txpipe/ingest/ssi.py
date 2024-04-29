@@ -160,13 +160,12 @@ class TXIngestSSIMatched(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 100000,
+        "chunk_rows": 100_000,
         "magnification":0, # magnification label
     }
 
 
-
-  class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
+class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
     """
     Class for ingesting a matched "SSI" catalog from DES (AKA Balrog)
     """
@@ -181,20 +180,58 @@ class TXIngestSSIMatched(PipelineStage):
         """
         Run the analysis for this stage.
         """
+        print('Ingesting DES Balrog matched catalog')
 
+        #get some basic onfo about the input file
         f = self.open_input("balrog_matched_catalog")
+        n = f[1].get_nrows()
+        dtypes = f[1].get_rec_dtype()[0]
+        f.close()
+
+        print(f'{n} objects in matched catalog')
+
+        chunk_rows = self.config["chunk_rows"]
 
         #we will only load a subset of columns to save space
-        input_cols = [
-            "bal_id", 
-            "true_bdf_mag_deredden", "true_id", 
-            "meas_id", "meas_ra", "meas_dec", 
-            "meas_cm_mag_deredden", "meas_cm_T", 
-            "meas_EXTENDED_CLASS_SOF", 
-            "meas_FLAGS_GOLD_SOF_ONLY",
-            ]
+        column_names = {
+            "bal_id":                   "bal_id", 
+            "true_bdf_mag_deredden":    "inj_mag", 
+            "true_id":                  "inj_id", 
+            "meas_id":                  "id", 
+            "meas_ra":                  "ra", 
+            "meas_dec":                 "dec", 
+            "meas_cm_mag_deredden":     "mag",  
+            "meas_cm_T":                "cm_T", 
+            "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",  
+            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD_SOF_ONLY", 
+            }
+        cols = list(column_names.keys())
 
-        
+        #set up theoutput file columns
+        output = self.open_output("matched_ssi_photometry_catalog")
+        g = output.create_group("photometry")
+        for col in cols:
+            dtype = dtypes[col]
+
+            if "_mag" in col:
+                #per band
+                dtype = dtype.subdtype[0]
+                for b in "griz":
+                    g.create_dataset(column_names[col]+f"_{b}", (n,), dtype=dtype)
+            else:
+                g.create_dataset(column_names[col], (n,), dtype=dtype)
+
+        #iterate over the input file and save to the output columns
+        for (s, e, data) in self.iterate_fits("balrog_matched_catalog", 1, cols, chunk_rows):
+            print(s,e,n)
+            for col in cols:
+                if "_mag" in col:
+                    for iband,b in enumerate("griz"):
+                        g[column_names[col]+f"_{b}"][s:e] = data[col][:,iband]
+                else:
+                    g[column_names[col]][s:e] = data[col]
+
+        output.close()
 
 
 
