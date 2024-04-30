@@ -125,7 +125,7 @@ class TXTwoPointFourier(PipelineStage):
             with self.open_input("fiducial_cosmology", wrapper=True) as f:
                 cosmo = f.to_ccl()
 
-            theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
+            theory_ell = np.unique(np.geomspace(self.config["ell_min"], self.config["ell_max"], 100).astype(int))
             theory_sacc = theory_3x2pt(cosmo,
                                     tracer_sacc,
                                     bias=self.config["b0"],
