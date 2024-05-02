@@ -48,15 +48,18 @@ class TXSSIMagnification(PipelineStage):
         nomag_cat = self.open_input("binned_lens_catalog_nomag")
         mag_cat   = self.open_input("binned_lens_catalog_mag")
 
-        # get/estimate the magnification applied to each catalog
-        # could put this as optional config item in TXSSIIngest
+        # get/estimate the magnification applied to the magnified catalog
+        # TO DO: could put this as optional config item in TXSSIIngest
+        # so that it is done automatically
         mu = self.config["applied_magnification"]
         deltak = (1. - 1./mu)/2.
-         
-        cluster = self.calc_cluster_patches(nomag_cat)
+        
+        if self.config["bootstrap_error"]:
+            #split no-mag sample up into patches to be used in the bootstrap errors
+            cluster = self.calc_cluster_patches(nomag_cat)
 
-        # compute number of objects in each bin in each catalog
-        # (+ number of shared objects?)
+        # compute fractional change in number count for both samples
+        # in each lens bin
         nbins = nomag_cat['lens/'].attrs['nbin_lens']
         outfile = self.setup_output(nbins)
         for ibin in range(nbins):
@@ -91,10 +94,15 @@ class TXSSIMagnification(PipelineStage):
                 #count number of objects in each patch
                 label1, counts1 = np.unique(patch1, return_counts=True)
                 label2, counts2 = np.unique(patch2, return_counts=True)
-                assert (label1 == np.arange(cluster.n_clusters)).all(), "empty JK patches"
-                assert (label2 == np.arange(cluster.n_clusters)).all(), "empty JK patches"
+                assert (label1 == np.arange(cluster.n_clusters)).all(), "empty bootstrap patches"
+                assert (label2 == np.arange(cluster.n_clusters)).all(), "empty bootstrap patches"
 
-                boot = bootstrap([counts1, counts2], self.calc_frac_change)
+                # define a function that computes fractional number count change
+                # and takes only patch IDs as input (i.e. fix the counts to this z bin)
+                def calc_frac_change_patches_ibin(patch_ids):
+                    return self.calc_frac_change_patches(patch_ids, counts1, counts2)
+
+                boot = bootstrap(np.array([label1]), calc_frac_change_patches_ibin)
 
                 csample_boot_mean = np.mean(boot.bootstrap_distribution)/deltak
                 csample_boot_err = np.std(boot.bootstrap_distribution)/np.abs(deltak)
@@ -173,7 +181,7 @@ class TXSSIMagnification(PipelineStage):
         if self.config["bootstrap_error"]:
             mean = outfile["magnification/csample_boot_mean"][:]
             err = outfile["magnification/csample_boot_err"][:]
-            plt.errorbar(index+0.1, mean, err, fmt='.', color='r', label='SSI bootstrap')
+            plt.errorbar(index+0.05, mean, err, fmt='.', color='r', label='SSI bootstrap')
         
         plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
         plt.xlabel("lens bin")
@@ -190,7 +198,7 @@ class TXSSIMagnification(PipelineStage):
         return (N1-N0)/N0
 
     @staticmethod
-    def calc_frac_change_patches(counts1, counts2):
-        N0 = np.sum(counts1)
-        N1 = np.sum(counts2)
+    def calc_frac_change_patches(patch_ids, counts1=None, counts2=None):        
+        N0 = np.sum(counts1[patch_ids])
+        N1 = np.sum(counts2[patch_ids])
         return (N1-N0)/N0
