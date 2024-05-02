@@ -37,6 +37,7 @@ from .calibrate import TXShearCalibration
 from .ingest import *
 from .spatial_diagnostics import TXFocalPlanePlot
 from .lssweights import TXLSSWeights
+from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
 
 # Here are the stages that mostly will be used for other projects
