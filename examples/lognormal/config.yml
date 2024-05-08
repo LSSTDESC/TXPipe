@@ -1,0 +1,40 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 64 #if you load an external map this should match the nside of that mask
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLogNormalGlass:
+    num_dens: [0.05, 0.05] #number density [arcmin^-2] per z bin
+    
+    # bias evolution parameters
+    # b(z) = b0 * (1. + (1./3.)*((1+z)**alpha_bz - 1) )/(1. + (1./3.)*((1+zpivot)**alpha _bz- 1) ) 
+    # same as https://arxiv.org/pdf/2310.01315.pdf 
+    bias0: 1.8
+    alpha_bz: 1.5
+    zpivot: 0.6
+
+    zmin: 0. #minimum redshift of first shell
+    zmax: 1.1 #maximum redshift of last shell
+    dx: 100 #width of the shells in distance
+    contaminate: False #contaminate density field with a weight map
+    random_seed: 0
+    output_density_shell_maps: True
+
+TXTwoPointPixel:
+    bin_slop: 0.5
+    do_pos_pos: True
+    do_shear_shear: False
+    do_shear_pos: False
+    min_sep: 10.0
+    max_sep: 300.0
+    nbins: 10
+    sep_units: "arcmin"
+    var_method: "shot"
+

@@ -2,7 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization, rename_iterated
-from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibrators import Calibrator
 from .mapping import ShearMapper, LensMapper, FlagMapper
 
