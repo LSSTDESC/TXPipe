@@ -180,9 +180,6 @@ class TXPSFMomentCorr(PipelineStage):
     parallel = False
     inputs   = [("star_catalog", HDFFile)]
     outputs  = [
-                #("rowe134", PNGFile),
-                #("rowe25", PNGFile),
-                #("rowe0", PNGFile),
                 ("moments_stats", HDFFile)
                ]
 
@@ -220,7 +217,6 @@ class TXPSFMomentCorr(PipelineStage):
             moments_stats[9, t] = self.compute_momentcorr(9, s, ra, dec, dmoment4, dmoment4)
             
         self.save_stats(moments_stats)
-        #self.moment_plots(moments_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
@@ -263,14 +259,11 @@ class TXPSFMomentCorr(PipelineStage):
 
     def compute_momentcorr(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
-        ra = ra[s]
+        ra  = ra[s]
         dec = dec[s]
-        q1 = q1[:, s]
-        q2 = q2[:, s]
-        n = len(ra)
-        #np.save('tmp_wsnrcut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
-        
-        #np.save('tmp_nosnrcut_wareacut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
+        q1  = q1[:, s]
+        q2  = q2[:, s]
+        n   = len(ra)
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
 
@@ -389,8 +382,6 @@ class TXTauStatistics(PipelineStage):
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
 
-            #s = star_type == s
-    
             # Load precomputed Rowe stats if they exist already
             rowe_stats = self.load_rowe(s)
 
@@ -789,13 +780,9 @@ class TXRoweStatistics(PipelineStage):
         matplotlib.use("agg")
 
         ra, dec, e_meas, e_mod, de, T_f, star_type = self.load_stars()
-        #import pdb; pdb.set_trace()
         rowe_stats = {}
         for t in STAR_TYPES:
-            #s = star_type == t
             s = np.where(star_type==t)[0]
-            #import pdb; pdb.set_trace()
-            #print("startype==0", s,t)
             if self.config['definition']=='des-y1' or self.config['definition']=='des-y3':
                 print("Using DES's definition of Rowes")
                 rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
@@ -833,7 +820,6 @@ class TXRoweStatistics(PipelineStage):
             e2mod  = g["model_e2"][:]
             de1    = e1meas - e1mod
             de2    = e2meas - e2mod
-            #np.save('e1meas.npy', e1meas); np.save('e2meas.npy', e2meas); np.save('e1mod.npy', e1mod)
             if self.config["psf_size_units"] == "Tmeas":
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
             elif self.config["psf_size_units"] == "Tmodel":
@@ -858,15 +844,11 @@ class TXRoweStatistics(PipelineStage):
 
     def compute_rowe(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
-        ra = ra[s]
+        ra  = ra[s]
         dec = dec[s]
-        q1 = q1[:, s]
-        q2 = q2[:, s]
-        n = len(ra)
-        np.save('tmp_wsnrcut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
-        
-        #np.save('tmp_nosnrcut_wareacut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
-        #import pdb;pdb.set_trace()
+        q1  = q1[:, s]
+        q2  = q2[:, s]
+        n   = len(ra)
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
 
