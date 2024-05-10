@@ -379,8 +379,7 @@ class HSCCalibrator(Calibrator):
     def __init__(self, R, K):
         self.R = R
         self.K = K
-        print('=============== caibrators/HSCCalibrator.__init__============================')
-
+        
     @classmethod
     def load(cls, tomo_file):
         """
@@ -402,7 +401,6 @@ class HSCCalibrator(Calibrator):
             A single HSCalibrator for the 2D bin
         """
         import h5py
-        print('=============== caibrators/HSCCalibrator.load============================')
         with h5py.File(tomo_file, "r") as f:
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][0]
@@ -422,31 +420,38 @@ class HSCCalibrator(Calibrator):
         else:
             outfile["response/R_mean"][i] = self.R
             outfile["response/K"][i] = self.K
-        print('=============== caibrators/HSCCalibrator.save============================')
-
-    def apply(self, g1, g2, c1, c2):
+        
+    def apply(self, g1, g2, c1, c2, aselepsf1=0, aselepsf2=0, msel=0, subtract_mean=False):
         """
         For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
         gi = 1/(1 + mhat)[ei/(2R) - ci] (Eq. (A6) in Mandelbaum et al., 2018)
         R = 1 - < e_rms^2 >w (Eq. (A1) in Mandelbaum et al., 2018)
         mhat = < m >w (Eq. (A2) in Mandelbaum et al., 2018) (we call this K)
 
-
         Parameters
         ----------
         g1: array or float
             Shear 1 component
-
         g2: array or float
             Shear 2 component
-
         c1: array or float
             Shear 1 additive bias component
-
         c2: array or float
             Shear 2 additive bias component
+        aselepsf1: array
+            Shear 1 of asel * e_psf
+        aselepsf2: array
+            Shear 2 of asel * e_psf
+        msel:
+            multiplicative selection bias
         """
-        print('=============== caibrators/HSCCalibrator.apply============================')
-        g1 = (g1 / (2 * self.R) - c1) / (1 + self.K)
-        g2 = (g2 / (2 * self.R) - c2) / (1 + self.K)
+        # This definition is following Equation 8 of 2304.00702
+        # where aselpsf1/2 and msel are number only present in hsc-y3 not hsc-y1 
+        g1 = ((g1 / (2 * self.R) - c1) / (1 + self.K) - aselepsf1)/(1+msel)
+        g2 = ((g2 / (2 * self.R) - c2) / (1 + self.K) - aselepsf2)/(1+msel)
+        
+        if subtract_mean:
+            g1=g1-np.mean(g1)
+            g2=g2-np.mean(g2)
+            
         return g1, g2

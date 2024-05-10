@@ -171,29 +171,27 @@ class TXPSFDiagnostics(PipelineStage):
 
         return results
 
-class TXPSFmoments(PipelineStage):
+class TXPSFMomentCorr(PipelineStage):
     """
     Compute PSF Moments
     """
 
-    name     = "TXPSFMoments"
+    name     = "TXPSFMomentCorr"
     parallel = False
     inputs   = [("star_catalog", HDFFile)]
     outputs  = [
-                ("rowe134", PNGFile),
-                ("rowe25", PNGFile),
-                ("rowe0", PNGFile),
-                ("rowe_stats", HDFFile),
+                #("rowe134", PNGFile),
+                #("rowe25", PNGFile),
+                #("rowe0", PNGFile),
+                ("moments_stats", HDFFile)
                ]
 
     config_options = {
-                      "min_sep": 0.5,
-                      "max_sep": 250.0,
-                      "nbins": 20,
-                      "bin_slop": 0.01,
+                      "min_sep"  : 0.5,
+                      "max_sep"  : 250.0,
+                      "nbins"    : 20,
+                      "bin_slop" : 0.01,
                       "sep_units": "arcmin",
-                      "psf_size_units": "sigma",
-                      "definition"    : 'des-y1',
                       "subtract_mean" : False
                      }
 
@@ -205,16 +203,24 @@ class TXPSFmoments(PipelineStage):
         matplotlib.use("agg")
 
         # Load the star catalog
-        ra, dec, e_meas, e_mod, de, moment4, star_type = self.load_stars()
+        ra, dec, e_meas, e_mod, de, moment4_meas, moment4_mod, dmoment4, star_type = self.load_stars()
         
         moments_stats = {}
         for t in STAR_TYPES:
             s = np.where(star_type==t)[0]
-            moment_stats[0, t] = self.compute_momentcorr(0, s, ra, dec, moment4, e_mod)
-            moment_stats[1, t] = self.compute_momentcorr(1, s, ra, dec, moment4, de)
-            moment_stats[2, t] = self.compute_momentcorr(2, s, ra, dec, moment4, moment4)
-        self.save_stats(moment_stats)
-        self.moment_plots(moment_stats)
+            moments_stats[0, t] = self.compute_momentcorr(0, s, ra, dec, e_mod, e_mod)
+            moments_stats[1, t] = self.compute_momentcorr(1, s, ra, dec, moment4_mod, e_mod)
+            moments_stats[2, t] = self.compute_momentcorr(2, s, ra, dec, moment4_mod, moment4_mod)
+            moments_stats[3, t] = self.compute_momentcorr(3, s, ra, dec, de, e_mod)
+            moments_stats[4, t] = self.compute_momentcorr(4, s, ra, dec, de, moment4_mod)
+            moments_stats[5, t] = self.compute_momentcorr(5, s, ra, dec, dmoment4, moment4_mod)
+            moments_stats[6, t] = self.compute_momentcorr(6, s, ra, dec, e_mod, dmoment4)
+            moments_stats[7, t] = self.compute_momentcorr(7, s, ra, dec, de, de)
+            moments_stats[8, t] = self.compute_momentcorr(8, s, ra, dec, de, dmoment4)
+            moments_stats[9, t] = self.compute_momentcorr(9, s, ra, dec, dmoment4, dmoment4)
+            
+        self.save_stats(moments_stats)
+        #self.moment_plots(moments_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
@@ -225,23 +231,35 @@ class TXPSFmoments(PipelineStage):
             e2meas    = g["measured_e2"][:]
             e1mod     = g["model_e1"][:]
             e2mod     = g["model_e2"][:]
-            e1mod     = g["model_e1"][:]
-            e2mod     = g["model_e2"][:]
-            e1moment4 = g["model_moment4_e1"][:]
-            e2moment4 = g["model_moment4_e2"][:]
+            e1meas_moment4 = g["measured_moment4_e1"][:]
+            e2meas_moment4 = g["measured_moment4_e2"][:]
+            e1mod_moment4  = g["model_moment4_e1"][:]
+            e2mod_moment4  = g["model_moment4_e2"][:]
             
-            de1       = e1meas - e1mod
-            de2       = e2meas - e2mod
+            # Note: definition are flipped for this paper
+            de1         = e1mod - e1meas
+            de2         = e2mod - e2meas 
+            de1_moment4 = e1mod_moment4 - e1meas_moment4 
+            de2_moment4 = e2mod_moment4 - e2meas_moment4 
 
-            e_meas    = np.array((e1meas, e2meas ))
-            e_mod     = np.array((e1mod , e2mod  ))
-            de        = np.array((de1   , de2    ))
-            moment4   = np.array((e1moment4, e2moment4))
+            if self.config['subtract_mean']:
+                e_meas       = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
+                e_mod        = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
+                de           = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
+                moment4_meas = np.array((e1meas_moment4-np.mean(e1meas_moment4), e2meas_moment4-np.mean(e2meas_moment4)))
+                moment4_mod  = np.array((e1mod_moment4-np.mean(e1mod_moment4)  , e2mod_moment4-np.mean(e2mod_moment4)))
+                dmoment4     = np.array((de1_moment4-np.mean(de1_moment4)      , de2_moment4-np.mean(de2_moment4)))
+            else:
+                e_meas       = np.array((e1meas, e2meas ))
+                e_mod        = np.array((e1mod , e2mod  ))
+                de           = np.array((de1   , de2    ))
+                moment4_meas = np.array((e1meas_moment4, e2meas_moment4))
+                moment4_mod  = np.array((e1mod_moment4 , e2mod_moment4))
+                dmoment4     = np.array((de1_moment4   , de2_moment4))
 
             star_type = load_star_type(g)
 
-
-        return ra, dec, e_meas, e_mod, de, moment4, star_type
+        return ra, dec, e_meas, e_mod, de, moment4_meas, moment4_mod, dmoment4, star_type
 
     def compute_momentcorr(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
@@ -250,10 +268,9 @@ class TXPSFmoments(PipelineStage):
         q1 = q1[:, s]
         q2 = q2[:, s]
         n = len(ra)
-        np.save('tmp_wsnrcut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
+        #np.save('tmp_wsnrcut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
         
         #np.save('tmp_nosnrcut_wareacut_%d'%i,np.c_[ra,dec,q1[0],q1[1],q2[0],q2[1]])
-        #import pdb;pdb.set_trace()
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
 
@@ -300,17 +317,17 @@ class TXPSFmoments(PipelineStage):
         f.close()
 
 
-    def save_stats(self, moment_stats):
-        f = self.open_output("moment_stats")
+    def save_stats(self, moments_stats):
+        f = self.open_output("moments_stats")
         g = f.create_group("moment_statistics")
-        for i in 0, 1, 2:
+        for i in range(0,10):
             for s in STAR_TYPES:
-                theta, xi, err = moment_stats[i, s]
+                theta, xi, err = moments_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
-                h = g.create_group(f"moment_{i}_{name}")
-                h.create_dataset("theta", data=theta)
+                h = g.create_group(f"moment4_{i}_{name}")
+                h.create_dataset("theta"  , data=theta)
                 h.create_dataset("xi_plus", data=xi)
-                h.create_dataset("xi_err", data=err)
+                h.create_dataset("xi_err" , data=err)
         f.close()
 
 

@@ -68,13 +68,17 @@ class TXShearCalibration(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
 
-            cat_cols += [f"00/{c}" for c in extra_cols]
-            renames.update({f"00/{c}":c for c in extra_cols})
-    
+            if cat_type=='des':
+                cat_cols += [f"00/{c}" for c in extra_cols]
+                renames.update({f"00/{c}":c for c in extra_cols})
+            else:
+                cat_cols += [f"{c}" for c in extra_cols]
+                renames.update({f"{c}":c for c in extra_cols})
+        
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -105,6 +109,7 @@ class TXShearCalibration(PipelineStage):
 
         #  Main loop
         for s, e, data in rename_iterated(it, renames):
+            
 
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
@@ -124,19 +129,15 @@ class TXShearCalibration(PipelineStage):
                     # otherwise just objects in this bin
                     w = np.where(data["bin"] == b)
                     cal = cals[b]
-
+                
                 # Cut down the data to just this selection for output
                 d = {name: data[name][w] for name in output_cols}
-
+                
                 # Calibrate the shear columns
                 if cat_type=='hsc':
-                    d["g1"], d["g2"] = cal.apply(
-                        d["g1"], d["g2"], d["c1"], d["c2"]
-                    )
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["c1"], d["c2"], d['aselepsf1'], d['aselepsf2'], d['msel'], subtract_mean=subtract_mean_shear)
                 else:
-                    d["g1"], d["g2"] = cal.apply(
-                        d["g1"], d["g2"], subtract_mean=subtract_mean_shear
-                    )
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)
