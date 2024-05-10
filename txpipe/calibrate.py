@@ -68,7 +68,7 @@ class TXShearCalibration(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
 
-            if cat_type=='des':
+            if cat_type=='metacal' or cat_type=='metadetect':
                 cat_cols += [f"00/{c}" for c in extra_cols]
                 renames.update({f"00/{c}":c for c in extra_cols})
             else:
