@@ -303,6 +303,14 @@ TXMapCorrelations:
     outlier_fraction: 0.05
     nbin: 20
 
+TXShearCalibration:
+    3Dcoords: True
+    redshift_shearcatalog: True
+    redshift_name: 'redshift_true'
+
+TXTwoPointSCIA:
+    do_pos_pos: False
+    use_randoms: False
 
 PZRailSummarizeLens:
     leafsize: 20

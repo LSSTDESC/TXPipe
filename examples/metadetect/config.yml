@@ -410,6 +410,15 @@ PZRealizationsPlotLens:
         photoz_realizations: lens_photoz_realizations
         photoz_realizations_plot: lens_photoz_realizations_plot
 
+TXShearCalibration:
+    3Dcoords: True
+    redshift_shearcatalog: True
+    redshift_name: '00/redshift_true'
+
+TXTwoPointSCIA:
+    do_pos_pos: False
+    use_randoms: False
+
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
     aliases:
