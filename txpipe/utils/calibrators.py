@@ -293,9 +293,13 @@ class MetaDetectCalibrator(MetaCalibrator):
 
 
 class LensfitCalibrator(Calibrator):
-    def __init__(self, K, c):
+    def __init__(self, K, c_n,c_s,dec_cut = True):
         self.K = K
-        self.c = c
+        self.c_n = c_n
+        self.c_s = c_s
+        # In KiDS, the additive bias is calculated and removed per North and South field
+        # we have implemented a config to choose whether or not to do this split
+        self.dec_cut = dec_cut
 
     @classmethod
     def load(cls, tomo_file):
@@ -323,34 +327,36 @@ class LensfitCalibrator(Calibrator):
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][:]
 
-            C = f["response/C"][:, :]
-            C_2d = f["response/C_2d"][:]
+            C_N = f["response/C_N"][:, :]
+            C_S = f["response/C_S"][:, :]
+            C_2d_N = f["response/C_2d_N"][:]
+            C_2d_S = f["response/C_2d_S"][:]
 
         n = len(K)
-        calibrators = [cls(K[i], C[i]) for i in range(n)]
-        calibrator2d = cls(K_2d, C_2d)
+        calibrators = [cls(K[i], C_N[i], C_S[i]) for i in range(n)]
+        calibrator2d = cls(K_2d, C_2d_N, C_2d_S)
         return calibrators, calibrator2d
 
     def save(self, outfile, i):
         if i == "2d":
             outfile["response/K_2d"][:] = self.K
-            outfile["response/C_2d"][:] = self.c
-            outfile["tomography/mean_e1_2d"][0] = self.c[0]
-            outfile["tomography/mean_e2_2d"][0] = self.c[1]
+            outfile["response/C_2d_N"][:] = self.c_n
+            outfile["response/C_2d_S"][:] = self.c_s
+            outfile["tomography/mean_e1_2d"][0] = -99.0
+            outfile["tomography/mean_e2_2d"][0] = -99.0
         else:
             outfile["response/K"][i] = self.K
-            outfile["response/C"][i] = self.c
-            outfile["tomography/mean_e1"][i] = self.c[0]
-            outfile["tomography/mean_e2"][i] = self.c[1]
+            outfile["response/C_N"][i] = self.c_n
+            outfile["response/C_S"][i] = self.c_s
+            outfile["tomography/mean_e1"][i] = -99.0
+            outfile["tomography/mean_e2"][i] = -99.0
 
-    def apply(self, g1, g2, subtract_mean=True):
+    def apply(self, dec, g1, g2, subtract_mean=True):
         """
         For KiDS (see Joachimi et al., 2020, arXiv:2007.01844):
         Appendix C, equation C.4 and C.5
-        Correcting for multiplicative shear calibration.
-        Additionally optionally correct for residual additive bias (true
+        Optionally correct for multiplicative shear calibration and residual additive bias (true
         for KiDS-1000 and KV450.)
-
 
         The c term is only included if subtract_mean = True
 
@@ -365,10 +371,19 @@ class LensfitCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract the constant c term (default True)
         """
-
         if subtract_mean:
-            g1 = (g1 - self.c[0]) / (1 + self.K)
-            g2 = (g2 - self.c[1]) / (1 + self.K)
+            if self.dec_cut==True:
+                Nmask = dec > -25.0
+                Smask = dec <= -25.0
+
+                g1[Nmask] = (g1[Nmask] - self.c_n[0]) / (1 + self.K)
+                g1[Smask] = (g1[Smask] - self.c_s[0]) / (1 + self.K)
+
+                g2[Nmask] = (g2[Nmask] - self.c_n[1]) / (1 + self.K)
+                g2[Smask] = (g2[Smask] - self.c_s[1]) / (1 + self.K)
+            else:
+                g1 = (g1 - self.c_n[0]) / (1 + self.K)
+                g2 = (g2 - self.c_n[1]) / (1 + self.K)               
         else:
             g1 = g1 / (1 + self.K)
             g2 = g2 / (1 + self.K)

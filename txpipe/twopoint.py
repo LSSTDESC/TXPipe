@@ -897,7 +897,7 @@ class TXTwoPoint(PipelineStage):
         # that its two catalogs here are the same one.
         if i == j:
             rancat_j = None
-            n_rand_sub_j = None
+            rancat_sub_j = None
 
         rr = treecorr.NNCorrelation(self.config)
         if self.config["use_subsampled_randoms"]:

@@ -8,7 +8,7 @@ from .data_types import (
     TextFile,
 )
 from .utils import SourceNumberDensityStats, rename_iterated
-from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import (
     metacal_variants,
     metadetect_variants,
@@ -712,7 +712,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # Like metacal, N_eff = N for metadetect
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
-
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
     Source selection and tomography for lensfit catalogs
@@ -728,7 +727,8 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "input_m_is_weighted": bool
+        "input_m_is_weighted": bool,
+        "dec_cut": True,
     }
 
 
@@ -736,6 +736,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
         shear_cols = [
+            "dec",
             "psf_T_mean",
             "weight",
             "flags",
@@ -757,11 +758,11 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         calculators = [
-            LensfitCalculator(self.select, self.config["input_m_is_weighted"])
+            LensfitCalculator(self.select, input_m_is_weighted=self.config["input_m_is_weighted"])
             for i in range(nbin_source)
         ]
         calculators.append(
-            LensfitCalculator(self.select_2d, self.config["input_m_is_weighted"])
+            LensfitCalculator(self.select_2d, input_m_is_weighted=self.config["input_m_is_weighted"])
         )
         return calculators
 
@@ -774,15 +775,18 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("K", (nbin_source,), dtype="f")
-        group.create_dataset("C", (nbin_source, 2), dtype="f")
+        group.create_dataset("C_N", (nbin_source, 2), dtype="f")
+        group.create_dataset("C_S", (nbin_source, 2), dtype="f")
         group.create_dataset("K_2d", (1,), dtype="f")
-        group.create_dataset("C_2d", (2), dtype="f")
+        group.create_dataset("C_2d_N", (2), dtype="f")
+        group.create_dataset("C_2d_S", (2), dtype="f")
+
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
-        K, C, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = LensfitCalibrator(K, C)
-        mean_e = C.copy()
+        K, C_N,C_S, N, Neff = calculator.collect(self.comm, allgather=True)
+        calibrator = LensfitCalibrator(K, C_N, C_S)
+        mean_e = (C_N+C_S)/2
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)

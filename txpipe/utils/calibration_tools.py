@@ -86,7 +86,6 @@ def calculate_shear_response(
     R = np.mean(R, axis=0)
     return R
 
-
 def apply_metacal_response(R, S, g1, g2):
     # The values of R are assumed to already
     # have had appropriate weights included
@@ -102,17 +101,6 @@ def apply_metacal_response(R, S, g1, g2):
     mcal_g = Rinv @ mcal_g.T
 
     return mcal_g[0], mcal_g[1]
-
-
-def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
-    w_tot = np.sum(weight)
-    m = np.sum(weight * m) / w_tot  # if m not provided, default is m=0, so one_plus_K=1
-    one_plus_K = 1.0 + m
-    R = 1.0 - np.sum(weight * sigma_e) / w_tot
-    g1 = (1.0 / (one_plus_K)) * ((g1 / R) - c1)
-    g2 = (1.0 / (one_plus_K)) * ((g2 / R) - c2)
-    return g1, g2, weight, one_plus_K
-
 
 class _DataWrapper:
     """
@@ -465,7 +453,7 @@ class LensfitCalculator:
 
     """
 
-    def __init__(self, selector, input_m_is_weighted=False):
+    def __init__(self, selector, dec_cut=True, input_m_is_weighted=False):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -485,11 +473,14 @@ class LensfitCalculator:
         # We create these, then add data to them below, then collect them
         # together over all the processes
         self.K = ParallelMean(1)
-        self.C = ParallelMean(2)
+        self.C_N = ParallelMean(2)
+        self.C_S = ParallelMean(2)
         self.count = 0
         self.sum_weights = 0
         self.sum_weights_sq = 0
-        
+        # In KiDS, the additive bias is calculated and removed per North and South field
+        # we have implemented a config to choose whether or not to do this split
+        self.dec_cut = dec_cut
         self.input_m_is_weighted = input_m_is_weighted
 
     def add_data(self, data, *args, **kwargs):
@@ -517,8 +508,9 @@ class LensfitCalculator:
         K = data["m"]
         g1 = data["g1"]
         g2 = data["g2"]
+        dec = data["dec"]
         n = g1[sel].size
-
+        
         # Record the count for this chunk, for summation later
         self.count += n
         self.sum_weights += np.sum(w[sel])
@@ -532,9 +524,22 @@ class LensfitCalculator:
         else:
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
-        self.C.add_data(0, g1[sel], w[sel])
-        self.C.add_data(1, g2[sel], w[sel])
-        
+            
+        if self.dec_cut == True:
+            Nmask = (dec[sel] > -25.0)
+            Smask = (dec[sel] <= -25.0)
+            print('Computing additive bias for North and South fields')
+            self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
+            self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
+            self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
+            self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
+        else: 
+            print('Field split config set to False, computing additive bias for whole dataset')
+            self.C_N.add_data(0, g1[sel], w[sel])
+            self.C_N.add_data(1, g2[sel], w[sel])
+            self.C_S.add_data(0, np.zeros(n),np.zeros(n))
+            self.C_S.add_data(1, np.zeros(n),np.zeros(n))
+
         return sel
     
     def collect(self, comm=None, allgather=False):
@@ -580,8 +585,10 @@ class LensfitCalculator:
         # processes and over all the chunks of data
         mode = "allgather" if allgather else "gather"
         _, K = self.K.collect(comm, mode)
-        _, C = self.C.collect(comm, mode)
-        return K, C, count, sum_weights**2/sum_weights_sq
+        _, C_N = self.C_N.collect(comm, mode)
+        _, C_S = self.C_S.collect(comm, mode)
+
+        return K, C_N, C_S, count, sum_weights**2/sum_weights_sq
 
 
 class HSCCalculator:
@@ -718,12 +725,14 @@ class MeanShearInBins:
         delta_gamma,
         cut_source_bin=False,
         shear_catalog_type="metacal",
+        psf_unit_conv= False
     ):
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma
         self.cut_source_bin = cut_source_bin
         self.shear_catalog_type = shear_catalog_type
+        self.psf_unit_conv = psf_unit_conv
         self.size = len(self.limits) - 1
         # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
@@ -740,6 +749,7 @@ class MeanShearInBins:
                 for i in range(self.size)
             ]
         elif shear_catalog_type == "lensfit":
+            print("for i in range ", self.size)
             self.calibrators = [
                 LensfitCalculator(self.selector) for i in range(self.size)
             ]
@@ -752,6 +762,9 @@ class MeanShearInBins:
 
     def selector(self, data, i):
         x = data[self.x_name]
+        if ((self.shear_catalog_type=='lensfit') & (self.psf_unit_conv == True) & ("T" in self.x_name)):
+            pix2arcsec = 0.214
+            x = x * pix2arcsec**2
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
             w &= data["bin"] != -1
@@ -788,7 +801,8 @@ class MeanShearInBins:
         # to apply to it.
         R = []
         K = []
-        C = []
+        C_N = []
+        C_S = []
         N = []
         Neff = []
         for i in range(self.size):
@@ -807,9 +821,10 @@ class MeanShearInBins:
                 N.append(n)
                 Neff.append(neff)
             elif self.shear_catalog_type == "lensfit":
-                k, c, n, neff = self.calibrators[i].collect(comm)
+                k, c_n,c_s, n, neff = self.calibrators[i].collect(comm)
                 K.append(k)
-                C.append(c)
+                C_N.append(c_n)
+                C_S.append(c_s)
                 N.append(n)
                 Neff.append(neff)
             else:

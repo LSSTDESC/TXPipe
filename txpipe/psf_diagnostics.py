@@ -7,12 +7,15 @@ from .data_types import (
     TomographyCatalog,
     RandomsCatalog,
     YamlFile,
+    TextFile
+
 )
 from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 from .utils.calibration_tools import read_shear_catalog_type
-from .utils.calibration_tools import apply_metacal_response, apply_lensfit_calibration
 from .plotting import manual_step_histogram
+from .utils.calibrators import Calibrator
+
 
 STAR_PSF_USED = 0
 STAR_PSF_RESERVED = 1
@@ -633,6 +636,7 @@ class TXTauStatistics(PipelineStage):
     def load_galaxies(self):
         # Columns we need from the shear catalog
         cat_type = read_shear_catalog_type(self)
+        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
 
         # Load tomography data
         with self.open_input("shear_tomography_catalog") as f:
@@ -676,23 +680,21 @@ class TXTauStatistics(PipelineStage):
         # Change shear convention 
         if self.config["flip_g2"]:
             g2 *= -1
-        
         # Apply calibration factor
         if cat_type == "metacal" or cat_type == "metadetect":
             print("Applying metacal/metadetect response")
-            g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
+            g1, g2 = cal.apply(g1, g2)
 
         elif cat_type == "lensfit":
             print("Applying lensfit calibration")
-            g1, g2, weight, _ = apply_lensfit_calibration(g1      = g1,
-                                                          g2      = g2,
-                                                          weight  = weight,
-                                                          sigma_e = sigma_e,
-                                                          m       = m
-                                                          )
+            # In KiDS, the additive bias is calculated and removed per North and South field
+            # therefore, we add dec to split data into these fields. 
+            # You can choose not to by setting dec_cut = 90 in the config, for example.
+            g1, g2 = cal.apply(dec, g1,g2)
+            
         else:
             print("Shear calibration type not recognized.")
-
+            
         return ra, dec, g1, g2, weight
 
     def tau_plots(self, tau_stats):
@@ -753,7 +755,8 @@ class TXRoweStatistics(PipelineStage):
 
     name = "TXRoweStatistics"
     parallel = False
-    inputs = [("star_catalog", HDFFile)]
+    inputs = [("star_catalog", HDFFile),
+             ("patch_centers", TextFile)]
     outputs = [
         ("rowe134", PNGFile),
         ("rowe25", PNGFile),
@@ -770,6 +773,8 @@ class TXRoweStatistics(PipelineStage):
         "psf_size_units": "sigma",
         "definition"    : 'des-y1',
         "subtract_mean" : False
+        "star_type": 'PSF-reserved',
+        "var_method": 'bootstrap'
     }
 
     def run(self):
@@ -827,6 +832,7 @@ class TXRoweStatistics(PipelineStage):
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
 
+<<<<<<< HEAD
             if self.config['subtract_mean']:
                 e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
                 e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
@@ -836,6 +842,11 @@ class TXRoweStatistics(PipelineStage):
                 e_meas = np.array((e1meas, e2meas ))
                 e_mod  = np.array((e1mod , e2mod  ))
                 de     = np.array((de1   , de2    ))
+=======
+            e_psf  = np.array((e1psf, e2psf))
+            e_mod  = np.array((e1mod,e2mod))
+            de_psf = np.array((de1, de2))
+>>>>>>> origin/master
 
             star_type = load_star_type(g)
 
@@ -854,10 +865,12 @@ class TXRoweStatistics(PipelineStage):
 
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg"
+            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg",
+            patch_centers=self.get_input("patch_centers")
         )
         cat2 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg"
+            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg",
+            patch_centers=self.get_input("patch_centers")
         )
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
@@ -869,6 +882,8 @@ class TXRoweStatistics(PipelineStage):
         
         f = self.open_output("rowe0",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             
             for j,i in enumerate([0]):
@@ -895,6 +910,8 @@ class TXRoweStatistics(PipelineStage):
 
         f = self.open_output("rowe134", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
 
             for j, i in enumerate([1, 3, 4]):
@@ -921,6 +938,8 @@ class TXRoweStatistics(PipelineStage):
 
         f = self.open_output("rowe25", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([2, 5]): 
                 theta, xi, err = rowe_stats[i, s]
@@ -949,6 +968,8 @@ class TXRoweStatistics(PipelineStage):
         g = f.create_group("rowe_statistics")
         for i in 0, 1, 2, 3, 4, 5:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = rowe_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"rowe_{i}_{name}")
@@ -988,6 +1009,7 @@ class TXGalaxyStarShear(PipelineStage):
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
         "shear_catalog_type": "metacal",
+        "star_type": 'PSF-reserved',
         "flip_g2": False,
     }
 
@@ -1006,6 +1028,8 @@ class TXGalaxyStarShear(PipelineStage):
         star_star_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
+            if STAR_TYPE_NAMES[t] != self.config.star_type:
+                    continue
             galaxy_star_stats[1, t] = self.compute_galaxy_star(
                 ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight
             )
@@ -1032,7 +1056,6 @@ class TXGalaxyStarShear(PipelineStage):
             e2 = g["measured_e2"][:]
             de1 = e1 - g["model_e1"][:]
             de2 = e2 - g["model_e2"][:]
-
             e_psf = np.array((e1, e2))
             de_psf = np.array((de1, de2))
 
@@ -1045,6 +1068,7 @@ class TXGalaxyStarShear(PipelineStage):
         # Columns we need from the shear catalog
         # TODO: not sure of an application where we would want to use true shear but can be added
         cat_type = read_shear_catalog_type(self)
+        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
 
         # load tomography data
         with self.open_input("shear_tomography_catalog") as f:
@@ -1087,12 +1111,13 @@ class TXGalaxyStarShear(PipelineStage):
 
         if cat_type == "metacal" or cat_type == "metadetect":
             # We use S=0 here because we have already included it in R_total
-            g1, g2 = apply_metacal_response(R_total_2d, 0.0, g1, g2)
+            g1, g2 = cal.apply(g1,g2)
 
         elif cat_type == "lensfit":
-            g1, g2, weight, _ = apply_lensfit_calibration(
-                g1=g1, g2=g2, weight=weight, sigma_e=sigma_e, m=m
-            )
+            # In KiDS, the additive bias is calculated and removed per North and South field
+            # therefore, we add dec to split data into these fields. 
+            # You can choose not to by setting dec_cut = 90 in the config, for example.
+            g1, g2 = cal.apply(dec,g1,g2)
         else:
             print("Shear calibration type not recognized.")
 
@@ -1115,7 +1140,7 @@ class TXGalaxyStarShear(PipelineStage):
         cat2 = treecorr.Catalog(
             ra=ra_gal,
             dec=dec_gal,
-            g1=g2,
+            g1=g1,
             g2=g2,
             ra_units="deg",
             dec_units="deg",
@@ -1154,6 +1179,8 @@ class TXGalaxyStarShear(PipelineStage):
         )
         TEST_TYPES = ["shear", "residual"]
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
@@ -1186,6 +1213,8 @@ class TXGalaxyStarShear(PipelineStage):
         )
         TEST_TYPES = ["shear", "residual"]
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = star_star_stats[i, s]
@@ -1215,6 +1244,8 @@ class TXGalaxyStarShear(PipelineStage):
         g = f.create_group("star_cross_galaxy")
         for i in 1, 2:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = galaxy_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"star_cross_galaxy_{i}_{name}")
@@ -1225,6 +1256,8 @@ class TXGalaxyStarShear(PipelineStage):
         g = f.create_group("star_cross_star")
         for i in 1, 2:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = star_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"star_cross_star_{i}_{name}")
@@ -1232,6 +1265,7 @@ class TXGalaxyStarShear(PipelineStage):
                 h.create_dataset("xi_plus", data=xi)
                 h.create_dataset("xi_err", data=err)
         f.close()
+
 
 
 class TXGalaxyStarDensity(PipelineStage):
@@ -1263,6 +1297,7 @@ class TXGalaxyStarDensity(PipelineStage):
         "bin_slop": 0.1,
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
+        "star_type": 'PSF-reserved',
         "flip_g2": False,
     }
 
@@ -1280,6 +1315,8 @@ class TXGalaxyStarDensity(PipelineStage):
         galaxy_star_stats = {}
         for t in STAR_TYPES:
             s = star_type == t
+            if STAR_TYPE_NAMES[t] != self.config.star_type:
+                    continue
             galaxy_star_stats[1, t] = self.compute_galaxy_star(
                 ra, dec, s, ra_gal, dec_gal, ra_random, dec_random
             )
@@ -1397,6 +1434,8 @@ class TXGalaxyStarDensity(PipelineStage):
         )
         TEST_TYPES = ["star cross galaxy", "star cross star"]
         for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
@@ -1426,6 +1465,8 @@ class TXGalaxyStarDensity(PipelineStage):
         g = f.create_group("star_density")
         for i in 1, 2:
             for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
                 theta, xi, err = galaxy_star_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"star_density_{i}_{name}")
