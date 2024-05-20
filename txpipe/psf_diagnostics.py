@@ -772,7 +772,7 @@ class TXRoweStatistics(PipelineStage):
         "sep_units": "arcmin",
         "psf_size_units": "sigma",
         "definition"    : 'des-y1',
-        "subtract_mean" : False
+        "subtract_mean" : False,
         "star_type": 'PSF-reserved',
         "var_method": 'bootstrap'
     }
