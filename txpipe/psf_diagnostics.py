@@ -832,7 +832,6 @@ class TXRoweStatistics(PipelineStage):
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
 
-<<<<<<< HEAD
             if self.config['subtract_mean']:
                 e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
                 e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
@@ -842,11 +841,6 @@ class TXRoweStatistics(PipelineStage):
                 e_meas = np.array((e1meas, e2meas ))
                 e_mod  = np.array((e1mod , e2mod  ))
                 de     = np.array((de1   , de2    ))
-=======
-            e_psf  = np.array((e1psf, e2psf))
-            e_mod  = np.array((e1mod,e2mod))
-            de_psf = np.array((de1, de2))
->>>>>>> origin/master
 
             star_type = load_star_type(g)
 
