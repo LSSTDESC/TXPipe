@@ -12,6 +12,7 @@ from .data_types import (
 )
 from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
+import sys
 from .utils.calibration_tools import read_shear_catalog_type
 from .plotting import manual_step_histogram
 from .utils.calibrators import Calibrator
@@ -788,6 +789,8 @@ class TXRoweStatistics(PipelineStage):
         rowe_stats = {}
         for t in STAR_TYPES:
             s = np.where(star_type==t)[0]
+            if len(s)==0:
+                continue
             if self.config['definition']=='des-y1' or self.config['definition']=='des-y3':
                 print("Using DES's definition of Rowes")
                 rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
@@ -831,6 +834,8 @@ class TXRoweStatistics(PipelineStage):
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]    
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+            else:
+                sys.exit("Need to specify measured_T: Tmeas/Tmodel/sigma")
 
             if self.config['subtract_mean']:
                 e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
@@ -844,7 +849,6 @@ class TXRoweStatistics(PipelineStage):
 
             star_type = load_star_type(g)
 
-
         return ra, dec, e_meas, e_mod, de, T_frac, star_type
 
     def compute_rowe(self, i, s, ra, dec, q1, q2):
@@ -856,7 +860,7 @@ class TXRoweStatistics(PipelineStage):
         n   = len(ra)
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
-
+    
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(
             ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg",
