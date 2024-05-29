@@ -129,6 +129,7 @@ class TXTwoPoint(PipelineStage):
 
         # For shear-shear we omit pairs with j>i
         if self.config["do_shear_shear"]:
+            print('DOING SHEAR-SHEAR')
             k = SHEAR_SHEAR
             for i in source_list:
                 for j in range(i + 1):
@@ -137,6 +138,7 @@ class TXTwoPoint(PipelineStage):
 
         # For shear-position we use all pairs
         if self.config["do_shear_pos"]:
+            print('DOING SHEAR-POS')
             k = SHEAR_POS
             for i in source_list:
                 for j in lens_list:
@@ -144,6 +146,7 @@ class TXTwoPoint(PipelineStage):
 
         # For position-position we omit pairs with j>i
         if self.config["do_pos_pos"]:
+            print('DOING POS-POS')
             if not self.config["use_randoms"]:
                 raise ValueError(
                     "You need to have a random catalog to calculate position-position correlations"
@@ -399,23 +402,28 @@ class TXTwoPoint(PipelineStage):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        if source_list:
-            with self.open_input("shear_photoz_stack", wrapper=True) as f:
-                for i in source_list:
-                    z, Nz = f.get_bin_n_of_z(i)
-                    S.add_tracer("NZ", f"source_{i}", z, Nz)
-                    if self.config["do_shear_pos"] == True:
-                        S2.add_tracer("NZ", f"source_{i}", z, Nz)
+        if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
+            if source_list:
+                with self.open_input("shear_photoz_stack", wrapper=True) as f:
+                    for i in source_list:
+                        z, Nz = f.get_bin_n_of_z(i)
+                        S.add_tracer("NZ", f"source_{i}", z, Nz)
+                        if self.config["do_shear_pos"] == True:
+                            S2.add_tracer("NZ", f"source_{i}", z, Nz)
+            else:
+                sys.exit("Requesting a measurement that requires source galaxies but no source_list provided")
 
-
-        if lens_list:
-            with self.open_input("lens_photoz_stack", wrapper=True) as f:
-                # For both source and lens
-                for i in lens_list:
-                    z, Nz = f.get_bin_n_of_z(i)
-                    S.add_tracer("NZ", f"lens_{i}", z, Nz)
-                    if self.config["do_shear_pos"] == True:
-                        S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+        if self.config["do_pos_pos"] or self.config["do_shear_pos"]:
+            if lens_list:
+                with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                    # For both source and lens
+                    for i in lens_list:
+                        z, Nz = f.get_bin_n_of_z(i)
+                        S.add_tracer("NZ", f"lens_{i}", z, Nz)
+                        if self.config["do_shear_pos"] == True:
+                            S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+            else:
+                sys.exit("Requesting a measurement that requires lens galaxies but no lens_list provided")
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
@@ -679,7 +687,7 @@ class TXTwoPoint(PipelineStage):
             flip_g1=self.config["flip_g1"],
             flip_g2=self.config["flip_g2"],
         )
-
+        
         return cat
 
 
