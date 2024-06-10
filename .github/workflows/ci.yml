@@ -315,7 +315,7 @@ jobs:
     - name: Test after auto-install
       run: |
         mkdir -p cache/workspaces
-        source ./conda/bin/activate
+        source ./conda/bin/activate tx
         ceci examples/metadetect/pipeline.yml
 
     - name: Show logs
