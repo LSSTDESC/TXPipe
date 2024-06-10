@@ -2,14 +2,15 @@ dependencies:
   - pip:
     - ceci==1.14
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
-    - git+https://github.com/joezuntz/dask-mpi@31e35759cfb03780a12ad6ffe2b82279b0fab442
+    - dask-mpi==2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.8.0
-    - healpix==2023.1.13
     - parallel-statistics==0.13
-    - sacc==0.8
+    - sacc==0.13
+    - git+https://github.com/NumCosmo/NumCosmo@v0.21.2
+    - git+https://github.com/LSSTDESC/Firecrown.git@v1.7.4
     - tjpcov==0.3.0
-    - jaxlib==0.4.14
-    - jax==0.4.14
+    - jax==0.4.27
+    - jaxlib==0.4.23
     - pz-rail[dev]==0.99.1
     - pz-rail-bpz==0.1.0
     - pz-rail-astro-tools==0.0.2
@@ -23,3 +24,4 @@ dependencies:
     - pz-rail-sklearn==0.0.1
     - pz-rail-som==0.0.2
     - glass==2023.7
+

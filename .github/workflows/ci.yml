@@ -82,11 +82,11 @@ jobs:
       run: |
         tar -zxvf example.tar.gz
 
-    - name: Run metacal pipeline
+    - name: Run metadetect pipeline
       run: |
         mkdir -p cache/workspaces
-        ceci examples/metacal/pipeline.yml
-        test -f data/example/outputs/shear_xi_plus.png
+        ceci examples/metadetect/pipeline.yml
+        test -f data/example/outputs_metadetect/shear_xi_plus.png
 
     - name: Show logs
       if: ${{ always() }}

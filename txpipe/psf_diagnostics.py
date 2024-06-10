@@ -303,7 +303,7 @@ class TXPSFMomentCorr(PipelineStage):
                     fmt=".",
                     label=rf"$\rho_{i}$",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
             plt.xscale("log")
             plt.yscale("log")
@@ -731,7 +731,7 @@ class TXTauStatistics(PipelineStage):
                              fmt=".",
                              label=rf"$\tau_{i}$",
                              capsize=3,
-                             transform=tr,
+                            #  transform=tr,
                             )
                 
                 plt.xscale("log")
@@ -896,7 +896,7 @@ class TXRoweStatistics(PipelineStage):
                     fmt=".",
                     label=rf"$\rho_{i}$",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
             plt.xscale("log")
             plt.yscale("log")
@@ -924,7 +924,7 @@ class TXRoweStatistics(PipelineStage):
                     fmt=".",
                     label=rf"$\rho_{i}$",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
             plt.xscale("log")
             plt.yscale("log")
@@ -951,7 +951,7 @@ class TXRoweStatistics(PipelineStage):
                     fmt=".",
                     label=rf"$\rho_{i}$",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
@@ -1182,9 +1182,6 @@ class TXGalaxyStarShear(PipelineStage):
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
-                )
                 plt.errorbar(
                     theta,
                     abs(xi),
@@ -1192,7 +1189,6 @@ class TXGalaxyStarShear(PipelineStage):
                     fmt=".",
                     label=f"galaxy cross star {TEST_TYPES[i-1]}",
                     capsize=3,
-                    transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
@@ -1216,9 +1212,6 @@ class TXGalaxyStarShear(PipelineStage):
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = star_star_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
-                )
                 plt.errorbar(
                     theta,
                     abs(xi),
@@ -1226,7 +1219,6 @@ class TXGalaxyStarShear(PipelineStage):
                     fmt=".",
                     label=f"star cross star {TEST_TYPES[i-1]}",
                     capsize=3,
-                    transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
@@ -1390,7 +1382,7 @@ class TXGalaxyStarDensity(PipelineStage):
         rn.process(rancat, cat2)
         rr.process(rancat, rancat)
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         return nn.meanr, nn.xi, nn.varxi**0.5
 
     def compute_star_star(self, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
@@ -1420,7 +1412,7 @@ class TXGalaxyStarDensity(PipelineStage):
         rn.process(rancat, cat1)
         rr.process(rancat, rancat)
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         return nn.meanr, nn.xi, nn.varxi**0.5
 
     def galaxy_star_plots(self, galaxy_star_stats):
@@ -1447,7 +1439,7 @@ class TXGalaxyStarDensity(PipelineStage):
                     fmt=".",
                     label=f"{TEST_TYPES[i-1]} density stats",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
