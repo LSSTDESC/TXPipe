@@ -8,6 +8,7 @@ dependencies:
   - dask=2024.5.2
   - dm-tree=0.1.8
   - fitsio=1.2.*
+  - firecrown=1.7.*
   - h5py=3.11.*=mpi_mpich_*
   - healpy=1.16.*
   - healsparse=1.10.*
