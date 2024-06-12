@@ -8,7 +8,7 @@ dependencies:
     - sacc==0.13
     # - git+https://github.com/NumCosmo/NumCosmo@v0.21.2
     # - git+https://github.com/LSSTDESC/Firecrown.git@v1.7.4
-    - tjpcov==0.4.0
+    - git+https://github.com/LSSTDESC/TJPCov@693b33f20dc583c38172e478c14a8162033b71a7
     - jax==0.4.27
     - jaxlib==0.4.23
     - pz-rail[dev]==0.99.1
