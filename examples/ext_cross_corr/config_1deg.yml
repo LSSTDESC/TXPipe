@@ -7,6 +7,30 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
+    nside: 512 #if you load an external map this should match the nside of that mask
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXTwoPointPixelExtCross:
+    supreme_path_root: data/example/inputs/
+    do_pos_ext: True
+    do_shear_ext: True
+    bin_slop: 0.5
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 25.
+    max_sep: 250.0
+    nbins: 10
+    verbose: 0
+    subtract_mean_shear: True
+
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
     nside: 64
     sparse: True  # Generate sparse maps - faster if using small areas
 
@@ -77,6 +101,7 @@ PZPrepareEstimatorSource:
     data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: i
+    # This is the new name for prior_band I think
     ref_band: i
     # Not sure about this
     prior_file: hdfn_gen
@@ -101,13 +126,14 @@ PZEstimatorLens:
     zmax: 3.0
     dz: 0.01
     nzbins: 301
+    data_path: ./data/example/rail-bpz-inputs
     band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
     bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     hdf5_groupname: photometry
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
-    data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: mag_i
     ref_band: mag_i
@@ -132,8 +158,12 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
+# Mock version of stacking:
+TXTrueNumberDensity:
+    nz: 301
+    zmax: 3.0
 
-TXSourceSelectorMetacal:
+TXSourceSelectorMetadetect:
     input_pz: False
     true_z: True
     bands: riz #used for selection
@@ -142,7 +172,7 @@ TXSourceSelectorMetacal:
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-    shear_prefix: "mcal_"
+    shear_prefix: ""
     true_z: False
 
 TXTruthLensSelector:
@@ -217,8 +247,8 @@ TXBlinding:
     delete_unblinded: True
 
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
+    psf_prefix: 00/mcal_psf_
+    shear_prefix: 00/
     nbins: 20
     g_min: -0.01
     g_max: 0.01
@@ -278,6 +308,8 @@ TXRealGaussianCovariance:
     nbins: 10
     pickled_wigner_transform: data/example/inputs/wigner.pkl
 
+TXFourierTJPCovariance:
+    cov_type: ["FourierGaussianFsky"]
 
 TXJackknifeCenters:
     npatch: 5
@@ -286,15 +318,12 @@ TXJackknifeCenters:
 TXTwoPointFourier:
     flip_g2: True
     ell_min: 30
-    ell_max: 150
+    ell_max: 100
     bandwidth: 20
     cache_dir: ./cache/workspaces
-    do_shear_shear: True
-    do_shear_pos: True
-    do_pos_pos: True
-    compute_theory: True
 
-TXSimpleMask:
+TXSimpleMaskFrac:
+    supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
     depth_cut : 23.5
     bright_object_max: 10.0
 
@@ -317,6 +346,7 @@ PZRailSummarizeLens:
         photometry_catalog: photometry_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
     model: None
 
 
@@ -325,7 +355,8 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    mag_prefix: "/shear/mcal_mag_"
+    nsamples: 100
+    mag_prefix: "/shear/00/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
     aliases:
@@ -333,19 +364,8 @@ PZRailSummarizeSource:
         photometry_catalog: shear_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
 
-
-TXPhotozPlotLens:
-    name: TXPhotozPlotLens
-    aliases:
-        photoz_stack: lens_photoz_stack
-        nz_plot: lens_nz
-
-TXPhotozPlotSource:
-    name: TXPhotozPlotSource
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: source_nz
 
 FlowCreator:
     n_samples: 1000000
@@ -397,3 +417,27 @@ Inform_NZDirLens:
     aliases:
         input: spectroscopic_catalog
         model: lens_direct_calibration_model
+
+PZRealizationsPlotSource:
+    name: PZRealizationsPlotSource
+    aliases:
+        photoz_realizations: source_photoz_realizations
+        photoz_realizations_plot: source_photoz_realizations_plot
+
+PZRealizationsPlotLens:
+    name: PZRealizationsPlotLens
+    aliases:
+        photoz_realizations: lens_photoz_realizations
+        photoz_realizations_plot: lens_photoz_realizations_plot
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens

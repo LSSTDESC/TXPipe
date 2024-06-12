@@ -7,8 +7,10 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 64
+    nside: 1024
     sparse: True  # Generate sparse maps - faster if using small areas
+    shear_catalog_type: 'hsc'
+
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -132,18 +134,35 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-
+TXSourceSelectorHSC:
+    input_pz: True
+    true_z  : False
+    bands   : i #used for selection
+    T_cut   : 0.0
+    s2n_cut : 10.0
+    max_rows: 10000000000
+    source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
+    shear_prefix: ''
+    shear_catalog_type: 'hsc'
+   
 TXSourceSelectorMetacal:
-    input_pz: False
-    true_z: True
+    input_pz: True
+    true_z: False
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
-    max_rows: 1000
+    max_rows: 10000000000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-    shear_prefix: "mcal_"
-    true_z: False
+    source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
+    shear_prefix: mcal_
+    use_diagonal_response : True
+ 
+TXShearCalibration:
+    use_true_shear: False
+    chunk_rows: 100000
+    subtract_mean_shear: True
+    extra_cols: [""]
+    shear_catalog_type: "hsc"
 
 TXTruthLensSelector:
     # Mag cuts
@@ -170,6 +189,24 @@ TXMeanLensSelector:
     i_hi_cut: 21.9
     r_i_cut: 2.0
 
+TXRoweStatistics:
+  min_sep  : 3.0
+  max_sep  : 102.0
+  nbins    : 20
+  bin_slop : 0
+  sep_units: 'arcmin'
+  psf_size_units: 'Tmodel' # HSC uses the Tfrac=(Tmeas-Tmodel)/Tmodel definition
+  definition    : 'hsc-y3' # Set all definitions to HSC
+  subtract_mean :  False    # subtract mean e1/e2
+
+TXPSFMomentCorr:
+  min_sep  : 1.0
+  max_sep  : 200.0
+  nbins    : 20
+  bin_slop : 0
+  sep_units: 'arcmin'
+  subtract_mean :  False    # subtract mean e1/e2
+
 TXModeLensSelector:
     # Mag cuts
     lens_zbin_edges: [0.0,0.2,0.4]
@@ -185,15 +222,14 @@ TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
-    bin_slop: 0.1
-    delta_gamma: 0.02
-    do_pos_pos: True
+    bin_slop: 0.02
+    do_pos_pos: False
     do_shear_shear: True
-    do_shear_pos: True
+    do_shear_pos: False
     flip_g2: True  # use true when using metacal shears
-    min_sep: 2.5
-    max_sep: 60.0
-    nbins: 10
+    min_sep: 5.3
+    max_sep: 248
+    nbins: 13
     verbose: 0
     subtract_mean_shear: True
 
@@ -249,17 +285,22 @@ TXSourceMaps:
 
 TXLensMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
+    nside: 1024
 
 # For redmagic mapping
 TXExternalLensMaps:
     chunk_rows: 100000
     sparse: True
     pixelization: healpix
-    nside: 512
+    nside: 1024
 
 
 TXSourceMaps: {}
 TXLensMaps: {}
+
+TXDensityMaps:
+    nside: 1024
+
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
@@ -280,19 +321,16 @@ TXRealGaussianCovariance:
 
 
 TXJackknifeCenters:
-    npatch: 5
+    npatch: 50
 
 
 TXTwoPointFourier:
     flip_g2: True
-    ell_min: 30
-    ell_max: 150
+    ell_min: 80
+    ell_max: 2048
     bandwidth: 20
     cache_dir: ./cache/workspaces
-    do_shear_shear: True
-    do_shear_pos: True
-    do_pos_pos: True
-    compute_theory: True
+    analytic_noise: True
 
 TXSimpleMask:
     depth_cut : 23.5
@@ -325,12 +363,12 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    mag_prefix: "/shear/mcal_mag_"
+    mag_prefix: "i"
     tomography_name: "source"
     name: PZRailSummarizeSource
     aliases:
         tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
+        photometry_catalog: photometry_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
 
@@ -397,3 +435,17 @@ Inform_NZDirLens:
     aliases:
         input: spectroscopic_catalog
         model: lens_direct_calibration_model
+
+
+TXpureB:
+    method    : 'namaster'                 # 'namaster' or 'hybrideb'
+    Nell      : 20                         # Number of ell bins
+    lmin      : 100                        # ell min 
+    lmax      : 2000                       # ell max
+    lspacing  : 'log'                      # ell spacing for binning 
+    bin_file  :                            # Load predfined bin edges instead        
+    theta_min : 2.5                        # (only for hybrideb) theta min in arcmin 
+    theta_max : 250                        # (only for hybrideb) theta max in arcmin 
+    Ntheta    : 1000                       # (only for hybrideb) Number of theta bins 
+    precomputed_hybrideb_weights : '/global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/geb_nosep_dict.npz'
+    

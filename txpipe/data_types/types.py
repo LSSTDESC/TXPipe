@@ -197,9 +197,9 @@ class MapsFile(HDFFile):
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
 
-    def read_mask(self):
+    def read_mask(self, thresh=0):
         mask = self.read_map("mask")
-        mask[mask < 0] = 0
+        mask[mask <= thresh] = 0
         return mask
 
     def write_map(self, map_name, pixel, value, metadata):
