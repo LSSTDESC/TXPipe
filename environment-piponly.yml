@@ -6,7 +6,6 @@ dependencies:
     - git+https://github.com/LSSTDESC/CLMM.git@1.8.0
     - parallel-statistics==0.13
     - sacc==0.13
-    - git+https://github.com/LSSTDESC/TJPCov@693b33f20dc583c38172e478c14a8162033b71a7
     - jax==0.4.27
     - jaxlib==0.4.23
     - glass==2023.7
