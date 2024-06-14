@@ -28,6 +28,6 @@ dependencies:
   - scipy=1.13.*
   - tables-io-full=0.9.*
   - threadpoolctl=3.5.*
-  - jpcov=0.4.*
+  - tjpcov=0.4.*
   - treecorr=5.0.*
   - pip
