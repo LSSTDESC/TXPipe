@@ -9,4 +9,4 @@ dependencies:
     - jax==0.4.27
     - jaxlib==0.4.23
     - glass==2023.7
-
+    - git+https://github.com/beckermr/hybrideb
