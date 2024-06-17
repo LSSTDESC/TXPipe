@@ -8,20 +8,20 @@ stages:
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
-      classname: Inform_BPZ_lite   
+      classname: BPZliteInformer   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
-      classname: BPZ_lite
+      classname: BPZliteEstimator
       threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
-    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-      classname: Inform_NZDir
+    - name: NZDirInformerLens       # Prepare the DIR method inputs for the lens sample     
+      classname: NZDirInformer
     - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize  
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
-      classname: Inform_NZDir
+    - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
+      classname: NZDirInformer
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)

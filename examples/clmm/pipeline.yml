@@ -16,9 +16,9 @@ python_paths:
 
 stages:
     - name: PZPrepareEstimatorSource   # Prepare the p(z) estimator
-      classname: Inform_BPZ_lite
+      classname: BPZliteInformer
     - name: PZEstimatorSource        # Measure lens galaxy PDFs
-      classname: BPZ_lite
+      classname: BPZliteEstimator
       threads_per_process: 1  
     - name: TXSourceSelectorMetadetect  # Select a source sample
     - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster

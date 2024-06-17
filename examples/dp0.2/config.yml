@@ -4,7 +4,7 @@ global:
     nside: 256
     sparse: True
 
-Inform_BPZ_lite:
+BPZliteInformer:
     aliases:
         input: spectroscopic_catalog
         model: photoz_model
