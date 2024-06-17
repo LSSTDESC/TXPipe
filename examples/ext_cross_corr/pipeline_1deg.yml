@@ -44,10 +44,10 @@ stages:
 # modules and packages to import that have pipeline
 # stages defined in them
 modules: >
-    txpipe 
-    rail.creation.degradation.grid_selection
+    txpipe
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # Where to put outputs
