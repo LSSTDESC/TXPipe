@@ -10,4 +10,4 @@ dependencies:
     - jaxlib==0.4.23
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb
-    - rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.0.0
+    - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.0.0
