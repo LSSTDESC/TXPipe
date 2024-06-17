@@ -10,9 +10,9 @@ stages:
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZPrepareEstimatorLens
-      classname: Inform_BPZ_lite   
+      classname: BPZliteInformer   
     - name: PZEstimatorLens
-      classname: BPZ_lite
+      classname: BPZliteEstimator
     - name: TXPhotozSourceStack
       classname: TXPhotozStack
     - name: TXPhotozLensStack
