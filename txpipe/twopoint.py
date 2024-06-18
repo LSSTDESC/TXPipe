@@ -29,6 +29,11 @@ POS_POS = 2
 POS_EXT = 3
 SHEAR_EXT = 4
 
+#Selfcalibration of IA correlations
+SHEAR_SOURCE = 5
+SHEAR_SOURCE_SEL = 6
+SOURCE_SOURCE = 7
+
 class TXTwoPoint(PipelineStage):
     """
     Make 2pt measurements using TreeCorr
@@ -79,6 +84,9 @@ class TXTwoPoint(PipelineStage):
         "metric": "Euclidean",
         "gaussian_sims_factor": [1.], 
         "use_subsampled_randoms": True, #use subsampled randoms file for RR
+        "use_sources_only": False,
+        "do_source_source": False,
+        "do_shear_source": False,
     }
 
     def run(self):
@@ -157,6 +165,24 @@ class TXTwoPoint(PipelineStage):
                     for j in range(i + 1):
                         if j in lens_list:
                             calcs.append((i, j, k))
+
+        if self.config["do_source_source"]:
+            k=SOURCE_SOURCE
+            if self.config["auto_only"]:
+                for i in source_list:
+                    calcs.append((i,i,k))
+            else:
+                for i in source_list:
+                    for j in range(i+1):
+                        if j in source_list:
+                            calcs.append((i,j,k))
+        
+        if self.config["do_shear_source"]:
+            k = SHEAR_SOURCE
+            for i in source_list:
+                for j in range(i+1):
+                    if j in source_list:
+                        calcs((i,j,k))
 
         if self.rank == 0:
             print(f"Running {len(calcs)} calculations: {calcs}")
@@ -497,6 +523,12 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_POS:
             xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
+        elif k == SOURCE_SOURCE:
+            xx = self.calculate_pos_pos(i,j)
+            xtype = sacc.standard_types.galaxy_density_xi
+        elif k == SHEAR_SOURCE:
+            xx = self.calculate_shear_pos(i,j)
+            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
