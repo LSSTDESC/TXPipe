@@ -988,35 +988,60 @@ class TXTwoPointPixel(TXTwoPoint):
         "use_randoms": True,
         "auto_only": False,
         "gaussian_sims_factor": [1.], 
-        "use_subsampled_randoms":False, #not used for pixel estimator
+        "use_subsampled_randoms":False, #not used for pixel estimator,
+        "use_sources_only": False,
     }
     
 
     def get_density_map(self, i):
         import treecorr
         
-        with self.open_input("density_maps", wrapper=True) as f:
-            info = f.read_map_info(f"delta_{i}")
-            map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
-            print(f"Loaded {i} overdensity maps")
+        if self.config["use_sources_only"]:
+            with self.open_input("source_maps", wrapper=True) as f:
+                info = f.read_map_infor(f"count_{i}")
+                map_d, pix, nside = f.read_healpix(f"count_{i}", return_all=True)
+                map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
+                map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
+                print(f"Loaded {i} source maps")
 
-        # Read the mask to get fracdet weights
+                mask_unseen = (map_g1[pix_g1]>-1e30)*(map_g2[pix_g2]>-1e30)
+
+
+        else:
+            with self.open_input("density_maps", wrapper=True) as f:
+                info = f.read_map_info(f"delta_{i}")
+                map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
+                print(f"Loaded {i} overdensity maps")
+
+            # Read the mask to get fracdet weights
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
 
         scheme = choose_pixelization(**info) 
         ra_pix, dec_pix = scheme.pix2ang(pix)
 
-        # Load and calibrate the appropriate bin data
-        cat = treecorr.Catalog(
-            ra=ra_pix,
-            dec=dec_pix,
-            w=mask[pix], #weight pixels by their fracdet
-            k=map_d[pix],
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-        )
+        if self.config["use_sources_only"]:
+            cat = treecorr.Catalog(
+                ra=ra_pix[mask_unseen],
+                dec=dec_pix[mask_unseen],
+                w=mask[pix][mask_unseen],
+                k=map_d[pix][mask_unseen],
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+            )
+        else:
+            # Load and calibrate the appropriate bin data
+            cat = treecorr.Catalog(
+                ra=ra_pix,
+                dec=dec_pix,
+                w=mask[pix], #weight pixels by their fracdet
+                k=map_d[pix],
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+            )
+
         return cat
 
 
