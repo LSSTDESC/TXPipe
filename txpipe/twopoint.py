@@ -182,7 +182,7 @@ class TXTwoPoint(PipelineStage):
             for i in source_list:
                 for j in range(i+1):
                     if j in source_list:
-                        calcs((i,j,k))
+                        calcs.append((i,j,k))
 
         if self.rank == 0:
             print(f"Running {len(calcs)} calculations: {calcs}")
