@@ -1030,7 +1030,7 @@ class TXTwoPointPixel(TXTwoPoint):
         
         if self.config["use_sources_only"]:
             with self.open_input("source_maps", wrapper=True) as f:
-                info = f.read_map_infor(f"count_{i}")
+                info = f.read_map_info(f"count_{i}")
                 map_d, pix, nside = f.read_healpix(f"count_{i}", return_all=True)
                 map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
                 map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
