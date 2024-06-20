@@ -91,6 +91,7 @@ class TXIngestSSIGCR(PipelineStage):
             else:
                 #save only the columns expected by the TXPipe photometry catalog
                 #TO DO: do this
+                pass
 
             output_file.close()
 
