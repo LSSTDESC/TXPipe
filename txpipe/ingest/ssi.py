@@ -9,10 +9,96 @@ from ..binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
 
+class TXIngestSSIGCR(PipelineStage):
+    """
+    Class for ingesting SSI catalogs using GCR
 
-class TXIngestSSI(PipelineStage):
+    Does not treat the injection or ssi photometry catalogs as formal inputs
+    since they are not in a format TXPipe can recognize
+    """
+
+    name = "TXIngestSSIGCR"
+
+    inputs = [
+    ]
+
+    outputs = [
+        ("injection_catalog", HDFFile),
+        ("ssi_photometry_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "injection_catalog_name":"",
+        "ssi_photometry_catalog_name":"",
+        "GCRcatalog_path":"",
+        "all_cols":False,
+        "magnification":0, # magnification label for run
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+
+        loads the catalogs using gcr and saves the relevent columns to a hdf5 format
+        that TXPipe can read
+        """
+        if self.config["GCRcatalog_path"]!="":
+            # This is needed to temporarily access the SSI runs on NERSC
+            # As the final runs become more formalized, this could be removed  
+            import sys
+            sys.path.insert(0,self.config["GCRcatalog_path"])
+        import GCRCatalogs
+
+        #add loop over catalog types here
+        output_catalogs = [
+            "injection_catalog",
+            "ssi_photometry_catalog",
+        ]
+
+        import ipdb
+        ipdb.set_trace()
+
+        for output_catalog_name in output_catalogs:
+
+            catalog_name = self.config[f"{output_catalog_name}_name"]
+            gc0 = GCRCatalogs.load_catalog(catalog_name)
+            native_quantities = gc0.list_all_native_quantities()
+
+            #Now translate all the relevent columns to the format TXPipe format
+            #option 1, ingest all columns with existing names
+            #option 2, ingest only a few relevant columns and give them TXPipe names
+            output_file = self.open_output(output_catalog_name)
+            group = output_file.create_group("photometry")
+            
+            if self.config['all_cols']:
+                #find columns that contain non-nan data
+                for q in native_quantities:
+                    try:
+                        qobj = gc0.get_quantities(q)
+                    except KeyError:
+                        warnings.warn(f"Skipping quantity {q}")
+                        continue
+
+                    try:
+                        if np.isnan(qobj[q]).all():
+                            continue #skip the quantities that are empty
+                    except TypeError:
+                        print(f'TypeError when checking for NaNs in {q}')
+
+                    #TODO: add batch writing to hdf5 file
+                    self.write_output(group, column_name, data)
+                    group.create_dataset(q, data=qobj[q],  dtype=qobj[q].dtype)
+            else:
+                #save only the columns expected by the TXPipe photometry catalog
+                #TO DO: do this
+
+            output_file.close()
+
+class TXMatchSSI(PipelineStage):
     """
     Class for ingesting SSI injection and photometry catalogs
+
+    Default inputs are in TXPipe photometry catalog format
     
     Will perform its own matching between the catalogs to output a 
     matched SSI catalog for further use
@@ -20,9 +106,9 @@ class TXIngestSSI(PipelineStage):
     TO DO: make a separate stage to ingest the matched catalog directly
     """
 
-    name = "TXSSIIngest"
+    name = "TXMatchSSI"
 
-    # TO DO: switch inputs from TXPipe format to either GCR or butler 
+    # TO DO: switch inputs from TXPipe format to GCR
     inputs = [
         ("injection_catalog", HDFFile),
         ("ssi_photometry_catalog", HDFFile),
@@ -69,7 +155,7 @@ class TXIngestSSI(PipelineStage):
             dec = inj_cat['photometry/dec'][:]*u.degree
             )
 
-        #loop over chunkc of the photometry catalog
+        #loop over chunk of the photometry catalog
         phot_cat = self.open_input("ssi_photometry_catalog")
         nrows = phot_cat['photometry/ra'].shape[0]
 
@@ -141,8 +227,3 @@ class TXIngestSSI(PipelineStage):
             col.resize((ntot,))
         outfile.close()
         return
-
-
-
-
-
