@@ -7,8 +7,8 @@ stages:
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
-      classname: Inform_NZDir
+    - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
+      classname: NZDirInformer
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXSourceMaps           # make source g1 and g2 maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
@@ -48,9 +48,9 @@ stages:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degradation.grid_selection
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,

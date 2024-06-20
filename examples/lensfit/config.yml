@@ -102,7 +102,7 @@ TXSourceSelectorLensfit:
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: lens_photoz_model
@@ -292,7 +292,7 @@ TXParqetToHDF:
 
 PZEstimatorLens:
     name: PZEstimatorLens
-    classname: BPZ_lite
+    classname: BPZliteEstimator
     aliases:
         model: lens_photoz_model
         input: photometry_catalog

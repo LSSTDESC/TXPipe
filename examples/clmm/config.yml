@@ -3,7 +3,7 @@ global:
 
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: source_photoz_model
@@ -27,7 +27,7 @@ PZPrepareEstimatorSource:
 
 PZEstimatorSource:
     name: PZEstimatorSource
-    classname: BPZ_lite
+    classname: BPZliteEstimator
     aliases:
         model: source_photoz_model
         input: shear_catalog

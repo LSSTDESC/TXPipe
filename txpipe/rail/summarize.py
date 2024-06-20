@@ -25,7 +25,7 @@ class PZRailSummarize(PipelineStage):
     def run(self):
         import rail.estimation
         import pickle
-        from rail.estimation.algos.NZDir import NZDir
+        from rail.estimation.algos.nz_dir import NZDirSummarizer
         from rail.core.data import TableHandle
         import qp
 
@@ -73,7 +73,7 @@ class PZRailSummarize(PipelineStage):
         }
 
         # TODO: Make this flexible
-        substage_class = NZDir
+        substage_class = NZDirSummarizer
 
         for k, v in self.config.items():
             if k in substage_class.config_options:

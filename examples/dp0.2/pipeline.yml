@@ -1,7 +1,7 @@
 # Stages to run
 stages:
 #    - name: TXIngestDataPreview02
-    - name: Inform_BPZ_lite
+    - name: BPZliteInformer
     - name: BPZ_lite
       nodes: 2
       nprocess: 128

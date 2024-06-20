@@ -367,6 +367,10 @@ class TXTwoPoint(PipelineStage):
                 weight = d.object.weight
                 xi_x = d.object.xi_im
                 covX = d.object.estimate_cov("shot")
+                # TreeCorr v5 returns the diagonal of the covariance matrix
+                # instead of a full but diagal (so almost all zero) format.
+                if treecorr.__version_info__[0] >= 5:
+                    covX = np.diag(covX)
                 covs.append(covX)
                 err = np.sqrt(np.diag(covX))
                 n = len(xi_x)
@@ -379,7 +383,6 @@ class TXTwoPoint(PipelineStage):
                         error=err[i],
                         weight=weight[i],
                     )
-
         S.add_covariance(covs)
 
 
@@ -916,7 +919,7 @@ class TXTwoPoint(PipelineStage):
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         t2 = perf_counter()
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         if self.rank == 0:
             print(f"Processing took {t2 - t1:.1f} seconds")
 
