@@ -59,9 +59,9 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
     ]
     config_options = {
         "calcs": [5,6,7], #IS THIS LINE STILL NEEEDED?
-        "min_sep": 0.5,
+        "min_sep": 2.5,
         "max_sep": 250.0,
-        "nbins": 9,
+        "nbins": 20,
         "bin_slop": 0.0,
         "flip_g1": False,
         "flip_g2": True,
@@ -876,3 +876,195 @@ class TXTwoPointSourcePixels(TXTwoPointSelfCalibrationIA):
         kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         return kk
+    
+
+class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
+    """
+    This is an experimental class, for calculating the self-calibration terms but using 
+    the "Arc" metric and thereby bypassing the conversions needed in it's parent class.
+    """
+    name = "TXTwoPointSCIAArc"
+    config_options = {
+        metric: "Arc",
+    }
+
+    def get_shear_catalog(self, i):
+        import treecorr
+
+        cat = treecorr.Catalog(
+            self.get_input("binned_shear_catalog"),
+            ext=f"/shear/bin_{i}",
+            g1_col="g1",
+            g2_col="g2",
+            r_col="z", #Note we are trying to load in the actual redshift as our r coordinate. 
+            ra_col="ra",
+            dec_col="dec",
+            w_col="weight",
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+            flip_g1=self.config["flip_g1"],
+            flip_g2=self.config["flip_g2"],
+        )
+
+        return cat
+
+    def calculate_shear_pos(self, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
+        n_i = cat_i.nobj
+
+        cat_j = self.get_shear_catalog(j)
+        cat_j = self.touch_patches(cat_j)
+        rancat_j = self.get_random_catalog(j)
+        rancat_j = self.touch_patches(rancat_j)
+        n_j = cat_j.nobj
+        n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+
+        if self.rank == 0:
+            print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+            print(config)
+
+        if n_i == 0 or n_j == 0:
+            if self.rank == 0:
+                print("Empty catalog: returning None")
+                return None
+
+        ng = treecorr.NGCorrelation(self.config)
+        t1 = perf_counter()
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if rancat_j:
+            rg = treecorr.NGCorrelation(self.config)
+            rg.process(rancat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rg = None
+
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
+        if self.rank == 0:
+            print(f"Processing took {t2 - t1:.1f} seconds")
+
+        return ng
+
+    def calculate_shear_pos_select(self, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
+        n_i = cat_i.nobj
+
+        cat_j = self.get_shear_catalog(j)
+        cat_j = self.touch_patches(cat_j)
+        rancat_j = self.get_random_catalog(j)
+        rancat_j = self.touch_patches(rancat_j)
+        n_j = cat_j.nobj
+        n_rand_j = rancat_j.nobj if rancat_j is not None else 0
+
+        if self.rank == 0:
+            print(f"Calculating shear-position selected bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
+            print(config)
+
+        if n_i == 0 or n_j == 0:
+            if self.rank == 0:
+                print("Empty catalog: returning None")
+                return None
+
+        ng = treecorr.NGCorrelation(self.config, max_rpar=0.0)
+        t1 = perf_counter()
+        ng.process(cat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if rancat_j:
+            rg = treecorr.NGCorrelation(self.config, max_rpar=0.0)
+            rg.process(rancat_j, cat_i, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rg = None
+
+        ng.calculateXi(rg=rg)
+        t2 = perf_counter()
+        if self.rank == 0:
+            print(f"Processing took {t2 - t1:.1f} seconds")
+
+        return ng
+
+    def calculate_pos_pos(self, i, j):
+        import treecorr
+
+        cat_i = self.get_shear_catalog(i)
+        cat_i = self.touch_patches(cat_i)
+        rancat_i = self.get_random_catalog(i)
+        rancat_i = self.touch_patches(rancat_i)
+        n_i = cat_i.nobj
+        n_rand_i = rancat_i.nobj if rancat_i is not None else 0
+
+        if i == j:
+            cat_j = None
+            rancat_j = rancat_i
+            n_j = n_i
+            n_rand_j = n_rand_i
+        else:
+            cat_j = self.get_shear_catalog(j)
+            cat_j = self.touch_patches(cat_j)
+            rancat_j = self.get_random_catalog(j)
+            rancat_j = self.touch_patches(rancat_j)
+            n_j = cat_j.nobj
+            n_rand_j = rancat_j.nobj
+
+        if self.config['use_subsampled_randoms']:
+            rancat_sub_i = self.get_subsampled_random_catalog(i)
+            rancat_sub_i = self.touch_patches(rancat_sub_i)
+            n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
+
+            if i == j:
+                rancat_sub_j = rancat_sub_i
+                n_rand_sub_j = n_rand_sub_i
+            else:
+                rancat_sub_j = self.get_subsampled_random_catalog(j)
+                rancat_sub_j = self.touch_patches(rancat_sub_j)
+                n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
+
+        if self.rank == 0:
+            print(
+                f"Calculating source-source bin pair ({i}, {j}): {n_i} x {n_j} objects,  {n_rand_i} x {n_rand_j} randoms"
+            )
+            if self.config["use_subsampled_randoms"]:
+                print(f"and for the rr term, {n_rand_sub_i} x {n_rand_sub_j} pairs")
+
+        if n_i == 0 or n_j == 0:
+            if self.rank == 0:
+                print("Empty catalog: returning None")
+            return None
+        
+        t1 = perf_counter()
+
+        nn = treecorr.NNCorrelation(self.config)
+        nn.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        nr = treecorr.NNCorrelation(self.config)
+        nr.process(cat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if i == j:
+            rancat_j = None
+            rancat_sub_j = None
+
+        rr = treecorr.NNCorrelation(self.config)
+        if self.confif["use_subsampled_randoms"]:
+            rr.process(rancat_sub_i, rancat_sub_j, comm=self.comm, low_mem=self.config["low_mem"])
+        else:
+            rr.process(rancat_i, rancat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        if i == j:
+            rn = None
+        else:
+            rn = treecorr.NNCorrelation(self.config)
+            rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
+
+        t2 = perf_counter()
+        nn.calculateXi(rr, dr=nr, rd=rn)
+        if self.rank == 0:
+            print(f"Processing took {t2-t1:.1f} seconds")
+
+        return nn
