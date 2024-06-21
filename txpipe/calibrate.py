@@ -90,7 +90,7 @@ class TXShearCalibration(PipelineStage):
 
         if Dcoords:
             output_cols.append("r")
-            output_cols.append(z_name)
+            output_cols.append("z")
             print("Using 3D coords, hopefully a mean readshift is defined")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
@@ -176,7 +176,7 @@ class TXShearCalibration(PipelineStage):
 
         #  we only retain these columns
         if Dcoords: 
-            cols = ["ra", "dec", "r", "weight", "g1", "g2"] + extra_cols
+            cols = ["ra", "dec", "r", "z", "weight", "g1", "g2"] + extra_cols
         else:
             cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
 
@@ -219,6 +219,7 @@ class TXShearCalibration(PipelineStage):
         import pyccl as ccl
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl() 
         #renaming the redshift name
+        d["z"] = d[name]
         d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d[name]))
 
 
