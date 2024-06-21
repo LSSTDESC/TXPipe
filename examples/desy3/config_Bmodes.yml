@@ -7,7 +7,7 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 128
+    nside: 512
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
@@ -193,9 +193,10 @@ TXTwoPoint:
     flip_g2: True  # use true when using metacal shears
     min_sep: 2.5
     max_sep: 60.0
-    nbins: 10
+    nbins: 1000
     verbose: 0
     subtract_mean_shear: True
+    var_method: "jackknife"
 
 TXGammaTBrightStars: {}
 
@@ -398,3 +399,15 @@ Inform_NZDirLens:
     aliases:
         input: spectroscopic_catalog
         model: lens_direct_calibration_model
+
+TXpureB:
+    method    : 'namaster'                 # 'namaster' or 'hybrideb'
+    Nell      : 20                         # Number of ell bins
+    lmin      : 100                        # ell min 
+    lmax      : 2000                       # ell max
+    lspacing  : 'log'                      # ell spacing for binning 
+    bin_file  :                            # Load predfined bin edges instead        
+    theta_min : 2.5                        # (only for hybrideb) theta min in arcmin 
+    theta_max : 250                        # (only for hybrideb) theta max in arcmin 
+    Ntheta    : 1000                       # (only for hybrideb) Number of theta bins 
+    Nsims     : 3                         # (only for hybrideb) Number of Gaussian draws to use to estimate errors 

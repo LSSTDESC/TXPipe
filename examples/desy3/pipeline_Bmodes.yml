@@ -36,6 +36,10 @@ stages:
     - name: TXLensMaps              # make source lens and n_gal maps
     - name: TXDensityMaps           # turn mask and ngal maps into overdensity maps
     - name: TXTwoPointFourier       # Compute power spectra C_ell
+    - name: TXTwoPoint              # Compute real-space 2-point correlations
+      threads_per_process: 128
+    - name: TXpureB                 # Compute pureBB
+    
     #- name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
     #- name: TXSourceMaps           # make source g1 and g2 maps
     #- name: TXLensMaps             # make source lens and n_gal maps
@@ -47,14 +51,14 @@ stages:
     #- name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
     #- name: TXTracerMetadata     # collate metadata
     #- name: TXRandomCat          # generate lens bin random catalogs
-    #- name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
     #- name: TXTwoPoint           # Compute real-space 2-point correlations
     #  threads_per_process: 2
     #- name: TXBlinding           # Blind the data following Muir et al
     #  threads_per_process: 2
     #- name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     #- name: TXTwoPointPlotsTheory      # Make plots of 2pt correlations
-    #- name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
     #- name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
     #- name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
     #  threads_per_process: 2
@@ -64,10 +68,10 @@ stages:
     #  threads_per_process: 2
     #- name: TXGalaxyStarDensity  # Compute and plot the star-galaxy density cross-correlation
     #- name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
-    - name: TXPhotozPlotSource        # Plot the bin n(z)
-      classname: TXPhotozPlot
-    - name: TXPhotozPlotLens        # Plot the bin n(z)
-      classname: TXPhotozPlot
+    #- name: TXPhotozPlotSource        # Plot the bin n(z)
+    #  classname: TXPhotozPlot
+    #- name: TXPhotozPlotLens        # Plot the bin n(z)
+    #  classname: TXPhotozPlot
     #- name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     #- name: TXConvergenceMapPlots # Plot the convergence map
     #- name: TXMapCorrelations    # plot the correlations between systematics and data
@@ -98,7 +102,7 @@ python_paths:
     - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
-output_dir: data/desy3a/outputs
+output_dir: data/des-y3/outputs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -108,7 +112,7 @@ launcher:
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
-    max_threads: 2
+    max_threads: 128
 
 # configuration settings
 config: examples/desy3/config_Bmodes.yml
@@ -118,10 +122,15 @@ inputs:
     # See README for paths to download these files
     shear_catalog     : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
     star_catalog      : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.hdf5
+    shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3//shear_photoz_stack.hdf5
+    random_cats       :  /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/randoms_desy3_RM.hdf5
+    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/binned_randoms_desy3_RM.hdf5
+    binned_random_catalog_sub: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/binned_randoms_desy3_RM.hdf5
+    #patch_centers        : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/binned_randoms_desy3_RM.hdf5
+    
     #lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/data/desy3a/outputs/lens_tomography_catalog_unweighted.hdf5 ##############<----- manually add this line
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
-    shear_photoz_stack: data/example/outputs/shear_photoz_stack_manual.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     calibration_table : data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures         : data/example/inputs/exposures.hdf5
@@ -147,9 +156,9 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/desy3a/logs
+log_dir: data/des-y3/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/desy3a/log.txt
+pipeline_log: data/des-y3/log.txt
 
 
 
