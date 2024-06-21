@@ -963,7 +963,6 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
 
         if self.rank == 0:
             print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
-            print(config)
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
@@ -1003,7 +1002,6 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
 
         if self.rank == 0:
             print(f"Calculating shear-position selected bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
-            print(config)
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
