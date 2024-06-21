@@ -885,7 +885,7 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
     """
     name = "TXTwoPointSCIAArc"
     config_options = {
-        metric: "Arc",
+        "metric": "Arc",
     }
 
     def get_shear_catalog(self, i):
