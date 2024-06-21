@@ -884,8 +884,45 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
     the "Arc" metric and thereby bypassing the conversions needed in it's parent class.
     """
     name = "TXTwoPointSCIAArc"
+    inputs = [
+        ('binned_shear_catalog', ShearCatalog),
+        ('binned_random_catalog_source', HDFFile),
+        ('shear_photoz_stack', QPNOfZFile),
+        ('patch_centers', TextFile),
+        ('fiducial_cosmology', FiducialCosmology),
+        ('tracer_metadata', HDFFile),
+    ]
+    outputs = [
+        ('twopoint_data_SCIA', SACCFile),
+        ('twopoint_gamma_x_SCIA', SACCFile),
+    ]
+
     config_options = {
+        "calcs": [5,6,7], #IS THIS LINE STILL NEEEDED?
+        "min_sep": 2.5,
+        "max_sep": 250.0,
+        "nbins": 20,
+        "bin_slop": 0.0,
+        "flip_g1": False,
+        "flip_g2": True,
+        "cores_per_task": 20,
+        "verbose": 1,
+        "source_bins": [-1],
+        "lens_bins": [-1],
+        "reduce_randoms_size": 1.0,
+        "do_shear_source": True,
+        "do_shear_source_select": True,
+        "do_source_source": False,
+        "var_method": "jackknife",
+        "use_randoms": False,
+        "low_mem": False,
+        "patch_dir": "./cache/pathces",
+        "chunk_row": 100_000,
+        "share_patch_files": False,
         "metric": "Arc",
+        "3Dcoords": True,
+        "gaussian_sims_factor": [1.],
+        "use_subsampled_randoms": True
     }
 
     def get_shear_catalog(self, i):
