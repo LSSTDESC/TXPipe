@@ -920,6 +920,7 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
         "chunk_row": 100_000,
         "share_patch_files": False,
         "metric": "Arc",
+        "sep_units": "arcmin",
         "3Dcoords": True,
         "gaussian_sims_factor": [1.],
         "use_subsampled_randoms": True
