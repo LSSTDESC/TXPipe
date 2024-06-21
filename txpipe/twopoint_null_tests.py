@@ -8,6 +8,7 @@ from .data_types import (
     PNGFile,
     TextFile,
     QPNOfZFile,
+    MapsFile
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS
@@ -766,3 +767,272 @@ class TXApertureMass(TXTwoPoint):
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("aperture_mass_data"), overwrite=True)
+
+
+
+class TXpureB(PipelineStage):
+    '''
+    Make shear B-mode measurements
+    '''
+    name     = "TXpureB"
+    parallel = False
+
+    inputs  = [
+               ("shear_photoz_stack"    , QPNOfZFile), 
+               ("source_maps"           , MapsFile),
+               ("mask"                  , MapsFile),
+               ("twopoint_data_real_raw", SACCFile),
+              ]
+    
+    outputs = [("twopoint_data_fourier_pureB", SACCFile)]
+
+    config_options = {
+                      'method'    : 'hybrideb', 
+                      'Nell'      : 20,         
+                      'lmin'      : 200,         
+                      'lmax'      : 2000,       
+                      'lspacing'  : 'log',       
+                      'bin_file'  : "",              
+                      'theta_min' : 2.5,      
+                      'theta_max' : 250,      
+                      'Ntheta'    : 1000,     
+                      'Nsim'      : 1000
+                      }
+    
+    def run(self):
+        import os
+        import pymaster as nmt
+        import healpy as hp
+        import sacc
+        import pyccl
+        import hybrideb
+        import datetime
+        import pickle
+        from tqdm import tqdm
+
+        if self.config["method"] == 'namaster_pureB' or self.config["method"] == 'namaster_nopureB':
+            '''B-mode method that is already implemented in NaMaster'''
+            print('----------------namaster-----------')
+            if  self.config["method"] == 'namaster_pureB':
+                print("WARNING: Namaster's B-mode purification requires the mask to be heavily apodized.")
+                print("For a realistic LSS mask, this will most likely not work, but this function is ")
+                print("implemented for completeness nonetheless.")
+                purify_b = True
+            else:
+                print("WARNING: We are not running B-mode purification (this is what was used in DES-Y3).")
+                purify_b = False
+                
+            # Open source maps (g1,g2,weights)
+            with self.open_input("source_maps", wrapper=True) as f:
+                nbin_source = f.file["maps"].attrs["nbin_source"]
+                g1_maps     = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
+                g2_maps     = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
+                weights     = [f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)]
+
+            # Open mask
+            with self.open_input("mask", wrapper=True) as f:
+                mask = f.read_map("mask")
+            
+            # Define binning 
+            b     = nmt.NmtBin.from_nside_linear(hp.npix2nside(mask.shape[0]), self.config["Nell"])
+            
+            # Initialize the fields
+            fields = {}
+            for i in range(nbin_source):
+                g1_maps[i][g1_maps[i]==hp.UNSEEN]=0
+                g2_maps[i][g2_maps[i]==hp.UNSEEN]=0
+                fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b)
+
+            # Compute Cls and store them in dictionrary
+            tmp       = np.array([])
+            ret=np.zeros((nbin_source,nbin_source,len(b.get_effective_ells())))
+
+            for zi in range(nbin_source):
+                for zj in range(zi,nbin_source):
+                     
+                    field1 = fields[zi]
+                    field2 = fields[zj]
+                    w_yp  = nmt.NmtWorkspace()
+                    w_yp.compute_coupling_matrix(field1, field2, b)
+    
+                    cl_coupled   = nmt.compute_coupled_cell(field1,field2)
+                    cl_decoupled = w_yp.decouple_cell(cl_coupled)
+                    ret[zj,zi,:]= cl_decoupled[3]
+                    tmp = np.concatenate([tmp,cl_decoupled[3]])
+
+            
+            # Compute covariance in a somewhat adhoc way by shuffling the pixel values.
+            covarr = np.zeros((len(tmp),self.config['Nsims']))
+
+            for k in tqdm(range(self.config['Nsims'])):
+                fields = {}
+                for i in range(nbin_source):
+                    idx1 = np.where(g1_maps[i]!=0)[0]
+                    idx2 = np.random.permutation(idx1)
+                    g1_maps[i][idx1]=g1_maps[i][idx2]
+                    g2_maps[i][idx1]=g2_maps[i][idx2]
+                    fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b)
+
+                tmp = np.array([])
+                for zi in range(nbin_source):
+                    for zj in range(zi,nbin_source):
+                        
+                        field1 = fields[zi]
+                        field2 = fields[zj]
+                        w_yp  = nmt.NmtWorkspace()
+                        w_yp.compute_coupling_matrix(field1, field2, b)
+        
+                        cl_coupled   = nmt.compute_coupled_cell(field1,field2)
+                        cl_decoupled = w_yp.decouple_cell(cl_coupled)
+                        tmp = np.concatenate([tmp,cl_decoupled[3]])
+
+                covarr[:,k] = tmp
+             
+                    
+            self.ell     = b.get_effective_ells()
+            self.results = ret
+            self.cov     = np.cov(covarr)
+        
+
+        elif self.config["method"] == 'hybrideb':
+            '''
+            B-mode method of Becker and Rozo 2015 http://arxiv.org/abs/1412.3851
+            '''
+            print('--------------hybrideb-----------')
+
+            # Check if nbins is less than 1000, and throw warning.
+            if self.config['Ntheta']<1000:
+                print("WARNING: Calculating hybridEB using Ntheta<1000, which may lead to inaccurate results.")
+
+            # Computing the weights takes a few minutes so its a lot faster
+            # to precompute and load them in subsequent runs.
+            file_precomputed_weights = self.get_output("twopoint_data_fourier_pureB")+ f".precomputedweights.pkl"
+
+            if os.path.exists(file_precomputed_weights):
+                print(f"{self.rank} WARNING: Using precomputed weights from revious run: {file_precomputed_weights}")
+                with open(file_precomputed_weights, "rb") as f:
+                    geb_dict = pickle.load(f)
+            
+            else:
+                heb = hybrideb.HybridEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
+                beb = hybrideb.BinEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
+                geb = hybrideb.GaussEB(beb, heb)
+                geb_dict = {}
+                for i in range(0,self.config['Nell']):
+                    geb_dict['%d'%(i+1)] = {}
+                    for j in range(0,6):
+                        geb_dict['%d'%(i+1)]['%d'%(j+1)]=geb(i)[j]
+            
+                with open(file_precomputed_weights, 'wb') as handle:
+                    pickle.dump(geb_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            En0  = np.zeros(self.config["Nell"])
+            Bn0  = np.zeros(self.config["Nell"])
+            En   = np.zeros((self.config["Nell"],self.config["Nsims"]))
+            Bn   = np.zeros((self.config["Nell"],self.config["Nsims"]))
+            ell  = np.zeros(self.config["Nell"])
+
+            filename = self.get_input("twopoint_data_real_raw")
+            s    = sacc.Sacc.load_fits(filename)
+
+            Qxip = sacc.standard_types.galaxy_shear_xi_plus
+
+            source_tracers = set()
+            for b1, b2 in s.get_tracer_combinations(Qxip):
+                source_tracers.add(b1)
+                source_tracers.add(b2)
+
+            nbin_source = max(len(source_tracers), 1)
+
+            corvarr = np.zeros( (int(nbin_source*(nbin_source+1)/2*self.config["Nell"]), self.config["Nsims"])  )
+
+            ret=np.zeros((nbin_source,nbin_source,self.config["Nell"]))
+
+            c = 0
+            for zi in range(0,nbin_source):
+                for zj in range(zi,nbin_source):
+                    ii = self.config["Nell"]*c
+                    ff = self.config["Nell"]*(c+1)
+                    
+                    # Need all 4 block of the covariance
+                    filename = self.get_input("twopoint_data_real_raw")
+                    tmp      = sacc.Sacc.load_fits(filename)
+                    
+                    # From the sacc file only load relevant tracer combinations 
+                    tmp.keep_selection(tracers=('source_%d'%zj, 'source_%d'%zi))
+                    dvec = tmp.mean
+                    xip  = dvec[:int(self.config["Ntheta"])]
+                    xim  = dvec[int(self.config["Ntheta"]):]
+
+                    #random draws based on mean dn covariance
+                    x = np.random.multivariate_normal(mean = tmp.mean, cov =tmp.covariance.covmat , size = self.config["Nsims"])
+                    Rxip = x[:,:int(self.config["Ntheta"])]
+                    Rxim = x[:,int(self.config["Ntheta"]):]
+
+                    # Compute the uncertainties from random draws          
+                    for n in range(self.config["Nsims"]):
+                        for i in range(int(self.config["Nell"])):
+                            res     = geb_dict['%d'%(i+1)]   
+                            Fp      = res['2']
+                            Fm      = res['3']
+                            En[i,n] = np.sum(Fp*Rxip[:,n] + Fm*Rxim[:,n])/2 
+                            Bn[i,n] = np.sum(Fp*Rxip[:,n] - Fm*Rxim[:,n])/2
+                            
+                    corvarr[ii:ff,:] = Bn
+
+                    # Compute actual data vector
+                    for i in range(int(self.config["Nell"])):
+                        res     = geb_dict['%d'%(i+1)]   
+                        Fp      = res['2']
+                        Fm      = res['3']
+                        En0[i]   = np.sum(Fp*xip + Fm*xim)/2 
+                        Bn0[i]   = np.sum(Fp*xip - Fm*xim)/2
+                        ell[i]  = res['4'][np.argmax(res['5'])]
+
+                    ret[zj,zi,:]= Bn0[:]
+                    c+=1
+                    
+            self.ell     = ell
+            self.results = ret
+            self.cov     = np.cov(corvarr)
+        else:
+            sys.exit("The only method implemented right now are 'hybrideb' or 'namaster_pureB' or 'namaster_nopureB' ")
+
+        print('Saving pureB Cls in sacc file')
+        
+        self.save_power_spectra(nbin_source)
+
+
+    def save_power_spectra(self, nbin_source):
+        import sacc
+        import datetime
+
+        S = sacc.Sacc()
+        S.metadata['nbin_source'] = nbin_source
+        S.metadata['creation']    = datetime.datetime.now().isoformat()
+        S.metadata['method']      = self.config['method']
+        S.metadata['info']        = 'ClBB using pureB'
+
+        CBB = sacc.standard_types.galaxy_shear_cl_bb
+
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            for i in range(nbin_source):
+                z, Nz = f.get_bin_n_of_z(i)
+                S.add_tracer("NZ", f"source_{i}", z, Nz)
+
+        for zi in range(0,nbin_source):
+            for zj in range(zi,nbin_source):
+                tracer1 = "source_%d"%zj
+                tracer2 = "source_%d"%zi
+                val     = self.results[zj,zi,:]
+                print(val)
+                ell     = self.ell
+                for k in range(0,len(val)):
+                    S.add_data_point(CBB, (tracer1, tracer2), value=val[k], ell=ell[k])
+
+        S.add_covariance(self.cov)
+        
+        output_filename = self.get_output("twopoint_data_fourier_pureB")
+        S.save_fits(output_filename, overwrite=True)
+
+

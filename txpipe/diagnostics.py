@@ -300,8 +300,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         fig.close()
         
         f = self.open_output("g_psf_g_out")
-        data   =[mu1,mu2,mean11,mean12,mean21,mean22,std11,std12,std21,std22,line11,line12,line21,line22]
-        f.write(''.join([str(i) + '\n' for i in  data]))
+        data = np.c_[mu1,mu2,mean11,mean12,mean21,mean22,std11,std12,std21,std22,line11,line12,line21,line22]
+        f.write('#[0]mu1 [1]mu2 [2]mean11 [3]mean12 [4]mean21 [5]mean22 [6]std11 [7]std12 [8]std21 [9]std22 [10]line11 [11]line12 [12]line21 [13]line22\n')
+        for row in data:
+            line = ' '.join(map(str, row)) + '\n'
+            f.write(line)
         f.close()
     
     def plot_psf_size_shear(self):
@@ -372,9 +375,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         fig.close()
         
         f = self.open_output("g_psf_T_out")
-        data   =[mu,mean1,mean2,std1,std2,line1,line2]
-        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.write('#[0]mu [1]mean1 [2]mean2 [3]std1 [4]std2 [5]line1 [6]line2\n')
+        data = np.c_[mu,mean1,mean2,std1,std2,line1,line2]
+        for row in data:
+            line = ' '.join(map(str, row)) + '\n'
+            f.write(line)
         f.close()
+
+
        
     
     def plot_snr_shear(self):
@@ -445,11 +453,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.tight_layout()
         fig.close()
         
+
         f = self.open_output("g_snr_out")
-        data   =[mu,mean1,mean2,std1,std2,line1,line2]
-        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.write('#[0]mu [1]mean1 [2]mean2 [3]std1 [4]std2 [5]line1 [6]line2\n')
+        data = np.c_[mu,mean1,mean2,std1,std2,line1,line2]
+        for row in data:
+            line = ' '.join(map(str, row)) + '\n'
+            f.write(line)
         f.close()
-    
+
+
+
     def plot_size_shear(self):
         # mean shear in bins of galaxy size
         print("Making mean shear galaxy size plot")
@@ -519,10 +533,15 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.tight_layout()
         fig.close()
         
+
         f = self.open_output("g_T_out")
-        data   =[mu,mean1,mean2,std1,std2,line1,line2]
-        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.write('#[0]mu [1]mean1 [2]mean2 [3]std1 [4]std2 [5]line1 [6]line2\n')
+        data = np.c_[mu,mean1,mean2,std1,std2,line1,line2]
+        for row in data:
+            line = ' '.join(map(str, row)) + '\n'
+            f.write(line)
         f.close()
+
         
     def plot_mag_shear(self):
         # mean shear in bins of magnitude
