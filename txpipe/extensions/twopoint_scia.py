@@ -923,28 +923,46 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
         "sep_units": "arcmin",
         "3Dcoords": True,
         "gaussian_sims_factor": [1.],
-        "use_subsampled_randoms": True
+        "use_subsampled_randoms": True,
+        "use_redshift": False
     }
 
     def get_shear_catalog(self, i):
         import treecorr
-
-        cat = treecorr.Catalog(
-            self.get_input("binned_shear_catalog"),
-            ext=f"/shear/bin_{i}",
-            g1_col="g1",
-            g2_col="g2",
-            r_col="z", #Note we are trying to load in the actual redshift as our r coordinate. 
-            ra_col="ra",
-            dec_col="dec",
-            w_col="weight",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
-            flip_g1=self.config["flip_g1"],
-            flip_g2=self.config["flip_g2"],
-        )
+        if self.config["use_redshift"]:
+            cat = treecorr.Catalog(
+                self.get_input("binned_shear_catalog"),
+                ext=f"/shear/bin_{i}",
+                g1_col="g1",
+                g2_col="g2",
+                r_col="z", #Note we are trying to load in the actual redshift as our r coordinate. 
+                ra_col="ra",
+                dec_col="dec",
+                w_col="weight",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+                flip_g1=self.config["flip_g1"],
+                flip_g2=self.config["flip_g2"],
+            )
+        else:
+            cat = treecorr.Catalog(
+                self.get_input("binned_shear_catalog"),
+                ext=f"/shear/bin_{i}",
+                g1_col="g1",
+                g2_col="g2",
+                r_col="r",
+                ra_col="ra",
+                dec_col="dec",
+                w_col="weight",
+                ra_units="degree",
+                dec_units="degree",
+                patch_centers=self.get_input("patch_centers"),
+                save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
+                flip_g1=self.config["flip_g1"],
+                flip_g2=self.config["flip_g2"],
+            )
 
         return cat
 
