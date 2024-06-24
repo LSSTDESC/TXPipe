@@ -4,10 +4,16 @@ from ..data_types import (
     HDFFile,
     FitsFile,
 )
-from ..utils import LensNumberDensityStats, Splitter, rename_iterated
+from ..utils import LensNumberDensityStats, Splitter, rename_iterated, nanojansky_to_mag_ab, nanojansky_err_to_mag_ab
 from ..binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
+
+#translate between GCR and TXpipe column names
+column_names = {
+    "coord_ra":"ra",
+    "coord_dec":"dec",
+}
 
 class TXIngestSSIGCR(PipelineStage):
     """
@@ -25,74 +31,90 @@ class TXIngestSSIGCR(PipelineStage):
     outputs = [
         ("injection_catalog", HDFFile),
         ("ssi_photometry_catalog", HDFFile),
+        ("ssi_uninjected_photometry_catalog", HDFFile),
     ]
 
     config_options = {
-        "injection_catalog_name":"",
-        "ssi_photometry_catalog_name":"",
+        "injection_catalog_name":"",                 # Catalog of objects manually injected
+        "ssi_photometry_catalog_name":"",            # Catalog of objects from real data with no injections
+        "ssi_uninjected_photometry_catalog_name":"", # Catalog of objects from real data with no injections
         "GCRcatalog_path":"",
-        "all_cols":False,
-        "magnification":0, # magnification label for run
+        "flux_name": "gaap3p0Flux",
     }
 
     def run(self):
         """
         Run the analysis for this stage.
 
-        loads the catalogs using gcr and saves the relevent columns to a hdf5 format
+        Loads the catalogs using gcr and saves the relevent columns to a hdf5 format
         that TXPipe can read
         """
+        
+        
+        # This is needed to access the SSI runs currently on NERSC run by SRV team
+        # As the final runs become more formalized, this could be removed
         if self.config["GCRcatalog_path"]!="":
-            # This is needed to temporarily access the SSI runs on NERSC
-            # As the final runs become more formalized, this could be removed  
             import sys
             sys.path.insert(0,self.config["GCRcatalog_path"])
         import GCRCatalogs
 
-        #add loop over catalog types here
+        #TODO: Check how access output names directly to that 
+        #      it knows about the ceci aliasing 
         output_catalogs = [
             "injection_catalog",
             "ssi_photometry_catalog",
+            "ssi_uninjected_photometry_catalog",
         ]
 
-        import ipdb
-        ipdb.set_trace()
-
         for output_catalog_name in output_catalogs:
-
             catalog_name = self.config[f"{output_catalog_name}_name"]
+            
+            if catalog_name == "":
+                print(f"No catalog {output_catalog_name} name provided")
+                continue
+            
             gc0 = GCRCatalogs.load_catalog(catalog_name)
             native_quantities = gc0.list_all_native_quantities()
-
-            #Now translate all the relevent columns to the format TXPipe format
-            #option 1, ingest all columns with existing names
-            #option 2, ingest only a few relevant columns and give them TXPipe names
+            
             output_file = self.open_output(output_catalog_name)
             group = output_file.create_group("photometry")
             
-            if self.config['all_cols']:
-                #find columns that contain non-nan data
-                for q in native_quantities:
-                    try:
-                        qobj = gc0.get_quantities(q)
-                    except KeyError:
-                        warnings.warn(f"Skipping quantity {q}")
-                        continue
+            #save all columns that contain non-nan data
+            for q in native_quantities:
+                try:
+                    qobj = gc0.get_quantities(q)
+                except KeyError:
+                    warnings.warn(f"KeyError for quantity {q}")
+                    continue
 
-                    try:
-                        if np.isnan(qobj[q]).all():
-                            continue #skip the quantities that are empty
-                    except TypeError:
-                        print(f'TypeError when checking for NaNs in {q}')
+                try:
+                    if np.isnan(qobj[q]).all():
+                        continue #skip the quantities that are empty
+                except TypeError:
+                    warnings.warn(f'TypeError when checking for NaNs in {q}')
 
-                    #TODO: add batch writing to hdf5 file
-                    self.write_output(group, column_name, data)
+                #TODO: add batch writing to hdf5 file
+                try:
                     group.create_dataset(q, data=qobj[q],  dtype=qobj[q].dtype)
-            else:
-                #save only the columns expected by the TXPipe photometry catalog
-                #TO DO: do this
-                pass
+                    if q in column_names.keys():
+                        #also save with TXPipe names
+                        group.create_dataset(column_names[q], data=qobj[q],  dtype=qobj[q].dtype)
+                        
+                except TypeError:
+                    warnings.warn(f"TypeError when trying to save quantity {q}")
 
+            #convert fluxes to mags using txpipe/utils/conversion.py
+            bands = "ugrizy"
+            flux_name = self.config["flux_name"]
+            for b in bands:
+                try:
+                    mag = nanojansky_to_mag_ab(group[f'{b}_{flux_name}'][:])
+                    mag_err = nanojansky_err_to_mag_ab(group[f'{b}_{flux_name}'][:], group[f'{b}_{flux_name}Err'][:])
+                    group.create_dataset(f"{b}_mag", data=mag)
+                    group.create_dataset(f"{b}_mag_err", data=mag_err)
+                except KeyError:
+                    warnings.warn(f'no flux {b}_{flux_name} in SSI GCR catalog')
+            
             output_file.close()
 
 class TXMatchSSI(PipelineStage):
