@@ -12,7 +12,7 @@ def find_module_versions():
     by looking for __version__ or version attributes on them.
     """
     versions = {}
-    for name, module in sys.modules.items():
+    for name, module in list(sys.modules.items()):
         if hasattr(module, "version"):
             v = module.version
         elif hasattr(module, "__version__"):
