@@ -49,17 +49,13 @@ class TXIngestSSIGCR(PipelineStage):
         Loads the catalogs using gcr and saves the relevent columns to a hdf5 format
         that TXPipe can read
         """
-        
-        
         # This is needed to access the SSI runs currently on NERSC run by SRV team
         # As the final runs become more formalized, this could be removed
         if self.config["GCRcatalog_path"]!="":
             import sys
             sys.path.insert(0,self.config["GCRcatalog_path"])
         import GCRCatalogs
-
-        #TODO: Check how access output names directly to that 
-        #      it knows about the ceci aliasing 
+        
         output_catalogs = [
             "injection_catalog",
             "ssi_photometry_catalog",
@@ -73,33 +69,33 @@ class TXIngestSSIGCR(PipelineStage):
                 print(f"No catalog {output_catalog_name} name provided")
                 continue
             
-            gc0 = GCRCatalogs.load_catalog(catalog_name)
-            native_quantities = gc0.list_all_native_quantities()
-            
             output_file = self.open_output(output_catalog_name)
             group = output_file.create_group("photometry")
             
-            #save all columns that contain non-nan data
+            gc0 = GCRCatalogs.load_catalog(catalog_name)
+            native_quantities = gc0.list_all_native_quantities()
+            
+            #iterate over native quantities as some might be missing (or be nans)
             for q in native_quantities:
+                
                 try:
                     qobj = gc0.get_quantities(q)
-                except KeyError:
-                    warnings.warn(f"KeyError for quantity {q}")
-                    continue
-
-                try:
+                    #TO DO: load with iterator (currently returns full datatset)
+                    #GCRCatalogs.lsst_object.LSSTInjectedObjectTable iterator currently 
+                    #returns full dataset
+                        
                     if np.isnan(qobj[q]).all():
                         continue #skip the quantities that are empty
-                except TypeError:
-                    warnings.warn(f'TypeError when checking for NaNs in {q}')
 
-                #TODO: add batch writing to hdf5 file
-                try:
                     group.create_dataset(q, data=qobj[q],  dtype=qobj[q].dtype)
                     if q in column_names.keys():
                         #also save with TXPipe names
                         group.create_dataset(column_names[q], data=qobj[q],  dtype=qobj[q].dtype)
-                        
+
+                except KeyError: #skip quantities that are missing
+                    warnings.warn(f"KeyError for quantity {q}")
+                    continue
+
                 except TypeError:
                     warnings.warn(f"TypeError when trying to save quantity {q}")
 
@@ -116,6 +112,7 @@ class TXIngestSSIGCR(PipelineStage):
                     warnings.warn(f'no flux {b}_{flux_name} in SSI GCR catalog')
             
             output_file.close()
+            
 
 class TXMatchSSI(PipelineStage):
     """
