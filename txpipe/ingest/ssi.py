@@ -163,9 +163,6 @@ class TXMatchSSI(PipelineStage):
         # catalog and match to the injections
         matched_cat = self.match_cats()
 
-        # output the matched catalog with as much SSI metadata
-        # stored as possible
-
     def match_cats(self):
         """
         Match the injected catalogs with astropy tools
