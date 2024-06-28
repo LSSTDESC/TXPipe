@@ -1,0 +1,18 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 10000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 256
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+
+TXIngestSSIGCR:
+    name: TXIngestSSIGCR
+    ssi_photometry_catalog_name: lsst_SSI
+    ssi_uninjected_photometry_catalog_name: lsst_SSI_uninjected
+    GCRcatalog_path: /global/cfs/projectdirs/lsst/groups/SRV/gcr-catalogs-test/
