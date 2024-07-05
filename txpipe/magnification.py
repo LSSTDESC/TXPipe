@@ -59,16 +59,21 @@ class TXSSIMagnification(PipelineStage):
             cluster = self.calc_cluster_patches(nomag_cat)
 
         # compute fractional change in number count for both samples
-        # in each lens bin
+        # in each lens bin and for the full "2D" sample
         nbins = nomag_cat['lens/'].attrs['nbin_lens']
-        outfile = self.setup_output(nbins)
-        for ibin in range(nbins):
-            print(f'Computing magnification coefficient for bin {ibin+1}')
+        outfile = self.setup_output(nbins+1)
+        for ibin in range(nbins+1):
+            if ibin == nbins: #last "bin" will be the full 2d sample (all bins)
+                bin_label = "all"
+                print(f'Computing magnification coefficient for bin_all')
+            else:
+                bin_label = ibin
+                print(f'Computing magnification coefficient for bin {ibin+1}')
 
             # single redshift bins should be low enough number 
             # count that we can load the whole sample
-            w1 = nomag_cat[f'lens/bin_{ibin}/weight'][:]
-            w2 = mag_cat[f'lens/bin_{ibin}/weight'][:]
+            w1 = nomag_cat[f'lens/bin_{bin_label}/weight'][:]
+            w2 = mag_cat[f'lens/bin_{bin_label}/weight'][:]
 
             #compute mag coeff with the whole sample
             csample = self.calc_frac_change(w1, w2)/deltak
@@ -80,14 +85,14 @@ class TXSSIMagnification(PipelineStage):
                 #compute mag coeff with subsampling patches to get a boostrap error
                 patch1 = cluster.predict(
                     np.transpose(
-                        [ nomag_cat[f'lens/bin_{ibin}/ra'][:],
-                          nomag_cat[f'lens/bin_{ibin}/dec'][:], ]
+                        [ nomag_cat[f'lens/bin_{bin_label}/ra'][:],
+                          nomag_cat[f'lens/bin_{bin_label}/dec'][:], ]
                         )
                     )
                 patch2 = cluster.predict(
                     np.transpose(
-                        [ mag_cat[f'lens/bin_{ibin}/ra'][:],
-                          mag_cat[f'lens/bin_{ibin}/dec'][:], ]
+                        [ mag_cat[f'lens/bin_{bin_label}/ra'][:],
+                          mag_cat[f'lens/bin_{bin_label}/dec'][:], ]
                         )
                     )
 
