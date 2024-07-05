@@ -93,11 +93,11 @@ class TXIngestSSIGCR(PipelineStage):
                         group[column_names[q]] = group[q]
 
                 except KeyError:  # skip quantities that are missing
-                    warnings.warn(f"KeyError for quantity {q}")
+                    warnings.warn(f"quantity {q} was missing from the GCRCatalog object")
                     continue
 
                 except TypeError:
-                    warnings.warn(f"TypeError when trying to save quantity {q}")
+                    warnings.warn(f"Quantity {q} coud not be saved as it has a data type not recognised by hdf5")
 
             # convert fluxes to mags using txpipe/utils/conversion.py
             bands = "ugrizy"
