@@ -133,7 +133,7 @@ class TXSSIMagnification(PipelineStage):
         n_patches = self.config["n_patches"]
         cluster = sklearn.cluster.KMeans(n_clusters=n_patches, n_init='auto')
 
-        # limit number of objects too 1000 per patch so stop the training 
+        # limit number of objects to 1000 per patch to stop the training 
         # from taking too long  
         max_per_patch = 1000
         maxobj = max_per_patch*n_patches
@@ -141,6 +141,8 @@ class TXSSIMagnification(PipelineStage):
         n_obj_lens = nomag_cat[f'lens/bin_all/ra'].shape[0]
 
         if n_obj_lens > maxobj:
+            # Here we are reading random ra,decs directly from the HDF file
+            # If the speed of this gets too slow we can look into ways of speeding things up 
             index = np.sort(np.random.choice(n_obj_lens, size=maxobj, replace=False))
             ra = nomag_cat[f'lens/bin_all/ra'][index]
             dec = nomag_cat[f'lens/bin_all/dec'][index]
