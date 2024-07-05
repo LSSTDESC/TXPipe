@@ -98,16 +98,18 @@ class TXSSIMagnification(PipelineStage):
                         )
                     )
 
-                #count number of objects in each patch
-                label1, counts1 = np.unique(patch1, return_counts=True)
-                label2, counts2 = np.unique(patch2, return_counts=True)
+                #count the (weighted) number of objects in each patch
+                label1, index_array1 = np.unique(patch1, return_inverse=True)
+                weighted_counts1 = np.bincount(index_array1, weights=w1)
+                label2, index_array2 = np.unique(patch2, return_inverse=True)
+                weighted_counts2 = np.bincount(index_array2, weights=w2)
                 assert (label1 == np.arange(cluster.n_clusters)).all(), "empty bootstrap patches"
                 assert (label2 == np.arange(cluster.n_clusters)).all(), "empty bootstrap patches"
 
                 # define a function that computes fractional number count change
                 # and takes only patch IDs as input (i.e. fix the counts to this z bin)
                 def calc_frac_change_patches_ibin(patch_ids):
-                    return self.calc_frac_change_patches(patch_ids, counts1, counts2)
+                    return self.calc_frac_change_patches(patch_ids, weighted_counts1, weighted_counts2)
 
                 boot = bootstrap(np.array([label1]), calc_frac_change_patches_ibin)
 
@@ -205,7 +207,7 @@ class TXSSIMagnification(PipelineStage):
         return (N1-N0)/N0
 
     @staticmethod
-    def calc_frac_change_patches(patch_ids, counts1=None, counts2=None):        
+    def calc_frac_change_patches(patch_ids, counts1=None, counts2=None):     
         N0 = np.sum(counts1[patch_ids])
         N1 = np.sum(counts2[patch_ids])
         return (N1-N0)/N0
