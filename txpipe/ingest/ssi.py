@@ -190,26 +190,20 @@ class TXMatchSSI(PipelineStage):
             max_n,
         )
 
-        start1 = 0
-        for ichunk in range(n_chunk):
+        out_start = 0
+        for ichunk, (in_start,in_end,data) in enumerate(self.iterate_hdf("ssi_photometry_catalog", "photometry", ["ra","dec"], batch_size)):
             phot_coord = SkyCoord(
-                ra=phot_cat["photometry/ra"][
-                    ichunk * batch_size : (ichunk + 1) * batch_size
-                ]
-                * u.degree,
-                dec=phot_cat["photometry/dec"][
-                    ichunk * batch_size : (ichunk + 1) * batch_size
-                ]
-                * u.degree,
+                ra=data["ra"]*u.degree,
+                dec=data["dec"]*u.degree,
             )
 
             idx, d2d, d3d = phot_coord.match_to_catalog_sky(inj_coord)
             select_matches = d2d.value <= self.config["match_radius"] / 60.0 / 60.0
             nmatches = np.sum(select_matches)
-            end1 = start1 + nmatches
+            out_end = out_start + nmatches
 
             if nmatches != 0:
-                print(start1, end1, nmatches)
+                print(out_start, out_end, nmatches)
                 self.write_output(
                     match_outfile,
                     "photometry",
@@ -219,13 +213,13 @@ class TXMatchSSI(PipelineStage):
                     select_matches,
                     ichunk,
                     batch_size,
-                    start1,
-                    end1,
+                    out_start,
+                    out_end,
                 )
 
-            start1 = end1
+            out_start = out_end
 
-        self.finalize_output(match_outfile, "photometry", end1)
+        self.finalize_output(match_outfile, "photometry", out_end)
 
     def setup_output(self, tag, group, inj_group, phot_group, n):
         """
