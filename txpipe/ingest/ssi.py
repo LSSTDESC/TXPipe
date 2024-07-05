@@ -4,25 +4,141 @@ from ..data_types import (
     HDFFile,
     FitsFile,
 )
-from ..utils import LensNumberDensityStats, Splitter, rename_iterated
+from ..utils import (
+    LensNumberDensityStats,
+    Splitter,
+    rename_iterated,
+    nanojansky_to_mag_ab,
+    nanojansky_err_to_mag_ab,
+)
 from ..binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
 
+# translate between GCR and TXpipe column names
+column_names = {
+    "coord_ra": "ra",
+    "coord_dec": "dec",
+}
 
-class TXIngestSSI(PipelineStage):
+
+class TXIngestSSIGCR(PipelineStage):
+    """
+    Class for ingesting SSI catalogs using GCR
+
+    Does not treat the injection or ssi photometry catalogs as formal inputs
+    since they are not in a format TXPipe can recognize
+    """
+
+    name = "TXIngestSSIGCR"
+
+    inputs = []
+
+    outputs = [
+        ("injection_catalog", HDFFile),
+        ("ssi_photometry_catalog", HDFFile),
+        ("ssi_uninjected_photometry_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "injection_catalog_name": "",  # Catalog of objects manually injected
+        "ssi_photometry_catalog_name": "",  # Catalog of objects from real data with no injections
+        "ssi_uninjected_photometry_catalog_name": "",  # Catalog of objects from real data with no injections
+        "GCRcatalog_path": "",
+        "flux_name": "gaap3p0Flux",
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+
+        Loads the catalogs using gcr and saves the relevent columns to a hdf5 format
+        that TXPipe can read
+        """
+        # This is needed to access the SSI runs currently on NERSC run by SRV team
+        # As the final runs become more formalized, this could be removed
+        if self.config["GCRcatalog_path"] != "":
+            import sys
+
+            sys.path.insert(0, self.config["GCRcatalog_path"])
+        import GCRCatalogs
+
+        output_catalogs = [
+            "injection_catalog",
+            "ssi_photometry_catalog",
+            "ssi_uninjected_photometry_catalog",
+        ]
+
+        for output_catalog_name in output_catalogs:
+            catalog_name = self.config[f"{output_catalog_name}_name"]
+
+            if catalog_name == "":
+                print(f"No catalog {output_catalog_name} name provided")
+                continue
+
+            output_file = self.open_output(output_catalog_name)
+            group = output_file.create_group("photometry")
+
+            gc0 = GCRCatalogs.load_catalog(catalog_name)
+            native_quantities = gc0.list_all_native_quantities()
+
+            # iterate over native quantities as some might be missing (or be nans)
+            for q in native_quantities:
+                try:
+                    qobj = gc0.get_quantities(q)
+                    # TO DO: load with iterator (currently returns full datatset)
+                    # GCRCatalogs.lsst_object.LSSTInjectedObjectTable iterator currently
+                    # returns full dataset
+
+                    if np.isnan(qobj[q]).all():
+                        continue  # skip the quantities that are empty
+
+                    group.create_dataset(q, data=qobj[q], dtype=qobj[q].dtype)
+                    if q in column_names.keys():
+                        # also save with TXPipe names
+                        group.create_dataset(
+                            column_names[q], data=qobj[q], dtype=qobj[q].dtype
+                        )
+
+                except KeyError:  # skip quantities that are missing
+                    warnings.warn(f"KeyError for quantity {q}")
+                    continue
+
+                except TypeError:
+                    warnings.warn(f"TypeError when trying to save quantity {q}")
+
+            # convert fluxes to mags using txpipe/utils/conversion.py
+            bands = "ugrizy"
+            flux_name = self.config["flux_name"]
+            for b in bands:
+                try:
+                    mag = nanojansky_to_mag_ab(group[f"{b}_{flux_name}"][:])
+                    mag_err = nanojansky_err_to_mag_ab(
+                        group[f"{b}_{flux_name}"][:], group[f"{b}_{flux_name}Err"][:]
+                    )
+                    group.create_dataset(f"{b}_mag", data=mag)
+                    group.create_dataset(f"{b}_mag_err", data=mag_err)
+                except KeyError:
+                    warnings.warn(f"no flux {b}_{flux_name} in SSI GCR catalog")
+
+            output_file.close()
+
+
+class TXMatchSSI(PipelineStage):
     """
     Class for ingesting SSI injection and photometry catalogs
-    
-    Will perform its own matching between the catalogs to output a 
+
+    Default inputs are in TXPipe photometry catalog format
+
+    Will perform its own matching between the catalogs to output a
     matched SSI catalog for further use
 
     TO DO: make a separate stage to ingest the matched catalog directly
     """
 
-    name = "TXIngestSSI"
+    name = "TXMatchSSI"
 
-    # TO DO: switch inputs from TXPipe format to either GCR or butler 
+    # TO DO: switch inputs from TXPipe format to GCR
     inputs = [
         ("injection_catalog", HDFFile),
         ("ssi_photometry_catalog", HDFFile),
@@ -34,8 +150,8 @@ class TXIngestSSI(PipelineStage):
 
     config_options = {
         "chunk_rows": 100000,
-        "match_radius": 0.5, # in arcseconds
-        "magnification":0, # magnification label
+        "match_radius": 0.5,  # in arcseconds
+        "magnification": 0,  # magnification label
     }
 
     def run(self):
@@ -47,60 +163,77 @@ class TXIngestSSI(PipelineStage):
         # catalog and match to the injections
         matched_cat = self.match_cats()
 
-        # output the matched catalog with as much SSI metadata
-        # stored as possible 
-
     def match_cats(self):
         """
         Match the injected catalogs with astropy tools
 
         TO DO: check if this step can be replaced with LSST probabalistic matching
         https://github.com/lsst/meas_astrom/blob/main/python/lsst/meas/astrom/match_probabilistic_task.py
-        
+
         """
         import astropy.units as u
         from astropy.coordinates import SkyCoord
 
         # prep the catalogs for reading
-        #read ALL the ra and dec for the injection catalog
-        inj_cat  = self.open_input("injection_catalog")
+        # read ALL the ra and dec for the injection catalog
+        inj_cat = self.open_input("injection_catalog")
         inj_coord = SkyCoord(
-            ra  = inj_cat['photometry/ra'][:]*u.degree, 
-            dec = inj_cat['photometry/dec'][:]*u.degree
-            )
+            ra=inj_cat["photometry/ra"][:] * u.degree,
+            dec=inj_cat["photometry/dec"][:] * u.degree,
+        )
 
-        #loop over chunkc of the photometry catalog
+        # loop over chunk of the photometry catalog
         phot_cat = self.open_input("ssi_photometry_catalog")
-        nrows = phot_cat['photometry/ra'].shape[0]
+        nrows = phot_cat["photometry/ra"].shape[0]
 
         batch_size = self.config["chunk_rows"]
-        n_chunk = int(np.ceil( nrows / batch_size))
+        n_chunk = int(np.ceil(nrows / batch_size))
 
         max_n = nrows
-        match_outfile = self.setup_output("matched_ssi_photometry_catalog", "photometry", inj_cat['photometry'], phot_cat['photometry'], max_n)
+        match_outfile = self.setup_output(
+            "matched_ssi_photometry_catalog",
+            "photometry",
+            inj_cat["photometry"],
+            phot_cat["photometry"],
+            max_n,
+        )
 
         start1 = 0
         for ichunk in range(n_chunk):
             phot_coord = SkyCoord(
-                ra  = phot_cat['photometry/ra'][ichunk*batch_size:(ichunk+1)*batch_size]*u.degree, 
-                dec = phot_cat['photometry/dec'][ichunk*batch_size:(ichunk+1)*batch_size]*u.degree
-                )
+                ra=phot_cat["photometry/ra"][
+                    ichunk * batch_size : (ichunk + 1) * batch_size
+                ]
+                * u.degree,
+                dec=phot_cat["photometry/dec"][
+                    ichunk * batch_size : (ichunk + 1) * batch_size
+                ]
+                * u.degree,
+            )
 
             idx, d2d, d3d = phot_coord.match_to_catalog_sky(inj_coord)
-            select_matches = (d2d.value <= self.config["match_radius"]/60./60.)
+            select_matches = d2d.value <= self.config["match_radius"] / 60.0 / 60.0
             nmatches = np.sum(select_matches)
             end1 = start1 + nmatches
 
-            if nmatches != 0 :
+            if nmatches != 0:
                 print(start1, end1, nmatches)
                 self.write_output(
-                    match_outfile, "photometry", inj_cat['photometry'], phot_cat['photometry'], 
-                    idx, select_matches, ichunk, batch_size, start1, end1)
+                    match_outfile,
+                    "photometry",
+                    inj_cat["photometry"],
+                    phot_cat["photometry"],
+                    idx,
+                    select_matches,
+                    ichunk,
+                    batch_size,
+                    start1,
+                    end1,
+                )
 
             start1 = end1
 
         self.finalize_output(match_outfile, "photometry", end1)
-
 
     def setup_output(self, tag, group, inj_group, phot_group, n):
         """
@@ -112,25 +245,39 @@ class TXIngestSSI(PipelineStage):
         g = f.create_group(group)
 
         for name, col in phot_group.items():
-            g.create_dataset(name, shape=(n,),  maxshape=n, dtype=col.dtype)
+            g.create_dataset(name, shape=(n,), maxshape=n, dtype=col.dtype)
         for name, col in inj_group.items():
-            g.create_dataset("inj_"+name, shape=(n,), maxshape=n, dtype=col.dtype)        
+            g.create_dataset("inj_" + name, shape=(n,), maxshape=n, dtype=col.dtype)
 
-        g.attrs['magnification'] = self.config['magnification']
+        g.attrs["magnification"] = self.config["magnification"]
 
-        #TO DO: add aditional metadata from inputs
+        # TO DO: add aditional metadata from inputs
 
         return f
 
-    def write_output(self, outfile, group, inj_group, phot_group, idx, select_matches, ichunk, batch_size, start, end):
+    def write_output(
+        self,
+        outfile,
+        group,
+        inj_group,
+        phot_group,
+        idx,
+        select_matches,
+        ichunk,
+        batch_size,
+        start,
+        end,
+    ):
         """
         Write the matched catalog for a single chunk
         """
         g = outfile[group]
         for name, col in phot_group.items():
-            g[name][start:end] = col[ichunk*batch_size:(ichunk+1)*batch_size][select_matches]
+            g[name][start:end] = col[ichunk * batch_size : (ichunk + 1) * batch_size][
+                select_matches
+            ]
         for name, col in inj_group.items():
-            g["inj_"+name][start:end] = col[idx][select_matches]
+            g["inj_" + name][start:end] = col[idx][select_matches]
 
     def finalize_output(self, outfile, group, ntot):
         """
@@ -240,14 +387,6 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
             g.create_dataset(col_name, data=np.full(n,dummy_columns[col_name]))
 
         output.close()
-
-
-
-
-
-
-
-
 
 
 
