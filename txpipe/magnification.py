@@ -55,7 +55,8 @@ class TXSSIMagnification(PipelineStage):
         deltak = (1. - 1./mu)/2.
         
         if self.config["bootstrap_error"]:
-            #split no-mag sample up into patches to be used in the bootstrap errors
+            # split no-mag sample up into patches using K-means clustering 
+            # to be used in bootstrap errors
             cluster = self.calc_cluster_patches(nomag_cat)
 
         # compute fractional change in number count for both samples
@@ -82,7 +83,8 @@ class TXSSIMagnification(PipelineStage):
             if self.config["bootstrap_error"]:
                 print(f'Computing uncertainty with bootstrap')
 
-                #compute mag coeff with subsampling patches to get a boostrap error
+                #assign each object to it's patch from the K-means clustering
+                #1=unmagnified, 2=magnified
                 patch1 = cluster.predict(
                     np.transpose(
                         [ nomag_cat[f'lens/bin_{bin_label}/ra'][:],
@@ -119,7 +121,7 @@ class TXSSIMagnification(PipelineStage):
 
     def calc_cluster_patches(self, nomag_cat ):
         """
-        Split the lens sample into patches 
+        Split the lens sample into patches using K-means clustering
         We are using the full no-magnification sample to do this
         but we could also use jackknife patches 
         based on this SSI run's mask if we have it...
