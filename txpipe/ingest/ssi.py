@@ -56,23 +56,24 @@ class TXIngestSSIGCR(PipelineStage):
             sys.path.insert(0, self.config["GCRcatalog_path"])
         import GCRCatalogs
 
-        output_catalogs = [
+        #attempt to ingest three types of catalog
+        catalogs_labels = [
             "injection_catalog",
             "ssi_photometry_catalog",
             "ssi_uninjected_photometry_catalog",
         ]
 
-        for output_catalog_name in output_catalogs:
-            catalog_name = self.config[f"{output_catalog_name}_name"]
+        for catalog_label in catalogs_labels:
+            input_catalog_name = self.config[f"{catalog_label}_name"]
 
-            if catalog_name == "":
-                print(f"No catalog {output_catalog_name} name provided")
+            if input_catalog_name == "":
+                print(f"No catalog {catalog_label} name provided")
                 continue
 
-            output_file = self.open_output(output_catalog_name)
+            output_file = self.open_output(catalog_label)
             group = output_file.create_group("photometry")
 
-            gc0 = GCRCatalogs.load_catalog(catalog_name)
+            gc0 = GCRCatalogs.load_catalog(input_catalog_name)
             native_quantities = gc0.list_all_native_quantities()
 
             # iterate over native quantities as some might be missing (or be nans)
