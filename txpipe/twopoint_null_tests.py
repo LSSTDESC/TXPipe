@@ -770,11 +770,16 @@ class TXApertureMass(TXTwoPoint):
 
 
 
-class TXpureB(PipelineStage):
+class TXPureB(PipelineStage):
     '''
-    Make shear B-mode measurements
+    Make shear B-mode measurements.
+    This stage computes xip and xim in very narrow angular bins and transforms them into 
+    Fourier B-modes using narrow window functions. This allows us to compute B-modes without
+    being affected by (a) the mask (which is an issue if we use https://arxiv.org/abs/astro-ph/0511629,
+    which is implemented in NaMaster, since masks for LSS is more complicated than CMB) and
+    (b) noise bias (since the measurements we make here are real-space measurements).
     '''
-    name     = "TXpureB"
+    name     = "TXPureB"
     parallel = False
 
     inputs  = [
@@ -800,7 +805,7 @@ class TXpureB(PipelineStage):
                       }
     
     def run(self):
-        import os
+        import os,sys
         import pymaster as nmt
         import healpy as hp
         import sacc
@@ -811,7 +816,7 @@ class TXpureB(PipelineStage):
         from tqdm import tqdm
 
         if self.config["method"] == 'namaster_pureB' or self.config["method"] == 'namaster_nopureB':
-            '''B-mode method that is already implemented in NaMaster'''
+            #B-mode method that is already implemented in NaMaster'''
             print('----------------namaster-----------')
             if  self.config["method"] == 'namaster_pureB':
                 print("WARNING: Namaster's B-mode purification requires the mask to be heavily apodized.")
@@ -827,8 +832,7 @@ class TXpureB(PipelineStage):
                 nbin_source = f.file["maps"].attrs["nbin_source"]
                 g1_maps     = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
                 g2_maps     = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
-                weights     = [f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)]
-
+                
             # Open mask
             with self.open_input("mask", wrapper=True) as f:
                 mask = f.read_map("mask")
@@ -844,7 +848,6 @@ class TXpureB(PipelineStage):
                 fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b)
 
             # Compute Cls and store them in dictionrary
-            tmp       = np.array([])
             ret=np.zeros((nbin_source,nbin_source,len(b.get_effective_ells())))
 
             for zi in range(nbin_source):
@@ -858,11 +861,9 @@ class TXpureB(PipelineStage):
                     cl_coupled   = nmt.compute_coupled_cell(field1,field2)
                     cl_decoupled = w_yp.decouple_cell(cl_coupled)
                     ret[zj,zi,:]= cl_decoupled[3]
-                    tmp = np.concatenate([tmp,cl_decoupled[3]])
-
-            
+                    
             # Compute covariance in a somewhat adhoc way by shuffling the pixel values.
-            covarr = np.zeros((len(tmp),self.config['Nsims']))
+            tmparr = np.zeros((int(nbin_source*(nbin_source+1)/2*len(b.get_effective_ells())),self.config['Nsims']))
 
             for k in tqdm(range(self.config['Nsims'])):
                 fields = {}
@@ -886,12 +887,17 @@ class TXpureB(PipelineStage):
                         cl_decoupled = w_yp.decouple_cell(cl_coupled)
                         tmp = np.concatenate([tmp,cl_decoupled[3]])
 
-                covarr[:,k] = tmp
+                tmparr[:,k] = tmp
              
-                    
-            self.ell     = b.get_effective_ells()
-            self.results = ret
-            self.cov     = np.cov(covarr)
+            n_bins = b.get_n_bands()
+            bin_weights = np.zeros([n_bins, b.lmax])
+            for i in range(n_bins):
+                bin_weights[i, b.get_ell_list(i)] = b.get_weight_list(i)
+
+            self.ell         = b.get_effective_ells()
+            self.bin_weights = bin_weights 
+            self.results     = ret
+            self.cov         = np.cov(tmparr)
         
 
         elif self.config["method"] == 'hybrideb':
@@ -899,6 +905,10 @@ class TXpureB(PipelineStage):
             B-mode method of Becker and Rozo 2015 http://arxiv.org/abs/1412.3851
             '''
             print('--------------hybrideb-----------')
+
+            Nell   = self.config['Nell']
+            Nsims  = self.config["Nsims"]
+            Ntheta = self.config["Ntheta"]
 
             # Check if nbins is less than 1000, and throw warning.
             if self.config['Ntheta']<1000:
@@ -914,23 +924,23 @@ class TXpureB(PipelineStage):
                     geb_dict = pickle.load(f)
             
             else:
-                heb = hybrideb.HybridEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
-                beb = hybrideb.BinEB(self.config['theta_min'], self.config['theta_max'], self.config['Ntheta'])
+                heb = hybrideb.HybridEB(self.config['theta_min'], self.config['theta_max'], Ntheta)
+                beb = hybrideb.BinEB(self.config['theta_min'], self.config['theta_max'], Ntheta)
                 geb = hybrideb.GaussEB(beb, heb)
                 geb_dict = {}
-                for i in range(0,self.config['Nell']):
-                    geb_dict['%d'%(i+1)] = {}
+                for i in range(0,Nell):
+                    geb_dict[f"{i+1}"] = {}
                     for j in range(0,6):
-                        geb_dict['%d'%(i+1)]['%d'%(j+1)]=geb(i)[j]
+                        geb_dict[f"{i+1}"][f"{j+1}"]=geb(i)[j]
             
                 with open(file_precomputed_weights, 'wb') as handle:
                     pickle.dump(geb_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-            En0  = np.zeros(self.config["Nell"])
-            Bn0  = np.zeros(self.config["Nell"])
-            En   = np.zeros((self.config["Nell"],self.config["Nsims"]))
-            Bn   = np.zeros((self.config["Nell"],self.config["Nsims"]))
-            ell  = np.zeros(self.config["Nell"])
+            En0  = np.zeros(Nell)
+            Bn0  = np.zeros(Nell)
+            En   = np.zeros((Nell,Nsims))
+            Bn   = np.zeros((Nell,Nsims))
+            ell  = np.zeros(Nell)
 
             filename = self.get_input("twopoint_data_real_raw")
             s    = sacc.Sacc.load_fits(filename)
@@ -944,35 +954,35 @@ class TXpureB(PipelineStage):
 
             nbin_source = max(len(source_tracers), 1)
 
-            corvarr = np.zeros( (int(nbin_source*(nbin_source+1)/2*self.config["Nell"]), self.config["Nsims"])  )
+            corvarr = np.zeros( (int(nbin_source*(nbin_source+1)/2*Nell), Nsims)  )
 
-            ret=np.zeros((nbin_source,nbin_source,self.config["Nell"]))
+            ret=np.zeros((nbin_source,nbin_source,Nell))
 
             c = 0
             for zi in range(0,nbin_source):
                 for zj in range(zi,nbin_source):
-                    ii = self.config["Nell"]*c
-                    ff = self.config["Nell"]*(c+1)
+                    ii = Nell*c
+                    ff = Nell*(c+1)
                     
                     # Need all 4 block of the covariance
                     filename = self.get_input("twopoint_data_real_raw")
                     tmp      = sacc.Sacc.load_fits(filename)
                     
                     # From the sacc file only load relevant tracer combinations 
-                    tmp.keep_selection(tracers=('source_%d'%zj, 'source_%d'%zi))
+                    tmp.keep_selection(tracers=(f'source_{zj}', f'source_{zi}'))
                     dvec = tmp.mean
-                    xip  = dvec[:int(self.config["Ntheta"])]
-                    xim  = dvec[int(self.config["Ntheta"]):]
+                    xip  = dvec[:int(Ntheta)]
+                    xim  = dvec[int(Ntheta):]
 
                     #random draws based on mean dn covariance
-                    x = np.random.multivariate_normal(mean = tmp.mean, cov =tmp.covariance.covmat , size = self.config["Nsims"])
-                    Rxip = x[:,:int(self.config["Ntheta"])]
-                    Rxim = x[:,int(self.config["Ntheta"]):]
+                    x = np.random.multivariate_normal(mean = tmp.mean, cov =tmp.covariance.covmat , size = Nsims)
+                    Rxip = x[:,:int(Ntheta)]
+                    Rxim = x[:,int(Ntheta):]
 
                     # Compute the uncertainties from random draws          
-                    for n in range(self.config["Nsims"]):
-                        for i in range(int(self.config["Nell"])):
-                            res     = geb_dict['%d'%(i+1)]   
+                    for n in range(Nsims):
+                        for i in range(int(Nell)):
+                            res     = geb_dict[f"{i+1}"]   
                             Fp      = res['2']
                             Fm      = res['3']
                             En[i,n] = np.sum(Fp*Rxip[:,n] + Fm*Rxim[:,n])/2 
@@ -981,8 +991,8 @@ class TXpureB(PipelineStage):
                     corvarr[ii:ff,:] = Bn
 
                     # Compute actual data vector
-                    for i in range(int(self.config["Nell"])):
-                        res     = geb_dict['%d'%(i+1)]   
+                    for i in range(int(Nell)):
+                        res     = geb_dict[f"{i+1}"]   
                         Fp      = res['2']
                         Fm      = res['3']
                         En0[i]   = np.sum(Fp*xip + Fm*xim)/2 
@@ -1022,8 +1032,8 @@ class TXpureB(PipelineStage):
 
         for zi in range(0,nbin_source):
             for zj in range(zi,nbin_source):
-                tracer1 = "source_%d"%zj
-                tracer2 = "source_%d"%zi
+                tracer1 = f"source_{zj}"
+                tracer2 = f"source_{zi}"
                 val     = self.results[zj,zi,:]
                 print(val)
                 ell     = self.ell
