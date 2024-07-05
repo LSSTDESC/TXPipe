@@ -88,11 +88,9 @@ class TXIngestSSIGCR(PipelineStage):
                         continue  # skip the quantities that are empty
 
                     group.create_dataset(q, data=qobj[q], dtype=qobj[q].dtype)
-                    if q in column_names.keys():
+                    if q in column_names:
                         # also save with TXPipe names
-                        group.create_dataset(
-                            column_names[q], data=qobj[q], dtype=qobj[q].dtype
-                        )
+                        group[column_names[q]] = group[q]
 
                 except KeyError:  # skip quantities that are missing
                     warnings.warn(f"KeyError for quantity {q}")
