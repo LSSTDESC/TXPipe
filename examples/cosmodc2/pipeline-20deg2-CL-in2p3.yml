@@ -2,7 +2,7 @@
 #for CCin2p3
 site:
     name: cc-parallel
-    mpi_command: "mpirun -n"
+    mpi_command: mpirun -n
 
 #for NERSC
 #site:
@@ -27,8 +27,8 @@ stages:
 #      nprocess: 1
 #    - name: BPZ_lite
 #      nprocess: 30
-    - name: CLClusterBinningRedshiftRichness
-      nprocess: 1
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
 #    - name: CLClusterShearCatalogs
 #      nprocess: 30
 #    - name: CLClusterEnsembleProfiles
@@ -50,7 +50,7 @@ inputs:
     #spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
 
-resume: True
+resume: true
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_20deg2.txt
 

@@ -2,10 +2,8 @@ global:
     chunk_rows: 1000000
 
 TXGCRTwoCatalogInput:
-    metacal_dir: 
-        /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
-    photo_dir: 
-        /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
+    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
+    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
 
 TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
@@ -27,11 +25,6 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
     name: TXSourceTrueNumberDensity
-    aliases:
-        tomography_catalog: shear_tomography_catalog
-        catalog: shear_catalog
-        weights_catalog: shear_catalog
-        photoz_stack: shear_photoz_stack
     weight_col: shear/00/weight
     redshift_group: shear/00
 
@@ -40,11 +33,6 @@ TXLensTrueNumberDensity:
     nz: 301
     zmax: 3.0
     name: TXLensTrueNumberDensity
-    aliases:
-        tomography_catalog: lens_tomography_catalog
-        catalog: photometry_catalog
-        weights_catalog: none
-        photoz_stack: lens_photoz_stack
     redshift_group: photometry
 
 
@@ -165,12 +153,5 @@ TXTruthLensSelector:
 
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
-    aliases:
-        photoz_stack: lens_photoz_stack
-        nz_plot: lens_nz
-
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: source_nz

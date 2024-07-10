@@ -11,10 +11,8 @@ global:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
-    metacal_dir: 
-        /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
-    photo_dir: 
-        /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
+    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
+    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
 
 TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
@@ -43,9 +41,6 @@ TXLensTrueNumberDensity:
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
     classname: BPZliteInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: lens_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -69,9 +64,6 @@ PZPrepareEstimatorLens:
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
     classname: BPZliteInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: source_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -95,10 +87,6 @@ PZPrepareEstimatorSource:
 PZEstimatorLens:
     name: PZEstimatorLens
     classname: BPZliteEstimator
-    aliases:
-        model: lens_photoz_model
-        input: photometry_catalog
-        output: lens_photoz_pdfs
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
@@ -310,11 +298,6 @@ PZRailSummarizeLens:
     name: PZRailSummarizeLens
     catalog_group: photometry
     tomography_name: lens
-    aliases:
-        tomography_catalog: lens_tomography_catalog
-        photometry_catalog: photometry_catalog
-        model: lens_direct_calibration_model
-        photoz_stack: lens_photoz_stack
     model: None
 
 
@@ -326,44 +309,16 @@ PZRailSummarizeSource:
     mag_prefix: /shear/mcal_mag_
     tomography_name: source
     name: PZRailSummarizeSource
-    aliases:
-        tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
-        model: source_direct_calibration_model
-        photoz_stack: shear_photoz_stack
-
-
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
-    aliases:
-        photoz_stack: lens_photoz_stack
-        nz_plot: lens_nz
-
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: source_nz
-
 FlowCreator:
     n_samples: 1000000
     seed: 5763248
-    aliases:
-        # This input was generated using get_example_flow in pzflow,
-        # not something specific.
-        output: ideal_specz_catalog
-        model: flow
-
 InvRedshiftIncompleteness:
     pivot_redshift: 0.8
-    aliases:
-        input: ideal_specz_catalog
-        output: specz_catalog_pq
-
 GridSelection:
-    aliases:
-        input: ideal_specz_catalog
-        output: specz_catalog_pq
     redshift_cut: 5.1
     ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
     settings_file: data/example/inputs/HSC_grid_settings.pkl
@@ -375,23 +330,11 @@ GridSelection:
 
 TXParqetToHDF:
     hdf_group: photometry
-    aliases:
-        input: specz_catalog_pq
-        output: spectroscopic_catalog
-
-
 NZDirInformerSource:
     name: NZDirInformerSource
     usecols: [r, i, z]
     hdf5_groupname: photometry
-    aliases:
-        input: spectroscopic_catalog
-        model: source_direct_calibration_model
-
 NZDirInformerLens:
     name: NZDirInformerLens
     usecols: [u, g, r, i, z, y]
     hdf5_groupname: photometry
-    aliases:
-        input: spectroscopic_catalog
-        model: lens_direct_calibration_model

@@ -1,48 +1,47 @@
-
 # Stages to run
 stages:
-    - name: FlexZPipe
-    - name: TXSourceSelector
-    - name: TXPhotozSourceStack
-    - name: TXIngestRedmagic
-    - name: TXSourceMaps
-    - name: TXExternalLensMaps
-    - name: TXAuxiliarySourceMaps
-    - name: TXAuxiliaryLensMaps
-    - name: TXSimpleMask
-    - name: TXDensityMaps
-    - name: TXMapPlots
-    - name: TXTracerMetadata
-    - name: TXRandomCat
-    - name: TXJackknifeCenters
-    - name: TXTwoPointLensCat
-      threads_per_process: 2
-    - name: TXBlinding
-      threads_per_process: 2
-    - name: TXTwoPointPlots
-    - name: TXSourceDiagnosticPlots
-    - name: TXLensDiagnosticPlots
-    - name: TXGammaTFieldCenters
-      threads_per_process: 2
-    - name: TXGammaTBrightStars
-      threads_per_process: 2
-    - name: TXGammaTDimStars
-      threads_per_process: 2
-    - name: TXRoweStatistics
-      threads_per_process: 2
-    - name: TXPSFDiagnostics
-    - name: TXRealGaussianCovariance
-      threads_per_process: 2
-    - name: TXSourceNoiseMaps
-      threads_per_process: 2
-    - name: TXExternalLensNoiseMaps
-      threads_per_process: 2
-    - name: TXTwoPointFourier
-      threads_per_process: 2
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 2
-    - name: TXConvergenceMaps
-    - name: TXConvergenceMapPlots
+  - name: FlexZPipe
+  - name: TXSourceSelector
+  - name: TXPhotozSourceStack
+  - name: TXIngestRedmagic
+  - name: TXSourceMaps
+  - name: TXExternalLensMaps
+  - name: TXAuxiliarySourceMaps
+  - name: TXAuxiliaryLensMaps
+  - name: TXSimpleMask
+  - name: TXDensityMaps
+  - name: TXMapPlots
+  - name: TXTracerMetadata
+  - name: TXRandomCat
+  - name: TXJackknifeCenters
+  - name: TXTwoPointLensCat
+    threads_per_process: 2
+  - name: TXBlinding
+    threads_per_process: 2
+  - name: TXTwoPointPlots
+  - name: TXSourceDiagnosticPlots
+  - name: TXLensDiagnosticPlots
+  - name: TXGammaTFieldCenters
+    threads_per_process: 2
+  - name: TXGammaTBrightStars
+    threads_per_process: 2
+  - name: TXGammaTDimStars
+    threads_per_process: 2
+  - name: TXRoweStatistics
+    threads_per_process: 2
+  - name: TXPSFDiagnostics
+  - name: TXRealGaussianCovariance
+    threads_per_process: 2
+  - name: TXSourceNoiseMaps
+    threads_per_process: 2
+  - name: TXExternalLensNoiseMaps
+    threads_per_process: 2
+  - name: TXTwoPointFourier
+    threads_per_process: 2
+  - name: TXFourierGaussianCovariance
+    threads_per_process: 2
+  - name: TXConvergenceMaps
+  - name: TXConvergenceMapPlots
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -64,8 +63,8 @@ modules: txpipe
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-    - submodules/WLMassMap/python/desc/
-    - submodules/FlexZPipe
+  - submodules/WLMassMap/python/desc/
+  - submodules/FlexZPipe
 
 # configuration settings
 config: examples/redmagic/config.yml
@@ -87,7 +86,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: true
 # where to put output logs for individual stages
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log

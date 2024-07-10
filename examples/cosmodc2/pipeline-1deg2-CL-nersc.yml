@@ -6,15 +6,15 @@
 
 #for NERSC
 site:
-   name: cori-batch
-   image: ghcr.io/lsstdesc/txpipe-dev
+    name: cori-batch
+    image: ghcr.io/lsstdesc/txpipe-dev
 
 
 #all the following steps should not depend on where you run 
 launcher:
     name: mini
     interval: 3.0
-     
+
 modules: >
     txpipe
     rail.estimation.algos.bpz_lite
@@ -28,8 +28,8 @@ stages:
 #      nprocess: 1
 #    - name: BPZ_lite
 #      nprocess: 1
-    - name: CLClusterBinningRedshiftRichness
-      nprocess: 1
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
 #    - name: CLClusterShearCatalogs
 #      nprocess: 1
 #    - name: CLClusterEnsembleProfiles
@@ -50,8 +50,8 @@ inputs:
 #    calibration_table: ./data/example/inputs/sample_cosmodc2_w10year_errors.dat
 #    spectroscopic_catalog: ./data/example/inputs/mock_spectroscopic_catalog.hdf5
     cluster_catalog: ./data/example/inputs/cluster_catalog.hdf5
- 
-resume: True
+
+resume: true
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_1deg2.txt
 
