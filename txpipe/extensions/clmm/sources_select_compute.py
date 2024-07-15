@@ -375,7 +375,7 @@ class CLClusterShearCatalogs(PipelineStage):
         from astropy.table import Table
         with self.open_input("cluster_catalog") as f:
             g = f["clusters/"]
-            cl_liste = self.load_cluster_list(group=g)
+            cl_list = self.load_cluster_list(group=g)
             
         return cl_list
     
