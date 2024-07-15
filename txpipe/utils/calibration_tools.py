@@ -13,7 +13,6 @@ def read_shear_catalog_type(stage):
     with stage.open_input("shear_catalog", wrapper=True) as f:
         shear_catalog_type = f.catalog_type
         stage.config["shear_catalog_type"] = shear_catalog_type
-        print('Temporarily setting cat_type to: ', f.catalog_type)
     return shear_catalog_type
 
 
@@ -715,6 +714,106 @@ class HSCCalculator:
         _, R = self.R.collect(comm, mode)
         _, K = self.K.collect(comm, mode)
         return R, K, count, sum_weights**2/sum_weights_sq
+    
+class MockCalculator:
+    """
+    This class calculates tomographic statistics for mock catalogs
+    where no calibration is necessary.
+
+    It only accumulates the statistics of the selected object weights
+    instead of any calibration quantities like its sibling classes.
+
+    """
+
+    def __init__(self, selector):
+        """
+        Initialize the Calibrator using the function you will use to select
+        objects. That function should take at least one argument,
+        the chunk of data to select on.
+
+        The selector can take further *args and **kwargs, passed in when adding
+        data.
+
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects
+        """
+        self.selector = selector
+        self.count = 0
+        self.sum_weights    = 0
+        self.sum_weights_sq = 0
+        
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function
+
+        """
+        data = _DataWrapper(data, "")
+        sel = self.selector(data, *args, **kwargs)
+
+        # Extract the calibration quantities for the selected objects
+        w = data["weight"]
+        n = w[sel].size
+        self.count += n
+        w = w[sel]
+        self.sum_weights += np.sum(w)
+        self.sum_weights_sq += np.sum(w)
+
+        return sel
+
+    def collect(self, comm=None, allgather=False):
+        """
+        Finalize and sum up all the response values, returning calibration
+        quantities.
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+
+        Returns
+        -------
+        N: int
+            Total object count
+
+        Neff: float
+            Total effective number of galaxies
+
+
+        """
+        # The total number of objects is just the
+        # number from all the processes summed together.
+        if comm is not None:
+            if allgather:
+                count   = comm.allreduce(self.count)
+                sum_weights    = comm.allreduce(self.sum_weights)
+                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                
+            else:
+                count = comm.reduce(self.count)
+                sum_weights    = comm.reduce(self.sum_weights)
+                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+        else:
+            count = self.count
+            sum_weights    = self.sum_weights
+            sum_weights_sq = self.sum_weights_sq
+        # Collect the weighted means of these numbers.
+        # this collects all the values from the different
+        # processes and over all the chunks of data
+        mode = "allgather" if allgather else "gather"
+        return count, sum_weights**2/sum_weights_sq
 
 
 class MeanShearInBins:

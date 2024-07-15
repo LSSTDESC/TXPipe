@@ -1,0 +1,17 @@
+global:
+    chunk_rows: 100000
+    pixelization: healpix
+    nside: 64
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+
+TXSourceSelectorSimple:
+    input_pz: False
+    true_z: False
+    bands: riz
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ""
