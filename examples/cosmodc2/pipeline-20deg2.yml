@@ -21,7 +21,7 @@ stages:
       nprocess: 32
     - name: TXLensTrueNumberDensity
     - name: TXSourceTrueNumberDensity
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
     - name: TXShearCalibration
       nprocess: 32
     - name: TXTruthLensCatalogSplitter

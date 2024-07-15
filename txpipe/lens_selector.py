@@ -154,8 +154,10 @@ class TXBaseLensSelector(PipelineStage):
         n = self.open_input("photometry_catalog")["photometry/ra"].size
         nbin_lens = len(self.config["lens_zbin_edges"]) - 1
 
-        outfile = self.open_output("lens_tomography_catalog_unweighted", parallel=True)
+        output = self.open_output("lens_tomography_catalog_unweighted", parallel=True, wrapper=True)
+        outfile = output.file
         group = outfile.create_group("tomography")
+        output.write_zbins(self.config["lens_zbin_edges"])
         group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
         group.create_dataset("counts", (nbin_lens,), dtype="i")

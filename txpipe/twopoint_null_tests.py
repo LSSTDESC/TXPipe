@@ -7,6 +7,7 @@ from .data_types import (
     SACCFile,
     PNGFile,
     TextFile,
+    QPNOfZFile,
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS
@@ -89,8 +90,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
     name = "TXGammaTFieldCenters"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
-        ("shear_photoz_stack", HDFFile),
-        ("lens_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
+        ("lens_photoz_stack", QPNOfZFile),
         ("random_cats", RandomsCatalog),
         ("exposures", HDFFile),
         ("patch_centers", TextFile),
@@ -217,10 +218,9 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input("shear_photoz_stack")
-        z = f["n_of_z/source2d/z"][:]
-        Nz = f[f"n_of_z/source2d/bin_0"][:]
-        f.close()
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            # The last entry represents the 2D n(z)
+            z, Nz = f.get_2d_n_of_z(-1)
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
@@ -271,8 +271,8 @@ class TXGammaTStars(TXTwoPoint):
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
-        ("shear_photoz_stack", HDFFile),
-        ("lens_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
+        ("lens_photoz_stack", QPNOfZFile),
         ("random_cats", RandomsCatalog),
         ("binned_star_catalog", HDFFile),
         ("patch_centers", TextFile),
@@ -411,11 +411,8 @@ class TXGammaTStars(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input("shear_photoz_stack")
-        z = f["n_of_z/source2d/z"][:]
-        Nz = f[f"n_of_z/source2d/bin_0"][:]
-
-        f.close()
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            z, Nz = f.get_2d_n_of_z(-1)
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
@@ -467,7 +464,7 @@ class TXGammaTRandoms(TXTwoPoint):
     name = "TXGammaTRandoms"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
-        ("shear_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
         ("random_cats", RandomsCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
@@ -593,12 +590,8 @@ class TXGammaTRandoms(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        f = self.open_input("shear_photoz_stack")
-
-        z = f["n_of_z/source2d/z"][:]
-        Nz = f["n_of_z/source2d/bin_0"][:] 
-
-        f.close()
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            z, Nz = f.get_2d_n_of_z(-1)
 
         # Add the data points that we have one by one, recording which
         # tracer they each require
@@ -649,7 +642,7 @@ class TXApertureMass(TXTwoPoint):
     name = "TXApertureMass"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
-        ("shear_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
     ]
@@ -733,12 +726,10 @@ class TXApertureMass(TXTwoPoint):
         # So here we load it in and add it to the data
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        f = self.open_input("shear_photoz_stack")
-        for i in source_list:
-            z = f["n_of_z/source/z"][:]
-            Nz = f[f"n_of_z/source/bin_{i}"][:]
-            S.add_tracer("NZ", f"source_{i}", z, Nz)
-        f.close()
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            for i in source_list:
+                z, Nz = f.get_bin_n_of_z(i)
+                S.add_tracer("NZ", f"source_{i}", z, Nz)
 
         # Now build up the collection of data points, adding them all to the sacc
         for d in results:

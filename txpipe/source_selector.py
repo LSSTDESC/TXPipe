@@ -8,7 +8,7 @@ from .data_types import (
     TextFile,
 )
 from .utils import SourceNumberDensityStats, rename_iterated
-from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibration_tools import (
     metacal_variants,
     metadetect_variants,
@@ -130,7 +130,7 @@ class TXSourceSelectorBase(PipelineStage):
         "s2n_cut": float,
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
-        "random_seed": 42,
+        "random_seed": 42
     }
 
     def run(self):
@@ -150,6 +150,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Are we using a metacal or lensfit catalog?
         shear_catalog_type = read_shear_catalog_type(self)
+
         bands = self.config["bands"]
 
         # The output file we will put the tomographic
@@ -291,15 +292,20 @@ class TXSourceSelectorBase(PipelineStage):
         Creates the data sets and groups to put module output
         in the shear_tomography_catalog output file.
         """
+
         cat_type = read_shear_catalog_type(self)
+
         with self.open_input("shear_catalog", wrapper=True) as f:
             n = f.get_size()
 
         zbins = self.config["source_zbin_edges"]
         nbin_source = len(zbins) - 1
 
-        outfile = self.open_output("shear_tomography_catalog", parallel=True)
+        output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
+        outfile = output.file
         group = outfile.create_group("tomography")
+        group.attrs['catalog_type'] = cat_type
+        output.write_zbins(zbins)
         group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("counts", (nbin_source,), dtype="i")
         group.create_dataset("counts_2d", (1,), dtype="i")
@@ -313,10 +319,6 @@ class TXSourceSelectorBase(PipelineStage):
         group.create_dataset("N_eff_2d", (1,), dtype="f")
 
         group.attrs["nbin"] = nbin_source
-        group.attrs["catalog_type"] = self.config["shear_catalog_type"]
-        for i in range(nbin_source):
-            group.attrs[f"source_zmin_{i}"] = zbins[i]
-            group.attrs[f"source_zmax_{i}"] = zbins[i + 1]
 
         return outfile
 
@@ -403,11 +405,10 @@ class TXSourceSelectorBase(PipelineStage):
         variant = data.suffix
 
         shear_prefix = self.config["shear_prefix"]
-        s2n = data[f"{shear_prefix}s2n"]
-        T = data[f"{shear_prefix}T"]
-
+        s2n  = data[f"{shear_prefix}s2n{variant}"]
+        T    = data[f"{shear_prefix}T{variant}"]
         Tpsf = data[f"{shear_prefix}psf_T_mean"]
-        flag = data[f"{shear_prefix}flags"]
+        flag = data[f"{shear_prefix}flags{variant}"]
 
         # Apply our cuts.  We keep track of the number of objects
         # reject by each cut in case it's important.
@@ -462,7 +463,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float
+        "delta_gamma": float,
+        "use_diagonal_response": False
     }
 
 
@@ -477,9 +479,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         """
         bands = self.config["bands"]
         shear_cols = metacal_variants(
-            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags"
+            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight"
         )
-        shear_cols += ["ra", "dec", "mcal_psf_T_mean", "weight"]
+        shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
         shear_cols += band_variants(
             bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
         )
@@ -521,10 +523,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
+        use_diagonal_response = self.config["use_diagonal_response"]
         calculators = [
-            MetacalCalculator(self.select, delta_gamma) for i in range(nbin_source)
+            MetacalCalculator(self.select, delta_gamma,use_diagonal_response) for i in range(nbin_source)
         ]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma))
+        calculators.append(MetacalCalculator(self.select_2d, delta_gamma,use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):
@@ -709,7 +712,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # Like metacal, N_eff = N for metadetect
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
-
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
     Source selection and tomography for lensfit catalogs
@@ -725,7 +727,8 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "input_m_is_weighted": bool
+        "input_m_is_weighted": bool,
+        "dec_cut": True,
     }
 
 
@@ -733,6 +736,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
         shear_cols = [
+            "dec",
             "psf_T_mean",
             "weight",
             "flags",
@@ -754,11 +758,11 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         calculators = [
-            LensfitCalculator(self.select, self.config["input_m_is_weighted"])
+            LensfitCalculator(self.select, input_m_is_weighted=self.config["input_m_is_weighted"])
             for i in range(nbin_source)
         ]
         calculators.append(
-            LensfitCalculator(self.select_2d, self.config["input_m_is_weighted"])
+            LensfitCalculator(self.select_2d, input_m_is_weighted=self.config["input_m_is_weighted"])
         )
         return calculators
 
@@ -771,15 +775,18 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         nbin_source = outfile["tomography/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("K", (nbin_source,), dtype="f")
-        group.create_dataset("C", (nbin_source, 2), dtype="f")
+        group.create_dataset("C_N", (nbin_source, 2), dtype="f")
+        group.create_dataset("C_S", (nbin_source, 2), dtype="f")
         group.create_dataset("K_2d", (1,), dtype="f")
-        group.create_dataset("C_2d", (2), dtype="f")
+        group.create_dataset("C_2d_N", (2), dtype="f")
+        group.create_dataset("C_2d_S", (2), dtype="f")
+
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
-        K, C, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = LensfitCalibrator(K, C)
-        mean_e = C.copy()
+        K, C_N,C_S, N, Neff = calculator.collect(self.comm, allgather=True)
+        calibrator = LensfitCalibrator(K, C_N, C_S)
+        mean_e = (C_N+C_S)/2
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)

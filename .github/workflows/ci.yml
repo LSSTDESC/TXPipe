@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/lsstdesc/txpipe:v0.7
+      image: ghcr.io/lsstdesc/txpipe:v0.9
 
     steps:
     - name: Checkout repository
@@ -61,7 +61,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe:v0.7
+      image: ghcr.io/lsstdesc/txpipe:v0.9
 
     steps:
     - name: Checkout repository
@@ -99,7 +99,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe:v0.7
+      image: ghcr.io/lsstdesc/txpipe:v0.9
 
     steps:
     - name: Checkout repository
@@ -146,7 +146,7 @@ jobs:
       needs: Download_Data
 
       container:
-        image: ghcr.io/lsstdesc/txpipe:v0.7
+        image: ghcr.io/lsstdesc/txpipe:v0.9
 
       steps:
       - name: Checkout repository
@@ -185,7 +185,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe:v0.7
+      image: ghcr.io/lsstdesc/txpipe:v0.9
 
     steps:
     - name: Checkout repository
@@ -224,7 +224,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ghcr.io/lsstdesc/txpipe:v0.7
+      image: ghcr.io/lsstdesc/txpipe:v0.9
 
     steps:
     - name: Checkout repository
@@ -260,7 +260,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/lsstdesc/txpipe:v0.7
+      image: ghcr.io/lsstdesc/txpipe:v0.9
 
     steps:
     - name: Checkout repository
@@ -272,7 +272,6 @@ jobs:
         ceci --dry-run examples/2.2i/pipeline.yml
         ceci --dry-run examples/buzzard/pipeline.yml
         ceci --dry-run examples/cosmodc2/pipeline.yml
-        ceci --dry-run examples/dr1b/pipeline.yml
         ceci --dry-run examples/skysim/pipeline.yml
 
 
@@ -282,11 +281,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-12]
         include:
           - os: ubuntu-latest
             INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
-          - os: macos-latest
+          - os: macos-12
             INSTALL_DEPS: brew update-reset && brew install wget
     steps:
     - name: Checkout repository

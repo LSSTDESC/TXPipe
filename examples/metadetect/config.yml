@@ -297,6 +297,10 @@ TXTwoPointFourier:
     ell_max: 100
     bandwidth: 20
     cache_dir: ./cache/workspaces
+    do_shear_shear: True
+    do_shear_pos: True
+    do_pos_pos: True
+    compute_theory: True
 
 TXSimpleMaskFrac:
     supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
@@ -331,6 +335,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    nsamples: 100
     mag_prefix: "/shear/00/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
@@ -404,3 +409,15 @@ PZRealizationsPlotLens:
     aliases:
         photoz_realizations: lens_photoz_realizations
         photoz_realizations_plot: lens_photoz_realizations_plot
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
