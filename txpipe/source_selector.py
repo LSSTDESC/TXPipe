@@ -816,11 +816,12 @@ class TXSourceSelectorSimple(TXSourceSelectorBase):
             "g2",
             "weight",
         ]
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="hsc")
         if self.config["input_pz"]:
             shear_cols += ["mean_z"]
         elif self.config["true_z"]:
             shear_cols += ["redshift_true"]
+        else:
+            shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="hsc")
 
         # Iterate using parent class method
         return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)

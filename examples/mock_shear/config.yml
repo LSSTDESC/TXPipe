@@ -2,12 +2,12 @@ global:
     chunk_rows: 100000
     pixelization: healpix
     nside: 64
-    sparse: True  # Generate sparse maps - faster if using small areas
+    sparse: true
 
 
 TXSourceSelectorSimple:
-    input_pz: False
-    true_z: False
+    input_pz: false
+    true_z: true
     bands: riz
     T_cut: 0.5
     s2n_cut: 10.0
