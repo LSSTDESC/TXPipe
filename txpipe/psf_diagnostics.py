@@ -672,11 +672,16 @@ class TXTauStatistics(PipelineStage):
 
             # Load shape and weight for everything else
             else:
-                g1      = g["g1"][:][mask]
-                g2      = g["g2"][:][mask]
-                weight  = g["weight"][:][mask]
-                sigma_e = g["sigma_e"][:][mask]
-                m       = g["m"][:][mask]
+                g1        = g["g1"][:][mask]
+                g2        = g["g2"][:][mask]
+                weight    = g["weight"][:][mask]
+                sigma_e   = g["sigma_e"][:][mask]
+                m         = g["m"][:][mask]
+                c1        = g["c1"][:][mask]
+                c2        = g["c2"][:][mask]
+                aselepsf1 = g["aselepsf1"][:][mask]
+                aselepsf2 = g["aselepsf2"][:][mask]
+                msel         = g["msel"][:][mask]
 
         # Change shear convention 
         if self.config["flip_g2"]:
@@ -694,7 +699,7 @@ class TXTauStatistics(PipelineStage):
             g1, g2 = cal.apply(dec, g1,g2)
             
         else:
-            print("Shear calibration type not recognized.")
+            g1, g2 = cal.apply(g1, g2, c1, c2, aselepsf1, aselepsf2, msel, subtract_mean=True)
             
         return ra, dec, g1, g2, weight
 
