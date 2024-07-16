@@ -189,7 +189,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             for key in k :
                 group = f["cluster_bin"][key]
                 clusters = self.load_cluster_list(group=group)
-                print(key, group, group.attrs, len(clusters))
+                print(key, group, dict(group.attrs), len(clusters))
                 
                 if  len(clusters)>1:
                     cluster_stack = self.create_cluster_ensemble(radial_bins, clmm_cosmo, clusters, cluster_shears_cat, cluster_ensemble_id=key)
@@ -199,7 +199,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 
                 #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
                 
-                binned_cluster_stack[key]=[group.attrs, len(clusters), cluster_stack]
+                binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack}
                 
             
         return binned_cluster_stack
