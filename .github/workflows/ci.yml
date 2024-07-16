@@ -291,7 +291,7 @@ jobs:
     - name: Show logs
       if: ${{ always() }}
       run: |
-        tail -n +1 data/example/logs_redmagic/*
+        tail -n +1 data/example/logs_mock/*
       
 
 
