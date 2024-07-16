@@ -15,3 +15,4 @@ TXSourceSelectorSimple:
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     shear_prefix: ""
+    verbose: true

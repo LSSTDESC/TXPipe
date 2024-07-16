@@ -1216,10 +1216,11 @@ def generate_mock_metacal_mag_responses(bands, nobj):
     return mag_responses
 
 
-class TXSimpleMock:
+class TXSimpleMock(PipelineStage):
     """
     Load an ascii astropy table and put it in shear catalog format.
     """
+    name = "TXSimpleMock"
     inputs = [("mock_shear_catalog", TextFile)]
     outputs = [("shear_catalog", ShearCatalog)]
     config_options = {
@@ -1260,6 +1261,7 @@ class TXSimpleMock:
             "psf_g2": 0.0,
             "psf_T_mean": 0.202, # this corresponds to a FWHM of 0.75 arcsec
             "weight": 1.0,
+            "flags": 0,
         }
 
         for key, value in defaults.items():

@@ -1,6 +1,7 @@
 
 # Stages to run
 stages:
+    - name: TXSimpleMock
     - name: TXSourceSelectorSimple  # select and split objects into source bins
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
 
@@ -17,7 +18,7 @@ python_paths:
     - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
-output_dir: data/example/mock_shear_outputs
+output_dir: data/example/outputs_mock
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -34,8 +35,7 @@ config: examples/mock_shear/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    # See README for paths to download these files
-    shear_catalog: data/example/inputs/simple_shear_catalog.hdf5
+    mock_shear_catalog: data/example/inputs/mock_nfw_shear_catalog.txt
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
 
 
@@ -43,6 +43,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/mock_shear_logs
+log_dir: data/example/logs_mock
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/mock_shear_log.txt
