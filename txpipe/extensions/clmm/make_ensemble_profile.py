@@ -99,30 +99,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                       "weight_clmm": weight, "distance_arcmin": distance_arcmin})
 
 
-# Commente because this is not  used in the code 
-
-
-#    def make_clmm_profile(self, bg_cat, z_cluster, clmm_cosmo, num_bins):
-#        import clmm
-
-#        tangential_comp = bg_cat["tangential_comp_clmm"]
-#        cross_comp = bg_cat["cross_comp_clmm"]
-#        weights = bg_cat["weight_clmm"]
-#        angsep = bg_cat["distance_arcmin"]
-
-#        profile = clmm.dataops.make_radial_profile(
-#            [tangential_comp, cross_comp],
-#            weights=weights,
-#            angsep=angsep,
-#            angsep_units="arcmin",
-#            bin_units="Mpc",
-#            bins=num_bins,
-#            cosmo=clmm_cosmo,
-#            z_lens=z_cluster)
-
-
-#        return {k: np.array(profile[k]) for k in profile.colnames}
-
 
     def create_cluster_ensemble(self, radial_bins, clmm_cosmo, cluster_list, cluster_shears_cat, cluster_ensemble_id=0):
         import clmm
