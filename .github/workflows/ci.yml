@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ${{ env.EXAMPLE_DATA_FILE_VERSION }}
+      image: ghcr.io/lsstdesc/txpipe-dev:latest
 
     steps:
     - name: Checkout repository
