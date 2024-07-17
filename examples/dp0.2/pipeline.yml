@@ -1,78 +1,59 @@
 # Stages to run
 stages:
 #    - name: TXIngestDataPreview02
-  - name: BPZliteInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: photoz_model
-  - name: BPZ_lite
-    nodes: 2
-    nprocess: 128
-    threads_per_process: 2
-    aliases:
-        model: photoz_model
-        input: photometry_catalog
-        output: photoz_pdfs
-  - name: TXShearCalibration
-    nprocess: 32
-    threads_per_process: 2
-  - name: TXMeanLensSelector
-    nprocess: 32
-    threads_per_process: 2
-    aliases:
-        lens_photoz_pdfs: photoz_pdfs
-  - name: TXLensCatalogSplitter
-    nprocess: 32
-    threads_per_process: 2
-    aliases:
-        lens_photoz_pdfs: photoz_pdfs
-  - name: TXSourceSelectorHSC
-    nprocess: 32
-    threads_per_process: 2
-  - name: TXPhotozSourceStack
-    nprocess: 32
-    threads_per_process: 2
-    aliases:
-        source_photoz_pdfs: photoz_pdfs
-  - name: TXPhotozLensStack
-    nprocess: 32
-    threads_per_process: 2
-    aliases:
-        lens_photoz_pdfs: photoz_pdfs
-  - name: TXSourceMaps
-    nprocess: 8
-    threads_per_process: 8
-  - name: TXLensMaps
-    nprocess: 8
-    threads_per_process: 8
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-    nprocess: 8
-    threads_per_process: 8
-  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
-    nprocess: 8
-    threads_per_process: 8
-  - name: TXSimpleMask           # combine maps to make a simple mask
-  - name: TXTracerMetadata       # collate metadata
-  - name: TXRandomCat            # generate lens bin random catalogs
-    nprocess: 32
-    threads_per_process: 1
-    aliases:
-        lens_photoz_pdfs: photoz_pdfs
-  - name: TXJackknifeCenters     # Split the area into jackknife regions
-  - name: TXTwoPoint             # Compute real-space 2-point correlations
-    nprocess: 16
-    threads_per_process: 64
-    nodes: 8
-  - name: TXTwoPointPlotsTheory
-    aliases:
-        twopoint_data_real: summary_statistics_real
-  - name: TXTwoPointTheoryReal
-  - name: TXNullBlinding
-  - name: TXMapPlots
-  - name: TXDensityMaps
-  - name: TXRealGaussianCovariance
-    threads_per_process: 32
-  - name: TXPhotozPlot
+    - name: Inform_BPZ_lite
+    - name: BPZ_lite
+      nodes: 2
+      nprocess: 128
+      threads_per_process: 2
+    - name: TXShearCalibration
+      nprocess: 32
+      threads_per_process: 2
+    - name: TXMeanLensSelector
+      nprocess: 32
+      threads_per_process: 2
+    - name: TXLensCatalogSplitter
+      nprocess: 32
+      threads_per_process: 2
+    - name: TXSourceSelectorHSC
+      nprocess: 32
+      threads_per_process: 2    
+    - name: TXPhotozSourceStack
+      nprocess: 32
+      threads_per_process: 2
+    - name: TXPhotozLensStack
+      nprocess: 32
+      threads_per_process: 2
+    - name: TXSourceMaps
+      nprocess: 8
+      threads_per_process: 8
+    - name: TXLensMaps
+      nprocess: 8
+      threads_per_process: 8
+    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
+      nprocess: 8
+      threads_per_process: 8
+    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
+      nprocess: 8
+      threads_per_process: 8
+    - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXRandomCat          # generate lens bin random catalogs
+      nprocess: 32
+      threads_per_process: 1
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
+      nprocess: 16
+      threads_per_process: 64
+      nodes: 8
+    - name: TXTwoPointPlotsTheory
+    - name: TXTwoPointTheoryReal
+    - name: TXNullBlinding
+    - name: TXMapPlots 
+    - name: TXDensityMaps
+    - name: TXRealGaussianCovariance
+      threads_per_process: 32
+    - name: TXPhotozPlot
 
 # Where to put outputs
 output_dir: data/dp0.2/outputs
@@ -109,7 +90,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: true
+resume: True
 # where to put output logs for individual stages
 log_dir: data/dp0.2/logs
 # where to put an overall parsl pipeline log

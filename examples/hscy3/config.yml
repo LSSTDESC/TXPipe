@@ -8,8 +8,8 @@ global:
     # These mapping options are also read by a range of stages
     pixelization: healpix
     nside: 1024
-    sparse: true  # Generate sparse maps - faster if using small areas
-    shear_catalog_type: hsc
+    sparse: True  # Generate sparse maps - faster if using small areas
+    shear_catalog_type: 'hsc'
 
 
 TXGCRTwoCatalogInput:
@@ -20,14 +20,14 @@ TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
 TXExposureInfo:
-    dc2_name: 1.2p
+    dc2_name: '1.2p'
 
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2
-    flip_g2: true # to match metacal
+    flip_g2: True # to match metacal
 
 TXIngestRedmagic:
     lens_zbin_edges: [0.1, 0.3, 0.5]
@@ -42,7 +42,10 @@ TXLensTrueNumberDensity:
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
-    classname: BPZliteInformer
+    classname: Inform_BPZ_lite
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -56,7 +59,7 @@ PZPrepareEstimatorLens:
     p_min: 0.005
     gauss_kernel: 0.0
     mag_err_min: 0.005
-    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
     madau_reddening: no
     bands: riz
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -65,7 +68,10 @@ PZPrepareEstimatorLens:
 
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
-    classname: BPZliteInformer
+    classname: Inform_BPZ_lite
+    aliases:
+        input: spectroscopic_catalog
+        model: source_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -79,7 +85,7 @@ PZPrepareEstimatorSource:
     p_min: 0.005
     gauss_kernel: 0.0
     mag_err_min: 0.005
-    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
     madau_reddening: no
     bands: riz
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -88,7 +94,11 @@ PZPrepareEstimatorSource:
 
 PZEstimatorLens:
     name: PZEstimatorLens
-    classname: BPZliteEstimator
+    classname: BPZ_lite
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
@@ -115,7 +125,7 @@ PZEstimatorLens:
         mag_r: 29.06
         mag_i: 28.62
         mag_z: 27.98
-        mag_y: 27.05
+        mag_y: 27.05    
 
 
 
@@ -125,18 +135,19 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
 
 TXSourceSelectorHSC:
-    input_pz: true
-    true_z: false
-    bands: i    #used for selection
-    T_cut: 0.0
-    s2n_cut: 10.0
+    input_pz: True
+    true_z  : False
+    bands   : i #used for selection
+    T_cut   : 0.0
+    s2n_cut : 10.0
     max_rows: 10000000000
     source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
     shear_prefix: ''
-    shear_catalog_type: hsc
+    shear_catalog_type: 'hsc'
+   
 TXSourceSelectorMetacal:
-    input_pz: true
-    true_z: false
+    input_pz: True
+    true_z: False
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -144,19 +155,19 @@ TXSourceSelectorMetacal:
     delta_gamma: 0.02
     source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
     shear_prefix: mcal_
-    use_diagonal_response: true
-
+    use_diagonal_response : True
+ 
 TXShearCalibration:
-    use_true_shear: false
+    use_true_shear: False
     chunk_rows: 100000
-    subtract_mean_shear: true
-    extra_cols: ['']
-    shear_catalog_type: hsc
+    subtract_mean_shear: True
+    extra_cols: [""]
+    shear_catalog_type: "hsc"
 
 TXTruthLensSelector:
     # Mag cuts
-    input_pz: false
-    true_z: true
+    input_pz: False
+    true_z: True
     lens_zbin_edges: [0.1, 0.3, 0.5]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
@@ -169,7 +180,7 @@ TXTruthLensSelector:
 
 TXMeanLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0, 0.2, 0.4]
+    lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -179,26 +190,26 @@ TXMeanLensSelector:
     r_i_cut: 2.0
 
 TXRoweStatistics:
-    min_sep: 3.0
-    max_sep: 102.0
-    nbins: 20
-    bin_slop: 0
-    sep_units: arcmin
-    psf_size_units: Tmodel # HSC uses the Tfrac=(Tmeas-Tmodel)/Tmodel definition
-    definition: hsc-y3     # Set all definitions to HSC
-    subtract_mean: false    # subtract mean e1/e2
+  min_sep  : 3.0
+  max_sep  : 102.0
+  nbins    : 20
+  bin_slop : 0
+  sep_units: 'arcmin'
+  psf_size_units: 'Tmodel' # HSC uses the Tfrac=(Tmeas-Tmodel)/Tmodel definition
+  definition    : 'hsc-y3' # Set all definitions to HSC
+  subtract_mean :  False    # subtract mean e1/e2
 
 TXPSFMomentCorr:
-    min_sep: 1.0
-    max_sep: 200.0
-    nbins: 20
-    bin_slop: 0
-    sep_units: arcmin
-    subtract_mean: false    # subtract mean e1/e2
+  min_sep  : 1.0
+  max_sep  : 200.0
+  nbins    : 20
+  bin_slop : 0
+  sep_units: 'arcmin'
+  subtract_mean :  False    # subtract mean e1/e2
 
 TXModeLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0, 0.2, 0.4]
+    lens_zbin_edges: [0.0,0.2,0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -212,15 +223,15 @@ TXRandomCat:
 
 TXTwoPoint:
     bin_slop: 0.02
-    do_pos_pos: false
-    do_shear_shear: true
-    do_shear_pos: false
-    flip_g2: true  # use true when using metacal shears
+    do_pos_pos: False
+    do_shear_shear: True
+    do_shear_pos: False
+    flip_g2: True  # use true when using metacal shears
     min_sep: 5.3
     max_sep: 248
     nbins: 13
     verbose: 0
-    subtract_mean_shear: true
+    subtract_mean_shear: True
 
 TXGammaTBrightStars: {}
 
@@ -239,7 +250,7 @@ TXBlinding:
     sigma8: [0.801, 0.01]
     n_s: [0.971, 0.03]
     b0: 0.95  ## we use bias of the form b0/g
-    delete_unblinded: true
+    delete_unblinded: True
 
 TXSourceDiagnosticPlots:
     psf_prefix: mcal_psf_
@@ -257,7 +268,7 @@ TXSourceDiagnosticPlots:
 TXLensDiagnosticPlots: {}
 
 TXDiagnosticMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
+    sparse: True  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
     # pixelization: gnomonic
@@ -270,20 +281,22 @@ TXDiagnosticMaps:
     psf_prefix: mcal_psf_
 
 TXSourceMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
+    sparse: True  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
+    sparse: True  # Generate sparse maps - faster if using small areas
     nside: 1024
 
 # For redmagic mapping
 TXExternalLensMaps:
     chunk_rows: 100000
-    sparse: true
+    sparse: True
     pixelization: healpix
     nside: 1024
 
 
+TXSourceMaps: {}
+TXLensMaps: {}
 
 TXDensityMaps:
     nside: 1024
@@ -296,7 +309,7 @@ TXAuxiliarySourceMaps:
 TXAuxiliaryLensMaps:
     flag_exponent_max: 8
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
-    depth_band: i
+    depth_band : i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
 
@@ -312,15 +325,15 @@ TXJackknifeCenters:
 
 
 TXTwoPointFourier:
-    flip_g2: true
+    flip_g2: True
     ell_min: 80
     ell_max: 2048
     bandwidth: 20
     cache_dir: ./cache/workspaces
-    analytic_noise: true
+    analytic_noise: True
 
 TXSimpleMask:
-    depth_cut: 23.5
+    depth_cut : 23.5
     bright_object_max: 10.0
 
 TXMapCorrelations:
@@ -335,8 +348,13 @@ PZRailSummarizeLens:
     zmax: 3.0
     nzbins: 50
     name: PZRailSummarizeLens
-    catalog_group: photometry
-    tomography_name: lens
+    catalog_group: "photometry"
+    tomography_name: "lens"
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: lens_direct_calibration_model
+        photoz_stack: lens_photoz_stack
     model: None
 
 
@@ -345,19 +363,47 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    mag_prefix: i
-    tomography_name: source
+    mag_prefix: "i"
+    tomography_name: "source"
     name: PZRailSummarizeSource
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: source_direct_calibration_model
+        photoz_stack: shear_photoz_stack
+
+
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: lens_nz
+
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: source_nz
+
 FlowCreator:
     n_samples: 1000000
     seed: 5763248
+    aliases:
+        # This input was generated using get_example_flow in pzflow,
+        # not something specific.
+        output: ideal_specz_catalog
+        model: flow
+
 InvRedshiftIncompleteness:
     pivot_redshift: 0.8
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+
 GridSelection:
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
     redshift_cut: 5.1
     ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
     settings_file: data/example/inputs/HSC_grid_settings.pkl
@@ -369,22 +415,37 @@ GridSelection:
 
 TXParqetToHDF:
     hdf_group: photometry
-NZDirInformerSource:
-    name: NZDirInformerSource
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+
+
+Inform_NZDirSource:
+    name: Inform_NZDirSource
     usecols: [r, i, z]
     hdf5_groupname: photometry
-NZDirInformerLens:
-    name: NZDirInformerLens
-    usecols: [u, g, r, i, z, y]
+    aliases:
+        input: spectroscopic_catalog
+        model: source_direct_calibration_model
+
+Inform_NZDirLens:
+    name: Inform_NZDirLens
+    usecols: [u, g, r, i, z, "y"]
     hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_direct_calibration_model
+
+
 TXpureB:
-    method: namaster                       # 'namaster' or 'hybrideb'
-    Nell: 20                               # Number of ell bins
-    lmin: 100                              # ell min 
-    lmax: 2000                             # ell max
-    lspacing: log                          # ell spacing for binning 
-    bin_file:                              # Load predfined bin edges instead        
-    theta_min: 2.5                         # (only for hybrideb) theta min in arcmin 
-    theta_max: 250                         # (only for hybrideb) theta max in arcmin 
-    Ntheta: 1000                           # (only for hybrideb) Number of theta bins 
-    precomputed_hybrideb_weights: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/geb_nosep_dict.npz
+    method    : 'namaster'                 # 'namaster' or 'hybrideb'
+    Nell      : 20                         # Number of ell bins
+    lmin      : 100                        # ell min 
+    lmax      : 2000                       # ell max
+    lspacing  : 'log'                      # ell spacing for binning 
+    bin_file  :                            # Load predfined bin edges instead        
+    theta_min : 2.5                        # (only for hybrideb) theta min in arcmin 
+    theta_max : 250                        # (only for hybrideb) theta max in arcmin 
+    Ntheta    : 1000                       # (only for hybrideb) Number of theta bins 
+    precomputed_hybrideb_weights : '/global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/geb_nosep_dict.npz'
+    

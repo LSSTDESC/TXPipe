@@ -4,49 +4,50 @@
 
 # Stages to run
 stages:
-- name: FlowCreator                 # Simulate a spectroscopic population
-- name: GridSelection              # Simulate a spectroscopic sample
-- name: TXParqetToHDF              # Convert the spec sample format
-- name: PZPrepareEstimatorLens       # Prepare the p(z) estimator
-  classname: BPZliteInformer
-- name: PZEstimatorLens            # Measure lens galaxy PDFs
-  classname: BPZliteEstimator
-  threads_per_process: 1
-- name: TXMeanLensSelector         # select objects for lens bins from the PDFs
-- name: NZDirInformerLens           # Prepare the DIR method inputs for the lens sample     
-  classname: NZDirInformer
-- name: PZRailSummarizeLens        # Run the DIR method on the lens sample to find n(z)
-  classname: PZRailSummarize
-- name: PZRailSummarizeSource      # Run the DIR method on the lens sample to find n(z)
-  classname: PZRailSummarize
-- name: TXSourceSelectorMetadetect      # select and split objects into source bins
-- name: NZDirInformerSource         # Prepare the DIR method inputs for the source sample
-  classname: NZDirInformer
-- name: TXShearCalibration         # Calibrate and split the source sample tomographically
-- name: TXLensCatalogSplitter      # Split the lens sample tomographically
-- name: TXLSSWeightsUnit           # add systematic weights to the lens sample (weight=1 for this example)
-- name: TXSourceMaps               # make source g1 and g2 maps
-- name: TXLensMaps                 # make source lens and n_gal maps
-- name: TXAuxiliarySourceMaps      # make PSF and flag maps
-- name: TXAuxiliaryLensMaps        # make depth and bright object maps
-- name: TXSimpleMaskFrac         # combine maps to make a simple mask
-- name: TXSourceNoiseMaps        # Compute shear noise using rotations
-- name: TXLensNoiseMaps          # Compute lens noise using half-splits
-- name: TXDensityMaps            # turn mask and ngal maps into overdensity maps
-- name: TXMapPlots               # make pictures of all the maps
-- name: TXTracerMetadata         # collate metadata
-- name: TXRandomCat              # generate lens bin random catalogs
-- name: TXJackknifeCenters       # Split the area into jackknife regions
-- name: TXTwoPointPixelExtCross                 # Compute real-space 2-point correlations
-  threads_per_process: 2
+    - name: FlowCreator             # Simulate a spectroscopic population
+    - name: GridSelection          # Simulate a spectroscopic sample
+    - name: TXParqetToHDF          # Convert the spec sample format
+    - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
+      classname: Inform_BPZ_lite   
+    - name: PZEstimatorLens        # Measure lens galaxy PDFs
+      classname: BPZ_lite
+      threads_per_process: 1  
+    - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
+    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_NZDir
+    - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize  
+    - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize
+    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
+    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+      classname: Inform_NZDir
+    - name: TXShearCalibration     # Calibrate and split the source sample tomographically
+    - name: TXLensCatalogSplitter  # Split the lens sample tomographically
+    - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
+    - name: TXSourceMaps           # make source g1 and g2 maps
+    - name: TXLensMaps             # make source lens and n_gal maps
+    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
+    - name: TXSimpleMaskFrac     # combine maps to make a simple mask
+    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
+    - name: TXLensNoiseMaps      # Compute lens noise using half-splits
+    - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
+    - name: TXMapPlots           # make pictures of all the maps
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXRandomCat          # generate lens bin random catalogs
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    
+    - name: TXTwoPointPixelExtCross             # Compute real-space 2-point correlations
+      threads_per_process: 2
 
 # modules and packages to import that have pipeline
 # stages defined in them
 modules: >
-    txpipe
-    rail.creation.degraders.grid_selection
+    txpipe 
+    rail.creation.degradation.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.nz_dir
+    rail.estimation.algos.NZDir
     rail.estimation.algos.bpz_lite
 
 # Where to put outputs
@@ -56,8 +57,13 @@ output_dir: examples/ext_cross_corr/output_1deg/
 site:
     name: cori-batch
     image: ghcr.io/lsstdesc/txpipe
-
+    
 # Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
 config: examples/ext_cross_corr/config_1deg.yml
 
 inputs:
@@ -70,12 +76,12 @@ inputs:
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
-    random_cats_source:
+    random_cats_source: Null
     flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: false
+resume: False
 # where to put output logs for individual stages
 log_dir: examples/ext_cross_corr/output_1deg/logs/
 # where to put an overall parsl pipeline log

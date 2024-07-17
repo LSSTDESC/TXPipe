@@ -1,10 +1,10 @@
 # Stages to run
 stages:
-- name: TXSourceSelectorHSC         # select and split objects into source bins
+    - name: TXSourceSelectorHSC     # select and split objects into source bins
   #  - name: TXShearCalibration
   #  - name: TXSourceDiagnosticPlots
-- name: TXRoweStatistics
-- name: TXTauStatistics
+    - name: TXRoweStatistics  
+    - name: TXTauStatistics
       #- name: TXPSFDiagnostics
 # modules and packages to import that have pipeline
 # stages defined in them
@@ -13,10 +13,10 @@ modules: txpipe
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-- submodules/WLMassMap/python/desc/
-- submodules/TJPCov
-- submodules/FlexZPipe
-- submodules/RAIL
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+    - submodules/FlexZPipe
+    - submodules/RAIL
 
 # Where to put outputs
 output_dir: data/example/outputs
@@ -32,6 +32,9 @@ site:
     max_threads: 2
 
 # python modules to import to search for stages
+modules: txpipe
+
+# configuration settings
 config: examples/hscy1/config.yml
 
 # On NERSC, set this before running:
@@ -39,25 +42,23 @@ config: examples/hscy1/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: 
-        /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc2txpipe/shear_cat_WIDE12H.h5
+    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc2txpipe/shear_cat_WIDE12H.h5
     #photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     #photoz_training: submodules/RAIL/tests/data/test_dc2_training_9816.hdf5
     #photoz_testing: submodules/RAIL/tests/data/test_dc2_validation_9816.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     #exposures: data/example/inputs/exposures.hdf5
-    star_catalog: 
-        /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_allfields.h5
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_allfields.h5
     #star catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/scratch/HSC/hsc_stars/GAMA09H_stars.fits
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
-    random_cats_source:
+    random_cats_source: Null
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: false
+resume: False
 # where to put output logs for individual stages
 log_dir: data/example/logs
 # where to put an overall parsl pipeline log

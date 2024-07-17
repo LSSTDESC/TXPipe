@@ -1,61 +1,38 @@
+
 # Stages to run
 stages:
-  - name: FlowCreator               # Simulate a spectroscopic population
-    aliases:
-        output: ideal_specz_catalog
-        model: flow
-  - name: GridSelection            # Simulate a spectroscopic sample
-    aliases:
-        input: ideal_specz_catalog
-        output: specz_catalog_pq
-  - name: TXParqetToHDF            # Convert the spec sample format
-    aliases:
-        input: specz_catalog_pq
-        output: spectroscopic_catalog
-  - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
-    classname: PZRailSummarize
-    aliases:
-        tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
-        model: source_direct_calibration_model
-        photoz_stack: shear_photoz_stack
-        photoz_realizations: source_photoz_realizations
-  - name: TXSourceSelectorMetadetect    # select and split objects into source bins
-  - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
-    classname: NZDirInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: source_direct_calibration_model
-  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
-  - name: TXSourceMaps             # make source g1 and g2 maps
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-  - name: TXSimpleMaskSource       # combine maps to make a simple mask
-  - name: TXSourceNoiseMaps      # Compute shear noise using rotations
-  - name: TXMapPlots             # make pictures of all the maps
-  - name: TXTracerMetadata       # collate metadata
-  - name: TXJackknifeCentersSource     # Split the area into jackknife regions
-  - name: TXTwoPoint             # Compute real-space 2-point correlations
-    threads_per_process: 2
-  - name: TXBlinding             # Blind the data following Muir et al
-    threads_per_process: 2
-  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
-  - name: TXTwoPointPlots        # Make plots of 2pt correlations
-  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
-  - name: TXRoweStatistics       # Compute and plot Rowe statistics
-    threads_per_process: 2
-  - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
-  - name: TXPhotozPlotSource          # Plot the bin n(z)
-    classname: TXPhotozPlot
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: nz_source
-  - name: PZRealizationsPlotSource     # Plot n(z) realizations
-    classname: PZRealizationsPlot
-    aliases:
-        photoz_realizations: source_photoz_realizations
-        photoz_realizations_plot: source_photoz_realizations_plot
-  - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
-  - name: TXConvergenceMapPlots   # Plot the convergence map
+    - name: FlowCreator             # Simulate a spectroscopic population
+    - name: GridSelection          # Simulate a spectroscopic sample
+    - name: TXParqetToHDF          # Convert the spec sample format
+    - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize
+    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
+    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+      classname: Inform_NZDir
+    - name: TXShearCalibration     # Calibrate and split the source sample tomographically
+    - name: TXSourceMaps           # make source g1 and g2 maps
+    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    - name: TXSimpleMaskSource     # combine maps to make a simple mask
+    - name: TXSourceNoiseMaps    # Compute shear noise using rotations
+    - name: TXMapPlots           # make pictures of all the maps
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXJackknifeCentersSource   # Split the area into jackknife regions
+    - name: TXTwoPoint           # Compute real-space 2-point correlations
+      threads_per_process: 2
+    - name: TXBlinding           # Blind the data following Muir et al
+      threads_per_process: 2
+    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
+    - name: TXTwoPointPlots      # Make plots of 2pt correlations
+    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
+    - name: TXRoweStatistics     # Compute and plot Rowe statistics
+      threads_per_process: 2
+    - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
+    - name: TXPhotozPlotSource        # Plot the bin n(z)
+      classname: TXPhotozPlot
+    - name: PZRealizationsPlotSource   # Plot n(z) realizations
+      classname: PZRealizationsPlot
+    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
+    - name: TXConvergenceMapPlots # Plot the convergence map
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
@@ -71,15 +48,15 @@ stages:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degraders.grid_selection
+    rail.creation.degradation.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.nz_dir
+    rail.estimation.algos.NZDir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-  - submodules/WLMassMap/python/desc/
+    - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
 output_dir: data/example/metadetect_source_only
@@ -123,7 +100,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: true
+resume: True
 # where to put output logs for individual stages
 log_dir: data/example/metadetect_source_only
 # where to put an overall parsl pipeline log

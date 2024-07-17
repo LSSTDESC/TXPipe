@@ -24,7 +24,7 @@ python_paths: []
 stages:
 #    - name: TXSourceSelectorMetadetect
 #      nprocess: 1
-#    - name: BPZliteInformer
+#    - name: Inform_BPZ_lite
 #      nprocess: 1
 #    - name: BPZ_lite
 #      nprocess: 1
