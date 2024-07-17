@@ -53,6 +53,15 @@ class TXShearCalibration(PipelineStage):
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            bands = f.get_bands()
+
+        for b in bands:
+            extra_cols += ["mag_" + b, "mag_err_" + b]
+
+        if self.rank == 0:
+            print("Copying extra columns: ", extra_cols)
+
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
