@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ${CONTAINER_IMAGE}
+      image: ${{ env.CONTAINER_IMAGE }}
 
     steps:
     - name: Checkout repository
@@ -62,7 +62,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${CONTAINER_IMAGE}
+      image: ${{ env.CONTAINER_IMAGE }}
 
     steps:
     - name: Checkout repository
@@ -99,7 +99,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${CONTAINER_IMAGE}
+      image: ${{ env.CONTAINER_IMAGE }}
 
     steps:
     - name: Checkout repository
@@ -146,7 +146,7 @@ jobs:
       needs: Download_Data
 
       container:
-        image: ${CONTAINER_IMAGE}
+        image: ${{ env.CONTAINER_IMAGE }}
 
       steps:
       - name: Checkout repository
@@ -185,7 +185,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${CONTAINER_IMAGE}
+      image: ${{ env.CONTAINER_IMAGE }}
 
     steps:
     - name: Checkout repository
@@ -224,7 +224,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${CONTAINER_IMAGE}
+      image: ${{ env.CONTAINER_IMAGE }}
 
     steps:
     - name: Checkout repository
@@ -260,7 +260,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ${CONTAINER_IMAGE}
+      image: ${{ env.EXAMPLE_DATA_FILE_VERSION }}
 
     steps:
     - name: Checkout repository
