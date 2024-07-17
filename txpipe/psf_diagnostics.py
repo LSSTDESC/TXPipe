@@ -356,9 +356,11 @@ class TXTauStatistics(PipelineStage):
                        "bin_slop"      : 0.01,
                        "sep_units"     : "arcmin",
                        "psf_size_units": "sigma",
-                       'star_type'     : 'PSF-reserved',
-                       'cov_method'    : 'bootstrap',
-                       'flip_g2'       : False,
+                       "subtract_mean" : False,
+                       "dec_cut"       : True,           # affects KiDS-1000 only
+                       "star_type"     : 'PSF-reserved',
+                       "cov_method"    : 'bootstrap',
+                       "flip_g2"       : False,
                      }
 
     def run(self):
@@ -527,8 +529,8 @@ class TXTauStatistics(PipelineStage):
         
         e_psf  : measured ellipticities of PSF from stars -- np.array((e1psf, e2psf))
         e_mod  : model ellipticities of PSF               -- np.array((e1mod, e2mod))
-        de_psf : e_psf-e_mod                              -- np.array((e1psf, e2psf))
-        T_f    : (T_meas - T_model)/T_meas                -- np.array((e1psf, e2psf))
+        de_psf : e_psf-e_mod                              -- np.array((de1psf, de2psf))
+        T_f    : (T_meas - T_model)/T_meas                -- np.array(T_f)
         '''
         
         import treecorr
@@ -620,15 +622,23 @@ class TXTauStatistics(PipelineStage):
             e2mod  = g["model_e2"][:]
             de1    = e1psf - e1mod
             de2    = e2psf - e2mod
+            
+            if self.config["psf_size_units"] == "Tmeas":
+                    T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]    
+                elif self.config["psf_size_units"] == "sigma":
+                    T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+                else:
+                    sys.exit("Need to specify measured_T: Tmeas/Tmodel/sigma")
 
-            if self.config["psf_size_units"] == "T":
-                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
-            elif self.config["psf_size_units"] == "sigma":
-                T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+            if self.config['subtract_mean']:
+                e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
+                e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
+                de     = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
 
-            e_psf  = np.array((e1psf, e2psf))
-            e_mod  = np.array((e1mod,e2mod))
-            de_psf = np.array((de1, de2))
+            else:
+                e_meas = np.array((e1meas, e2meas ))
+                e_mod  = np.array((e1mod , e2mod  ))
+                de     = np.array((de1   , de2    ))
 
             star_type = load_star_type(g)
 
@@ -650,8 +660,7 @@ class TXTauStatistics(PipelineStage):
 
         with self.open_input("shear_catalog") as f:
             g = f["shear"]
-
-
+            
             # Get the base catalog for metadetect
             if cat_type == "metadetect":
                 g = g["00"]
@@ -660,15 +669,15 @@ class TXTauStatistics(PipelineStage):
 
             # Load shape and weight for metacal
             if cat_type == "metacal":
-                g1      = g["mcal_g1"][:][mask]
-                g2      = g["mcal_g2"][:][mask]
-                weight  = g["weight"][:][mask]
+                g1        = g["mcal_g1"][:][mask]
+                g2        = g["mcal_g2"][:][mask]
+                weight    = g["weight"][:][mask]
 
             # Load shape and weight for metadetect
             elif cat_type == "metadetect":
-                g1      = g["g1"][:][mask]
-                g2      = g["g2"][:][mask]
-                weight  = g["weight"][:][mask]
+                g1        = g["g1"][:][mask]
+                g2        = g["g2"][:][mask]
+                weight    = g["weight"][:][mask]
 
             # Load shape and weight for everything else
             else:
@@ -681,7 +690,7 @@ class TXTauStatistics(PipelineStage):
                 c2        = g["c2"][:][mask]
                 aselepsf1 = g["aselepsf1"][:][mask]
                 aselepsf2 = g["aselepsf2"][:][mask]
-                msel         = g["msel"][:][mask]
+                msel      = g["msel"][:][mask]
 
         # Change shear convention 
         if self.config["flip_g2"]:
@@ -689,17 +698,17 @@ class TXTauStatistics(PipelineStage):
         # Apply calibration factor
         if cat_type == "metacal" or cat_type == "metadetect":
             print("Applying metacal/metadetect response")
-            g1, g2 = cal.apply(g1, g2)
+            g1, g2 = cal.apply(g1, g2, subtract_mean = self.config['subtract_mean'])
 
         elif cat_type == "lensfit":
             print("Applying lensfit calibration")
             # In KiDS, the additive bias is calculated and removed per North and South field
-            # therefore, we add dec to split data into these fields. 
-            # You can choose not to by setting dec_cut = 90 in the config, for example.
-            g1, g2 = cal.apply(dec, g1,g2)
+            # Therefore, we add dec to split the data into these fields if subtract_mean & dec_cut == True. 
+            g1, g2 = cal.apply(dec, g1, g2, subtract_mean = self.config['subtract_mean'],dec_cut=self.config['dec_cut'])
             
         else:
-            g1, g2 = cal.apply(g1, g2, c1, c2, aselepsf1, aselepsf2, msel, subtract_mean=True)
+            print("Applying HSC de-calibration")
+            g1, g2 = cal.apply(g1, g2, c1, c2, aselepsf1, aselepsf2, msel, subtract_mean=self.config['subtract_mean'])
             
         return ra, dec, g1, g2, weight
 
