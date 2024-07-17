@@ -11,7 +11,9 @@ on:
 
 env:
   EXAMPLE_DATA_FILE_VERSION: v2
-  CONTAINER_IMAGE: ghcr.io/lsstdesc/txpipe-dev:latest
+  # Setting this did not appear to work. Instead will need to
+  # find/replace when changing it.
+  # CONTAINER_IMAGE: ghcr.io/lsstdesc/txpipe-dev:latest
 
 jobs:
   # Run a download step first so that it is in
@@ -43,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ${{ env.CONTAINER_IMAGE }}
+      image: ghcr.io/lsstdesc/txpipe-dev:latest
 
     steps:
     - name: Checkout repository
@@ -62,7 +64,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${{ env.CONTAINER_IMAGE }}
+      image: ghcr.io/lsstdesc/txpipe-dev:latest
 
     steps:
     - name: Checkout repository
@@ -99,7 +101,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${{ env.CONTAINER_IMAGE }}
+      image: ghcr.io/lsstdesc/txpipe-dev:latest
 
     steps:
     - name: Checkout repository
@@ -146,7 +148,7 @@ jobs:
       needs: Download_Data
 
       container:
-        image: ${{ env.CONTAINER_IMAGE }}
+        image: ghcr.io/lsstdesc/txpipe-dev:latest
 
       steps:
       - name: Checkout repository
@@ -185,7 +187,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${{ env.CONTAINER_IMAGE }}
+      image: ghcr.io/lsstdesc/txpipe-dev:latest
 
     steps:
     - name: Checkout repository
@@ -224,7 +226,7 @@ jobs:
     needs: Download_Data
 
     container:
-      image: ${{ env.CONTAINER_IMAGE }}
+      image: ghcr.io/lsstdesc/txpipe-dev:latest
 
     steps:
     - name: Checkout repository
