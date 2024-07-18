@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, HDFFile, TextFile
+from ..data_types import ShearCatalog, HDFFile, TextFile, QPPDFFile
 from ..utils import (
     band_variants,
     metacal_variants,
@@ -1280,6 +1280,38 @@ class TXSimpleMock(PipelineStage):
                 g.create_dataset(key, data=value)
 
 
+class TXMockTruthPZ(PipelineStage):
+    name = "TXMockTruthPZ"
+    inputs = [("shear_catalog", ShearCatalog)]
+    outputs = [("photoz_pdfs", QPPDFFile)]
+    config_options = {
+        "mock_sigma_z": 0.001,
+    }
+    def run(self):
+        import qp
+        import numpy as np
+        sigma_z = self.config["mock_sigma_z"]
+
+
+        # read the input truth redshifts
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.file[f.get_primary_catalog_group()]
+            n = group["ra"].size
+            redshifts = group["redshift_true"][:]
+
+        zgrid = np.linspace(0, 3, 301)
+        pdfs = np.zeros((n, len(zgrid)))
+
+        spread_z = sigma_z * (1 + redshifts)
+        # make a gaussian PDF for each object
+        delta = zgrid[np.newaxis, :] - redshifts[:, np.newaxis]
+        pdfs = np.exp(-0.5 * (delta / spread_z[:, np.newaxis])**2) / np.sqrt(2 * np.pi) / spread_z[:, np.newaxis]
+        
+        q = qp.Ensemble(qp.interp, data=dict(xvals=zgrid, yvals=pdfs))
+        q.set_ancil(dict(zmode=redshifts, zmean=redshifts, zmedian=redshifts))
+        q.write_to(self.get_output("photoz_pdfs"))
+
+
 
 
 def test():
@@ -1298,4 +1330,5 @@ def test():
     results = make_mock_photometry(n_visit, bands, data, True)
     pylab.hist(results["snr_r"], bins=50, histtype="step")
     pylab.savefig("snr_r.png")
+
 

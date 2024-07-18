@@ -4,6 +4,8 @@ stages:
     - name: TXSimpleMock           # Convert a text file mock catalog to HDF5
     - name: TXSourceSelectorSimple # select and split objects into source bins
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
+    - name: TXMockTruthPZ          # Generate PDFs as narrow gaussian centered on the true redshifts
+    - name: CLClusterShearCatalogs # Extract and weight the shear catalog around every cluster
 
 
 
@@ -37,6 +39,9 @@ config: examples/mock_shear/config.yml
 inputs:
     mock_shear_catalog: data/example/inputs/mock_nfw_shear_catalog.txt
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    cluster_catalog: data/example/inputs/mock_single_cluster_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
 
 
 # if supported by the launcher, restart the pipeline where it left off

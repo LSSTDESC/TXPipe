@@ -16,3 +16,8 @@ TXSourceSelectorSimple:
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     shear_prefix: ""
     verbose: true
+
+TXMockTruthPZ:
+    mock_sigma_z: 0.001
+    aliases:
+        photoz_pdfs: source_photoz_pdfs
