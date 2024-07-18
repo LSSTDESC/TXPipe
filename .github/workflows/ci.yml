@@ -85,16 +85,16 @@ jobs:
       run: |
         tar -zxvf example.tar.gz
 
-    - name: Run metadetect pipeline
+    - name: Run metacal pipeline
       run: |
         mkdir -p cache/workspaces
-        ceci examples/metadetect/pipeline.yml
-        test -f data/example/outputs_metadetect/shear_xi_plus.png
+        ceci examples/metacal/pipeline.yml
+        test -f data/example/outputs_metacal/shear_xi_plus.png
 
     - name: Show logs
       if: ${{ always() }}
       run: |
-        tail -n +1 data/example/logs/*
+        tail -n +1 data/example/logs_metacal/*
 
   Metadetect_Pipeline:
     runs-on: ubuntu-latest

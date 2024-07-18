@@ -25,8 +25,11 @@ def fit_straight_line(x, y, y_err=None):
     c: float
         intercept
     """
-
-    popt, cov = curve_fit(line, x, y, sigma=y_err)
+    try:
+        popt, cov = curve_fit(line, x, y, sigma=y_err)
+    except RuntimeError:
+        print("ERROR: Straight line fit failed. Returning m=0 c=0")
+        return 0.0, 0.0, np.array([[1.0, 0.0], [0.0, 1.0]])
     m = popt[0]
     c = popt[1]
     return m,c, cov
