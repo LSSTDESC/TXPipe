@@ -1,13 +1,13 @@
 #this step depends on where you run
 #for CCin2p3
-# site:
-#     name: cc-parallel
-#     mpi_command: "mpirun -n"
+site:
+    name: cc-parallel
+    mpi_command: "mpirun -n"
 
 #for NERSC
-site:
-   name: cori-batch
-   image: ghcr.io/lsstdesc/txpipe-dev
+#site:
+#    name: cori-batch
+#    image: ghcr.io/lsstdesc/txpipe-dev
 
 
 #all the following steps should not depend on where you run 
@@ -30,7 +30,7 @@ stages:
     - name: CLClusterBinningRedshiftRichness
       nprocess: 1
 #    - name: CLClusterShearCatalogs
-#      nprocess: 30
+#      nprocess: 1 #>1 does not work with mpi
 #    - name: CLClusterEnsembleProfiles
 #      nprocess: 1
 #    - name: CLClusterDataVector
@@ -39,7 +39,7 @@ stages:
 
 
 output_dir: ./data/cosmodc2/outputs-20deg2-CL
-config: ./examples/cosmodc2/config-20deg2-CL.yml
+config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
@@ -49,7 +49,9 @@ inputs:
     #calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     #spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
-
+    #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
+    #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
+    
 resume: True
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_20deg2.txt
