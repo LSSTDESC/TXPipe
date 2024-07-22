@@ -885,10 +885,12 @@ class TXShearBmode(PipelineStage):
         for k in tqdm(range(Nsims)):
             fields = {}
             for i in range(nbin_source):
-                idx1 = np.where(g1_maps[i]!=0)[0]
-                idx2 = np.random.permutation(idx1)
-                g1_maps[i][idx1]=g1_maps[i][idx2]
-                g2_maps[i][idx1]=g2_maps[i][idx2]
+                # Rotate shear maps randomly to create noise maps
+                idx = np.where(g1_maps[i]!=0)[0]
+                psi = np.random.uniform(0, 2 * np.pi,size=len(idx))
+                g1_maps[i][idx] =  g1_maps[i][idx]*np.cos(2*psi) + g2_maps[i][idx]*np.sin(2*psi)
+                g2_maps[i][idx] = -g1_maps[i][idx]*np.sin(2*psi) + g2_maps[i][idx]*np.cos(2*psi)
+                
                 fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b)
 
             tmp = np.array([])
