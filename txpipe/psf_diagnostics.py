@@ -342,9 +342,9 @@ class TXTauStatistics(PipelineStage):
                ]
 
     outputs  = [
-                ("tau0p"    , PNGFile),
-                ("tau2p"    , PNGFile),
-                ("tau5p"    , PNGFile),
+                ("tau0"    , PNGFile),
+                ("tau2"    , PNGFile),
+                ("tau5"    , PNGFile),
                 ("tau_stats", HDFFile),
                ]
 
@@ -743,8 +743,8 @@ class TXTauStatistics(PipelineStage):
                                        )
                 plt.errorbar(
                              theta,
-                             taus[f'{i}p'][0],
-                             errs[f'{i}p'][0],
+                             taus[f'{i}p'],
+                             errs[f'{i}p'],
                              fmt=".",
                              label=rf"$\tau_{i}+$",
                              capsize=3,
@@ -753,8 +753,8 @@ class TXTauStatistics(PipelineStage):
                             )
                 plt.errorbar(
                              theta,
-                             taus[f'{i}m'][1],
-                             errs[f'{i}m'][1],
+                             taus[f'{i}m'],
+                             errs[f'{i}m'],
                              fmt=".",
                              label=rf"$\tau_{i}-$",
                              capsize=3,
