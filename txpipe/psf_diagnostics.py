@@ -369,7 +369,6 @@ class TXTauStatistics(PipelineStage):
         import h5py
         import matplotlib
         import emcee
-        from scipy.stats import qmc
 
         matplotlib.use("agg")
 
@@ -430,10 +429,9 @@ class TXTauStatistics(PipelineStage):
 
     def sample(self, tau_stats, rowe_stats, ranges, nwalkers=100, ndim=3):
         '''
-        Run a simple mcmc chain to detemine the best-fit values for  
+        Run a simple mcmc chain to detemine the best-fit values for alpha, beta, eta  
         '''
         import emcee
-        from scipy.stats import qmc
         import scipy.optimize as optimize
  
         _, _, _, _, _, _, _, cov = tau_stats
@@ -462,7 +460,10 @@ class TXTauStatistics(PipelineStage):
             mcmc   = np.percentile(flat_samples[:, i], [16, 50, 84])
             q      = np.diff(mcmc)
             ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
-
+            
+        chi2 = self.chi2([ret['alpha']['median'],ret['beta']['median'],ret['eta']['median']], tau_stats,rowe_stats,invcov,mask)
+        dof  = (self.config['nbins']*6) - ndim
+        print("Best-fit finished. Resulting chi^2/dof: ", chi2/dof)
         return ret
 
 
