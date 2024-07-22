@@ -355,6 +355,7 @@ class TXTauStatistics(PipelineStage):
                        "nbins"         : 20,
                        "bin_slop"      : 0.01,
                        "sep_units"     : "arcmin",
+                       "npatch"        : 150,
                        "psf_size_units": "sigma",
                        "subtract_mean" : False,
                        "dec_cut"       : True,           # affects KiDS-1000 only
@@ -427,31 +428,6 @@ class TXTauStatistics(PipelineStage):
         
         return rowe_stats
 
-    def CHI2(pars, data,eq=4, xip = True, xim= True, mflags=[True, True, True], moderr=False):
-        taus = data['taus']
-        rhos = data['rhos']
-        cov_taus = data['cov_taus']
-        cov_rhos = data['cov_rhos']
-        mvect =  modelvector(pars,rhos)
-        mcov_mat = modelcov(cov_rhos)
-        dvect =  datavector(taus)
-        dcov_mat = datacov(cov_taus)
-        val=chi2(mvect, dvect, mcov_mat, dcov_mat)
-
-        return val
-
-    def chi2(rowe, tau,  tau_invcov):
-        import numpy as np
-        d =  np.array([modelvec - datavec])
-        if(moderr):
-            cov_inv = np.linalg.inv(covdata + covmodel)
-            print("ERROR")
-        else:
-            cov_inv = np.linalg.pinv(covdata)
-
-        chisq = np.dot(np.dot(d,tau_invcov), d.T)
-        return chisq[0][0]
-
     def sample(self, tau_stats, rowe_stats, ranges, nwalkers=100, ndim=3):
         '''
         Run a simple mcmc chain to detemine the best-fit values for  
@@ -459,22 +435,18 @@ class TXTauStatistics(PipelineStage):
         import emcee
         from scipy.stats import qmc
         import scipy.optimize as optimize
-        '''
-        sampler = qmc.LatinHypercube(d=3, optimization="random-cd")
-        sample  = sampler.random(n=nwalkers)
-        initpos = qmc.scale(sample, [ ranges['alpha'][0], ranges['beta'][0], ranges['eta'][0] ],
-                                    [ ranges['alpha'][1], ranges['beta'][1], ranges['eta'][1] ])
-        '''
+ 
         _, _, _, _, _, _, _, cov = tau_stats
         mask   = cov.diagonal() > 0
         cov    = cov[mask][:, mask]
-        f_H    = 1.*(300-120-2)/(300-1)
-        f_DS   = 1/(1+(120-3)*(300-120-2)/(300-120-1)/(300-120-4))
+        fval   = self.config['npatch']
+        f_H    = 1.*(fval-120-2)/(fval-1)
+        f_DS   = 1/(1+(120-3)*(fval-120-2)/(fval-120-1)/(fval-120-4))
         cov    = cov / f_H / f_DS 
         invcov = np.linalg.inv(cov)
         
         initguess = [0,-1,1]
-        bestpars = optimize.minimize(self.logLike, initguess, args=(tau_stats, rowe_stats, invcov, mask),
+        bestpars = optimize.minimize(self.chi2, initguess, args=(tau_stats, rowe_stats, invcov, mask),
                                       method='Nelder-Mead', tol=1e-6)
         
         initpos = [bestpars.x + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
@@ -505,7 +477,7 @@ class TXTauStatistics(PipelineStage):
         return -np.inf
 
 
-    def logLike(self, theta, tau_stats, rowe_stats, invcov, mask):
+    def chi2(self, theta, tau_stats, rowe_stats, invcov, mask):
         '''
         Compute likelihood
         theta     : parameters
@@ -538,14 +510,13 @@ class TXTauStatistics(PipelineStage):
         Tall  = np.concatenate([T0p, T0m, T2p, T2m, T5p, T5m])[mask]
         Xall  = np.concatenate([tau0p, tau0m, tau2p, tau2m, tau5p, tau5m])[mask]
 
-        #return -0.5*np.dot(Xall-Tall,np.dot(Xall-Tall,invcov))
         return np.dot(Xall-Tall,np.dot(Xall-Tall,invcov))
 
     def logProb(self, theta, tau_stats, rowe_stats, ranges, invcov, mask):
         lp = self.logPrior(theta,ranges)
         if not np.isfinite(lp):
             return -np.inf
-        return lp + (-0.5)*self.logLike(theta, tau_stats, rowe_stats, invcov, mask)
+        return lp + (-0.5)*self.chi2(theta, tau_stats, rowe_stats, invcov, mask)
 
 
     def compute_all_tau(self, gra, gdec, g, gw, s, sra, sdec, e_meas, e_mod, de, T_f, star_type):
@@ -582,7 +553,7 @@ class TXTauStatistics(PipelineStage):
         print(f"Computing Tau 0,2,5 and the covariance")
         
         # Load all catalogs
-        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=300) # galaxy shear
+        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=self.config['npatch']) # galaxy shear
         catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # e_model
         catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_* - e_model)
         catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_*(T_* - T_model)/T_* )
@@ -735,7 +706,7 @@ class TXTauStatistics(PipelineStage):
             print("Applying lensfit calibration")
             # In KiDS, the additive bias is calculated and removed per North and South field
             # Therefore, we add dec to split the data into these fields if subtract_mean & dec_cut == True. 
-            g1, g2 = cal.apply(dec, g1, g2, subtract_mean = self.config['subtract_mean'],dec_cut=self.config['dec_cut'])
+            g1, g2 = cal.apply(dec, g1, g2, subtract_mean = self.config['subtract_mean'])
             
         else:
             print("Applying HSC de-calibration")
@@ -754,17 +725,17 @@ class TXTauStatistics(PipelineStage):
 
             theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]
             nb    = len(theta)
-            taus  = {0:[tau0p,tau0m], 2:[tau2p,tau2m], 5:[tau5p,tau5m]}
-            errs  = {0: [np.diag(cov[int(0*nb):int(1*nb),int(0*nb):int(1*nb)])**0.5,
-                         np.diag(cov[int(1*nb):int(2*nb),int(1*nb):int(2*nb)])**0.5],
-                     2: [np.diag(cov[int(2*nb):int(3*nb),int(2*nb):int(3*nb)])**0.5,
-                         np.diag(cov[int(3*nb):int(4*nb),int(3*nb):int(4*nb)])**0.5],
-                     5: [np.diag(cov[int(4*nb):int(5*nb),int(4*nb):int(5*nb)])**0.5,
-                         np.diag(cov[int(5*nb):int(6*nb),int(5*nb):int(6*nb)])**0.5]
+            taus  = {'0p':tau0p, '0m':tau0m, '2p':tau2p, '2m':tau2m, '5p':tau5p, '5m':tau5m}
+            errs  = {'0p': np.diag(cov[int(0*nb):int(1*nb),int(0*nb):int(1*nb)])**0.5,
+                     '0m': np.diag(cov[int(1*nb):int(2*nb),int(1*nb):int(2*nb)])**0.5,
+                     '2p': np.diag(cov[int(2*nb):int(3*nb),int(2*nb):int(3*nb)])**0.5,
+                     '2m': np.diag(cov[int(3*nb):int(4*nb),int(3*nb):int(4*nb)])**0.5,
+                     '5p': np.diag(cov[int(4*nb):int(5*nb),int(4*nb):int(5*nb)])**0.5,
+                     '5m': np.diag(cov[int(5*nb):int(6*nb),int(5*nb):int(6*nb)])**0.5
                     }
     
             for j,i in enumerate([0,2,5]):
-                f = self.open_output("tau%dp"%i,wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+                f = self.open_output(f"tau{i}",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
                 ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
         
                 tr = mtrans.offset_copy(
@@ -772,8 +743,8 @@ class TXTauStatistics(PipelineStage):
                                        )
                 plt.errorbar(
                              theta,
-                             taus[i][0],
-                             errs[i][0],
+                             taus[f'{i}p'][0],
+                             errs[f'{i}p'][0],
                              fmt=".",
                              label=rf"$\tau_{i}+$",
                              capsize=3,
@@ -782,8 +753,8 @@ class TXTauStatistics(PipelineStage):
                             )
                 plt.errorbar(
                              theta,
-                             taus[i][1],
-                             errs[i][1],
+                             taus[f'{i}m'][1],
+                             errs[f'{i}m'][1],
                              fmt=".",
                              label=rf"$\tau_{i}-$",
                              capsize=3,
@@ -795,7 +766,7 @@ class TXTauStatistics(PipelineStage):
                 if np.all(taus[i][0] >= 0):
                     plt.yscale("log")
                 plt.xlabel(r"$\theta$")
-                plt.ylabel(r"$\tau_{%d}(\theta)$"%i)
+                plt.ylabel(rf"$\tau_{i}(\theta)$")
                 plt.legend()
                 plt.title(STAR_TYPE_NAMES[s])
 
