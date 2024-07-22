@@ -462,19 +462,7 @@ class TXTauStatistics(PipelineStage):
             mcmc   = np.percentile(flat_samples[:, i], [16, 50, 84])
             q      = np.diff(mcmc)
             ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
-            
-        import sys
-        sys.path.append('/pscratch/sd/j/jjeffers/temp/dfm-corner.py-6d8fc76/corner/')
-        import corner
-        import matplotlib.pyplot as plt
-        fig = corner.corner(flat_samples, labels=var,
-                        quantiles=[0.16, 0.5, 0.84],  
-                        levels=(1-np.exp(-0.5), 1-np.exp(-2), 1-np.exp(-9./2)),
-                        show_titles=True, title_kwargs={"fontsize": 12}, title_fmt= '.4f', 
-                        smooth1d=None, plot_contours=True,  
-                        no_fill_contours=False, plot_density=True, use_math_text=True, )
-        plt.savefig("data/desy3/NEWNEWRUN/corner_tau-wideprior.png")
-        plt.close(fig)
+
         return ret
 
 
