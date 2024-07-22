@@ -399,9 +399,9 @@ class TXTauStatistics(PipelineStage):
             
             # Run simple mcmc to find best-fit values for alpha,beta,eta
             ranges = {}
-            ranges['alpha'] = [-0.10, 0.10]
-            ranges['beta']  = [-5.00, 5.00]
-            ranges['eta']   = [-5.00, 5.00]
+            ranges['alpha'] = [-1000.00, 1000.00]
+            ranges['beta']  = [-1000.00, 1000.00]
+            ranges['eta']   = [-1000.00, 1000.00]
 
             p_bestfits[s] = self.sample(tau_stats[s],rowe_stats,ranges)
             
@@ -448,7 +448,7 @@ class TXTauStatistics(PipelineStage):
         initguess = [0,-1,1]
         bestpars = optimize.minimize(self.chi2, initguess, args=(tau_stats, rowe_stats, invcov, mask),
                                       method='Nelder-Mead', tol=1e-6)
-        
+        print(bestpars)
         initpos = [bestpars.x + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
         
         print("Computing best-fit alpha, beta, eta")
@@ -462,7 +462,19 @@ class TXTauStatistics(PipelineStage):
             mcmc   = np.percentile(flat_samples[:, i], [16, 50, 84])
             q      = np.diff(mcmc)
             ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
-
+            
+        import sys
+        sys.path.append('/pscratch/sd/j/jjeffers/temp/dfm-corner.py-6d8fc76/corner/')
+        import corner
+        import matplotlib.pyplot as plt
+        fig = corner.corner(flat_samples, labels=var,
+                        quantiles=[0.16, 0.5, 0.84],  
+                        levels=(1-np.exp(-0.5), 1-np.exp(-2), 1-np.exp(-9./2)),
+                        show_titles=True, title_kwargs={"fontsize": 12}, title_fmt= '.4f', 
+                        smooth1d=None, plot_contours=True,  
+                        no_fill_contours=False, plot_density=True, use_math_text=True, )
+        plt.savefig("data/desy3/NEWNEWRUN/corner_tau-wideprior.png")
+        plt.close(fig)
         return ret
 
 
@@ -763,7 +775,7 @@ class TXTauStatistics(PipelineStage):
                             )
                 
                 plt.xscale("log")
-                if np.all(taus[i][0] >= 0):
+                if np.all(taus[f"{i}p"] >= 0):
                     plt.yscale("log")
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(rf"$\tau_{i}(\theta)$")
