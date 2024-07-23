@@ -40,7 +40,7 @@ TXLensTrueNumberDensity:
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: lens_photoz_model
@@ -66,7 +66,7 @@ PZPrepareEstimatorLens:
 
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: source_photoz_model
@@ -92,7 +92,7 @@ PZPrepareEstimatorSource:
 
 PZEstimatorLens:
     name: PZEstimatorLens
-    classname: BPZ_lite
+    classname: BPZliteEstimator
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
@@ -382,16 +382,16 @@ TXParqetToHDF:
         output: spectroscopic_catalog
 
 
-Inform_NZDirSource:
-    name: Inform_NZDirSource
+NZDirInformerSource:
+    name: NZDirInformerSource
     usecols: [r, i, z]
     hdf5_groupname: photometry
     aliases:
         input: spectroscopic_catalog
         model: source_direct_calibration_model
 
-Inform_NZDirLens:
-    name: Inform_NZDirLens
+NZDirInformerLens:
+    name: NZDirInformerLens
     usecols: [u, g, r, i, z, "y"]
     hdf5_groupname: photometry
     aliases:

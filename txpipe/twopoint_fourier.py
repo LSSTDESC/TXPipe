@@ -310,22 +310,25 @@ class TXTwoPointFourier(PipelineStage):
         else:
             print("Not using systematics maps for deprojection in NaMaster")
 
+        # This seems to be an off-by-one bug or ambiguity in namaster v2.
+        lmax1 = self.config["ell_max"] - 1
+
         if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
             if deproject_syst_clustering:
                 density_fields = [
-                    (nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0))
+                    (nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0, lmax=lmax1))
                     for d in d_maps
                 ]
             else:
                 density_fields = [
-                    (nmt.NmtField(clustering_weight, [d], n_iter=0)) for d in d_maps
+                    (nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps
                 ]
         else:
             density_fields = []
 
         if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
             lensing_fields = [
-                (nmt.NmtField(lw, [g1, g2], n_iter=0))
+                (nmt.NmtField(lw, [g1, g2], n_iter=0, lmax=lmax1))
                 for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)
             ]
         else:
@@ -431,7 +434,7 @@ class TXTwoPointFourier(PipelineStage):
             if space is None:
                 print(f"Rank {self.rank} computing coupling matrix " f"{i}, {j}, {k}")
                 space = nmt.NmtWorkspace()
-                space.compute_coupling_matrix(f1, f2, ell_bins, is_teb=False, n_iter=1)
+                space.compute_coupling_matrix(f1, f2, ell_bins, is_teb=False)
             else:
                 print(
                     f"Rank {self.rank} getting coupling matrix "
@@ -600,7 +603,6 @@ class TXTwoPointFourier(PipelineStage):
                 ell_bins,
                 cl_guess=cl_guess,
                 workspace=workspace,
-                n_iter=1,
             )
             # noise to subtract (already decoupled)
             n_ell, n_ell_coupled = self.compute_noise_analytic(
@@ -622,7 +624,6 @@ class TXTwoPointFourier(PipelineStage):
                 cl_noise=n_ell_coupled,
                 cl_guess=cl_guess,
                 workspace=workspace,
-                n_iter=1,
             )
 
         if n_ell is None:
@@ -706,7 +707,7 @@ class TXTwoPointFourier(PipelineStage):
                 w[realization[0] == healpy.UNSEEN] = 0
 
             # Analyze it with namaster
-            field = nmt.NmtField(w, realization, n_iter=0)
+            field = nmt.NmtField(w, realization, n_iter=0, lmax=self.config["ell_max"]-1)
             cl_coupled = nmt.compute_coupled_cell(field, field)
 
             # Accumulate
