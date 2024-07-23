@@ -1,3 +1,6 @@
+global:
+    pixelization: healpix
+
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
     photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
@@ -7,6 +10,15 @@ TXMetacalGCRInput:
 
 TXExposureInfo:
     dc2_name: '1.2p'
+
+TXLSSWeightsUnit:
+    nside: 2048
+    pixelization: healpix
+
+TXDiagnosticQuantiles:
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
+    nbins: 20    
 
 
 TXCosmoDC2Mock:
@@ -79,6 +91,9 @@ TXAuxiliarySourceMaps:
 TXAuxiliaryLensMaps:
     chunk_rows:  100000
     sparse:  True
+    nside: 2048
+    pixelization: healpix
+    sparse: True
     bright_obj_threshold:  22.0
 
 TXSimpleMask:
@@ -169,6 +184,7 @@ TXTwoPointFourier:
     analytic_noise: True
     
 TXTwoPoint:
+    reduce_randoms_size: 0.5
     bin_slop: 0.01
     delta_gamma: 0.02
     do_pos_pos: True
@@ -199,6 +215,15 @@ TXTruthLensSelector:
     i_lo_cut: 17.5
     i_hi_cut: 21.9
     r_i_cut: 2.0
+
+
+TXRandomForestLensSelector:
+    verbose: False
+    bands: ugrizy
+    lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    random_seed: 79521323
+    mag_i_limit: 24.1
+
 
 TXPhotozPlotLens:
     name: TXPhotozPlotLens

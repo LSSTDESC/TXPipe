@@ -1,7 +1,7 @@
 
 from scipy.optimize import curve_fit
 import numpy as np
-
+import warnings
 
 def fit_straight_line(x, y, y_err=None):
     """

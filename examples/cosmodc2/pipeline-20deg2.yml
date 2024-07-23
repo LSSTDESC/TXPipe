@@ -15,13 +15,19 @@ python_paths:
 stages:
     - name: TXRandomCat
       nprocess: 32
-    - name: TXSourceSelectorMetadetect
+    - name: TXSourceSelectorMetacal
       nprocess: 32
-    - name: TXTruthLensSelector
+    - name: TXLSSWeightsUnit
+    - name: TXRandomForestLensSelector
       nprocess: 32
     - name: TXLensTrueNumberDensity
+      classname: TXTruePhotozStack
     - name: TXSourceTrueNumberDensity
-    - name: TXPhotozPlot
+      classname: TXTruePhotozStack
+    - name: TXPhotozPlotSource
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotLens
+      classname: TXPhotozPlot
     - name: TXShearCalibration
       nprocess: 32
     - name: TXTruthLensCatalogSplitter
@@ -70,7 +76,7 @@ inputs:
     photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
-
+    none: none
 
 resume: True
 log_dir: data/cosmodc2/logs

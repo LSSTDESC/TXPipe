@@ -34,6 +34,7 @@ stages:
       threads_per_process: 2
     - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
     - name: TXTwoPointPlots
+    - name: TXDiagnosticQuantiles
     - name: TXSourceDiagnosticPlots
     - name: TXLensDiagnosticPlots
     - name: TXGammaTStars
