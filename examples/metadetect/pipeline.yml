@@ -5,20 +5,20 @@ stages:
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
-      classname: Inform_BPZ_lite   
+      classname: BPZliteInformer   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
-      classname: BPZ_lite
+      classname: BPZliteEstimator
       threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
-    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-      classname: Inform_NZDir
+    - name: NZDirInformerLens       # Prepare the DIR method inputs for the lens sample     
+      classname: NZDirInformer
     - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize  
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
-      classname: Inform_NZDir
+    - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
+      classname: NZDirInformer
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
@@ -85,9 +85,9 @@ stages:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degradation.grid_selection
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
