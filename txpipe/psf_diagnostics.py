@@ -13,6 +13,7 @@ from .data_types import (
 from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 import sys
+import os
 from .utils.calibration_tools import read_shear_catalog_type
 from .plotting import manual_step_histogram
 from .utils.calibrators import Calibrator
@@ -200,6 +201,7 @@ class TXPSFMomentCorr(PipelineStage):
         import treecorr
         import h5py
         import matplotlib
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         matplotlib.use("agg")
 
@@ -369,6 +371,7 @@ class TXTauStatistics(PipelineStage):
         from scipy.stats import qmc
 
         matplotlib.use("agg")
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         # Load galaxies
         gal_ra, gal_dec, gal_g1, gal_g2, gal_weight   = self.load_galaxies()
@@ -543,6 +546,7 @@ class TXTauStatistics(PipelineStage):
         w = np.array(( [w[0][star_type==s], w[1][star_type==s]]))     # Get w for specific stars
 
         print(f"Computing Tau 0,2,5 and the covariance")
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         
         # Load all catalogs
         catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=40) # galaxy shear
@@ -551,10 +555,13 @@ class TXTauStatistics(PipelineStage):
         catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_*(T_* - T_model)/T_* )
         
         # Compute all corrleations
+        print(f"Computing shear-e_model correlation {catg.nobj} x {catp.nobj}")
         corr0 = treecorr.GGCorrelation(self.config)
         corr0.process(catg, catp)
+        print(f"Computing shear-(e_*-e_model) correlation {catg.nobj} x {catq.nobj}")
         corr2 = treecorr.GGCorrelation(self.config)
         corr2.process(catg, catq)
+        print(f"Computing shear-(e_*(T_* - T_model)/T_*) correlation {catg.nobj} x {catw.nobj}")
         corr5 = treecorr.GGCorrelation(self.config)
         corr5.process(catg, catw)
         
@@ -784,7 +791,7 @@ class TXRoweStatistics(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
-
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         ra, dec, e_meas, e_mod, de, T_f, star_type = self.load_stars()
         rowe_stats = {}
         for t in STAR_TYPES:
@@ -1017,7 +1024,7 @@ class TXGalaxyStarShear(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
-
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         ra, dec, e_psf, de_psf, star_type = self.load_stars()
         ra_gal, dec_gal, g1, g2, weight = self.load_galaxies()
 
@@ -1297,7 +1304,7 @@ class TXGalaxyStarDensity(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
-
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         ra, dec, star_type = self.load_stars()
         ra_gal, dec_gal = self.load_galaxies()
         ra_random, dec_random = self.load_randoms()

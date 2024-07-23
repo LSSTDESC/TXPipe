@@ -91,6 +91,7 @@ class TXTwoPoint(PipelineStage):
 
         # Binning information
         source_list, lens_list = self.read_nbin()
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         if self.rank == 0:
             # This is a workaround for the fact the the ceci config stuff doesn't
@@ -982,7 +983,6 @@ class TXTwoPointPixel(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],
@@ -1145,7 +1145,6 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],
