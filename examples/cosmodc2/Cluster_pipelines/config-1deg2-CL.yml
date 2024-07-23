@@ -10,7 +10,7 @@ TXSourceSelectorMetadetect:
     true_z: False
     shear_prefix: ''
 
-BPZliteInformer:
+Inform_BPZ_lite:
     aliases:
         input: spectroscopic_catalog
         model: photoz_model
