@@ -1,0 +1,62 @@
+
+# Stages to run
+stages:
+    - name: TXMatchSSI  # process the SSI inputs
+    - name: TXMatchSSIMag   # process the SSI inputs
+      classname: TXMatchSSI
+
+
+    - name: TXTruthLensSelectorSSI      #make SSI run lens samples
+      classname: TXTruthLensSelector
+    - name: TXTruthLensCatalogSplitterSSI  
+      classname: TXTruthLensCatalogSplitter
+    
+    - name: TXTruthLensSelectorSSIMag   #make magnified SSI run lens samples
+      classname: TXTruthLensSelector
+    - name: TXTruthLensCatalogSplitterSSIMag 
+      classname: TXTruthLensCatalogSplitter
+
+    - name: TXSSIMagnification  # compute magnification coefficients for lens sample
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+# modules: txpipe rail tjpcov
+
+# Where to put outputs
+output_dir: data/example/outputs_ssi_mag/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/ssi/config_mag.yml
+
+inputs:
+    # See README for paths to download these files
+    
+    #use photometry catalog for everything, just while setting up
+    injection_catalog: data/example/inputs/photometry_catalog.hdf5
+    ssi_photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+
+    injection_catalog_mag: data/example/inputs/photometry_catalog.hdf5
+    ssi_photometry_catalog_mag: data/example/inputs/photometry_catalog.hdf5
+
+
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: False
+# where to put output logs for individual stages
+log_dir: data/example/outputs_ssi_mag/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/outputs_ssi_mag/log.txt

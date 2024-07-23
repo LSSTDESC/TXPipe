@@ -1,0 +1,73 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 10000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 256
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXMatchSSI:
+    name: TXMatchSSI
+    match_radius: 0.1
+
+TXMatchSSIMag:
+    name: TXMatchSSIMag
+    match_radius: 0.1
+    magnification: 0.02
+    aliases:
+        injection_catalog: injection_catalog_mag
+        ssi_photometry_catalog: ssi_photometry_catalog_mag
+        matched_ssi_photometry_catalog: matched_ssi_photometry_catalog_mag
+
+TXTruthLensSelectorSSI:
+    name: TXTruthLensSelectorSSI
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog
+
+TXTruthLensSelectorSSIMag:
+    name: TXTruthLensSelectorSSIMag
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog_mag
+        lens_tomography_catalog_unweighted: lens_tomography_catalog_unweighted_mag
+
+TXTruthLensCatalogSplitterSSI: 
+    name: TXTruthLensCatalogSplitterSSI
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog
+
+TXTruthLensCatalogSplitterSSIMag: 
+    name: TXTruthLensCatalogSplitterSSIMag
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog_mag
+        lens_tomography_catalog_unweighted: lens_tomography_catalog_unweighted_mag
+        binned_lens_catalog_unweighted: binned_lens_catalog_unweighted_mag
+
+TXSSIMagnification:
+    name: TXSSIMagnification
+    applied_magnification: 1.02
+    aliases:
+        binned_lens_catalog_nomag: binned_lens_catalog_unweighted
+        binned_lens_catalog_mag: binned_lens_catalog_unweighted_mag
+
