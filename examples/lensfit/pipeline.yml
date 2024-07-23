@@ -10,9 +10,9 @@ stages:
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZPrepareEstimatorLens
-      classname: Inform_BPZ_lite   
+      classname: BPZliteInformer   
     - name: PZEstimatorLens
-      classname: BPZ_lite
+      classname: BPZliteEstimator
     - name: TXPhotozSourceStack
       classname: TXPhotozStack
     - name: TXPhotozLensStack
@@ -76,9 +76,9 @@ site:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degradation.grid_selection
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,

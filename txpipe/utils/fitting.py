@@ -25,13 +25,11 @@ def fit_straight_line(x, y, y_err=None):
     c: float
         intercept
     """
-    if y.size == 0:
-        warnings.warn("Size 0 data passed to fit_straight_line - returning nan")
-        return np.nan, np.nan, np.zeros((2, 2)) * np.nan
-    if np.isnan(x).any() or np.isnan(y).any():
-        warnings.warn("Nan data passed to fit_straight_line - returning nan")
-        return np.nan, np.nan, np.zeros((2, 2)) * np.nan
-    popt, cov = curve_fit(line, x, y, sigma=y_err)
+    try:
+        popt, cov = curve_fit(line, x, y, sigma=y_err)
+    except RuntimeError:
+        print("ERROR: Straight line fit failed. Returning m=0 c=0")
+        return 0.0, 0.0, np.array([[1.0, 0.0], [0.0, 1.0]])
     m = popt[0]
     c = popt[1]
     return m,c, cov

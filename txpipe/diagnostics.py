@@ -1,12 +1,10 @@
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
 from parallel_statistics import ParallelMeanVariance, ParallelHistogram
 from .utils.calibrators import Calibrator
 from .utils.calibration_tools import (
     calculate_selection_response,
     calculate_shear_response,
-    apply_metacal_response,
-    apply_lensfit_calibration,
     MeanShearInBins,
     read_shear_catalog_type,
     metadetect_variants,
@@ -123,9 +121,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
         ("g2_hist", PNGFile),
         ("g_snr", PNGFile),
         ("g_T", PNGFile),
+        ("g_colormag",PNGFile),
         ("source_snr_hist", PNGFile),
         ("source_mag_hist", PNGFile),
         ("response_hist", PNGFile),
+        ("g_psf_T_out",TextFile),
+        ("g_psf_g_out",TextFile),
+        ("g_snr_out",TextFile),
+        ("g_T_out",TextFile),
     ]
 
     config_options = {
@@ -142,8 +145,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "T_max": 4.0,
         "s2n_min": 10,
         "s2n_max": 300,
+        "psf_unit_conv": False,
         "bands": "riz",
-        
     }
 
     def run(self):
@@ -166,7 +169,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # first yield statement, then pause and wait for the first chunk of data
         for plotter in plotters:
             plotter.send(None)
-
         # Create an iterator for reading through the input data.
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
@@ -222,6 +224,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         else:
         
             shear_cols = [
+                "dec",
                 "psf_g1",
                 "psf_g2",
                 "g1",
@@ -231,9 +234,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "T",
                 "weight",
                 "m",
-                "sigma_e",
-                "c1",
-                "c2",
             ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
 
         shear_tomo_cols = ["bin"]
@@ -281,7 +281,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             edges = f[f"quantiles/{col}"][:]
         return edges
 
-    
     def plot_psf_shear(self):
         # mean shear in bins of PSF
         print("Making PSF shear plot")
@@ -377,6 +376,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # This also saves the figure
         fig.close()
+        
+        f = self.open_output("g_psf_g_out")
+        data   =[mu1,mu2,mean11,mean12,mean21,mean22,std11,std12,std21,std22,line11,line12,line21,line22]
+        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.close()
     
     def plot_psf_size_shear(self):
         # mean shear in bins of PSF
@@ -396,6 +400,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
+            psf_unit_conv = self.config['psf_unit_conv']
         )
         
         while True:
@@ -433,6 +438,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend(loc="best")
         plt.tight_layout()
         fig.close()
+        
+        f = self.open_output("g_psf_T_out")
+        data   =[mu,mean1,mean2,std1,std2,line1,line2]
+        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.close()
        
     
     def plot_snr_shear(self):
@@ -495,6 +505,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.legend()
         plt.tight_layout()
         fig.close()
+        
+        f = self.open_output("g_snr_out")
+        data   =[mu,mean1,mean2,std1,std2,line1,line2]
+        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.close()
     
     def plot_size_shear(self):
         # mean shear in bins of galaxy size
@@ -513,18 +528,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
+            psf_unit_conv = self.config['psf_unit_conv']
         )
 
         while True:
             # This happens when we have loaded a new data chunk
             data = yield
-
+            
             # Indicates the end of the data stream
             if data is None:
                 break
 
             binnedShear.add_data(data)
-
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
 
         if self.rank != 0:
@@ -551,6 +566,93 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("galaxy size T")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.tight_layout()
+        fig.close()
+        
+        f = self.open_output("g_T_out")
+        data   =[mu,mean1,mean2,std1,std2,line1,line2]
+        f.write(''.join([str(i) + '\n' for i in  data]))
+        f.close()
+        
+    def plot_mag_shear(self):
+        # mean shear in bins of magnitude
+        print("Making mean shear band magnitude plot")
+        import matplotlib.pyplot as plt
+        from scipy import stats
+
+        shear_prefix = self.config["shear_prefix"]
+        delta_gamma = self.config["delta_gamma"]
+        nbins = self.config["nbins"]
+        
+        stat = {}
+        binnedShear = {}
+        for band in self.config["bands"]:
+                
+            with self.open_input("shear_catalog") as c:
+                col = c[f"shear/{shear_prefix}mag_{band}"][:]
+                m_edges = self.BinEdges(col,nbins)
+
+            binnedShear[f"{band}"] = MeanShearInBins(
+                f"{shear_prefix}mag_{band}",
+                m_edges,
+                delta_gamma,
+                cut_source_bin=True,
+                shear_catalog_type=self.config["shear_catalog_type"],
+            )
+        
+        while True:
+            # This happens when we have loaded a new data chunk
+            data = yield
+
+            # Indicates the end of the data stream
+            if data is None:
+                break
+            
+            for band in self.config["bands"]:
+                binnedShear[f"{band}"].add_data(data)
+                
+        for band in self.config["bands"]:
+            stat[f"mu_{band}"], stat[f"mean1_{band}"], stat[f"mean2_{band}"], stat[f"std1_{band}"], stat[f"std2_{band}"] = binnedShear[f"{band}"].collect(self.comm)
+
+            if self.rank != 0:
+                return
+            dx = 0.05 * (m_edges[1] - m_edges[0])
+        
+            idx = np.where(np.isfinite(stat[f"mu_{band}"]))[0]
+        
+            stat[f"slope1_{band}"], stat[f"intercept1_{band}"], stat[f"mc_cov_{band}"] = fit_straight_line(stat[f"mu_{band}"][idx],
+                                                                                                           stat[f"mean1_{band}"][idx],
+                                                                                                           y_err=stat[f"std1_{band}"][idx])
+            stat[f"std_err1_{band}"] = stat[f"mc_cov_{band}"][0, 0] ** 0.5
+            stat[f"line1_{band}"] = stat[f"slope1_{band}"] * stat[f"mu_{band}"] + stat[f"intercept1_{band}"]
+
+            stat[f"slope2_{band}"], stat[f"intercept2_{band}"], stat[f"mc_cov_{band}"] = fit_straight_line(stat[f"mu_{band}"][idx],
+                                                                                                           stat[f"mean2_{band}"][idx],
+                                                                                                           y_err=stat[f"std2_{band}"][idx])
+            stat[f"std_err2_{band}"] = stat[f"mc_cov_{band}"][0, 0] ** 0.5
+            stat[f"line2_{band}"] = stat[f"slope2_{band}"] * stat[f"mu_{band}"] + stat[f"intercept2_{band}"]
+
+        fig = self.open_output("g_colormag", wrapper=True)
+        for band,clr1,clr2 in zip(self.config["bands"],['maroon','firebrick','red'],['darkblue','royalblue','deepskyblue']):
+            plt.subplot(2, 1, 1)
+            plt.plot(stat[f"mu_{band}"], stat[f"line1_{band}"], color=clr1,
+                     label=r"$m=%.2e \pm %.2e$" % (stat[f"slope1_{band}"], stat[f"std_err1_{band}"]))
+            plt.plot(stat[f"mu_{band}"], [0] * len(stat[f"mu_{band}"]), color="black")
+            plt.errorbar(stat[f"mu_{band}"] + dx, stat[f"mean1_{band}"], stat[f"std1_{band}"],
+                         label=f"{band}-band", fmt="s", markersize=5, color=clr1)
+            plt.ylabel("Mean g1")
+            plt.xlabel("magnitude")
+            plt.legend()
+
+            plt.subplot(2, 1, 2)
+            plt.plot(stat[f"mu_{band}"], stat[f"line2_{band}"], color=clr2,
+                     label=r"$m=%.2e \pm %.2e$" % (stat[f"slope2_{band}"], stat[f"std_err2_{band}"]))
+            plt.plot(stat[f"mu_{band}"], [0] * len(stat[f"mu_{band}"]), color="black")
+            plt.errorbar(stat[f"mu_{band}"] - dx, stat[f"mean2_{band}"], stat[f"std2_{band}"],
+                         label=f"{band}-band", fmt="o",markersize=5, color=clr2)
+            plt.ylabel("Mean g2")
+            plt.xlabel("magnitude") 
+            plt.legend()
         plt.tight_layout()
         fig.close()
         
@@ -590,6 +692,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g2 = data["00/g2"]
                 w = data["00/weight"]
             elif cat_type == "lensfit":
+                dec = data["dec"]
                 g1 = data["g1"]
                 g2 = data["g2"]
                 w = data["weight"]
@@ -600,8 +703,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 c2 = data['c2']
                 w = data["weight"]
 
-            if cat_type=='metacal' or cat_type=='metadetect' or cat_type=='lensfit':
+            if cat_type=='metacal' or cat_type=='metadetect':
                 g1, g2 = cal.apply(g1,g2)
+                
+            elif cat_type=='lensfit':
+                # In KiDS, the additive bias is calculated and removed per North and South field
+                # therefore, we add dec to split data into these fields. 
+                # You can choose not to by setting dec_cut = 90 in the config, for example.
+                g1, g2 = cal.apply(dec, g1,g2)
             else:
                 g1, g2 = cal.apply(g1,g2,c1,c2)
 
@@ -881,7 +990,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             plt.tight_layout()
             fig.close()
 
-    
 class TXLensDiagnosticPlots(PipelineStage):
     """
     Make diagnostic plots of the lens catalog
