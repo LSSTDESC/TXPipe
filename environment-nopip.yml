@@ -29,4 +29,5 @@ dependencies:
   - threadpoolctl=3.5.*
   - tjpcov=0.4.*
   - treecorr=5.0.*
-  - pip
+  - pip=24.0.*
+  - pygraphviz=1.13
