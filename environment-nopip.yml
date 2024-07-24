@@ -4,18 +4,18 @@ dependencies:
   - astropy>5
   - camb=1.5.*
   - cosmosis>=3.6.*
-  - dask=2024.5.2
+  - dask>=2023.5.*
   - dm-tree=0.1.8
   - fitsio=1.2.*
   - firecrown=1.7.*
-  - h5py>=3.*=mpi_mpich_*
+  - h5py>=3.8.*=mpi_mpich_*
   - healpy>=1.15.*
-  - healsparse=1.10.*
+  - healsparse>=1.7.*
   - jax=0.4.27
   - jaxlib=0.4.23
   - jupyter>=1.0.0
   - matplotlib>=3.5.*
-  - mpi4py>=3.*
+  - mpi4py>=3.1.*
   - mpich=4.2.*
   - namaster>=2.0.*
   - numpy=1.26.*
