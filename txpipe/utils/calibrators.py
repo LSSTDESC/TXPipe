@@ -48,7 +48,7 @@ class Calibrator:
             cat_type = f["tomography"].attrs["catalog_type"]
 
         # choose a subclass based on this
-        if null:
+        if null or cat_type == "simple":
             subcls = NullCalibrator
         elif cat_type == "metacal":
             subcls = MetaCalibrator

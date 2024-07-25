@@ -62,6 +62,7 @@ class TXShearCalibration(PipelineStage):
         # is needed
         tomo_file = self.get_input("shear_tomography_catalog")
         cals, cal2d = Calibrator.load(tomo_file, null=use_true)
+        print("Using calibration method:", cal2d.__class__.__name__)
 
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs
