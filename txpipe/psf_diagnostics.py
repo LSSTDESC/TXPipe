@@ -441,18 +441,19 @@ class TXTauStatistics(PipelineStage):
         f_H    = 1.*(fval-120-2)/(fval-1)
         f_DS   = 1/(1+(120-3)*(fval-120-2)/(fval-120-1)/(fval-120-4))
         cov    = cov / f_H / f_DS 
+        
+        _, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, _  = tau_stats
         invcov = np.linalg.inv(cov)
         
         initguess = [0,-1,1]
         bestpars = optimize.minimize(self.chi2, initguess, args=(tau_stats, rowe_stats, invcov, mask),
                                       method='Nelder-Mead', tol=1e-6)
-        print(bestpars)
         initpos = [bestpars.x + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
-        
+
         print("Computing best-fit alpha, beta, eta")
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask))
-        sampler.run_mcmc(initpos, nsteps=1000, progress=True);
-        flat_samples = sampler.get_chain(flat=True)
+        sampler.run_mcmc(initpos, nsteps=5000, progress=True);
+        flat_samples = sampler.get_chain(discard=2000,flat=True)
         
         ret = {}
         var = ['alpha','beta','eta']
@@ -619,6 +620,9 @@ class TXTauStatistics(PipelineStage):
             e2meas  = g["measured_e2"][:]
             e1mod  = g["model_e1"][:]
             e2mod  = g["model_e2"][:]
+            if self.config["flip_g2"]:
+                e2meas *= -1
+                e2mod  *= -1
             de1    = e1meas - e1mod
             de2    = e2meas - e2mod
             
@@ -804,7 +808,8 @@ class TXRoweStatistics(PipelineStage):
         "definition"    : 'des-y1',
         "subtract_mean" : False,
         "star_type": 'PSF-reserved',
-        "var_method": 'bootstrap'
+        "var_method": 'bootstrap',
+        "flip_g2"   : False
     }
 
     def run(self):
@@ -844,7 +849,7 @@ class TXRoweStatistics(PipelineStage):
                 rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_mod * T_f)
                 rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
         self.save_stats(rowe_stats)
-        self.rowe_plots(rowe_stats)
+        #self.rowe_plots(rowe_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
@@ -855,6 +860,9 @@ class TXRoweStatistics(PipelineStage):
             e2meas = g["measured_e2"][:]
             e1mod  = g["model_e1"][:]
             e2mod  = g["model_e2"][:]
+            if self.config["flip_g2"]:
+                e2meas *= -1
+                e2mod  *= -1
             de1    = e1meas - e1mod
             de2    = e2meas - e2mod
             if self.config["psf_size_units"] == "Tmeas":
