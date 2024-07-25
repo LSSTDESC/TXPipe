@@ -13,10 +13,10 @@ dependencies:
   - healsparse=1.10.*
   - jax=0.4.27
   - jaxlib=0.4.23
-  - jupyter=1.0.0
+  - jupyter=1.0.*
   - matplotlib=3.8.*
   - mpi4py>=3
-  - mpich=4.0.2=external_*
+  - mpich=4.0.*
   - namaster=2.0.*
   - numpy=1.26.*
   - pandas=2.2.*
@@ -30,4 +30,4 @@ dependencies:
   - tjpcov=0.4.*
   - treecorr=5.0.*
   - pip=24.0.*
-  - pygraphviz=1.13
+  - pygraphviz=1.13.*
