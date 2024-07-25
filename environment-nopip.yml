@@ -16,7 +16,7 @@ dependencies:
   - jupyter=1.0.*
   - matplotlib=3.8.*
   - mpi4py>=3
-  - mpich=4.0.*
+  - mpich>=4.*
   - namaster=2.0.*
   - numpy=1.26.*
   - pandas=2.2.*
