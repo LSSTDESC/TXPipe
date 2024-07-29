@@ -137,7 +137,7 @@ TXSourceTrueNumberDensity:
 TXSourceSelectorHSC:
     input_pz: True
     true_z  : False
-    bands   : i #used for selection
+    bands   : i 
     T_cut   : 0.0
     s2n_cut : 10.0
     max_rows: 10000000000
@@ -145,24 +145,13 @@ TXSourceSelectorHSC:
     shear_prefix: ''
     shear_catalog_type: 'hsc'
    
-TXSourceSelectorMetacal:
-    input_pz: True
-    true_z: False
-    bands: riz #used for selection
-    T_cut: 0.5
-    s2n_cut: 10.0
-    max_rows: 10000000000
-    delta_gamma: 0.02
-    source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
-    shear_prefix: mcal_
-    use_diagonal_response : True
- 
 TXShearCalibration:
     use_true_shear: False
     chunk_rows: 100000
     subtract_mean_shear: True
-    extra_cols: [""]
+    extra_cols: ["aselepsf1", "aselepsf2", "msel"]
     shear_catalog_type: "hsc"
+
 
 TXTruthLensSelector:
     # Mag cuts
@@ -222,15 +211,15 @@ TXRandomCat:
     density: 10 # gals per sq arcmin
 
 TXTwoPoint:
-    bin_slop: 0.02
-    do_pos_pos: False
+    bin_slop      : 0.00
+    do_pos_pos    : False
     do_shear_shear: True
-    do_shear_pos: False
-    flip_g2: True  # use true when using metacal shears
-    min_sep: 5.3
-    max_sep: 248
-    nbins: 13
-    verbose: 0
+    do_shear_pos  : False
+    flip_g2       : True  
+    min_sep       : 5.3
+    max_sep       : 248
+    nbins         : 13
+    verbose       : 0
     subtract_mean_shear: True
 
 TXGammaTBrightStars: {}
