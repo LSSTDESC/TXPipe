@@ -789,7 +789,8 @@ class TXShearBmode(PipelineStage):
                ("twopoint_data_real_raw", SACCFile),
               ]
     
-    outputs = [("twopoint_data_fourier_pureB", SACCFile)]
+    outputs = [("twopoint_data_fourier_shearbmode", SACCFile),
+               ]
 
     config_options = {
                       'method'    : 'hybrideb', 
@@ -835,9 +836,14 @@ class TXShearBmode(PipelineStage):
         import pymaster as nmt
         import healpy as hp
         from tqdm import tqdm
+        import pickle
 
+
+        lmin  = self.config['lmin']
+        lmax  = self.config['lmax']
         Nell  = self.config['Nell']
         Nsims = self.config["Nsims"]
+        lspacing = self.config['lspacing']
 
         if purify_b:
             print("WARNING: Namaster's B-mode purification requires the mask to be heavily apodized.")
@@ -846,40 +852,71 @@ class TXShearBmode(PipelineStage):
            
         # Open source maps (g1,g2,weights)
         with self.open_input("source_maps", wrapper=True) as f:
-            nbin_source = f.file["maps"].attrs["nbin_source"]
-            g1_maps     = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
-            g2_maps     = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
+
+            # Get the number of tomographic bins
+            # +1 comes from also loading the non-tomographic sample
+            nbin_source = f.file["maps"].attrs["nbin_source"]+1 
+
+            # Load the tomographic samples
+            g1_maps     = [f.read_map(f"g1_{b}") for b in range(nbin_source-1)]
+            g2_maps     = [f.read_map(f"g2_{b}") for b in range(nbin_source-1)]
             
+            # Load non-tomographic sample
+            g1_maps.append(f.read_map(f"g1_2D"))
+            g2_maps.append(f.read_map(f"g2_2D"))
+
+            if lmax>3*hp.npix2nside(len(g1_maps[0])):
+                raise ValueError("lmax must be smaller than 3*nside")
+
         # Open mask
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_map("mask")
+            mask = f.read_map("mask")            
         
         # Define binning 
-        b  = nmt.NmtBin.from_nside_linear(hp.npix2nside(mask.shape[0]), Nell)
+        if lspacing=='lin':
+            bine = np.linspace(lmin+1, lmax+1, Nell+1, dtype=np.int64)
+        elif lspacing=='log':
+            bine = np.geomspace(lmin+1, lmax+1, Nell+1, dtype=np.int64)
+        else:
+            raise ValueError("lspacing must be either 'log' or 'lin'")
         
+        b    = nmt.NmtBin.from_edges(bine[:-1], bine[1:])
+
         # Initialize the fields
         fields = {}
         for i in range(nbin_source):
             g1_maps[i][g1_maps[i]==hp.UNSEEN]=0
             g2_maps[i][g2_maps[i]==hp.UNSEEN]=0
-            fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b)
+            fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b,lmax=lmax)
+        
+        # To speed the covariance calculation up, one can use multiple nodes to do this calculation externally
+        products_dict = {'mask':mask,'Nell':Nell,'nbin_source':nbin_source, 'g1_maps': g1_maps, 'g2_maps': g2_maps}
 
+        file_namaster_intermediate = self.get_output("twopoint_data_fourier_shearbmode")[:-5]+ f"_namaster.pkl"
+        
+        with open(file_namaster_intermediate, 'wb') as handle:
+            pickle.dump(products_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
         # Compute Cls and store them in dictionrary
         ret=np.zeros((nbin_source,nbin_source,len(b.get_effective_ells())))
 
         for zi in range(nbin_source):
             for zj in range(zi,nbin_source):
-                    
-                field1 = fields[zi]
-                field2 = fields[zj]
-                w_yp  = nmt.NmtWorkspace()
-                w_yp.compute_coupling_matrix(field1, field2, b)
 
-                cl_coupled   = nmt.compute_coupled_cell(field1,field2)
-                cl_decoupled = w_yp.decouple_cell(cl_coupled)
-                ret[zj,zi,:]= cl_decoupled[3]
-                
-        # Compute covariance in a somewhat adhoc way by shuffling the pixel values.
+                if zi!=zj and (zi==nbin_source-1 or zj==nbin_source-1):
+                    # No need to take cross-correlation between tomographic and non-tomographic sample
+                    continue
+                else:    
+                    field1 = fields[zi]
+                    field2 = fields[zj]
+                    w_yp  = nmt.NmtWorkspace()
+                    w_yp.compute_coupling_matrix(field1, field2, b)
+
+                    cl_coupled   = nmt.compute_coupled_cell(field1,field2)
+                    cl_decoupled = w_yp.decouple_cell(cl_coupled)
+                    ret[zj,zi,:]= cl_decoupled[3]
+               
+        # Compute covariance by randomly rotating shear values in pixels.
         tmparr = np.zeros((int(nbin_source*(nbin_source+1)/2*len(b.get_effective_ells())),Nsims))
 
         for k in tqdm(range(Nsims)):
@@ -891,7 +928,7 @@ class TXShearBmode(PipelineStage):
                 g1_maps[i][idx] =  g1_maps[i][idx]*np.cos(2*psi) + g2_maps[i][idx]*np.sin(2*psi)
                 g2_maps[i][idx] = -g1_maps[i][idx]*np.sin(2*psi) + g2_maps[i][idx]*np.cos(2*psi)
                 
-                fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b)
+                fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b, lmax=lmax)
 
             tmp = np.array([])
             for zi in range(nbin_source):
@@ -909,8 +946,8 @@ class TXShearBmode(PipelineStage):
             tmparr[:,k] = tmp
             
         n_bins      = b.get_n_bands()
-        bin_weights = np.zeros([n_bins, b.lmax])
-
+        bin_weights = np.zeros([n_bins, b.lmax+1])
+        
         for i in range(n_bins):
             bin_weights[i, b.get_ell_list(i)] = b.get_weight_list(i)
 
@@ -919,7 +956,7 @@ class TXShearBmode(PipelineStage):
         results     = ret
         cov         = np.cov(tmparr)
 
-        print('Saving pureB Cls in sacc file')   
+        print('Saving ShearBmode Cls in sacc file')   
         self.save_power_spectra(nbin_source, ell, results, cov)
     
 
@@ -1069,8 +1106,12 @@ class TXShearBmode(PipelineStage):
 
         with self.open_input("shear_photoz_stack", wrapper=True) as f:
             for i in range(nbin_source):
-                z, Nz = f.get_bin_n_of_z(i)
-                S.add_tracer("NZ", f"source_{i}", z, Nz)
+                if i==nbin_source-1:
+                    z,Nz  = f.get_2d_n_of_z()
+                    S.add_tracer("NZ", f"source_{i}", z, Nz)
+                else:
+                    z, Nz = f.get_bin_n_of_z(i)
+                    S.add_tracer("NZ", f"source_{i}", z, Nz)
 
         for zi in range(0,nbin_source):
             for zj in range(zi,nbin_source):
@@ -1084,7 +1125,7 @@ class TXShearBmode(PipelineStage):
 
         S.add_covariance(cov)
         
-        output_filename = self.get_output("twopoint_data_fourier_pureB")
+        output_filename = self.get_output("twopoint_data_fourier_shearbmode")
         S.save_fits(output_filename, overwrite=True)
 
 
