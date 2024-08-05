@@ -275,6 +275,7 @@ jobs:
         ceci --dry-run examples/buzzard/pipeline.yml
         ceci --dry-run examples/cosmodc2/pipeline.yml
         ceci --dry-run examples/skysim/pipeline.yml
+        ceci --dry-run examples/desy3/pipeline_Bmodes.yml
 
 
   Test_Auto_Installer:

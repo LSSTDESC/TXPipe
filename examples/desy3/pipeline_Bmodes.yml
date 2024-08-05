@@ -1,0 +1,92 @@
+
+# Stages to run
+stages:
+    - name: TXPSFDiagnostics        # Compute and plots other PSF diagnostics
+    - name: TXAuxiliaryLensMaps     # make depth and bright object maps
+    - name: TXSimpleMask            #  combine maps to make a simple mask
+    - name: TXSourceSelectorMetacal # select and split objects into source bins
+    - name: TXSourceNoiseMaps       # Compute shear noise using rotations
+    - name: TXShearCalibration      # Calibrate and split the source sample tomographically
+    - name: TXSourceMaps            # make source g1 and g2 maps
+    - name: TXConvergenceMaps       # Make convergence kappa maps from g1, g2 maps
+    - name: FlowCreator             # Simulate a spectroscopic population
+    - name: GridSelection           # Simulate a spectroscopic sample
+    - name: TXParqetToHDF           # Convert the spec sample format
+    - name: PZPrepareEstimatorLens  # Prepare the p(z) estimator
+      classname: Inform_BPZ_lite   
+    - name: PZEstimatorLens         # Measure lens galaxy PDFs
+      classname: BPZ_lite
+    - name: TXMeanLensSelector      # select objects for lens bins from the PDFs
+    - name: Inform_NZDirLens        # Prepare the DIR method inputs for the lens sample     
+      classname: Inform_NZDir
+    - name: Inform_NZDirSource      # Prepare the DIR method inputs for the source sample
+      classname: Inform_NZDir
+    - name: PZRailSummarizeLens     # Run the DIR method on the lens sample to find n(z)
+      classname: PZRailSummarize  
+    - name: TXLensCatalogSplitter   # Split the lens sample tomographically
+    - name: TXLSSWeightsUnit        # add systematic weights to the lens sample (weight=1 for this example)
+    - name: TXTracerMetadata        # collate metadata
+    - name: TXLensNoiseMaps         # Compute lens noise using half-splits
+    - name: TXLensMaps              # make source lens and n_gal maps
+    - name: TXDensityMaps           # turn mask and ngal maps into overdensity maps
+    - name: TXTwoPointFourier       # Compute power spectra C_ell
+    - name: TXTwoPoint              # Compute real-space 2-point correlations
+      threads_per_process: 128
+    - name: TXPureB                 # Compute pure BB
+    - name: TXJackknifeCenters      # Split the area into jackknife regions
+    - name: TXSourceDiagnosticPlots # Make a suite of diagnostic plots
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    rail.creation.degradation.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.NZDir
+    rail.estimation.algos.bpz_lite
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+
+# Where to put outputs
+output_dir: data/des-y3/outputs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 128
+
+# configuration settings
+config: examples/desy3/config_Bmodes.yml
+
+# These are overall inputs to the whole pipeline, not generated within it
+inputs:
+    # See README for paths to download these files
+    shear_catalog            : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
+    star_catalog             : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.hdf5
+    shear_photoz_stack       : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_photoz_stack.hdf5
+    random_cats              : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/randoms_desy3_RM.hdf5
+    binned_random_catalog    : /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/binned_randoms_desy3_RM.hdf5
+    binned_random_catalog_sub: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/binned_randoms_desy3_RM.hdf5
+    fiducial_cosmology       : data/fiducial_cosmology.yml
+    photometry_catalog       : data/example/inputs/photometry_catalog.hdf5
+    calibration_table        : data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    exposures                : data/example/inputs/exposures.hdf5
+    flow                     : data/example/inputs/example_flow.pkl
+    random_cats_source       : Null
+ 
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: True
+# where to put output logs for individual stages
+log_dir: data/des-y3/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/des-y3/log.txt
+

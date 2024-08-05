@@ -1,0 +1,219 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 512
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+PZPrepareEstimatorLens:
+    name: PZPrepareEstimatorLens
+    classname: Inform_BPZ_lite
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: i
+    ref_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+
+PZEstimatorLens:
+    name: PZEstimatorLens
+    classname: BPZ_lite
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    nzbins: 301
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    hdf5_groupname: photometry
+    nondetect_val: .inf
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: mag_i
+    ref_band: mag_i
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_reddening: false
+    mag_limits:
+        mag_u: 27.79
+        mag_g: 29.04
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+        mag_y: 27.05    
+
+TXSourceSelectorMetacal:
+    input_pz: True
+    true_z: False
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 10000000000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
+    shear_prefix: mcal_
+    use_diagonal_response : True
+
+TXMeanLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
+TXModeLensSelector:
+    # Mag cuts
+    lens_zbin_edges: [0.0,0.2,0.4]
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 21.6
+    i_lo_cut: 17.5
+    i_hi_cut: 21.9
+    r_i_cut: 2.0
+
+TXRandomCat:
+    density: 10 # gals per sq arcmin
+
+TXTwoPoint:
+    bin_slop: 0.1
+    delta_gamma: 0.02
+    do_pos_pos: True
+    do_shear_shear: True
+    do_shear_pos: True
+    flip_g2: True  # use true when using metacal shears
+    min_sep: 2.5
+    max_sep: 60.0
+    nbins: 1000
+    verbose: 0
+    subtract_mean_shear: True
+    var_method: "jackknife"
+
+TXSourceDiagnosticPlots:
+    psf_prefix: mcal_psf_
+    shear_prefix: mcal_
+    nbins: 20
+    g_min: -0.01
+    g_max: 0.01
+    psfT_min: 0.2
+    psfT_max: 0.28
+    T_min: 0.01
+    T_max: 2.1
+    s2n_min: 1.25
+    s2n_max: 300
+
+TXSourceMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLensMaps:
+    sparse: True  # Generate sparse maps - faster if using small areas
+    nside: 128
+
+TXDensityMaps:
+    nside: 128
+
+TXAuxiliaryLensMaps:
+    flag_exponent_max: 8
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+    depth_band : i
+    snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+    snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+
+TXJackknifeCenters:
+    npatch: 5
+
+TXSimpleMask:
+    depth_cut : 23.5
+    bright_object_max: 10.0
+
+PZRailSummarizeLens:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    name: PZRailSummarizeLens
+    catalog_group: "photometry"
+    tomography_name: "lens"
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: lens_direct_calibration_model
+        photoz_stack: lens_photoz_stack
+    model: None
+
+FlowCreator:
+    n_samples: 1000000
+    seed: 5763248
+    aliases:
+        # This input was generated using get_example_flow in pzflow,
+        # not something specific.
+        output: ideal_specz_catalog
+        model: flow
+
+TXParqetToHDF:
+    hdf_group: photometry
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+
+
+Inform_NZDirSource:
+    name: Inform_NZDirSource
+    usecols: [r, i, z]
+    hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: source_direct_calibration_model
+
+Inform_NZDirLens:
+    name: Inform_NZDirLens
+    usecols: [u, g, r, i, z, "y"]
+    hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_direct_calibration_model
+
+TXPureB:
+    method    : 'namaster'                 # 'namaster' or 'hybrideb'
+    Nell      : 20                         # Number of ell bins
+    lmin      : 100                        # ell min 
+    lmax      : 2000                       # ell max
+    lspacing  : 'log'                      # ell spacing for binning 
+    bin_file  :                            # Load predfined bin edges instead        
+    theta_min : 2.5                        # (only for hybrideb) theta min in arcmin 
+    theta_max : 250                        # (only for hybrideb) theta max in arcmin 
+    Ntheta    : 1000                       # (only for hybrideb) Number of theta bins 
+    Nsims     : 3                         # (only for hybrideb) Number of Gaussian draws to use to estimate errors 
