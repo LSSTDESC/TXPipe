@@ -8,15 +8,15 @@ dependencies:
   - dm-tree=0.1.8
   - fitsio=1.2.*
   - firecrown=1.7.*
-  - h5py=3.11.*=mpi_mpich_*
+  - h5py>=3=mpi_mpich_*
   - healpy=1.16.*
   - healsparse=1.10.*
   - jax=0.4.27
   - jaxlib=0.4.23
-  - jupyter=1.0.0
+  - jupyter=1.0.*
   - matplotlib=3.8.*
-  - mpi4py=3.1.6
-  - mpich=4.2.*
+  - mpi4py>=3
+  - mpich>=4.*
   - namaster=2.0.*
   - numpy=1.26.*
   - pandas=2.2.*
@@ -30,4 +30,4 @@ dependencies:
   - tjpcov=0.4.*
   - treecorr=5.0.*
   - pip=24.0.*
-  - pygraphviz=1.13
+  - pygraphviz=1.13.*
