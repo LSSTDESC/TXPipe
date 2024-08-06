@@ -464,6 +464,11 @@ class TXLensCatalogSplitter(PipelineStage):
     def get_binned_lens_name(self): #can overwrite this in a weighted subclass
         return "binned_lens_catalog_unweighted"
 
+    def get_bands(self):
+        with self.open_input("photometry_catalog", wrapper=True) as f:
+            bands = f.get_bands()
+        return bands
+
     def run(self):
 
         with self.open_input(self.get_lens_tomo_name()) as f:
@@ -474,9 +479,7 @@ class TXLensCatalogSplitter(PipelineStage):
         # We also copy over the magnitudes and their errors to tbe new
         # per-bin catalogs. This makes it easier to run photo-z with RAIL
         # on each of the bins. So here we add those columns to our list
-        with self.open_input("photometry_catalog", wrapper=True) as f:
-            bands = f.get_bands()
-
+        bands = self.get_bands()
         if self.rank == 0:
             print(f"Copying photometry bands {bands} to sub-catalogs")
 
@@ -616,6 +619,12 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
         ("lens_catalog", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
     ]
+
+    def get_bands(self):
+        with self.open_input("lens_catalog", wrapper=True) as f:
+            bands = f.file['lens'].attrs["bands"]
+        return bands
+
 
     def data_iterator(self):
         z_col = self.config["redshift_column"]
