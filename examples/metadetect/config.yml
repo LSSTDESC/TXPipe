@@ -305,9 +305,9 @@ PZRailSummarizeLens:
     zmax: 3.0
     nzbins: 50
     name: PZRailSummarizeLens
-    catalog_group: photometry
+    catalog_group: lens
     tomography_name: lens
-    model: None
+    bands: ugrizy
 
 
 PZRailSummarizeSource:
@@ -318,7 +318,10 @@ PZRailSummarizeSource:
     nsamples: 100
     mag_prefix: /shear/00/mag_
     tomography_name: source
+    catalog_group: shear
     name: PZRailSummarizeSource
+    bands: riz
+
 FlowCreator:
     n_samples: 1000000
     seed: 5763248
