@@ -11,7 +11,7 @@ from .source_selector import (
     TXSourceSelectorMetadetect,
 )
 from .lens_selector import TXMeanLensSelector
-from .photoz_stack import TXPhotozSourceStack, TXPhotozLensStack
+from .photoz_stack import TXPhotozStack, TXPhotozPlot, TXTruePhotozStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
@@ -36,9 +36,12 @@ from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointP
 from .calibrate import TXShearCalibration
 from .ingest import *
 from .spatial_diagnostics import TXFocalPlanePlot
+from .lssweights import TXLSSWeights
+from .simulation import TXLogNormalGlass
+from .magnification import TXSSIMagnification
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
-from .extensions.clmm import TXTwoPointRLens
+from .extensions.clmm import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance

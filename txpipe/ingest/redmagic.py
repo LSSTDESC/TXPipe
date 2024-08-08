@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, FitsFile
+from ..data_types import HDFFile, FitsFile, QPNOfZFile
 import numpy as np
 
 
@@ -16,8 +16,8 @@ class TXIngestRedmagic(PipelineStage):
 
     outputs = [
         ("lens_catalog", HDFFile),
-        ("lens_tomography_catalog", HDFFile),
-        ("lens_photoz_stack", HDFFile),
+        ("lens_tomography_catalog_unweighted", HDFFile),
+        ("lens_photoz_stack", QPNOfZFile),
     ]
 
     config_options = {
@@ -30,6 +30,7 @@ class TXIngestRedmagic(PipelineStage):
     }
 
     def run(self):
+        import qp
         # Count number of objects
         f = self.open_input("redmagic_catalog")
         n = f[1].get_nrows()
@@ -41,14 +42,14 @@ class TXIngestRedmagic(PipelineStage):
         nbin_lens = len(zbin_edges) - 1
 
         cat = self.open_output("lens_catalog")
-        tomo = self.open_output("lens_tomography_catalog")
+        tomo = self.open_output("lens_tomography_catalog_unweighted")
 
         # redshift grid
         zmin = self.config["zmin"]
         zmax = self.config["zmax"]
         dz = self.config["dz"]
         z_grid = np.arange(zmin, zmax, dz)
-        nz_grid = np.zeros((nbin_lens, z_grid.size))
+        nz_grid = np.zeros((nbin_lens + 1, z_grid.size))
         nz = len(z_grid)
 
         # Create space in outputs
@@ -98,7 +99,7 @@ class TXIngestRedmagic(PipelineStage):
             z_grid_index = np.floor((z_true - zmin) / dz).astype(int)
             for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
                 if b >= 0:
-                    nz_grid[b][i_z] += weight[i]
+                    nz_grid[b,i_z] += weight[i]
 
             # Build up the counts
             any_bin = zbin >= 0
@@ -123,20 +124,11 @@ class TXIngestRedmagic(PipelineStage):
         h["counts"][:] = counts
         h["counts_2d"][:] = counts_2d
 
-        # Finally save the n(z) values we have built up
-        stack = self.open_output("lens_photoz_stack")
-        k = stack.create_group(f"n_of_z/lens")
+        # Generate and save the 2D n(z) histogram also, just
+        # by summing up all the individual values.
+        nz_grid[-1] = nz_grid[:-1].sum(axis=0)
 
-        # HDF has "attributes" which are for small metadata like this
-        k.attrs["nbin"] = nbin_lens
-        k.attrs["nz"] = nz_grid
+        stack_object = qp.Ensemble(qp.hist, data={"bins":z_grid, "pdfs":nz_grid[:, :-1]})
+        with self.open_output("lens_photoz_stack", wrapper=True) as stack:
+            stack.write_ensemble(stack_object)
 
-        # Save the redshift sampling
-        k.create_dataset("z", data=z_grid)
-
-        # And all the bins separately
-        for b in range(nbin_lens):
-            k.attrs[f"count_{b}"] = counts[b]
-            k.create_dataset(f"bin_{b}", data=nz_grid[b])
-
-        stack.close()

@@ -1,7 +1,7 @@
 # Stages to run
 stages:
 #    - name: TXIngestDataPreview02
-    - name: Inform_BPZ_lite
+    - name: BPZliteInformer
     - name: BPZ_lite
       nodes: 2
       nprocess: 128
@@ -53,7 +53,7 @@ stages:
     - name: TXDensityMaps
     - name: TXRealGaussianCovariance
       threads_per_process: 32
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
 
 # Where to put outputs
 output_dir: data/dp0.2/outputs

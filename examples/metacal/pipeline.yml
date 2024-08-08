@@ -5,20 +5,20 @@ stages:
     - name: GridSelection          # Simulate a spectroscopic sample
     - name: TXParqetToHDF          # Convert the spec sample format
     - name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
-      classname: Inform_BPZ_lite   
+      classname: BPZliteInformer   
     - name: PZEstimatorLens        # Measure lens galaxy PDFs
-      classname: BPZ_lite
+      classname: BPZliteEstimator
       threads_per_process: 1  
     - name: TXMeanLensSelector     # select objects for lens bins from the PDFs
-    - name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
-      classname: Inform_NZDir
+    - name: NZDirInformerLens       # Prepare the DIR method inputs for the lens sample     
+      classname: NZDirInformer
     - name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize  
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
     - name: TXSourceSelectorMetacal  # select and split objects into source bins
-    - name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
-      classname: Inform_NZDir
+    - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
+      classname: NZDirInformer
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)
@@ -27,6 +27,7 @@ stages:
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
     - name: TXAuxiliaryLensMaps    # make depth and bright object maps
     - name: TXSimpleMask         # combine maps to make a simple mask
+    - name: TXLSSWeightsUnit     # add systematic weights to the lens sample (weight=1 for this example)
     - name: TXSourceNoiseMaps    # Compute shear noise using rotations
     - name: TXLensNoiseMaps      # Compute lens noise using half-splits
     - name: TXDensityMaps        # turn mask and ngal maps into overdensity maps
@@ -54,7 +55,10 @@ stages:
     - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
     - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
     - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-    - name: TXPhotozPlots        # Plot the bin n(z)
+    - name: TXPhotozPlotSource        # Plot the bin n(z)
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotLens        # Plot the bin n(z)
+      classname: TXPhotozPlot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     - name: TXMapCorrelations    # plot the correlations between systematics and data
@@ -74,9 +78,9 @@ stages:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degradation.grid_selection
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
@@ -85,7 +89,7 @@ python_paths:
     - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
-output_dir: data/example/outputs
+output_dir: data/example/outputs_metacal
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -119,6 +123,6 @@ inputs:
 # if interrupted
 resume: True
 # where to put output logs for individual stages
-log_dir: data/example/logs
+log_dir: data/example/logs_metacal
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/example/log_metacal.txt

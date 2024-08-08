@@ -1,0 +1,92 @@
+TXSourceSelectorMetadetect:
+    input_pz: False
+    bands: riz #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 3.0]
+    chunk_rows: 100000
+    true_z: False
+    shear_prefix: ''
+
+BPZliteInformer:
+    aliases:
+        input: spectroscopic_catalog
+        model: photoz_model
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_riz.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: i
+    ref_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+ 
+
+BPZ_lite:
+    aliases:
+        model: photoz_model
+        input: shear_catalog
+        output: source_photoz_pdfs
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    nzbins: 301
+    data_path: ./data/example/rail-bpz-inputs
+    bands: [mag_r, mag_i, mag_z]
+    err_bands: [mag_err_r, mag_err_i, mag_err_z]
+    hdf5_groupname: shear/00
+    nondetect_val: .inf
+    columns_file: ./data/bpz_riz.columns
+    spectra_file: CWWSB4.list
+    ref_band: mag_i
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_reddening: false
+    mag_limits:
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+
+CLClusterBinningRedshiftRichness:
+    zedge : [0.2, 0.4, 0.6, 0.8]
+    richedge : [5., 10., 20.,25., 50.]
+
+CLClusterShearCatalogs: 
+    chunk_rows : 100_000 # rows to read at once from source cat
+    max_radius : 5  # Mpc
+    delta_z : 0.2  # redshift buffer
+    redshift_criterion : "mean"  # might also need PDF
+    subtract_mean_shear : True
+    
+
+CLClusterEnsembleProfiles:
+    #radial bin definition
+    r_min : 0.2 #in Mpc
+    r_max : 3.0 #in Mpc
+    nbins : 4 # number of bins
+    #type of profile
+    delta_sigma_profile : True
+    shear_profile : False
+    magnification_profile : False
+
+    
+    
+
+    
+

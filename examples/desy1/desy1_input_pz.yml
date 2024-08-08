@@ -15,7 +15,7 @@ modules: txpipe
 stages:
     - name: TXSelector
       nprocess: 1
-    - name: TXPhotozPlots
+    - name: TXPhotozPlot
     - name: TXDiagnosticMaps
       nprocess: 1
     - name: TXRandomCat

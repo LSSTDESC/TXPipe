@@ -10,16 +10,19 @@ stages:
     - name: TXStarCatalogSplitter
     - name: TXTruthLensSelector
     - name: PZPrepareEstimatorLens
-      classname: Inform_BPZ_lite   
+      classname: BPZliteInformer   
     - name: PZEstimatorLens
-      classname: BPZ_lite
+      classname: BPZliteEstimator
     - name: TXPhotozSourceStack
+      classname: TXPhotozStack
     - name: TXPhotozLensStack
+      classname: TXPhotozStack
     - name: TXSourceMaps
     - name: TXLensMaps
     - name: TXAuxiliarySourceMaps
     - name: TXAuxiliaryLensMaps
     - name: TXSimpleMask
+    - name: TXLSSWeightsUnit
     - name: TXDensityMaps
     - name: TXMapPlots
     - name: TXTracerMetadata
@@ -43,7 +46,10 @@ stages:
     - name: TXGalaxyStarShear
     - name: TXPSFDiagnostics
     - name: TXBrighterFatterPlot
-    - name: TXPhotozPlots
+    - name: TXPhotozPlotLens
+      classname: TXPhotozPlot
+    - name: TXPhotozPlotSource
+      classname: TXPhotozPlot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     # disabling these as they takes too long for a quick test
@@ -69,9 +75,9 @@ site:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degradation.grid_selection
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
@@ -94,6 +100,10 @@ inputs:
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     flow: data/example/inputs/example_flow.pkl
+    # This is a workaround to make an input to a ceci stage optional;
+    # we just have the stage check for the string "none" as an input name.
+    # We should be able to do this more cleanly but have not figure it out yet.
+    none: none
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

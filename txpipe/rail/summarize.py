@@ -1,20 +1,19 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, NOfZFile, PNGFile
-from ..photoz_stack import Stack
+from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, TomographyCatalog
 import numpy as np
+import collections
 
 class PZRailSummarize(PipelineStage):
     name = "PZRailSummarize"
     inputs = [
-        ("tomography_catalog", HDFFile),
+        ("tomography_catalog", TomographyCatalog),
         ("photometry_catalog", HDFFile),
         ("model", PickleFile),
 
     ]
     outputs = [
-        # TODO: Change to using QP files throughout
-        ("photoz_stack", NOfZFile),
-        ("photoz_realizations", HDFFile),
+        ("photoz_stack", QPNOfZFile),
+        ("photoz_realizations", QPMultiFile),
     ]
 
     # pull these out automatically
@@ -26,11 +25,12 @@ class PZRailSummarize(PipelineStage):
     def run(self):
         import rail.estimation
         import pickle
-        from rail.estimation.algos.NZDir import NZDir
+        from rail.estimation.algos.nz_dir import NZDirSummarizer
         from rail.core.data import TableHandle
-        import tables_io
+        import qp
 
-        model_filename = self.get_input(self.get_aliased_tag("model"))
+
+        model_filename = self.get_input("model")
 
         # The usual way of opening pickle files puts a bunch
         # of provenance at the start of them. External pickle files
@@ -73,7 +73,7 @@ class PZRailSummarize(PipelineStage):
         }
 
         # TODO: Make this flexible
-        substage_class = NZDir
+        substage_class = NZDirSummarizer
 
         for k, v in self.config.items():
             if k in substage_class.config_options:
@@ -121,72 +121,27 @@ class PZRailSummarize(PipelineStage):
             realizations_2d = substage.get_handle('output').data
             qp_2d = substage.get_handle('single_NZ').data
 
+        # Only the root process writes the output
         if self.rank > 0:
             return
 
-        # TODO: Convert to just saving QP files. Might need to fix metadata saving.
-        # Also, this currently assumes that the histogram form of the QP ensemble
-        # is used, which may not always be true.
+        combined_qp = qp.concatenate(qp_per_bin + [qp_2d])
 
-        # All the tomo bins should have the same z values
-        # so copy out the first one's values here
-        t = qp_per_bin[0].build_tables()
-
-        # The stack class just wants the lower edges, and
-        # the bins value has shape (1, nbin) here.
-        z = t['meta']['bins'][0, :-1]
-        nz = len(z)
-        tomo_name = self.config["tomography_name"]
-        stack = Stack(tomo_name, z, nbin)
-
-        # Go through each bin setting n(z) on our object directly.
-        for i,q in enumerate(qp_per_bin):
-            t = q.build_tables()
-            stack.set_bin(i, t['data']['pdfs'][0])
-
-
-
-        stack_2d = Stack(tomo_name + "2d", z, 1)
-        t = qp_2d.build_tables()
-        stack_2d.set_bin(0, t['data']['pdfs'][0])
-            
-        # Save final stack
-        with self.open_output("photoz_stack") as f:
-            stack.save(f)
-            stack_2d.save(f)
-
-
-        # Save the realizations
-        with self.open_output("photoz_realizations") as f:
-            group = f.create_group("realizations")
-            npdf = realizations_per_bin["bin_0"].npdf
-
-            group.attrs["nbin"] = nbin
-            group.attrs["nz"] = nz
-            group.attrs["nreal"] = npdf
-
-            # Collect all the PDFs as a single 3D array
-            pdfs = np.empty((npdf, nbin, nz))
-            for i in range(nbin):
-                ensemble = realizations_per_bin[f"bin_{i}"]
-                for j in range(npdf):
-                    pdfs[j, i] = ensemble[j].objdata()["pdfs"]
-                
-            group.create_dataset("pdfs", data=pdfs)
-            group.create_dataset("z", data=z)
-
-            pdfs_2d = np.empty((npdf, nz))
-            for j in range(npdf):
-                pdfs_2d[j] = realizations_2d[j].objdata()["pdfs"]
-
-            group.create_dataset("pdfs_2d", data=pdfs_2d)
+        with self.open_output("photoz_stack", wrapper=True) as f:
+            f.write_ensemble(combined_qp)
+        
+        with self.open_output("photoz_realizations", wrapper=True) as f:
+            for key, realizations in realizations_per_bin.items():
+                f.write_ensemble(realizations, key)
+            f.write_ensemble(realizations_2d, "bin_2d")
+            f.file['qps'].attrs['nbin'] = nbin
 
                 
 class PZRealizationsPlot(PipelineStage):
     name = "PZRealizationsPlot"
 
     inputs = [
-        ("photoz_realizations", HDFFile),
+        ("photoz_realizations", QPMultiFile),
     ]
 
     outputs = [
@@ -194,32 +149,37 @@ class PZRealizationsPlot(PipelineStage):
     ]
 
     config_options = {
-        "zmax": -1.0,
+        "zmax": 3.0,
+        "nz": 301,
     }
 
     def run(self):
         import h5py
         import matplotlib.pyplot as plt
 
-        with self.open_input("photoz_realizations") as f:
-            pdfs = f["/realizations/pdfs"][:]
-            z = f["/realizations/z"][:]
 
-        nreal, nbin, nz = pdfs.shape
-        alpha = 1.0 / nreal
+        zmax = self.config["zmax"]
+        nz = self.config["nz"]
+        z = np.linspace(0, zmax, nz)
 
-        # if there are more than 1000 of these then don't bother plotting them all
-        nreal = min(nreal, 1000)
+        with self.open_input("photoz_realizations", wrapper=True) as f:
+            names = f.get_names()
+            pdfs = {}
+            for tomo_bin in names:
+                realizations = f.read_ensemble(tomo_bin)
+                pdfs[tomo_bin] = realizations.pdf(z)
 
-        with self.open_output("photoz_realizations_plot", wrapper=True) as fig:
-            ax = fig.file.subplots()
-            for b in range(nbin):
-                line, = ax.plot(z, pdfs[0, b], alpha=0.2)
-                color = line.get_color()
-                for i in range(1, nreal):
-                    ax.plot(z, pdfs[i, b], alpha=0.2, color=color)
-            if self.config["zmax"] > 0:
-                ax.set_xlim(0, self.config["zmax"])
-            ax.set_ylim(0, None)
-            ax.set_xlabel("z")
-            ax.set_ylabel("n(z)")
+        # Here nbin includes the 2D bin
+        nbin = len(names)
+        with self.open_output("photoz_realizations_plot", wrapper=True, figsize=(6, 4*nbin)) as fig:
+            axes = fig.file.subplots(len(names), 1)
+            for i, tomo_bin in enumerate(names):
+                ax = axes[i]
+                pdfs_i = pdfs[tomo_bin]
+                print(pdfs_i.shape)
+                ax.plot(z, pdfs_i.mean(0))
+                ax.fill_between(z, pdfs_i.min(0), pdfs_i.max(0), alpha=0.2)
+
+                ax.set_xlabel("z")
+                ax.set_ylabel(f"{tomo_bin} n(z)")
+

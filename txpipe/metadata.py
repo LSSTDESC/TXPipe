@@ -66,9 +66,11 @@ class TXTracerMetadata(PipelineStage):
                 copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
             elif shear_catalog_type == "lensfit":
                 copy(shear_tomo_file, "response", "tracers", "K", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "C", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_N", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_S", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "K_2d", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "C_2d", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_2d_N", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "C_2d_S", meta_file, metadata)
             elif shear_catalog_type == "hsc":
                 copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "K", meta_file, metadata)
@@ -132,6 +134,9 @@ class TXTracerMetadata(PipelineStage):
             meta_file.create_dataset("tracers/lens_density", data=lens_density)
             meta_file.create_dataset("tracers/lens_density_2d", data=lens_density_2d)
 
+            meta_file["tracers"].attrs["area"] = area
+            meta_file["tracers"].attrs["area_unit"] = "deg^2"
+            meta_file["tracers"].attrs["density_unit"] = "arcmin^{-2}"
             metadata["lens_density"] = lens_density.tolist()
             metadata["lens_density_2d"] = lens_density_2d.tolist()
 

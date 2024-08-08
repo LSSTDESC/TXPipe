@@ -40,7 +40,7 @@ TXLensTrueNumberDensity:
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: lens_photoz_model
@@ -66,7 +66,7 @@ PZPrepareEstimatorLens:
 
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: source_photoz_model
@@ -93,7 +93,7 @@ PZPrepareEstimatorSource:
 
 PZEstimatorLens:
     name: PZEstimatorLens
-    classname: BPZ_lite
+    classname: BPZliteEstimator
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
@@ -297,6 +297,10 @@ TXTwoPointFourier:
     ell_max: 100
     bandwidth: 20
     cache_dir: ./cache/workspaces
+    do_shear_shear: True
+    do_shear_pos: True
+    do_pos_pos: True
+    compute_theory: True
 
 TXSimpleMaskFrac:
     supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
@@ -331,6 +335,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    nsamples: 100
     mag_prefix: "/shear/00/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
@@ -377,16 +382,16 @@ TXParqetToHDF:
         output: spectroscopic_catalog
 
 
-Inform_NZDirSource:
-    name: Inform_NZDirSource
+NZDirInformerSource:
+    name: NZDirInformerSource
     usecols: [r, i, z]
     hdf5_groupname: photometry
     aliases:
         input: spectroscopic_catalog
         model: source_direct_calibration_model
 
-Inform_NZDirLens:
-    name: Inform_NZDirLens
+NZDirInformerLens:
+    name: NZDirInformerLens
     usecols: [u, g, r, i, z, "y"]
     hdf5_groupname: photometry
     aliases:
@@ -404,3 +409,15 @@ PZRealizationsPlotLens:
     aliases:
         photoz_realizations: lens_photoz_realizations
         photoz_realizations_plot: lens_photoz_realizations_plot
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens

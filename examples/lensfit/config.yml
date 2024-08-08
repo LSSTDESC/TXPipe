@@ -51,10 +51,35 @@ PZRailEstimateLens:
     convert_unseen: True
     bands: ugrizy
 
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+
+TXPhotozLensStack:
+    name: TXPhotozLensStack
+    aliases:
+        photoz_pdfs: lens_photoz_pdfs
+        tomography_catalog: lens_tomography_catalog
+        weights_catalog: none
+        photoz_stack: lens_photoz_stack
 
 TXPhotozSourceStack:
+    name: TXPhotozSourceStack
+    weight_col: shear/weight
     aliases:
-        source_photoz_pdfs: lens_photoz_pdfs
+        # not a mistake - we use the same photoz_pdfs for both
+        photoz_pdfs: lens_photoz_pdfs
+        tomography_catalog: shear_tomography_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
 
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
@@ -77,7 +102,7 @@ TXSourceSelectorLensfit:
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
-    classname: Inform_BPZ_lite
+    classname: BPZliteInformer
     aliases:
         input: spectroscopic_catalog
         model: lens_photoz_model
@@ -267,7 +292,7 @@ TXParqetToHDF:
 
 PZEstimatorLens:
     name: PZEstimatorLens
-    classname: BPZ_lite
+    classname: BPZliteEstimator
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
@@ -301,3 +326,6 @@ PZEstimatorLens:
         mag_z: 27.98
         mag_y: 27.05
 
+TXGammaTStars: {}
+
+TXGammaTRandoms: {}

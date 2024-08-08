@@ -2,7 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
 from .utils import unique_list, choose_pixelization, rename_iterated
-from .utils.calibration_tools import read_shear_catalog_type, apply_metacal_response
+from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibrators import Calibrator
 from .mapping import ShearMapper, LensMapper, FlagMapper
 
@@ -10,6 +10,8 @@ from .mapping import ShearMapper, LensMapper, FlagMapper
 SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
+
+NON_TOMO_BIN = 999999
 
 # These generic mapping options are used by multiple different
 # map types.
@@ -120,174 +122,178 @@ class TXBaseMaps(PipelineStage):
         # add a maps section to each
         for output_file in output_files.values():
             output_file.file.create_group("maps")
-            output_file.file["maps"].attrs.update(self.config)
+            
+            #this is a bit of a hack, but if you have set an alias 
+            #it can't be added as an attr to the hdf5 file
+            #this saves everythinkg but aliases
+            from ceci.config import StageConfig
+            config_no_alias = {}
+            for k in self.config.keys():
+                if k == 'aliases':
+                    continue
+                config_no_alias[k] = self.config[k]
+            config_no_alias = StageConfig(**config_no_alias)
+
+            #output_file.file["maps"].attrs.update(self.config)
+            output_file.file["maps"].attrs.update(config_no_alias)
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():
             output_files[tag].write_map(map_name, pix, map_data, self.pixel_metadata)
 
 
-class TXSourceMaps(TXBaseMaps):
+
+class TXSourceMaps(PipelineStage):
+    """Generate source maps directly from binned, calibrated shear catalogs.
+
+    This implementation uses DASK, which offers a numpy-like syntax and
+    hides the complicated parallelization details.
+    
     """
-    Make tomographic shear maps
-
-    Make g1, g2, var(g1), var(g2), and lensing weight maps
-    from shear catalogs and tomography.
-
-    Should be replaced to use the binned_shear_catalog since that's
-    calibrated already.
-    """
-
     name = "TXSourceMaps"
+    dask_parallel = True
 
     inputs = [
-        ("shear_catalog", ShearCatalog),
-        ("shear_tomography_catalog", TomographyCatalog),
+        ("binned_shear_catalog", HDFFile),
     ]
 
     outputs = [
         ("source_maps", MapsFile),
     ]
 
-    # Generic mapping options + one option
-    # to use the truth shear columns
-    config_options = {"true_shear": False, **map_config_options}
+    config_options = {
+        "block_size": 0,
+        **map_config_options
+    }
 
-    def prepare_mappers(self, pixel_scheme):
-        # read shear cols and calibration info
-        nbin_source, cal = self.get_calibrators()
-
-        # store in config so it is saved later
-        self.config["nbin_source"] = nbin_source
-        # create basic mapper object
-        source_bins = list(range(nbin_source))
-        mapper = ShearMapper(
-            pixel_scheme,
-            source_bins,
-            sparse=self.config["sparse"],
-        )
-        return [mapper, cal]
-
-    def get_calibrators(self):
-        shear_catalog_type = read_shear_catalog_type(self)
-        cal, cal2D = Calibrator.load(self.get_input("shear_tomography_catalog"))
-        nbin_source = len(cal)
-        return nbin_source, [cal, cal2D]
-
-    def data_iterator(self):
-
-        # can optionally read truth values
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
-
-        # use utility function that combines data chunks
-        # from different files. Reading from n file sections
-        # takes 3n+1 arguments
-        it = self.combined_iterators(
-            self.config["chunk_rows"],  # number of rows to iterate at once
-            # first file info
-            "shear_catalog",  # tag of input file to iterate through
-            "shear",  # data group within file to look at
-            shear_cols,  # column(s) to read
-            # next file
-            "shear_tomography_catalog",  # tag of input file to iterate through
-            "tomography",  # data group within file to look at
-            ["bin"],  # column(s) to read
-        )
-        return rename_iterated(it, renames)
-
-    def accumulate_maps(self, pixel_scheme, data, mappers):
-        mapper = mappers[0]
-        mapper.add_data(data)
-
-    def calibrate_maps(self, g1, g2, var_g1, var_g2, cals):
+    def run(self):
+        import dask
+        import dask.array as da
         import healpy
 
-        # We will return lists of calibrated maps
-        g1_out = {}
-        g2_out = {}
-        var_g1_out = {}
-        var_g2_out = {}
+        # Configuration options
+        pixel_scheme = choose_pixelization(**self.config)
+        nside = self.config["nside"]
+        npix = healpy.nside2npix(nside)
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
 
-        cals, cal_2D = cals
+        # We have to keep this open throughout the process, because
+        # dask will internally load chunks of the input hdf5 data.
+        f = self.open_input("binned_shear_catalog")
+        nbin = f['shear'].attrs['nbin_source']
 
-        # We calibrate the 2D case separately
-        for i in g1.keys():
-            # we want to avoid accidentally calibrating any pixels
-            # that should be masked.
-            mask = (
-                (g1[i] == healpy.UNSEEN)
-                | (g2[i] == healpy.UNSEEN)
-                | (var_g1[i] == healpy.UNSEEN)
-                | (var_g2[i] == healpy.UNSEEN)
-            )
-            if i == "2D":
-                cal = cal_2D
-            else:
-                cal = cals[i]
-            g1_out[i], g2_out[i] = cal.apply(g1[i], g2[i])
-            std1 = np.sqrt(var_g1[i])
-            std2 = np.sqrt(var_g2[i])
-            std1, std2 = cal.apply(std1, std2, subtract_mean=False)
-            var_g1_out[i] = std1**2
-            var_g2_out[i] = std2**2
+        # The "all" bin is the non-tomographic case.
+        bins = list(range(nbin)) + ["all"]
+        output = {}
 
-            # re-apply the masking, just to make sure
-            for x in [g1_out[i], g2_out[i], var_g1_out[i], var_g2_out[i]]:
-                x[mask] = healpy.UNSEEN
+        for i in bins:
+            # These don't actually load all the data - everything is lazy
+            ra = da.from_array(f[f"shear/bin_{i}/ra"], block_size)
+            dec = da.from_array(f[f"shear/bin_{i}/dec"], block_size)
+            g1 = da.from_array(f[f"shear/bin_{i}/g1"], block_size)
+            g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
+            weight = da.from_array(f[f"shear/bin_{i}/weight"], block_size)
 
-        return g1_out, g2_out, var_g1_out, var_g2_out
+            # This seems to work directly, but we should check performance
+            pix = pixel_scheme.ang2pix(ra, dec)
 
-    def finalize_mappers(self, pixel_scheme, mappers):
-        # only one mapper here - we call its finalize method
-        # to collect everything
-        mapper, cal = mappers
-        pix, counts, g1, g2, var_g1, var_g2, weights_g, esq = mapper.finalize(self.comm)
+            # count map is just the number of galaxies per pixel
+            count_map = da.bincount(pix, minlength=npix)
 
-        # build up output
-        maps = {}
+            # For the other map we use bincount with weights - these are the
+            # various maps by pixel. bincount gives the number of objects in each
+            # vaue of the first argument, weighted by the weights keyword, so effectively
+            # it gives us
+            # p_i = sum_{j} x[j] * delta_{pix[j], i}
+            # which is out map
+            weight_map = da.bincount(pix, weights=weight, minlength=npix)
+            g1_map = da.bincount(pix, weights=weight * g1, minlength=npix)
+            g2_map = da.bincount(pix, weights=weight * g2, minlength=npix)
+            esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
 
-        # only master gets full stuff
-        if self.rank != 0:
-            return maps
+            # normalize by weights to get the mean map value in each pixel
+            g1_map /= weight_map
+            g2_map /= weight_map
 
-        # Calibrate the maps
-        g1, g2, var_g1, var_g2 = self.calibrate_maps(g1, g2, var_g1, var_g2, cal)
+            # Generate a catalog-like vector of the means so we can
+            # subtract from the full catalog.  Not sure if this ever actually gets
+            # created, or if dask just keeps a conceptual reference to it.
+            g1_mean = g1_map[pix]
+            g2_mean = g2_map[pix]
 
-        for b in mapper.bins:
-            # keys are the output tag and the map name
-            maps["source_maps", f"g1_{b}"] = (pix, g1[b])
-            maps["source_maps", f"g2_{b}"] = (pix, g2[b])
-            maps["source_maps", f"var_g1_{b}"] = (pix, var_g1[b])
-            maps["source_maps", f"var_g2_{b}"] = (pix, var_g2[b])
-            maps["source_maps", f"lensing_weight_{b}"] = (pix, weights_g[b])
-            maps["source_maps", f"count_{b}"] = (pix, counts[b])
-            # added from HSC branch, to get analytic noise in twopoint_fourier
-            out_e = np.zeros_like(esq[b])
-            out_e[esq[b] > 0] = esq[b][esq[b] > 0]
+            # Also generate variance maps
+            var1_map = da.bincount(pix, weights=weight * (g1 - g1_mean)**2, minlength=npix)
+            var2_map = da.bincount(pix, weights=weight * (g2 - g2_mean)**2, minlength=npix)
 
+            # we want the variance on the mean, so we divide by both the weight
+            # (to go from the sum to the variance) and then by the count (to get the
+            # variance on the mean). Have verified that this is the same as using
+            # var() on the original arrays.
+            var1_map /= (weight_map * count_map)
+            var2_map /= (weight_map * count_map)
+            
+            # slight change in output name
+            if i == "all":
+                i = "2D"
 
-            # calibrate the esq value - this is hacky for now!
-            shear_catalog_type = read_shear_catalog_type(self)
-            if (shear_catalog_type == "metadetect") or (shear_catalog_type == "metacal"):
-                print("DOING HACKY CAL OF VAR(e)")
-                cal_1D, cal_2D = cal
-                if b == "2D":
-                    c = cal_2D
-                else:
-                    c = cal_1D[b]
-                Rinv_approx = c.Rinv.diagonal().mean()
-                esq[b] *= Rinv_approx**2
+            # replace nans with UNSEEN.  The NaNs can occur if there are no objects
+            # in a pixel, so the value is undefined.
+            g1_map[da.isnan(g1_map)] = healpy.UNSEEN
+            g2_map[da.isnan(g2_map)] = healpy.UNSEEN
+            var1_map[da.isnan(var1_map)] = healpy.UNSEEN
+            var2_map[da.isnan(var2_map)] = healpy.UNSEEN
+            esq_map[da.isnan(esq_map)] = healpy.UNSEEN
 
-                # replace saved quantity
-                out_e = np.zeros_like(esq[b])
-                out_e[esq[b] > 0] = esq[b][esq[b] > 0]
-            else:
-                print("VAR(e) IS WRONG!")
+            # Save all the stuff we want here.
+            output[f"count_{i}"] = count_map
+            output[f"g1_{i}"] = g1_map
+            output[f"g2_{i}"] = g2_map
+            output[f"lensing_weight_{i}"] = weight_map
+            output[f"count_{i}"] = count_map
+            output[f"var_e_{i}"] = esq_map
+            output[f"var_g1_{i}"] = var1_map
+            output[f"var_g2_{i}"] = var2_map
+        
+        # mask is where a pixel is hit in any of the tomo bins
+        mask = da.zeros(npix, dtype=bool)
+        for i in bins:
+            if i == "all":
+                i = "2D"
+            mask |= output[f"lensing_weight_{i}"] > 0
 
-            maps["source_maps", f"var_e_{b}"] = (pix, out_e)
+        output["mask"] = mask
 
-        return maps
+        # Everything above is lazy - this forces the computation.
+        # It works out an efficient (we hope) way of doing everything in parallel
+        output, = dask.compute(output)
+        f.close()
+
+        # collate metadata
+        metadata = {
+            key: self.config[key]
+            for key in map_config_options
+        }
+        metadata['nbin'] = nbin
+        metadata['nbin_source'] = nbin
+
+        pix = np.where(output["mask"])[0]
+
+        # write the output maps
+        with self.open_output("source_maps", wrapper=True) as out:
+            for i in bins:
+                # again rename "all" to "2D"
+                if i == "all":
+                    i = "2D"
+
+                # We save the pixels in the mask - i.g. any pixel that is hit in any
+                # tomographic bin is included. Some will be UNSEEN.
+                for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
+                    out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
+
+            out.file['maps'].attrs.update(metadata)
+
 
 
 class TXLensMaps(TXBaseMaps):
@@ -329,7 +335,6 @@ class TXLensMaps(TXBaseMaps):
         return [mapper]
 
     def data_iterator(self):
-        print("TODO: add use of lens weights here")
         # see TXSourceMaps abov for info on this
         return self.combined_iterators(
             self.config["chunk_rows"],
@@ -403,7 +408,7 @@ class TXDensityMaps(PipelineStage):
     """
     Convert galaxy count maps to overdensity delta maps
 
-    delta = (ngal - <ngal>) / <ngal>
+    delta = ngal / (weight * <ngal>/<weight>) - 1
 
     This has to be separate from the lens mappers above
     because it requires the mask, which is created elsewhere
@@ -419,19 +424,20 @@ class TXDensityMaps(PipelineStage):
     outputs = [
         ("density_maps", MapsFile),
     ]
+    config_options = {
+        "mask_threshold": 0.0
+    }
 
     def run(self):
         import healpy
 
-        # Read the mask
+        # Read the mask and set all pixels below the threshold to 0
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_map("mask")
-
-        # set unseen pixels to weight zero
-        mask[mask == healpy.UNSEEN] = 0
-        mask[np.isnan(mask)] = 0
-        mask = mask.flatten()
-        pix = np.where(mask > 0)[0]
+            mask = f.read_mask(thresh=self.config["mask_threshold"])
+        
+        #identify unmasked pixels
+        pix_keep = mask > 0.
+        pix = np.where(pix_keep)[0]
 
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
@@ -447,11 +453,10 @@ class TXDensityMaps(PipelineStage):
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask.shape, dtype=np.float64)
-            delta_map[mask > 0] = (
-                ng[mask > 0] / mask[mask > 0]
-            )  # Assuming that the weights do not include the mask
-            mu = np.mean(delta_map[mask > 0])
-            delta_map[mask > 0] = delta_map[mask > 0] / mu - 1
+            #calculate mean of ng and mean of mask
+            mu_n = np.mean(ng[pix_keep])
+            mu_w = np.mean(mask[pix_keep])
+            delta_map[pix_keep] = (ng[pix_keep] / (mask[pix_keep] * mu_n / mu_w)) - 1
             density_maps.append(delta_map)
 
         # write output

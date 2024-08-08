@@ -1,3 +1,4 @@
+import os
 import pymaster as nmt
 import numpy as np
 import healpy
@@ -41,13 +42,10 @@ class MyNmtBin(nmt.NmtBin):
         f_ell=None,
     ):
         super().__init__(
-            nside=nside,
             bpws=bpws,
             ells=ells,
             weights=weights,
-            nlb=nlb,
             lmax=lmax,
-            is_Dell=False,
             f_ell=None,
         )
         self.ell_max = self.lmax
@@ -131,5 +129,8 @@ class WorkspaceCache:
 
         if p.exists():
             return
+
+        else:
+            os.makedirs(os.path.dirname(str(p)), exist_ok=True)
 
         workspace.write_to(str(p))

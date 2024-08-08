@@ -6,7 +6,7 @@ stages:
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
     - name: TXTruthLensCatalogSplitter
     - name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)    
-    - name: TXPhotozPlots 
+    - name: TXPhotozPlot 
     - name: TXSourceMaps
       #nprocess: 6
       #threads_per_process: 1
@@ -92,7 +92,7 @@ inputs:
     # subsampled catalog for debugging:
     #shear_catalog: /global/cscratch1/sd/jjeffers/TXPipe/data/desy1/inputs/small_DESY1_shear_catalog.h5               
     photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/photometry_catalog_desy1_RM.h5
-    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM_091423.h5
     shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/shear_photoz_stack.hdf5
     lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_photoz_stack.hdf5
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat

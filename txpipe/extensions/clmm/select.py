@@ -8,8 +8,8 @@ from collections import defaultdict
 import yaml
 import ceci
 
-class CLClusterShearCatalogs(PipelineStage):
-    name = "CLClusterShearCatalogs"
+class CLClusterShearCatalogsOld(PipelineStage):
+    name = "CLClusterShearCatalogsOld"
     inputs = [
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
@@ -539,4 +539,3 @@ class CombinedClusterCatalog:
 
 
         return clmm.GCData(data=cat)
-

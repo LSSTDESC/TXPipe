@@ -1,0 +1,61 @@
+
+# Stages to run
+stages:
+    - name: TXLogNormalGlass                    # generate Lognormal lens smaple
+    - name: TXTruthLensCatalogSplitter          # Split the lens sample tomographically
+    
+    #- name: TXLSSWeightsLinPix   # compute LSS weights
+    - name: TXLSSWeightsUnit
+    
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXLensMaps             # make source lens and n_gal maps
+    - name: TXDensityMaps
+    - name: TXTwoPointPixel
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe 
+
+# Where to put outputs
+output_dir: examples/lognormal/output/
+
+# How to run the pipeline: mini, parsl, or cwl
+site:
+    name: cori-batch
+    image: ghcr.io/lsstdesc/txpipe
+    
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+
+# configuration settings
+config: examples/lognormal/config.yml
+
+#inputs in this example are the outputs of the 1deg2 metadetetc example
+inputs:
+    mask: data/example/outputs_metadetect/mask.hdf5
+    lens_photoz_stack: data/example/outputs_metadetect/lens_photoz_stack.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    flow: data/example/inputs/example_flow.pkl
+
+    input_lss_weight_maps: none #for uncontaminated mocks
+
+    random_cats: data/example/outputs_metadetect/random_cats.hdf5
+    binned_random_catalog:     data/example/outputs_metadetect/binned_random_catalog.hdf5
+    binned_random_catalog_sub: data/example/outputs_metadetect/binned_random_catalog_sub.hdf5
+
+    #empty inputs needed for twopoint stages
+    shear_catalog: none
+    shear_tomography_catalog: none
+    binned_shear_catalog: none
+    shear_photoz_stack: none
+    source_maps: none
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: False
+# where to put output logs for individual stages
+log_dir: examples/lognormal/output/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: examples/lognormal/output/log.txt
