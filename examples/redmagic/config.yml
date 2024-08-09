@@ -20,6 +20,8 @@ TXMetacalGCRInput:
 TXExposureInfo:
     dc2_name: '1.2p'
 
+TXShearCalibration:
+    shear_prefix: mcal_
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image

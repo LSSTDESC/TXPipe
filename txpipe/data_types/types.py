@@ -18,6 +18,17 @@ def metacalibration_names(names):
         out += [name + "_" + s for s in suffices]
     return out
 
+class PhotometryCatalog(HDFFile):
+    def get_bands(self):
+        group = self.file["photometry"]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
+
 
 class ShearCatalog(HDFFile):
     """
@@ -89,6 +100,16 @@ class ShearCatalog(HDFFile):
             rename = {}
 
         return shear_cols, rename
+
+    def get_bands(self):
+        group = self.file[self.get_primary_catalog_group()]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
 
 
 class TomographyCatalog(HDFFile):
