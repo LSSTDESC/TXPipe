@@ -11,17 +11,24 @@ site:
 modules: txpipe  rail.stages
 
 python_paths:
-    - submodules/RAIL
+  - submodules/RAIL
 
 
 stages:
-    - name: PZPrepareEstimatorSource   # Prepare the p(z) estimator
-      classname: BPZliteInformer
-    - name: PZEstimatorSource        # Measure lens galaxy PDFs
-      classname: BPZliteEstimator
-      threads_per_process: 1  
-    - name: TXSourceSelectorMetadetect  # Select a source sample
-    - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster
+  - name: PZPrepareEstimatorSource     # Prepare the p(z) estimator
+    classname: BPZliteInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: source_photoz_model
+  - name: PZEstimatorSource          # Measure lens galaxy PDFs
+    classname: BPZliteEstimator
+    threads_per_process: 1
+    aliases:
+        model: source_photoz_model
+        input: shear_catalog
+        output: source_photoz_pdfs
+  - name: TXSourceSelectorMetadetect    # Select a source sample
+  - name: CLClusterShearCatalogs        # Find shear catalogs around each cluster
 
 
 output_dir: data/clmm/outputs
@@ -34,7 +41,7 @@ inputs:
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
 
-resume: True
+resume: true
 log_dir: data/clmm/logs
 pipeline_log: data/clmm/log.txt
 

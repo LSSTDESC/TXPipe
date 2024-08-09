@@ -1,26 +1,43 @@
-
 # Stages to run
 stages:
-    - name: TXMatchSSI  # process the SSI inputs
-    - name: TXMatchSSIMag   # process the SSI inputs
-      classname: TXMatchSSI
+  - name: TXMatchSSI    # process the SSI inputs
+  - name: TXMatchSSIMag     # process the SSI inputs
+    classname: TXMatchSSI
 
 
-    - name: TXTruthLensSelectorSSI      #make SSI run lens samples
-      classname: TXTruthLensSelector
-    - name: TXTruthLensCatalogSplitterSSI  
-      classname: TXTruthLensCatalogSplitter
-    
-    - name: TXTruthLensSelectorSSIMag   #make magnified SSI run lens samples
-      classname: TXTruthLensSelector
-    - name: TXTruthLensCatalogSplitterSSIMag 
-      classname: TXTruthLensCatalogSplitter
+    aliases:
+        injection_catalog: injection_catalog_mag
+        ssi_photometry_catalog: ssi_photometry_catalog_mag
+        matched_ssi_photometry_catalog: matched_ssi_photometry_catalog_mag
+  - name: TXTruthLensSelectorSSI        #make SSI run lens samples
+    classname: TXTruthLensSelector
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog
+  - name: TXTruthLensCatalogSplitterSSI
+    classname: TXTruthLensCatalogSplitter
 
-    - name: TXSSIMagnification  # compute magnification coefficients for lens sample
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog
+  - name: TXTruthLensSelectorSSIMag     #make magnified SSI run lens samples
+    classname: TXTruthLensSelector
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog_mag
+        lens_tomography_catalog_unweighted: lens_tomography_catalog_unweighted_mag
+  - name: TXTruthLensCatalogSplitterSSIMag
+    classname: TXTruthLensCatalogSplitter
+
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog_mag
+        lens_tomography_catalog_unweighted: lens_tomography_catalog_unweighted_mag
+        binned_lens_catalog_unweighted: binned_lens_catalog_unweighted_mag
+  - name: TXSSIMagnification    # compute magnification coefficients for lens sample
 
 
 # modules and packages to import that have pipeline
 # stages defined in them
+    aliases:
+        binned_lens_catalog_nomag: binned_lens_catalog_unweighted
+        binned_lens_catalog_mag: binned_lens_catalog_unweighted_mag
 modules: txpipe
 # modules: txpipe rail tjpcov
 
@@ -42,7 +59,6 @@ config: examples/ssi/config_mag.yml
 
 inputs:
     # See README for paths to download these files
-    
     #use photometry catalog for everything, just while setting up
     injection_catalog: data/example/inputs/photometry_catalog.hdf5
     ssi_photometry_catalog: data/example/inputs/photometry_catalog.hdf5
@@ -55,7 +71,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: False
+resume: false
 # where to put output logs for individual stages
 log_dir: data/example/outputs_ssi_mag/logs/
 # where to put an overall parsl pipeline log

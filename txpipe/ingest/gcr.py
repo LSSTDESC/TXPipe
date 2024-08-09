@@ -170,6 +170,8 @@ class TXMetacalGCRInput(PipelineStage):
 
         f = self.open_output(name)
         g = f.create_group(group)
+        g.attrs["bands"] = "ugrizy"
+
         for name in cols:
             g.create_dataset(name, shape=(n,), dtype=cat[name].dtype)
         return f

@@ -1,5 +1,5 @@
 TXSourceSelectorMetadetect:
-    input_pz: False
+    input_pz: false
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -7,13 +7,10 @@ TXSourceSelectorMetadetect:
     delta_gamma: 0.02
     source_zbin_edges: [0.1, 3.0]
     chunk_rows: 100000
-    true_z: False
+    true_z: false
     shear_prefix: ''
 
 BPZliteInformer:
-    aliases:
-        input: spectroscopic_catalog
-        model: photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -27,19 +24,15 @@ BPZliteInformer:
     p_min: 0.005
     gauss_kernel: 0.0
     mag_err_min: 0.005
-    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
     bands: riz
     zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
- 
+
 
 BPZ_lite:
-    aliases:
-        model: photoz_model
-        input: shear_catalog
-        output: source_photoz_pdfs
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
@@ -64,23 +57,23 @@ BPZ_lite:
         mag_z: 27.98
 
 CLClusterBinningRedshiftRichness:
-    zedge : [0.1, 0.4, 0.6, 0.8]
-    richedge : [5., 10., 20.,25.]
+    zedge: [0.1, 0.4, 0.6, 0.8]
+    richedge: [5., 10., 20., 25.]
 
-CLClusterShearCatalogs: 
-    chunk_rows : 100_000 # rows to read at once from source cat
-    max_radius : 5  # Mpc
-    delta_z : 0.2  # redshift buffer
-    redshift_criterion : "mean"  # might also need PDF
-    subtract_mean_shear : True
-    
+CLClusterShearCatalogs:
+    chunk_rows: 100_000  # rows to read at once from source cat
+    max_radius: 5   # Mpc
+    delta_z: 0.2   # redshift buffer
+    redshift_criterion: mean     # might also need PDF
+    subtract_mean_shear: true
+
 
 CLClusterEnsembleProfiles:
     #radial bin definition
-    r_min : 0.3 #in Mpc
-    r_max : 3.0 #in Mpc
-    nbins : 4 # number of bins
+    r_min: 0.3  #in Mpc
+    r_max: 3.0  #in Mpc
+    nbins: 4  # number of bins
     #type of profile
-    delta_sigma_profile : True
-    shear_profile : False
-    magnification_profile : False
+    delta_sigma_profile: true
+    shear_profile: false
+    magnification_profile: false

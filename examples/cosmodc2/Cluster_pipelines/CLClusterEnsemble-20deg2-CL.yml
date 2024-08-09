@@ -2,7 +2,7 @@
 #for CCin2p3
 site:
     name: cc-parallel
-    mpi_command: "mpirun -n"
+    mpi_command: mpirun -n
 
 #for NERSC
 #site:
@@ -31,8 +31,8 @@ stages:
 #      nprocess: 1
 #    - name: CLClusterShearCatalogs
 #      nprocess: 1 #>1 does not work with mpi
-    - name: CLClusterEnsembleProfiles
-      nprocess: 1
+  - name: CLClusterEnsembleProfiles
+    nprocess: 1
 #    - name: CLClusterDataVector
 #      nprocess: 1
 
@@ -51,10 +51,10 @@ inputs:
     #cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
     #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
-    cluster_catalog_tomography : ./data/cosmodc2/20deg2/cluster_catalog_tomography.hdf5
-    cluster_shear_catalogs : ./data/cosmodc2/20deg2/cluster_shear_catalogs.hdf5
-    
-resume: True
+    cluster_catalog_tomography: ./data/cosmodc2/20deg2/cluster_catalog_tomography.hdf5
+    cluster_shear_catalogs: ./data/cosmodc2/20deg2/cluster_shear_catalogs.hdf5
+
+resume: true
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_20deg2.txt
 

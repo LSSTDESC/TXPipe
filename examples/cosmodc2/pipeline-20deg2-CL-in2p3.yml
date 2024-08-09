@@ -2,7 +2,7 @@
 #for CCin2p3
 site:
     name: cc-parallel
-    mpi_command: "mpirun -n"
+    mpi_command: mpirun -n
 
 #for NERSC
 #site:
@@ -27,12 +27,12 @@ stages:
 #      nprocess: 1
 #    - name: BPZ_lite
 #      nprocess: 30
-    - name: CLClusterBinningRedshiftRichness
-      nprocess: 1
-    - name: CLClusterShearCatalogs
-      nprocess: 1 #>1 does not work with mpi
-    - name: CLClusterEnsembleProfiles
-      nprocess: 1
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
+  - name: CLClusterShearCatalogs
+    nprocess: 1   #>1 does not work with mpi
+  - name: CLClusterEnsembleProfiles
+    nprocess: 1
 #    - name: CLClusterDataVector
 #      nprocess: 1
 
@@ -43,16 +43,15 @@ config: ./examples/cosmodc2/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  ./data/cosmodc2/20deg2/shear_catalog.hdf5
+    shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
     #photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
-    calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
+    calibration_table: ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
     #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
-    
-resume: True
+resume: true
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_20deg2.txt
 
