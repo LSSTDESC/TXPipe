@@ -82,19 +82,27 @@ class TXShearCalibration(PipelineStage):
             g = f.get_primary_catalog_group()
 
             # cat_cols is everything we are reading in
-            if cat_type in ["metadetect"]:
+            if cat_type == "metadetect":
                 cat_cols = cat_cols + [f"00/{c}" for c in extra_cols + mag_cols_in]
                 mag_cols_in = [f"00/{c}" for c in mag_cols_in]
+                renames.update({f"00/{c}":c for c in extra_cols})
             else:
                 cat_cols = cat_cols + extra_cols + mag_cols_in
 
-            renames.update({f"{g}/{c}":c for c in extra_cols})
             renames.update(zip(mag_cols_in, mag_cols_out))
 
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
             output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols + mag_cols_out
+
+        if self.rank == 0:
+            print("Reading these columns from the 'shear' group:")
+            for c in cat_cols:
+                print(f" - {c}")
+            print("Renaming these columns:")
+            for k, v in renames.items():
+                print(f" - {k} -> {v}")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
