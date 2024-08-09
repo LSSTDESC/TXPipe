@@ -25,7 +25,6 @@ dependencies:
   - python=3.10.*
   - scikit-learn=1.5.*
   - scipy=1.13.*
-  - pytables>=3.8.*
   - tables-io-full=0.9.*
   - threadpoolctl=3.5.*
   - tjpcov=0.4.*
