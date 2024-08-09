@@ -83,7 +83,7 @@ class TXShearCalibration(PipelineStage):
 
             # cat_cols is everything we are reading in
             if cat_type in ["metadetect"]:
-                cat_cols = [f"00/{c}" for c in cat_cols + extra_cols + mag_cols_in]
+                cat_cols = cat_cols + [f"00/{c}" for c in extra_cols + mag_cols_in]
                 mag_cols_in = [f"00/{c}" for c in mag_cols_in]
             else:
                 cat_cols = cat_cols + extra_cols + mag_cols_in
