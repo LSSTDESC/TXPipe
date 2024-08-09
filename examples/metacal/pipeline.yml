@@ -34,16 +34,18 @@ stages:
     classname: PZRailSummarize
     aliases:
         tomography_catalog: lens_tomography_catalog
-        photometry_catalog: photometry_catalog
+        binned_catalog: binned_lens_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
   - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
     classname: PZRailSummarize
     aliases:
         tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
+        binned_catalog: binned_shear_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
   - name: TXSourceSelectorMetacal    # select and split objects into source bins
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer

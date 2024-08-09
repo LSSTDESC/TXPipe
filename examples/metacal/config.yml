@@ -125,6 +125,7 @@ TXSourceTrueNumberDensity:
 
 TXShearCalibration:
     shear_prefix: mcal_
+    extra_cols: [redshift_true]
 
 TXSourceSelectorMetacal:
     input_pz: false
@@ -302,7 +303,6 @@ PZRailSummarizeLens:
     catalog_group: lens
     tomography_name: lens
     bands: ugrizy
-    model: None
 
 
 PZRailSummarizeSource:

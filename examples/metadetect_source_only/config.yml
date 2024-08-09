@@ -186,8 +186,11 @@ PZRailSummarizeSource:
     zmax: 3.0
     nzbins: 50
     mag_prefix: /shear/00/mag_
+    catalog_group: shear
     tomography_name: source
+    bands: riz
     name: PZRailSummarizeSource
+
 FlowCreator:
     n_samples: 1000000
     seed: 5763248
