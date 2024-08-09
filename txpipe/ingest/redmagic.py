@@ -54,6 +54,7 @@ class TXIngestRedmagic(PipelineStage):
 
         # Create space in outputs
         g = cat.create_group("lens")
+        g.attrs["bands"] = bands
         g.create_dataset("ra", (n,), dtype=np.float64)
         g.create_dataset("dec", (n,), dtype=np.float64)
         g.create_dataset("chisq", (n,), dtype=np.float64)
