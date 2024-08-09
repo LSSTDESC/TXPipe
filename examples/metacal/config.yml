@@ -133,6 +133,9 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
 
 
+TXShearCalibration:
+    shear_prefix: mcal_
+
 TXSourceSelectorMetacal:
     input_pz: False
     true_z: True
