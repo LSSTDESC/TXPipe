@@ -5,6 +5,7 @@ from .data_types import (
     HDFFile,
     TextFile,
     FiducialCosmology,
+    PhotometryCatalog,
     FitsFile,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
@@ -306,7 +307,7 @@ class TXTruthLensSelector(TXBaseLensSelector):
     name = "TXTruthLensSelector"
 
     inputs = [
-        ("photometry_catalog", HDFFile),
+        ("photometry_catalog", PhotometryCatalog),
     ]
 
     def data_iterator(self):
@@ -333,7 +334,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
 
     name = "TXMeanLensSelector"
     inputs = [
-        ("photometry_catalog", HDFFile),
+        ("photometry_catalog", PhotometryCatalog),
         ("lens_photoz_pdfs", HDFFile),
     ]
 
@@ -365,7 +366,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 
     name = "TXModeLensSelector"
     inputs = [
-        ("photometry_catalog", HDFFile),
+        ("photometry_catalog", PhotometryCatalog),
         ("lens_photoz_pdfs", HDFFile),
     ]
 
@@ -391,7 +392,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 class TXRandomForestLensSelector(TXBaseLensSelector):
     name = "TXRandomForestLensSelector"
     inputs = [
-        ("photometry_catalog", HDFFile),
+        ("photometry_catalog", PhotometryCatalog),
         ("calibration_table", TextFile),
     ]
     config_options = TXBaseLensSelector.config_options.copy().update({
@@ -442,7 +443,7 @@ class TXLensCatalogSplitter(PipelineStage):
 
     inputs = [
         ("lens_tomography_catalog_unweighted", TomographyCatalog),
-        ("photometry_catalog", HDFFile),
+        ("photometry_catalog", PhotometryCatalog),
         ("fiducial_cosmology", FiducialCosmology),
         ("lens_photoz_pdfs", HDFFile),
     ]
@@ -463,6 +464,11 @@ class TXLensCatalogSplitter(PipelineStage):
     def get_binned_lens_name(self): #can overwrite this in a weighted subclass
         return "binned_lens_catalog_unweighted"
 
+    def get_bands(self):
+        with self.open_input("photometry_catalog", wrapper=True) as f:
+            bands = f.get_bands()
+        return bands
+
     def run(self):
 
         with self.open_input(self.get_lens_tomo_name()) as f:
@@ -470,7 +476,22 @@ class TXLensCatalogSplitter(PipelineStage):
             counts = f["tomography/counts"][:]
             count2d = f["tomography/counts_2d"][:]
 
+        # We also copy over the magnitudes and their errors to tbe new
+        # per-bin catalogs. This makes it easier to run photo-z with RAIL
+        # on each of the bins. So here we add those columns to our list
+        bands = self.get_bands()
+        if self.rank == 0:
+            print(f"Copying photometry bands {bands} to sub-catalogs")
+
+        band_cols = [f"mag_{b}" for b in bands]
+        band_cols += [f"mag_err_{b}" for b in bands]
+        self.config["extra_cols"] += band_cols
+
+        # For some reason we briefly ended up with None or empty columns
+        # in the configuration.
         extra_cols = [c for c in self.config["extra_cols"] if c]
+
+        # Regular columns.
         cols = ["ra", "dec", "weight", "comoving_distance"]
 
         # Object we use to make the separate lens bins catalog
@@ -555,7 +576,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
     name = "TXTruthLensCatalogSplitter"
     inputs = [
             ("lens_tomography_catalog_unweighted", TomographyCatalog),
-            ("photometry_catalog", HDFFile),
+            ("photometry_catalog", PhotometryCatalog),
             ("fiducial_cosmology", FiducialCosmology),
         ]
     config_options = TXLensCatalogSplitter.config_options.copy()
@@ -599,6 +620,12 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
         ("fiducial_cosmology", FiducialCosmology),
     ]
 
+    def get_bands(self):
+        with self.open_input("lens_catalog", wrapper=True) as f:
+            bands = f.file['lens'].attrs["bands"]
+        return bands
+
+
     def data_iterator(self):
         z_col = self.config["redshift_column"]
         extra_cols = [
@@ -628,7 +655,7 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
     name = "TXTruthLensCatalogSplitterWeighted"
     inputs = [
             ("lens_tomography_catalog", TomographyCatalog),
-            ("photometry_catalog", HDFFile),
+            ("photometry_catalog", PhotometryCatalog),
             ("fiducial_cosmology", FiducialCosmology),
         ]
     outputs = [
