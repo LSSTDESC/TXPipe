@@ -41,6 +41,9 @@ TXLensTrueNumberDensity:
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
     classname: BPZliteInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -64,6 +67,9 @@ PZPrepareEstimatorLens:
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
     classname: BPZliteInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: source_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -88,6 +94,10 @@ PZPrepareEstimatorSource:
 PZEstimatorLens:
     name: PZEstimatorLens
     classname: BPZliteEstimator
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
@@ -309,9 +319,15 @@ PZRailSummarizeLens:
     zmax: 3.0
     nzbins: 50
     name: PZRailSummarizeLens
-    catalog_group: lens
-    tomography_name: lens
-    bands: ugrizy
+    catalog_group: "photometry"
+    tomography_name: "lens"
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        photometry_catalog: photometry_catalog
+        model: lens_direct_calibration_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+    model: None
 
 
 PZRailSummarizeSource:
@@ -320,18 +336,36 @@ PZRailSummarizeSource:
     zmax: 3.0
     nzbins: 50
     nsamples: 100
-    mag_prefix: /shear/00/mag_
-    tomography_name: source
-    catalog_group: shear
+    mag_prefix: "/shear/00/mag_"
+    tomography_name: "source"
     name: PZRailSummarizeSource
-    bands: riz
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        photometry_catalog: shear_catalog
+        model: source_direct_calibration_model
+        photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
+
 
 FlowCreator:
     n_samples: 1000000
     seed: 5763248
+    aliases:
+        # This input was generated using get_example_flow in pzflow,
+        # not something specific.
+        output: ideal_specz_catalog
+        model: flow
+
 InvRedshiftIncompleteness:
     pivot_redshift: 0.8
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+
 GridSelection:
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
     redshift_cut: 5.1
     ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
     settings_file: data/example/inputs/HSC_grid_settings.pkl
@@ -343,19 +377,47 @@ GridSelection:
 
 TXParqetToHDF:
     hdf_group: photometry
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+
+
 NZDirInformerSource:
     name: NZDirInformerSource
     usecols: [r, i, z]
     hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: source_direct_calibration_model
+
 NZDirInformerLens:
     name: NZDirInformerLens
-    usecols: [u, g, r, i, z, y]
+    usecols: [u, g, r, i, z, "y"]
     hdf5_groupname: photometry
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_direct_calibration_model
+
 PZRealizationsPlotSource:
     name: PZRealizationsPlotSource
+    aliases:
+        photoz_realizations: source_photoz_realizations
+        photoz_realizations_plot: source_photoz_realizations_plot
+
 PZRealizationsPlotLens:
     name: PZRealizationsPlotLens
+    aliases:
+        photoz_realizations: lens_photoz_realizations
+        photoz_realizations_plot: lens_photoz_realizations_plot
+
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
