@@ -135,6 +135,7 @@ TXSourceTrueNumberDensity:
 
 TXShearCalibration:
     shear_prefix: mcal_
+    extra_cols: [redshift_true]
 
 TXSourceSelectorMetacal:
     input_pz: False
