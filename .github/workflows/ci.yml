@@ -10,7 +10,7 @@ on:
     - cron: '0 12 * * 1'
 
 env:
-  EXAMPLE_DATA_FILE_VERSION: v2
+  EXAMPLE_DATA_FILE_VERSION: v3
   # Setting this did not appear to work. Instead will need to
   # find/replace when changing it.
   # CONTAINER_IMAGE: ghcr.io/lsstdesc/txpipe-dev:latest

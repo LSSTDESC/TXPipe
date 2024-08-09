@@ -123,6 +123,9 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
 
 
+TXShearCalibration:
+    shear_prefix: mcal_
+
 TXSourceSelectorMetacal:
     input_pz: false
     true_z: true
@@ -296,8 +299,9 @@ PZRailSummarizeLens:
     zmax: 3.0
     nzbins: 50
     name: PZRailSummarizeLens
-    catalog_group: photometry
+    catalog_group: lens
     tomography_name: lens
+    bands: ugrizy
     model: None
 
 
@@ -308,7 +312,10 @@ PZRailSummarizeSource:
     nzbins: 50
     mag_prefix: /shear/mcal_mag_
     tomography_name: source
+    catalog_group: shear
+    bands: riz
     name: PZRailSummarizeSource
+
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
 TXPhotozPlotSource:
@@ -332,9 +339,9 @@ TXParqetToHDF:
     hdf_group: photometry
 NZDirInformerSource:
     name: NZDirInformerSource
-    usecols: [r, i, z]
+    usecols: riz
     hdf5_groupname: photometry
 NZDirInformerLens:
     name: NZDirInformerLens
-    usecols: [u, g, r, i, z, y]
+    usecols: ugrizy
     hdf5_groupname: photometry

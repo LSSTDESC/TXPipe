@@ -42,7 +42,8 @@ class TXShearCalibration(PipelineStage):
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
         "extra_cols": [""],
-        "shear_catalog_type": ''
+        "shear_catalog_type": '',
+        "shear_prefix": "",
     }
 
     def run(self):
@@ -56,8 +57,10 @@ class TXShearCalibration(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             bands = f.get_bands()
 
-        for b in bands:
-            extra_cols += ["mag_" + b, "mag_err_" + b]
+        shear_prefix = self.config["shear_prefix"]
+        # this is the names of the columns in the input catalog
+        mag_cols_out = [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
+        mag_cols_in = [f"{shear_prefix}{c}" for c in mag_cols_out]
 
         if self.rank == 0:
             print("Copying extra columns: ", extra_cols)
@@ -65,7 +68,7 @@ class TXShearCalibration(PipelineStage):
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
-        output_file, splitter, nbin = self.setup_output(extra_cols)
+        output_file, splitter, nbin = self.setup_output(extra_cols + mag_cols_out)
 
         #  Load the calibrators.  If using the true shear no calibration
         # is needed
@@ -76,18 +79,22 @@ class TXShearCalibration(PipelineStage):
         #  Get the correct shear catalogs
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
+            g = f.get_primary_catalog_group()
 
-            if cat_type=='metacal' or cat_type=='metadetect':
-                cat_cols += [f"00/{c}" for c in extra_cols]
-                renames.update({f"00/{c}":c for c in extra_cols})
+            # cat_cols is everything we are reading in
+            if cat_type in ["metadetect"]:
+                cat_cols = [f"00/{c}" for c in cat_cols + extra_cols + mag_cols_in]
+                mag_cols_in = [f"00/{c}" for c in mag_cols_in]
             else:
-                cat_cols += [f"{c}" for c in extra_cols]
-                renames.update({f"{c}":c for c in extra_cols})
-        
+                cat_cols = cat_cols + extra_cols + mag_cols_in
+
+            renames.update({f"{g}/{c}":c for c in extra_cols})
+            renames.update(zip(mag_cols_in, mag_cols_out))
+
         if cat_type!='hsc':
-            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols + mag_cols_out
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
