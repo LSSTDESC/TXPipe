@@ -335,14 +335,13 @@ class TXTauStatistics(PipelineStage):
     """
     name     = "TXTauStatistics"
     parallel = False
-    inputs   = [("shear_catalog"           , ShearCatalog),
-                ("shear_tomography_catalog", TomographyCatalog),
+    inputs   = [("binned_shear_catalog"    , ShearCatalog),
                 ("star_catalog"            , HDFFile),
                 ("rowe_stats"              , HDFFile),
                ]
 
     outputs  = [
-                ("tau0"    , PNGFile),
+                ("tau0"    , PNGFile), 
                 ("tau2"    , PNGFile),
                 ("tau5"    , PNGFile),
                 ("tau_stats", HDFFile),
@@ -362,6 +361,7 @@ class TXTauStatistics(PipelineStage):
                        "star_type"     : 'PSF-reserved',
                        "cov_method"    : 'bootstrap',
                        "flip_g2"       : False,
+                       "tomographic"   : True,
                      }
 
     def run(self):
@@ -371,45 +371,52 @@ class TXTauStatistics(PipelineStage):
         import emcee
 
         matplotlib.use("agg")
-
-        # Load galaxies
-        gal_ra, gal_dec, gal_g1, gal_g2, gal_weight   = self.load_galaxies()
-        gal_g = np.array((gal_g1, gal_g2))
+        
+        tau_stats  = {}
+        p_bestfits = {}
         
         # Load star properties
         ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
-        
-        # Compute tau stats 
-        tau_stats  = {}
-        p_bestfits = {}
 
         for s in STAR_TYPES:
             
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
 
-            # Load precomputed Rowe stats if they exist already
+            # Load precomputed Rowe stats 
             rowe_stats = self.load_rowe(s)
 
-            # Joint tau 0-2-5 data vector and cov
-            # tau_stats contains [ang, tau0, tau2, tau5, cov]
-            
-            tau_stats[s] = self.compute_all_tau(gal_ra, gal_dec, gal_g, gal_weight, s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type)
-            
-            # Run simple mcmc to find best-fit values for alpha,beta,eta
+            # set ranges for mcmc 
             ranges = {}
             ranges['alpha'] = [-1000.00, 1000.00]
             ranges['beta']  = [-1000.00, 1000.00]
             ranges['eta']   = [-1000.00, 1000.00]
-
-            p_bestfits[s] = self.sample(tau_stats[s],rowe_stats,ranges)
             
+            tau_stats[s]  = {}
+            p_bestfits[s] = {}
+            # Load galaxies
+            if self.config['tomographic']:
+                with self.open_input("binned_shear_catalog") as f:
+                     nzbin = list(range(f["shear"].attrs["nbin_source"])) + ['all']
+            else:
+                nzbin = ['all']
+            print(nzbin)
+            for n in nzbin:
+                gal_ra, gal_dec, gal_g1, gal_g2, gal_weight = self.load_galaxies(n)
+                gal_g = np.array((gal_g1, gal_g2))
+                print(f"computing tau stats for bin {n}")
+                # Joint tau 0-2-5 data vector and cov
+                # tau_stats contains [ang, tau0, tau2, tau5, cov]
+                tau_stats[s][f'bin_{n}'] = self.compute_all_tau(gal_ra, gal_dec, gal_g, gal_weight, 
+                                                    s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type)
+
+                # Run simple mcmc to find best-fit values for alpha,beta,eta
+                p_bestfits[s][f'bin_{n}'] = self.sample(tau_stats[s][f'bin_{n}'],rowe_stats,ranges)
         #Save tau stats in a h5 file
         self.save_tau_stats(tau_stats, p_bestfits)
 
         # Save tau plots
         self.tau_plots(tau_stats)
-
 
     def load_rowe(self,s):
         f = self.open_input("rowe_stats")   
@@ -452,7 +459,7 @@ class TXTauStatistics(PipelineStage):
 
         print("Computing best-fit alpha, beta, eta")
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask))
-        sampler.run_mcmc(initpos, nsteps=5000, progress=True);
+        sampler.run_mcmc(initpos, nsteps=5000, progress=False);
         flat_samples = sampler.get_chain(discard=2000,flat=True)
         
         ret = {}
@@ -466,7 +473,6 @@ class TXTauStatistics(PipelineStage):
         dof  = (self.config['nbins']*6) - ndim
         print("Best-fit finished. Resulting chi^2/dof: ", chi2/dof)
         return ret
-
 
     def logPrior(self,theta,ranges):
         '''
@@ -577,38 +583,43 @@ class TXTauStatistics(PipelineStage):
     def save_tau_stats(self, tau_stats, p_bestfits):
         '''
         tau_stats: (dict) dictionary containing theta,tau0,tau2,tau5 and cov
-        '''
+        '''            
         f = self.open_output("tau_stats")
         g = f.create_group("tau_statistics")
 
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
-        
-            theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]
-            name = STAR_TYPE_NAMES[s]
-            h = g.create_group(f"tau_{name}")
-            h.create_dataset("theta"  , data=theta)
-            h.create_dataset("tau0p"   , data=tau0p)
-            h.create_dataset("tau0m"   , data=tau0m)
-            h.create_dataset("tau2p"   , data=tau2p)
-            h.create_dataset("tau2m"   , data=tau2m)
-            h.create_dataset("tau5p"   , data=tau5p)
-            h.create_dataset("tau5m"   , data=tau5m)
-            h.create_dataset("cov"    , data=cov)
-            
-            # Also save best-fit values 
-            h = g.create_group(f"bestfits_{name}")
-            alpha_err = max(p_bestfits[s]['alpha']['lerr'],p_bestfits[s]['alpha']['rerr']) 
-            beta_err  = max(p_bestfits[s]['beta']['lerr'] ,p_bestfits[s]['beta']['rerr']) 
-            eta_err   = max(p_bestfits[s]['eta']['lerr']  ,p_bestfits[s]['eta']['rerr']) 
-            h.create_dataset("alpha"    , data=p_bestfits[s]['alpha']['median'])
-            h.create_dataset("alpha_err", data=alpha_err)
-            h.create_dataset("beta"     , data=p_bestfits[s]['beta']['median'])
-            h.create_dataset("beta_err" , data=beta_err)
-            h.create_dataset("eta"      , data=p_bestfits[s]['eta']['median'])
-            h.create_dataset("eta_err"  , data=eta_err)
-            
+            if self.config['tomographic']:
+                with self.open_input("binned_shear_catalog") as h:
+                        nbin = list(range(h["shear"].attrs["nbin_source"])) + ['all']
+            else:
+                nbin = ['all']
+            for n in nbin:
+                theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s][f'bin_{n}']
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f"tau_{name}/bin_{n}/")
+                h.create_dataset("theta"  , data=theta)
+                h.create_dataset("tau0p"   , data=tau0p)
+                h.create_dataset("tau0m"   , data=tau0m)
+                h.create_dataset("tau2p"   , data=tau2p)
+                h.create_dataset("tau2m"   , data=tau2m)
+                h.create_dataset("tau5p"   , data=tau5p)
+                h.create_dataset("tau5m"   , data=tau5m)
+                h.create_dataset("cov"    , data=cov)
+
+                # Also save best-fit values 
+                h = g.create_group(f"bestfits_{name}/bin_{n}")
+                alpha_err = max(p_bestfits[s][f'bin_{n}']['alpha']['lerr'],p_bestfits[s][f'bin_{n}']['alpha']['rerr']) 
+                beta_err  = max(p_bestfits[s][f'bin_{n}']['beta']['lerr'] ,p_bestfits[s][f'bin_{n}']['beta']['rerr']) 
+                eta_err   = max(p_bestfits[s][f'bin_{n}']['eta']['lerr']  ,p_bestfits[s][f'bin_{n}']['eta']['rerr']) 
+                h.create_dataset("alpha"    , data=p_bestfits[s][f'bin_{n}']['alpha']['median'])
+                h.create_dataset("alpha_err", data=alpha_err)
+                h.create_dataset("beta"     , data=p_bestfits[s][f'bin_{n}']['beta']['median'])
+                h.create_dataset("beta_err" , data=beta_err)
+                h.create_dataset("eta"      , data=p_bestfits[s][f'bin_{n}']['eta']['median'])
+                h.create_dataset("eta_err"  , data=eta_err)
+
         f.close()
 
     def load_stars(self):
@@ -647,88 +658,34 @@ class TXTauStatistics(PipelineStage):
 
         return ra, dec, e_meas, e_mod, de, T_frac, star_type
     
-    def load_galaxies(self):
-        # Columns we need from the shear catalog
-        cat_type = read_shear_catalog_type(self)
-        _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
-
-        # Load tomography data
-        with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/bin"][:]
-            mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
-            if cat_type == "metacal":
-                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
-            elif cat_type == "metadetect":
-                R_total_2d = f["response/R_2d"][:]
-
-        with self.open_input("shear_catalog") as f:
-            g = f["shear"]
+    def load_galaxies(self, zbin):
+        with self.open_input("binned_shear_catalog") as f:
+            g   = f[f'shear/bin_{zbin}/']
+            ra  = g['ra'][:]
+            dec = g['dec'][:]
+            g1  = g['g1'][:]
+            g2  = g['g2'][:]
+            w   = g['weight'][:]
+        
+        if self.config['subtract_mean']:
+            g1 = g1 - np.average(g1,weights=w)
+            g2 = g2 - np.average(g1,weights=w)
             
-            # Get the base catalog for metadetect
-            if cat_type == "metadetect":
-                g = g["00"]
-            
-            ra, dec = g["ra"][:][mask], g["dec"][:][mask]
-
-            # Load shape and weight for metacal
-            if cat_type == "metacal":
-                g1        = g["mcal_g1"][:][mask]
-                g2        = g["mcal_g2"][:][mask]
-                weight    = g["weight"][:][mask]
-
-            # Load shape and weight for metadetect
-            elif cat_type == "metadetect":
-                g1        = g["g1"][:][mask]
-                g2        = g["g2"][:][mask]
-                weight    = g["weight"][:][mask]
-
-            # Load shape and weight for everything else
-            elif cat_type == "lensfit":
-                g1        = g["g1"][:][mask]
-                g2        = g["g2"][:][mask]
-                weight    = g["weight"][:][mask]
-                sigma_e   = g["sigma_e"][:][mask]
-                m         = g["m"][:][mask]
-            else: 
-                g1        = g["g1"][:][mask]
-                g2        = g["g2"][:][mask]
-                weight    = g["weight"][:][mask]
-                c1        = g["c1"][:][mask]
-                c2        = g["c2"][:][mask]
-                aselepsf1 = g["aselepsf1"][:][mask]
-                aselepsf2 = g["aselepsf2"][:][mask]
-                msel      = g["msel"][:][mask]
-
-        # Change shear convention 
-        if self.config["flip_g2"]:
+        if self.config['flip_g2']:
             g2 *= -1
-        # Apply calibration factor
-        if cat_type == "metacal" or cat_type == "metadetect":
-            print("Applying metacal/metadetect response")
-            g1, g2 = cal.apply(g1, g2, subtract_mean = self.config['subtract_mean'])
-
-        elif cat_type == "lensfit":
-            print("Applying lensfit calibration")
-            # In KiDS, the additive bias is calculated and removed per North and South field
-            # Therefore, we add dec to split the data into these fields if subtract_mean & dec_cut == True. 
-            g1, g2 = cal.apply(dec, g1, g2, subtract_mean = self.config['subtract_mean'])
             
-        else:
-            print("Applying HSC de-calibration")
-            g1, g2 = cal.apply(g1, g2, c1, c2, aselepsf1, aselepsf2, msel, subtract_mean=self.config['subtract_mean'])
-            
-        return ra, dec, g1, g2, weight
+        return ra, dec, g1, g2, w
 
     def tau_plots(self, tau_stats):
-        # First plot - stats 1,3,4
+        # Plot non-tomographic stats 1,3,4
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
         
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
-
-            theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]
+                
+            theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]['bin_all']
             nb    = len(theta)
             taus  = {'0p':tau0p, '0m':tau0m, '2p':tau2p, '2m':tau2m, '5p':tau5p, '5m':tau5m}
             errs  = {'0p': np.diag(cov[int(0*nb):int(1*nb),int(0*nb):int(1*nb)])**0.5,
@@ -768,12 +725,11 @@ class TXTauStatistics(PipelineStage):
                             )
                 
                 plt.xscale("log")
-                if np.all(taus[f"{i}p"] >= 0):
-                    plt.yscale("log")
+                plt.yscale("symlog")
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(rf"$\tau_{i}(\theta)$")
                 plt.legend()
-                plt.title(STAR_TYPE_NAMES[s])
+                plt.title('Non-tomographic'+STAR_TYPE_NAMES[s])
 
                 f.close()
 
@@ -792,9 +748,9 @@ class TXRoweStatistics(PipelineStage):
     inputs = [("star_catalog", HDFFile),
              ("patch_centers", TextFile)]
     outputs = [
-        ("rowe134", PNGFile),
-        ("rowe25", PNGFile),
-        ("rowe0", PNGFile),
+        #("rowe134", PNGFile),
+        #("rowe25", PNGFile),
+        #("rowe0", PNGFile),
         ("rowe_stats", HDFFile),
     ]
 
