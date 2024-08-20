@@ -1,25 +1,13 @@
 dependencies:
   - pip:
-    - ceci==1.14
+    - ceci==1.17
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
-    - git+https://github.com/joezuntz/dask-mpi@31e35759cfb03780a12ad6ffe2b82279b0fab442
-    - git+https://github.com/LSSTDESC/CLMM.git@1.8.0
-    - healpix==2023.1.13
+    - dask-mpi>=2022.4.0
+    - git+https://github.com/LSSTDESC/CLMM.git@1.12.5
     - parallel-statistics==0.13
-    - sacc==0.8
-    - tjpcov==0.3.0
-    - jaxlib==0.4.14
-    - jax==0.4.14
-    - pz-rail[dev]==0.99.1
-    - pz-rail-bpz==0.1.0
-    - pz-rail-astro-tools==0.0.2
-    - pz-rail-base==0.0.4
-    - pz-rail-dsps==0.0.2
-    - pz-rail-flexzboost==0.1.1
-    - pz-rail-fsps==0.0.2
-    - pz-rail-gpz-v1==0.1.2
-    - pz-rail-pipelines==0.1.0
-    - pz-rail-pzflow==0.0.1
-    - pz-rail-sklearn==0.0.1
-    - pz-rail-som==0.0.2
+    - sacc[all]==0.14
+    - jax==0.4.27
+    - jaxlib==0.4.23
     - glass==2023.7
+    - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
+    - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.0.0

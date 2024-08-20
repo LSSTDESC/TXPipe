@@ -21,12 +21,12 @@ modules: >
 python_paths: []
 
 stages:
-    - name: TXSourceSelectorMetadetect
-      nprocess: 30
-    - name: Inform_BPZ_lite
-      nprocess: 1
-    - name: BPZ_lite
-      nprocess: 30
+#    - name: TXSourceSelectorMetadetect
+#      nprocess: 30
+#    - name: BPZliteInformer
+#      nprocess: 1
+#    - name: BPZ_lite
+#      nprocess: 30
     - name: CLClusterBinningRedshiftRichness
       nprocess: 1
     - name: CLClusterShearCatalogs

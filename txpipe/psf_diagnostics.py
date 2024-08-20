@@ -13,6 +13,7 @@ from .data_types import (
 from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 import sys
+import os
 from .utils.calibration_tools import read_shear_catalog_type
 from .plotting import manual_step_histogram
 from .utils.calibrators import Calibrator
@@ -200,6 +201,7 @@ class TXPSFMomentCorr(PipelineStage):
         import treecorr
         import h5py
         import matplotlib
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         matplotlib.use("agg")
 
@@ -303,7 +305,7 @@ class TXPSFMomentCorr(PipelineStage):
                     fmt=".",
                     label=rf"$\rho_{i}$",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
             plt.xscale("log")
             plt.yscale("log")
@@ -374,7 +376,7 @@ class TXTauStatistics(PipelineStage):
         
         tau_stats  = {}
         p_bestfits = {}
-        
+
         # Load star properties
         ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
 
@@ -559,6 +561,7 @@ class TXTauStatistics(PipelineStage):
         w = np.array(( [w[0][star_type==s], w[1][star_type==s]]))     # Get w for specific stars
 
         print(f"Computing Tau 0,2,5 and the covariance")
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         
         # Load all catalogs
         catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=self.config['npatch']) # galaxy shear
@@ -567,10 +570,13 @@ class TXTauStatistics(PipelineStage):
         catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_*(T_* - T_model)/T_* )
         
         # Compute all corrleations
+        print(f"Computing shear-e_model correlation {catg.nobj} x {catp.nobj}")
         corr0 = treecorr.GGCorrelation(self.config)
         corr0.process(catg, catp)
+        print(f"Computing shear-(e_*-e_model) correlation {catg.nobj} x {catq.nobj}")
         corr2 = treecorr.GGCorrelation(self.config)
         corr2.process(catg, catq)
+        print(f"Computing shear-(e_*(T_* - T_model)/T_*) correlation {catg.nobj} x {catw.nobj}")
         corr5 = treecorr.GGCorrelation(self.config)
         corr5.process(catg, catw)
         
@@ -774,7 +780,7 @@ class TXRoweStatistics(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
-
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         ra, dec, e_meas, e_mod, de, T_f, star_type = self.load_stars()
         rowe_stats = {}
         for t in STAR_TYPES:
@@ -1045,7 +1051,7 @@ class TXGalaxyStarShear(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
-
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         ra, dec, e_psf, de_psf, star_type = self.load_stars()
         ra_gal, dec_gal, g1, g2, weight = self.load_galaxies()
 
@@ -1210,9 +1216,6 @@ class TXGalaxyStarShear(PipelineStage):
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
-                )
                 plt.errorbar(
                     theta,
                     abs(xi),
@@ -1220,7 +1223,6 @@ class TXGalaxyStarShear(PipelineStage):
                     fmt=".",
                     label=f"galaxy cross star {TEST_TYPES[i-1]}",
                     capsize=3,
-                    transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
@@ -1244,9 +1246,6 @@ class TXGalaxyStarShear(PipelineStage):
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = star_star_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
-                )
                 plt.errorbar(
                     theta,
                     abs(xi),
@@ -1254,7 +1253,6 @@ class TXGalaxyStarShear(PipelineStage):
                     fmt=".",
                     label=f"star cross star {TEST_TYPES[i-1]}",
                     capsize=3,
-                    transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
@@ -1333,7 +1331,7 @@ class TXGalaxyStarDensity(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
-
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
         ra, dec, star_type = self.load_stars()
         ra_gal, dec_gal = self.load_galaxies()
         ra_random, dec_random = self.load_randoms()
@@ -1418,7 +1416,7 @@ class TXGalaxyStarDensity(PipelineStage):
         rn.process(rancat, cat2)
         rr.process(rancat, rancat)
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         return nn.meanr, nn.xi, nn.varxi**0.5
 
     def compute_star_star(self, ra, dec, s, ra_gal, dec_gal, ra_random, dec_random):
@@ -1448,7 +1446,7 @@ class TXGalaxyStarDensity(PipelineStage):
         rn.process(rancat, cat1)
         rr.process(rancat, rancat)
 
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         return nn.meanr, nn.xi, nn.varxi**0.5
 
     def galaxy_star_plots(self, galaxy_star_stats):
@@ -1475,7 +1473,7 @@ class TXGalaxyStarDensity(PipelineStage):
                     fmt=".",
                     label=f"{TEST_TYPES[i-1]} density stats",
                     capsize=3,
-                    transform=tr,
+                    # transform=tr,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
