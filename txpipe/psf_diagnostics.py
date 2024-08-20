@@ -921,7 +921,7 @@ class TXRoweStatistics(PipelineStage):
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-
+            mkr = ['o','s','D']
             for j, i in enumerate([1, 3, 4]):
                 theta, xip, xim, xip_err, xim_err = rowe_stats[i, s]
                 tr = mtrans.offset_copy(
@@ -931,7 +931,7 @@ class TXRoweStatistics(PipelineStage):
                     theta,
                     abs(xip),
                     xip_err,
-                    fmt=".",
+                    fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}+$",
                     capsize=3,
                     color="blue",
@@ -941,7 +941,7 @@ class TXRoweStatistics(PipelineStage):
                     theta,
                     abs(xim),
                     xim_err,
-                    fmt=".",
+                    fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}-$",
                     capsize=3,
                     color="red",
@@ -960,6 +960,7 @@ class TXRoweStatistics(PipelineStage):
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
+            mkr = ['o','s']
             for j, i in enumerate([2, 5]): 
                 theta, xip, xim, xip_err, xim_err = rowe_stats[i, s]
                 tr = mtrans.offset_copy(
@@ -969,7 +970,7 @@ class TXRoweStatistics(PipelineStage):
                     theta,
                     abs(xip),
                     xip_err,
-                    fmt=".",
+                    fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}+$",
                     capsize=3,
                     color="blue",
@@ -979,7 +980,7 @@ class TXRoweStatistics(PipelineStage):
                     theta,
                     abs(xim),
                     xim_err,
-                    fmt=".",
+                    fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}-$",
                     capsize=3,
                     color="red",
