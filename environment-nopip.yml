@@ -4,6 +4,7 @@ dependencies:
   - astropy=6.1.*
   - camb=1.5.*
   - cosmosis=3.7.*
+  - cmake
   - dask=2024.5.2
   - dm-tree=0.1.8
   - fitsio=1.2.*
