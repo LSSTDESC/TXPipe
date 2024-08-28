@@ -284,11 +284,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-12]
+        os: [ubuntu-latest, macos-14]
         include:
           - os: ubuntu-latest
             INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
-          - os: macos-12
+          - os: macos-14
             INSTALL_DEPS: brew update-reset && brew install wget
     steps:
     - name: Checkout repository
