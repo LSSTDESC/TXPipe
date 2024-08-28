@@ -1,14 +1,32 @@
 
 # Stages to run
 stages:
-    - name: FlowCreator             # Simulate a spectroscopic population
-    - name: GridSelection          # Simulate a spectroscopic sample
-    - name: TXParqetToHDF          # Convert the spec sample format
-    - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+    - name: FlowCreator               # Simulate a spectroscopic population
+      aliases:
+          output: ideal_specz_catalog
+          model: flow
+    - name: GridSelection            # Simulate a spectroscopic sample
+      aliases:
+          input: ideal_specz_catalog
+          output: specz_catalog_pq
+    - name: TXParqetToHDF            # Convert the spec sample format
+      aliases:
+          input: specz_catalog_pq
+          output: spectroscopic_catalog    
+    - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
+      aliases:
+          tomography_catalog: shear_tomography_catalog
+          binned_catalog: binned_shear_catalog
+          model: source_direct_calibration_model
+          photoz_stack: shear_photoz_stack
+          photoz_realizations: source_photoz_realizations
     - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
+    - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
       classname: NZDirInformer
+      aliases:
+          input: spectroscopic_catalog
+          model: source_direct_calibration_model
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
     - name: TXSourceMaps           # make source g1 and g2 maps
     - name: TXAuxiliarySourceMaps  # make PSF and flag maps
@@ -27,10 +45,16 @@ stages:
     - name: TXRoweStatistics     # Compute and plot Rowe statistics
       threads_per_process: 2
     - name: TXGalaxyStarShear    # Compute and plot the star-galaxy shear cross-correlation
-    - name: TXPhotozPlotSource        # Plot the bin n(z)
+    - name: TXPhotozPlotSource          # Plot the bin n(z)
       classname: TXPhotozPlot
-    - name: PZRealizationsPlotSource   # Plot n(z) realizations
+      aliases:
+          photoz_stack: shear_photoz_stack
+          nz_plot: nz_source
+    - name: PZRealizationsPlotSource     # Plot n(z) realizations
       classname: PZRealizationsPlot
+      aliases:
+          photoz_realizations: source_photoz_realizations
+          photoz_realizations_plot: source_photoz_realizations_plot
     - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
     - name: TXConvergenceMapPlots # Plot the convergence map
     # Disabled since not yet synchronised with new Treecorr MPI
