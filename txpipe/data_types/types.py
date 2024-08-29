@@ -112,6 +112,20 @@ class ShearCatalog(HDFFile):
         return bands
 
 
+class BinnedCatalog(HDFFile):
+    required_datasets = []
+    def get_bins(self, group_name):
+        group = self.file[group_name]
+        info = dict(group.attrs)
+        bins = []
+        for i in range(info["nbin"]):
+            code = info[f"bin_{i}"]
+            name = f"bin_{code}"
+            bins.append(name)
+        return bins
+
+
+
 class TomographyCatalog(HDFFile):
     required_datasets = []
 

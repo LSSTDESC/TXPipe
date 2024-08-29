@@ -314,11 +314,12 @@ PZRailSummarizeLens:
     zmax: 3.0
     nzbins: 50
     name: PZRailSummarizeLens
-    catalog_group: "photometry"
+    catalog_group: "lens"
     tomography_name: "lens"
+    bands: ugrizy
     aliases:
         tomography_catalog: lens_tomography_catalog
-        photometry_catalog: photometry_catalog
+        binned_catalog: binned_lens_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
     model: None
@@ -331,10 +332,12 @@ PZRailSummarizeSource:
     nzbins: 50
     mag_prefix: "/shear/mcal_mag_"
     tomography_name: "source"
+    catalog_group: shear
     name: PZRailSummarizeSource
+    bands: riz
     aliases:
         tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
+        binned_catalog: binned_shear_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
 
@@ -388,7 +391,7 @@ TXParqetToHDF:
 
 NZDirInformerSource:
     name: NZDirInformerSource
-    usecols: [r, i, z]
+    usecols: riz
     hdf5_groupname: photometry
     aliases:
         input: spectroscopic_catalog
@@ -396,7 +399,7 @@ NZDirInformerSource:
 
 NZDirInformerLens:
     name: NZDirInformerLens
-    usecols: [u, g, r, i, z, "y"]
+    usecols: ugrizy
     hdf5_groupname: photometry
     aliases:
         input: spectroscopic_catalog
