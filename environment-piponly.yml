@@ -16,7 +16,7 @@ dependencies:
     - pz-rail-astro-tools==1.0.4
     - pz-rail-base==1.0.4
     - pz-rail-bpz==1.0.1
-    - pz-rail-cmnn==1.0.0 # no release for ceci2 yet 
+    - pz-rail-cmnn==1.0.1
     - pz-rail-dsps==0.0.3 # no pypi release for more than 0.3
     - pz-rail-flexzboost==1.0.1
     - pz-rail-fsps==1.0.1
@@ -24,4 +24,4 @@ dependencies:
     - pz-rail-lephare==0.2 # no release for ceci2 yet - cannot use
     - pz-rail-pzflow==1.0.1
     - pz-rail-sklearn==1.0.1
-    - pz-rail-som==1.0.0 # no release for ceci2 yet - cannot use
+    - pz-rail-som==1.0.1
