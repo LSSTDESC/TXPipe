@@ -1,11 +1,12 @@
-
 # Stages to run
 stages:
-    - name: TXSimpleMock           # Convert a text file mock catalog to HDF5
-    - name: TXSourceSelectorSimple # select and split objects into source bins
-    - name: TXShearCalibration     # Calibrate and split the source sample tomographically
-    - name: TXMockTruthPZ          # Generate PDFs as narrow gaussian centered on the true redshifts
-    - name: CLClusterShearCatalogs # Extract and weight the shear catalog around every cluster
+  - name: TXSimpleMock             # Convert a text file mock catalog to HDF5
+  - name: TXSourceSelectorSimple   # select and split objects into source bins
+  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
+  - name: TXMockTruthPZ            # Generate PDFs as narrow gaussian centered on the true redshifts
+    aliases:
+        photoz_pdfs: source_photoz_pdfs
+  - name: CLClusterShearCatalogs   # Extract and weight the shear catalog around every cluster
 
 
 
@@ -17,7 +18,7 @@ modules: >
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-    - submodules/WLMassMap/python/desc/
+  - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
 output_dir: data/example/outputs_mock
@@ -46,7 +47,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: true
 # where to put output logs for individual stages
 log_dir: data/example/logs_mock
 # where to put an overall parsl pipeline log
