@@ -1,5 +1,6 @@
 global:
     nside: 512
+    pixelization: healpix
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
