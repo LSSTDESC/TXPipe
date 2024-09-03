@@ -128,7 +128,6 @@ PZEstimatorLens:
         mag_y: 27.05    
 
 
-
 # Mock version of stacking:
 TXSourceTrueNumberDensity:
     nz: 301
@@ -324,11 +323,12 @@ PZRailSummarizeLens:
     zmax: 3.0
     nzbins: 50
     name: PZRailSummarizeLens
-    catalog_group: "photometry"
+    catalog_group: lens
     tomography_name: "lens"
+    bands: ugrizy
     aliases:
         tomography_catalog: lens_tomography_catalog
-        photometry_catalog: photometry_catalog
+        binned_catalog: binned_lens_catalog
         model: lens_direct_calibration_model
         photoz_stack: lens_photoz_stack
         photoz_realizations: lens_photoz_realizations
@@ -342,11 +342,13 @@ PZRailSummarizeSource:
     nzbins: 50
     nsamples: 100
     mag_prefix: "/shear/00/mag_"
-    tomography_name: "source"
+    catalog_group: shear
+    tomography_name: source
+    bands: riz
     name: PZRailSummarizeSource
     aliases:
         tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
+        binned_catalog: binned_shear_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations

@@ -190,12 +190,15 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
+    nsamples: 100
     mag_prefix: "/shear/00/mag_"
-    tomography_name: "source"
+    catalog_group: shear
+    tomography_name: source
+    bands: riz
     name: PZRailSummarizeSource
     aliases:
         tomography_catalog: shear_tomography_catalog
-        photometry_catalog: shear_catalog
+        binned_catalog: binned_shear_catalog
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
