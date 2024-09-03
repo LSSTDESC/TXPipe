@@ -11,6 +11,9 @@ on:
 
 env:
   EXAMPLE_DATA_FILE_VERSION: v5
+  # Setting this did not appear to work. Instead will need to
+  # find/replace when changing it.
+  # CONTAINER_IMAGE: ghcr.io/lsstdesc/txpipe:latest
 
 jobs:
   # Run a download step first so that it is in

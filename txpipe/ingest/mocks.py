@@ -259,6 +259,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Make group for all the photometry
         group = photo_file.create_group("photometry")
+        group.attrs["bands"] = self.bands
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -295,6 +296,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
+        group.attrs["bands"] = self.bands
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -335,6 +337,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
+        group.attrs["bands"] = self.bands
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
