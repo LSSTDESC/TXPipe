@@ -56,13 +56,17 @@ class TXDiagnosticQuantiles(PipelineStage):
             chunk_rows = "auto"
 
         # We canonicalise the names here
-        cols = []
-        col_names = {
+        renames = {
             "psf_g1": f"{psf_prefix}g1",
             "psf_T_mean": f"{psf_prefix}T_mean",
             "s2n": f"{shear_prefix}s2n",
             "T": f"{shear_prefix}T",
         }
+
+        with self.open_input("shear_catalog", wrapper=Tru) as f:
+            group = f.get_primary_catalog_group()
+            col_names = list(f[g].keys())
+
 
         quantiles = np.linspace(0, 1, nedge, endpoint=True)
         percentiles = quantiles * 100
@@ -70,11 +74,10 @@ class TXDiagnosticQuantiles(PipelineStage):
         with self.open_input("shear_catalog") as f, self.open_input("shear_tomography_catalog") as g:
 
             # Create dask arrays of the columns. This loads lazily
-            cols = {
-                new_name: 
-                    da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
-                    for (new_name, old_name) in col_names.items()
-                }
+            cols = {}
+            for old_name in col_names:
+                new_name = renames.get(old_name, old_name)
+                cols[new_name] = da.from_array(f[f"{group}/{old_name}"], chunks=chunk_rows)
 
             # Cut down to just the source selection
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
