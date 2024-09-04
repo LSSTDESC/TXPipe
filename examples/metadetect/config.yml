@@ -312,7 +312,6 @@ PZRailSummarizeLens:
     catalog_group: lens
     tomography_name: lens
     bands: ugrizy
-    model: None
 
 
 PZRailSummarizeSource:
