@@ -15,8 +15,9 @@ python_paths:
 stages:
   - name: TXRandomCat
     nprocess: 16
-  - name: TXSourceSelectorMetacal
+  - name: TXSourceSelectorMetadetect
     nprocess: 32
+  - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector
     nprocess: 32
   - name: TXLensTrueNumberDensity
@@ -72,7 +73,6 @@ stages:
     nodes: 1
     threads_per_process: 1
   - name: TXSimpleMask
-  - name: TXLSSWeightsUnit
   - name: TXMapPlots
   - name: TXTracerMetadata
   - name: TXNullBlinding
@@ -80,7 +80,7 @@ stages:
     threads_per_process: 32
     nprocess: 2
     nodes: 2
-  - name: TXTwoPointPlots
+  - name: TXTwoPointPlotsTheory
   - name: TXDiagnosticQuantiles
     nodes: 1
     nprocess: 16

@@ -47,8 +47,13 @@ stages:
   - name: TXShearCalibration
     nprocess: 32
   - name: TXTruthLensCatalogSplitter
+    nprocess: 32
   - name: TXTwoPointFourier
+    nprocess: 2
+    nodes: 1
     threads_per_process: 64
+  - name: TXTwoPointTheoryFourier
+  - name: TXTwoPointPlotsFourier
   - name: TXJackknifeCenters
   - name: TXSourceMaps
     nprocess: 8
@@ -73,7 +78,18 @@ stages:
   - name: TXNullBlinding
   - name: TXTwoPoint
     threads_per_process: 64
+    nprocess: 1
+    nodes: 1
   - name: TXTwoPointPlotsTheory
+  - name: TXDiagnosticQuantiles
+    nodes: 1
+    nprocess: 16
+  - name: TXLensDiagnosticPlots
+    nprocess: 16
+    nodes: 1
+  - name: TXSourceDiagnosticPlots
+    nprocess: 16
+    nodes: 1
   - name: TXFourierGaussianCovariance
     threads_per_process: 32
   - name: TXTwoPointTheoryReal
